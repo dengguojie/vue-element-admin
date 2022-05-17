@@ -28,6 +28,8 @@
 #include "test_common.h"
 #include "op_tiling/op_tiling_util.h"
 #include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
+#include "moving_sum_with_sigmoid.h"
 
 using namespace std;
 using namespace ge;
@@ -78,4 +80,11 @@ TEST_F(MovingSumWithSigmoidTiling, tset_0) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 ");
+  optiling::MovingSumWithSigmoidCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MovingSumWithSigmoidTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MovingSumWithSigmoid", compile_info, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, test_op, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MovingSumWithSigmoid", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 ");
 }

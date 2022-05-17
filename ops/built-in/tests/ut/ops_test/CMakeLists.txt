@@ -14,15 +14,19 @@
 # ============================================================================
 
 file(GLOB PLUGIN_PROTO_TC_FILES **/*proto.cpp)
+file(GLOB PLUGIN_PROTO_UNITTEST_FILES **/*unittest.cc)
 
 add_executable(ops_cpp_proto_utest
+        common_unittest.cc
         ${PLUGIN_PROTO_TC_FILES}
+        ${PLUGIN_PROTO_UNITTEST_FILES}
         ${OP_TEST_PLUFIN_AND_PROTO_SOURCE}
         )
 target_include_directories(ops_cpp_proto_utest PRIVATE
         ${GTEST_INCLUDE}
         ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
         ${METADEF_INCLUDE}/graph
+        ${METADEF_INCLUDE}/exe_graph
         ${METADEF_INCLUDE}/inc/external/graph
         )
 target_compile_definitions(ops_cpp_proto_utest PRIVATE

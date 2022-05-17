@@ -25,6 +25,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "utils/op_desc_utils.h"
 #include "utils/attr_utils.h"
+#include "common/utils/ut_op_common.h"
 
 using namespace ge;
 using namespace op;
@@ -58,6 +59,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_diff_test) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+  CommonInferShapeOperator(op, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_global_true) {
   ge::op::MaxPoolV3 op;
@@ -77,6 +79,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_global_true) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+  CommonInferShapeOperator(op, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_ceilmode_true) {
   ge::op::MaxPoolV3 op;
@@ -96,6 +99,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_ceilmode_true) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+  CommonInferShapeOperator(op, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_failed) {
   ge::op::MaxPoolV3 op;
@@ -112,6 +116,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_failed) {
   op.SetAttr("ceil_mode", true);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  CommonInferShapeOperator(op, {});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_same) {
   ge::op::MaxPoolV3 op;
@@ -131,6 +136,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_same) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+  CommonInferShapeOperator(op, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutksize) {
   ge::op::MaxPoolV3 op;
@@ -179,6 +185,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutdataformat) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  CommonInferShapeOperator(op, {});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_dynamicdim) {
   ge::op::MaxPoolV3 op;
@@ -198,6 +205,7 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_dynamicdim) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+  CommonInferShapeOperator(op, {});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_stridesfailed) {
   ge::op::MaxPoolV3 op;
@@ -293,6 +301,7 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_005) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_006) {
@@ -311,6 +320,7 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_006) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_007) {
@@ -329,6 +339,7 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_007) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_001) {

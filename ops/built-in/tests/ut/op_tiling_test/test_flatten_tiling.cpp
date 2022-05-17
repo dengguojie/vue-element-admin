@@ -24,6 +24,8 @@
 #include "transformation_ops.h"
 #include "array_ops.h"
 #include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
+#include "flatten.h"
 using namespace std;
 
 class FlattenTiling : public testing::Test {
@@ -81,4 +83,11 @@ TEST_F(FlattenTiling, FlattenTiling_tiling_1) {
   for (int64_t i = 0; i < 10; i++) {
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
+  optiling::FlattenCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::FlattenTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("Flatten", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "Flatten", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int64_t, "8 32 0 8 0 8 ");
 }

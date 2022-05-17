@@ -27,7 +27,8 @@
 #include "nn_pooling_ops.h"
 #include "array_ops.h"
 #include "common/utils/ut_op_util.h"
-#include "test_common.h"
+#include "common_unittest.h"
+#include "max_pool_v3.h"
 using namespace std;
 using namespace ut_util;
 using namespace ge;
@@ -80,6 +81,13 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_0) {
   for (int64_t i = 0; i < 10; i++) {
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
+  optiling::MaxPoolV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MaxPoolV3TilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MaxPoolV3", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "2 4 1 1 56 56 28 28 57 57 1 0 1 0 1 11 1 2 6 2 6 4 ");
 }
 
 TEST_F(MaxPoolV3Tiling, maxpool_tiling_1) {
@@ -105,7 +113,15 @@ TEST_F(MaxPoolV3Tiling, maxpool_tiling_1) {
   for (int64_t i = 0; i < 10; i++) {
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
+  optiling::MaxPoolV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MaxPoolV3TilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MaxPoolV3", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 0 ");
 }
+
 TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_2) {
   std::string op_name = "MaxPoolV3";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
@@ -130,7 +146,15 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_2) {
   for (int64_t i = 0; i < 10; i++) {
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
+  optiling::MaxPoolV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MaxPoolV3TilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MaxPoolV3", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "2 4 1 1 56 56 29 29 59 59 1 2 1 2 1 10 1 2 9 2 9 4 ");
 }
+
 TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_global) {
   std::string op_name = "MaxPoolV3";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
@@ -155,4 +179,11 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_global) {
   for (int64_t i = 0; i < 10; i++) {
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
+  optiling::MaxPoolV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MaxPoolV3TilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MaxPoolV3", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "6 32 1 1 3 3 1 1 3 3 0 0 0 0 1 1 1 0 0 0 0 32 ");
 }

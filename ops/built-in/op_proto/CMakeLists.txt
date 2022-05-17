@@ -40,6 +40,12 @@ set(_op_proto_utils
 )
 
 set(_op_proto_srcs
+  runtime/cast.cc
+  runtime/moving_sum_with_sigmoid.cc
+  runtime/reduce_infer.cc
+  runtime/broadcast_infer.cc
+  runtime/flatten.cc
+  runtime/max_pool_v3.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc
@@ -136,6 +142,7 @@ set(_op_proto_include
   ${METADEF_INCLUDE}
   ${METADEF_INCLUDE}/external
   ${METADEF_INCLUDE}/external/graph
+  ${METADEF_INCLUDE}/exe_graph
   ${GRAPHENGINE_INCLUDE}
   ${GRAPHENGINE_INCLUDE}/external
   ${PROTO_BINARY_DIR}/opp
@@ -144,6 +151,7 @@ set(_op_proto_include
 
 set(_op_proto_link_libs
   -Wl,--no-as-needed
+    exe_graph
     graph
     register
     alog

@@ -4,6 +4,7 @@
 #include "elewise_calculation_ops.h"
 #include "graph/operator_factory_impl.h"
 #include "graph/axis_type_info.h"
+#include "common/utils/ut_op_common.h"
 
 // ----------------Cast--------------
 class cast : public testing::Test {
@@ -30,6 +31,7 @@ TEST_F(cast, cast_infershape_test1) {
 
   std::vector<int64_t> expected_output_y_shape = {3, 4};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test2) {
@@ -45,6 +47,7 @@ TEST_F(cast, cast_infershape_test2) {
 
   std::vector<int64_t> expected_output_y_shape = {5, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test3) {
@@ -60,6 +63,7 @@ TEST_F(cast, cast_infershape_test3) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test4) {
@@ -76,6 +80,7 @@ TEST_F(cast, cast_infershape_test4) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4, 10};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test5) {
@@ -92,6 +97,7 @@ TEST_F(cast, cast_infershape_test5) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4, 10, 2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test6) {
@@ -108,6 +114,7 @@ TEST_F(cast, cast_infershape_test6) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4, 10, 2, 1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test7) {
@@ -124,6 +131,7 @@ TEST_F(cast, cast_infershape_test7) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4, 10, 2, 1, 5};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test8) {
@@ -140,6 +148,7 @@ TEST_F(cast, cast_infershape_test8) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4, 10, 2, 1, 5};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_infershape_test9) {
@@ -156,6 +165,7 @@ TEST_F(cast, cast_infershape_test9) {
 
   std::vector<int64_t> expected_output_y_shape = {4, 3, 4, 10, 2, 1, 5};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_y_shape);
+  CommonInferShapeOperator(op, {expected_output_y_shape});
 }
 
 TEST_F(cast, cast_axis_type_1) {

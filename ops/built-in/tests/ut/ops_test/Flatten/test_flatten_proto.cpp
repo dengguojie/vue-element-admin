@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "op_proto_test_util.h"
 #include "transformation_ops.h"
+#include "common/utils/ut_op_common.h"
 
 using namespace ge;
 using namespace op;
@@ -56,6 +57,7 @@ TEST_F(flatten, flatten_infershape_1) {
   auto output_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  CommonInferShapeOperator(op, {expected_shape});
 }
 
 TEST_F(flatten, flatten_infershape_2) {
@@ -85,6 +87,7 @@ TEST_F(flatten, flatten_infershape_2) {
   std::vector<std::pair<int64_t, int64_t>> output_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(flatten, flatten_infershape_3) {
@@ -110,6 +113,7 @@ TEST_F(flatten, flatten_infershape_3) {
   auto output_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(flatten, flatten_infershape_4) {
@@ -136,6 +140,7 @@ TEST_F(flatten, flatten_infershape_4) {
   auto output_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(flatten, flatten_infershape_5) {
@@ -162,6 +167,7 @@ TEST_F(flatten, flatten_infershape_5) {
   auto output_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  CommonInferShapeOperator(op, {expected_shape});
 }
 
 TEST_F(flatten, flatten_infershape_static_shape) {
@@ -188,6 +194,7 @@ TEST_F(flatten, flatten_infershape_static_shape) {
   auto output_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  CommonInferShapeOperator(op, {expected_shape});
 }
 
 TEST_F(flatten, flatten_infershape_y_range) {
@@ -218,6 +225,7 @@ TEST_F(flatten, flatten_infershape_y_range) {
   std::vector<std::pair<int64_t, int64_t>> output_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(flatten, flatten_infershape_default_axis) {
@@ -247,6 +255,7 @@ TEST_F(flatten, flatten_infershape_default_axis) {
   std::vector<std::pair<int64_t, int64_t>> output_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(flatten, flatten_infershape_fail_axis_out_range) {
@@ -311,6 +320,7 @@ TEST_F(flatten, flatten_infershape_x_range_empty) {
   auto output_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  CommonInferShapeOperator(op, {});
 }
 
 TEST_F(flatten, flatten_infershape_x_1d) {
@@ -340,4 +350,5 @@ TEST_F(flatten, flatten_infershape_x_1d) {
   std::vector<std::pair<int64_t, int64_t>> output_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
+  CommonInferShapeOperator(op, {});
 }

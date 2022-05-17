@@ -1317,6 +1317,24 @@ vector_B:
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
     unrelease:
+      - ops/built-in/op_proto/runtime/moving_sum_with_sigmoid.cc
+      - ops/built-in/op_proto/runtime/reduce_infer.cc
+      - ops/built-in/op_proto/runtime/broadcast_infer.cc
+      - ops/built-in/op_proto/runtime/flatten.cc
+      - ops/built-in/op_proto/runtime/max_pool_v3.cc
+      - ops/built-in/op_proto/runtime/cast.cc
+      - ops/built-in/op_proto/runtime/runtime_util.h
+      - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.cc
+      - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.h
+      - ops/built-in/op_tiling/runtime/flatten.cc
+      - ops/built-in/op_tiling/runtime/flatten.h
+      - ops/built-in/op_tiling/runtime/max_pool_v3.cc
+      - ops/built-in/op_tiling/runtime/max_pool_v3.h
+      - ops/built-in/op_tiling/runtime/moving_sum_with_sigmoid.cc
+      - ops/built-in/op_tiling/runtime/moving_sum_with_sigmoid.h
+      - ops/built-in/op_tiling/runtime/runtime2_util.cc
+      - ops/built-in/op_tiling/runtime/runtime2_util.h
+      - ops/common/inc/context_util.h
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py

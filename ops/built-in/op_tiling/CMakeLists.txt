@@ -15,6 +15,11 @@
 
 # the list of source files
 set(_optiling_files
+  runtime/runtime2_util.cc
+  runtime/moving_sum_with_sigmoid.cc
+  runtime/dynamic_atomic_addr_clean.cc
+  runtime/flatten.cc
+  runtime/max_pool_v3.cc
   ../utils/block_store.cc
   ../utils/block_pool.cc
   ../op_proto/util/error_util.cc
@@ -211,11 +216,13 @@ set(_optiling_files
 set(_op_tiling_include
   ${OPS_INCLUDE}
   ${OPS_DIR}/built-in
+  ${OPS_DIR}/built-in/op_tiling
   ${FWKACLLIB_INCLUDE}
   ${METADEF_DIR}
   ${METADEF_INCLUDE}
   ${METADEF_INCLUDE}/external
   ${METADEF_INCLUDE}/external/graph
+  ${METADEF_INCLUDE}/exe_graph
   ${GRAPHENGINE_INCLUDE}
   ${GRAPHENGINE_INCLUDE}/external
   ${Protobuf_INCLUDE}
@@ -224,6 +231,7 @@ set(_op_tiling_include
 set(_op_tiling_link_libs
   -Wl,--no-as-needed
     graph
+    exe_graph
     register
     alog
     error_manager

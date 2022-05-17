@@ -4,10 +4,11 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
-#include "test_common.h"
+#include "common_unittest.h"
 #include "nn_training_ops.h"
 #include "array_ops.h"
 #include "common/utils/ut_op_util.h"
+#include "dynamic_atomic_addr_clean.h"
 
 using namespace std;
 using namespace ge;
@@ -46,6 +47,13 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compile_info, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
+  optiling::DynamicAtomicAddrCleanCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicAtomicAddrCleanTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicAtomicAddrClean", compile_info, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicAtomicAddrClean", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_2) {
@@ -62,6 +70,13 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_2) {
 
   RUN_TILING_V3(opParas, iter->second, compile_info, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
+  optiling::DynamicAtomicAddrCleanCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicAtomicAddrCleanTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicAtomicAddrClean", compile_info, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicAtomicAddrClean", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_3) {
@@ -76,6 +91,13 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_3) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compile_info, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
+  optiling::DynamicAtomicAddrCleanCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicAtomicAddrCleanTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicAtomicAddrClean", compile_info, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicAtomicAddrClean", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_4) {
@@ -90,4 +112,11 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_4) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compile_info, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 0 0 0 0 0 0 0 0 0 0 ");
+  optiling::DynamicAtomicAddrCleanCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicAtomicAddrCleanTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicAtomicAddrClean", compile_info, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicAtomicAddrClean", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 16320 2040 0 0 0 0 0 0 0 0 0 0 ");
 }

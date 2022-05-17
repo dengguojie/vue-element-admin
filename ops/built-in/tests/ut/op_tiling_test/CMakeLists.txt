@@ -14,14 +14,19 @@
 # ============================================================================
 
 file(GLOB OP_TILING_TC_FILES *.cpp)
+file(GLOB OP_TILING_UNITTEST_FILES *unittest.cc)
 
 add_executable(ops_cpp_op_tiling_utest
         ${OP_TILING_TC_FILES}
+        ${OP_TILING_UNITTEST_FILES}
         ${OP_TEST_PLUFIN_AND_PROTO_SOURCE}
         )
 target_include_directories(ops_cpp_op_tiling_utest PRIVATE
         ${OPS_DIR}/built-in/utils
         ${OPS_DIR}/built-in/op_proto/inc
+        ${OPS_DIR}/built-in/op_tiling/runtime
+        ${METADEF_INCLUDE}/graph
+        ${METADEF_INCLUDE}/exe_graph
         ${GTEST_INCLUDE}
         ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
         )

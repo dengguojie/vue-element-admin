@@ -25,6 +25,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "utils/op_desc_utils.h"
 #include "utils/attr_utils.h"
+#include "common/utils/ut_op_common.h"
 
 class add : public testing::Test {
  protected:
@@ -507,6 +508,7 @@ TEST_F(add, add_infer_shape_001) {
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   std::vector<int64_t> expected_output_shape = {1, -1, -1, 64};
+  CommonInferShapeOperator(op, {expected_output_shape});
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
@@ -539,6 +541,7 @@ TEST_F(add, add_infer_shape_002) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   std::vector<int64_t> expected_output_shape = {1, -1, -1, 64};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  CommonInferShapeOperator(op, {expected_output_shape});
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
