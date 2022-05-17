@@ -33,7 +33,9 @@ vals = {("CORE_NUM", ): 48,
         ("AICORE_TYPE",): "AiCore",
         ("SOC_VERSION",): "Ascend920A",
         ("Intrinsic_fix_pipe_unit_list",): True,
-        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True,
+        ("l1_to_l0_a_rate",): 256,
+        ("l1_to_l0_b_rate",): 128
         }
 
 def get_soc_mock(*args):
@@ -370,7 +372,6 @@ def test_fixpipe_cases(test_args):
             test_conv2d_bp_filter_fixpipe_0()
             test_conv2d_bp_filter_fixpipe_1()
             test_conv2d_bp_filter_fixpipe_2()
-
 ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 
 

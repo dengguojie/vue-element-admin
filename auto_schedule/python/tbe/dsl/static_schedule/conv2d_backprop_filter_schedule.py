@@ -46,6 +46,9 @@ DEFAULT_TILING_CASE = 32
 LOOSE_LINE_CONDITION = 2
 KB_2_B = 1024
 
+# bandwidth overhead
+LOAD3D_CONSUME = 27
+LOAD2D_CONSUME = 12
 
 # the bytes length of several dtype
 BIT_RATIO_DICT = {
@@ -1807,7 +1810,21 @@ class CceConv2dBackpropFilterOp:
         def _cub_and_cc_attach():
             # optimization by move small loops to outer
             if not self.is_binary_flag:
-                reorder_flag = l1_2_l0_tiling_nparts[0] > l1_2_l0_tiling_nparts[1]
+                l0b_attach_mode = (batch_num_sc == 1 and full_k_in_l0b == 1)
+                mc = tiling.get("CL0_matrix")[1]
+                nc = tiling.get("CL0_matrix")[0]
+                ka = tiling.get("AL0_matrix")[1]
+                byte_size = BIT_RATIO_DICT.get(in_dtype, 2)
+                l1_2_l0a_rate = int(tbe_platform_info.get_soc_spec("l1_to_l0_a_rate"))
+                l1_2_l0b_rate = int(tbe_platform_info.get_soc_spec("l1_to_l0_b_rate"))
+                if l1_2_l0a_rate == 0 or l1_2_l0b_rate == 0:
+                    dict_args = {'errCode': "E60108", 'reason': "Get l1 to l0 rate error"}
+                    error_manager_util.raise_runtime_error(dict_args)
+                extra_l0a = (l1_2_l0_tiling_nparts[0] - 1) * (LOAD2D_CONSUME + mc * ka * CUBE_MUL_SHAPE *
+                             byte_size // l1_2_l0a_rate)
+                extra_l0b = (l1_2_l0_tiling_nparts[1] - 1) * (LOAD3D_CONSUME + nc * ka * CUBE_MUL_SHAPE *
+                             byte_size // l1_2_l0b_rate)
+                reorder_flag = l0b_attach_mode and (extra_l0a > extra_l0b)
                 reorder_l1_mn = fmap_l1_tiling_nparts[1] > grads_l1_tiling_nparts[1]
             else:
                 reorder_flag = tiling.get("attach_at_flag").get("reorder_l0_mn") == 1
