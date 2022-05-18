@@ -1310,6 +1310,8 @@ vector_B:
       - ops/built-in/kernel/binary_script/binary_json_cfg.ini
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
       - ops/CMakeLists.txt
+      - ops/built-in/op_proto/nn_detect_ops.cc
+      - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/inc/array_ops.h
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
@@ -4033,8 +4035,6 @@ pytorch:
       - ops/built-in/tbe/impl/merge_sort_v2.py
       - ops/built-in/tbe/impl/multi_merge.py
       - ops/built-in/tbe/impl/segment_sort.py
-      - ops/built-in/op_proto/nn_detect_ops.cc
-      - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/tbe/impl/ciou.py
       - ops/built-in/op_proto/bitwise_ops.cc
       - ops/built-in/op_proto/inc/bitwise_ops.h
@@ -4043,6 +4043,7 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/hardtanh_grad.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv2.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
+      - ops/built-in/tbe/impl/diou.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

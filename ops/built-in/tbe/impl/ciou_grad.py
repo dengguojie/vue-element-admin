@@ -110,10 +110,12 @@ class CIoUGrad(DIoUGrad):
     def update_ciou_forward(self, task_idx):
         """update_ciou_forward"""
         # func: compute for  (1.0 + (w1 / h1) ** 2)
+        self.tik_instance.h_add(self.b_box.h, self.b_box.h, 1e-9)
         self.tik_instance.h_div(self.rate_b1, self.b_box.w, self.b_box.h)
         self.tik_instance.h_mul(self.delta_b1, self.rate_b1, self.rate_b1)
         self.tik_instance.h_add(self.delta_b1, self.delta_b1, 1.0)
 
+        self.tik_instance.h_add(self.g_box.h, self.g_box.h, 1e-9)
         self.tik_instance.h_div(self.rate_b2, self.g_box.w, self.g_box.h)
         self.tik_instance.h_mul(self.delta_b2, self.rate_b2, self.rate_b2)
         self.tik_instance.h_add(self.delta_b2, self.delta_b2, 1.0)

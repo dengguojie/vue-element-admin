@@ -2216,4 +2216,60 @@ IMPLEMT_COMMON_INFERFUNC(CIoUInferShape) {
 
 COMMON_INFER_FUNC_REG(CIoU, CIoUInferShape);
 // ----------------CIoU-------------------
+
+// ----------------DIoU-------------------
+IMPLEMT_COMMON_INFERFUNC(DIoUInferShape) {
+  auto shape_bboxes = op.GetInputDescByName("bboxes").GetShape();
+  vector<int64_t> shape_out;
+  shape_out.push_back(1);
+  shape_out.push_back(shape_bboxes.GetDim(1));
+
+  Shape output_shape(shape_out);
+  DataType input_type = op.GetInputDescByName("bboxes").GetDataType();
+
+  TensorDesc overlap_td = op.GetOutputDescByName("overlap");
+  overlap_td.SetShape(output_shape);
+  overlap_td.SetDataType(input_type);
+  (void)op.UpdateOutputDesc("overlap", overlap_td);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(DIoU, DIoUVerify) {
+  // check shape
+  auto bboxes_shape = op.GetInputDescByName("bboxes").GetShape().GetDims();
+  CHECK(bboxes_shape.empty(), 
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", GetInputInvalidErrMsg("bboxes shape")),
+        return GRAPH_FAILED);
+  auto gtboxes_shape = op.GetInputDescByName("gtboxes").GetShape().GetDims();
+  CHECK(gtboxes_shape.empty(), 
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", GetInputInvalidErrMsg("gtboxes shape")), 
+        return GRAPH_FAILED);
+
+  // check attr reversed_box, is_cross is only support false now.
+  bool is_cross = false;
+
+  // check shape
+  int64_t bboxes_shape_0 = bboxes_shape[0];
+  int64_t gtboxes_shape_0 = gtboxes_shape[0];
+  CHECK(bboxes_shape_0 != 4 || gtboxes_shape_0 != 4,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", "The input shape must be (4, n)"),
+        return GRAPH_FAILED);
+
+  if (is_cross == true) {
+    OP_LOGE("DIoU", "attr is_cross is only support false.");
+    return GRAPH_FAILED;
+  } else {
+    int64_t bboxes_shape_1 = bboxes_shape[1];
+    int64_t gtboxes_shape_1 = gtboxes_shape[1];
+    CHECK(bboxes_shape_1 != gtboxes_shape_1,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", "last dimension of inputs should be equal."),
+          return GRAPH_FAILED);
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(DIoU, DIoUInferShape);
+VERIFY_FUNC_REG(DIoU, DIoUVerify);
+// ----------------DIoU-------------------
 }  // namespace ge

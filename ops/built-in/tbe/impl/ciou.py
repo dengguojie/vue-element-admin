@@ -8,16 +8,6 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express # Copyright 2022 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
@@ -224,18 +214,18 @@ class CIoU():
         self.tik_instance.vsub(mask, self.bboxes_x0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vadd(mask, self.bboxes_x1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
         
-        self.tik_instance.data_move(boxes_xy, self.bboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
-        self.tik_instance.data_move(boxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
-        self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
-        self.tik_instance.vsub(mask, self.bboxes_y0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, self.bboxes_y1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
-
         self.tik_instance.data_move(boxes_xy, self.gtboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
         self.tik_instance.data_move(boxes_wh, self.gtboxes_gm[gm_offset + self.bboxes_shape[1] * 2], 0, 1, nbust, 0, 0)
         self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
         self.tik_instance.vsub(mask, self.gtboxes_x0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vadd(mask, self.gtboxes_x1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
         
+        self.tik_instance.data_move(boxes_xy, self.bboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
+        self.tik_instance.data_move(boxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
+        self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
+        self.tik_instance.vsub(mask, self.bboxes_y0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.bboxes_y1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+
         self.tik_instance.data_move(boxes_xy, self.gtboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
         self.tik_instance.data_move(boxes_wh, self.gtboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
         self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
@@ -290,6 +280,7 @@ class CIoU():
         # cala x1 - x0
         self.tik_instance.vsub(mask, area_ub, x1_ub, x0_ub, repeat_time, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vsub(mask, self.area_y1_y0, y1_ub, y0_ub, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadds(mask, self.area_y1_y0, self.area_y1_y0, 1e-9, repeat_time, 1, 1, 8, 8)
         if inter_mode:
             self.tik_instance.vmax(mask, area_ub, self.zero_ub, area_ub, repeat_time, 1, 0, 1, 8, 0, 8)
             self.tik_instance.vmax(mask, self.area_y1_y0, self.zero_ub, self.area_y1_y0, repeat_time, 1, 0, 1, 8, 0, 8)
@@ -592,6 +583,9 @@ def ciou(bboxes, gtboxes, overlap, atan_sub,
     """
     bboxes_shape = bboxes.get("shape")
     gtboxes_shape = gtboxes.get("shape")
+
+    # atan_sub_flag only support True currently, lock atan_sub_flag to true
+    atan_sub_flag = True
 
     if is_cross:
         raise RuntimeError("is_cross only support False currently.")
