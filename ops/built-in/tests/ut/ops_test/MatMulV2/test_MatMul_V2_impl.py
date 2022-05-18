@@ -911,4 +911,3 @@ if __name__ == '__main__':
 
     ut_case.run(["Ascend310", "Ascend920A"], simulator_mode="pv",
                 simulator_lib_path="../../Ascend/toolkit/tools/simulator")
-

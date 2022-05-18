@@ -142,16 +142,6 @@ def _get_header_tensor_in_dequant_ew_fusion(dequant_activation_tensor,
     return header_ub_tensors
 
 
-def _shape_to_list(shape):
-    """
-    translate tvm.shape to list type in python
-    """
-    tmp = []
-    for i in shape:
-        tmp.append(i.value)
-    return tmp
-
-
 def get_special_l0_factor(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
     """
     get temp factors
@@ -879,41 +869,6 @@ def set_compress_info(sch,
                                     "hoist_axis": out_axis})
 
 
-def _get_gemm_integrated_flag(res):
-    all_tensor = _get_all_tensors(res)
-    for _, tensor in all_tensor.items():
-        if "is_gemm_new" in tensor.op.attrs:
-            return True
-    return False
-
-
-def _get_all_tensors(res):
-    """
-    get all tensor
-    :param res: tensor
-    :return: list
-    """
-    all_tensor = {}
-    all_tensor["res"] = res
-
-    def get(tensor):
-        """
-        find all tensor
-        :param tensor: c_gm
-        :return: all tensor
-        """
-
-        tensor_list = tensor.op.input_tensors
-        for one_tensor in tensor_list:
-            # check which tensor has not been checked
-            if one_tensor.op.name not in all_tensor:
-                all_tensor[one_tensor.op.name] = one_tensor
-                get(one_tensor)
-
-    get(res)
-    return all_tensor
-
-
 def mmad_schedule(res, sch_list, dynamic_para=None):
     """
     algorithm: mmad_schedule
@@ -927,8 +882,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     Returns : if it is true,then we can get the valid schedule
 
     """
-    res_real = res[0]
-    if _get_gemm_integrated_flag(res_real):
+    if dynamic_para["tensor_list"]:
         return gemm_schedule_integrated(res, sch_list, dynamic_para)
     emit_fusion_insn_map = {"dequant_NZ": "phony_insn",
                             "cast_f16_ub": "vector_conv",

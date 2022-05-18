@@ -259,6 +259,7 @@ class GemmSchedule:
     is_dynamic = False
 
     def __init__(self, res, sch_list, dynamic_para):
+        self.tensor_list = dynamic_para["tensor_list"]
         self.res_ori = res
         self.res = res[-1] if isinstance(res, list) else res
         self.root_tensor = res[-1] if isinstance(res, list) else res
@@ -271,7 +272,6 @@ class GemmSchedule:
         self.cache_tiling = None
         # used to control aligned/general mode in dynamic shape
         self.schedule_mode = self.GENERAL_MODE
-
         self.block_in = tbe_platform.BLOCK_IN
         self.block_out = tbe_platform.BLOCK_OUT
         self.block_reduce = tbe_platform.BLOCK_REDUCE
@@ -293,7 +293,8 @@ class GemmSchedule:
          self.cl0_tiling_mc, self.cl0_tiling_n0, self.cl0_tiling_m0) = 1, 1, 1, 16, 16
         self.c_col_k0, self.c_col_k1 = 1, 1
         self.optmt_a, self.optmt_b, self.optmt_c = "float16", "float16", "float16"
-        self.format_info_a, self.format_info_b = "", ""
+        self.format_info_a = {"format_in_a_l1": "Zz", "format_in_a_ub": "none"}
+        self.format_info_b = {"format_in_b_l1": "Zn", "format_in_b_ub": "none"}
         self.format_a, self.format_b, self.format_out = "ND", "ND", "ND"
         self.ops_format = "ND"
         self.seed_shape = None
@@ -364,34 +365,6 @@ class GemmSchedule:
         get the value if shape object when having attr value
         """
         return shape_object.value if hasattr(shape_object, "value") else shape_object
-
-    @staticmethod
-    def _get_all_tensors(res):
-        """
-        get all tensor
-        :param res: tensor
-        :return: list
-        """
-
-        all_tensor = {}
-        all_tensor["res"] = res
-
-        def get(tensor):
-            """
-            find all tensor
-            :param tensor: c_gm
-            :return: all tensor
-            """
-
-            tensor_list = tensor.op.input_tensors
-            for one_tensor in tensor_list:
-                # check which tensor has not been checked
-                if one_tensor.op.name not in all_tensor:
-                    all_tensor[one_tensor.op.name] = one_tensor
-                    get(one_tensor)
-
-        get(res)
-        return all_tensor
 
     @staticmethod
     def _int_ceil_div(divisor_a, divisor_b):
@@ -540,12 +513,9 @@ class GemmSchedule:
         the main func of gemm_schedule
         """
         self._print_ir_matmul("orgin ir", self.sch)
-        self._get_root_tensor()
-        self._get_double_out_tensor()
-        self.container.ori_tensors = self._get_all_tensors(self.res)
-        self._get_global_para_phase_0(self.container.ori_tensors)
-        self._get_global_para_phase_1(self.container.ori_tensors)
-        self._get_custom_block_dim(self.container.ori_tensors)
+        self._set_para_for_genenal()
+        if in_dynamic():
+            self._set_para_for_dynamic()
         self._get_seed_shape()
         self._set_data_layout(self.res)
         self._print_ir_matmul("after data layout", self.sch)
@@ -585,19 +555,63 @@ class GemmSchedule:
         self.container.tensor_map.clear()
         return True
 
-    def _get_root_tensor(self):
-        """ get root tensor for multi-output scene
-        """
-        if isinstance(self.res_ori, list):
-            for res_tensor in self.res_ori:
-                if "virtual_res" in res_tensor.op.tag:
-                    self.root_tensor = res_tensor
-
-    def _get_double_out_tensor(self):
-        if "virtual_res" in self.root_tensor.op.tag:
-            self.container.double_out_tensor.append(self.root_tensor.op.input_tensors[0])
-            self.container.double_out_tensor.append(self.root_tensor.op.input_tensors[1])
+    def _set_para_for_genenal(self):
+        tensor_map = self.tensor_list[0]
+        tensor_l0c = tensor_map.get("c_l0c")
+        # set status_controller para
+        self.status_controller.have_bias = tensor_l0c.op.attrs["have_bias"].value
+        if self.status_controller.have_bias:
+            self.status_controller.need_init_bias = tensor_map.get("bias_init") is not None
+        self.status_controller.have_c = tensor_l0c.op.attrs["have_c"].value
+        self.status_controller.ops_data_flow_mode = tensor_l0c.op.attrs["ops_data_flow_mode"].value
+        self.status_controller.only_use_gevm_gemv_flow = tensor_l0c.op.attrs["only_use_gevm_gemv_flow"].value
+        self.status_controller.mmad_mode = tensor_l0c.op.attrs["mmad_mode"].value
+        if self.status_controller.mmad_mode in ("gevm", "gemv") and \
+            not self.status_controller.only_use_gevm_gemv_flow:
+            self.status_controller.mad_pattern = tbe_platform.GEVM_MODE
+        self.status_controller.int8_not_double_m = tensor_l0c.op.attrs["int8_not_double_m"].value
+        self.status_controller.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self.status_controller.transpose_a = tensor_l0c.op.attrs["transpose_a"].value
+        self.status_controller.transpose_b = tensor_l0c.op.attrs["transpose_b"].value
+        self.status_controller.split_k = bool(tensor_l0c.op.attrs["split_k"].value)
+        self.status_controller.compress_flag =  tensor_l0c.op.attrs["compress_flag"].value
+        self.status_controller.align_a = tensor_l0c.op.attrs["align_a"].value
+        self.status_controller.align_b = tensor_l0c.op.attrs["align_b"].value
+        # set init para
+        self.ops_format = tensor_l0c.op.attrs["ops_format"].value
+        self.format_a = tensor_l0c.op.attrs["format_a"].value
+        self.format_b = tensor_l0c.op.attrs["format_b"].value
+        if self.status_controller.ops_data_flow_mode == "int82int32":
+            self.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
+        self.tensor_b_reshape = 1 if tensor_map.get("tensor_b_reshape") is not None else 0
+        self.kernel_name =  tensor_l0c.op.attrs["kernel_name"].value
+        # set container para
+        self.container.placeholder_name = tensor_l0c.op.attrs["placeholder_name"]
+        if tensor_map.get("multi_output_list") is not None:
+            self.container.double_out_tensor = tensor_map.get("multi_output_list")
             self.status_controller.fusion_multi_output_flag = True
+            self.root_tensor = self.res_ori[0]
+        if "custom_block_dim_m" in tensor_l0c.op.attrs:
+            self.container.custom_block_dim = [
+                tensor_l0c.op.attrs["custom_block_dim_m"].value,
+                tensor_l0c.op.attrs["custom_block_dim_k"].value,
+                tensor_l0c.op.attrs["custom_block_dim_n"].value
+            ]
+        self._fusion_para()
+
+    def _set_para_for_dynamic(self):
+        tensor_map = self.tensor_list[0]
+        self.is_dynamic = True
+        if self.dynamic_para.get("tiling_strategy").get("schedule_pattern") == "Aligned":
+            self.schedule_mode = self.DYN_ALIGNED_MODE
+            self.status_controller.a_use_aligned_pattern = True
+            self.status_controller.b_use_aligned_pattern = True
+        if tensor_map.get("virtual_aub") is not None:
+            self.status_controller.a_use_aligned_pattern = \
+                tensor_map["virtual_aub"].op.attrs["use_aligned_pattern"].value
+        if tensor_map.get("virtual_bub") is not None:
+            self.status_controller.a_use_aligned_pattern = \
+                tensor_map["virtual_bub"].op.attrs["use_aligned_pattern"].value
 
     def _get_real_k_multi_core_axis(self):
         """
@@ -726,77 +740,6 @@ class GemmSchedule:
             before_value = (i + before_value - 1) // before_value * before_value
         return k_axis_values
 
-    def _get_global_para_phase_0(self, ori_tensors):
-        if in_dynamic():
-            self.is_dynamic = True
-            schedule_pattern = self.dynamic_para.get("tiling_strategy").get("schedule_pattern")
-            if schedule_pattern == "Aligned":
-                self.schedule_mode = self.DYN_ALIGNED_MODE
-        tensor_l0c = ori_tensors.get("tensor_c_matrix")
-        self.ops_format = tensor_l0c.op.attrs["ops_format"].value
-        self.status_controller.have_bias = tensor_l0c.op.attrs["have_bias"].value
-        self.status_controller.have_c = tensor_l0c.op.attrs["have_c"].value
-        self.format_a = tensor_l0c.op.attrs["format_a"].value
-        self.format_b = tensor_l0c.op.attrs["format_b"].value
-        self.tensor_b_reshape = 1 if "tensor_b_reshape" in ori_tensors else 0
-        self.status_controller.align_a = False if self.is_dynamic else tensor_l0c.op.attrs["align_a"].value
-        self.status_controller.align_b = False if self.is_dynamic else tensor_l0c.op.attrs["align_b"].value
-        if self.format_a == "ND" and self.is_dynamic:
-            tensor_virtual_aub_node = ori_tensors.get("tensor_a_normalize_ub")
-            self.status_controller.a_use_aligned_pattern = tensor_virtual_aub_node.op.attrs["use_aligned_pattern"].value
-        if self.format_b == "ND" and self.is_dynamic:
-            tensor_virtual_bub_node = ori_tensors.get("tensor_b_normalize_ub")
-            self.status_controller.b_use_aligned_pattern = tensor_virtual_bub_node.op.attrs["use_aligned_pattern"].value
-        if self.schedule_mode == self.DYN_ALIGNED_MODE:
-            self.status_controller.a_use_aligned_pattern = True
-            self.status_controller.b_use_aligned_pattern = True
-        self.status_controller.ops_data_flow_mode = tensor_l0c.op.attrs["ops_data_flow_mode"].value
-        self.status_controller.only_use_gevm_gemv_flow = tensor_l0c.op.attrs["only_use_gevm_gemv_flow"].value
-        self.status_controller.int8_not_double_m = tensor_l0c.op.attrs["int8_not_double_m"].value
-        self.container.placeholder_name = tensor_l0c.op.attrs["placeholder_name"]
-
-    def _get_global_para_phase_1(self, ori_tensors):
-        tensor_l0c = ori_tensors.get("tensor_c_matrix")
-        # user self.container.placeholder_name to avoid the inconsistency of placeholder names
-        # in the fusion scene and the single operator scene
-        if self.is_dynamic:
-            self.status_controller.need_init_bias = False
-        else:
-            self.status_controller.need_init_bias = ori_tensors[self.container.placeholder_name['bias'].value].op.attrs[
-                "ori_shape"][-1].value % 16 != 0 if self.status_controller.have_bias else False
-        self.status_controller.compress_flag = tensor_l0c.op.attrs["compress_flag"].value
-        self.kernel_name = tensor_l0c.op.attrs["kernel_name"].value
-        self.status_controller.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
-        self.block_reduce = tbe_platform.BLOCK_REDUCE
-        if self.status_controller.ops_data_flow_mode == "int82int32":
-            self.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
-
-        self.status_controller.transpose_a = tensor_l0c.op.attrs["transpose_a"].value
-        self.status_controller.transpose_b = tensor_l0c.op.attrs["transpose_b"].value
-        self.status_controller.mmad_mode = tensor_l0c.op.attrs["mmad_mode"].value
-        self.status_controller.split_k = bool(tensor_l0c.op.attrs["split_k"].value)
-        self.status_controller.mad_pattern = (
-            tbe_platform.GEVM_MODE if self.status_controller.mmad_mode in ("gevm", "gemv")
-            else tbe_platform.GEMM_MODE)
-        self.status_controller.mad_pattern = (
-            tbe_platform.GEMM_MODE if self.status_controller.only_use_gevm_gemv_flow
-            else self.status_controller.mad_pattern)
-        self._fusion_para()
-        self._print_debug(self.ops_format, "ops_format")
-        self._print_debug(self.status_controller.ops_data_flow_mode, "ops_data_flow_mode")
-        self._print_debug(self.status_controller.cube_vector_split, "cube_vector_split")
-        self._print_debug(self.status_controller.align_a, "align_a")
-        self._print_debug(self.status_controller.align_b, "align_b")
-
-    def _get_custom_block_dim(self, ori_tensors):
-        tensor_l0c = ori_tensors.get("tensor_c_matrix")
-        if "custom_block_dim_m" in tensor_l0c.op.attrs:
-            self.container.custom_block_dim = [
-                tensor_l0c.op.attrs["custom_block_dim_m"].value,
-                tensor_l0c.op.attrs["custom_block_dim_k"].value,
-                tensor_l0c.op.attrs["custom_block_dim_n"].value
-            ]
-
     def _fusion_para(self):
         res = self.res
         self.out_addr_type = self._get_addr_type(res)  # 0:DDR;1:L1
@@ -912,6 +855,7 @@ class GemmSchedule:
         return compute_tensors_local
 
     def _set_data_layout_base_tensor(self):
+        tensor_map = self.tensor_list[0]
         placeholder_name = self.container.placeholder_name
         compute_tensors = self.container.compute_tensors
         placeholder_tensors = self.container.placeholder_tensors
@@ -928,60 +872,39 @@ class GemmSchedule:
 
         self.container.tensor_map["alpha"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
         self.container.tensor_map["beta"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])
-        self.container.tensor_map["c_l0c"] = self._match_and_get_tensor(compute_tensors, "tensor_c_matrix")
+        self.container.tensor_map["c_l0c"] = tensor_map.get("c_l0c")
         self.sch[self.container.tensor_map.get("c_l0c")].set_scope(tbe_platform_info.scope_cc)
-        load_a_matrix = self.format_a == "FRACTAL_Z" and (not self.status_controller.transpose_a)
-        load_a_matrix = load_a_matrix and (
-            not ((self.format_a == "FRACTAL_Z") and (self.status_controller.mmad_mode == "gemv")))
         if self.status_controller.mmad_mode == "gemv":
             l0a_scope = tbe_platform_info.scope_cb
         else:
             l0a_scope = tbe_platform_info.scope_ca
-        if load_a_matrix:
+        if tensor_map.get("a_l0a") is None:
             self.container.tensor_map["a_l0a"] = self.sch.cache_read(
                 self.container.tensor_map.get("a_placehold"),
                 l0a_scope, [self.container.tensor_map.get("c_l0c")])
         else:
-            self.container.tensor_map["a_l0a"] = self._match_and_get_tensor(compute_tensors, "tensor_a_matrix")
+            self.container.tensor_map["a_l0a"] = tensor_map["a_l0a"]
             self.sch[self.container.tensor_map.get("a_l0a")].set_scope(l0a_scope)
-
         if "mode" in self.container.tensor_map.get("a_l0a").op.attrs:
             self.get_a_matrix_mode = self.container.tensor_map.get("a_l0a").op.attrs["mode"]
-
         if "format_info" in self.container.tensor_map.get("a_l0a").op.attrs:
             self.format_info_a = self.container.tensor_map.get("a_l0a").op.attrs["format_info"]
-        else:
-            self.format_info_a = {
-                "format_in_a_l1": "Zz",
-                "format_in_a_ub": "none"
-            }
 
-        load_b_matrix = (((self.format_b == "FRACTAL_Z" and not self.status_controller.transpose_b)
-            or (self.ops_format == "FRACTAL_NZ" and self.status_controller.ops_data_flow_mode == "int82int32"))
-            and (self.status_controller.ops_data_flow_mode != "int82fp32")
-            and (not self.status_controller.compress_flag)
-            and (self.status_controller.mmad_mode != "gemv"))
         if self.status_controller.mmad_mode == "gemv":
             l0b_scope = tbe_platform_info.scope_ca
         else:
             l0b_scope = tbe_platform_info.scope_cb
-        if load_b_matrix:
+        if tensor_map.get("b_l0b") is None:
             self.container.tensor_map["b_l0b"] = self.sch.cache_read(
-                self.container.tensor_map.get("b_placehold"), l0b_scope, [self.container.tensor_map.get("c_l0c")])
+                self.container.tensor_map.get("b_placehold"),
+                l0b_scope, [self.container.tensor_map.get("c_l0c")])
         else:
-            self.container.tensor_map["b_l0b"] = self._match_and_get_tensor(compute_tensors, "tensor_b_matrix")
+            self.container.tensor_map["b_l0b"] = tensor_map["b_l0b"]
             self.sch[self.container.tensor_map.get("b_l0b")].set_scope(l0b_scope)
-
         if "mode" in self.container.tensor_map.get("b_l0b").op.attrs:
             self.get_b_matrix_mode = self.container.tensor_map.get("b_l0b").op.attrs["mode"]
-
         if "format_info" in self.container.tensor_map.get("b_l0b").op.attrs:
             self.format_info_b = self.container.tensor_map.get("b_l0b").op.attrs["format_info"]
-        else:
-            self.format_info_b = {
-                "format_in_b_l1": "Zn",
-                "format_in_b_ub": "none"
-            }
 
         self.optmt_a = self.container.tensor_map.get("a_l0a").dtype
         self.optmt_b = self.container.tensor_map.get("b_l0b").dtype

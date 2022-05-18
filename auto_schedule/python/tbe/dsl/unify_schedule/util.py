@@ -33,6 +33,7 @@ from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
 from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -457,10 +458,18 @@ def get_single_matmul_tensor(tensor_map, all_tensor):
     tensor_map["a_l0a"] = all_tensor.get("tensor_a_matrix")
     tensor_map["b_l0b"] = all_tensor.get("tensor_b_matrix")
     tensor_map["c_l0c"] = all_tensor.get("tensor_c_matrix")
+    # fb bias is add in c matrix
     if len(tensor_map["c_l0c"].op.input_tensors) == 3:
         tensor_map["input_bias"] = tensor_map["c_l0c"].op.input_tensors[2]
+    tensor_map["bias_init"] = all_tensor.get("tensor_init_value_of_bias_ub")
     # fixpipe matmul is nd2nd for fc single node whose output format is NC1HWC0
     tensor_map["fixpipe_matmul"] = all_tensor.get("fixpipe_matmul")
+
+    # virtual ub tensor is used in dynamic and ND
+    tensor_map["virtual_aub"] = all_tensor.get("tensor_a_normalize_ub")
+    tensor_map["virtual_bub"] = all_tensor.get("tensor_b_normalize_ub")
+    # b_reshape
+    tensor_map["tensor_b_reshape"] = all_tensor.get("tensor_b_reshape")
 
 
 def get_fusion_matmul_tensor(tensor_map, all_tensor, leaf_tensor):
@@ -488,6 +497,8 @@ def get_fixpipe_tensor(res, tensor_map):
     """
     get fixpipe tensor of cube
     """
+    if not tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+        return
     fixpipe_input_tensor = res.op.input_tensors[0]
     while fixpipe_input_tensor.op.name != "tensor_c_matrix":
         if fixpipe_input_tensor.op.tag == "fixpipe":
@@ -518,3 +529,13 @@ def get_ub_tensor(all_tensor, leaf_tensor, tensor_map):
         if tensor_mem.op.tag in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
             get_fixpipe_tensor(tensor_mem, tensor_map)
     tensor_map["eltwise_tensor"] = eltwise_tensor
+
+
+def get_gemm_integrated_flag(all_tensor):
+    """
+    new integrated sch or old mmad sch
+    """
+    for _, tensor in all_tensor.items():
+        if "is_gemm_new" in tensor.op.attrs:
+            return True
+    return False

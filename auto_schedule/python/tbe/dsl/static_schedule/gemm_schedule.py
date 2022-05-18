@@ -208,7 +208,6 @@ class GemmScheduleV2:
         spec_mid_list = tensor_map.get("spec_mid_list", [])
         # clear global cache
         tiling.clear()
-        tensor_map.clear()
         return spec_mid_list
 
 

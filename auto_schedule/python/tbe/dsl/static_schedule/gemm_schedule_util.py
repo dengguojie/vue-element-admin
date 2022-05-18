@@ -367,11 +367,11 @@ def process_tiling(tiling_cases, tensor_list):
     :param tensor_map: output fixpipe tensor of matmul which after setscope
     :return: dict
     """
-    if not tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
-        return tiling_cases
     for tiling_case in tiling_cases:
         if tensor_list:
             tiling_case["tensor_list"] = tensor_list
+        if not tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+            continue
         tiling = tiling_case["tiling_strategy"]
         # is binary
         if "attach_at_flag" in tiling.keys():

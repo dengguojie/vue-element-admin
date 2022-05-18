@@ -25,7 +25,6 @@ class GemmScheduleContainer:
     This is a container Class used to store all containers
     """
     def __init__(self):
-        self.ori_tensors = {}
         self.tensor_map = {}
         self.placeholder_name = None
         self.buffer_reuse_dict = {}

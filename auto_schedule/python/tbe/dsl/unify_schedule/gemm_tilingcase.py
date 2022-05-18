@@ -483,6 +483,9 @@ def _get_matmul_compute_tensor(outs):
     # get all tensor and leaf tensor of matmul compute
     all_tensor, leaf_tensor = gemm_schedule_util.get_all_tensors(outs)
     # get tensor in cube calculation
+    if not schedule_util.get_gemm_integrated_flag(all_tensor) and \
+        not tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+        return []
     tensor_map = {}
     schedule_util.get_single_matmul_tensor(tensor_map, all_tensor)
     # get tensor after cube
@@ -528,10 +531,9 @@ def calc_matmul(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-    tensor_list = None
+    # get all tensor and leaf tensor of matmul/gemm compute
+    tensor_list = _get_matmul_compute_tensor(outs[0])
     if tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
-        # get all tensor and leaf tensor of matmul compute
-        tensor_list = _get_matmul_compute_tensor(outs[0])
         tensor_map = tensor_list[0]
         # cal the tiling info_dict
         tiling_info_dict = gemm_schedule_util.cal_tiling_info_dict(tensor_map)
@@ -544,6 +546,9 @@ def calc_matmul(outs, option=None):
             tiling_case = [{"tiling_strategy": tiling_static}]
             tiling_case = gemm_schedule_util.process_tiling(tiling_case, tensor_list)
             return tiling_case
+    else:
+        if not in_dynamic():
+            return [{"tensor_list": tensor_list}]
 
     mode = GEMMComputeParam.dynamic_mode
     # The variables is named x_ori in ND format, otherwise named x

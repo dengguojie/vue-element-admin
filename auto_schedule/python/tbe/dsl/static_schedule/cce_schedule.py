@@ -1198,7 +1198,9 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
         cce_cube_layer_norm_op = CceLayerNormCubeOp(scope_ubuf)
         cce_cube_layer_norm_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.MATMUL_PATTERN:
-        mmad_schedule(outs, sch_list)  # 'pylint: disable=W0631
+        tiling_case_func = operation.get_tiling_case("Matmul")
+        tiling_case_para = tiling_case_func(outs)
+        mmad_schedule(outs, sch_list, tiling_case_para[0])
     elif pattern == OpPatterns.GEMM_PATTERN:
         tiling_case_func = operation.get_tiling_case("Matmul")
         tiling_case_para = tiling_case_func(outs)
