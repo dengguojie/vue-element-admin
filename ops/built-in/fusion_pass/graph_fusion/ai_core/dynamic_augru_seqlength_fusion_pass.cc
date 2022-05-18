@@ -170,20 +170,28 @@ Status DynamicAUGRUSeqFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
                     return PARAM_INVALID);
 
   auto wiTensorDesc = fusedDesc->MutableInputDesc("weight_input");
+  FUSION_PASS_CHECK(wiTensorDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "get weight_input failed, fusion failed."),
+                    return PARAM_INVALID);
   wiTensorDesc->SetFormat(ge::FORMAT_ND);
   wiTensorDesc->SetOriginFormat(ge::FORMAT_ND);
 
   auto whTensorDesc = fusedDesc->MutableInputDesc("weight_hidden");
+  FUSION_PASS_CHECK(whTensorDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "get weight_hidden failed, fusion failed."),
+                    return PARAM_INVALID);
   whTensorDesc->SetFormat(ge::FORMAT_ND);
   whTensorDesc->SetOriginFormat(ge::FORMAT_ND);
 
   auto biTensorDesc = fusedDesc->MutableInputDesc("bias_input");
-  biTensorDesc->SetFormat(ge::FORMAT_ND);
-  biTensorDesc->SetOriginFormat(ge::FORMAT_ND);
+  if (biTensorDesc != nullptr) {
+    biTensorDesc->SetFormat(ge::FORMAT_ND);
+    biTensorDesc->SetOriginFormat(ge::FORMAT_ND);
+  }
 
   auto bhTensorDesc = fusedDesc->MutableInputDesc("bias_hidden");
-  bhTensorDesc->SetFormat(ge::FORMAT_ND);
-  bhTensorDesc->SetOriginFormat(ge::FORMAT_ND);
+  if (bhTensorDesc != nullptr) {
+    bhTensorDesc->SetFormat(ge::FORMAT_ND);
+    bhTensorDesc->SetOriginFormat(ge::FORMAT_ND);
+  }
 
   vector<int64_t> tensorXDims = fusedDesc->GetInputDesc(0).GetShape().GetDims();
   int64_t inputSize = tensorXDims[INPUT_SHAPE_DIM];
