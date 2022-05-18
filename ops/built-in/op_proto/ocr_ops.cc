@@ -331,34 +331,31 @@ IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
 
 COMMON_INFER_FUNC_REG(OCRIdentifyPreHandle, OCRIdentifyPreHandleInferShape);
 
-
- //batch_dilate_polys
 IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
-  // main part of shape infer
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  std::vector<int64_t> dims={1,ge::UNKNOWN_DIM};
-  auto score_shape=op_desc->MutableInputDesc("score")->GetShape();
-  auto polys_data_shape=op_desc->MutableInputDesc("polys_data")->GetShape();
+  auto score_shape = op_desc->MutableInputDesc("score")->GetShape();
 
-  auto dilated_polys_data_index=op_desc->MutableOutputDesc("dilated_polys_data");
-  auto polys_data_index=op_desc->MutableInputDesc("polys_data");
-  auto score_index=op_desc->MutableInputDesc("score");
+  auto dilated_polys_data_index = op_desc->MutableOutputDesc("dilated_polys_data");
+  auto polys_data_index = op_desc->MutableInputDesc("polys_data");
+  auto score_index = op_desc->MutableInputDesc("score");
 
-  std::vector<std::pair<int64_t,int64_t>> dilated_polys_data_range;
-  if(IsUnknown(score_shape.GetDims())){
-    std::vector<std::pair<int64_t,int64_t>> score_range;
+  std::vector<std::pair<int64_t, int64_t>> dilated_polys_data_range;
+  if (IsUnknown(score_shape.GetDims())) {
+    std::vector<std::pair<int64_t, int64_t>> score_range;
     score_index->GetShapeRange(score_range);
-    int64_t polys_score_max_h=score_range[0].second;
-    int64_t polys_score_max_w=score_range[1].second;
-    std::pair<int64_t,int64_t> data_range({0,polys_score_max_h*polys_score_max_w});
+    int64_t polys_score_max_h = score_range[0].second;
+    int64_t polys_score_max_w = score_range[1].second;
+    std::pair<int64_t, int64_t> data_range({0, polys_score_max_h * polys_score_max_w});
     dilated_polys_data_range.push_back(data_range);
-    OP_LOGI("dilated_polys_data_range=%d",polys_score_max_h*polys_score_max_w);
+    OP_LOGI("dilated_polys_data_range = %ld", polys_score_max_h * polys_score_max_w);
     dilated_polys_data_index->SetShapeRange(dilated_polys_data_range);
-  } else{
-    auto polys_data_max_dims=score_index->GetShape().GetDims();
-    int64_t polys_score_max_h=polys_data_max_dims[0];
-    int64_t polys_score_max_w=polys_data_max_dims[1];
-    std::pair<int64_t,int64_t> data_range({0,polys_score_max_h*polys_score_max_w});
+  } else {
+    auto polys_data_max_dims = score_index->GetShape().GetDims();
+    OP_LOGE_IF(IsEmptyTensor(polys_data_max_dims), GRAPH_FAILED,
+      TbeGetName(op), "Invalid value[%ld] of dim[0]", polys_data_max_dims[0]);
+    int64_t polys_score_max_h = polys_data_max_dims[0];
+    int64_t polys_score_max_w = polys_data_max_dims[1];
+    std::pair<int64_t, int64_t> data_range({0, polys_score_max_h * polys_score_max_w});
     dilated_polys_data_range.push_back(data_range);
     dilated_polys_data_index->SetShapeRange(dilated_polys_data_range);
   }
@@ -366,21 +363,21 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
   dilated_polys_data_index->SetShape(ge::GeShape(UNKNOWN_SHAPE));
   dilated_polys_data_index->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
 
-  auto polys_offset_shape=op_desc->MutableInputDesc("polys_offset")->GetShape();
-  auto dilated_polys_offset_index=op_desc->MutableOutputDesc("dilated_polys_offset");
-  auto polys_offset_index=op_desc->MutableInputDesc("polys_offset");
-  std::vector<std::pair<int64_t,int64_t>> dilated_polys_offset_range;
-    if(polys_offset_shape.GetDims()==UNKNOWN_RANK||polys_offset_shape.GetDims()==UNKNOWN_SHAPE){
-    std::vector<std::pair<int64_t,int64_t>> polys_offset_range;
+  auto polys_offset_shape = op_desc->MutableInputDesc("polys_offset")->GetShape();
+  auto dilated_polys_offset_index = op_desc->MutableOutputDesc("dilated_polys_offset");
+  auto polys_offset_index = op_desc->MutableInputDesc("polys_offset");
+  std::vector<std::pair<int64_t, int64_t>> dilated_polys_offset_range;
+  if (polys_offset_shape.GetDims() == UNKNOWN_RANK || polys_offset_shape.GetDims() == UNKNOWN_SHAPE) {
+    std::vector<std::pair<int64_t, int64_t>> polys_offset_range;
     polys_offset_index->GetShapeRange(polys_offset_range);
-    int64_t polys_offset_max=polys_offset_range[0].second;
-    std::pair<int64_t,int64_t> offset_range({0,polys_offset_max});
+    int64_t polys_offset_max = polys_offset_range[0].second;
+    std::pair<int64_t, int64_t> offset_range({0, polys_offset_max});
     dilated_polys_offset_range.push_back(offset_range);
     dilated_polys_offset_index->SetShapeRange(dilated_polys_offset_range);
-  } else{
-    auto polys_offset_max_dims=polys_offset_index->GetShape().GetDims();
-    int64_t polys_offset_max=polys_offset_max_dims[0];
-    std::pair<int64_t,int64_t> offset_range({0,polys_offset_max});
+  } else {
+    auto polys_offset_max_dims = polys_offset_index->GetShape().GetDims();
+    int64_t polys_offset_max = polys_offset_max_dims[0];
+    std::pair<int64_t, int64_t> offset_range({0, polys_offset_max});
     dilated_polys_offset_range.push_back(offset_range);
     dilated_polys_offset_index->SetShapeRange(dilated_polys_offset_range);
   }
@@ -389,20 +386,20 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
   dilated_polys_offset_index->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
 
   auto polys_size_shape=op_desc->MutableInputDesc("polys_size")->GetShape();
-  auto dilated_polys_size_index=op_desc->MutableOutputDesc("dilated_polys_size");
+  auto dilated_polys_size_index = op_desc->MutableOutputDesc("dilated_polys_size");
   auto polys_size_index=op_desc->MutableInputDesc("polys_size");
-  std::vector<std::pair<int64_t,int64_t>> dilated_polys_size_range;
-  if(polys_size_shape.GetDims()==UNKNOWN_RANK||polys_size_shape.GetDims()==UNKNOWN_SHAPE){
+  std::vector<std::pair<int64_t, int64_t>> dilated_polys_size_range;
+  if (polys_size_shape.GetDims() == UNKNOWN_RANK || polys_size_shape.GetDims() == UNKNOWN_SHAPE) {
     std::vector<std::pair<int64_t,int64_t>> polys_size_range;
     polys_size_index->GetShapeRange(polys_size_range);
     int64_t polys_size_max=polys_size_range[0].second;
-    std::pair<int64_t,int64_t> size_range({0,polys_size_max});
+    std::pair<int64_t, int64_t> size_range({0, polys_size_max});
     dilated_polys_size_range.push_back(size_range);
     dilated_polys_size_index->SetShapeRange(dilated_polys_size_range);
-  } else{
-    auto polys_size_max_dims=polys_size_index->GetShape().GetDims();
-    int64_t polys_size_max=polys_size_max_dims[0];
-    std::pair<int64_t,int64_t> size_range({0,polys_size_max});
+  } else {
+    auto polys_size_max_dims = polys_size_index->GetShape().GetDims();
+    int64_t polys_size_max = polys_size_max_dims[0];
+    std::pair<int64_t, int64_t> size_range({0, polys_size_max});
     dilated_polys_size_range.push_back(size_range);
     dilated_polys_size_index->SetShapeRange(dilated_polys_size_range);
   }
@@ -411,40 +408,37 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
   dilated_polys_size_index->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
 
   return GRAPH_SUCCESS;
-  }
+}
 
-  COMMON_INFER_FUNC_REG(BatchDilatePolys,
-                      BatchDilatePolysInferShape);
-  
+COMMON_INFER_FUNC_REG(BatchDilatePolys, BatchDilatePolysInferShape);
 
-  //  OCRFindContours
 IMPLEMT_COMMON_INFERFUNC(OCRFindContoursInfer) {
-  // main part of shape infer
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  std::vector<int64_t> dims={1,ge::UNKNOWN_DIM};
-  auto img_shape=op_desc->MutableInputDesc("img")->GetShape();
-  
-  auto polys_data_index=op_desc->MutableOutputDesc("polys_data");
-  auto polys_offset_index=op_desc->MutableOutputDesc("polys_offset");
-  auto polys_size_index=op_desc->MutableOutputDesc("polys_size");
-  auto img_index=op_desc->MutableInputDesc("img");
+  auto img_shape = op_desc->MutableInputDesc("img")->GetShape();
 
-  std::vector<std::pair<int64_t,int64_t>> polys_data_range;
-  if(IsUnknown(img_shape.GetDims())){
-    std::vector<std::pair<int64_t,int64_t>> img_range;
+  auto polys_data_index = op_desc->MutableOutputDesc("polys_data");
+  auto polys_offset_index = op_desc->MutableOutputDesc("polys_offset");
+  auto polys_size_index = op_desc->MutableOutputDesc("polys_size");
+  auto img_index = op_desc->MutableInputDesc("img");
+
+  std::vector<std::pair<int64_t, int64_t>> polys_data_range;
+  if (IsUnknown(img_shape.GetDims())) {
+    std::vector<std::pair<int64_t, int64_t>> img_range;
     img_index->GetShapeRange(img_range);
-    int64_t img_max_h=img_range[0].second;
-    int64_t img_max_w=img_range[1].second;
-    std::pair<int64_t,int64_t> data_range({1,img_max_h*img_max_w});
+    int64_t img_max_h = img_range[0].second;
+    int64_t img_max_w = img_range[1].second;
+    std::pair<int64_t, int64_t> data_range({1, img_max_h * img_max_w});
     polys_data_range.push_back(data_range);
     polys_data_index->SetShapeRange(polys_data_range);
     polys_offset_index->SetShapeRange(polys_data_range);
     polys_size_index->SetShapeRange(polys_data_range);
-  } else{
-    auto img_max_dims=img_index->GetShape().GetDims();
-    int64_t img_max_h=img_max_dims[0];
-    int64_t img_max_w=img_max_dims[1];
-    std::pair<int64_t,int64_t> data_range({1,img_max_h*img_max_w});
+  } else {
+    auto img_max_dims = img_index->GetShape().GetDims();
+    OP_LOGE_IF(IsEmptyTensor(img_max_dims), GRAPH_FAILED,
+      TbeGetName(op), "Invalid value[%ld] of dim[0]", img_max_dims[0]);
+    int64_t img_max_h = img_max_dims[0];
+    int64_t img_max_w = img_max_dims[1];
+    std::pair<int64_t, int64_t> data_range({1, img_max_h * img_max_w});
     polys_data_range.push_back(data_range);
     polys_data_index->SetShapeRange(polys_data_range);
     polys_offset_index->SetShapeRange(polys_data_range);
@@ -461,14 +455,13 @@ IMPLEMT_COMMON_INFERFUNC(OCRFindContoursInfer) {
   polys_size_index->SetDataType(DT_INT32);
   polys_size_index->SetShape(ge::GeShape(UNKNOWN_SHAPE));
   polys_size_index->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
- 
+
   return GRAPH_SUCCESS;
-  }
+}
 
-  COMMON_INFER_FUNC_REG(OCRFindContours,
-                      OCRFindContoursInfer);
+COMMON_INFER_FUNC_REG(OCRFindContours, OCRFindContoursInfer);
 
-  IMPLEMT_COMMON_INFERFUNC(DequeueInferShape){
+IMPLEMT_COMMON_INFERFUNC(DequeueInferShape) {
     TensorDesc data_desc = op.GetOutputDescByName("data");
     std::vector<int64_t> output_shape;
     (void)op.GetAttr("output_shape",output_shape);
@@ -482,7 +475,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRFindContoursInfer) {
 
 COMMON_INFER_FUNC_REG(Dequeue, DequeueInferShape);
 
-IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer){
+IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer) {
     auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
     auto input_img = op_desc->MutableInputDesc("img");
     auto input_polys_offset = op_desc->MutableInputDesc("polys_offset");
@@ -581,7 +574,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer){
 
 COMMON_INFER_FUNC_REG(OCRDetectionPostHandle, OCRDetectionPostHandleInfer);
 
-IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer){
+IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer) {
     auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
     auto input_polys_data = op_desc->MutableInputDesc("polys_data");
     auto input_polys_offset = op_desc->MutableInputDesc("polys_offset");

@@ -24,6 +24,7 @@ aicpu:
   src:
     release:
       - ops/built-in/aicpu/
+      - ops/built-in/op_proto/ocr_ops.cc
       - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/case_condition_ops.cc
       - ops/built-in/op_proto/coordinates_1d_to_2d_ops.cc
@@ -2188,7 +2189,6 @@ unkown:
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/stateful_random_ops.cc
       - ops/built-in/op_proto/spectral_ops.cc
-      - ops/built-in/op_proto/ocr_ops.cc
       - ops/built-in/op_proto/deep_md.cc
       - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
