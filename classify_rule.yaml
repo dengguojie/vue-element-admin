@@ -931,6 +931,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_remove_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_remove_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.h
@@ -3744,10 +3746,8 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_nearest_neighbor_grad_d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/nms_with_mask_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_reshape_transdata_transpose.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_remove_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_vector_core_fusion_base_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_remove_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_reshape_transdata_transpose.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/decode_bbox_v2_insert_transpose_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.h

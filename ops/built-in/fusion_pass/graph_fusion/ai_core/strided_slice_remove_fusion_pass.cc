@@ -95,6 +95,22 @@ Status StridedSliceRemovePass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
         OP_LOGD(FUSED_OP_TYPE.c_str(), "StrideSlice inputDims is not equal outputDims.");
         return NOT_CHANGED;
     }
+
+    // reverse order scene, canot remove strideSlice
+    Operator stridedSliceOp = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);
+    std::vector<int64_t> strides;
+    if (fusedNode->GetType() == FUSED_NODE_1) {
+        TbeFusionPassUtil::GetConstIntData(stridedSliceOp, "strides", strides);
+    } else {
+        stridedSliceOp.GetAttr("strides", strides);
+    }
+    for (size_t idx = 0; idx < strides.size(); ++idx) {
+        if (strides[idx] < 1) {
+            OP_LOGD(FUSED_OP_TYPE.c_str(), "StrideSlice value of strides is less than 1, skip fusion.");
+            return NOT_CHANGED;
+        }
+    }
+
     // if exist control anchor, need relink to next node.
     for (auto outAnchor : fusedNode->GetAllOutDataAnchors()) {
         for (InDataAnchorPtr inAnchorPtr : outAnchor->GetPeerInDataAnchors()) {
