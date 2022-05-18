@@ -1437,7 +1437,6 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                     sch_list_value.set_constraint(
                         expr.And(input_x.shape[2] <= tune_shape_list[index][1], input_x.shape[2] > 0))
                 tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
-                return return_list, sch_list, index_list
         else:
             return return_list, s
 
@@ -1781,75 +1780,6 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
     shape_i = 1 * factor_l1_n * factor_l1_m * 16 * 16
     shape_h_z_bigz = 1 * factor_l1_m * factor_l1_k_2 * 16 * 16
 
-    for tensor in elewise_tensors:
-        if tensor != barrier_tensor:
-            s[tensor].set_buffer_size(shape_i)
-
-    s[s_state_h_ub].set_buffer_size(shape_h)
-    s[s_state_c_ub].set_buffer_size(shape_i)
-
-    s[a_l1_1].set_buffer_size(shape_a_z_bigz)
-    s[b_l1_1].set_buffer_size(shape_b_1)
-    s[a_l0a_1].set_buffer_size(shape_a_z_bigz)
-    s[b_l0b_1].set_buffer_size(shape_b_1)
-    s[c_l0c_1].set_buffer_size(shape_c_1)
-    s[c_ub_1].set_buffer_size(shape_c_1)
-
-    if bias is not None:
-        s[bias_ub].set_buffer_size(shape_bias)
-        if fp16_input_output:
-            s[bias_ub_fp32].set_buffer_size(shape_bias)
-        s[bias_bc_ub].set_buffer_size(shape_c_1)
-
-    s[a_l1_2].set_buffer_size(shape_h_z_bigz)
-    s[b_l1_2].set_buffer_size(shape_b_2)
-    s[a_l0a_2].set_buffer_size(shape_h_z_bigz)
-    s[b_l0b_2].set_buffer_size(shape_b_2)
-    s[c_l0c_2].set_buffer_size(shape_c_2)
-    s[c_ub_2].set_buffer_size(shape_c_2)
-    s[c_ub_bias].set_buffer_size(shape_c_2)
-
-    s[i_t].set_buffer_size(shape_i)
-    s[j_t].set_buffer_size(shape_i)
-    s[f_t].set_buffer_size(shape_i)
-    s[o_t].set_buffer_size(shape_i)
-
-    s[f_t_sigmoid_ub].set_buffer_size(shape_i)
-    s[i_t_sigmoid_ub].set_buffer_size(shape_i)
-    s[o_t_sigmoid_ub].set_buffer_size(shape_i)
-    s[j_t_tanh_ub].set_buffer_size(shape_i)
-
-    if is_gate_output:
-        if fp16_input_output:
-            s[f_t_sigmoid_fp16].set_buffer_size(shape_i)
-            s[i_t_sigmoid_fp16].set_buffer_size(shape_i)
-            s[o_t_sigmoid_fp16].set_buffer_size(shape_i)
-            s[j_t_tanh_fp16].set_buffer_size(shape_i)
-        if fp16_input_output:
-            s[s_state_c_back_fp32].set_buffer_size(shape_i)
-
-    if bias_dtype == 'float16':
-        s[update_c_fp16].set_buffer_size(shape_i)
-
-    if bias_dtype == 'float16':
-        s[update_c_fp16_back].set_buffer_size(shape_i)
-        s[update_c_fp16_back_fp32].set_buffer_size(shape_i)
-    else:
-        s[update_c_fp32_back].set_buffer_size(shape_i)
-
-    if is_gate_output:
-        if fp16_input_output:
-            s[c_t_tanh_fp16].set_buffer_size(shape_i)
-
-    if fp16_input_output:
-        s[update_h_fp16].set_buffer_size(shape_i)
-        s[update_h_gm_as_y_back].set_buffer_size(shape_i)
-        s[last_update_h_back].set_buffer_size(shape_i)
-    else:
-        s[update_h_gm_as_y_back].set_buffer_size(shape_i)
-        s[update_h_fp16_cast].set_buffer_size(shape_i)
-        s[last_update_h_back].set_buffer_size(shape_i)
-
     # emit_insn
     s[a_l1_1].emit_insn(a_l1_1.op.axis[0], 'dma_copy')
     s[b_l1_1].emit_insn(b_l1_1.op.axis[0], 'dma_copy')
@@ -1874,7 +1804,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         s[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
         if fp16_input_output:
             s[bias_ub_fp32].emit_insn(bias_ub_fp32.op.axis[0], 'vector_conv')
-        s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'vector_broadcast')
+        s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'vector_broadcast', attrs={"storage_bound": 16384})
         s[c_ub_bias_1].emit_insn(c_ub_bias_1.op.axis[0], 'vector_add')
     if is_first_round:
         if is_global_init:
