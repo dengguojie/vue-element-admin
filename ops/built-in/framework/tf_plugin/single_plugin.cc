@@ -952,6 +952,27 @@ REGISTER_CUSTOM_OP("StatelessMultinomial")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register StatelessParameterizedTruncatedNormal op to GE
+REGISTER_CUSTOM_OP("StatelessParameterizedTruncatedNormal")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType({"StatelessParameterizedTruncatedNormal"})
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessSampleDistortedBoundingBox op to GE
+REGISTER_CUSTOM_OP("StatelessSampleDistortedBoundingBox")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType({"StatelessSampleDistortedBoundingBox"})
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessSampleDistortedBoundingBox op to GE
+REGISTER_CUSTOM_OP("StatelessTruncatedNormalV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType({"StatelessTruncatedNormalV2"})
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register StringLength op to GE
 REGISTER_CUSTOM_OP("StringLength")
     .FrameworkType(TENSORFLOW)

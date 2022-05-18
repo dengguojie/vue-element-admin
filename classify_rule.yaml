@@ -30,7 +30,6 @@ aicpu:
       - ops/built-in/op_proto/inc/vector_search.h
       - ops/built-in/op_proto/inc/sparse_ops.h
       - ops/built-in/op_proto/inc/elewise_calculation_ops.h
-
       - ops/built-in/op_proto/index_to_addr_ops.cc
       - ops/built-in/op_proto/slice_write_ops.cc
       - ops/built-in/op_proto/util/array_ops_shape_fns.cc
@@ -44,6 +43,9 @@ aicpu:
       - ops/built-in/framework/tf_plugin/tensor_map_lookup_plugin.cc
       - ops/built-in/framework/tf_plugin/tensor_map_size_plugin.cc
       - ops/built-in/framework/tf_plugin/tensor_map_stack_keys_plugin.cc
+      - ops/built-in/framework/tf_plugin/single_plugin.cc
+      - ops/built-in/op_proto/inc/stateless_random_ops.h
+      - ops/built-in/op_proto/stateless_random_ops.cc
     unrelease:
   llt:
     ut_check: true
@@ -2183,7 +2185,6 @@ unkown:
       - ops/built-in/op_proto/internal_ops.cc
       - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
-      - ops/built-in/op_proto/stateless_random_ops.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/stateful_random_ops.cc
       - ops/built-in/op_proto/spectral_ops.cc
@@ -2262,7 +2263,6 @@ unkown:
       - ops/built-in/op_proto/inc/ragged_array_ops.h
       - ops/built-in/op_proto/inc/parsing_ops.h
       - ops/built-in/op_proto/inc/no_op.h
-      - ops/built-in/op_proto/inc/stateless_random_ops.h
       - ops/built-in/op_proto/inc/state_ops.h
       - ops/built-in/op_proto/inc/control_flow_ops.h
       - ops/built-in/op_proto/inc/randomdsa_ops.h
@@ -3236,7 +3236,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/fast_gelu_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/segment_sum_plugin.cc
       - ops/built-in/framework/tf_plugin/extract_image_patches_plugin.cc
-      - ops/built-in/framework/tf_plugin/single_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_proximal_gradient_descent_plugin.cc
       - ops/built-in/framework/tf_plugin/assign_sub_plugin.cc
       - ops/built-in/framework/tf_plugin/ensure_shape_plugin.cc

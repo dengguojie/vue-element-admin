@@ -79,6 +79,128 @@ REG_OP(StatelessRandomUniformInt)
     .OUTPUT(y, TensorType({DT_INT32, DT_INT64}))
     .OP_END_FACTORY_REG(StatelessRandomUniformInt)
 
+/**
+* @brief Outputs random values from a normal distribution. \n
+
+* @par Inputs:
+* Inputs include:
+* @li shape: A Tensor. Must be one of the following types: int32, int64.
+      The shape of the output tensor. Batches are indexed by the 0th dimension.
+* @li seed: 2 seeds (shape [2]).
+* @li means: A Tensor. Must be one of the following types: half, bfloat16, float32, float64.
+* @li stdevs: A Tensor. Must have the same type as means.
+* @li min: A Tensor. Must have the same type as means. The minimum cutoff. May be -infinity.
+* @li max: A Tensor. Must have the same type as means. \n
+
+* @par Outputs:
+* y: A Tensor. Has the same type as means. \n
+
+* @attention Constraints:
+* The implementation for StatelessParameterizedTruncatedNormal on Ascend uses AICPU, with bad performance. \n
+
+* @par Third-party framework compatibility
+* @li compatible with tensorflow StatelessParameterizedTruncatedNormal operator.
+*/
+
+REG_OP(StatelessParameterizedTruncatedNormal)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(means, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(stdevs, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(min, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(max, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(StatelessParameterizedTruncatedNormal)
+
+/**
+* @brief Generate a single randomly distorted bounding box for an image . \n
+
+* @par Inputs:
+* Input images must be a 4-D tensor. Inputs include:
+* @li image_size: 1-D, containing [height, width, channels].
+* @li bounding_boxes: 3-D with shape [batch, N, 4] describing the N bounding
+ boxes associated with the image.
+* @li min_object_covered: The cropped area of the image must contain at least
+ this fraction of any bounding box supplied. The value of this parameter should
+ be non-negative. In the case of 0, the cropped area does not need to overlap
+ any of the bounding boxes supplied .
+* @li seed: A shape [2] Tensor, the seed to the random number generator. \n
+
+* @par Attributes:
+* @li aspect_ratio_range: The cropped area of the image must have an aspect
+ ratio = width / height within this range.
+* @li area_range: An optional list of `floats`. Defaults to `[0.05, 1]`. The
+ cropped area of the image must contain a fraction of the supplied image
+ within this range.
+* @li max_attempts: Number of attempts at generating a cropped region of the
+ image of the specified constraints. After max_attempts failures, return the
+ entire image.
+* @li use_image_if_no_bounding_boxes: Controls behavior if no bounding boxes
+ supplied. If true, assume an implicit bounding box covering the whole input.
+ If false, raise an error . \n
+
+* @par Outputs:
+* @li begin: 1-D, containing [offset_height, offset_width, 0].
+* @li size: 1-D, containing [target_height, target_width, -1].
+* @li bboxes: 3-D with shape [1, 1, 4] containing the distorted bounding box . \n
+
+* @attention Constraints:
+* Input images can be of different types but output images are always float . \n
+
+* @par Third-party framework compatibility
+* Compatible with tensorflow StatelessSampleDistortedBoundingBox operator.
+*/
+
+REG_OP(StatelessSampleDistortedBoundingBox)
+    .INPUT(image_size, TensorType({ DT_UINT8, DT_INT8, DT_INT16, \
+        DT_INT32, DT_INT64 }))
+    .INPUT(bounding_boxes, TensorType({ DT_FLOAT }))
+    .INPUT(min_object_covered, TensorType({ DT_FLOAT }))
+    .INPUT(seed, TensorType({ DT_INT32, DT_INT64 }))
+    .OUTPUT(begin, TensorType({ DT_UINT8, DT_INT8, DT_INT16, \
+        DT_INT32, DT_INT64 }))
+    .OUTPUT(size, TensorType({ DT_UINT8, DT_INT8, DT_INT16, \
+        DT_INT32, DT_INT64 }))
+    .OUTPUT(bboxes, TensorType({ DT_FLOAT }))
+    .ATTR(aspect_ratio_range, ListFloat, { 0.75f, 1.33f })
+    .ATTR(area_range, ListFloat, { 0.05f, 1.0f })
+    .ATTR(max_attempts, Int, 100)
+    .ATTR(use_image_if_no_bounding_boxes, Bool, false)
+    .OP_END_FACTORY_REG(StatelessSampleDistortedBoundingBox)
+
+/**
+* @brief Outputs random values from a truncated normal distribution. \n
+
+* @par Inputs:
+* Inputs include:
+* @li shape: A Tensor. Must be one of the following types: int32, int64. \n
+* @li key: Key of RNG algorithm. Shape[1]. \n
+* @li counter: Counter of RNG algorithm. Shape[2] for philox, shape[1] for threefry. \n
+* @li alg: RNG algorithm. 1：philox 2：threefry. \n
+
+* @par Attributes:
+* @li dtype: dtype: A optional attr, specifying the output data type. Defaults to "DT_FLOAT". \n
+
+* @par Outputs:
+* y: A Tensor of types: float16, float32, double. A tensor of the specified shape
+ filled with random truncated normal values. \n
+
+* @attention Constraints:
+* The implementation for StatelessTruncatedNormalV2 on Ascend uses AICPU, with bad performance.
+
+* @par Third-party framework compatibility
+* @li compatible with tensorflow StatelessTruncatedNormalV2 operator.
+*/
+
+REG_OP(StatelessTruncatedNormalV2)
+    .INPUT(shape, TensorType({ DT_INT32, DT_INT64 }))
+    .INPUT(key, TensorType({ DT_UINT64 }))
+    .INPUT(counter, TensorType({ DT_UINT64 }))
+    .INPUT(alg, TensorType({ DT_INT32 }))
+    .OUTPUT(y, TensorType({ DT_FLOAT16, DT_FLOAT, DT_DOUBLE }))
+    .ATTR(dtype, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(StatelessTruncatedNormalV2)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_STATELESS_RANDOM_OPS_H_
