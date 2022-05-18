@@ -1256,6 +1256,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/xdivy.py
       - ops/built-in/tbe/impl/dynamic/xlog1py.py
       - ops/built-in/tbe/impl/dynamic/xlogy.py
+      - ops/built-in/tbe/impl/dynamic/fill_d.py
       - ops/built-in/tbe/impl/elu.py
       - ops/built-in/tbe/impl/equal.py
       - ops/built-in/tbe/impl/exp.py

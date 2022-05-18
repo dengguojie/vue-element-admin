@@ -208,6 +208,7 @@ from .split import split
 from .split_v import split_v
 from .strided_slice_grad import strided_slice_grad
 from .fill import fill
+from .fill_d import fill_d
 from .fills import fills
 from .drop_out_do_mask import drop_out_do_mask
 from .hardtanh_grad import hardtanh_grad
