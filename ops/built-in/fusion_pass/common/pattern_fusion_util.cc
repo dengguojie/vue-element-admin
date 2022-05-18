@@ -43,6 +43,7 @@ using namespace std;
 namespace fe {
 
 const char* STREAMSWITCH = "StreamSwitch";
+const char *IDENTITY = "Identity";
 const string ATTR_TYPE_SETFLOAT = "SetFloat";
 const string ATTR_TYPE_SETLISTFLOAT = "SetListFloat";
 const string ATTR_TYPE_SETINT = "SetInt";
@@ -397,13 +398,16 @@ Status PatternFusionUtil::LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge
   FUSION_PASS_CHECK(fusionNode == nullptr || fusionNode->GetOpDesc() == nullptr,
                     OP_LOGE("LinkControlAnchorForConst", "fusionNode or OpDesc is null, fusion failed."),
                     return FAILED);
+  std::set<string> controlNodeWhiteType = {IDENTITY};
   string fusionOpType = fusionNode->GetOpDesc()->GetType();
   auto constControlAnchors = oneConstNode->GetInControlAnchor()->GetPeerOutControlAnchors();
   for (const auto &outControlAnchor : constControlAnchors) {
     auto outNode = outControlAnchor->GetOwnerNode();
-    OP_LOGD(fusionOpType.c_str(), "Get outNode node : %s outEdgeSize %d, inEdgeSize %d",
-            outNode->GetOpDesc()->GetName().c_str(), GetOutEdgeSize(outNode), outNode->GetAllInAnchors().size());
-    if ((GetOutEdgeSize(outNode) == 1 && outNode->GetAllInAnchors().size() == 0) || has_in_control) {
+    OP_LOGD(fusionOpType.c_str(), "Get outNode node : %s, type:%s,  outEdgeSize %d, inEdgeSize %d",
+            outNode->GetName().c_str(), outNode->GetType().c_str(), GetOutEdgeSize(outNode),
+            outNode->GetAllInAnchors().size());
+    if ((GetOutEdgeSize(outNode) == 1 && outNode->GetAllInAnchors().size() == 0) || has_in_control ||
+        controlNodeWhiteType.count(outNode->GetType()) != 0) {
       OP_LOGD(fusionOpType.c_str(), "Link outNode node : %s to fusion node %s",
               outNode->GetOpDesc()->GetName().c_str(), fusionNode->GetOpDesc()->GetName().c_str());
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(outControlAnchor, fusionNode->GetInControlAnchor()),
