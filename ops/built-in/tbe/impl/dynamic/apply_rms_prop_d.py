@@ -27,7 +27,17 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.common_util import get_attr
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class ApplyRMSPropDAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_RHO = OpAttr(0, "rho", "Float")
+    ATTR_MOMENTUM = OpAttr(1, "momentum", "Float")
+    ATTR_EPSILON = OpAttr(2, "epsilon", "Float")
 
 
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
@@ -37,7 +47,7 @@ def rho_gs_compute(rho, grad_square_ms, dtype):
     get the rho_gs
     """
     if rho is None:
-        rho_var = tbe.var_attr("rho", None, dtype, {"src_dtype": "float"})
+        rho_var = get_attr_by_cls(rho, ApplyRMSPropDAttrInfo.ATTR_RHO, dtype)
         rho_gs = tbe.vmuls(grad_square_ms, rho_var)
         rho_gs = tbe.vsub(grad_square_ms, rho_gs)
     else:
@@ -73,22 +83,18 @@ def apply_rms_prop_d_compute(var,
     :param epsilon: const, float32
     :return: out_var, out_ms, out_mom
     """
-
-    momentum_dtype_in_ir = "float"
-    epsilon_dtype_in_ir = "float"
-
     grad_square = tbe.vmul(grad, grad)
     grad_square_ms = tbe.vsub(grad_square, ms)
 
     rho_gs = rho_gs_compute(rho, grad_square_ms, grad.dtype)
     ms_t = tbe.vadd(ms, rho_gs)
 
-    momentum_var = get_attr(momentum, "momentum", mom.dtype, momentum_dtype_in_ir)
+    momentum_var = get_attr_by_cls(momentum, ApplyRMSPropDAttrInfo.ATTR_MOMENTUM, mom.dtype)
     m_mom = tbe.vmuls(mom, momentum_var)
     lr_brc = tbe.broadcast(lr, grad.shape)
     lr_grad = tbe.vmul(grad, lr_brc)
 
-    epsilon_var = get_attr(epsilon, "epsilon", ms.dtype, epsilon_dtype_in_ir)
+    epsilon_var = get_attr_by_cls(epsilon, ApplyRMSPropDAttrInfo.ATTR_EPSILON, ms.dtype)
     e_ms = tbe.vadds(ms_t, epsilon_var)
 
     sqrt_ms = tbe.vsqrt(e_ms)

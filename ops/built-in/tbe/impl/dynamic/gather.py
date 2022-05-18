@@ -101,6 +101,7 @@ def gather_dsl(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="
     # In the gather scenario, when batch_dims is not 0, set axis and batch_dims to the same value.
     batch_dims = "unknown" if batch_dims is None else batch_dims
     tbe_context.get_context().add_compile_info("attr_name", "batch_dims")
+    tbe_context.get_context().add_compile_info("batch_dims_attr_idx", 1)
     ins = classify([x, indices, None, batch_dims], OpPatternMode.GATHER)
     schedules, tensors = [], []
     for shape_x, shape_indices, axis_input, batch_dims_input in ins:

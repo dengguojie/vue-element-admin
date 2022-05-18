@@ -15,12 +15,10 @@
 """
 gather_v2
 """
-
+from impl import constant_util as constant
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-from impl import constant_util as constant
-
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -2698,6 +2696,7 @@ def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
         real_axis = "unknown"
     batch_dims = "unknown" if batch_dims is None else batch_dims
     tbe_context.get_context().add_compile_info("attr_name", "batch_dims")
+    tbe_context.get_context().add_compile_info("batch_dims_attr_idx", 0)
 
     ins = classify([x, indices, real_axis, batch_dims],  OpPatternMode.GATHER, {"gather_type": "gather"})
     schedules, tensors = [], []

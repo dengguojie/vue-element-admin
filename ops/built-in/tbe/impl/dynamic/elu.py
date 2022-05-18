@@ -40,7 +40,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.util_attr_common import AttrBase
+from impl.util.util_attr_common import OpAttr
 from impl.util.util_attr_common import get_attr_by_cls
 
 
@@ -48,7 +48,7 @@ class ElueAttrInfo:
     """
     define Elu attr info
     """
-    ATTR_ALPHA = AttrBase(0, "alpha", "Float", 1.0)
+    ATTR_ALPHA = OpAttr(0, "alpha", "Float", 1.0)
 
 
 def _elu_computer_performance(data, scalar_one_neg):

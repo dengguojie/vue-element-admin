@@ -23,7 +23,15 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.common_util import get_attr
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class MulsAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_VALUE = OpAttr(0, "value", "Float")
 
 
 # 'pylint: disable=too-many-locals,unused-argument
@@ -46,10 +54,8 @@ def muls_compute(input_x, value, kernel_name="muls"):
         the calculation results
     """
     input_dtype = input_x.dtype
-    value_dtype_in_ir = "float"
-    #check whether attr is None
-    value = get_attr(value, "value", input_dtype,
-                     value_dtype_in_ir)
+    # get tvm.var attr whether attr is None, else get tvm.const
+    value = get_attr_by_cls(value, MulsAttrInfo.ATTR_VALUE, input_dtype)
     res = tbe.vmuls(input_x, value)
     return res
 

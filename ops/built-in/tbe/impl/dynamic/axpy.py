@@ -23,11 +23,19 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from impl.common_util import get_attr
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
 from impl.util import util_common
 from impl.axpy import op_select_format as static_op_select_format
 from impl.axpy import _add_check_format
 from impl.axpy import _infer_shape
+
+
+class AxpyAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_ALPHA = OpAttr(0, "alpha", "Float")
 
 
 # 'pylint: disable=unused-argument,too-many-nested-blocks,too-many-arguments
@@ -86,8 +94,6 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     shape_y = shape_util.shape_to_list(x2.shape)
     dtype = x1.dtype.lower()
 
-    alpha_dtype_in_ir = "float"
-
     # neg_1_axis_flag
     neg_1_axis_flag = 0
     if shape_x != shape_y:
@@ -107,7 +113,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     # start the main logic
     if dtype in ("float16", "float32"):
         # fp16 or fp32
-        alpha_var = get_attr(alpha, "alpha", dtype, alpha_dtype_in_ir)
+        alpha_var = get_attr_by_cls(alpha, AxpyAttrInfo.ATTR_ALPHA, dtype)
 
         if neg_1_axis_flag:
             res_muls = tbe.vmuls(x2, alpha_var)
@@ -119,7 +125,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
         if alpha != 1:
             # add+muls use fp32
             to_type = "float32"
-            alpha_var = get_attr(alpha, "alpha", to_type, alpha_dtype_in_ir)
+            alpha_var = get_attr_by_cls(alpha, AxpyAttrInfo.ATTR_ALPHA, to_type)
 
             input_x_cast = tbe.cast_to(x1, to_type)
             input_y_cast = tbe.cast_to(x2, to_type)

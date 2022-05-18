@@ -15,7 +15,6 @@
 """
 leaky_relu
 """
-import math
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
@@ -27,8 +26,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
 from impl.util.platform_adapter import is_supported_vlrelu
-from impl.common_util import get_vlrelu
-from impl.common_util import get_attr
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class LeakyReluAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_SLOPE = OpAttr(0, "negative_slope", "Float")
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -79,21 +85,46 @@ def get_fusion_params(x_tensor, y):
     return fusion_params
 
 
+def get_vlrelu(x, attr_value, attr_cls):
+    """
+    get vlrelu
+
+    Parameters
+    ----------
+    x: x tensor
+    attr: value of attr
+    attr_cls: attr info
+
+    Returns
+    -------
+    res_vlrelu, attr_value
+    """
+    if attr_value is None:
+        dtype = x.dtype
+        scalar = tvm.const(0, dtype)
+        tmp_max_x = tbe.vmaxs(x, scalar)
+        tmp_min_x = tbe.vmins(x, scalar)
+        attr_value = get_attr_by_cls(attr_value, attr_cls, dtype)
+        tmp_mul_x = tbe.vmuls(tmp_min_x, attr_value)
+        res_vlrelu = tbe.vadd(tmp_max_x, tmp_mul_x)
+    else:
+        res_vlrelu = tbe.vlrelu(x, attr_value)
+
+    return res_vlrelu, attr_value
+
+
 @register_operator_compute("LeakyRelu", op_mode="dynamic", support_fusion=True)
 def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """
     compute for caffe_relu_layer_cce
     """
-    negative_slope_dtype = "float"
     dtype = x.dtype
     fusion_params = get_fusion_params(x, y)
     # check whether support vlrelu interface
     if not is_supported_vlrelu:
-        res, negative_slope = get_vlrelu(x, negative_slope, "negative_slope",
-                                         negative_slope_dtype)
+        res, negative_slope = get_vlrelu(x, negative_slope, LeakyReluAttrInfo.ATTR_SLOPE)
     else:
-        negative_slope = get_attr(negative_slope, "negative_slope",
-                                  dtype, negative_slope_dtype)
+        negative_slope = get_attr_by_cls(negative_slope, LeakyReluAttrInfo.ATTR_SLOPE, dtype)
         res = tbe.vlrelu(x, negative_slope)
     if x.op.attrs:
         if 'format' in x.op.attrs:

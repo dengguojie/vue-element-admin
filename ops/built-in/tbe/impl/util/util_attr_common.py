@@ -20,9 +20,9 @@ from impl.util.platform_adapter import tvm
 
 
 # 'pylint: disable=too-few-public-methods
-class AttrBase:
+class OpAttr:
     """
-    AttrBase, define the attr base info
+    OpAttr, define the attr base info
     """
     def __init__(self, attr_idx, attr_name, attr_type, attr_default_value=None):
         self.attr_idx = attr_idx
@@ -38,7 +38,7 @@ def get_attr_by_cls(attr_value, attr_cls, target_dtype):
     Parameters
     ----------
     attr_value: value of attr or None
-    attr_cls: AttrBase
+    attr_cls: OpAttr
     target_dtype: the dtype used for calculation in tvm
 
     Returns
@@ -47,7 +47,7 @@ def get_attr_by_cls(attr_value, attr_cls, target_dtype):
     """
     if attr_value is None:
         attr_sting_lower = attr_cls.attr_type.lower()
-        attr_dtype = {"src_dtype": attr_sting_lower}
+        attr_dtype = {"src_dtype": attr_sting_lower, "attr_idx": attr_cls.attr_idx}
         attr_var = tbe.var_attr(attr_cls.attr_name, dtype=target_dtype, addition=attr_dtype)
     else:
         attr_var = tvm.const(attr_value, target_dtype)
@@ -59,13 +59,13 @@ class LayerNormAttrInfo:
     """
     define LayerNorm attr info
     """
-    ATTR_NORM_AXIS = AttrBase(0, "begin_norm_axis", "Int", 0)
-    ATTR_PARAMS_AXIS = AttrBase(1, "begin_params_axis", "Int", 0)
-    ATTR_EPSILON = AttrBase(2, "epsilon", "Float", 0.0000001)
+    ATTR_NORM_AXIS = OpAttr(0, "begin_norm_axis", "Int", 0)
+    ATTR_PARAMS_AXIS = OpAttr(1, "begin_params_axis", "Int", 0)
+    ATTR_EPSILON = OpAttr(2, "epsilon", "Float", 0.0000001)
 
 
 class SoftmaxV2AttrInfo:
     """
     define SoftmaxV2 attr info
     """
-    ATTR_AXES = AttrBase(0, "axes", "ListInt", [-1])
+    ATTR_AXES = OpAttr(0, "axes", "ListInt", [-1])
