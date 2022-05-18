@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (C) Huawei Technologies Co., Ltd 2022-2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from te.utils import para_check
 from te.utils import shape_util
 import te.platform as tp
 import numpy as np
+from te import platform as cce
 
 SHAPE_SIZE_LIMIT = 2147483648
 ERROR_TOLERANCE = 0.0001
@@ -114,7 +115,6 @@ def resize_grad_d(grads, y, original_size, roi, scales, coordinate_transformatio
     """
     x_dim = len(grads.get("shape"))
     shape_size = len(original_size)
-    res = None
     if mode == "cubic" and shape_size == 4:
         shape_grads = shape_util.scalar2tensor_one(grads.get("shape"))
         para_check.check_shape_size(shape_grads, SHAPE_SIZE_LIMIT)
@@ -145,6 +145,7 @@ class UpSampleBicubic2dBackward:
     Class UpSampleBicubic2dBackward
     Main part of op ResizeGradD(op_type).Upsample_bicubic2d_backward(pytorch interface)
     """
+
     # 'pylint: disable=too-many-arguments
     def __init__(self, grads, original_size, scales, coordinate_transformation_mode,
                  cubic_coeff_a, kernel_name="resize_grad_d"):
@@ -163,7 +164,7 @@ class UpSampleBicubic2dBackward:
         self.c_size = original_size[1]
         self.in_size_h = original_size[2]
         self.in_size_w = original_size[3]
-        self.nc = self.batch_size * self.c_size   # n*c of input in upsample_bicubic2d
+        self.nc = self.batch_size * self.c_size  # n*c of input in upsample_bicubic2d
 
         self.out_size_h = self.shape_grads[2]
         self.out_size_w = self.shape_grads[3]
@@ -204,7 +205,7 @@ class UpSampleBicubic2dBackward:
             self.dtype_grads, self.shape_grads, name="input_grads_gm", scope=tik.scope_gm)
 
         self.output_gm = self.tik_instance.Tensor(
-            self.dtype_grads, original_size, name="output_gm", scope=tik.scope_gm)
+            self.dtype_grads, original_size, name="output_gm", scope=tik.scope_gm, is_atomic_add=True)
 
     def upsamplebicubic2d_backward_compute(self):
         """
@@ -226,52 +227,6 @@ class UpSampleBicubic2dBackward:
             outputs=[self.output_gm, ])
 
         return self.tik_instance
-
-    def init_output_gm(self):
-        """
-        Initialize output_gm to 0
-        Returns
-        -------
-        None
-        """
-        with self.tik_instance.new_stmt_scope():
-            output_ub_temp = self.tik_instance.Tensor(self.dtype_grads, (self.ub_tensor_size,),
-                                                      name="output_ub_temp", scope=tik.scope_ubuf)
-
-            zero_scalar = self.tik_instance.Scalar(
-                dtype=self.dtype_grads, init_value=0.0)
-            with self.tik_instance.if_scope(self.output_num < self.ub_tensor_size):
-                repeat_time = math.ceil(self.output_num / self.vector_mask_max)
-            with self.tik_instance.else_scope():
-                repeat_time = math.ceil(self.ub_tensor_size / self.vector_mask_max)
-            repeat_loop = repeat_time // 255
-            with self.tik_instance.if_scope(repeat_loop > 0):
-                with self.tik_instance.for_range(0, repeat_loop) as repeat_loop_index:
-                    offset = repeat_loop_index * 255 * self.vector_mask_max
-                    self.tik_instance.vec_dup(
-                        self.vector_mask_max, output_ub_temp[offset], zero_scalar, 255, 8)
-            offset = repeat_loop * 255 * self.vector_mask_max
-            last_repeat_loop = repeat_time % 255
-            with self.tik_instance.if_scope(last_repeat_loop > 0):
-                self.tik_instance.vec_dup(self.vector_mask_max,
-                                          output_ub_temp[offset],
-                                          zero_scalar,
-                                          last_repeat_loop, 8)
-
-            loop_time = self.output_num // self.ub_tensor_size
-            burst_len = math.ceil(self.ub_tensor_size / self.data_each_block)
-            with self.tik_instance.if_scope(loop_time > 0):
-                with self.tik_instance.for_range(0, loop_time) as loop:
-                    move_offset = loop * self.ub_tensor_size
-                    self.tik_instance.data_move(self.output_gm[move_offset], output_ub_temp,
-                                                0, 1, burst_len, 0, 0)
-                move_offset = loop_time * self.ub_tensor_size
-
-            last_num = self.output_num % self.ub_tensor_size
-
-            if last_num > 0:
-                self.tik_instance.data_move(self.output_gm[move_offset], output_ub_temp,
-                                            0, 1, math.ceil(last_num / self.data_each_block), 0, 0)
 
     # special case ,input has the same size as output just copy
     def upsamplebicubic2d_backward_compute_same_size(self):
@@ -310,72 +265,65 @@ class UpSampleBicubic2dBackward:
         -------
         None
         """
-        self.init_output_gm()
+        core_num = self.nc if self.dtype_grads == "float32" else 1
+        with self.tik_instance.for_range(0, self.nc, block_num=core_num) as nc:
 
-        input_grads_ub = self.tik_instance.Tensor(self.dtype_grads, (self.data_each_block,),
-                                                  name="input_grads_ub", scope=tik.scope_ubuf)
+            input_grads_ub = self.tik_instance.Tensor(self.dtype_grads, (self.data_each_block,),
+                                                      name="input_grads_ub", scope=tik.scope_ubuf)
 
-        output_ub = self.tik_instance.Tensor(self.dtype_grads, (self.data_each_block,),
-                                             name="output_ub", scope=tik.scope_ubuf)
+            output_ub = self.tik_instance.Tensor(self.dtype_grads, (self.data_each_block,),
+                                                 name="output_ub", scope=tik.scope_ubuf)
 
-        value_ub = self.tik_instance.Tensor(self.dtype_grads, (1,),
-                                            name="value_ub", scope=tik.scope_ubuf)
+            value_ub = self.tik_instance.Tensor(self.dtype_grads, (1,),
+                                                name="value_ub", scope=tik.scope_ubuf)
 
-        value_temp = self.tik_instance.Tensor("float32", (1,),
-                                              name="value_temp", scope=tik.scope_ubuf)
+            value_temp = self.tik_instance.Tensor("float32", (self.data_each_block,),
+                                                  name="value_temp", scope=tik.scope_ubuf)
 
-        assist1_ub = self.tik_instance.Tensor("float32", (1,),
-                                              name="assist1_ub", scope=tik.scope_ubuf)
+            assist1_ub = self.tik_instance.Tensor("float32", (1,),
+                                                  name="assist1_ub", scope=tik.scope_ubuf)
 
-        with self.tik_instance.for_range(0, self.out_size_h) as output_y:
-            with self.tik_instance.for_range(0, self.out_size_w) as output_x:
+            with self.tik_instance.for_range(0, self.out_size_h) as output_y:
+                with self.tik_instance.for_range(0, self.out_size_w) as output_x:
 
-                src_scalar = self.tik_instance.Scalar(
-                    dtype="int32", init_value=output_x)
-                dst_scalar_output_x = self.tik_instance.Scalar(dtype="float32")
-                self.tik_instance.scalar_conv(
-                    'none', dst_scalar_output_x, src_scalar)
+                    src_scalar = self.tik_instance.Scalar(dtype="int32", init_value=output_x)
+                    dst_scalar_output_x = self.tik_instance.Scalar(dtype="float32")
+                    self.tik_instance.scalar_conv('none', dst_scalar_output_x, src_scalar)
 
-                src_scalar = self.tik_instance.Scalar(
-                    dtype="int32", init_value=output_y)
-                dst_scalar_output_y = self.tik_instance.Scalar(dtype="float32")
-                self.tik_instance.scalar_conv(
-                    'none', dst_scalar_output_y, src_scalar)
+                    src_scalar = self.tik_instance.Scalar(dtype="int32", init_value=output_y)
+                    dst_scalar_output_y = self.tik_instance.Scalar(dtype="float32")
+                    self.tik_instance.scalar_conv('none', dst_scalar_output_y, src_scalar)
 
-                real_x = self.area_pixel_compute_source_index(self.scale_w,
-                                                              dst_scalar_output_x,
-                                                              self.align_corners)
+                    real_x = self.area_pixel_compute_source_index(self.scale_w,
+                                                                  dst_scalar_output_x,
+                                                                  self.align_corners)
 
-                src_scalar = self.tik_instance.Scalar(
-                    dtype="float32", init_value=real_x)
-                dst_scalar_input_x = self.tik_instance.Scalar(dtype="int32")
-                self.tik_instance.scalar_conv(
-                    'floor', dst_scalar_input_x, src_scalar)
+                    src_scalar = self.tik_instance.Scalar(dtype="float32", init_value=real_x)
+                    dst_scalar_input_x = self.tik_instance.Scalar(dtype="int32")
+                    self.tik_instance.scalar_conv('floor', dst_scalar_input_x, src_scalar)
 
-                real_y = self.area_pixel_compute_source_index(self.scale_h,
-                                                              dst_scalar_output_y,
-                                                              self.align_corners)
+                    real_y = self.area_pixel_compute_source_index(self.scale_h,
+                                                                  dst_scalar_output_y,
+                                                                  self.align_corners)
 
-                src_scalar = self.tik_instance.Scalar(
-                    dtype="float32", init_value=real_y)
-                dst_scalar_input_y = self.tik_instance.Scalar(dtype="int32")
-                self.tik_instance.scalar_conv(
-                    'floor', dst_scalar_input_y, src_scalar)
+                    src_scalar = self.tik_instance.Scalar(dtype="float32", init_value=real_y)
+                    dst_scalar_input_y = self.tik_instance.Scalar(dtype="int32")
+                    self.tik_instance.scalar_conv('floor', dst_scalar_input_y, src_scalar)
 
-                # Corresponding to the interpolation process in upsample_bicubic2d
-                x_coeffs_ub = self.get_cubic_upsample_coefficients(dst_scalar_output_x,
-                                                                   dst_scalar_input_x,
-                                                                   self.in_size_w,
-                                                                   self.out_size_w, 0)
+                    # Corresponding to the interpolation process in upsample_bicubic2d
+                    x_coeffs_ub = self.get_cubic_upsample_coefficients(dst_scalar_output_x,
+                                                                       dst_scalar_input_x,
+                                                                       self.in_size_w,
+                                                                       self.out_size_w, 0)
 
-                y_coeffs_ub = self.get_cubic_upsample_coefficients(dst_scalar_output_y,
-                                                                   dst_scalar_input_y,
-                                                                   self.in_size_h,
-                                                                   self.out_size_h, 1)
+                    y_coeffs_ub = self.get_cubic_upsample_coefficients(dst_scalar_output_y,
+                                                                       dst_scalar_input_y,
+                                                                       self.in_size_h,
+                                                                       self.out_size_h, 1)
 
-                x_coeffs_scalar = self.tik_instance.Scalar(dtype="float32")
-                y_coeffs_scalar = self.tik_instance.Scalar(dtype="float32")
-                with self.tik_instance.for_range(0, self.nc) as nc:
+                    x_coeffs_scalar = self.tik_instance.Scalar(dtype="float32")
+                    y_coeffs_scalar = self.tik_instance.Scalar(dtype="float32")
+
                     # Move to next channel
                     input_ptr = nc * self.out_size_w * self.out_size_h
                     output_ptr = nc * self.in_size_w * self.in_size_h
@@ -401,6 +349,7 @@ class UpSampleBicubic2dBackward:
                             x_coeffs_scalar.set_as(x_coeffs_ub[i])
                             y_coeffs_scalar.set_as(y_coeffs_ub[j])
 
+                            self.tik_instance.vec_dup(self.data_each_block, value_temp, 0, 1, 1)
                             # Convert fp16 to fp32 to improve accuracy
                             if self.dtype_grads == "float16":
                                 self.tik_instance.vec_conv(
@@ -553,7 +502,7 @@ class UpSampleBicubic2dBackward:
             dtype="int64", init_value=height - 1)
         temp_ub = self.tik_instance.Tensor(self.dtype_grads, (1,),
                                            name="temp_ub", scope=tik.scope_ubuf)
-        assist2_ub = self.tik_instance.Tensor("float32", (1, ),
+        assist2_ub = self.tik_instance.Tensor("float32", (1,),
                                               name="assist2_ub", scope=tik.scope_ubuf)
 
         a_x = self.tik_instance.Scalar(dtype="int64")
@@ -591,15 +540,10 @@ class UpSampleBicubic2dBackward:
                                             output_ub,
                                             0, 1, 1, 0, 0)
             else:
-                temp_ub[0].set_as(output_ub[pos_in_output_ub])
-
-                self.tik_instance.vec_add(1, temp_ub,
-                                          temp_ub, value, 1, 1, 1, 1)
-
-                output_ub[pos_in_output_ub].set_as(temp_ub[0])
-                self.tik_instance.data_move(self.output_gm[self.pos_max_out],
-                                            output_ub,
-                                            0, 1, 1, 0, 0)
+                self.tik_instance.set_atomic_add(1)
+                self.tik_instance.data_move(self.output_gm[self.pos_max_out + pos_in_output_ub],
+                                            value, 0, 1, 1, 0, 0)
+                self.tik_instance.set_atomic_add(0)
 
         with self.tik_instance.else_scope():
 
@@ -621,20 +565,17 @@ class UpSampleBicubic2dBackward:
                                             output_ub,
                                             0, 1, 1, 0, 0)
             else:
-                self.tik_instance.data_move(output_ub,
-                                            self.output_gm[offset],
-                                            0, 1, 1, 0, 0)
-                self.tik_instance.vec_add(1, output_ub,
-                                          output_ub, value, 1, 1, 1, 1)
+                self.tik_instance.set_atomic_add(1)
                 self.tik_instance.data_move(self.output_gm[offset],
-                                            output_ub,
-                                            0, 1, 1, 0, 0)
+                                            value, 0, 1, 1, 0, 0)
+                self.tik_instance.set_atomic_add(0)
 
 
 class ResizeLinearBackward:
     """
     ResizeLinearBackward main functions
     """
+
     # 'pylint: disable=too-many-arguments
     def __init__(self,
                  x,
@@ -889,6 +830,6 @@ class ResizeLinearBackward:
         if len(scales) != 1 and scales is not None:
             raise RuntimeError("It is expected len(scales) equals to 1.")
 
-        #check scales value
+        # check scales value
         if scales is not None and (self.dim2 / sizes[-1] - scales[0]) > ERROR_TOLERANCE:
             raise RuntimeError("It is expected scales[0] equals to sizes[0] / x.shape[2].")

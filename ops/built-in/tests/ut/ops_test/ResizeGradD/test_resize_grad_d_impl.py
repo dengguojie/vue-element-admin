@@ -63,4 +63,14 @@ ut_case.add_case("Ascend910A", {
     "calc_expect_func": calc_expect_func
 })
 
+ut_case.add_case("Ascend910A", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": [1,384,6,6], "shape": [1,384,6,6],
+                "param_type": "input", "value": res.detach().numpy()},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape":[1,384,14,14], "shape": [1,384,14,14],
+                "param_type": "output"}, [1,384,14,14], [0], [0.0, 0.0],
+               "half_pixel", -0.75, 0, 0.0, "cubic", "round_prefer_floor"],
+    "case_name": "test_is_resize_grad_d_case_cubic_y_2",
+    "calc_expect_func": calc_expect_func
+})
+
 

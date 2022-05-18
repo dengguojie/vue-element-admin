@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (C) Huawei Technologies Co., Ltd 2022-2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,9 +29,10 @@ UB_SIZE = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 class ResizeBicubic:
     """ResizeBicubic main functions
     """
+
     # 'pylint: disable=too-many-arguments
     def __init__(self, x, sizes, scales, coordinate_transformation_mode, cubic_coeff_a, kernel_name="resize_d"):
-        """init ResizeNearestNeighbor base parameters
+        """init ResizeBicubic base parameters
         """
         self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
         self.x_shape = x.get("shape")
@@ -63,10 +64,10 @@ class ResizeBicubic:
                               self.data_each_block * self.data_each_block
 
         self.x_gm = self.tik_instance.Tensor(self.x_dtype, self.x_shape, name="x_gm", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.x_dtype, output_shape, name="output_gm", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(self.x_dtype, output_shape, name="output_gm", scope=tik.scope_gm,
+                                                  is_atomic_add=True)
 
-    # 'pylint: disable=too-many-locals
-    # 'pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def resize_bicubic_compute(self):
         """
         Bicubic main part.
@@ -76,45 +77,46 @@ class ResizeBicubic:
             self.input_output_samesize()
         # (N,M) to (N1,M1)
         else:
-            with self.tik_instance.for_range(0, self.out_size_h) as out_h_index:
-                temp_scalar1 = self.tik_instance.Scalar(dtype="int32", init_value=out_h_index)
-                out_h_index_scalar = self.tik_instance.Scalar(dtype="float32")
-                self.tik_instance.scalar_conv('none', out_h_index_scalar, temp_scalar1)
+            core_num = self.nc1 if self.x_dtype == "float32" else 1
+            with self.tik_instance.for_range(0, self.nc1, block_num=core_num) as c:
+                with self.tik_instance.for_range(0, self.out_size_h) as out_h_index:
+                    temp_scalar1 = self.tik_instance.Scalar(dtype="int32", init_value=out_h_index)
+                    out_h_index_scalar = self.tik_instance.Scalar(dtype="float32")
+                    self.tik_instance.scalar_conv('none', out_h_index_scalar, temp_scalar1)
 
-                real_y = self.tik_instance.Scalar(dtype="float32")
-                real_y.set_as(self.compute_real_y(out_h_index_scalar))
+                    real_y = self.tik_instance.Scalar(dtype="float32")
+                    real_y.set_as(self.compute_real_y(out_h_index_scalar))
 
-                temp_scalar2 = self.tik_instance.Scalar(dtype="float32", init_value=real_y)
-                input_y = self.tik_instance.Scalar(dtype="int32")
-                self.tik_instance.scalar_conv('floor', input_y, temp_scalar2)
+                    temp_scalar2 = self.tik_instance.Scalar(dtype="float32", init_value=real_y)
+                    input_y = self.tik_instance.Scalar(dtype="int32")
+                    self.tik_instance.scalar_conv('floor', input_y, temp_scalar2)
 
-                with self.tik_instance.for_range(0, self.out_size_w) as out_w_index:
-                    temp_scalar3 = self.tik_instance.Scalar(dtype="int32", init_value=out_w_index)
-                    out_w_index_scalar = self.tik_instance.Scalar(dtype="float32")
-                    self.tik_instance.scalar_conv('none', out_w_index_scalar, temp_scalar3)
+                    with self.tik_instance.for_range(0, self.out_size_w) as out_w_index:
+                        temp_scalar3 = self.tik_instance.Scalar(dtype="int32", init_value=out_w_index)
+                        out_w_index_scalar = self.tik_instance.Scalar(dtype="float32")
+                        self.tik_instance.scalar_conv('none', out_w_index_scalar, temp_scalar3)
 
-                    real_x = self.tik_instance.Scalar(dtype="float32")
-                    real_x.set_as(self.compute_real_x(out_w_index_scalar))
+                        real_x = self.tik_instance.Scalar(dtype="float32")
+                        real_x.set_as(self.compute_real_x(out_w_index_scalar))
 
-                    temp_scalar4 = self.tik_instance.Scalar(dtype="float32", init_value=real_x)
-                    input_x = self.tik_instance.Scalar(dtype="int32")
-                    self.tik_instance.scalar_conv('floor', input_x, temp_scalar4)
+                        temp_scalar4 = self.tik_instance.Scalar(dtype="float32", init_value=real_x)
+                        input_x = self.tik_instance.Scalar(dtype="int32")
+                        self.tik_instance.scalar_conv('floor', input_x, temp_scalar4)
 
-                    with self.tik_instance.for_range(0, self.batch_size * self.c1_size) as c:
                         # get x 16 elements
-                        coefficients1 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                        coefficients1 = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                                                  name="coefficients1",
                                                                  scope=tik.scope_ubuf)
-                        coefficients2 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                        coefficients2 = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                                                  name="coefficients2",
                                                                  scope=tik.scope_ubuf)
-                        coefficients3 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                        coefficients3 = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                                                  name="coefficients3",
                                                                  scope=tik.scope_ubuf)
-                        coefficients4 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                        coefficients4 = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                                                  name="coefficients4",
                                                                  scope=tik.scope_ubuf)
-                        temp = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                        temp = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                                         name="temp",
                                                         scope=tik.scope_ubuf)
 
@@ -162,7 +164,7 @@ class ResizeBicubic:
                                 out_max_offset = self.out_num - self.data_each_block
 
                                 data_out = self.compute_data_out(temp)
-                                dst_data_out = self.tik_instance.Tensor("float16", (self.data_each_block, ),
+                                dst_data_out = self.tik_instance.Tensor("float16", (self.data_each_block,),
                                                                         name="dst_data_out",
                                                                         scope=tik.scope_ubuf)
 
@@ -212,7 +214,7 @@ class ResizeBicubic:
         """
         The input shape is the same as the output shape.
         """
-        x_ub = self.tik_instance.Tensor(self.x_dtype, (self.ub_tensor_size, ), name="x_ub", scope=tik.scope_ubuf)
+        x_ub = self.tik_instance.Tensor(self.x_dtype, (self.ub_tensor_size,), name="x_ub", scope=tik.scope_ubuf)
         loop_time = self.in_num // self.ub_tensor_size
         burst_len = math.ceil(self.ub_tensor_size / self.data_each_block)
         # self.in_num >= self.ub_tensor_size 63488
@@ -307,8 +309,7 @@ class ResizeBicubic:
 
         return move_offset
 
-    # 'pylint: disable=too-many-locals
-    # 'pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def upsample_get_value_bounded(self, c, move_offset1, move_offset2, move_offset3, move_offset4):
         """
         Get the value of the point by move_offset.
@@ -320,14 +321,14 @@ class ResizeBicubic:
         :param move_offset4: The move_offset of input.
         :return: x_ub1, x_ub2, x_ub3 and x_ub4.
         """
-        x_ub_tensor = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ),
+        x_ub_tensor = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block,),
                                                name="x_ub_tensor",
                                                scope=tik.scope_ubuf)
-        x_ub1 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub1", scope=tik.scope_ubuf)
-        x_ub2 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub2", scope=tik.scope_ubuf)
-        x_ub3 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub3", scope=tik.scope_ubuf)
-        x_ub4 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="x_ub4", scope=tik.scope_ubuf)
-        x_gm = self.x_gm.reshape((self.in_num, ))
+        x_ub1 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block,), name="x_ub1", scope=tik.scope_ubuf)
+        x_ub2 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block,), name="x_ub2", scope=tik.scope_ubuf)
+        x_ub3 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block,), name="x_ub3", scope=tik.scope_ubuf)
+        x_ub4 = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block,), name="x_ub4", scope=tik.scope_ubuf)
+        x_gm = self.x_gm.reshape((self.in_num,))
         nc_move_offset = c * self.in_size_h * self.in_size_w
 
         # get x_ub1, x_ub2, x_ub3, x_ub4
@@ -375,9 +376,7 @@ class ResizeBicubic:
 
         return X_ub(x_ub1, x_ub2, x_ub3, x_ub4)
 
-    # 'pylint: disable=too-many-arguments
-    # 'pylint: disable=too-many-locals
-    # 'pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def cubic_interp1d(self, x_a, x_b, x_c, x_d, index_scalar, input_index, in_length, out_length, flag):
         """
         Interpolation algorithm main part.
@@ -446,20 +445,19 @@ class ResizeBicubic:
             coeffs3.set_as(0.0)
             coeffs4.set_as(0.0)
 
-        temp1 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp1", scope=tik.scope_ubuf)
-        temp2 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp2", scope=tik.scope_ubuf)
-        temp3 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp3", scope=tik.scope_ubuf)
-        temp4 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp4", scope=tik.scope_ubuf)
-        temp5 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp5", scope=tik.scope_ubuf)
-        temp6 = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="temp6", scope=tik.scope_ubuf)
-        coefficients = self.tik_instance.Tensor("float32", (self.data_each_block, ),
-                                                name="coefficients",
+        temp1 = self.tik_instance.Tensor("float32", (self.data_each_block,), name="temp1", scope=tik.scope_ubuf)
+        temp2 = self.tik_instance.Tensor("float32", (self.data_each_block,), name="temp2", scope=tik.scope_ubuf)
+        temp3 = self.tik_instance.Tensor("float32", (self.data_each_block,), name="temp3", scope=tik.scope_ubuf)
+        temp4 = self.tik_instance.Tensor("float32", (self.data_each_block,), name="temp4", scope=tik.scope_ubuf)
+        temp5 = self.tik_instance.Tensor("float32", (self.data_each_block,), name="temp5", scope=tik.scope_ubuf)
+        temp6 = self.tik_instance.Tensor("float32", (self.data_each_block,), name="temp6", scope=tik.scope_ubuf)
+        coefficients = self.tik_instance.Tensor("float32", (self.data_each_block,), name="coefficients",
                                                 scope=tik.scope_ubuf)
 
-        dst_x_a = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_a", scope=tik.scope_ubuf)
-        dst_x_b = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_b", scope=tik.scope_ubuf)
-        dst_x_c = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_c", scope=tik.scope_ubuf)
-        dst_x_d = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_x_d", scope=tik.scope_ubuf)
+        dst_x_a = self.tik_instance.Tensor("float32", (self.data_each_block,), name="dst_x_a", scope=tik.scope_ubuf)
+        dst_x_b = self.tik_instance.Tensor("float32", (self.data_each_block,), name="dst_x_b", scope=tik.scope_ubuf)
+        dst_x_c = self.tik_instance.Tensor("float32", (self.data_each_block,), name="dst_x_c", scope=tik.scope_ubuf)
+        dst_x_d = self.tik_instance.Tensor("float32", (self.data_each_block,), name="dst_x_d", scope=tik.scope_ubuf)
 
         if x_a.dtype == "float16":
             self.tik_instance.vec_conv(self.data_each_block, "none", dst_x_a, x_a, 1, 1, 1)
@@ -517,12 +515,14 @@ class ResizeBicubic:
         else:
             out_three_length.set_as(1)
 
-        data_out1 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+        data_out1 = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                              name="data_out1",
                                              scope=tik.scope_ubuf)
-        data_out2 = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+        data_out2 = self.tik_instance.Tensor("float32", (self.data_each_block,),
                                              name="data_out2",
                                              scope=tik.scope_ubuf)
+        self.tik_instance.vec_dup(self.data_each_block, data_out2, 0, 1, 1)
+
         out_length_scalar1 = self.tik_instance.Scalar(dtype="float32")
         out_length_scalar1.set_as(1.0 / in_three_length)
         self.tik_instance.vec_muls(1, data_out1, temp, out_length_scalar1, 1, 1, 1)
@@ -542,27 +542,33 @@ class ResizeBicubic:
         :param out_max_offset: equals to (self.out_num - self.data_each_block)
         :return:
         """
-        temp_ub = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block, ), name="temp_ub", scope=tik.scope_ubuf)
-        if self.out_num <= self.data_each_block:
-            self.tik_instance.data_move(temp_ub, self.output_gm, 0, 1, 1, 0, 0)
-            temp_ub[out_move_offset].set_as(data_out[0])
-            self.tik_instance.data_move(self.output_gm, temp_ub, 0, 1, 1, 0, 0)
+        temp_ub = self.tik_instance.Tensor(self.x_dtype, (self.data_each_block,), name="temp_ub", scope=tik.scope_ubuf)
+        if self.x_dtype == "float16":
+            if self.out_num <= self.data_each_block:
+                self.tik_instance.data_move(temp_ub, self.output_gm, 0, 1, 1, 0, 0)
+                temp_ub[out_move_offset].set_as(data_out[0])
+                self.tik_instance.data_move(self.output_gm, temp_ub, 0, 1, 1, 0, 0)
+            else:
+                with self.tik_instance.if_scope(out_move_offset < out_max_offset):
+                    self.tik_instance.data_move(temp_ub, self.output_gm[out_move_offset], 0, 1, 1, 0, 0)
+                    temp_ub[0].set_as(data_out[0])
+                    self.tik_instance.data_move(self.output_gm[out_move_offset], temp_ub, 0, 1, 1, 0, 0)
+                with self.tik_instance.else_scope():
+                    relative = out_move_offset - out_max_offset
+                    self.tik_instance.data_move(temp_ub, self.output_gm[out_max_offset], 0, 1, 1, 0, 0)
+                    temp_ub[relative].set_as(data_out[0])
+                    self.tik_instance.data_move(self.output_gm[out_max_offset], temp_ub, 0, 1, 1, 0, 0)
         else:
-            with self.tik_instance.if_scope(out_move_offset < out_max_offset):
-                self.tik_instance.data_move(temp_ub, self.output_gm[out_move_offset], 0, 1, 1, 0, 0)
-                temp_ub[0].set_as(data_out[0])
-                self.tik_instance.data_move(self.output_gm[out_move_offset], temp_ub, 0, 1, 1, 0, 0)
-            with self.tik_instance.else_scope():
-                relative = out_move_offset - out_max_offset
-                self.tik_instance.data_move(temp_ub, self.output_gm[out_max_offset], 0, 1, 1, 0, 0)
-                temp_ub[relative].set_as(data_out[0])
-                self.tik_instance.data_move(self.output_gm[out_max_offset], temp_ub, 0, 1, 1, 0, 0)
+            self.tik_instance.set_atomic_add(1)
+            self.tik_instance.data_move(self.output_gm[out_move_offset], data_out, 0, 1, 1, 0, 0)
+            self.tik_instance.set_atomic_add(0)
 
 
 class ResizeLinear:
     """
     ResizeLinear main functions
     """
+
     # 'pylint: disable=too-many-arguments
     # 'pylint: disable=too-many-locals
     def __init__(self, x, sizes, scales, coordinate_transformation_mode="align_corners", kernel_name="resize_d"):
@@ -621,7 +627,7 @@ class ResizeLinear:
                 with self.tik_instance.for_range(0, self.dim1) as j:
                     current_index_output = self.tik_instance.Scalar("int32",
                                                                     init_value=i * (self.dim1 * self.size) +
-                                                                    j * self.size)
+                                                                               j * self.size)
                     with self.tik_instance.for_range(0, self.size) as k:
                         with self.tik_instance.if_scope(self.size == 1):
                             res_lastdim_ub[current_index_output + k].set_as(
@@ -672,7 +678,7 @@ class ResizeLinear:
                     loop_time = self.tik_instance.Scalar("int32", init_value=self.size // self.data_each_block)
                     current_index_output = self.tik_instance.Scalar("int32",
                                                                     init_value=i * (self.dim1 * self.size) +
-                                                                    j * self.size)
+                                                                               j * self.size)
                     with self.tik_instance.for_range(0, loop_time) as m:
                         res_lastdim_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
                                                                   name="res_lastdim_ub",
@@ -852,7 +858,7 @@ class ResizeLinear:
         if len(scales) != 1 and scales is not None:
             raise RuntimeError("It is expected len(scales) equals to 1.")
 
-        #check scales value
+        # check scales value
         if scales is not None and (sizes[0] / self.dim2 - scales[0]) > 0.0001:
             raise RuntimeError("It is expected scales[0] equals to x.shape[2] / sizes[0].")
 
@@ -918,7 +924,6 @@ def resize_d(x,
     -------
     None
     """
-    res = None
     x_dim = len(x.get("shape"))
     if mode == "cubic" and x_dim == 4:
         resize_bicubic_instance = ResizeBicubic(x, sizes, scales, coordinate_transformation_mode, cubic_coeff_a,

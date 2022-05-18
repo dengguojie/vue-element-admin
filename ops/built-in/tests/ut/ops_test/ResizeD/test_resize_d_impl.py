@@ -139,6 +139,15 @@ ut_case.add_case("Ascend910A", {
 })
 
 ut_case.add_case("Ascend910A", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": [1,384,14,14], "shape": [1,384,14,14],
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": [1,384,6,6], "shape": [1,384,6,6],
+                "param_type": "output"}, [6, 6], [0.0, 0.0], [0, 0], "half_pixel", -0.75, 0, 0.0, "cubic"],
+    "calc_expect_func": calc_expect_func,
+    "case_name": "test_is_resize_d_case_cubic_y_10"
+})
+
+ut_case.add_case("Ascend910A", {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (4, 1, 1, 2), "shape": (4, 1, 1, 2),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (4, 1, 4), "shape": (4, 1, 4),
