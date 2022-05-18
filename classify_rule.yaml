@@ -1113,6 +1113,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bn_training_reduce.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v2.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v3.py
+      - ops/built-in/tbe/impl/dynamic/broadcast_to_d.py
       - ops/built-in/tbe/impl/dynamic/in_training_reduce_v2.py
       - ops/built-in/tbe/impl/dynamic/bninference_d.py
       - ops/built-in/tbe/impl/dynamic/broadcast_to.py

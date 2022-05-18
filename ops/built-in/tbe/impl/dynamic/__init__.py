@@ -37,6 +37,7 @@ from .avg_pool3d import avg_pool3d
 from .avg_pool3d_grad import avg_pool3d_grad
 from .ascend_quant import ascend_quant
 from .broadcast_to import broadcast_to
+from .broadcast_to_d import broadcast_to_d
 from .softsign import softsign
 from .diag import diag
 from .softplus_grad import softplus_grad
