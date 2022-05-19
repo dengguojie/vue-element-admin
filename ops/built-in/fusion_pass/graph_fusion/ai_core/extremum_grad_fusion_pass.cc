@@ -301,6 +301,11 @@ bool ExtremumGradFusionPass::MatchDx(ge::NodePtr nodeSelect, map<string, ge::Nod
     return false;
   }
 
+  // sence: iuput1 and input2 all come from constant op
+  if (CheckZeroConstantOp(nodeDz)) {
+    return false;
+  }
+
   // Step7: Record PATTERN_SELECT_DX:nodeSelect,
   //         PATTERN_DZ:nodeDz
   //         PATTERN_ZEROS:nodeZeros
@@ -379,6 +384,11 @@ bool ExtremumGradFusionPass::MatchDy(ge::NodePtr nodeSelect, map<string, ge::Nod
   ge::NodePtr nodeDz = input2PeerAnchor->GetOwnerNode();
   if (nodeDz == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "node dz is null");
+    return false;
+  }
+
+  // sence: iuput1 and input2 all come from constant op
+  if (CheckZeroConstantOp(nodeDz)) {
     return false;
   }
 
