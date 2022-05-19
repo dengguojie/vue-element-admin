@@ -70,7 +70,12 @@ set_env() {
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT}/runtime/lib64/
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT}/opp/op_impl/built-in
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT}/opp/op_impl/built-in/ai_core/tbe/op_tiling
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT_OLD}/fwkacllib/lib64
+    if [ -d "${ASCEND_ROOT_OLD}/fwkacllib" ]; then
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT_OLD}/fwkacllib/lib64
+    else
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT}/fwkacllib/lib64
+    fi
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ASCEND_ROOT_OLD}/driver/lib64/driver/
     export ASCEND_OPP_PATH=${ASCEND_ROOT}/opp
     export PYTHONPATH=$PYTHONPATH:${ASCEND_ROOT}/opp/op_impl/built-in/ai_core/tbe
 

@@ -499,7 +499,8 @@ class OperatorInterface:
                                              "format": get(testcase.stc_input_formats, idx),
                                              "ori_format": get(testcase.stc_input_ori_formats, idx)}
                     if None in tensor_representation.values():
-                        logging.warning("Detected None in op_tiling tensor representation, op_tiling may fail!")
+                        logging.warning("Detected None in op_tiling tensor representation, op_tiling may fail!\n%s\n",
+                                        tensor_representation)
                     inputs.append(tensor_representation)
         # Construct outputs
         for idx, shape in enumerate(testcase.dyn_outputs):

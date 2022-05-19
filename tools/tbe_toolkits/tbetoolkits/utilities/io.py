@@ -178,7 +178,7 @@ def __set_dynamic(switches: SWITCHES, secondary_param: str):
         raise RuntimeError("Invalid dynamic shape mode: %s" % secondary_param)
 
 
-@register_param(["--dynamic-run", "--dr"])
+@register_param(["--dynamic-profiling", "--dp"])
 def __set_dynamic(switches: SWITCHES, secondary_param: str):
     if secondary_param is None or secondary_param.lower() == "true":
         switches.dyn_switches.prof = True
@@ -262,12 +262,6 @@ def __set_compile_only(switches: SWITCHES, secondary_param: str):
         switches.bin_switches.prof = True
     else:
         raise RuntimeError("Invalid compile only mode: %s" % secondary_param)
-
-
-@register_param(["--egg"])
-def __easter_egg(*_, **__):
-    print("The quick brown fox jumps over the lazy dog")
-    sys.exit(0)
 
 
 @register_param(["--tiling-run", "--tr"])

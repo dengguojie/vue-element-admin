@@ -886,10 +886,14 @@ def handle_profiling_result(context: UniversalTestcaseStructure):
     :param context:
     :return:
     """
+    stc_off_flag = ("STC_OFF", "STC_OPERATOR_NOT_FOUND", "SUPPRESSED")
+    dyn_off_flag = ("DYN_OFF", "DYN_OPERATOR_NOT_FOUND", "SUPPRESSED")
+    cst_off_flag = ("CST_OFF", "CST_OPERATOR_NOT_FOUND", "SUPPRESSED")
+
     # noinspection PyBroadException
     def _get_cycle(cycle, off_flag):
-        if str(cycle) == off_flag:
-            return "PASS", off_flag
+        if isinstance(cycle, str) and cycle in off_flag:
+            return "PASS", cycle
 
         _passed, _cycle_f = "EXCEPTION", "RTS_PROF_INVALID"
         try:
@@ -905,7 +909,7 @@ def handle_profiling_result(context: UniversalTestcaseStructure):
 
     def _compare_cycle(golden, actual, off_flag) -> str:
         if isinstance(actual, str):
-            return "PASS" if actual == off_flag else "EXCEPTION"
+            return "PASS" if actual in off_flag else "EXCEPTION"
         else:
             if get_global_storage().perf_compare_flag:
                 return "PASS" if (golden / actual >= get_global_storage().perf_threshold[0] or
@@ -916,20 +920,20 @@ def handle_profiling_result(context: UniversalTestcaseStructure):
 
     passed, cst_passed = "EXCEPTION", "EXCEPTION"
 
-    _, stc_cycle_f = _get_cycle(context.stc_prof_result.cycle, "STC_OFF")
-    dyn_pass, dyn_cycle_f = _get_cycle(context.dyn_prof_result.cycle, "DYN_OFF")
-    cst_pass, cst_cycle_f = _get_cycle(context.cst_prof_result.cycle, "CST_OFF")
+    _, stc_cycle_f = _get_cycle(context.stc_prof_result.cycle, stc_off_flag)
+    dyn_pass, dyn_cycle_f = _get_cycle(context.dyn_prof_result.cycle, dyn_off_flag)
+    cst_pass, cst_cycle_f = _get_cycle(context.cst_prof_result.cycle, cst_off_flag)
 
     if isinstance(stc_cycle_f, str):
-        passed = dyn_pass if stc_cycle_f == "STC_OFF" else "EXCEPTION"
-        cst_passed = cst_pass if stc_cycle_f == "STC_OFF" else "EXCEPTION"
+        passed = dyn_pass if stc_cycle_f in stc_off_flag else "EXCEPTION"
+        cst_passed = cst_pass if stc_cycle_f in stc_off_flag else "EXCEPTION"
     else:
         context.stc_prof_result.cycle = stc_cycle_f
-        passed = _compare_cycle(stc_cycle_f, dyn_cycle_f, "DYN_OFF")
+        passed = _compare_cycle(stc_cycle_f, dyn_cycle_f, dyn_off_flag)
         if passed not in ("EXCEPTION",):
             context.dyn_prof_result.cycle = dyn_cycle_f
 
-        cst_passed = _compare_cycle(stc_cycle_f, cst_cycle_f, "CST_OFF")
+        cst_passed = _compare_cycle(stc_cycle_f, cst_cycle_f, cst_off_flag)
         if cst_passed not in ("EXCEPTION",):
             context.cst_prof_result.cycle = cst_cycle_f
 

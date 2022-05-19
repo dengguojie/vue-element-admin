@@ -108,18 +108,14 @@ def comparing(dyn_kernel_name: str, stc_kernel_name: str, cst_kernel_name: str, 
                                                     relative_percentage_thresholds, bin_outputs, fork_count)
         logging_data += _logging_data
         logging.debugc(logging_data)
-        if "DYN_OFF" in dyn_precision or "DYN_INPUT_MISSING" in dyn_precision:
-            if s_passed:
-                passed = "STC_PASS"
-            else:
-                passed = "STC_FAIL"
-        else:
-            if d_passed and s_passed and not r_passed:
-                passed = "PART"
-            elif d_passed or r_passed:
-                passed = "PASS"
-            else:
-                passed = "FAIL"
+
+        dyn_filter = ("DYN_OFF", "DYN_OPERATOR_NOT_FOUND", "SUPPRESSED")
+        stc_filter = ("STC_OFF", "STC_OPERATOR_NOT_FOUND", "SUPPRESSED")
+        if list(filter(lambda x: x in dyn_precision, dyn_filter)):
+            d_passed = True
+        if list(filter(lambda x: x in stc_precision, stc_filter)):
+            s_passed = True
+        passed = "PASS" if d_passed and s_passed else "FAIL"
     except:
         (dyn_precision, stc_precision, rel_precision,
          cst_precision, rst_precision, bin_precision, bre_precision, passed) = ("COMPARE_FAILURE",) * 8

@@ -179,7 +179,7 @@ class SWITCHES:
         self.run_time = 3
         self.tiling_run_time = 3
         self.perf_threshold = (1.0, 10)
-        self.perf_compare_flag = True
+        self.perf_compare_flag = False
         # Hidden switches
         self.kernel_meta = pathlib.Path("./kernel_meta/")
         self.model_update_configs = True

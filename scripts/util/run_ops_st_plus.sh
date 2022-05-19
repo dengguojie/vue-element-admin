@@ -92,20 +92,24 @@ get_results() {
   echo "FAIL_CASE: ${arr[@]}" >> "${RESULT_SUMMARY}"
 
   if [[ ${#arr[@]} -gt 0 ]]; then
-    echo "[ERROR]Some TestCase(s) failed: ${arr[@]}"
+    echo "[ERROR] Some TestCase(s) failed (${#arr[@]}): ${arr[@]}"
     exit $STATUS_FAILED
   fi
 
-  echo "[INFO] ALL TestCases Pass!"
+  echo "[INFO] ALL TestCases Pass ($succ_count) !"
 }
 
 main() {
+  local start=$(date +%s)
   if [ ! -f "${CUR_DIR}/tbe_toolkits/run.sh" ]; then
     echo "[ERROR] tbe_toolkits is missing. please check."
     exit $STATUS_FAILED
   fi
 
   run
+  local end=$(date +%s)
+  echo "[INFO] Cost: `expr $end - $start`"
+
   tar_results
   get_results
 
