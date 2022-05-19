@@ -1,6 +1,31 @@
 #!/bin/bash
 DIR=$( cd "$( dirname "$0" )" && pwd )
 
+if [[ $1 = "--help"]] || [[ $1 = "h" ]]
+then
+    echo "Usage: ./run.sh input output [options]"
+    echo "input                                A test file whose name is '.cvs' can contain a path, such as: ./xxx.csv."
+    echo "output                               Output file name, which ends with '.csv' by default."
+    echo ""
+    echo "[options]"
+    echo "--help | -h                          Print this message."
+    echo "--dynamic | -d                       This option controls whether to enable the dynamic Shape test process. The default value is true."
+    echo "                                     --dynamic=false or -d=false disables the dynamic Shape test process."
+    echo "--static | -s                        This option controls whether to enable the static Shape test process. The default value is true."
+    echo "                                     --static=false or -s=false disables the static Shape test process."
+    echo "--compile-only | --compile | --co    Compiling only. The default value is false."
+    echo "--testcase | -t                      Specify test case names, splited by comma."
+    echo "                                     --testcase=xxx,xxx,... or -t=xxx,xxx,..."
+    echo "--device                             Specify the number of devices to be run."
+    echo "--device-blacklist                   Specify the serial number of the device that does nut run."
+    echo "                                     Device blacklist should be a list of device id, such as: 1,2,3,4,5,6,7 ."
+    echo "--ti | --testcase-index              Specify the index of the test case to be run, such as: --ti=0-1 ."
+    echo "--op | --operator                    Specify op_name for testcases."
+    echo "--pc | --process-count               Specify process count- for each device, such as: --pc=1 ."
+    echo "--tc | --testcase-count              Specify testcase count."
+    exit 0
+fi
+
 set_env() {
     if [ $UID -eq 0 ]; then
         ASCEND_ROOT=/usr/local/Ascend/latest
