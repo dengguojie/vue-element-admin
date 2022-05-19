@@ -104,6 +104,16 @@ std::string TbeGetOpType(const T& op) {
   }
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
+#define AICPU_OP_LOGI(opname, ...) AICPU_D_OP_LOGI(get_cstr(opname), __VA_ARGS__)
+#define AICPU_OP_LOGW(opname, ...) AICPU_D_OP_LOGW(get_cstr(opname), __VA_ARGS__)
+#define AICPU_OP_LOGD(opname, ...) AICPU_D_OP_LOGD(get_cstr(opname), __VA_ARGS__)
+#define AICPU_OP_LOGE_WITHOUT_REPORT(opname, ...) AICPU_D_OP_LOGE(get_cstr(opname), __VA_ARGS__)
+#define AICPU_OP_LOGE(op_name, ...)                       \
+  do {                                              \
+    AICPU_OP_LOGE_WITHOUT_REPORT(op_name, ##__VA_ARGS__); \
+    REPORT_INNER_ERROR("EZ9999", ##__VA_ARGS__);    \
+  } while (0)
+
 #define OP_LOGI(opname, ...) D_OP_LOGI(get_cstr(opname), __VA_ARGS__)
 #define OP_LOGW(opname, ...) D_OP_LOGW(get_cstr(opname), __VA_ARGS__)
 
@@ -125,6 +135,11 @@ std::string TbeGetOpType(const T& op) {
 #define FUSION_PASS_LOGE(...) D_FUSION_PASS_LOGE(__VA_ARGS__)
 #define FUSION_PASS_LOGD(...) D_FUSION_PASS_LOGD(__VA_ARGS__)
 #else
+#define AICPU_OP_LOGI(opname, ...)
+#define AICPU_OP_LOGW(opname, ...)
+#define AICPU_OP_LOGE(opname, ...)
+#define AICPU_OP_LOGD(opname, ...)
+#define AICPU_OP_LOGE_WITHOUT_REPORT(opname, ...)
 #define OP_LOGI(opname, ...)
 #define OP_LOGW(opname, ...)
 #define OP_LOGE_WITHOUT_REPORT(opname, ...)
@@ -138,6 +153,10 @@ std::string TbeGetOpType(const T& op) {
 #endif
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
+#define AICPU_D_OP_LOGI(opname, fmt, ...) DlogSub(static_cast<int>(AICPU), OPPROTO_SUBMOD_NAME, DLOG_INFO, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define AICPU_D_OP_LOGW(opname, fmt, ...) DlogSub(static_cast<int>(AICPU), OPPROTO_SUBMOD_NAME, DLOG_WARN, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define AICPU_D_OP_LOGE(opname, fmt, ...) DlogSub(static_cast<int>(AICPU), OPPROTO_SUBMOD_NAME, DLOG_ERROR, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define AICPU_D_OP_LOGD(opname, fmt, ...) DlogSub(static_cast<int>(AICPU), OPPROTO_SUBMOD_NAME, DLOG_DEBUG, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
 #define D_OP_LOGI(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_INFO, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
 #define D_OP_LOGW(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_WARN,  " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
 #define D_OP_LOGE(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_ERROR, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
@@ -152,6 +171,10 @@ std::string TbeGetOpType(const T& op) {
 #define D_FUSION_PASS_LOGE(fmt, ...) DlogSub(FE, OPPROTO_SUBMOD_NAME, DLOG_ERROR, " %s:%d "#fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define D_FUSION_PASS_LOGD(fmt, ...) DlogSub(FE, OPPROTO_SUBMOD_NAME, DLOG_DEBUG, " %s:%d "#fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #else
+#define AICPU_D_OP_LOGI(opname, fmt, ...)
+#define AICPU_D_OP_LOGW(opname, fmt, ...)
+#define AICPU_D_OP_LOGE(opname, fmt, ...)
+#define AICPU_D_OP_LOGD(opname, fmt, ...)
 #define D_OP_LOGI(opname, fmt, ...)
 #define D_OP_LOGW(opname, fmt, ...)
 #define D_OP_LOGE(opname, fmt, ...)
