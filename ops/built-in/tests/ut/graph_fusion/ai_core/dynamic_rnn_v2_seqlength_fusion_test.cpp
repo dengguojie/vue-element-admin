@@ -5,6 +5,7 @@
 #include "graph/utils/graph_utils.h"
 #include "rnn.h"
 #include "array_ops.h"
+#include "nn_norm_ops.h"
 #include "fusion_pass_test_utils.h"
 #include "fp16_t.hpp"
 
@@ -349,4 +350,127 @@ TEST_F(dynamic_rnn_v2_seqlength_fusion_test, dynamic_rnn_v2_seqlength_fusion_tes
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
   fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNV2SeqFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+}
+
+#define DESC_DATA(name, shape_in, format_in, shape_out, format_out, dtype) \
+  ge::GeTensorDesc desc_##name(shape_out, format_out, dtype);              \
+  desc_##name.SetOriginFormat(format_in);                                  \
+  desc_##name.SetOriginShape(shape_in)
+
+TEST_F(dynamic_rnn_v2_seqlength_fusion_test, dynamic_rnn_v2_seqlength_fusion_test_5) {
+  ge::Graph graph("dynamic_rnn_v2_seqlength_fusion_test_5");
+
+  int64_t tSize = 1;
+  int64_t batchSize = 128;
+  int64_t inputSize = 64;
+  int64_t hiddenSize = 32;
+  int64_t hiddenGateSize = 4 * hiddenSize;
+
+  DESC_DATA(xVec, ge::GeShape({tSize, batchSize, inputSize}), FORMAT_ND, ge::GeShape({tSize, batchSize, inputSize}),
+            FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(weightInput, ge::GeShape({inputSize, hiddenGateSize}), FORMAT_ND, ge::GeShape({inputSize, hiddenGateSize}),
+            FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(weightHidden, ge::GeShape({hiddenSize, hiddenGateSize}), FORMAT_ND,
+            ge::GeShape({hiddenSize, hiddenGateSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(bias, ge::GeShape({hiddenGateSize}), FORMAT_ND, ge::GeShape({hiddenGateSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(seqLen, ge::GeShape({batchSize}), FORMAT_ND, ge::GeShape({batchSize}), FORMAT_ND, DT_INT32);
+
+  DESC_DATA(output_y, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(output_h, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(output_c, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(i, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(j, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(f, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(o, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+  DESC_DATA(tanhc, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+
+  DESC_DATA(output_rnnGenMask, ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND,
+            ge::GeShape({tSize, batchSize, hiddenSize}), FORMAT_ND, DT_FLOAT16);
+
+  ge::OpDescPtr x = std::make_shared<ge::OpDesc>("data_xVec", "Data");
+  ge::OpDescPtr weightInput = std::make_shared<ge::OpDesc>("data_weightInput", "Data");
+  ge::OpDescPtr weightHidden = std::make_shared<ge::OpDesc>("data_weightHidden", "Data");
+  ge::OpDescPtr bias = std::make_shared<ge::OpDesc>("data_bias", "Data");
+  ge::OpDescPtr seqLen = std::make_shared<ge::OpDesc>("data_seqLen", "Data");
+
+  ge::OpDescPtr rnnGenMask = std::make_shared<ge::OpDesc>("rnnGenMask", "RnnGenMask");
+  ge::OpDescPtr dynamicRNNV2 = std::make_shared<ge::OpDesc>("dynamicRNNV2", "DynamicRNNV2");
+  ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
+
+  x->AddOutputDesc(desc_xVec);
+  weightInput->AddOutputDesc(desc_weightInput);
+  weightHidden->AddOutputDesc(desc_weightHidden);
+  bias->AddOutputDesc(desc_bias);
+  seqLen->AddOutputDesc(desc_seqLen);
+
+  rnnGenMask->AddInputDesc("seq_length", desc_seqLen);
+  ge::AttrUtils::SetFloat(rnnGenMask, "num_step", tSize);
+  ge::AttrUtils::SetFloat(rnnGenMask, "hidden_size", hiddenSize);
+  rnnGenMask->AddOutputDesc("seq_mask", desc_output_rnnGenMask);
+
+  dynamicRNNV2->AddInputDesc("x", desc_xVec);
+  dynamicRNNV2->AddInputDesc("weight_input", desc_weightInput);
+  dynamicRNNV2->AddInputDesc("weight_hidden", desc_weightHidden);
+  dynamicRNNV2->AddInputDesc("b", desc_bias);
+  dynamicRNNV2->AddInputDesc("seq_length", desc_seqLen);
+
+  dynamicRNNV2->AddOutputDesc("y", desc_output_y);
+  dynamicRNNV2->AddOutputDesc("output_h", desc_output_h);
+  dynamicRNNV2->AddOutputDesc("output_c", desc_output_c);
+  dynamicRNNV2->AddOutputDesc("i", desc_i);
+  dynamicRNNV2->AddOutputDesc("j", desc_j);
+  dynamicRNNV2->AddOutputDesc("f", desc_f);
+  dynamicRNNV2->AddOutputDesc("o", desc_o);
+  dynamicRNNV2->AddOutputDesc("tanhc", desc_tanhc);
+
+  netoutput->AddInputDesc(desc_output_y);
+  netoutput->AddInputDesc(desc_output_h);
+  netoutput->AddInputDesc(desc_output_c);
+  netoutput->AddInputDesc(desc_i);
+  netoutput->AddInputDesc(desc_j);
+  netoutput->AddInputDesc(desc_f);
+  netoutput->AddInputDesc(desc_o);
+  netoutput->AddInputDesc(desc_tanhc);
+
+  ge::ComputeGraphPtr compute_graph_ptr = std::make_shared<ge::ComputeGraph>("DynamicRNNV2FusionPass_graph");
+  ge::NodePtr x_node = compute_graph_ptr->AddNode(x);
+  ge::NodePtr weightInput_node = compute_graph_ptr->AddNode(weightInput);
+  ge::NodePtr weightHidden_node = compute_graph_ptr->AddNode(weightHidden);
+  ge::NodePtr bias_node = compute_graph_ptr->AddNode(bias);
+  ge::NodePtr seqLen_node = compute_graph_ptr->AddNode(seqLen);
+
+  ge::NodePtr rnnGenMask_node = compute_graph_ptr->AddNode(rnnGenMask);
+  ge::NodePtr dynamicRNNV2_node = compute_graph_ptr->AddNode(dynamicRNNV2);
+  ge::NodePtr netoutput_node = compute_graph_ptr->AddNode(netoutput);
+
+  ge::GraphUtils::AddEdge(x_node->GetOutDataAnchor(0), dynamicRNNV2_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(weightInput_node->GetOutDataAnchor(0), dynamicRNNV2_node->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(weightHidden_node->GetOutDataAnchor(0), dynamicRNNV2_node->GetInDataAnchor(2));
+  ge::GraphUtils::AddEdge(bias_node->GetOutDataAnchor(0), dynamicRNNV2_node->GetInDataAnchor(3));
+  ge::GraphUtils::AddEdge(seqLen_node->GetOutDataAnchor(0), dynamicRNNV2_node->GetInDataAnchor(4));
+ 
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(1), netoutput_node->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(2), netoutput_node->GetInDataAnchor(2));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(3), netoutput_node->GetInDataAnchor(3));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(4), netoutput_node->GetInDataAnchor(4));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(5), netoutput_node->GetInDataAnchor(5));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(6), netoutput_node->GetInDataAnchor(6));
+  ge::GraphUtils::AddEdge(dynamicRNNV2_node->GetOutDataAnchor(7), netoutput_node->GetInDataAnchor(7));
+
+  ge::GraphUtils::AddEdge(seqLen_node->GetOutDataAnchor(0), rnnGenMask_node->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(rnnGenMask_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(7));
+
+  fe::Status status = fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNV2SeqFusionPass", fe::BUILT_IN_GRAPH_PASS,
+                                                                  *compute_graph_ptr);
+
+  EXPECT_EQ(status, fe::SUCCESS);
 }
