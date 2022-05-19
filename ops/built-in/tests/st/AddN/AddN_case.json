@@ -11,7 +11,7 @@
           5
         ],
         "ori_format": "ND",
-        "name": "input_x",
+        "name": "x0",
         "type": "float16"
       },
       {
@@ -19,12 +19,12 @@
           -1
         ],
         "format": "ND",
-		"typical_shape":[5],
-		"shape_range":[[3, 10]],
-        "name": "input_y",
+		    "typical_shape":[5],
+		    "shape_range":[[3, 10]],
+        "name": "x1",
         "type": "float16"
       },
-	  {
+	    {
         "shape": [
           5
         ],
@@ -33,7 +33,7 @@
           5
         ],
         "ori_format": "ND",
-        "name": "input_z",
+        "name": "x2",
         "type": "float16"
       }
     ],
@@ -44,9 +44,9 @@
         ],
         "format": "ND",
         "typical_shape":[5],
-		"shape_range":[[3, 10]],
+		    "shape_range":[[3, 10]],
         "param_type": "output",
-        "name": "output_z",
+        "name": "y",
         "type": "float16"
       }
     ],
