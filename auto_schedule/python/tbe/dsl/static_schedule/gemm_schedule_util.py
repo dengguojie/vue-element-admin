@@ -218,7 +218,7 @@ def set_matmul_fixpipe_scope(res, sch, tensor_map):
     :return: dict
     """
     fixpipe_input_tensor = res.op.input_tensors[0]
-    while fixpipe_input_tensor.op.name != "tensor_c_matrix":
+    while fixpipe_input_tensor.op.name != "tensor_mmad":
         if fixpipe_input_tensor.op.tag in ("dequant_vector", "requant_vector", "fixpipe"):
             _handle_fixpipe_tensor(sch, fixpipe_input_tensor, tensor_map)
         sch[fixpipe_input_tensor].compute_inline()
@@ -794,7 +794,7 @@ def attach_of_bias_table(sch, tensor_map, tiling, c_slice_axis, fully_load_axis)
     :param sch: schedule
     :param tensor_map: tensor of matmul
     :param tiling: tilling after_process
-    :param c_slice_axis: l0c load axis tensor for tesor
+    :param c_slice_axis: l0c load axis tensor for tensor
     :param fully_load_axis: fully load axis for tensor
     :return: None
     """

@@ -14,6 +14,7 @@ from impl.mat_mul import mat_mul_compute_self
 from topi.generic import auto_schedule
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
 from te.platform.cce_conf import te_set_version
+from case_nd_in_nd_out import cases as nd_cases
 
 
 ut_case = OpUT("MatMul", None, None)
@@ -901,6 +902,9 @@ ut_case.add_cust_test_func(test_func=test_auto_tiling)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k)
 ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
+
+for case_info in nd_cases:
+    ut_case.add_case(["Ascend310"], case_info)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}

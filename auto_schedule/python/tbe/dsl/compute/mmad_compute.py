@@ -73,8 +73,8 @@ def _shape_check(tensor_a, tensor_b,
     Returns None
     """
 
-    in_a_dtype = tensor_a.dtype
-    in_b_dtype = tensor_b.dtype
+    dtype_a = tensor_a.dtype
+    dtype_b = tensor_b.dtype
 
     compute_util.check_input_tensor_shape(tensor_a)
     compute_util.check_input_tensor_shape(tensor_b)
@@ -116,7 +116,7 @@ def _shape_check(tensor_a, tensor_b,
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # ND and ND only support 'float16'
     if not is_fractal_a and not is_fractal_b:
-        if in_a_dtype != "float16" or in_b_dtype != "float16":
+        if dtype_a != "float16" or dtype_b != "float16":
             dict_args = {
                 'errCode': 'E61001',
                 'reason': "only support 'float16' input datatype for 'ND' and 'ND' format!"
@@ -124,15 +124,15 @@ def _shape_check(tensor_a, tensor_b,
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     # ND and fractal support 'float16' and 'b8'
     else:
-        if not (in_a_dtype == "float16" and in_b_dtype == "float16") and \
-                not (in_a_dtype in ("uint8", "int8") and (in_b_dtype == "int8")):
+        if not (dtype_a == "float16" and dtype_b == "float16") and \
+                not (dtype_a in ("uint8", "int8") and (dtype_b == "int8")):
             dict_args = {
                 'errCode': 'E61001',
                 'reason': "only support float16 & float16 and uint8/int8 & int8 intput data type."
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    if (in_a_dtype in ("uint8", "int8")) and (in_b_dtype == "int8"):
+    if (dtype_a in ("uint8", "int8")) and (dtype_b == "int8"):
         if not is_fractal_a and is_fractal_b:
             if trans_a:
                 dict_args = {
@@ -192,7 +192,7 @@ def _shape_check(tensor_a, tensor_b,
         shape_bias = [i.value for i in tensor_bias.shape]
 
     k_block_size = tbe_platform.BLOCK_REDUCE
-    if (in_a_dtype in ("uint8", "int8")) and in_b_dtype == "int8":
+    if (dtype_a in ("uint8", "int8")) and dtype_b == "int8":
         k_block_size = tbe_platform.BLOCK_REDUCE_INT8
 
     def _check_dst_dtype(dst_dtype):
@@ -344,11 +344,11 @@ def _shape_check(tensor_a, tensor_b,
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             # gemv u8/s8 is transed to gevm(s8/u8), s8/u8 is not support for mad intri
-            if in_a_dtype == "uint8" and in_b_dtype == "int8":
+            if dtype_a == "uint8" and dtype_b == "int8":
                 dict_args = {
                     'errCode': 'E61001',
                     'reason': "b8 gemv only support int8 & int8, current type is {} and {}.".format(
-                        in_a_dtype, in_b_dtype)
+                        dtype_a, dtype_b)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
     if is_fractal_a == is_fractal_b:
@@ -389,7 +389,7 @@ def _shape_check(tensor_a, tensor_b,
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         is_gemv = n_shape == 1
 
-    if in_b_dtype == "int8":
+    if dtype_b == "int8":
         if is_gemv:
             if trans_a:
                 # Load2D intri has error from L1 to L0B transport for b8
@@ -1105,8 +1105,8 @@ def _matmul_compute(
 
     format_out = _get_matmul_output_format(format_a, format_out)
 
-    in_a_dtype = tensor_a.dtype
-    in_b_dtype = tensor_b.dtype
+    dtype_a = tensor_a.dtype
+    dtype_b = tensor_b.dtype
 
     tensor_b.op.attrs['trans_b'] = trans_b
 
@@ -1116,7 +1116,7 @@ def _matmul_compute(
         l0c_support_fp32 = 0
     # used for inner_product and ascend_dequant UB fusion
     out_dtype, is_fusion_mode = _check_and_get_dtype_info(
-        in_a_dtype, in_b_dtype, dst_dtype, l0c_support_fp32, quantize_params)
+        dtype_a, dtype_b, dst_dtype, l0c_support_fp32, quantize_params)
 
     def _check_quant_param_valid():
         if (out_dtype == dst_dtype) and (quantize_params is not None):
@@ -1175,7 +1175,7 @@ def _matmul_compute(
                     bias_shape.append(i.value)
 
     def _get_block_reduce():
-        if in_a_dtype == "float16":
+        if dtype_a == "float16":
             return tbe_platform.BLOCK_REDUCE
         return tbe_platform.BLOCK_REDUCE_INT8
 
@@ -1406,7 +1406,7 @@ def _matmul_compute(
 
         return offset_x, offset_w
 
-    offset_x, _ = _get_offset_info(attrs, in_a_dtype, in_b_dtype)
+    offset_x, _ = _get_offset_info(attrs, dtype_a, dtype_b)
     # define reduce axis
     # kBurstAxis
     reduce_kb = tvm.reduce_axis((0, km_shape), name='kb')
@@ -1421,9 +1421,9 @@ def _matmul_compute(
     optmt_a = 0
     optmt_b = 0
     optmt_c = 0
-    if in_a_dtype == "float16":
+    if dtype_a == "float16":
         optmt_a = 1
-    if in_b_dtype == "float16":
+    if dtype_b == "float16":
         optmt_b = 1
     if dst_dtype == "float16":
         optmt_c = 1
@@ -3242,15 +3242,15 @@ def _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
 
     """
 
-    in_a_dtype = tensor_a.dtype
-    in_b_dtype = tensor_b.dtype
+    dtype_a = tensor_a.dtype
+    dtype_b = tensor_b.dtype
 
     l0c_support_fp32 = 1
 
     support_type = tbe_platform.getValue("Intrinsic_mmad")
     if "f162f32" not in support_type:
         l0c_support_fp32 = 0
-    if in_a_dtype == "float16" and in_b_dtype == "float16":
+    if dtype_a == "float16" and dtype_b == "float16":
         if dst_dtype not in ("float16", "float32"):
             dict_args = {
                 'errCode': 'E61001',
@@ -3260,8 +3260,8 @@ def _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
         out_dtype = "float32"
         if l0c_support_fp32 == 0:
             out_dtype = "float16"
-    elif (in_a_dtype == "int8" and in_b_dtype == "int8") or \
-            (in_a_dtype == "uint8" and in_b_dtype == "int8"):
+    elif (dtype_a == "int8" and dtype_b == "int8") or \
+            (dtype_a == "uint8" and dtype_b == "int8"):
         out_dtype = "int32"
     else:
         dict_args = {
@@ -3958,6 +3958,6 @@ def _matmul_cv_split(tensor_a,
 
     matmul_object.compute_matmul()
 
-    res = matmul_object.c_matrix
+    res = matmul_object.tensor_mmad
 
     return res

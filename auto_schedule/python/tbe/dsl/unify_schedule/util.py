@@ -455,9 +455,9 @@ def get_single_matmul_tensor(tensor_map, all_tensor):
     """
     get the tensor in cube calculation
     """
-    tensor_map["a_l0a"] = all_tensor.get("tensor_a_matrix")
-    tensor_map["b_l0b"] = all_tensor.get("tensor_b_matrix")
-    tensor_map["c_l0c"] = all_tensor.get("tensor_c_matrix")
+    tensor_map["a_l0a"] = all_tensor.get("tensor_a_zz")
+    tensor_map["b_l0b"] = all_tensor.get("tensor_b_zn")
+    tensor_map["c_l0c"] = all_tensor.get("tensor_mmad")
     # fb bias is add in c matrix
     if len(tensor_map["c_l0c"].op.input_tensors) == 3:
         tensor_map["input_bias"] = tensor_map["c_l0c"].op.input_tensors[2]
@@ -466,10 +466,10 @@ def get_single_matmul_tensor(tensor_map, all_tensor):
     tensor_map["fixpipe_matmul"] = all_tensor.get("fixpipe_matmul")
 
     # virtual ub tensor is used in dynamic and ND
-    tensor_map["virtual_aub"] = all_tensor.get("tensor_a_normalize_ub")
-    tensor_map["virtual_bub"] = all_tensor.get("tensor_b_normalize_ub")
+    tensor_map["virtual_aub"] = all_tensor.get("tensor_a_aligned")
+    tensor_map["virtual_bub"] = all_tensor.get("tensor_b_aligned")
     # b_reshape
-    tensor_map["tensor_b_reshape"] = all_tensor.get("tensor_b_reshape")
+    tensor_map["tensor_b_reshape"] = all_tensor.get("tensor_b_reorder_axes")
 
 
 def get_fusion_matmul_tensor(tensor_map, all_tensor, leaf_tensor):
@@ -500,7 +500,7 @@ def get_fixpipe_tensor(res, tensor_map):
     if not tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
         return
     fixpipe_input_tensor = res.op.input_tensors[0]
-    while fixpipe_input_tensor.op.name != "tensor_c_matrix":
+    while fixpipe_input_tensor.op.name != "tensor_mmad":
         if fixpipe_input_tensor.op.tag == "fixpipe":
             tensor_map["fixpipe_input_name"] = fixpipe_input_tensor.op.attrs["vector_params"]
             tensor_map["fixpipe_input_tensor"] = fixpipe_input_tensor.op.attrs["vector_tensors"]

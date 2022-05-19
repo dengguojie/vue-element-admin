@@ -939,7 +939,7 @@ class GemmSchedule:
             self.container.tensor_map["a_l1"] = self.sch.cache_write(
                 self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
         if self.status_controller.ops_data_flow_mode == "int82fp32":
-            self._get_tensor_and_set_scope("tensor_a_int82fp16", tbe_platform_info.scope_ubuf, "a_int82fp16")
+            self._get_tensor_and_set_scope("tensor_a_s82f16", tbe_platform_info.scope_ubuf, "a_int82fp16")
         if self.optmt_a == "float16":
             self.container.tensor_map["a_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("a_l1"),
                                                                  tbe_platform_info.scope_ubuf)
@@ -947,32 +947,32 @@ class GemmSchedule:
     def _set_data_layout_a_matrix(self):
         tensors_in_aub = self.container.tensors_in_aub
         if self.is_dynamic:
-            self._get_tensor_and_set_scope("tensor_a_normalize_ub_aligned",
+            self._get_tensor_and_set_scope("tensor_a_keep_origin",
                                            tbe_platform_info.scope_ubuf, "a_ub_aligned")
-            self._get_tensor_and_set_scope("tensor_a_normalize_ub_general",
+            self._get_tensor_and_set_scope("tensor_a_do_align",
                                            tbe_platform_info.scope_ubuf, "a_ub_general")
             self._add_tensor_to_list(self.container.tensor_map.get("a_ub_aligned"), [tensors_in_aub])
             self._add_tensor_to_list(self.container.tensor_map.get("a_ub_general"), [tensors_in_aub])
-        self._get_tensor_and_set_scope("tensor_a_normalize_ub", tbe_platform_info.scope_ubuf, "a_ub")
+        self._get_tensor_and_set_scope("tensor_a_aligned", tbe_platform_info.scope_ubuf, "a_ub")
 
         if self.get_a_matrix_mode == "none":
             self.container.tensor_map["a_l1"] = self.sch.cache_write(
                 self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
         elif self.get_a_matrix_mode == "nd2Zz_vnchwconv":
-            self._get_tensor_and_set_scope("tensor_a_matrix_fract_k", tbe_platform_info.scope_ubuf, "a_ub_fract")
+            self._get_tensor_and_set_scope("tensor_a_zz_fract_k", tbe_platform_info.scope_ubuf, "a_ub_fract")
             self.container.tensor_map["a_l1"] = self.sch.cache_read(self.container.tensor_map.get("a_ub_fract"),
                 tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("a_l0a")])
             if self.status_controller.ops_data_flow_mode == "int82fp32":
                 # int82fp32 need cast to fp16
-                self._get_tensor_and_set_scope("tensor_a_int82fp16", tbe_platform_info.scope_ubuf, "a_int82fp16")
+                self._get_tensor_and_set_scope("tensor_a_s82f16", tbe_platform_info.scope_ubuf, "a_int82fp16")
         elif self.get_a_matrix_mode == "nd2Zz_int8":
             if self.status_controller.transpose_a:
-                self._get_tensor_and_set_scope("a_transpose", tbe_platform_info.scope_ubuf, "a_transpose")
+                self._get_tensor_and_set_scope("tensor_a_transpose", tbe_platform_info.scope_ubuf, "a_transpose")
             self.container.tensor_map["a_l1"] = self.sch.cache_write(
                 self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
         elif self.get_a_matrix_mode == "Nz2Zz_int82fp32":
             # int82fp32 need cast to fp16
-            self._get_tensor_and_set_scope("tensor_a_int82fp16", tbe_platform_info.scope_ubuf, "a_int82fp16")
+            self._get_tensor_and_set_scope("tensor_a_s82f16", tbe_platform_info.scope_ubuf, "a_int82fp16")
             self.container.tensor_map["a_ub"] = self.sch.cache_read(self.container.tensor_map.get("a_placehold"),
                 tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("a_int82fp16")])
             self.container.tensor_map["a_l1"] = self.sch.cache_write(
@@ -983,7 +983,7 @@ class GemmSchedule:
             self.container.tensor_map["a_l1"] = self.sch.cache_read(self.container.tensor_map.get("a_placehold"),
                 tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("a_l0a")])
         elif self.get_a_matrix_mode == "nd_gemv":
-            self._get_tensor_and_set_scope("tensor_a_fract", tbe_platform_info.scope_cbuf, "a_l1")
+            self._get_tensor_and_set_scope("tensor_a_nd2zz", tbe_platform_info.scope_cbuf, "a_l1")
             if self.optmt_a == "float16":
                 self.container.tensor_map["a_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("a_l1"),
                                                                      tbe_platform_info.scope_ubuf)
@@ -991,7 +991,7 @@ class GemmSchedule:
             self.container.tensor_map["a_l1"] = self.sch.cache_write(
                 self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
             # check in int8
-            self._get_tensor_and_set_scope("tensor_a_fract", tbe_platform_info.scope_ubuf, "a_ub_fract")
+            self._get_tensor_and_set_scope("tensor_a_nd2zz", tbe_platform_info.scope_ubuf, "a_ub_fract")
         elif self.get_a_matrix_mode == "nd2Zz":
             self._set_data_layout_a_in_nd2zz()
 
@@ -1004,33 +1004,33 @@ class GemmSchedule:
         tensors_in_bub = self.container.tensors_in_bub
 
         if self.is_dynamic:
-            self._get_tensor_and_set_scope("tensor_b_normalize_ub_aligned",
+            self._get_tensor_and_set_scope("tensor_b_keep_origin",
                                            tbe_platform_info.scope_ubuf, "b_ub_aligned")
-            self._get_tensor_and_set_scope("tensor_b_normalize_ub_general",
+            self._get_tensor_and_set_scope("tensor_b_do_align",
                                            tbe_platform_info.scope_ubuf, "b_ub_general")
             self._add_tensor_to_list(self.container.tensor_map.get("b_ub_aligned"), [tensors_in_bub])
             self._add_tensor_to_list(self.container.tensor_map.get("b_ub_general"), [tensors_in_bub])
-        self._get_tensor_and_set_scope("tensor_b_normalize_ub", tbe_platform_info.scope_ubuf, "b_ub")
+        self._get_tensor_and_set_scope("tensor_b_aligned", tbe_platform_info.scope_ubuf, "b_ub")
 
         if self.get_b_matrix_mode == "nd_gemv":
-            self._get_tensor_and_set_scope("tensor_b_fract", tbe_platform_info.scope_cbuf, "b_l1")
+            self._get_tensor_and_set_scope("tensor_b_nd2zz", tbe_platform_info.scope_cbuf, "b_l1")
             if self.optmt_b == "float16":
                 self.container.tensor_map["b_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("b_l1"),
                                                                      tbe_platform_info.scope_ubuf)
         elif self.get_b_matrix_mode == "nd2Zn_vnchwconv":
-            self._get_tensor_and_set_scope("tensor_b_matrix_fract", tbe_platform_info.scope_ubuf, "b_ub_fract")
+            self._get_tensor_and_set_scope("tensor_b_zn_fract", tbe_platform_info.scope_ubuf, "b_ub_fract")
             self.container.tensor_map["b_l1"] = self.sch.cache_read(self.container.tensor_map.get("b_ub_fract"),
                 tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("b_l0b")])
             if self.status_controller.ops_data_flow_mode == "int82fp32":
                 # if int82fp32 need cast to fp16
-                self._get_tensor_and_set_scope("tensor_b_int82fp16", tbe_platform_info.scope_ubuf, "b_int82fp16")
+                self._get_tensor_and_set_scope("tensor_b_s82f16", tbe_platform_info.scope_ubuf, "b_int82fp16")
         elif self.get_b_matrix_mode == "nd2Zn_int8":
             if not self.status_controller.transpose_b:
-                self._get_tensor_and_set_scope("b_transpose", tbe_platform_info.scope_ubuf, "b_transpose")
+                self._get_tensor_and_set_scope("tensor_b_transpose", tbe_platform_info.scope_ubuf, "b_transpose")
             self.container.tensor_map["b_l1"] = self.sch.cache_write(
                 self.container.tensor_map.get("b_l0b"), tbe_platform_info.scope_cbuf)
         elif self.get_b_matrix_mode == "Zn2Zn_int82fp32":
-            self._get_tensor_and_set_scope("tensor_b_int82fp16", tbe_platform_info.scope_ubuf, "b_int82fp16")
+            self._get_tensor_and_set_scope("tensor_b_s82f16", tbe_platform_info.scope_ubuf, "b_int82fp16")
             self.container.tensor_map["b_ub"] = self.sch.cache_read(self.container.tensor_map.get("b_placehold"),
                 tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("b_int82fp16")])
             self.container.tensor_map["b_l1"] = self.sch.cache_write(
@@ -1060,8 +1060,8 @@ class GemmSchedule:
 
     def _set_scope_bias_in_l0c(self):
         self._get_tensor_and_set_scope("tensor_bias_ub", tbe_platform_info.scope_ubuf, "bias_ub")
-        self._get_tensor_and_set_scope("tensor_bias_l0c", tbe_platform_info.scope_cc, "bias_l0c")
-        self._get_tensor_and_set_scope("tensor_c_add_bias", tbe_platform_info.scope_cc, "c_add_bias")
+        self._get_tensor_and_set_scope("tensor_bias_nz", tbe_platform_info.scope_cc, "bias_l0c")
+        self._get_tensor_and_set_scope("tensor_mmad_with_bias", tbe_platform_info.scope_cc, "c_add_bias")
 
         if self.status_controller.need_init_bias:
             self._get_tensor_and_set_scope('tensor_init_value_of_bias_ub', tbe_platform_info.scope_ubuf,
@@ -1081,7 +1081,7 @@ class GemmSchedule:
 
         alpha = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
         beta = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])
-        self._get_tensor_and_set_scope("c_ub_fract", tbe_platform_info.scope_ubuf, "c_ub_fract")
+        self._get_tensor_and_set_scope("tensor_mmad_with_scale", tbe_platform_info.scope_ubuf, "c_ub_fract")
 
         add_bias_in_l0c = self.status_controller.have_bias and (not self.status_controller.cube_vector_split)
         add_bias_in_fb = self.status_controller.have_bias and self.status_controller.cube_vector_split
@@ -1094,16 +1094,16 @@ class GemmSchedule:
             pass
         if add_bias_in_ub:
             bias_ub_compute_at = tensors_in_cub
-            self._get_tensor_and_set_scope("tensor_c_add_bias_ub", tbe_platform_info.scope_ubuf, "c_add_bias_ub")
-            self._get_tensor_and_set_scope("tensor_bias_normalize_ub", tbe_platform_info.scope_ubuf, "bias_ub")
+            self._get_tensor_and_set_scope("tensor_gemm", tbe_platform_info.scope_ubuf, "c_add_bias_ub")
+            self._get_tensor_and_set_scope("tensor_bias_aligned", tbe_platform_info.scope_ubuf, "bias_ub")
             if self.status_controller.ops_data_flow_mode == "fp162fp16":
-                self._get_tensor_and_set_scope("tensor_bias_cast_to_fp32",
+                self._get_tensor_and_set_scope("tensor_b_f32",
                     tbe_platform_info.scope_ubuf, "bias_cast_to_fp32")
 
             if beta is not None:
                 self._get_tensor_and_set_scope("tensor_beta_bias", tbe_platform_info.scope_ubuf, "beta_bias")
                 if self.status_controller.ops_data_flow_mode == "fp162fp16":
-                    self._get_tensor_and_set_scope("tensor_beta_fp162fp32",
+                    self._get_tensor_and_set_scope("tensor_beta_f162f32",
                         tbe_platform_info.scope_ubuf, "beta_fp162fp32")
                     self.container.tensor_map["beta_ub"] = self.sch.cache_read(self.container.tensor_map.get("beta"),
                         tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("beta_fp162fp32")])
@@ -1112,9 +1112,9 @@ class GemmSchedule:
                         tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("beta_bias")])
 
         if alpha is not None:
-            self._get_tensor_and_set_scope("tensor_alpha_c", tbe_platform_info.scope_ubuf, "alpha_c")
+            self._get_tensor_and_set_scope("tensor_alpha_mmad", tbe_platform_info.scope_ubuf, "alpha_c")
             if self.status_controller.ops_data_flow_mode == "fp162fp16":
-                self._get_tensor_and_set_scope("tensor_alpha_fp162fp32",
+                self._get_tensor_and_set_scope("tensor_alpha_f162f32",
                     tbe_platform_info.scope_ubuf, "alpha_fp162fp32")
                 self.container.tensor_map["alpha_ub"] = self.sch.cache_read(self.container.tensor_map.get("alpha"),
                     tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("alpha_fp162fp32")])
@@ -1122,9 +1122,9 @@ class GemmSchedule:
                 self.container.tensor_map["alpha_ub"] = self.sch.cache_read(self.container.tensor_map.get("alpha"),
                     tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("alpha_c")])
 
-        self._get_tensor_and_set_scope("tensor_cast_to_fp16", tbe_platform_info.scope_ubuf, "cast_to_fp16")
+        self._get_tensor_and_set_scope("tensor_gemm_f16", tbe_platform_info.scope_ubuf, "cast_to_fp16")
 
-        self.container.tensor_map["nz_to_nd"] = self._match_and_get_tensor(compute_tensors, "nz_to_nd")
+        self.container.tensor_map["nz_to_nd"] = self._match_and_get_tensor(compute_tensors, "tensor_nz2nd")
         if self.container.tensor_map["nz_to_nd"] is not None:
             self.sch[self.container.tensor_map["nz_to_nd"]].set_scope(tbe_platform_info.scope_ubuf)
         self.container.tensor_map["before_c_gm"] = self._match_and_get_tensor(compute_tensors, "before_c_gm")
@@ -4915,7 +4915,7 @@ class GemmSchedule:
                 if tens in in_out_tensor_map:
                     def calc_width_mid(width):
                         """
-                        get mid tesnor width
+                        get mid tensor width
                         """
                         all_out = True
                         for out_ten in in_out_tensor_map.get(tens):

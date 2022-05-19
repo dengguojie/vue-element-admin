@@ -22,6 +22,7 @@ ut_case = OpUT("BatchMatMulV2", "impl.batch_matmul_v2", "batch_matmul_v2")
 from tbe import tvm
 from impl.batch_matmul_v2 import get_op_support_info
 from test_bmmv2_mock_case import *
+from case_nd_in_nd_out import cases as nd_cases
 
 vals = {("CORE_NUM", ): 48,
         ("CUBE_VECTOR_SPLIT",): True,
@@ -783,6 +784,8 @@ def test_mock_cases(test_args):
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 
+for case_info in nd_cases:
+    ut_case.add_case(["Ascend310"], case_info)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}
@@ -790,3 +793,4 @@ if __name__ == '__main__':
     from case_nd_in_nd_out import cases
     for case_info in cases:
         ut_case.add_case(["Ascend310"], case_info)
+

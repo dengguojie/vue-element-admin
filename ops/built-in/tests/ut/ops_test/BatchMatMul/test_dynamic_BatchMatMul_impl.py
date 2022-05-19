@@ -377,5 +377,6 @@ def test_batch_matmul_fuzzy_binary_generalization(test_arg):
                                    generalize_config={"mode": "all_shape", "single_op": "true"})
 ut_case.add_cust_test_func(test_func=test_batch_matmul_fuzzy_binary_generalization)
 
+
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend910A"])

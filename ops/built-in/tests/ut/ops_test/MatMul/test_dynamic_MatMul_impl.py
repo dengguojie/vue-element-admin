@@ -285,19 +285,6 @@ def gen_cases_by_shape_and_range(case):
 
     return params
 
-for case in common_cases:
-    for param in gen_cases_by_shape_and_range(case):
-        ut_case.add_case("Ascend910A", param)
-
-for case in matmul_case_succ:
-   ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
-
-for case in matmul_case_nzz_succ:
-    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase_nzz(*case))
-
-for error_case in matmul_case_error:
-    ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))
-
 def test_get_op_support_info_dynamic_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, 16, 16), "ori_shape": (-1, -1),
          "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
@@ -312,14 +299,21 @@ def test_op_select_format_dynamic_matmul(test_arg):
          "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
     op_select_format(x1, x2)
 
+for case in common_cases:
+    for param in gen_cases_by_shape_and_range(case):
+        ut_case.add_case("Ascend910A", param)
 for case in matmul_case_succ:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
 for case in matmul_ND_case_succ:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
 for case in matmul_case_nzz_succ:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase_nzz(*case))
+for error_case in matmul_case_error:
+    ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))
+
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_matmul)
 ut_case.add_cust_test_func(test_func=test_op_select_format_dynamic_matmul)
+
 
 if __name__ == "__main__":
     ut_case._case_info_map = {}

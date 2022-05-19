@@ -752,6 +752,7 @@ ut_case.add_cust_test_func(test_func=test_gemm_error_bias_shape_3)
 ut_case.add_cust_test_func(test_func=test_gemm_error_bias_shape_len)
 
 
+
 if __name__ == '__main__':
     ut_case.run()
     exit(0)

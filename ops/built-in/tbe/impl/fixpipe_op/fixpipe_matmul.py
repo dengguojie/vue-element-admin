@@ -114,7 +114,7 @@ class FixpipeMatmul(FixpipeBase):
         """
         skip matmul ddr tensor
         """
-        while self.x1.op.name != "tensor_c_matrix":
+        while self.x1.op.name != "tensor_mmad":
             self.x1 = self.x1.op.input_tensors[0]
 
     def _is_nz2nd(self):

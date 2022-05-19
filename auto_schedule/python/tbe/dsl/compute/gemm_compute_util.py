@@ -543,14 +543,14 @@ class FormatCompute(object):
         tensor_a_transpose = tvm.compute(
             ori_tensor_shape,
             lambda *indices: ori_tensor(*indices[:-2], indices[-1], indices[-2]),
-            name="a_transpose")
+            name="tensor_a_transpose")
         lambda_expression = lambda *indices: tensor_a_transpose(*indices[:-4],
                                                                 indices[-4]*block_in + indices[-2],
                                                                 indices[-3]*block_reduce + indices[-1])
         res = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
-            name="tensor_a_matrix",
+            name="tensor_a_zz",
             attrs={"mode": mode_info, "format_info": format_info})
 
         return res
@@ -651,7 +651,7 @@ class FormatCompute(object):
         res_matrix = tvm.compute(
             tensor_matrix_shape,
             lambda *indices: res_fract(*indices[:-4], 0, indices[-3], 0, indices[-1]),
-            name="tensor_a_matrix",
+            name="tensor_a_zz",
             attrs={"mode": mode_info, "format_info": format_info}
         )
         return res_matrix
@@ -714,14 +714,14 @@ class FormatCompute(object):
         tensor_transpose = tvm.compute(
             normalize_shape,
             lambda *indices: ori_tensor(*indices[:-2], indices[-1], indices[-2]),
-            name="b_transpose"
+            name="tensor_b_transpose"
         )
         res = tvm.compute(
             tensor_fract_shape,
             lambda *indices: tensor_transpose(*indices[:-4],
                                               indices[-3]*block_out + indices[-2],
                                               indices[-4]*block_reduce + indices[-1]),
-            name="tensor_b_matrix",
+            name="tensor_b_zn",
             attrs={"mode": mode_info, "format_info": format_info}
         )
         return res
@@ -895,7 +895,7 @@ class FormatCompute(object):
 
         return res
 
-    def compute_nz2nd(self, ori_tensor, output_shape=None, tensor_name="nz_to_nd", res_tag="", attrs_dict=None):
+    def compute_nz2nd(self, ori_tensor, output_shape=None, tensor_name="tensor_nz2nd", res_tag="", attrs_dict=None):
         """
         reshape the ori_tensor Nz to nd
         input params:

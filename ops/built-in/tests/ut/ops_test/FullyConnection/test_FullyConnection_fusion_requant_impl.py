@@ -115,6 +115,7 @@ ut_case.add_cust_test_func(
     ["Ascend710", "Ascend910A"], test_func=test_fully_connection_requant_fusion_dsl()
 )
 
+
 if __name__ == "__main__":
     ut_case.run(["Ascend910A"])
     sys.exit(0)
