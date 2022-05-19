@@ -48,7 +48,7 @@ class InplaceTopKDistanceCpuKernel : public CpuKernel {
     int32_t ivf;
   };
 
-  uint32_t GetInputAndCheck(CpuKernelContext& ctx, Inputs& inputs);
+  uint32_t GetInputAndCheck(CpuKernelContext& ctx, Inputs& inputs) const;
 
   template <typename T>
   uint32_t DoCompute(CpuKernelContext& ctx, Inputs& inputs);
