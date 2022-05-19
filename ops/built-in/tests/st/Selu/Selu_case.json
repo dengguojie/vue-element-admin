@@ -256,5 +256,56 @@
     ],
     "attr": [],
     "case_name": "test_Selu_005"
+  },
+  {
+    "op": "Selu",
+    "calc_expect_func_file":"test_selu_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Selu_006"
   }
 ]
