@@ -1040,6 +1040,8 @@ vector_B:
       - ops/built-in/op_tiling/unpack.cc
       - ops/built-in/op_tiling/unsorted_segment.cc
       - ops/built-in/op_tiling/unsorted_segment_sum.cc
+      - ops/built-in/op_tiling/as_strided.cc
+      - ops/built-in/op_tiling/as_strided.h
       - ops/built-in/tbe/impl/adam_apply_one.py
       - ops/built-in/tbe/impl/add_mat_mat_elements.py
       - ops/built-in/tbe/impl/apply_adagrad_d.py
@@ -1093,6 +1095,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/asin_grad.py
       - ops/built-in/tbe/impl/dynamic/asinh.py
       - ops/built-in/tbe/impl/dynamic/asinh_grad.py
+      - ops/built-in/tbe/impl/dynamic/as_strided.py
       - ops/built-in/tbe/impl/dynamic/avg_pool_1d.py
       - ops/built-in/tbe/impl/dynamic/axpy.py
       - ops/built-in/tbe/impl/dynamic/bessel_i0e.py
@@ -2103,7 +2106,6 @@ unkown:
       - ops/built-in/op_tiling/is_finite.cc
       - ops/built-in/op_tiling/transdata_dsl_general.h
       - ops/built-in/op_tiling/square_sum_all.cc
-      - ops/built-in/op_tiling/as_strided.cc
       - ops/built-in/op_tiling/prod_env_mat_a.cc
       - ops/built-in/op_tiling/prod_env_mat_a_calc_descrpt.cc
       - ops/built-in/op_tiling/ifmr.cc
@@ -2132,7 +2134,6 @@ unkown:
       - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
       - ops/built-in/op_tiling/extract_image_patches.cc
       - ops/built-in/op_tiling/bn_update_grad_tiling.cc
-      - ops/built-in/op_tiling/as_strided.h
       - ops/built-in/op_tiling/ger.cc
       - ops/built-in/op_tiling/batch_multi_class_non_max_suppression.cc
       - ops/built-in/op_tiling/scan_pq_codes.cc
@@ -2908,7 +2909,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/act_ulq_clamp_min_grad.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_prod.py
       - ops/built-in/tbe/impl/dynamic/diag.py
-      - ops/built-in/tbe/impl/dynamic/as_strided.py
       - ops/built-in/tbe/impl/dynamic/pad.py
       - ops/built-in/tbe/impl/dynamic/concat_offset.py
       - ops/built-in/tbe/impl/dynamic/reverse_v2.py

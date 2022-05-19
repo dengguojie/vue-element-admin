@@ -54,6 +54,7 @@ class AsStrided:
     BITS_PER_BYTE = 8
     PER_BLOCK_16_ELEMS = 16
     DUP_MASK = 128
+    REPEAT_LIMIT = 255
     MAX_INT64_VALUE = 2 ** 64 - 1
     TILING_SPACE = ("int64", 85, 128 * 8)
     TILING_LAST_STRIDE_IS_ONE = 3000
@@ -498,15 +499,26 @@ class AsStrided:
                                             self.reorder_src_stride * self.dtype_factor, 0)
         with self.tik_inst.else_scope():
             data_ub = self.data_ub.reinterpret_cast_to("int16")
+            lp_cnt = self.burst_valid_elems // AsStrided.REPEAT_LIMIT
+            lp_left = self.burst_valid_elems % AsStrided.REPEAT_LIMIT
             with self.tik_inst.new_stmt_scope(disable_sync=True):
                 with self.tik_inst.for_range(0, self.reorder_lp_cnt) as burst_idx:
                     target_offset = (burst_idx * self.burst_valid_elems *
                                      self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS)
                     source_offset = (self.out_ub_offset * AsStrided.PER_BLOCK_16_ELEMS // self.ele_per_block +
                                      burst_idx * self.reorder_gap * self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS)
-                    self.tik_inst.vor(self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS,
-                                      data_ub[target_offset], data_ub[source_offset], data_ub[source_offset],
-                                      self.burst_valid_elems, 1, 1, 1, self.dtype_factor, 0, 0)
+                    with self.tik_inst.for_range(0, lp_cnt) as lp_idx:
+                        target_offset_1 = (target_offset + lp_idx * AsStrided.REPEAT_LIMIT *
+                                           self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS)
+                        self.tik_inst.vor(self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS,
+                                        data_ub[target_offset_1], data_ub[source_offset], data_ub[source_offset],
+                                        AsStrided.REPEAT_LIMIT, 1, 1, 1, self.dtype_factor, 0, 0)
+                    with self.tik_inst.if_scope(lp_left > 0):
+                        target_offset_2 = (target_offset + lp_cnt * AsStrided.REPEAT_LIMIT *
+                                           self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS)
+                        self.tik_inst.vor(self.dtype_factor * AsStrided.PER_BLOCK_16_ELEMS,
+                                        data_ub[target_offset_2], data_ub[source_offset], data_ub[source_offset],
+                                        lp_left, 1, 1, 1, self.dtype_factor, 0, 0)
 
     def _transpose_by_vnchwconv_b16(self, data_len):
         """
