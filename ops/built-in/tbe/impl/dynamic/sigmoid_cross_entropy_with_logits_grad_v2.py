@@ -49,6 +49,17 @@ def get_cof_by_shape(predict_shape, precision_dtype):
     return cof
 
 
+def get_weight_shape(weight, predict_shape):
+    """
+    get weight shape
+    """
+    if weight is not None:
+        weight_shape = shape_util.shape_to_list(weight.shape)
+    else:
+        weight_shape = predict_shape
+    return weight_shape
+
+
 # 'pylint: disable=too-many-arguments
 @register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=False)
 def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
@@ -76,19 +87,12 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
     res : tvm.tensor
         tensor of result
     """
-    predict_shape = shape_util.shape_to_list(predict.shape)
     target_shape = shape_util.shape_to_list(target.shape)
+    predict_shape = shape_util.shape_to_list(predict.shape)
     dout_shape = shape_util.shape_to_list(dout.shape)
 
-    if weight is not None:
-        weight_shape = shape_util.shape_to_list(weight.shape)
-    else:
-        weight_shape = predict_shape
-
-    if pos_weight is not None:
-        pos_weight_shape = shape_util.shape_to_list(pos_weight.shape)
-    else:
-        pos_weight_shape = predict_shape
+    weight_shape = get_weight_shape(weight, predict_shape)
+    pos_weight_shape = get_weight_shape(pos_weight, predict_shape)
 
     predict_shape, target_shape, dout_shape, weight_shape, pos_weight_shape, max_shape = \
             shape_util.unify_broadcast_shapes([predict_shape, target_shape, dout_shape, weight_shape, pos_weight_shape])
@@ -106,10 +110,13 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
         dout = tbe.cast_to(dout, precision_dtype)
 
     # calculate sigmoid(predict)
-    exp_predict = tbe.vexp(predict)
-    exp_add1 = tbe.vadds(exp_predict, tvm.const(1, precision_dtype))
-    sigmoid_tmp = tbe.vdiv(exp_predict, exp_add1)
-    sigmoid_res = tbe.cast_to(sigmoid_tmp, precision_dtype)
+    const_num_neg_one = tvm.const(-1, dtype="float32")
+    const_num_one = tvm.const(1, dtype="float32")
+    tmp_negative = tbe.vmuls(predict, const_num_neg_one)
+    tmp_exp = tbe.vexp(tmp_negative)
+    tmp_sum = tbe.vadds(tmp_exp, const_num_one)
+    tensor_one = tbe.broadcast(tvm.const(1, "float32"), predict_shape)
+    sigmoid_res = tbe.vdiv(tensor_one, tmp_sum)
 
     # calculate the result of gradient = ((log_weight + 1 - target) * sigmoid(predict) - log_weight) * dout
     if pos_weight is not None:
