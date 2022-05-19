@@ -385,14 +385,14 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
   dilated_polys_offset_index->SetShape(ge::GeShape(UNKNOWN_SHAPE));
   dilated_polys_offset_index->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
 
-  auto polys_size_shape=op_desc->MutableInputDesc("polys_size")->GetShape();
+  auto polys_size_shape = op_desc->MutableInputDesc("polys_size")->GetShape();
   auto dilated_polys_size_index = op_desc->MutableOutputDesc("dilated_polys_size");
-  auto polys_size_index=op_desc->MutableInputDesc("polys_size");
+  auto polys_size_index = op_desc->MutableInputDesc("polys_size");
   std::vector<std::pair<int64_t, int64_t>> dilated_polys_size_range;
   if (polys_size_shape.GetDims() == UNKNOWN_RANK || polys_size_shape.GetDims() == UNKNOWN_SHAPE) {
     std::vector<std::pair<int64_t,int64_t>> polys_size_range;
     polys_size_index->GetShapeRange(polys_size_range);
-    int64_t polys_size_max=polys_size_range[0].second;
+    int64_t polys_size_max = polys_size_range[0].second;
     std::pair<int64_t, int64_t> size_range({0, polys_size_max});
     dilated_polys_size_range.push_back(size_range);
     dilated_polys_size_index->SetShapeRange(dilated_polys_size_range);
