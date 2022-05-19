@@ -80,7 +80,7 @@ const char ALIGNED_FLAG = '2';
 }
 namespace optiling {
 struct OpRunInfoParas {
-  BatchmatmulParas params;
+  BatchmatmulRunParas params;
   int32_t batch_single_core = 1;
   int32_t m_single_core = 1;
   int32_t n_single_core = 1;
@@ -122,7 +122,7 @@ struct OpRunInfoParas {
 struct GemmCompileInfo {
   uint32_t workspace_num = 0;
   uint32_t ub_size = 0;
-  BatchmatmulParas params;
+  BatchmatmulCompileParas params;
   string dynamic_mode;
   bool trans_a;
   bool trans_b;
@@ -135,7 +135,7 @@ struct GemmCompileInfo {
 };
 
 bool GetGEMMBatch(const string &op_type, const ge::GeShape &shape_a, const ge::GeShape &shape_b,
-                  BatchmatmulParas &params) {
+                  BatchmatmulRunParas &params) {
   int32_t num_dima = shape_a.GetDimNum();
   int32_t num_dimb = shape_b.GetDimNum();
   if (num_dima < DIM_NUM && num_dimb < DIM_NUM) {
@@ -175,8 +175,11 @@ bool GetGEMMBatch(const string &op_type, const ge::GeShape &shape_a, const ge::G
   return true;
 }
 
-bool CalcGEMMMknb(const string &op_type, ge::DataType dtype, const ge::GeShape &ori_shape_a,
-                  const ge::GeShape &ori_shape_b, shared_ptr<GemmCompileInfo> &compile_value) {
+bool CalcGEMMMknb(const ge::OpDescPtr &op_desc, const ge::GeShape &ori_shape_a,
+                  const ge::GeShape &ori_shape_b, shared_ptr<GemmCompileInfo> &compile_value,
+                  BatchmatmulRunParas &params) {
+  string op_type = op_desc->GetType();
+  ge::DataType dtype = op_desc->GetInputDescPtr(0)->GetDataType();
   int32_t block_reduce = kBlockReduce, block_in = kBlockIn, block_out = kBlockOut;
   bool is_int8_type = dtype == ge::DT_INT8 || dtype == ge::DT_UINT8;
   if (is_int8_type) {
@@ -202,28 +205,26 @@ bool CalcGEMMMknb(const string &op_type, ge::DataType dtype, const ge::GeShape &
                   CUBE_INNER_ERR_REPORT(op_type.c_str(), "The k-axis of a and b tensors must be the same"),
                   return false);
 
-  compile_value->params.m = ceil(static_cast<double>(ori_shape_a.GetDim(idx_m_of_a)) / block_in);
-  compile_value->params.k = ceil(static_cast<double>(ori_shape_a.GetDim(idx_k_of_a)) / block_reduce);
-  compile_value->params.n = ceil(static_cast<double>(ori_shape_b.GetDim(idx_n_of_b)) / block_out);
-  bool unvalid_dim =
-      compile_value->params.m > INT_MAX || compile_value->params.k > INT_MAX || compile_value->params.n > INT_MAX;
+  params.m = ceil(static_cast<double>(ori_shape_a.GetDim(idx_m_of_a)) / block_in);
+  params.k = ceil(static_cast<double>(ori_shape_a.GetDim(idx_k_of_a)) / block_reduce);
+  params.n = ceil(static_cast<double>(ori_shape_b.GetDim(idx_n_of_b)) / block_out);
+  bool unvalid_dim = params.m > INT_MAX || params.k > INT_MAX || params.n > INT_MAX;
   OP_TILING_CHECK(
       unvalid_dim,
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "The m,k,n of a and b tensors' shape must not larger than INT_MAX"),
       return false);
-  compile_value->params.m_32 = static_cast<int32_t>(compile_value->params.m);
-  compile_value->params.k_32 = static_cast<int32_t>(compile_value->params.k);
-  compile_value->params.n_32 = static_cast<int32_t>(compile_value->params.n);
+  params.m_32 = static_cast<int32_t>(params.m);
+  params.k_32 = static_cast<int32_t>(params.k);
+  params.n_32 = static_cast<int32_t>(params.n);
 
   if (compile_value->params.format_a == "ND") {
-    compile_value->params.ori_shape_M = ori_shape_a.GetDim(idx_m_of_a);
-    compile_value->params.ori_shape_K = ori_shape_a.GetDim(idx_k_of_a);
+    params.ori_shape_M = ori_shape_a.GetDim(idx_m_of_a);
+    params.ori_shape_K = ori_shape_a.GetDim(idx_k_of_a);
   }
   if (compile_value->params.format_b == "ND") {
-    compile_value->params.ori_shape_N = ori_shape_b.GetDim(idx_n_of_b);
+    params.ori_shape_N = ori_shape_b.GetDim(idx_n_of_b);
   }
-  bool unvalid_ori_shape = compile_value->params.ori_shape_M > INT_MAX || compile_value->params.ori_shape_K > INT_MAX ||
-                           compile_value->params.ori_shape_N > INT_MAX;
+  bool unvalid_ori_shape = params.ori_shape_M > INT_MAX || params.ori_shape_K > INT_MAX || params.ori_shape_N > INT_MAX;
   OP_TILING_CHECK(
       unvalid_ori_shape,
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "The m,k,n of a and b tensors' ori_shape must not larger than INT_MAX"),
@@ -232,15 +233,15 @@ bool CalcGEMMMknb(const string &op_type, ge::DataType dtype, const ge::GeShape &
                      compile_value->params.format_b == "ND";
   if (is_nd_input) {
     // Aligned schedule pattern selection is only enabled in ND input format
-    bool aligned_m = compile_value->params.ori_shape_M % block_in == 0;
-    bool aligned_k = compile_value->params.ori_shape_K % block_reduce == 0;
-    bool aligned_n = compile_value->params.ori_shape_N % block_out == 0;
+    bool aligned_m = params.ori_shape_M % block_in == 0;
+    bool aligned_k = params.ori_shape_K % block_reduce == 0;
+    bool aligned_n = params.ori_shape_N % block_out == 0;
     bool aligned_mkn = aligned_m && aligned_k && aligned_n;
     if (aligned_mkn) {
-      compile_value->params.used_aligned_pattern = true;
+      params.used_aligned_pattern = true;
     }
   }
-  return GetGEMMBatch(op_type, ori_shape_a, ori_shape_b, compile_value->params);
+  return GetGEMMBatch(op_type, ori_shape_a, ori_shape_b, params);
 }
 
 string StringTeOperator(const ge::TensorDesc &tensor) {
@@ -289,7 +290,7 @@ string DebugCompileInfoGEMM(const json &compile_info) {
 }
 
 string CheckTilingInRepo(const string &op_type, const map<string, vector<int64_t>> &repo_seeds,
-                         const map<string, vector<int64_t>> &repo_range, const BatchmatmulParas &params,
+                         const map<string, vector<int64_t>> &repo_range, const BatchmatmulRunParas &params,
                          bool isBatchMatmulMode) {
   string tiling_id("-1");
   int64_t min_distance = LLONG_MAX;
@@ -308,7 +309,7 @@ string CheckTilingInRepo(const string &op_type, const map<string, vector<int64_t
     if (isBatchMatmulMode) {
       in_range = in_range && range[kIdxBLow] <= params.batch && params.batch <= range[kIdxBHigh];
     }
-    BatchmatmulParas seed_params;
+    BatchmatmulRunParas seed_params;
     seed_params.m = seed[kIdxM];
     seed_params.k = seed[kIdxK];
     seed_params.n = seed[kIdxN];
@@ -332,7 +333,7 @@ string CheckTilingInRepo(const string &op_type, const map<string, vector<int64_t
 }
 
 string CheckTilingInCostModel(const string &op_type, const map<string, vector<int64_t>> &cost_range,
-                              const BatchmatmulParas &params, bool isBatchMatmulMode) {
+                              const BatchmatmulRunParas &params, bool isBatchMatmulMode) {
   string tiling_id("-1");
   auto element = cost_range.begin();
   while (element != cost_range.end()) {
@@ -352,7 +353,7 @@ string CheckTilingInCostModel(const string &op_type, const map<string, vector<in
   return tiling_id;
 }
 
-void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
+void FillRunInfoParas(const BatchmatmulCompileParas &params, const Tiling &tiling, OpRunInfoParas &runinfoparas) {
   runinfoparas.batch_dim = tiling.batch_dim;
   runinfoparas.n_dim = tiling.n_dim;
   runinfoparas.m_dim = tiling.m_dim;
@@ -375,7 +376,7 @@ void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
     runinfoparas.n_bl1 = ceil(static_cast<double>(runinfoparas.params.n_32 / runinfoparas.n_dim) / runinfoparas.n_l0);
   }
   runinfoparas.cub_n1 = tiling.n_cub;
-  if (runinfoparas.params.nd_flag) {
+  if (params.nd_flag) {
     runinfoparas.k_aub = tiling.k_aub;
     runinfoparas.m_aub = tiling.m_aub;
     runinfoparas.multi_m_ub_l1 = runinfoparas.m_al1 * runinfoparas.m_l0 / tiling.m_aub;
@@ -407,12 +408,13 @@ void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
                                    int32_t(1));
 }
 
-void SetRunInfoForCacheTiling(const OpRunInfoParas &runinfoparas, utils::OpRunInfo &run_info) {
-  if (runinfoparas.params.format_a == "ND") {
+void SetRunInfoForCacheTiling(const BatchmatmulCompileParas &params, const OpRunInfoParas &runinfoparas,
+                              utils::OpRunInfo &run_info) {
+  if (params.format_a == "ND") {
     run_info.AddTilingData(runinfoparas.params.m_32);
     run_info.AddTilingData(runinfoparas.params.k_32);
   }
-  if (runinfoparas.params.format_b == "ND") {
+  if (params.format_b == "ND") {
     run_info.AddTilingData(runinfoparas.params.n_32);
   }
   run_info.AddTilingData(runinfoparas.batch_single_core);
@@ -435,7 +437,7 @@ void SetRunInfoForCacheTiling(const OpRunInfoParas &runinfoparas, utils::OpRunIn
   run_info.AddTilingData(runinfoparas.kal1_16);
   run_info.AddTilingData(runinfoparas.kbl1_16);
   run_info.AddTilingData(runinfoparas.kl1_times);
-  if (runinfoparas.params.nd_flag) {
+  if (params.nd_flag) {
     run_info.AddTilingData(runinfoparas.m_aub);
     run_info.AddTilingData(runinfoparas.n_bub);
     run_info.AddTilingData(runinfoparas.k_aub);
@@ -451,8 +453,9 @@ void SetRunInfoForCacheTiling(const OpRunInfoParas &runinfoparas, utils::OpRunIn
   }
 }
 
-void SetRunInfo(const bool &isBatchMatmulMode, string &tiling_id, const map<string, int64_t> &block_dim_info,
-                const OpRunInfoParas &runinfoparas, utils::OpRunInfo &run_info) {
+void SetRunInfo(const BatchmatmulCompileParas &compile_params, string &tiling_id,
+                const map<string, int64_t> &block_dim_info, const OpRunInfoParas &runinfoparas,
+                utils::OpRunInfo &run_info) {
   bool is_cache_tiling = tiling_id.length() == CACHE_TILING_ID_LEN_NZ ||
       tiling_id.length() == CACHE_TILING_ID_LEN_ND || tiling_id.length() == CACHE_TILING_ID_LEN_NZ_SPLIT_K ||
       tiling_id.length() == CACHE_TILING_ID_LEN_ND_SPLIT_K;
@@ -470,23 +473,23 @@ void SetRunInfo(const bool &isBatchMatmulMode, string &tiling_id, const map<stri
     tiling_id[0] = ALIGNED_FLAG;
   }
   run_info.SetTilingKey(stoi(tiling_id));
-  if (runinfoparas.params.format_a == "ND") {
+  if (compile_params.format_a == "ND") {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_M));
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_K));
   } else {
     run_info.AddTilingData(runinfoparas.params.m_32);
     run_info.AddTilingData(runinfoparas.params.k_32);
   }
-  if (runinfoparas.params.format_b == "ND") {
+  if (compile_params.format_b == "ND") {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_N));
   } else {
     run_info.AddTilingData(runinfoparas.params.n_32);
   }
-  if (isBatchMatmulMode) {
+  if (runinfoparas.params.is_batch_matmul_mode) {
     run_info.AddTilingData(runinfoparas.params.batch_32);
   }
   if (is_cache_tiling) {
-    SetRunInfoForCacheTiling(runinfoparas, run_info);
+    SetRunInfoForCacheTiling(compile_params, runinfoparas, run_info);
   }
 }
 
@@ -551,7 +554,7 @@ bool GemmParseFunc(const string &op_type, const json &compile_info, vector<share
 }
 
 bool UpdateGemmCompileValue(const string &op_type, const ge::Operator &op_paras,
-                            shared_ptr<GemmCompileInfo> &compile_value) {
+                            shared_ptr<GemmCompileInfo> &compile_value, BatchmatmulRunParas &run_params) {
   OP_TILING_CHECK((op_paras.GetInputsSize() < 2), CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_paras is unvalid"),
                   return false);
 
@@ -562,7 +565,6 @@ bool UpdateGemmCompileValue(const string &op_type, const ge::Operator &op_paras,
   ge::ConstGeTensorDescPtr tensor_b = op_desc->GetInputDescPtr(1);
   ge::GeShape ori_shape_a = tensor_a->GetOriginShape();
   ge::GeShape ori_shape_b = tensor_b->GetOriginShape();
-  ge::DataType dtype = tensor_a->GetDataType();
 
   int64_t input_size = 0;
   int64_t hidden_size = 0;
@@ -575,7 +577,7 @@ bool UpdateGemmCompileValue(const string &op_type, const ge::Operator &op_paras,
     ori_shape_b.SetDim(0, align_dim);
     ori_shape_b.SetDim(1, hidden_size_align * KMULTI);
   }
-  OP_TILING_CHECK((!CalcGEMMMknb(op_type, dtype, ori_shape_a, ori_shape_b, compile_value)),
+  OP_TILING_CHECK((!CalcGEMMMknb(op_desc, ori_shape_a, ori_shape_b, compile_value, run_params)),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch"),
   return false);
   return true;
@@ -585,37 +587,37 @@ string GEMMTilingSelect(const string &op_type, const ge::Operator &op_paras, sha
                         utils::OpRunInfo &run_info) {
   string tiling_id("-1");
   Tiling tiling;
+  OpRunInfoParas runinfoparas;
   const auto& dynamic_mode = compile_value->dynamic_mode;
-  bool isBatchMatmulMode = (dynamic_mode == "dynamic_mknb" || op_type == "BatchMatMulV2" || op_type == "BatchMatMul");
-  OP_TILING_CHECK((dynamic_mode != "dynamic_mkn" && !isBatchMatmulMode),
+  bool is_batch_matmul_mode = (dynamic_mode == "dynamic_mknb" || op_type == "BatchMatMulV2" || op_type == "BatchMatMul");
+  OP_TILING_CHECK((dynamic_mode != "dynamic_mkn" && !is_batch_matmul_mode),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb"),
   return tiling_id);
-
-  OP_TILING_CHECK((!UpdateGemmCompileValue(op_type, op_paras, compile_value)),
+  runinfoparas.params.is_batch_matmul_mode = is_batch_matmul_mode;
+  OP_TILING_CHECK((!UpdateGemmCompileValue(op_type, op_paras, compile_value, runinfoparas.params)),
                   CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to update compile value"), return tiling_id);
   if (compile_value->repo_seed_flag) {
-    tiling_id = CheckTilingInRepo(op_type, compile_value->repo_seeds, compile_value->repo_range, compile_value->params,
-                                  isBatchMatmulMode);
+    tiling_id = CheckTilingInRepo(op_type, compile_value->repo_seeds, compile_value->repo_range, runinfoparas.params,
+                                  is_batch_matmul_mode);
   }
-  OpRunInfoParas runinfoparas;
-  runinfoparas.params = compile_value->params;
+
   if (tiling_id == "-1") {
     if (compile_value->repo_costmodel_flag) {
-      tiling_id = CheckTilingInCostModel(op_type, compile_value->cost_range, runinfoparas.params, isBatchMatmulMode);
+      tiling_id = CheckTilingInCostModel(op_type, compile_value->cost_range, runinfoparas.params, is_batch_matmul_mode);
     }
     if (tiling_id == "-1") {
-      GenTiling(op_type, runinfoparas.params, tiling, tiling_id);
+      GenTiling(op_type, compile_value->params, runinfoparas.params, tiling, tiling_id);
       if (tiling_id != "-1") {
         OP_LOGD(op_type.c_str(), "match tiling_id(%s) in cache tiling mode", tiling_id.c_str());
       } else {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate tiling from cache tiling mode");
         return tiling_id;
       }
-      FillRunInfoParas(tiling, runinfoparas);
+      FillRunInfoParas(compile_value->params, tiling, runinfoparas);
     }
   }
   if (tiling_id != "-1") {
-    SetRunInfo(isBatchMatmulMode, tiling_id, compile_value->block_dim, runinfoparas, run_info);
+    SetRunInfo(compile_value->params, tiling_id, compile_value->block_dim, runinfoparas, run_info);
   }
   return tiling_id;
 }

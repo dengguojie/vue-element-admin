@@ -37,7 +37,29 @@
 #include "op_log.h"
 
 namespace optiling {
-struct BatchmatmulParas {
+struct BatchmatmulCompileParas {
+  bool binary_mode_flag = false;
+  bool bias_flag = false;
+  bool nd_flag = false;
+  bool trans_a_flag = false;
+  bool trans_b_flag = false;
+  bool ubdb_flag = false;
+  bool at_l1_flag = true;
+  bool cub_reused_flag = false;
+  bool split_k_flag = false;
+  float fused_double_operand_num = 0;
+  float aub_double_num = 0;
+  float bub_double_num = 0;
+  int32_t l2_size = (1024 * 1024);
+  int32_t core_num = 32;
+  std::string format_a;
+  std::string format_b;
+};
+
+struct BatchmatmulRunParas {
+  bool b_have_batch = false;  // dim num > 2
+  bool is_batch_matmul_mode = false;  // (BatchMatMulV2 or BatchMatMul) and (dynamic_mode == "dynamic_mknb")
+  bool used_aligned_pattern = false;
   int32_t m_32 = 1;
   int32_t k_32 = 1;
   int32_t n_32 = 1;
@@ -49,24 +71,11 @@ struct BatchmatmulParas {
   int64_t ori_shape_M = 1;
   int64_t ori_shape_K = 1;
   int64_t ori_shape_N = 1;
-  int32_t l2_size = (1024 * 1024);
-  std::string format_a;
-  std::string format_b;
-  bool used_aligned_pattern = false;
-  bool binary_mode_flag = false;
-  bool b_have_batch = false;
-  bool bias_flag = false;
-  bool nd_flag = false;
-  bool trans_a_flag = false;
-  bool trans_b_flag = false;
-  float fused_double_operand_num = 0;
-  float aub_double_num = 0;
-  float bub_double_num = 0;
-  int32_t core_num = 32;
-  bool ubdb_flag = false;
-  bool at_l1_flag = true;
-  bool cub_reused_flag = false;
-  bool split_k_flag = false;
+};
+
+struct BatchmatmulParas {
+  const BatchmatmulCompileParas *compile_params = nullptr;
+  const BatchmatmulRunParas *run_params = nullptr;
 };
 
 struct CoreStatus {
@@ -263,48 +272,12 @@ public:
   void SetParams(const CoreStatus& coreStatus, const L0Status& l0Status, const L1Status& l1Status,
                  const UbStatus& ubStatus, const BatchmatmulParas& params);
   void SetAttachFlag();
-  void GetTilingId(const BatchmatmulParas& params);
+  void GetTilingId(const BatchmatmulCompileParas& params);
   ~Tiling() = default;
 };
 
-void GetFactors(int32_t* cnt, int32_t* factorList, const int32_t& num,
-                const int32_t& maxNum);
-void GetTwoFactors(int32_t* res, const int32_t& base, const int32_t& dim,
-                   const int32_t& maxNum);
-void GetNearestFactor(const int32_t& base, int32_t& factor);
-void BL1FullLoadBlock(const CoreStatus& coreStatus, BlockDimCalculator& blockDimCalculator, int32_t& n0);
-void AL1FullLoadBlock(const CoreStatus& coreStatus, BlockDimCalculator& blockDimCalculator, int32_t& m0);
-int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, CoreStatus& coreStatus);
-int32_t GetLoadSize(const CoreStatus& coreStatus, const L0Status& l0Status);
-MKNParasCombo GetParasCombo(const int32_t& index, const int32_t& blockValue);
-void GetFinalMkn(L0Status& l0Status, const CoreStatus& coreStatus);
-void GetL0StatusFromParasCombo(L0Status& l0Status, int32_t* parasCombo);
-void SetResFactors(L0Factors* resFactors, const L0Status& l0Status);
-void GetL0FactorsCand(L0Factors *resFactors, const CoreStatus &coreStatus, L0Status &l0Status,
-                      int32_t *parasCombo);
-void GetL0Factors(const std::string& op_type, const CoreStatus& coreStatus, const int32_t& blockValue,
-                  L0Status& l0Status);
-int32_t GetL1Size(const L1Status& l1Status, const L0Status& l0Status);
-void CheckSpecialTemplate(const std::string& op_type, const CoreStatus& coreStatus, const L0Status& l0Status,
-                          L1Status& l1Status);
-void L1StatusBothFullLoad(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
-                          int32_t res[][7]);
-void L1StatusAl1FullLoad(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
-                         int32_t res[][7]);
-void L1StatusBl1FullLoad(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
-                         int32_t res[][7]);
-void NeitherFullLoadDb(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
-                       const int32_t& kbl1Db);
-void NeitherFullLoadMN(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
-                       const BatchmatmulParas& params);
-void NeitherFullLoadK(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
-                      const BatchmatmulParas& params);
-void L1StatusNeitherFullLoad(const CoreStatus& coreStatus, const BatchmatmulParas& params,
-                             const L0Status& l0Status, L1Status& l1Status, int32_t res[][7]);
-void GetL1Factors(const std::string& op_type, const BatchmatmulParas& params, const CoreStatus& coreStatus,
-                  const L0Status& l0Status, L1Status& l1Status);
-void GetUbFactors(const std::string& op_type, const L0Status& l0Status, UbStatus& ubStatus);
-void GenTiling(const std::string& op_type, const BatchmatmulParas& params, Tiling& tiling, std::string& tilingId);
+void GenTiling(const std::string &op_type, const BatchmatmulCompileParas &compile_params,
+               const BatchmatmulRunParas &run_params, Tiling &tiling, std::string &tilingId);
 }; // namespace optiling
 
 #endif
