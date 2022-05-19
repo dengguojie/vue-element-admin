@@ -28,6 +28,8 @@ class MatMulBiasAddFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  bool IsNorange(ge::OpDescPtr& matmulOpDesc) const;
+  bool CheckRange(const std::vector<std::pair<int64_t, int64_t>>& ranges) const;
 
  private:
   const std::string CONSTANTOP = "Constant";

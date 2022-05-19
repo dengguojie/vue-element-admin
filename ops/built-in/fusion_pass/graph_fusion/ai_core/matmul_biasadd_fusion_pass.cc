@@ -67,6 +67,29 @@ vector<FusionPattern*> MatMulBiasAddFusionPass::DefinePatterns() {
   return patterns;
 }
 
+bool MatMulBiasAddFusionPass::CheckRange(const std::vector<std::pair<int64_t, int64_t>> &ranges) const {
+  for (auto cur_range : ranges) {
+    if (cur_range.second == -1) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool MatMulBiasAddFusionPass::IsNorange(ge::OpDescPtr &matmulOpDesc) const {
+  ge::GeShape firstInputShape = matmulOpDesc->MutableInputDesc(0)->GetShape();
+  ge::GeShape secondInputShape = matmulOpDesc->MutableInputDesc(1)->GetShape();
+  if (firstInputShape.IsUnknownShape() || secondInputShape.IsUnknownShape()) {
+    return true;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> input0Ranges;
+  std::vector<std::pair<int64_t, int64_t>> input1Ranges;
+  matmulOpDesc->MutableInputDesc(0)->GetShapeRange(input0Ranges);
+  matmulOpDesc->MutableInputDesc(1)->GetShapeRange(input1Ranges);
+  return (!CheckRange(input0Ranges) || !CheckRange(input1Ranges));
+}
+
 Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr nodeMatMul = GetNodeFromMapping(PATTERN_MATMUL, mapping);
   ge::NodePtr nodeBias = GetNodeFromMapping(PATTERN_BIAS, mapping);
@@ -82,16 +105,16 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return PARAM_INVALID);
 
   auto biasAddOpDesc = nodeBiasAdd->GetOpDesc();
-  auto matMulOpDesc = nodeMatMul->GetOpDesc();
+  auto matmulOpDesc = nodeMatMul->GetOpDesc();
   FUSION_PASS_CHECK(biasAddOpDesc == nullptr,
                     CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOpDesc] must not be null."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(matMulOpDesc == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[matMulOpDesc] must not be null."),
+  FUSION_PASS_CHECK(matmulOpDesc == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[matmulOpDesc] must not be null."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(!CheckOpSupported(matMulOpDesc),
+  FUSION_PASS_CHECK(!CheckOpSupported(matmulOpDesc),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul[%s] is not supported by FE, fusion abort.",
-                            matMulOpDesc->GetName().c_str()),
+                            matmulOpDesc->GetName().c_str()),
                     return NOT_CHANGED);
   if (nodeBiasAdd->GetType() == ADD) {
     auto input0desc = GetCurrNodeInputDesc(nodeBiasAdd, DIMENSION_0);
@@ -145,9 +168,14 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
   // to add node bias as third input, nodeMatMul must have 2 InDataAnchor
   // and 2 InputDesc(referenced AddLinkFrom())
-  FUSION_PASS_CHECK(matMulOpDesc->GetInputsSize() != MATMUL_INPUT_NUM,
+  FUSION_PASS_CHECK(matmulOpDesc->GetInputsSize() != MATMUL_INPUT_NUM,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMul node should have 2 inputs, acutal %zu",
                             nodeMatMul->GetInAllNodes().size()), return NOT_CHANGED);
+
+  // check nodeMatMul must have range
+  FUSION_PASS_CHECK(IsNorange(matmulOpDesc),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "MatMul node should have norange."),
+                    return NOT_CHANGED);
 
   // check nodeMatMul must have only one output to nodeBiasAdd
   FUSION_PASS_CHECK(nodeMatMul->GetOutDataNodes().size() != 1,
@@ -166,7 +194,7 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return NOT_CHANGED);
 
   // add HAS_BIAS attr to MatMul, and set value with "true"
-  FUSION_PASS_CHECK(ge::AttrUtils::SetBool(matMulOpDesc, HAS_BIAS, true) == false,
+  FUSION_PASS_CHECK(ge::AttrUtils::SetBool(matmulOpDesc, HAS_BIAS, true) == false,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr:has_bias=true to matmul failed"),
                     return FAILED);
 
