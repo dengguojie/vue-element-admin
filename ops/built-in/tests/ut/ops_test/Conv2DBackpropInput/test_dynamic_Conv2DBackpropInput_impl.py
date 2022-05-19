@@ -694,7 +694,7 @@ def _test_dx_transdata_fusion_op(test_args):
                 'ori_format': "NCHW",
                 'ori_shape': [-1, -1, -1, -1],
                 'dtype': dtype,
-                'range': [(1, None)] * 4
+                'range': [(1, None)] * 4,
             }
 
             var_filter_ci1hw = operation.var("filter_ci1hw")
@@ -729,7 +729,7 @@ def _test_transdata_dx_transdata_fusion_op(test_args):
                 'ori_format': "NCHW",
                 'ori_shape': [-1, -1, -1, -1],
                 'dtype': dtype,
-                'range': [(1, None)] * 4
+                'range': [(1, None)] * 4,
             }
 
             var_n = operation.var("batch_n")
@@ -779,7 +779,6 @@ ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdat
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_fusion_op)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_shape_util)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_shape_util)
-
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

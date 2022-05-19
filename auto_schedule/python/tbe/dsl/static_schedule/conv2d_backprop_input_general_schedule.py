@@ -1073,7 +1073,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     load3d_special_multiply = tensor_attr.get("load3d_special_multiply")
 
     if dyn_util.dynamic_mode == "binary":
-        if isinstance(stride_h, int):
+        if tensor_attr.get("NCHW_TRANS_5HD"):
             # nchw trans to nc1hwc0 in aub
             dyn_util.format_a = "NCHW"
             dyn_util.get_var_from_tensor(a_ub_nc1hwc0, b_ddr)
@@ -3021,9 +3021,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                         factor_len = (0 if unit[idx] == 1 else offset_idx)
                         c_offset = c_offset + axis[idx] * factor_len
                     # remove limit of C1 axis except deconv_requant_fuison
-                    if dyn_util.dynamic_mode == "binary":
+                    if tensor_attr.get('5HD_TRANS_NCHW'):
                         c_offset = tvm.div(c_offset, 16)
-                    elif deconv_res.dtype != "int8":
+                    elif deconv_res.dtype != "int8" and dyn_util.dynamic_mode != "binary":
                         c_offset, cl0_matrix_n = None, None
 
                     sch[c_col].buffer_tile(
@@ -3262,9 +3262,10 @@ class DxDynamicUtil():
         sch.set_constraint((
             ((self.shape_vars.get('dy_c1_extend') * kernel_h * kernel_w) % self.tiling_vars.get("k_l0") == 0)
             ).asnode())
-        sch.set_var_value(self.shape_vars.get("filter_ci1hw"),
-                          self.shape_vars.get("g_extend") * self.shape_vars.get("dx_c1_extend") *
-                          kernel_h * kernel_w)
+        if isinstance(self.shape_vars.get("filter_ci1hw"), tvm.expr.Var):
+            sch.set_var_value(self.shape_vars.get("filter_ci1hw"),
+                self.shape_vars.get("g_extend") * self.shape_vars.get("dx_c1_extend") *
+                kernel_h * kernel_w)
         sch[b_col].skip_bound_check()
 
     def set_cache_tiling(self, sch):

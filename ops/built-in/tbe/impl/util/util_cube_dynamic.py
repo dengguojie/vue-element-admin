@@ -793,7 +793,6 @@ class CubeParaProcess:
             return True
         return False
 
-
     def check_dynamic_channel_scene(self, in_shape, out_shape, channel):
         """
         check if valid dynamic channel scene
@@ -1071,17 +1070,25 @@ class CubeParaProcess:
 
         return {"enlarge": enlarge, "c1_opt": c1_opt, "cout1_opt": cout1_opt, "group_opt": group_opt}
 
-    def get_binary_mode(self, dynamic_range):
+    def get_binary_mode(self, none_range_flag, ori_format):
         """
-        get binary mode, True if -1 in attr or None in range
+        -------------------------------------------------------
+        | binary mode |                                       |
+        -------------------------------------------------------
+        |      0      |  non-binary                           |
+        |      1      |  binary without transdata fusion      |
+        |      2      |  binary with transdata fusion of NCHW |
+        |      3      |  binary with transdata fusion of NHWC |
         """
-        if self.fusion_flag:
-            for idx_range in dynamic_range:
-                if not idx_range:
-                    return True
-                if not idx_range[0] or not idx_range[1]:
-                    return True
-        return False
+        if self.groups != 1 and self.groups != -1:
+            return 0
+
+        if none_range_flag:
+            if not self.fusion_flag:
+                return 1
+            elif ori_format == "NCHW":
+                return 2
+        return 0
 
     def correct_pads(self, fmap, out_backprop, filters):
         """
@@ -1395,8 +1402,10 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.pads = (operation.var("padt"), operation.var("padb"),
                      operation.var("padl"), operation.var("padr"))
         _, _, pos_h, pos_w = pos_from_format(self.data_format)
+        stride_h = operation.var("stride_h")
+        stride_w = operation.var("stride_w")
         if self.strides[pos_h] != 1 or self.strides[pos_w] != 1:
-            self.strides = (1, 1, operation.var("stride_h"), operation.var("stride_w"))
+            self.strides = (1, 1, stride_h, stride_w)
         operation.var("shape_up_modify")
         operation.var("shape_left_modify")
         operation.var("shape_down_modify")
@@ -1431,12 +1440,36 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         operation.var("bl1_bound")
         operation.var("aub_bound")
 
+    @staticmethod
+    def _get_none_range_flag(dynamic_range):
+        """
+        Determine whether it is a None range scene
+        """
+        if not dynamic_range:
+            return True
+        for idx_range in dynamic_range:
+            if not idx_range or not idx_range[0] or not idx_range[1]:
+                return True
+        return False
+
     def _infer_binary_shape_range_attrs(self):
         """
         define vars for binary mode
         """
         # support both Tensor input and dict input
-        batch, dy_c1, dedy_h, dedy_w, dy_c0 = self.out_backprop.shape
+        if isinstance(self.out_backprop, dict):
+            filter_ci1hw = operation.var("filter_ci1hw")
+            dy_c1_extend = operation.var("filter_col")
+            batch = operation.var("batch")
+            dy_c1 = operation.var("dedy_c1")
+            dedy_h = operation.var("dedy_h")
+            dedy_w = operation.var("dedy_w")
+            dedy_dtype = self.out_backprop.get("dtype")
+            dy_c0 = BLOCK_K_DICT.get(dedy_dtype)
+        else:
+            # fusion condition
+            batch, dy_c1, dedy_h, dedy_w, dy_c0 = self.out_backprop.shape
+            dy_c1_extend = self.filters.shape[1]
         dx_c = operation.var("dx_c")
         dx_c1 = operation.var("dx_c1")
         dx_h = operation.var("dx_h")
@@ -1449,7 +1482,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.attrs["group_para"] = {"g_extend": g_extend,
                                     "multiple_extend": operation.var("multiple_extend"),
                                     "dx_c1_extend": dx_c1_extend,
-                                    "dy_c1_extend": self.filters.shape[1]}
+                                    "dy_c1_extend": dy_c1_extend}
 
         self.shape["dy_shape_nc1hwc0"] = (batch, dy_c1, dedy_h, dedy_w, dy_c0)
         self.shape["dy_shape_nchw"] = (batch, dy_c1 * dy_c0, dedy_h, dedy_w)
@@ -1488,12 +1521,13 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.check_format(self.data_format, "output")
         if self.y.get("ori_format") != self.data_format:
             err_man.raise_err_specific_user(
-                "conv2d_backprop_input", "the format of y and data_format are not the same.")
+                "conv2d_backprop_input", "the ori_format of y and data_format are not the same.")
         para_check.check_kernel_name(self.paras.get("kernel_name"))
         self.check_para_dim(self.strides, "strides")
         self.check_para_dim(self.dilations, "dilations")
         self.check_para_dim(self.pads, "pads")
-        self.binary_mode = self.get_binary_mode(self.y.get("range"))
+        none_range_flag = self._get_none_range_flag(self.y.get("range"))
+        self.binary_mode = self.get_binary_mode(none_range_flag, self.data_format)
 
     def _config_shape(self):
         """
@@ -1528,7 +1562,6 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.shape['dy_shape_nc1hwc0'] = dy_shape_nc1hwc0
         self.calc_pads(input_size, self.shape.get("filter_shape_nchw"))
         self._calc_filter_shape_fz()
-
 
     def _infer_shape_nchw(self):
         """

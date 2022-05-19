@@ -162,7 +162,6 @@ def test_dx_transdata_fusion_op():
             input_tensor = tvm.placeholder([4], name="input_size", dtype="int32")
             dy_tensor = tvm.placeholder(dy_shape_nc1hwc0, name="dedy", dtype=dtype)
             filter_tensor = tvm.placeholder(filter_fz, name="filter", dtype=dtype)
-
             tensor_list = [input_tensor, filter_tensor, dy_tensor]
             _build_dx_transdata_fusion_op(tensor_list, y, (1, 1, 2, 2), dy_tensor, "dx_transdata_fusion_binary")
     te_set_version("Ascend310")

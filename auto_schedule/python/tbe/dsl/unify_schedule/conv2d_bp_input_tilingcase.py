@@ -51,6 +51,9 @@ FUSED_DOUBLE_OPERAND_MUL = 100.0
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 DEFAULT_KERNEL_ID = None
+BINARY_MODE_NC1HWC0 = 1
+BINARY_MODE_NCHW = 2
+NONALIGNED_FUSION_EXTRA_SIZE = 144
 
 
 def parse_fuzz_build_range(info_list):
@@ -552,6 +555,57 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 res_list.append(tiling_mess)
         return res_list
 
+    def get_kernel_mode(self, stride_expand_flag):
+        '''
+        --------------------------------------------------
+        | kernel_mode |    format   | stride_expand_flag |
+        --------------------------------------------------
+        |      0      |  NC1HWC0    |          0         |
+        |      1      |  NC1HWC0    |          1         |
+        |      2      |     NCHW    |          0         |
+        |      3      |     NCHW    |          1         |
+
+        Returns
+        ----------
+        kernel_mode: int, kernel flag in binary
+        '''
+        kernel_mode = (self.binary_mode - 1) * 2 + stride_expand_flag
+        return kernel_mode
+
+    def get_ub_fusion_para(self):
+        '''
+        -----------------------------------------------------------------
+        | format | stride_expand_flag |    aub_num     |    cub_num     |
+        -----------------------------------------------------------------
+        | NC1HWC0|          0         |        0       |        1       |
+        | NC1HWC0|          1         |        1       |        1       |
+        | NCHW   |          0         |        2       |        2       |
+        | NCHW   |          1         |        1       |        2       |
+        -----------------------------------------------------------------
+
+        Returns
+        ----------
+        aub_num: int, The amount of space that aub needs to occupy
+        cub_num: int, The amount of space that cub needs to occupy
+        ub_size: int, size of allocable ub
+
+        '''
+        stride_expand_flag = 0 if isinstance(self.stride_h, int) else 1
+        aub_num = 0
+        cub_num = 1
+        ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
+        if self.binary_mode == BINARY_MODE_NC1HWC0:
+            if stride_expand_flag == 1:
+                aub_num = 1
+        elif self.binary_mode == BINARY_MODE_NCHW:
+            aub_num = 2
+            cub_num = 2
+            ub_size = ub_size - NONALIGNED_FUSION_EXTRA_SIZE
+            if stride_expand_flag == 1:
+                aub_num = 1
+
+        return aub_num, cub_num, ub_size
+
     def get_cache_tiling(self):
         '''
         according to size in l1, generate 9 kind of templates, each subdivided into 132 different
@@ -604,7 +658,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
             cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = choice[4]
             cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[5]
             cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[6]
-            name = int(''.join((str(i) for i in choice))) * 10 + stride_expand_flag
+            kernel_mode = self.get_kernel_mode(stride_expand_flag)
+            name = int(''.join((str(i) for i in choice))) * 10 + kernel_mode
             cache_tiling_all[name] = [[], cache_tiling, []]
             tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]
         return tiling_cases

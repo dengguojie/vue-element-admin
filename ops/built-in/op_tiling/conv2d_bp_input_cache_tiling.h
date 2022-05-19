@@ -98,6 +98,10 @@ struct DxParas {
   int32_t pad_left_before = 0;
   int32_t pad_down_after = 0;
   int32_t pad_right_after = 0;
+  int32_t aub_num = 0;
+  int32_t cub_num = 1;
+  int32_t binary_mode = 1;
+  int32_t ub_size = 0;
   bool repo_seed_flag = false;
   bool repo_costmodel_flag = false;
   bool repo_binary_flag = false;
@@ -142,14 +146,14 @@ struct Tiling {
   int32_t min_kl1_div_kl0 = 1;
   int32_t max_kl1_div_min_kl1 = 1;
   int32_t k_div_max_kl1 = 1;
-  int32_t aub_bound = 1;
+  int32_t aub_bound = 0;
   int32_t n_l0_div_ub = 1;
   int32_t bl1_bound = 1;
   int32_t al1_bound = 1;
   bool update_l1 = false;
 };
 
-struct RunInfoParaStrideLargeOne {
+struct RunInfoParaAubNoFusion {
   int32_t filter_cin1hw;
   int32_t filter_cout1;
   int32_t batch;
@@ -200,7 +204,7 @@ struct RunInfoParaStrideLargeOne {
   int32_t aub_bound;
 };
 
-struct RunInfoParaStrideEqualOne {
+struct RunInfoParaAubFusion {
   int32_t batch;
   int32_t co;
   int32_t ho;
@@ -220,6 +224,8 @@ struct RunInfoParaStrideEqualOne {
   int32_t padd;
   int32_t padl;
   int32_t padr;
+  int32_t stride_h;
+  int32_t stride_w;
   int32_t shape_up_modify;
   int32_t shape_left_modify;
   int32_t shape_down_modify;

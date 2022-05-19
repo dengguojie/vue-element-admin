@@ -369,7 +369,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 1, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_stride_large_one");
 
@@ -409,7 +409,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one) {
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(runInfo.GetTilingKey(), 21210101);
+  EXPECT_EQ(runInfo.GetTilingKey(), 21210103);
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one_m2_n2_large_x0) {
@@ -418,7 +418,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one_m2_n2_
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 1, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_stride_large_one_m2_n2_large_x0");
 
@@ -466,7 +466,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_equal_one) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 2, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_stride_equal_one");
 
@@ -514,7 +514,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_pads_equal_neg_one) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 2, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_pads_equal_neg_one");
 
@@ -562,7 +562,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_dilations_invalid) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 2, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_pads_equal_neg_one");
 
@@ -610,8 +610,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_no_overlap_condition_4)
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo =
-      R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 1, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_no_overlap_condition_4");
 
@@ -668,8 +667,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_get_cin1_factor) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  const ge::AscendString compileInfo =
-      R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 1, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
 
   ge::Graph graph("Conv2d_bp_input_binary_get_cin1_factor");
 

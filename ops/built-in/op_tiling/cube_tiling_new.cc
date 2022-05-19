@@ -151,8 +151,8 @@ namespace optiling {
   * @param [out] run_info: runtime information
   * @return bool: success or not
   */
-  void SetRunInfoStrideOne(const DxParas &params, const Tiling &tiling,
-                           utils::OpRunInfo &run_info, RunInfoParaStrideEqualOne &run) {
+  void SetRunInfoAubFusion(const DxParas &params, const Tiling &tiling,
+                           utils::OpRunInfo &run_info, RunInfoParaAubFusion &run) {
     run.batch = params.batch;
     run.co = params.co;
     run.ho = params.ho;
@@ -172,6 +172,8 @@ namespace optiling {
     run.padd = params.padd;
     run.padl = params.padl;
     run.padr = params.padr;
+    run.stride_h = params.stride_h;
+    run.stride_w = params.stride_w;
     run.shape_up_modify = params.shape_up_modify;
     run.shape_left_modify = params.shape_left_modify;
     run.shape_down_modify = params.shape_down_modify;
@@ -202,8 +204,8 @@ namespace optiling {
     run_info.AddTilingData(run);
   }
 
- void SetRunInfoStrideLargeOne(const DxParas &params, const Tiling &tiling,
-                               utils::OpRunInfo &run_info, RunInfoParaStrideLargeOne &run) {
+  void SetRunInfoAubNoFusion(const DxParas &params, const Tiling &tiling, utils::OpRunInfo &run_info,
+                             RunInfoParaAubNoFusion &run) {
     run.filter_cin1hw = params.filter_cin1hw;
     run.filter_cout1 = params.filter_cout1;
     run.batch = params.batch;
@@ -258,12 +260,18 @@ namespace optiling {
   void SetRunInfo(const DxParas &params, const Tiling &tiling,
                   utils::OpRunInfo &run_info) {
     bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
-    if (stride_equal_one) {
-      RunInfoParaStrideEqualOne run;
-      SetRunInfoStrideOne(params, tiling, run_info, run);
-    } else {
-      RunInfoParaStrideLargeOne run;
-      SetRunInfoStrideLargeOne(params, tiling, run_info, run);
+
+    if (params.binary_mode == 1) {
+      RunInfoParaAubNoFusion run;
+      SetRunInfoAubNoFusion(params, tiling, run_info, run);
+    } else if (params.binary_mode == kNumTwo) {
+      if (stride_equal_one) {
+        RunInfoParaAubFusion run;
+        SetRunInfoAubFusion(params, tiling, run_info, run);
+      } else {
+        RunInfoParaAubNoFusion run;
+        SetRunInfoAubNoFusion(params, tiling, run_info, run);
+      }
     }
   }
 

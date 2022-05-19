@@ -28,13 +28,10 @@ using namespace std;
 namespace optiling {
 static const int32_t kL1Size = (1024 * 1024);
 static const int32_t kL0cSize = (256 * 1024);
-static const int32_t kUbSize = 262000;
 static const int32_t kBlockSize = 16;
 static const int32_t kDecimal = 10;
 static const int32_t kDbOn = 2;
 static const int32_t kDbOff = 1;
-static const int32_t kFrontUbFusionMulti = 2;
-static const int32_t kAfterUbFusionMulti = 2;
 static const int32_t khnumWNoDivided = 2;
 static const float kFloatZero = 0.0f;
 static const int32_t kAttachFlagZero = 0;
@@ -362,15 +359,15 @@ bool CheckUbDb(const DxParas &params, const Tiling &tiling, const int32_t &m0) {
   int32_t aub_h = 1;
   int32_t aub_k = 1;
   int32_t cub_n = 1;
-  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
-  int32_t loadin_size = aub_k * aub_h * params.wo * kBlockSize * params.stride_w;
-  int32_t copyout_size = kAfterUbFusionMulti * cub_n * m0 * kBlockSize * kBlockSize;
+  int32_t ub_fp16_size = params.ub_size / kFp16Bytes;
+  int32_t loadin_size = params.aub_num * aub_k * aub_h * params.wo * kBlockSize * params.stride_w;
+  int32_t copyout_size = params.cub_num * cub_n * m0 * kBlockSize * kBlockSize;
   if (params.stride_h == 1 && params.stride_w == 1) {
     int32_t wo_aub = params.wo;
     if (IsLargeWo(params)) {
       wo_aub = 1;
     }
-    loadin_size = kFrontUbFusionMulti * aub_k * kBlockSize *
+    loadin_size = params.aub_num * aub_k * kBlockSize *
                   CeilAlign(aub_h * wo_aub + params.kw - 1, kBlockSize);
     return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub <= ub_fp16_size;
   }
@@ -733,9 +730,9 @@ bool GetL1Factors(const DxParas &params, Tiling &tiling) {
 }
 
 bool InitUbDb(const DxParas &params, Tiling &tiling, const int32_t &wo_aub, int32_t &max_dma_size) {
-  int32_t loadin_size = tiling.k_aub * tiling.m_aub * params.wo * kC0 * params.stride_w;
-  int32_t copyout_size = kAfterUbFusionMulti * tiling.n_cub * tiling.m_l0 * kC0 * kC0;
-  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
+  int32_t loadin_size = params.aub_num * tiling.k_aub * tiling.m_aub * params.wo * kC0 * params.stride_w;
+  int32_t copyout_size = params.cub_num * tiling.n_cub * tiling.m_l0 * kC0 * kC0;
+  int32_t ub_fp16_size = params.ub_size / kFp16Bytes;
   if (params.stride_h != 1 || params.stride_w != 1) {
     if (loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size) {
       tiling.db_aub = 1;
@@ -744,7 +741,7 @@ bool InitUbDb(const DxParas &params, Tiling &tiling, const int32_t &wo_aub, int3
       tiling.db_cub = 1;
     }
   } else {
-    loadin_size = kFrontUbFusionMulti * tiling.k_aub * kBlockSize *
+    loadin_size = params.aub_num * tiling.k_aub * kBlockSize *
                   CeilAlign(tiling.m_aub * wo_aub + params.kw - 1, kBlockSize);
     if (loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size) {
       tiling.db_aub = 1;
@@ -769,14 +766,14 @@ int32_t GetAubM(const DxParas &params, const Tiling &tiling,
   int32_t aub_in = aub_size / (k_aub * params.wo * kC0);
   if (params.stride_h != 1 || params.stride_w != 1) {
     for (int32_t h_num_temp = tiling.h_num; h_num_temp >= aub_m + 1; h_num_temp--) {
-      if (h_num_temp * params.stride_w <= aub_in) {
+      if (params.aub_num * h_num_temp * params.stride_w <= aub_in) {
         aub_m = h_num_temp;
         break;
       }
     }
   } else {
     for (int32_t h_num_temp = tiling.h_num; h_num_temp >= aub_m + 1; h_num_temp--) {
-      if (kFrontUbFusionMulti * k_aub * kBlockSize *
+      if (params.aub_num * k_aub * kBlockSize *
           CeilAlign(h_num_temp * params.wo + params.kw - 1, kBlockSize) <= aub_size) {
         aub_m = h_num_temp;
         break;
@@ -796,7 +793,7 @@ int32_t GetWoAub(const DxParas &params,
     int32_t aub_temp_size;
     while (left < right) {
       mid = left + ((right - left) >> 1);
-      aub_temp_size = kFrontUbFusionMulti * k_aub * kBlockSize *
+      aub_temp_size = params.aub_num * k_aub * kBlockSize *
                       CeilAlign(aub_m * mid + params.kw - 1, kBlockSize);
       if (aub_temp_size < aub_size) {
         left = mid + 1;
@@ -813,7 +810,7 @@ int32_t GetWoAub(const DxParas &params,
 
 bool GetBestUbFactors(const DxParas &params, Tiling &tiling,
                       int32_t &max_dma_size) {
-  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
+  int32_t ub_fp16_size = params.ub_size / kFp16Bytes;
   // get k_aub factor
   int32_t k_al1_factors[tiling.k_al1] = {0};
   size_t idx_k = 0;
@@ -848,19 +845,19 @@ bool GetBestUbFactors(const DxParas &params, Tiling &tiling,
       if (db_cub_initial == kDbOn && tiling.n_l0 / n1 == 1) {
         db_cub = kDbOff;
       }
-      aub_size = (ub_fp16_size - kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * db_cub) / tiling.db_aub;
+      aub_size = (ub_fp16_size - params.cub_num * n1 * tiling.m_l0 * kC0 * kC0 * db_cub) / tiling.db_aub;
       aub_m = GetAubM(params, tiling, aub_size, k_aub);
       wo_aub = GetWoAub(params, aub_size, k_aub, aub_m);
 
-      aub_temp_size = k_aub * aub_m * params.wo * params.stride_w * kC0;
+      aub_temp_size = params.aub_num * k_aub * aub_m * params.wo * params.stride_w * kC0;
       if (stride_equal_one) {
-        aub_temp_size = kFrontUbFusionMulti * k_aub * kBlockSize *
-                        CeilAlign(aub_m * wo_aub + params.kw - 1, kBlockSize);
+        aub_temp_size =
+            params.aub_num * k_aub * kBlockSize * CeilAlign(aub_m * wo_aub + params.kw - 1, kBlockSize);
       }
       if (aub_temp_size > aub_size) {
         continue;
       }
-      dma_size = aub_temp_size * tiling.db_aub + kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * db_cub;
+      dma_size = aub_temp_size * tiling.db_aub + params.cub_num * n1 * tiling.m_l0 * kC0 * kC0 * db_cub;
       modify_ub =
           aub_m >= 1 && (tiling.k_aub < k_aub || (tiling.k_aub == k_aub && tiling.n_cub < n1) ||
                          (tiling.k_aub == k_aub && tiling.n_cub == n1 && dma_size > max_dma_size) or first_flag);
@@ -877,9 +874,9 @@ bool GetBestUbFactors(const DxParas &params, Tiling &tiling,
   }
   tiling.n_l0_div_ub = tiling.n_l0 / tiling.n_cub;
   tiling.aub_bound = tiling.k_aub * tiling.m_aub * params.wo * kBlockSize * params.stride_w;
-  if (stride_equal_one) {
-    tiling.aub_bound = tiling.k_aub * kBlockSize *
-                       CeilAlign(tiling.m_aub * tiling.wo_aub + params.kw - 1, kBlockSize);
+  if (stride_equal_one && params.binary_mode == kNumTwo) {
+    tiling.aub_bound =
+        tiling.k_aub * kBlockSize * CeilAlign(tiling.m_aub * tiling.wo_aub + params.kw - 1, kBlockSize);
   }
   return true;
 }
@@ -976,7 +973,7 @@ void SetTilingId(const DxParas &params, const Tiling &tiling, int32_t &tiling_id
   tiling_id = tiling_id * kDecimal + abkl1_attach_flag;
   tiling_id = tiling_id * kDecimal + al1_attach_flag;
   tiling_id = tiling_id * kDecimal + bl1_attach_flag;
-  tiling_id = tiling_id * kDecimal + params.stride_expand_flag;
+  tiling_id = tiling_id * kDecimal + (params.binary_mode - 1) * kNumTwo + params.stride_expand_flag;
 }
 
 bool GenTiling(const DxParas &params, Tiling &tiling, int32_t &tiling_id) {

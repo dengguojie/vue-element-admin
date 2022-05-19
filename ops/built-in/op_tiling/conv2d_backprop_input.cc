@@ -61,6 +61,11 @@ const size_t kNDimHWCNIdx = 3;
 const size_t kCDimHWCNIdx = 2;
 const size_t kHDimHWCNIdx = 0;
 const size_t kWDimHWCNIdx = 1;
+// NHWC
+const size_t kNDimNHWCIdx = 0;
+const size_t kCDimNHWCIdx = 3;
+const size_t kHDimNHWCIdx = 1;
+const size_t kWDimNHWCIdx = 2;
 
 const int32_t kDimHWUp = 4096;
 const int32_t kDimBatchUp = ((1UL << 31) - 1);
@@ -71,8 +76,6 @@ const int32_t kFilterDimHWUp = 255;
 const int32_t kStrideDimHWLow = 1;
 const int32_t kDilationDimHWUp = 1;
 const int32_t kFp16Bytes = 2;
-const int32_t kFrontUbFusionMulti = 2;
-const int32_t kAfterUbFusionMulti = 2;
 const int32_t kUbSize = 262000;
 const int32_t kL1size = (1024 * 1024);
 const int32_t kStrideHWUp = 63;
@@ -81,6 +84,8 @@ const int32_t kConv2dNCHWSize = 4;
 const int32_t kInputIndexTwo = 2;
 const int32_t kDefaultDilations = 1;
 const int32_t kNumTwo = 2;
+const int32_t KBinaryModeNC1HWC0 = 1;
+const int32_t KBinaryModeNCHW = 2;
 
 inline int32_t Align(const int32_t& param1, const int32_t& param2) {
   if (param2 == 0) {
@@ -122,11 +127,11 @@ bool CheckUBSizeLimit(const DxParas& dx_paras) {
   int32_t k_aub = 1;
   int32_t n_cub = 1;
   int32_t m_l0 = 1;
-  int32_t loadin_size = k_aub * m_aub * dx_paras.wo * kC0 * dx_paras.stride_w;
-  int32_t copyout_size = kAfterUbFusionMulti * n_cub * m_l0 * kC0 * kC0;
+  int32_t loadin_size = dx_paras.aub_num * k_aub * m_aub * dx_paras.wo * kC0 * dx_paras.stride_w;
+  int32_t copyout_size = dx_paras.cub_num * n_cub * m_l0 * kC0 * kC0;
   if (dx_paras.stride_expand_flag == 0) {
     int32_t wo_aub = 1;
-    loadin_size = kFrontUbFusionMulti * k_aub * kBlockSize *
+    loadin_size = dx_paras.aub_num * k_aub * kBlockSize *
                   ((m_aub * wo_aub + dx_paras.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
   }
   int32_t ub_fp16_size = kUbSize / kFp16Bytes;
@@ -242,7 +247,7 @@ bool CheckParams(const DxParas& dx_paras) {
                                   "filter_h_dilation or fmap_h_padding invalid",
                                   "filter_w_dilation or fmap_w_padding invalid", "h value invalid", "w value invalid",
                                   "stride_h invalid", "stride_w invalid", "fmap_h does not match dedy_h",
-                                  "fmap_w does not match dedy_h", "dedy_c_16 is invalid", "dedx_c_16 is invalid",
+                                  "fmap_w does not match dedy_w", "dedy_c_16 is invalid", "dedx_c_16 is invalid",
                                   "filter_c_16 is invalid", "filter_n_16 is invalid", "dedy size large than int64",
                                   "dedx size large than int64", "filter size large than int64",
                                   "this case may exceed L1size", "this case may exceed UBsize"};
@@ -273,16 +278,28 @@ bool GetAttrFromOp(const ge::OpDescPtr& op_desc, DxParas& dx_paras) {
     OutputErrorMsg(error_info, error_flag);
     return false;
   }
+  ge::ConstGeTensorDescPtr y_desc = op_desc->GetOutputDescPtr(0);
+  auto y_ori_format = y_desc->GetOriginFormat();
+  if (y_ori_format == ge::FORMAT_NCHW) {
+    dx_paras.stride_h = strides_list[kHDimNCHWIdx];
+    dx_paras.stride_w = strides_list[kWDimNCHWIdx];
+    dx_paras.dilations_n = dilations_list[kNDimNCHWIdx];
+    dx_paras.dilations_c = dilations_list[kCDimNCHWIdx];
+    dx_paras.dilations_h = dilations_list[kHDimNCHWIdx];
+    dx_paras.dilations_w = dilations_list[kWDimNCHWIdx];
+  } else {
+    dx_paras.stride_h = strides_list[kHDimNHWCIdx];
+    dx_paras.stride_w = strides_list[kWDimNHWCIdx];
+    dx_paras.dilations_n = dilations_list[kNDimNHWCIdx];
+    dx_paras.dilations_c = dilations_list[kCDimNHWCIdx];
+    dx_paras.dilations_h = dilations_list[kHDimNHWCIdx];
+    dx_paras.dilations_w = dilations_list[kWDimNHWCIdx];
+  }
   dx_paras.padu = pads_list[kConv2dPadUpIdx];
   dx_paras.padd = pads_list[kConv2dPadDownIdx];
   dx_paras.padl = pads_list[kConv2dPadLeftIdx];
   dx_paras.padr = pads_list[kConv2dPadRightIdx];
-  dx_paras.stride_h = strides_list[kHDimNCHWIdx];
-  dx_paras.stride_w = strides_list[kWDimNCHWIdx];
-  dx_paras.dilations_n = dilations_list[kNDimNCHWIdx];
-  dx_paras.dilations_c = dilations_list[kCDimNCHWIdx];
-  dx_paras.dilations_h = dilations_list[kHDimNCHWIdx];
-  dx_paras.dilations_w = dilations_list[kWDimNCHWIdx];
+
   return true;
 }
 
@@ -338,6 +355,63 @@ void CalShapeInfo(DxParas& dx_paras) {
       (dx_paras.pad_right_after + abs(dx_paras.pad_right_after)) / kNumTwo;
 }
 
+void GetInfo(DxParas &dx_paras, const nlohmann::json &compile_info) {
+  if (compile_info.contains("binary_mode")) {
+    dx_paras.binary_mode = compile_info["binary_mode"];
+  }
+  if (compile_info.contains("aub_num")) {
+    dx_paras.aub_num = compile_info["aub_num"];
+  }
+  if (compile_info.contains("cub_num")) {
+    dx_paras.cub_num = compile_info["cub_num"];
+  }
+  if (compile_info.contains("ub_size")) {
+    dx_paras.ub_size = compile_info["ub_size"];
+  }
+}
+
+void CalShapeInfoFromDesc(DxParas &dx_paras, const ge::ConstGeTensorDescPtr &filter_desc,
+                          const ge::ConstGeTensorDescPtr &out_backprop_desc,
+                          const ge::ConstGeTensorDescPtr &y_desc) {
+  dx_paras.batch = out_backprop_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
+  dx_paras.batch_o = y_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
+  dx_paras.ho = out_backprop_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
+  dx_paras.wo = out_backprop_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
+  dx_paras.filter_cin1hw = filter_desc->GetShape().GetDim(0);
+  dx_paras.filter_cout1 = filter_desc->GetShape().GetDim(1);
+  auto filter_ori_format = filter_desc->GetOriginFormat();
+  if (filter_ori_format == ge::FORMAT_NCHW) {
+    dx_paras.kn = filter_desc->GetOriginShape().GetDim(kNDimNCHWIdx);
+    dx_paras.kc = filter_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
+    dx_paras.kh = filter_desc->GetOriginShape().GetDim(kHDimNCHWIdx);
+    dx_paras.kw = filter_desc->GetOriginShape().GetDim(kWDimNCHWIdx);
+  } else if (filter_ori_format == ge::FORMAT_HWCN) {
+    dx_paras.kn = filter_desc->GetOriginShape().GetDim(kNDimHWCNIdx);
+    dx_paras.kc = filter_desc->GetOriginShape().GetDim(kCDimHWCNIdx);
+    dx_paras.kh = filter_desc->GetOriginShape().GetDim(kHDimHWCNIdx);
+    dx_paras.kw = filter_desc->GetOriginShape().GetDim(kWDimHWCNIdx);
+  } else {
+    dx_paras.kn = filter_desc->GetOriginShape().GetDim(kNDimNHWCIdx);
+    dx_paras.kc = filter_desc->GetOriginShape().GetDim(kCDimNHWCIdx);
+    dx_paras.kh = filter_desc->GetOriginShape().GetDim(kHDimNHWCIdx);
+    dx_paras.kw = filter_desc->GetOriginShape().GetDim(kWDimNHWCIdx);
+  }
+  if (y_desc->GetOriginFormat() == ge::FORMAT_NCHW) {
+    dx_paras.cin = y_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
+  } else {
+    dx_paras.cin = y_desc->GetOriginShape().GetDim(kCDimNHWCIdx);
+  }
+  if (out_backprop_desc->GetOriginFormat() == ge::FORMAT_NCHW) {
+    dx_paras.co = out_backprop_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
+  } else {
+    dx_paras.co = out_backprop_desc->GetOriginShape().GetDim(kCDimNHWCIdx);
+  }
+  dx_paras.c1 = (dx_paras.cin + kBlockSize - 1) / kBlockSize;
+  dx_paras.co1 = (dx_paras.co + kBlockSize - 1) / kBlockSize;
+  dx_paras.h = y_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
+  dx_paras.w = y_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
+}
+
 bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::json& compile_info,
                                   DxParas& dx_paras) {
   if (compile_info.contains("tiling_type") && compile_info["tiling_type"] == "binary") {
@@ -345,50 +419,72 @@ bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::
     int32_t out_backprop_input_index = kInputIndexTwo;
     int32_t filter_input_index = 1;
     ge::OpDescPtr op_desc_attr = nullptr;
+    GetInfo(dx_paras, compile_info);
     if (!GetAttrFromOp(op_desc, dx_paras)) {
       GELOGD("get attr from single op fail, try get attr from original fusion graph");
       UpdateOpDescAttr(op_desc, op_desc_attr);
       CHECK_OP_FUNC(!GetAttrFromOp(op_desc_attr, dx_paras), return false, "get attr failed");
     }
     bool stride_equal_one = dx_paras.stride_h == 1 && dx_paras.stride_w == 1;
-    if (op_desc_attr != nullptr && stride_equal_one) {
+    if (op_desc_attr != nullptr && stride_equal_one && dx_paras.binary_mode == KBinaryModeNCHW) {
       filter_input_index = kInputIndexTwo;
       out_backprop_input_index = 0;
     }
     ge::ConstGeTensorDescPtr filter_desc = op_desc->GetInputDescPtr(filter_input_index);
     ge::ConstGeTensorDescPtr out_backprop_desc = op_desc->GetInputDescPtr(out_backprop_input_index);
     ge::ConstGeTensorDescPtr y_desc = op_desc->GetOutputDescPtr(0);
+    auto filter_format = filter_desc->GetFormat();
+    auto y_format = y_desc->GetFormat();
+    auto out_backprop_format = out_backprop_desc->GetFormat();
+    auto y_dim_num = y_desc->GetShape().GetDimNum();
+    auto out_backprop_dim_num = out_backprop_desc->GetShape().GetDimNum();
+    auto y_ori_format = y_desc->GetOriginFormat();
+    auto out_backprop_ori_format = out_backprop_desc->GetOriginFormat();
+    auto filter_ori_format = filter_desc->GetOriginFormat();
     uint32_t shift = 0;
     uint32_t parse_func_invalid = (!compile_info.contains("block_dim") << shift++);
     parse_func_invalid = parse_func_invalid + (!compile_info["block_dim"].contains("CORE_NUM") << shift++);
     parse_func_invalid = parse_func_invalid + ((filter_desc == nullptr) << shift++);
     parse_func_invalid = parse_func_invalid + ((out_backprop_desc == nullptr) << shift++);
     parse_func_invalid = parse_func_invalid + ((y_desc == nullptr) << shift++);
-    parse_func_invalid = parse_func_invalid + ((y_desc->GetOriginFormat() != ge::FORMAT_NCHW) << shift++);
-    parse_func_invalid = parse_func_invalid + ((out_backprop_desc->GetOriginFormat() != ge::FORMAT_NCHW) << shift++);
-    parse_func_invalid = parse_func_invalid + ((filter_desc->GetFormat() != ge::FORMAT_FRACTAL_Z) << shift++);
+    if (dx_paras.binary_mode == KBinaryModeNC1HWC0) {
+      parse_func_invalid =
+          parse_func_invalid + ((y_ori_format != ge::FORMAT_NCHW && y_ori_format != ge::FORMAT_NHWC) << shift++);
+      parse_func_invalid =
+          parse_func_invalid +
+          ((out_backprop_ori_format != ge::FORMAT_NCHW && out_backprop_ori_format != ge::FORMAT_NHWC) << shift++);
+    } else {
+      parse_func_invalid = parse_func_invalid + ((y_ori_format != ge::FORMAT_NCHW) << shift++);
+      parse_func_invalid = parse_func_invalid + ((out_backprop_ori_format != ge::FORMAT_NCHW) << shift++);
+    }
+    parse_func_invalid = parse_func_invalid + ((filter_format != ge::FORMAT_FRACTAL_Z) << shift++);
     parse_func_invalid =
-        parse_func_invalid +
-        ((filter_desc->GetOriginFormat() != ge::FORMAT_NCHW && filter_desc->GetOriginFormat() != ge::FORMAT_HWCN)
-         << shift++);
-    parse_func_invalid = parse_func_invalid + ((y_desc->GetFormat() != ge::FORMAT_NCHW) << shift++);
+        parse_func_invalid + ((filter_ori_format != ge::FORMAT_NCHW && filter_ori_format != ge::FORMAT_HWCN &&
+                               filter_ori_format != ge::FORMAT_NHWC)
+                              << shift++);
+    parse_func_invalid =
+        parse_func_invalid + ((y_format != ge::FORMAT_NCHW && y_format != ge::FORMAT_NC1HWC0) << shift++);
     parse_func_invalid =
         parse_func_invalid + ((out_backprop_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
     parse_func_invalid =
         parse_func_invalid + ((filter_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
-    parse_func_invalid = parse_func_invalid + ((filter_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++);
-    parse_func_invalid = parse_func_invalid + ((y_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
-    parse_func_invalid = parse_func_invalid + ((y_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+    parse_func_invalid =
+        parse_func_invalid + ((filter_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+    parse_func_invalid =
+        parse_func_invalid + ((y_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+    parse_func_invalid =
+        parse_func_invalid + ((y_dim_num != kConv2dNCHWSize && y_dim_num != kConv2dNC1HWC0Size) << shift++);
+    parse_func_invalid =
+        parse_func_invalid +
+        ((out_backprop_dim_num != kConv2dNCHWSize && out_backprop_dim_num != kConv2dNC1HWC0Size) << shift++);
     if (stride_equal_one) {
       dx_paras.stride_expand_flag = 0;
       parse_func_invalid =
-          parse_func_invalid + ((out_backprop_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++);
-      parse_func_invalid = parse_func_invalid + ((out_backprop_desc->GetFormat() != ge::FORMAT_NCHW) << shift++);
+          parse_func_invalid +
+          ((out_backprop_format != ge::FORMAT_NCHW && out_backprop_format != ge::FORMAT_NC1HWC0) << shift++);
     } else {
       dx_paras.stride_expand_flag = 1;
-      parse_func_invalid =
-          parse_func_invalid + ((out_backprop_desc->GetShape().GetDimNum() != kConv2dNC1HWC0Size) << shift++);
-      parse_func_invalid = parse_func_invalid + ((out_backprop_desc->GetFormat() != ge::FORMAT_NC1HWC0) << shift++);
+      parse_func_invalid = parse_func_invalid + ((out_backprop_format != ge::FORMAT_NC1HWC0) << shift++);
     }
     if (parse_func_invalid != 0) {
       string error_info[shift++] = {"get block_dim failed", "get core_num failed", "tensor filter desc failed",
@@ -405,29 +501,7 @@ bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::
       return false;
     }
     dx_paras.core_num = compile_info["block_dim"]["CORE_NUM"];
-    dx_paras.batch = out_backprop_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
-    dx_paras.batch_o = y_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
-    dx_paras.co = out_backprop_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
-    dx_paras.co1 = (dx_paras.co + kBlockSize - 1) / kBlockSize;
-    dx_paras.ho = out_backprop_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
-    dx_paras.wo = out_backprop_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
-    dx_paras.filter_cin1hw = filter_desc->GetShape().GetDim(0);
-    dx_paras.filter_cout1 = filter_desc->GetShape().GetDim(1);
-    if (filter_desc->GetOriginFormat() == ge::FORMAT_NCHW) {
-      dx_paras.kn = filter_desc->GetOriginShape().GetDim(kNDimNCHWIdx);
-      dx_paras.kc = filter_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
-      dx_paras.kh = filter_desc->GetOriginShape().GetDim(kHDimNCHWIdx);
-      dx_paras.kw = filter_desc->GetOriginShape().GetDim(kWDimNCHWIdx);
-    } else {
-      dx_paras.kn = filter_desc->GetOriginShape().GetDim(kNDimHWCNIdx);
-      dx_paras.kc = filter_desc->GetOriginShape().GetDim(kCDimHWCNIdx);
-      dx_paras.kh = filter_desc->GetOriginShape().GetDim(kHDimHWCNIdx);
-      dx_paras.kw = filter_desc->GetOriginShape().GetDim(kWDimHWCNIdx);
-    }
-    dx_paras.cin = y_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
-    dx_paras.c1 = (dx_paras.cin + kBlockSize - 1) / kBlockSize;
-    dx_paras.h = y_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
-    dx_paras.w = y_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
+    CalShapeInfoFromDesc(dx_paras, filter_desc, out_backprop_desc, y_desc);
     CalPads(dx_paras);
     CalShapeInfo(dx_paras);
   }
