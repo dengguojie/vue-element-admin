@@ -301,14 +301,21 @@ def match_shape(input_tensor, target_tensor):
 
 def match_tenser(input_tensor, target_tensor):
     """match_tenser"""
-    if not match_shape(input_tensor, target_tensor):
-        return False
-    if not match_dtype(input_tensor, target_tensor):
-        return False
-    if not match_format(input_tensor, target_tensor):
-        return False
+    if input_tensor and target_tensor:
+        # define the match fuc for shape/dtype/format
+        check_func_list = (match_shape, match_dtype, match_format)
+        for _, match_func in enumerate(check_func_list):
+            if not match_func(input_tensor, target_tensor):
+                # will return false directly, when mismatch
+                return False
 
-    return True
+        return True
+
+    # optinal case
+    if input_tensor is None and target_tensor is None:
+        return True
+
+    return False
 
 
 def match_attr(input_attr, target_attr):
@@ -327,6 +334,9 @@ def update_tenser(input_tensor, target_tensor):
     """
     update_tenser "shape", "ori_shape", "dtype", "format", "ori_format"
     """
+    if input_tensor is None:
+        return None
+
     def _update(update_key):
         update_info = target_tensor.get(update_key)
         if update_info is not None:

@@ -122,6 +122,12 @@ def test_match_tenser(test_arg):
     input_tensor = {"dtype": "uint8", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
     assert not match_tenser(input_tensor, target_tensor)
 
+    # case 9, support optional input
+    target_tensor = None
+    input_tensor = {"dtype": "uint8", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
+    assert not match_tenser(input_tensor, target_tensor)
+    assert match_tenser(None, None)
+
 
 def test_match_attr(test_arg):
     """
@@ -245,6 +251,12 @@ def test_update_args(test_arg):
     assert list(args_res[0].get("shape")) == [-2]
     assert args_res[3]
     assert args_res[4]
+
+    # test update tensor for optional
+    input_args = (input_1, None, output_1, False, False)
+    target_rule["inputs"][1] = None
+    args_res = update_args(input_args, target_rule)
+    assert args_res[1] is None
 
 
 def test_import_lib(test_arg):
