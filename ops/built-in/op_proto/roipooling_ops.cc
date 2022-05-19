@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,16 @@
 #include "axis_util.h"
 
 namespace ge {
+namespace {
+  constexpr size_t kSize2 = 2;
+  constexpr size_t kSize3 = 3;
+  constexpr size_t kSize4 = 4;
+  constexpr int64_t kNum2 = 2;
+  constexpr int64_t kNum3 = 3;
+  constexpr int64_t kNum4 = 4;
+  constexpr int64_t kNum16 = 16;
+  constexpr int64_t kNum6000 = 6000;
+}
 
 IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
   auto pooled_h = op.get_attr_pooled_h();
@@ -39,23 +49,25 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   auto xDtype = op.get_input_desc_x().GetDataType();
   auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
-  CHECK(roisShape.size() < 2,
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetShapeSizeErrMsg(1, ConcatString(roisShape.size()),ConcatString("smaller than 2!"))),
-      return GRAPH_FAILED);
+  CHECK(roisShape.size() < kSize2,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetShapeSizeErrMsg(1, ConcatString(roisShape.size()),
+                                            ConcatString("smaller than 2!"))),
+        return GRAPH_FAILED);
 
   int64_t inputN, inputC1, poolH, poolW;
-  CHECK(xShape.size() < 2,
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetShapeSizeErrMsg(0, ConcatString(xShape.size()), ConcatString("smaller than 2!"))),
-      return GRAPH_FAILED);
+  CHECK(xShape.size() < kSize2,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetShapeSizeErrMsg(0, ConcatString(xShape.size()),
+                                            ConcatString("smaller than 2!"))),
+        return GRAPH_FAILED);
   inputN = xShape[0];
   inputC1 = xShape[1];
 
   poolH = pooled_h;
   poolW = pooled_w;
   int64_t output_n = 0;
-  if(roisShape.size() == 3) {
+  if (roisShape.size() == kSize3) {
     output_n = roisShape[2] * inputN;
-  } else if(roisShape.size() == 2) {
+  } else if (roisShape.size() == kSize2) {
     output_n = roisShape[0];
   }
   vector<int64_t> yShape({output_n, inputC1, poolH, poolW});
@@ -70,7 +82,7 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
 
 IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
   int64_t xDimNum = op.get_input_desc_x().GetShape().GetDimNum();
-  if (xDimNum < 4) {
+  if (xDimNum < kNum4) {
     std::string err_msg = GetShapeErrMsg(0, ConcatString(xDimNum), ConcatString("more than or equal to 4!"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -78,18 +90,19 @@ IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
 
   int64_t roisDimNum = op.get_input_desc_rois().GetShape().GetDimNum();
   int64_t roi_max_num = 0;
-  if (roisDimNum == 3) {
+  if (roisDimNum == kNum3) {
     auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
     roi_max_num = roisShape[2];
-    if (roi_max_num > 6000 || roi_max_num % 16 != 0) {
-    std::string err_msg = GetShapeErrMsg(1, ConcatString(roi_max_num), ConcatString("the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    if (roi_max_num > kNum6000 || roi_max_num % kNum16 != 0) {
+      std::string err_msg = GetShapeErrMsg(1, ConcatString(roi_max_num),
+          ConcatString("the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+      return GRAPH_FAILED;
     }
-  } else if (roisDimNum == 2) {
+  } else if (roisDimNum == kNum2) {
     auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
     roi_max_num = roisShape[0];
-    if (roi_max_num > 6000) {
+    if (roi_max_num > kNum6000) {
       string excepted_shape = ConcatString("the dim 2 of rois shape can not be greater than 6000!");
       std::string err_msg = GetShapeErrMsg(1, ConcatString(roi_max_num), excepted_shape);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -103,9 +116,7 @@ IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
   }
   return GRAPH_SUCCESS;
 }
-  
 
 INFER_FUNC_REG(ROIPooling, ROIPoolingInferShape);
 VERIFY_FUNC_REG(ROIPooling, ROIPoolingVerify);
-
 }  // namespace ge

@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "op_const.h"
+#include "op_util.h"
 #include "proto/insert_op.pb.h"
 #include <nlohmann/json.hpp>
 
@@ -35,9 +36,9 @@
 
 
 namespace ge {
-
 namespace {
   constexpr uint8_t kChannel1 = 1;
+  constexpr uint8_t kChannel2 = 2;
   constexpr uint8_t kChannel3 = 3;
   constexpr uint8_t kChannel4 = 4;
 
@@ -71,6 +72,11 @@ namespace {
   constexpr int32_t kPaddingSizeRightIndex = 52;
 
   constexpr int64_t kMinCropSize = 8;
+
+  constexpr int64_t kNum2 = 2;
+  constexpr int64_t kNum3 = 3;
+  constexpr int64_t kNum4 = 4;
+  constexpr int64_t kNum5 = 5;
 }
 
 struct AippParams {
@@ -145,25 +151,25 @@ void ParseAippParams(const GeTensor* params_tensor, AippParams& aippParams) {
 }
 
 void PrintAippParams(Operator& op, AippParams& aippParams) {
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  inputFormat=%d", aippParams.inputFormat);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  batchNum=%d", aippParams.batchNum);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  srcImageSizeW=%d", aippParams.srcImageSizeW);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  srcImageSizeH=%d", aippParams.srcImageSizeH);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropSwitch=%d", aippParams.cropSwitch);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfSwitch=%d", aippParams.scfSwitch);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSwitch=%d", aippParams.paddingSwitch);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropStartPosW=%d", aippParams.cropStartPosW);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropStartPosH=%d", aippParams.cropStartPosH);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropSizeW=%d", aippParams.cropSizeW);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropSizeH=%d", aippParams.cropSizeH);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfInputSizeW=%d", aippParams.scfInputSizeW);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfInputSizeH=%d", aippParams.scfInputSizeH);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfOutputSizeW=%d", aippParams.scfOutputSizeW);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfOutputSizeH=%d", aippParams.scfOutputSizeH);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeTop=%d", aippParams.paddingSizeTop);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeBottom=%d", aippParams.paddingSizeBottom);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeLeft=%d", aippParams.paddingSizeLeft);
-  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeRight=%d", aippParams.paddingSizeRight);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams inputFormat=%d", aippParams.inputFormat);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams batchNum=%d", aippParams.batchNum);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams srcImageSizeW=%d", aippParams.srcImageSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams srcImageSizeH=%d", aippParams.srcImageSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams cropSwitch=%d", aippParams.cropSwitch);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams scfSwitch=%d", aippParams.scfSwitch);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams paddingSwitch=%d", aippParams.paddingSwitch);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams cropStartPosW=%d", aippParams.cropStartPosW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams cropStartPosH=%d", aippParams.cropStartPosH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams cropSizeW=%d", aippParams.cropSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams cropSizeH=%d", aippParams.cropSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams scfInputSizeW=%d", aippParams.scfInputSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams scfInputSizeH=%d", aippParams.scfInputSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams scfOutputSizeW=%d", aippParams.scfOutputSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams scfOutputSizeH=%d", aippParams.scfOutputSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams paddingSizeTop=%d", aippParams.paddingSizeTop);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams paddingSizeBottom=%d", aippParams.paddingSizeBottom);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams paddingSizeLeft=%d", aippParams.paddingSizeLeft);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams paddingSizeRight=%d", aippParams.paddingSizeRight);
 }
 
 int64_t GetDynamicShapeChannel(uint8_t inputFormat) {
@@ -232,18 +238,18 @@ int64_t GetDynamicShapeSrcSize(AippParams& aippParams, int64_t batch, ge::DataTy
 
   switch (aippParams.inputFormat) {
     case kFormatYuv420sp:
-      size = batch * 3 * srcImageSizeH * srcImageSizeW / 2;
+      size = batch * kNum3 * srcImageSizeH * srcImageSizeW / kNum2;
       *src_img_dtype = DT_UINT8;
       break;
     case kFormatXrgb8888:
     case kFormatArgb8888:
     case kFormatAyuv444:
-      size = batch * 4 * srcImageSizeH * srcImageSizeW;
+      size = batch * kChannel4 * srcImageSizeH * srcImageSizeW;
       *src_img_dtype = DT_UINT8;
       break;
     case kFormatYuyv:
     case kFormatYuv422sp:
-      size = batch * 2 * srcImageSizeH * srcImageSizeW;
+      size = batch * kChannel2 * srcImageSizeH * srcImageSizeW;
       *src_img_dtype = DT_UINT8;
       break;
     case kFormatYuv400:
@@ -251,7 +257,7 @@ int64_t GetDynamicShapeSrcSize(AippParams& aippParams, int64_t batch, ge::DataTy
       *src_img_dtype = DT_UINT8;
       break;
     default:
-      size = batch * 3 * srcImageSizeH * srcImageSizeW;
+      size = batch * kChannel3 * srcImageSizeH * srcImageSizeW;
       *src_img_dtype = DT_UINT8;
       break;
   }
@@ -293,64 +299,54 @@ int64_t GetSrcImageSizeDtype(::domi::AippOpParams* aipp_op_params, int64_t batch
 
   if (aipp_op_params->input_format()) {
     if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV420SP_U8) {
-      size = batch * 3 * src_image_size_h * src_image_size_w / 2;
+      size = batch * kNum3 * src_image_size_h * src_image_size_w / kNum2;
       *src_img_dtype = DT_UINT8;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8) {
-      size = batch * 4 * src_image_size_h * src_image_size_w;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_ARGB8888_U8 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_AYUV444_U8) {
+      size = batch * kChannel4 * src_image_size_h * src_image_size_w;
       *src_img_dtype = DT_UINT8;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB888_U8) {
-      size = batch * 3 * src_image_size_h * src_image_size_w;
+      size = batch * kChannel3 * src_image_size_h * src_image_size_w;
       *src_img_dtype = DT_UINT8;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV400_U8) {
       size = batch * src_image_size_h * src_image_size_w;
       *src_img_dtype = DT_UINT8;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_NC1HWC0DI_FP16) {
-      size = batch * c1 * src_image_size_h * src_image_size_w * 4 * 2;
+      size = batch * c1 * src_image_size_h * src_image_size_w * kChannel4 * kNum2;
       *src_img_dtype = DT_FLOAT16;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_NC1HWC0DI_S8) {
-      size = batch * c1 * src_image_size_h * src_image_size_w * 4;
+      size = batch * c1 * src_image_size_h * src_image_size_w * kChannel4;
       *src_img_dtype = DT_INT8;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_ARGB8888_U8) {
-      size = batch * 4 * src_image_size_h * src_image_size_w;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUYV_U8 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV422SP_U8) {
+      size = batch * kChannel2 * src_image_size_h * src_image_size_w;
       *src_img_dtype = DT_UINT8;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUYV_U8) {
-      size = batch * 2 * src_image_size_h * src_image_size_w;
-      *src_img_dtype = DT_UINT8;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV422SP_U8) {
-      size = batch * 2 * src_image_size_h * src_image_size_w;
-      *src_img_dtype = DT_UINT8;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_AYUV444_U8) {
-      size = batch * 4 * src_image_size_h * src_image_size_w;
-      *src_img_dtype = DT_UINT8;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW10) {
-      size = batch * src_image_size_h * src_image_size_w * 2;
-      *src_img_dtype = DT_UINT16;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW12) {
-      size = batch * src_image_size_h * src_image_size_w * 2;
-      *src_img_dtype = DT_UINT16;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW16) {
-      size = batch * src_image_size_h * src_image_size_w * 2;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW10 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW12 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW16) {
+      size = batch * src_image_size_h * src_image_size_w * kChannel2;
       *src_img_dtype = DT_UINT16;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW24) {
-      size = batch * src_image_size_h * src_image_size_w * 4;
+      size = batch * src_image_size_h * src_image_size_w * kChannel4;
       *src_img_dtype = DT_UINT32;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16) {
-      size = batch * src_image_size_h * src_image_size_w * 3;
+      size = batch * src_image_size_h * src_image_size_w * kChannel3;
       *src_img_dtype = DT_UINT16;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB20) {
-      size = batch * src_image_size_h * src_image_size_w * 3;
+      size = batch * src_image_size_h * src_image_size_w * kChannel3;
       *src_img_dtype = DT_UINT32;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24) {
-      size = batch * src_image_size_h * src_image_size_w * 3;
+      size = batch * src_image_size_h * src_image_size_w * kChannel3;
       *src_img_dtype = DT_UINT32;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB8_IR) {
-      size = batch * src_image_size_h * src_image_size_w * 4;
+      size = batch * src_image_size_h * src_image_size_w * kChannel4;
       *src_img_dtype = DT_UINT8;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16_IR) {
-      size = batch * src_image_size_h * src_image_size_w * 4;
+      size = batch * src_image_size_h * src_image_size_w * kChannel4;
       *src_img_dtype = DT_UINT16;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
-      size = batch * src_image_size_h * src_image_size_w * 4;
+      size = batch * src_image_size_h * src_image_size_w * kChannel4;
       *src_img_dtype = DT_UINT32;
     } else {
       OP_LOGE("Aipp", "Input format of AIPP conf is undefined!");
@@ -362,50 +358,41 @@ int64_t GetSrcImageSizeDtype(::domi::AippOpParams* aipp_op_params, int64_t batch
 
 std::vector<int32_t> GetAclInputDims(::domi::AippOpParams* aipp_op_params, int64_t batch, int64_t srcImageHeight,
                                      int64_t srcImageWidth) {
-  int64_t channel = 3;
-  int64_t height = srcImageHeight;
   int64_t width = srcImageWidth;
+  int64_t height = srcImageHeight;
+  int64_t channel = kChannel3;
   std::vector<int32_t> aclInputDims;
 
   if (aipp_op_params->input_format()) {
     if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV420SP_U8) {
-      height = srcImageHeight * 3 / 2;
+      height = srcImageHeight * kNum3 / kNum2;
       channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8) {
-      channel = 4;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_ARGB8888_U8 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_AYUV444_U8 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8) {
+      channel = kChannel4;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB888_U8) {
-      channel = 3;
+      channel = kChannel3;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV400_U8) {
       channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_ARGB8888_U8) {
-      channel = 4;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUYV_U8) {
-      channel = 2;
+      channel = kChannel2;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV422SP_U8) {
-      height = srcImageHeight * 2;
+      height = srcImageHeight * kNum2;
       channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_AYUV444_U8) {
-      channel = 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW10) {
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW10 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW12 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW16 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW24) {
       channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW12) {
-      channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW16) {
-      channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW24) {
-      channel = 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16) {
-      channel = 3;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB20) {
-      channel = 3;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24) {
-      channel = 3;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB8_IR) {
-      channel = 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16_IR) {
-      channel = 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
-      channel = 4;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB20 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24) {
+      channel = kChannel3;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB8_IR ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16_IR ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
+      channel = kChannel4;
     } else {
       OP_LOGE("Aipp", "Input format of AIPP conf is undefined!");
     }
@@ -421,34 +408,27 @@ std::vector<int32_t> GetAclInputDims(::domi::AippOpParams* aipp_op_params, int64
 
 int64_t GetChannel(::domi::AippOpParams* aipp_op_params) {
   if (aipp_op_params->input_format()) {
-    if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8) {
-      return 4;
+    if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_XRGB8888_U8 ||
+        aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_ARGB8888_U8 ||
+        aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_AYUV444_U8) {
+      return kChannel4;
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_YUV400_U8) {
       return 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_ARGB8888_U8) {
-      return 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_AYUV444_U8) {
-      return 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW10) {
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW10 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW12 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW16 ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW24) {
       return 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW12) {
-      return 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW16) {
-      return 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RAW24) {
-      return 1;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB8_IR) {
-      return 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16_IR) {
-      return 4;
-    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
-      return 4;
+    } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB8_IR ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB16_IR ||
+               aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
+      return kChannel4;
     } else {
-      return 3;
+      return kChannel3;
     }
   }
 
-  return 3;
+  return kChannel3;
 }
 
 void SetAippMode(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
@@ -793,7 +773,7 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
 
   std::vector<std::pair<int64_t, int64_t>> features_shape_range;
   features_desc.GetShapeRange(features_shape_range);
-  if (features_shape_range.size() != 5) {
+  if (features_shape_range.size() != kNum5) {
     OP_LOGE(TbeGetName(op).c_str(), "aipp dynamic shape, the size of features shape range is invalid.");
     return GRAPH_FAILED;
   }
@@ -894,7 +874,7 @@ static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aip
 
   std::vector<std::pair<int64_t, int64_t>> images_shape_range;
   images_desc.GetShapeRange(images_shape_range);
-  if (!images_shape_range.empty() && images_shape_range.size() == 4) {
+  if (!images_shape_range.empty() && images_shape_range.size() == kNum4) {
     OP_LOGI(TbeGetName(op).c_str(), "images shape range is %s", to_string(images_shape_range).c_str());
     std::vector<std::pair<int64_t, int64_t>> images_shape_range_new;
     images_shape_range_new.push_back(std::pair<int64_t, int64_t>(1, 1));
@@ -934,7 +914,7 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
 
   auto imagesDimNum = images_desc.GetShape().GetDimNum();
   if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
-      || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < 5)) {
+      || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < kNum5)) {
     OP_LOGE(TbeGetName(op).c_str(), "The input shape of images is invalid");
     return GRAPH_FAILED;
   }
@@ -1015,7 +995,7 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
   std::vector<int32_t> aclInputDims;
   aclInputDims = GetAclInputDims(aipp_op_params, batch, src_image_size_h, src_image_size_w);
   OP_LOGI(TbeGetName(op).c_str(), "aclInputDims size: %d", aclInputDims.size());
-  if (aclInputDims.size() >= 4) {
+  if (aclInputDims.size() >= kNum4) {
     OP_LOGI(TbeGetName(op).c_str(), "aclInputDims: %d, %d, %d, %d", aclInputDims[0], aclInputDims[1], aclInputDims[2],
             aclInputDims[3]);
     op.SetAttr("input_dims", aclInputDims);
@@ -1068,7 +1048,7 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
   }
 
   // protobuff message to json
-  std::shared_ptr<domi::InsertNewOps> insert_op_conf_(new (std::nothrow) domi::InsertNewOps());
+  std::shared_ptr<domi::InsertNewOps> insert_op_conf_ = ops::make_shared_nothrow<domi::InsertNewOps>();
   if (insert_op_conf_ == nullptr) {
     OP_LOGE(TbeGetName(op).c_str(), "insert_op_conf_ is null!");
     return GRAPH_FAILED;

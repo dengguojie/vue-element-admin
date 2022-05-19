@@ -28,6 +28,7 @@ aicpu:
       - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/case_condition_ops.cc
       - ops/built-in/op_proto/coordinates_1d_to_2d_ops.cc
+      - ops/built-in/op_proto/vector_search.cc
       - ops/built-in/op_proto/inc/vector_search.h
       - ops/built-in/op_proto/inc/sparse_ops.h
       - ops/built-in/op_proto/inc/elewise_calculation_ops.h
@@ -2204,7 +2205,6 @@ unkown:
       - ops/built-in/op_proto/ctc_ops.cc
       - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/ragged_conversion_ops.cc
-      - ops/built-in/op_proto/vector_search.cc
       - ops/built-in/op_proto/set_ops.cc
       - ops/built-in/op_proto/parsing_ops.cc
       - ops/built-in/op_proto/candidate_sampling_ops.cc

@@ -58,7 +58,7 @@ TEST_F(Aipp, aipp_infershape_diff_test_1) {
   std::string caseDir = __FILE__;
   std::size_t idx = caseDir.find_last_of("/");
   caseDir = caseDir.substr(0, idx);
-  std::string cfgFile = caseDir + "/aipp_static.cfg";
+  std::string cfgFile = caseDir + "/aipp_static.cfg";  // YUV420SP_U8
   std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
   op.SetAttr("aipp_config_path", cfgFile);
 
@@ -72,6 +72,168 @@ TEST_F(Aipp, aipp_infershape_diff_test_1) {
 }
 
 TEST_F(Aipp, aipp_infershape_diff_test_2) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,3,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_rgb888.cfg";  // RGB888_U8
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 3, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_3) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,3,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_xrgb8888.cfg";  // XRGB8888_U8
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 3, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_4) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,1,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,1,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_yuv400.cfg";  // YUV400_U8
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 1, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_5) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,3,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_yuv422.cfg";  // YUV422SP_U8, ihisi
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 3, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_6) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,1,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,1,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_raw16.cfg";  // RAW16, ihisi
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 1, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_7) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,3,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_rgb24.cfg";  // RGB24, 1951 PG2
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 3, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_8) {
+  ge::op::Aipp op;
+
+  auto tensor_desc = create_desc_with_ori({1,4,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,4,224,224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("images", tensor_desc);
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string cfgFile = caseDir + "/aipp_static_rgb24_ir.cfg";  // RGB24_IR, 1951 PG2
+  std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
+  op.SetAttr("aipp_config_path", cfgFile);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("features");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {1, 4, 224, 224};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+
+TEST_F(Aipp, aipp_infershape_diff_test_9) {
   ge::op::Aipp op;
 
   op.UpdateInputDesc("images", create_desc_shape_range({1,3,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,224,224},
@@ -100,7 +262,7 @@ TEST_F(Aipp, aipp_infershape_diff_test_2) {
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
 }
 
-TEST_F(Aipp, aipp_infershape_diff_test_3) {
+TEST_F(Aipp, aipp_infershape_diff_test_10) {
   ge::op::Aipp op;
 
   op.UpdateInputDesc("images", create_desc_shape_range({1,3,64,64}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,3,64,64},
@@ -116,14 +278,14 @@ TEST_F(Aipp, aipp_infershape_diff_test_3) {
   constDesc.SetSize(160 * sizeof(uint8_t));
   constTensor.SetTensorDesc(constDesc);
   uint8_t constData[160] = {0};
-  *(constData + 0) = (uint8_t) 1;
-  *(constData + 4) = (int8_t) 1;
-  *(constData + 8) = (int8_t) 64;
-  *(constData + 12) = (int8_t) 64;
-  *(constData + 64) = (int8_t) 1;
-  *(constData + 64 + 2) = (int8_t) 1;
-  *(constData + 64 + 16) = (int8_t) 64;
-  *(constData + 64 + 20) = (int8_t) 64;
+  *(constData + 0) = (uint8_t) 1;  // YUV420SP_U8
+  *(constData + 4) = (int8_t) 1;  // batch
+  *(constData + 8) = (int8_t) 64;  // src_w
+  *(constData + 12) = (int8_t) 64;  // src_h
+  *(constData + 64) = (int8_t) 1;  // crop_switch
+  *(constData + 64 + 2) = (int8_t) 1;  // padding_switch
+  *(constData + 64 + 16) = (int8_t) 64;  // crop_w
+  *(constData + 64 + 20) = (int8_t) 64;  // crop_h
   constTensor.SetData((uint8_t*)constData, 160 * sizeof(uint8_t));
   auto const0 = ge::op::Constant().set_attr_value(constTensor);
 
@@ -136,7 +298,7 @@ TEST_F(Aipp, aipp_infershape_diff_test_3) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(Aipp, aipp_infershape_diff_test_4) {
+TEST_F(Aipp, aipp_infershape_diff_test_11) {
   ge::op::Aipp op;
 
   op.UpdateInputDesc("images", create_desc_shape_range({1,3,64,64}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,3,64,64},
@@ -172,7 +334,43 @@ TEST_F(Aipp, aipp_infershape_diff_test_4) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(Aipp, aipp_infershape_diff_test_5) {
+TEST_F(Aipp, aipp_infershape_diff_test_12) {
+  ge::op::Aipp op;
+
+  op.UpdateInputDesc("images", create_desc_shape_range({1,4,64,64}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,4,64,64},
+                     ge::FORMAT_NCHW, {{1,1},{4,4},{64,64},{64,64}}));
+  op.UpdateOutputDesc("features", create_desc_shape_range({1,1,64,64,16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,64,64},
+                      ge::FORMAT_NCHW, {{1,1},{1,1},{64,64},{64,64},{16,16}}));
+  nlohmann::json aipp_config_path_json;
+  aipp_config_path_json["aipp_mode"] = "dynamic";
+  op.SetAttr("aipp_config_path", aipp_config_path_json.dump());
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_UINT8);
+  constDesc.SetSize(160 * sizeof(uint8_t));
+  constTensor.SetTensorDesc(constDesc);
+  uint8_t constData[160] = {0};
+  *(constData + 0) = (uint8_t) 2;  // xrgb8888
+  *(constData + 4) = (int8_t) 1;
+  *(constData + 8) = (int8_t) 64;
+  *(constData + 12) = (int8_t) 64;
+  *(constData + 64) = (int8_t) 1;
+  *(constData + 64 + 2) = (int8_t) 1;
+  *(constData + 64 + 16) = (int8_t) 64;
+  *(constData + 64 + 20) = (int8_t) 64;
+  constTensor.SetData((uint8_t*)constData, 160 * sizeof(uint8_t));
+  auto const0 = ge::op::Constant().set_attr_value(constTensor);
+
+  op.set_input_params(const0);
+  auto desc = op.GetInputDesc("params");
+  desc.SetDataType(ge::DT_UINT8);
+  op.UpdateInputDesc("params", desc);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Aipp, aipp_infershape_diff_test_13) {
   ge::op::Aipp op;
 
   op.UpdateInputDesc("images", create_desc_shape_range({1,3,64,64}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,3,64,64},
@@ -208,7 +406,7 @@ TEST_F(Aipp, aipp_infershape_diff_test_5) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(Aipp, aipp_infershape_diff_test_6) {
+TEST_F(Aipp, aipp_infershape_diff_test_14) {
   ge::op::Aipp op;
 
   op.UpdateInputDesc("images", create_desc_shape_range({1,3,224,224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,3,224,224},

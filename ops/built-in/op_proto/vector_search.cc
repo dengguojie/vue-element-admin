@@ -37,7 +37,6 @@
 #include "util/vector_proto_profiling.h"
 
 namespace ge {
-
 // --------------------------GenADC---------------------
 IMPLEMT_VERIFIER(GenADC, GenADCVerify) {
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
@@ -167,7 +166,7 @@ IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
     OP_LOGE(TbeGetName(op).c_str(), "get attr group_size from op failed");
     return GRAPH_FAILED;
   }
-  if(groupSize <= 0){
+  if (groupSize <= 0) {
     OP_LOGE(TbeGetName(op).c_str(), "groupSize[%d] must greater than 0", groupSize);
     return GRAPH_FAILED;
   }
@@ -229,6 +228,7 @@ const int64_t BUCKET_SHAPE = 1;
 const int64_t ADC_TABLE_SHAPE = 256;
 const int64_t GROUP_SIZE_BASE = 64;
 const int64_t EXTREME_MODE_NUM = 2;
+
 graphStatus ScanPQCodesVerifyAttrs(op::ScanPQCodes op){
   int32_t totalLimit = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("total_limit", totalLimit),
