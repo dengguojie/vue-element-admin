@@ -24,8 +24,6 @@ class EqualCpuKernel : public CpuKernel {
  public:
   EqualCpuKernel() = default;
   ~EqualCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu

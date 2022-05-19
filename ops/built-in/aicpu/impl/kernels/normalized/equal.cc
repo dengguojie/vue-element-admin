@@ -24,7 +24,7 @@
 namespace {
 constexpr uint32_t kOutputNum = 1;
 constexpr uint32_t kInputNum = 2;
-const char *kEqual = "Equal";
+const char *const kEqual = "Equal";
 const bool kFlag = true;
 
 #define EQUAL_COMPUTE_CASE(DTYPE, TYPE, CTX, FLAG)                              \
