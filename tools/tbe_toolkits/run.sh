@@ -1,7 +1,7 @@
 #!/bin/bash
 DIR=$( cd "$( dirname "$0" )" && pwd )
 
-if [[ $1 = "--help"]] || [[ $1 = "h" ]]
+if [[ $1 = "--help" ]] || [[ $1 = "-h" ]]
 then
     echo "Usage: ./run.sh input output [options]"
     echo "input                                A test file whose name is '.cvs' can contain a path, such as: ./xxx.csv."
