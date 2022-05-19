@@ -22,7 +22,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-const char *kSign = "Sign";
+const char *const kSign = "Sign";
 constexpr int64_t kParallelDataNums = 128 * 1024;
 
 #define SIGN_COMPUTE_CASE(DTYPE, TYPE, CTX)             \
@@ -87,7 +87,7 @@ uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
       if (*(input_x + i) > static_cast<T>(0)) {
@@ -127,7 +127,7 @@ uint32_t SignCpuKernel::SignComputeComplex(CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
       if (*(input_x + i) != static_cast<T>(0)) {

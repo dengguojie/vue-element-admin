@@ -27,10 +27,10 @@ class RsqrtCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
+  uint32_t RsqrtCompute(Tensor *x, const Tensor *y, int64_t data_num,
                        CpuKernelContext &ctx) const;
   template <typename T>
-  uint32_t RsqrtComputeComplex(Tensor *x, Tensor *y, int64_t data_num,
+  uint32_t RsqrtComputeComplex(Tensor *x, const Tensor *y, int64_t data_num,
                        CpuKernelContext &ctx) const;
 };
 }  // namespace aicpu

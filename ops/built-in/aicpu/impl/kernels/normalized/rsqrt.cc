@@ -24,7 +24,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kRsqrt = "Rsqrt";
+const char *const kRsqrt = "Rsqrt";
 const size_t kRsqrtInputNum = 1;
 const size_t kRsqrtOutputNum = 1;
 constexpr int64_t kParallelDataNums = 8 * 1024;
@@ -50,7 +50,7 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   Tensor *x = ctx.Input(0);
-  Tensor *y = ctx.Output(0);
+  const Tensor *y = ctx.Output(0);
   int64_t data_num = x->NumElements();
   DataType data_type = x->GetDataType();
   uint32_t res = KERNEL_STATUS_OK;
@@ -83,7 +83,7 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
+uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, const Tensor *y, int64_t data_num,
                                       CpuKernelContext &ctx) const {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
@@ -143,7 +143,7 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
 }
 
 template <typename T>
-uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, Tensor *y,
+uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, const Tensor *y,
                                              int64_t data_num,
                                              CpuKernelContext &ctx) const {
   auto input_x = reinterpret_cast<T *>(x->GetData());

@@ -22,7 +22,7 @@
 #include "status.h"
 
 namespace {
-const char *kRound = "Round";
+const char *const kRound = "Round";
 
 template <typename T>
 const T ScalarRound(const T &x) {
@@ -47,7 +47,7 @@ const T ScalarRound(const T &x) {
 }
 
 template <typename T>
-void RangeRound(int64_t start, int64_t end, T *input, T *out) {
+void RangeRound(int64_t start, int64_t end, const T *input, T *out) {
   for (int64_t i = start; i < end; ++i) {
     out[i] = ScalarRound<T>(input[i]);
   }

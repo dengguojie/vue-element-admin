@@ -26,7 +26,7 @@ class SliceWriteCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
 private:
-  bool CheckValueSupported(DataType input_x_type, DataType input_value_type);
+  bool CheckValueSupported(const DataType input_x_type, const DataType input_value_type);
   uint32_t Check(const Tensor *x, const Tensor *value,
     int64_t row_offset, int64_t col_offset);
   uint32_t GetBeginValue(const Tensor *begin, int64_t &row_offset,

@@ -20,9 +20,9 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kReverseSequence = "ReverseSequence";
+const char *const kReverseSequence = "ReverseSequence";
 const int kOutputIndex = 2;
-const int kEven = 2;
+const int64_t kEven = 2;
 }
 
 namespace aicpu {
@@ -36,7 +36,7 @@ static void CheckSequence(int seq_dim, const Tlen *seq,
       return;
     }
     if (seq[d] > shape[seq_dim]) {
-      KERNEL_LOG_ERROR("CheckSequence, seq[%d]: [%lu], shape[%d]: [%lu]", d,
+      KERNEL_LOG_ERROR("CheckSequence, seq[%d]: [%lu], shape[%d]: [%lld]", d,
                        seq[d], seq_dim, shape[seq_dim]);
       return;
     }
@@ -47,7 +47,7 @@ uint32_t CalReverseSequence(int seq_dim, int batch_dim,
                             const std::vector<void *> &ioAddrs,
                             std::vector<int64_t> &shape,
                             std::vector<int64_t> &seq_lengths_shape,
-                            CpuKernelContext &ctx) {
+                            const CpuKernelContext &ctx) {
   // inputs
   T *input = reinterpret_cast<T *>(ioAddrs[0]);
   Tlen *seq = reinterpret_cast<Tlen *>(ioAddrs[1]);
@@ -56,24 +56,24 @@ uint32_t CalReverseSequence(int seq_dim, int batch_dim,
 
   CheckSequence(seq_dim, seq, shape, seq_lengths_shape);
 
-  int seq_step = 1;
-  for (int i = seq_dim + 1; i < static_cast<int>(shape.size()); i++) {
+  int64_t seq_step = 1;
+  for (int64_t i = seq_dim + 1; i < static_cast<int64_t>(shape.size()); i++) {
     seq_step *= shape[i];
   }
 
-  int skip_size = 1;
-  for (int i = seq_dim; i < static_cast<int>(shape.size()); i++) {
+  int64_t skip_size = 1;
+  for (int64_t i = seq_dim; i < static_cast<int64_t>(shape.size()); i++) {
     skip_size *= shape[i];
   }
-  int run_len = seq_step;
+  int64_t run_len = seq_step;
 
-  int batch_size = 1;
-  for (int i = batch_dim + 1; i < static_cast<int>(shape.size()); ++i) {
+  int64_t batch_size = 1;
+  for (int64_t i = batch_dim + 1; i < static_cast<int64_t>(shape.size()); ++i) {
     batch_size *= shape[i];
   }
 
-  int total_size = 1;
-  for (int i = 0; i < static_cast<int>(shape.size()); ++i) {
+  int64_t total_size = 1;
+  for (int64_t i = 0; i < static_cast<int64_t>(shape.size()); ++i) {
     total_size *= shape[i];
   }
   KERNEL_CHECK_FALSE((shape[seq_dim] != 0), KERNEL_STATUS_PARAM_INVALID,
@@ -82,23 +82,23 @@ uint32_t CalReverseSequence(int seq_dim, int batch_dim,
                      "The value of batch_size cannot be 0.");
   KERNEL_CHECK_FALSE((shape[batch_dim] != 0), KERNEL_STATUS_PARAM_INVALID,
                      "The shape[%d] of input[0] cannot be 0.", batch_dim);
-  int n = total_size / (run_len * shape[seq_dim]);
+  int64_t n = total_size / (run_len * shape[seq_dim]);
   bool parallel_in = run_len > n;
   const int64_t kMaxCoreNum = std::max(
       static_cast<uint32_t>(1), aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
   auto shard = [&](const int64_t start, const int64_t end) {
-    for (int j = start; j < end; ++j) {  // 0~n
-      int begin = run_len * shape[seq_dim] * j;
+    for (int64_t j = start; j < end; ++j) {  // 0~n
+      int64_t begin = run_len * shape[seq_dim] * j;
       auto shard_in = [&](int64_t start_in, int64_t end_in) {
-        for (int r = start_in; r < end_in; ++r) {
-          int offset = r + begin;
-          int reverse_num = seq[offset / batch_size % shape[batch_dim]];
-          for (int i = 0; i < shape[seq_dim]; ++i) {
+        for (int64_t r = start_in; r < end_in; ++r) {
+          int64_t offset = r + begin;
+          int64_t reverse_num = static_cast<int64_t>(seq[offset / batch_size % shape[batch_dim]]);
+          for (int64_t i = 0; i < shape[seq_dim]; ++i) {
             if (i < reverse_num / kEven) {
               output[i * seq_step + offset] =
-                  input[(reverse_num - i - 1) * seq_step + offset];
-              output[(reverse_num - i - 1) * seq_step + offset] =
+                  input[((reverse_num - i) - 1) * seq_step + offset];
+              output[((reverse_num - i) - 1) * seq_step + offset] =
                   input[i * seq_step + offset];
             }
             if (i >= reverse_num ||
@@ -131,12 +131,12 @@ uint32_t ReverseSequenceMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   AttrValue *seq_dim = ctx.GetAttr("seq_dim");
   KERNEL_CHECK_NULLPTR(seq_dim, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr:[seq_dim] failed.");
-  seq_dim_ = seq_dim->GetInt();
+  seq_dim_ = static_cast<int>(seq_dim->GetInt());
 
   AttrValue *batch_dim = ctx.GetAttr("batch_dim");
   KERNEL_CHECK_NULLPTR(batch_dim, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr:[batch_dim] failed.");
-  batch_dim_ = batch_dim->GetInt();
+  batch_dim_ = static_cast<int>(batch_dim->GetInt());
 
   // input_0: x
   Tensor *x_tensor = ctx.Input(0);

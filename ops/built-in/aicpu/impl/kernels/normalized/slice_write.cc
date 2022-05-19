@@ -26,13 +26,13 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kSliceWrite = "SliceWrite";
+const char *const kSliceWrite = "SliceWrite";
 const uint32_t kInputNum = 3;
 const uint32_t kOutputNum = 1;
 
 template <typename T>
-void RangeSliceWrite(int64_t start, int64_t end, aicpu::Tensor *x,
-                     aicpu::Tensor *value, int64_t row_offset,
+void RangeSliceWrite(int64_t start, int64_t end, const aicpu::Tensor *x,
+                     const aicpu::Tensor *value, int64_t row_offset,
                      int64_t col_offset) {
   auto value_shape = value->GetTensorShape();
   int32_t col_index = value_shape->GetDims() - 1;
@@ -45,28 +45,28 @@ void RangeSliceWrite(int64_t start, int64_t end, aicpu::Tensor *x,
   T *x_data = static_cast<T *>(x->GetData());
   int64_t x_offset = (row_offset + start) * x_col_num + col_offset;
   T *x_start = x_data + x_offset;
-  int64_t x_left_size = x->GetDataSize() - x_offset * sizeof(T);
+  int64_t x_left_size = static_cast<int64_t>(x->GetDataSize()) - x_offset * static_cast<int64_t>(sizeof(T));
   KERNEL_LOG_INFO(
       "Slice write begin, x data offset[%lld], x col num[%lld],"
       "value offset[%lld], value col num[%lld], start[%lld], end[%lld]",
       x_offset, x_col_num, value_offset, value_col_num, start, end);
   for (int64_t i = start; i < end; ++i) {
     auto ret =
-        memcpy_s(x_start, x_left_size, value_start, value_col_num * sizeof(T));
+        memcpy_s(x_start, x_left_size, value_start, value_col_num * static_cast<int64_t>(sizeof(T)));
     KERNEL_CHECK_FALSE_VOID(
         (ret == EOK),
         "[%s] copy to output failed, output left size [%ld], copy size [%ld].",
-        kSliceWrite, x_left_size, value_col_num * sizeof(T));
+        kSliceWrite, x_left_size, value_col_num * static_cast<int64_t>(sizeof(T)));
     value_start += value_col_num;
     x_start += x_col_num;
-    x_left_size -= x_col_num * sizeof(T);
+    x_left_size -= x_col_num * static_cast<int64_t>(sizeof(T));
   }
 }
 }  // namespace
 
 namespace aicpu {
-bool SliceWriteCpuKernel::CheckValueSupported(DataType input_x_type,
-                                              DataType input_value_type) {
+bool SliceWriteCpuKernel::CheckValueSupported(const DataType input_x_type,
+                                              const DataType input_value_type) {
   switch (input_x_type) {
     case DT_FLOAT16:
     case DT_FLOAT:

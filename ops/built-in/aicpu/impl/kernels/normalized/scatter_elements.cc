@@ -22,7 +22,7 @@ namespace {
 const int32_t kInputNum = 3;
 const int32_t kOutputNum = 1;
 const int32_t KSplitSize = 64 * 1024;
-const char *kScatterElements = "ScatterElements";
+const char *const kScatterElements = "ScatterElements";
 #define DO_COMPUTE_CASE(DTYPE, TYPE, ITYPE, CTX)   \
   case (DTYPE): {                                  \
     if ((ITYPE) == DT_INT32) {                     \
@@ -137,18 +137,18 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
     }
   }
   axis_value = axis_value < 0 ? axis_value + value_dim_num_x1 : axis_value;
-  int64_t axis_dim_value = shape_x1->GetDimSize(axis_value);
+  int64_t axis_dim_value = shape_x1->GetDimSize(static_cast<int32_t>(axis_value));
   int64_t update_value_num = ctx.Input(1)->NumElements();
   int64_t total_value_num = ctx.Input(0)->NumElements();
   // using input to initial output
   std::atomic<int32_t> work_ret(KERNEL_STATUS_OK);
-  int64_t initial_size = total_value_num * sizeof(T);
+  int64_t initial_size = total_value_num * static_cast<int64_t>(sizeof(T));
   int64_t max_thread_num = initial_size / KSplitSize;
   if (max_thread_num > total_value_num || max_thread_num == 0) {
     max_thread_num = total_value_num;
   }
-  int64_t per_core_size = total_value_num / max_thread_num * sizeof(T);
-  int64_t last_core_size = total_value_num % max_thread_num * sizeof(T) +
+  int64_t per_core_size = (total_value_num / max_thread_num) * static_cast<int64_t>(sizeof(T));
+  int64_t last_core_size = (total_value_num % max_thread_num) * static_cast<int64_t>(sizeof(T)) +
                            per_core_size;
   auto shard_copy = [&](int64_t start, int64_t end) {
     for (int64_t i = start; i < end; ++i) {

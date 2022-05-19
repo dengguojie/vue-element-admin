@@ -24,7 +24,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kSearchSorted = "SearchSorted";
+const char *const kSearchSorted = "SearchSorted";
 constexpr size_t kInputSize = 2;
 constexpr size_t kOutputSize = 1;
 }  // namespace
@@ -68,9 +68,8 @@ uint32_t SearchSortedKernel::CheckShape() {
 }
 
 template <typename S>
-uint32_t CheckParam(CpuKernelContext &ctx, Tensor *sequence_t, Tensor *values_t,
-                    Tensor *output_t, std::vector<int64_t> sequence_shape,
-                    std::vector<int64_t> values_shape) {
+uint32_t CheckParam(CpuKernelContext &ctx, Tensor *sequence_t, const Tensor *values_t,
+                    const Tensor *output_t, std::vector<int64_t> sequence_shape) {
   size_t search_len = sequence_shape.size();
   if (output_t->NumElements() != values_t->NumElements()) {
     KERNEL_LOG_ERROR(
@@ -95,7 +94,7 @@ uint32_t CheckParam(CpuKernelContext &ctx, Tensor *sequence_t, Tensor *values_t,
       }
     }
   };
-  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, list_count, 1, task);
+  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, static_cast<int64_t>(list_count), 1, task);
   if (ret != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed.");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -130,7 +129,6 @@ uint32_t SearchSortedKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(output_t_, KERNEL_STATUS_PARAM_INVALID,
                        "Get output:[1] failed");
   output_dtype_ = static_cast<DataType>(output_t_->GetDataType());
-  auto output_shape = output_t_->GetTensorShape();
 
   // inputs: sequence, values
   if (ctx.GetInputsSize() != kInputSize) {
@@ -155,22 +153,21 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, Tensor *values_t,
                          Tensor *output_t, std::vector<int64_t> sequence_shape,
                          std::vector<int64_t> values_shape,
                          CpuKernelContext &ctx) {
-  auto res = CheckParam<S>(ctx, sequence_t, values_t, output_t, sequence_shape,
-                           values_shape);
+  auto res = CheckParam<S>(ctx, sequence_t, values_t, output_t, sequence_shape);
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
                      "CheckParam failed, result = [%d].", res);
   auto sequence = reinterpret_cast<S*>(sequence_t->GetData());
   auto values = reinterpret_cast<S*>(values_t->GetData());
   auto output = reinterpret_cast<T*>(output_t->GetData());
-  size_t elem_num = values_t->NumElements();
+  size_t elem_num = static_cast<size_t>(values_t->NumElements());
   size_t seq_dim = sequence_shape.size();
-  size_t search_repeat = values_shape.back();
-  size_t search_len = sequence_shape.back();
+  size_t search_repeat = static_cast<size_t>(values_shape.back());
+  size_t search_len = static_cast<size_t>(sequence_shape.back());
   KERNEL_CHECK_FALSE((search_repeat != 0), KERNEL_STATUS_INNER_ERROR,
                      "The value in the shape of input[1] cannot be 0.");
   KERNEL_CHECK_FALSE((search_len > 0), KERNEL_STATUS_INNER_ERROR,
                      "The last dim in the shape of input[0] must be > [0].");
-  uint64_t sequence_len = sequence_t->NumElements();
+  uint64_t sequence_len = static_cast<uint64_t>(sequence_t->NumElements());
 
   std::atomic<bool> task_flag(true);
   auto task = [&](size_t start, size_t end) {
@@ -192,7 +189,7 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, Tensor *values_t,
     }
   };
 
-  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, elem_num, 1, task);
+  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, static_cast<int64_t>(elem_num), 1, task);
   if (ret != KERNEL_STATUS_OK || !task_flag.load()) {
     KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed.");
     return KERNEL_STATUS_INNER_ERROR;

@@ -31,7 +31,7 @@ namespace {
 const std::uint32_t kSoftmaxV2InputNum{1};
 const std::uint32_t kSoftmaxV2OutputNum{1};
 const std::int64_t paralled_data_num{2048};
-const char *kSoftmaxV2{"SoftmaxV2"};
+const char *const kSoftmaxV2 = "SoftmaxV2";
 }  // namespace
 
 namespace aicpu {
@@ -52,7 +52,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
   if (cores < 1) {
     return KERNEL_STATUS_INNER_ERROR;
   }
-  int64_t dim_size = dims.size();
+  int64_t dim_size = static_cast<int64_t>(dims.size());
   // pivot is the axes value
   std::int64_t pivot, inner_size{1}, outer_size{1}, length{1};
   if (axes[0] >= 0) {
@@ -62,10 +62,10 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
   }
   for (int64_t index = 0; index < dim_size; index++) {
     if (index > pivot) {
-      inner_size *= dims[index];
+      inner_size *= static_cast<std::int64_t>(dims[index]);
     }
     if (index < pivot) {
-      outer_size *= dims[index];
+      outer_size *= static_cast<int64_t>(dims[index]);
     }
   }
   length = inner_size * outer_size;
@@ -91,7 +91,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
          index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         count_step++;
-        if (count_step == dims[pivot]) {
+        if (count_step == static_cast<int64_t>(dims[pivot])) {
           count_step = 0;
           index_batch += inner_size;
         }
@@ -122,7 +122,8 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
     const T constant_one(1.0);
     aicpu::CpuKernelUtils::ParallelFor(
         ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
-          for (int64_t index = begin, dim_length = dims[pivot], outer_index,
+          int64_t tmp = static_cast<int64_t>(dims[pivot]);
+          for (int64_t index = begin, dim_length = tmp, outer_index,
                       index_base;
                index < end; ++index) {
             outer_index = index / inner_size;
@@ -210,7 +211,7 @@ inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
     }
     auto input = ctx.Input(0)->GetTensorShape()->GetDimSizes();
     std::int64_t dim = 0;
-    int64_t size = input.size();
+    int64_t size = static_cast<int64_t>(input.size());
     dim = (axes[0] > 0) ? axes[0] : axes[0] + size;
     if ((dim < 0 || dim >= size) && axes[0] >= size) {
       KERNEL_LOG_ERROR(
@@ -222,8 +223,7 @@ inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-std::uint32_t SoftmaxV2Check(CpuKernelContext &ctx, uint32_t inputs_num,
-                             uint32_t outputs_num) {
+std::uint32_t SoftmaxV2Check(CpuKernelContext &ctx, uint32_t inputs_num) {
   return NormalCheck(ctx, kSoftmaxV2InputNum, kSoftmaxV2OutputNum)
              ? KERNEL_STATUS_PARAM_INVALID
              : SoftmaxV2ExtraCheck(ctx);
@@ -247,7 +247,7 @@ std::uint32_t SoftmaxV2Compute(const CpuKernelContext &ctx) {
 }  // namespace detail
 
 std::uint32_t SoftmaxV2CpuKernel::Compute(CpuKernelContext &ctx) {
-  return detail::SoftmaxV2Check(ctx, kSoftmaxV2InputNum, kSoftmaxV2OutputNum)
+  return detail::SoftmaxV2Check(ctx, kSoftmaxV2InputNum)
              ? KERNEL_STATUS_PARAM_INVALID
              : detail::SoftmaxV2Compute(ctx);
 }
