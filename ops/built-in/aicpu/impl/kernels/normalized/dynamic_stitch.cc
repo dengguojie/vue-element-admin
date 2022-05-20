@@ -34,7 +34,7 @@ const size_t kExpandMax = 10;
 }  // namespace
 
 namespace aicpu {
-uint32_t DynamicStitchKernel::GetInputAndCheck(CpuKernelContext &ctx,
+uint32_t DynamicStitchKernel::GetInputAndCheck(const CpuKernelContext &ctx,
                                                int *first_dim_size,
                                                int *data_elements_size) {
   n_ = ctx.GetInputsSize() / 2;
@@ -44,7 +44,7 @@ uint32_t DynamicStitchKernel::GetInputAndCheck(CpuKernelContext &ctx,
     *data_elements_size = 0;
   }
   for (int i = 0; i < n_; ++i) {
-    Tensor *indices = ctx.Input(i);
+    Tensor *indices = ctx.Input(static_cast<uint32_t>(i));
     if (indices->NumElements() > 0) {
       EigenTensor indicesET(indices, indices->GetData());
       Eigen::Tensor<int32_t, 0, Eigen::RowMajor> m =
@@ -96,7 +96,7 @@ uint32_t DynamicStitchKernel::GetInputAndCheck(CpuKernelContext &ctx,
 }
 
 template <typename T>
-uint32_t CalDynamicStitch(CpuKernelContext &ctx, int first_dim_size,
+uint32_t CalDynamicStitch(const CpuKernelContext &ctx, int first_dim_size,
                           int data_elements_size, int n) {
   Tensor *merged = ctx.Output(0);
   if (first_dim_size > 0) {
@@ -155,7 +155,7 @@ uint32_t DynamicStitchKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
                      "GetInputAndCheck failed.");
 
-  std::map<int, std::function<uint32_t(CpuKernelContext &, int, int, int)>>
+  std::map<int, std::function<uint32_t(const CpuKernelContext &, int, int, int)>>
       calls;
   calls[DT_FLOAT16] = CalDynamicStitch<Eigen::half>;
   calls[DT_FLOAT] = CalDynamicStitch<float>;

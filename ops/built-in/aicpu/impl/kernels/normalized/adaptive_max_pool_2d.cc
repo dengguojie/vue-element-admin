@@ -20,7 +20,7 @@
 #include "cpu_kernel_utils.h"
 
 namespace {
-const char *kAdaptiveMaxPool2d = "AdaptiveMaxPool2d";
+const char *const kAdaptiveMaxPool2d = "AdaptiveMaxPool2d";
 template <typename SCALAR_T, typename INDICES_T>
 struct AdaptiveCalcArgs {
   SCALAR_T *input_data = nullptr;

@@ -20,7 +20,7 @@
 #include "status.h"
 
 namespace {
-const char *kExpandDims = "ExpandDims";
+const char* const kExpandDims = "ExpandDims";
 const size_t kExpandDimsOutputDescNum = 1;
 const size_t kExpandDimsInputNum = 2;
 }

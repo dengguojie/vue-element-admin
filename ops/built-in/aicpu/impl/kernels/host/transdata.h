@@ -48,7 +48,7 @@ class TransDataCpuKernel : public CpuKernel {
 
   bool IsOriginSupportFormatTransfer(Format src_fromat, Format dst_format);
 
-  uint32_t NewCompute(CpuKernelContext &ctx);
+  uint32_t NewCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

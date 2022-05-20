@@ -258,7 +258,7 @@ namespace aicpu
         }
       }
     };
-    CpuKernelUtils::ParallelFor(ctx, nloc, 1, ComputeRijDistance);
+    (void)CpuKernelUtils::ParallelFor(ctx, nloc, 1, ComputeRijDistance);
   }
 
   // functions used in custom ops

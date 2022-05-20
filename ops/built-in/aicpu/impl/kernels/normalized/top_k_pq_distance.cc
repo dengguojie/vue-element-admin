@@ -128,7 +128,7 @@ uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx,
 }
 
 template <typename T>
-uint32_t TopKPQDistanceCpuKernel::ProcessResult(CpuKernelContext &ctx,
+uint32_t TopKPQDistanceCpuKernel::ProcessResult(const CpuKernelContext &ctx,
                                                 const InputsData<T> &input_data,
                                                 Item<T> topk_ptr[]) {
   Tensor *topk_distance = ctx.Output(0);

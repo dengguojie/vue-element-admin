@@ -26,7 +26,7 @@
 using namespace std;
 
 namespace {
-const char *kGreater = "Greater";
+const char* const kGreater = "Greater";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 1;
 }  // namespace
@@ -54,7 +54,7 @@ uint32_t GreaterCpuKernel::BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y,
   return KERNEL_STATUS_OK;
 }
 template <typename T>
-uint32_t GreaterCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t GreaterCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input0_tensor = ctx.Input(kFirstInputIndex);
   auto input1_tensor = ctx.Input(kSecondInputIndex);
   DataType input0_data_type = input0_tensor->GetDataType();

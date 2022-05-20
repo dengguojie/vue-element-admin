@@ -29,7 +29,7 @@ class GemmCpuKernel : public CpuKernel {
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
 
-  uint32_t Check(CpuKernelContext &ctx);
+  uint32_t Check(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

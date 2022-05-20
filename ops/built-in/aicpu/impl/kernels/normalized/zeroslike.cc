@@ -68,7 +68,7 @@ uint32_t ZerosLikeCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(CpuKernelContext &ctx) const {
+uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(const CpuKernelContext &ctx) const {
   auto input = ctx.Input(0);
   auto output = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -86,7 +86,7 @@ uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(CpuKernelContext &ctx) const {
 }
 
 template <typename T>
-uint32_t ZerosLikeCpuKernel::ZerosLikePartCompute(CpuKernelContext &ctx) {
+uint32_t ZerosLikeCpuKernel::ZerosLikePartCompute(const CpuKernelContext &ctx) {
   size_t data_num = static_cast<size_t>(ctx.Input(0)->NumElements());
   Tensor *y = ctx.Output(0);
   auto y_addr = y->GetData();

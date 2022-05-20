@@ -28,8 +28,8 @@
 
 namespace {
 // Add pad op
-const char *kPadD = "PadD";
-const char *kPad = "Pad";
+const char* const kPadD = "PadD";
+const char* const kPad = "Pad";
 const uint32_t kInput_padD = 1;
 const uint32_t kInput_pad = 2;
 const uint32_t kOutput = 1;

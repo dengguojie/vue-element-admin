@@ -23,7 +23,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kCacheSwapTable = "CacheSwapTable";
+const char *const kCacheSwapTable = "CacheSwapTable";
 }
 
 namespace aicpu {

@@ -22,7 +22,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
-const char *kFloorDiv = "FloorDiv";
+const char* const kFloorDiv = "FloorDiv";
 // when input data size is more than kParallelDataNum, use Parallel func
 const int64_t kParallelDataNum = 2 * 1024;
 const int64_t kParallelDataNumMid = 4 * 1024;

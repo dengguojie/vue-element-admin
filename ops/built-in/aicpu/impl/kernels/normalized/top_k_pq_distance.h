@@ -86,7 +86,7 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
   uint32_t DoCompute(CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t ProcessResult(CpuKernelContext &ctx, const InputsData<T> &input_data,
+  uint32_t ProcessResult(const CpuKernelContext &ctx, const InputsData<T> &input_data,
                          Item<T> topk_ptr[]);
 
   template <typename T>

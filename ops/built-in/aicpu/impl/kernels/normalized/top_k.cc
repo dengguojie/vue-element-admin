@@ -543,7 +543,7 @@ uint32_t TopKCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t TopKCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("TopKCpuKernel::DoCompute start.");
   auto shard_top_k = [&](size_t start, size_t end) {
     TopKForNVector<T>(start, end);
@@ -601,7 +601,7 @@ void TopKCpuKernel::TopKForNVector(size_t start, size_t end) {
   }
 }
 
-uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t TopKCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   // get x
   input_tensor_ = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor_, KERNEL_STATUS_PARAM_INVALID,

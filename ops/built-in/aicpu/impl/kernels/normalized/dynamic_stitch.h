@@ -66,7 +66,7 @@ class DynamicStitchKernel : public CpuKernel {
     return static_cast<UIndex>(index) < static_cast<UIndex>(limit);
   }
 
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx, int *first_dim_size,
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx, int *first_dim_size,
                             int *data_elements_size);
   int n_ = 1;
   DataType input_dtype_ = DT_INT32;

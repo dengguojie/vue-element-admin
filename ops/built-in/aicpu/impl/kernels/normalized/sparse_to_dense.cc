@@ -125,8 +125,8 @@ uint32_t SparseToDenseCpuKernel::ValidParam(const CpuKernelContext &ctx) {
   }
 
   // valid data type
-  int32_t IndiceType = indices_tensor->GetDataType();
-  int32_t outShapeType = shape_tensor->GetDataType();
+  int32_t IndiceType = static_cast<int32_t>(indices_tensor->GetDataType());
+  int32_t outShapeType = static_cast<int32_t>(shape_tensor->GetDataType());
   bool validIndiceType = ((IndiceType != DT_INT32) && (IndiceType != DT_INT64));
   bool validShapeType =
       ((outShapeType != DT_INT32) && (outShapeType != DT_INT64));
@@ -212,7 +212,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   if (validate_indices->GetBool()) {
-    if (st.IndicesValid(ctx) != KERNEL_STATUS_OK) {
+    if (st.IndicesValid(ctx) != static_cast<uint32_t>(KERNEL_STATUS_OK)) {
       KERNEL_LOG_ERROR("Indices is valid.");
       return KERNEL_STATUS_PARAM_INVALID;
     }
@@ -237,7 +237,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
-  if (SparseToDense(ctx, st, indices_tensor, output_tensor) != KERNEL_STATUS_OK) {
+  if (SparseToDense(ctx, st, indices_tensor, output_tensor) != static_cast<uint32_t>(KERNEL_STATUS_OK)) {
     KERNEL_LOG_ERROR("Sparse_to_dense excute failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }

@@ -71,7 +71,7 @@ class SparseTensor {
    * @return uint32_t: 0->success other->failed
    */
   template <typename T>
-  uint32_t EigenTensorIndicesValid(CpuKernelContext &ctx) const {
+  uint32_t EigenTensorIndicesValid(const CpuKernelContext &ctx) const {
     const auto ix_t = ix_->matrix<T>();
     for (int32_t di = 0; di < dims_; ++di) {
       if ((ix_t(0, di) < 0) || (ix_t(0, di) >= shape_[di])) {
@@ -97,12 +97,12 @@ class SparseTensor {
       } else {
         uint32_t min_core_num = 1;
         size_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-        uint32_t result = KERNEL_STATUS_OK;
-        aicpu::CpuKernelUtils::ParallelFor(
+        uint32_t result = static_cast<uint32_t>(KERNEL_STATUS_OK);
+        (void)aicpu::CpuKernelUtils::ParallelFor(
             ctx, dims_size, dims_size / max_core_num, [&](std::int64_t begin, std::int64_t end) {
             for (int64_t n = begin + 1; n < end; ++n) {
               if ((ix_t(n, di) < 0) || (ix_t(0, di) >= shape_[di])) {
-                result = KERNEL_STATUS_PARAM_INVALID;
+                result = static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
                 KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld, di = %d.", n, di);
                 return;
               }
@@ -149,9 +149,9 @@ class SparseTensor {
     int64_t vals_size = vals_t.dimension(0);
     uint32_t min_core_num = 1;
     size_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-    uint32_t result = KERNEL_STATUS_OK;
+    uint32_t result = static_cast<uint32_t>(KERNEL_STATUS_OK);
     auto parallel_proc = [&](std::int64_t begin, std::int64_t end) {
-      for (int n = begin; n < end; ++n) {
+      for (int64_t n = begin; n < end; ++n) {
         bool invalid_dims = false;
         int64_t ix = 0;
         for (int d = 0; d < dims_; ++d) {
@@ -162,7 +162,7 @@ class SparseTensor {
           ix += strides[d] * ix_n_d;
         }
         if (invalid_dims) {
-          result = KERNEL_STATUS_INNER_ERROR;
+          result = static_cast<uint32_t>(KERNEL_STATUS_INNER_ERROR);
           KERNEL_LOG_ERROR("Sparse to dense got invalid dims.");
           return;
         }

@@ -23,7 +23,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kOnesLike = "OnesLike";
+const char* const kOnesLike = "OnesLike";
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
 

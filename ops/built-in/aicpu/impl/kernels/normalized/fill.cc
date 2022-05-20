@@ -19,7 +19,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kFill = "Fill";
+const char* const kFill = "Fill";
 }
 
 namespace aicpu {

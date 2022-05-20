@@ -26,19 +26,19 @@
 #include "log.h"
 
 namespace {
-const char *kVtString = "VT_STRING";
-const char *kVtListString = "VT_LIST_STRING";
-const char *kVtFloat = "VT_FLOAT";
-const char *kVtListFloat = "VT_LIST_FLOAT";
-const char *kVtInt = "VT_INT";
-const char *kVtListInt = "VT_LIST_INT";
-const char *kVtListListInt = "VT_LIST_LIST_INT";
-const char *kVtBool = "VT_BOOL";
-const char *kVtListBool = "VT_LIST_BOOL";
-const char *kVtDataType = "VT_DATA_TYPE";
-const char *kVtListDataType = "VT_LIST_DATA_TYPE";
-const char *kVtTensor = "VT_TENSOR";
-const char *kVtListTensor = "VT_LIST_TENSOR";
+const char* const kVtString = "VT_STRING";
+const char* const kVtListString = "VT_LIST_STRING";
+const char* const kVtFloat = "VT_FLOAT";
+const char* const kVtListFloat = "VT_LIST_FLOAT";
+const char* const kVtInt = "VT_INT";
+const char* const kVtListInt = "VT_LIST_INT";
+const char* const kVtListListInt = "VT_LIST_LIST_INT";
+const char* const kVtBool = "VT_BOOL";
+const char* const kVtListBool = "VT_LIST_BOOL";
+const char* const kVtDataType = "VT_DATA_TYPE";
+const char* const kVtListDataType = "VT_LIST_DATA_TYPE";
+const char* const kVtTensor = "VT_TENSOR";
+const char* const kVtListTensor = "VT_LIST_TENSOR";
 
 void ConvertGeToAicpuTensor(const ge::GeTensorDesc &tensor_desc,
                             const std::string &tensor_name,
@@ -61,7 +61,7 @@ void ConvertGeToAicpuTensor(const ge::GeTensorDesc &tensor_desc,
                ge_tensor.GetData(), ge_tensor.GetSize());
 }
 
-int32_t AddStringAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddStringAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                aicpu::NodeDef *node_def) {
   std::string s;
   ge::graphStatus ret = op.GetAttr(name, s);
@@ -73,11 +73,11 @@ int32_t AddStringAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetString(s);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListStringAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListStringAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                    aicpu::NodeDef *node_def) {
   std::vector<std::string> list_s;
   ge::graphStatus ret = op.GetAttr(name, list_s);
@@ -89,11 +89,11 @@ int32_t AddListStringAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetListString(list_s);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddFloatAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddFloatAttrToNodeDef(const ge::Operator &op, const std::string &name,
                               aicpu::NodeDef *node_def) {
   float f = 0;
   ge::graphStatus ret = op.GetAttr(name, f);
@@ -105,11 +105,11 @@ int32_t AddFloatAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetFloat(f);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListFloatAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListFloatAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                   aicpu::NodeDef *node_def) {
   std::vector<float> list_f;
   ge::graphStatus ret = op.GetAttr(name, list_f);
@@ -121,11 +121,11 @@ int32_t AddListFloatAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetListFloat(list_f);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddBoolAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddBoolAttrToNodeDef(const ge::Operator &op, const std::string &name,
                              aicpu::NodeDef *node_def) {
   bool b = false;
   ge::graphStatus ret = op.GetAttr(name, b);
@@ -137,11 +137,11 @@ int32_t AddBoolAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetBool(b);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListBoolAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListBoolAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                  aicpu::NodeDef *node_def) {
   std::vector<bool> list_b;
   ge::graphStatus ret = op.GetAttr(name, list_b);
@@ -153,11 +153,11 @@ int32_t AddListBoolAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetListBool(list_b);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddIntAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddIntAttrToNodeDef(const ge::Operator &op, const std::string &name,
                             aicpu::NodeDef *node_def) {
   int64_t i = 0;
   ge::graphStatus ret = op.GetAttr(name, i);
@@ -169,11 +169,11 @@ int32_t AddIntAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetInt(i);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListIntAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListIntAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                 aicpu::NodeDef *node_def) {
   std::vector<int64_t> list_i;
   ge::graphStatus ret = op.GetAttr(name, list_i);
@@ -185,11 +185,11 @@ int32_t AddListIntAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetListInt(list_i);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListListIntAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListListIntAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                     aicpu::NodeDef *node_def) {
   std::vector<std::vector<int64_t>> list_i;
   ge::graphStatus ret = op.GetAttr(name, list_i);
@@ -200,11 +200,11 @@ int32_t AddListListIntAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetListListInt(list_i);
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddDataTypeAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddDataTypeAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                  aicpu::NodeDef *node_def) {
   ge::DataType data_type = ge::DT_UNDEFINED;
   ge::graphStatus ret = op.GetAttr(name, data_type);
@@ -216,11 +216,11 @@ int32_t AddDataTypeAttrToNodeDef(ge::Operator &op, const std::string &name,
   auto attr = aicpu::CpuKernelUtils::CreateAttrValue();
   CPU_CHECK_NULLPTR_WARN(attr, -1, "Op create attr value failed.")
   attr->SetDataType(static_cast<aicpu::DataType>(data_type));
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListDataTypeAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListDataTypeAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                      aicpu::NodeDef *node_def) {
   std::vector<ge::DataType> list_type;
   ge::graphStatus ret = op.GetAttr(name, list_type);
@@ -234,11 +234,11 @@ int32_t AddListDataTypeAttrToNodeDef(ge::Operator &op, const std::string &name,
   for (const ge::DataType &data_type : list_type) {
     attr->AddListDataType(static_cast<aicpu::DataType>(data_type));
   }
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddTensorAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddTensorAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                aicpu::NodeDef *node_def) {
   ge::Tensor ge_tensor;
   ge::graphStatus ret = op.GetAttr(name, ge_tensor);
@@ -262,12 +262,12 @@ int32_t AddTensorAttrToNodeDef(ge::Operator &op, const std::string &name,
   CPU_CHECK_NULLPTR_WARN(aicpu_tensor_shape, -1,
                          "Op create tensor shape failed.")
   aicpu_tensor_shape->SetDimSizes(ge_tensor_desc.GetShape().GetDims());
-  attr->SetTensor(aicpu_tensor.get());
-  node_def->AddAttrs(name, attr.get());
+  (void)attr->SetTensor(aicpu_tensor.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
-int32_t AddListTensorAttrToNodeDef(ge::Operator &op, const std::string &name,
+int32_t AddListTensorAttrToNodeDef(const ge::Operator &op, const std::string &name,
                                    aicpu::NodeDef *node_def) {
   std::vector<ge::Tensor> ge_list_tensor;
   ge::graphStatus ret = op.GetAttr(name, ge_list_tensor);
@@ -293,7 +293,7 @@ int32_t AddListTensorAttrToNodeDef(ge::Operator &op, const std::string &name,
                            "Op create tensor shape failed.")
     aicpu_tensor_shape->SetDimSizes(ge_tensor_desc.GetShape().GetDims());
   }
-  node_def->AddAttrs(name, attr.get());
+  (void)node_def->AddAttrs(name, attr.get());
   return 0;
 }
 
@@ -383,8 +383,8 @@ __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
       op_desc, -1, "Op[%s] get op desc from operator failed.", op_type.c_str())
 
   node_def->SetOpType(op_type);
-  size_t input_size = op_desc->GetAllInputsSize();
-  for (size_t i = 0; i < input_size; ++i) {
+  uint32_t input_size = static_cast<uint32_t>(op_desc->GetAllInputsSize());
+  for (uint32_t i = 0; i < input_size; ++i) {
     ge::GeTensorDescPtr input_desc = op_desc->MutableInputDesc(i);
     if (input_desc == nullptr) {
       continue;
@@ -404,8 +404,8 @@ __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
     ConvertGeToAicpuTensor(*input_desc, input_name, iter->second, input_tensor);
   }
 
-  size_t output_size = op_desc->GetOutputsSize();
-  for (size_t i = 0; i < output_size; ++i) {
+  uint32_t output_size = static_cast<uint32_t>(op_desc->GetOutputsSize());
+  for (uint32_t i = 0; i < output_size; ++i) {
     ge::GeTensorDesc output_desc = op_desc->GetOutputDesc(i);
     std::string output_name = op_desc->GetOutputNameByIndex(i);
     auto iter = outputs.find(output_name);

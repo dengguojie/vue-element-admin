@@ -22,7 +22,7 @@
 #include "cpu_kernel.h"
 
 namespace {
-const char *kCalcBucketsLimitAndOffset = "CalcBucketsLimitAndOffset";
+const char *const kCalcBucketsLimitAndOffset = "CalcBucketsLimitAndOffset";
 const uint32_t kInputNum = 3;
 const uint32_t kOutputNum = 2;
 }  // namespace

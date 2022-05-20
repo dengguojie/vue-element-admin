@@ -69,7 +69,7 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
 
   shape_.assign(shape.begin(), shape.end());
   order_.assign(order.begin(), order.end());
-  dims_ = dims;
+  dims_ = static_cast<int32_t>(dims);
   KERNEL_LOG_INFO("Execute CreateSparseTensor end");
   return KERNEL_STATUS_OK;
 }
@@ -116,11 +116,11 @@ bool SparseTensor::ValidateToDense(const Tensor *out) const {
     return false;
   }
   for (size_t d = 0; d < shape_.size(); ++d) {
-    if (shape_[d] > out_shape->GetDimSize(d)) {
+    if (shape_[d] > out_shape->GetDimSize(static_cast<int32_t>(d))) {
       KERNEL_LOG_ERROR(
           "Valid output shape dims value falied, index [%zu], shape value [%ld], "
           "greater than output shape value [%d].",
-          d, shape_[d], out_shape->GetDimSize(d));
+          d, shape_[d], out_shape->GetDimSize(static_cast<int32_t>(d)));
       return false;
     }
   }

@@ -42,7 +42,7 @@ uint32_t EqualCalculate(const CpuKernelContext &ctx,
    * @return status code
    */
 template <typename T>
-uint32_t EqualCompute(CpuKernelContext &ctx, bool flag) {
+uint32_t EqualCompute(const CpuKernelContext &ctx, bool flag) {
   BCalcInfo calcInfo;
   calcInfo.input_0 = ctx.Input(0);
   calcInfo.input_1 = ctx.Input(1);

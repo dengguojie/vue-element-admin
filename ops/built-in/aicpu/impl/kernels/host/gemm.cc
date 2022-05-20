@@ -31,7 +31,7 @@ const uint32_t kOutputNum = 1;
 }  // namespace
 
 namespace aicpu {
-uint32_t GemmCpuKernel::Check(CpuKernelContext &ctx) {
+uint32_t GemmCpuKernel::Check(const CpuKernelContext &ctx) {
   auto a_tensor = ctx.Input(0);
   auto a_tensor_shape = a_tensor->GetTensorShape();
   KERNEL_CHECK_FALSE((IsMatrix(a_tensor_shape->GetDimSizes())),

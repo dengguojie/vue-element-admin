@@ -147,7 +147,7 @@ bool TransDataCpuKernel::IsOriginSupportFormatTransfer(Format src_format,
   return dst->second.count(dst_format) > 0;
 }
 
-uint32_t TransDataCpuKernel::NewCompute(CpuKernelContext &ctx) {
+uint32_t TransDataCpuKernel::NewCompute(const CpuKernelContext &ctx) {
   Tensor *input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "%s get input_tensor failed, input_tensor is nullptr.",

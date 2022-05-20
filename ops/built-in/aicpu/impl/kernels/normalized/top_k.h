@@ -26,9 +26,9 @@ class TopKCpuKernel : public CpuKernel {
 
   uint32_t Compute(CpuKernelContext &ctx) override;
 
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
   /**
    * @brief topK for n vectors
    * @param input address of input data

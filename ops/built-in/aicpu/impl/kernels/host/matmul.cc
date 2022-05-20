@@ -33,7 +33,7 @@ const uint32_t kOutputNum = 1;
 
 namespace aicpu {
 template <typename T>
-uint32_t MatMulCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t MatMulCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input0_tensor = ctx.Input(0);
   auto input0_tensor_shape = input0_tensor->GetTensorShape();
   KERNEL_CHECK_FALSE((IsMatrix(input0_tensor_shape->GetDimSizes())),

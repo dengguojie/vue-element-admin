@@ -29,7 +29,7 @@ namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 3;
 constexpr int64_t kParallelDataNums = 64;
-const char *kBetainc = "Betainc";
+const char *const kBetainc = "Betainc";
 #define BETAINC_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                         \
     uint32_t result = BetaincCompute<TYPE>(CTX);          \
