@@ -24,6 +24,16 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class ThresholdV2DAttrInfo:
+    """
+    define ThresholdV2D attr info
+    """
+    ATTR_THRESHOLD = OpAttr(0, "threshold ", "Float")
+    ATTR_VALUE = OpAttr(1, "value", "Float")
 
 
 @register_operator_compute("ThresholdV2D", op_mode="dynamic", support_fusion=True)
@@ -57,8 +67,8 @@ def threshold_v2_d_compute(x, y, threshold, value,
         x = tbe.cast_to(x, "float32")
         has_improve_precision = True
 
-    threshold = tvm.const(threshold, "float32")
-    value = tvm.const(value, "float32")
+    threshold = get_attr_by_cls(threshold, ThresholdV2DAttrInfo.ATTR_THRESHOLD, x.dtype)
+    value = get_attr_by_cls(value, ThresholdV2DAttrInfo.ATTR_VALUE, x.dtype)
 
     data_res = tbe.vcmpsel(x, threshold, operation='gt', slhs=x, srhs=value)
     if has_improve_precision:
@@ -70,8 +80,8 @@ def threshold_v2_d_compute(x, y, threshold, value,
 @register_operator("ThresholdV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT,
-                            para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def threshold_v2_d(x,
                    y,

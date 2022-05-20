@@ -1256,6 +1256,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/square_sum_v1.py
       - ops/built-in/tbe/impl/dynamic/strided_slice_grad.py
       - ops/built-in/tbe/impl/dynamic/threshold_grad_v2_d.py
+      - ops/built-in/tbe/impl/dynamic/threshold_v2_d.py
       - ops/built-in/tbe/impl/dynamic/tile.py
       - ops/built-in/tbe/impl/dynamic/tile_d.py
       - ops/built-in/tbe/impl/dynamic/tile_with_axis.py
@@ -2945,7 +2946,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/tan.py
       - ops/built-in/tbe/impl/dynamic/reduce_any.py
       - ops/built-in/tbe/impl/dynamic/pack.py
-      - ops/built-in/tbe/impl/dynamic/threshold_v2_d.py
       - ops/built-in/tbe/impl/dynamic/fused_mul_apply_momentum.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/dynamic/trans_data_negative_target_tc.py

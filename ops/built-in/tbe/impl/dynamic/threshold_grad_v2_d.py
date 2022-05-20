@@ -24,6 +24,8 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
 
 
 # 'pylint: disable=too-few-public-methods
@@ -35,6 +37,8 @@ class Constant:
     FLOAT_16 = "float16"
     # define a string name of "float32"
     FLOAT_32 = "float32"
+    # define ThresholdGradV2D attr info
+    ATTR_THRESHOLD = OpAttr(0, "threshold ", "Float")
 
 
 # 'pylint: disable=too-many-locals,unused-argument
@@ -80,6 +84,7 @@ def threshold_grad_v2_d_compute(input_gradients, input_features,
         input_features = tbe.cast_to(input_features, Constant.FLOAT_16)
         input_gradients = tbe.cast_to(input_gradients, Constant.FLOAT_16)
 
+    threshold = get_attr_by_cls(threshold, Constant.ATTR_THRESHOLD, dtype)
     result = tbe.vcmpsel(input_features, threshold, 'gt',
                          input_gradients, tvm.const(0, dtype))
 
@@ -91,7 +96,7 @@ def threshold_grad_v2_d_compute(input_gradients, input_features,
 
 @register_operator("ThresholdGradV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def threshold_grad_v2_d(input_gradients, input_features, output_backprops, threshold,
                         kernel_name="threshold_grad_v2_d"):

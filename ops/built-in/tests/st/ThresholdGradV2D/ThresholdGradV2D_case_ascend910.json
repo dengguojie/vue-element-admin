@@ -982,5 +982,42 @@
       }
     ],
     "case_name": "test_ThresholdGradV2D_017"
+  },
+  {
+    "op": "ThresholdGradV2D",
+    "calc_expect_func_file":"test_ThresholdGradV2D_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "typical_shape": [5, 1, 2, 2],
+        "name": "input_gradients",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "typical_shape": [5, 1, 2, 2],
+        "name": "input_features",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [5, 1, 2, 2],
+        "format": "ND",
+        "param_type": "output",
+        "name": "output_backprops",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "threshold",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ThresholdGradV2D_dynamicrank_000"
   }
 ]

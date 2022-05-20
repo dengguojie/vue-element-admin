@@ -1,0 +1,36 @@
+[
+    {
+        "op": "ThresholdV2D",
+        "calc_expect_func_file":"test_ThresholdV2D_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "typical_shape": [2, 8, 10],
+            "format": "ND",
+            "name": "x",
+            "type": "float32"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [2, 8, 10],
+            "format": "ND",
+            "name": "y",
+            "type": "float32"
+          }
+        ],
+        "attr": [
+          {
+            "name": "threshold",
+            "type": "float",
+            "value": 10.5
+          },
+          {
+            "name": "value",
+            "type": "float",
+            "value": 8.6
+          }
+        ],
+        "case_name": "test_ThresholdV2D_000"
+      }
+]

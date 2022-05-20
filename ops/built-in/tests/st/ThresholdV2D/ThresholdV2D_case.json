@@ -451,78 +451,21 @@
     "op": "ThresholdV2D",
     "input_desc": [
       {
-        "shape": [
-          -1,
-          -1,
-          -1
-        ],
+        "shape": [-1, -1, -1],
         "format": "ND",
-        "ori_shape": [
-          5,
-          13,
-          4
-        ],
-        "ori_format": "ND",
         "name": "x",
         "type": "float16",
-        "param_type": "input",
-        "shape_range": [
-          [
-            1,
-            1024
-          ],
-          [
-            1,
-            1024
-          ],
-          [
-            1,
-            1024
-          ]
-        ],
-        "typical_shape": [
-          5,
-          13,
-          4
-        ]
+        "shape_range": [[1, 1024], [1, 1024], [1, 1024]],
+        "typical_shape": [5, 13, 4]
       }
     ],
     "output_desc": [
       {
-        "shape": [
-          -1,
-          -1,
-          -1
-        ],
+        "shape": [5, 13, 4],
         "format": "ND",
-        "ori_shape": [
-          5,
-          13,
-          4
-        ],
-        "ori_format": "ND",
         "name": "y",
         "type": "float16",
-        "param_type": "output",
-        "shape_range": [
-          [
-            1,
-            1024
-          ],
-          [
-            1,
-            1024
-          ],
-          [
-            1,
-            1024
-          ]
-        ],
-        "typical_shape": [
-          5,
-          13,
-          4
-        ]
+        "param_type": "output"
       }
     ],
     "attr": [

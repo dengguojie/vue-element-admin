@@ -39,8 +39,22 @@ case2 = {
         "support_except": True
 }
 
+case3 = {
+        "params": [
+            {"shape": (-2,), "ori_shape": (-2,), "ori_format": "ND", "format": "ND", "dtype": "float32"},
+            {"shape": (-2,), "ori_shape": (-2,), "ori_format": "ND", "format": "ND", "dtype": "float32"},
+            {"shape": (-2,), "ori_shape": (-2,), "ori_format": "ND", "format": "ND", "dtype": "float32"},
+            2.0,
+        ],
+        "case_name": "threshold_grad_v2_d_dynamic_3",
+        "except": "success",
+        "format_except": [],
+        "support_except": True
+}
+
 ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310"])
