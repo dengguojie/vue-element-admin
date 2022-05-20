@@ -1791,11 +1791,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/MaximumGrad/test_MaximumGrad_proto.cpp
       - ops/built-in/tests/ut/ops_test/MaxPool/test_MaxPool_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolExt2/test_MaxPoolExt2_impl.py
-      - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
-      - ops/built-in/tests/ut/ops_test/MaxPoolGrad/test_Dynamic_MaxPoolGrad_impl.py
-      - ops/built-in/tests/ut/ops_test/MaxPoolGradWithArgmax/test_MaxPoolGradWithArgmax_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolV3/test_max_pool_v3_impl.py
-      - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolWithArgmax/test_MaxPoolWithArgmax_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolWithArgmaxV2/test_MaxPoolGradWithArgmaxV2_proto.cpp
       - ops/built-in/tests/ut/ops_test/Minimum/test_dynamic_Minimum_impl.py
@@ -2018,6 +2014,23 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_concat_offset_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_pack_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_pack_plugin.cpp
+  llt:
+    ut_check: true
+    st_check: true
+
+vector_D:
+  commiter:
+    "Tanshengshun"
+  team: "vector_D"
+  src:
+    release:
+      - ops/built-in/tbe/impl/max_pool_grad.py
+      - ops/built-in/tbe/impl/max_pool_v3_grad.py
+    unrelease:
+      - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
+      - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
+      - ops/built-in/tests/ut/ops_test/MaxPoolGrad/test_Dynamic_MaxPoolGrad_impl.py
+      - ops/built-in/tests/ut/ops_test/MaxPoolGradWithArgmax/test_MaxPoolGradWithArgmax_impl.py
   llt:
     ut_check: true
     st_check: true
@@ -2499,7 +2512,6 @@ unkown:
       - ops/built-in/tbe/impl/nms.py
       - ops/built-in/tbe/impl/pack.py
       - ops/built-in/tbe/impl/threshold_v2_d.py
-      - ops/built-in/tbe/impl/max_pool_grad.py
       - ops/built-in/tbe/impl/fused_mul_apply_momentum.py
       - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2_unify.py
@@ -2666,7 +2678,6 @@ unkown:
       - ops/built-in/tbe/impl/centralization.py
       - ops/built-in/tbe/impl/minimum.py
       - ops/built-in/tbe/impl/layer_norm_unify.py
-      - ops/built-in/tbe/impl/max_pool_v3_grad.py
       - ops/built-in/tbe/impl/batch_norm_ext2.py
       - ops/built-in/tbe/impl/scatter_div.py
       - ops/built-in/tbe/impl/is_close.py

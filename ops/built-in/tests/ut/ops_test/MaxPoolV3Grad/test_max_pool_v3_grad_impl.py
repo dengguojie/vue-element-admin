@@ -19,6 +19,8 @@ test_max_pool_v3_grad_impl.py
 import sys
 import math
 import numpy as np
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.common import precision_info
 from op_test_frame.ut import BroadcastOpUT
 
@@ -1602,8 +1604,10 @@ ut_case.add_case(["Ascend910A"], case={
 
 
 
-
-if __name__ == '__main__':
+vals = {("tik.load3dv1",): False}
+def side_effects(*args):
+    return vals[args]
+with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_effects)):
     ut_case.run("Ascend910A")
-    # ut_case.run()
-    exit(0)
+
+ut_case.run("Ascend910A")

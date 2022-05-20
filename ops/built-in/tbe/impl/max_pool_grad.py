@@ -855,7 +855,9 @@ class MaxpoolGrad:
     """
     MaxpoolGrad  Object include all fuction and paras
     """
-    def __init__(self, ori_input, ori_output, grad, dtype, ksize, strides, padding):
+
+    def __init__(self, ori_input, ori_output, grad, dtype, ksize, strides, padding, pads=None,
+                 global_pooling=None, ceil_mode=None):
         self.ori_input_shape = ori_input
         self.ori_output_shape = ori_output
         self.grad_shape = grad
@@ -863,10 +865,10 @@ class MaxpoolGrad:
         self.ksize = ksize
         self.strides = strides
         self.padding = padding
-        self.n = ori_input[0]
-        self.c1 = ori_input[1]
-        self.hi = ori_input[2]
-        self.wi = ori_input[3]
+        self.pads = pads
+        self.global_pooling = global_pooling
+        self.ceil_mode = ceil_mode
+        self.n, self.c1, self.hi, self.wi = ori_input[0], ori_input[1], ori_input[2], ori_input[3]
         self.ho = grad[2]
         self.wo = grad[3]
         self.stride_h = strides[1]
@@ -886,18 +888,13 @@ class MaxpoolGrad:
         self.exceed_ub = False
 
         self.tik_instance = tik.Tik()
-        self.ori_input_gm = self.tik_instance.Tensor(dtype,
-                                                     self.ori_input_shape,
-                                                     name='ori_input_gm',
-                                                     scope=tik.scope_gm)
-        self.ori_output_gm = self.tik_instance.Tensor(dtype,
-                                                      self.ori_output_shape,
-                                                      name='ori_output_gm',
-                                                      scope=tik.scope_gm)
+        self.ori_input_gm = self.tik_instance.Tensor(dtype, self.ori_input_shape,
+                                                     name='ori_input_gm', scope=tik.scope_gm)
+        self.ori_output_gm = self.tik_instance.Tensor(dtype, self.ori_output_shape,
+                                                      name='ori_output_gm', scope=tik.scope_gm)
         self.grad_gm = self.tik_instance.Tensor(dtype, self.grad_shape, name='grad_gm', scope=tik.scope_gm)
         self.res_gm = self.tik_instance.Tensor(dtype, (self.n, self.c1, self.hi, self.wi, C0),
-                                               name='res_gm',
-                                               scope=tik.scope_gm)
+                                               name='res_gm', scope=tik.scope_gm)
 
         self.scalar_esp = self.tik_instance.Scalar(dtype='float32', name='scalar_esp')
         self.scalar_one = self.tik_instance.Scalar(dtype='float32', name='scalar_one')
@@ -948,8 +945,10 @@ class MaxpoolGrad:
         else:
             error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad", "ori_input", ('float16',),
                                                                          self.dtype)
-        pad_calc_wo, pad_calc_ho, pad_left, pad_right, pad_top, pad_bottom = self._padding_mode(
-            self.ori_input_shape, self.ksize, self.strides, self.padding)
+        pad_calc_wo, pad_calc_ho, pad_pads = self._padding_mode(self.ori_input_shape, self.ksize, 
+                                                                self.strides, self.padding, self.pads,
+                                                                self.global_pooling, self.ceil_mode)
+        pad_left, pad_right, pad_top, pad_bottom = pad_pads
         self.pad = (int(pad_left), int(pad_right), int(pad_top), int(pad_bottom))
         self.pad_left, self.pad_right, self.pad_top, self.pad_bottom = self.pad
         if pad_calc_ho != self.ho:
@@ -1208,14 +1207,19 @@ class MaxpoolGrad:
         return self.tik_instance
 
     # 'pylint: disable=too-many-locals,too-many-return-values
-    def _padding_mode(self, ori_input, ksize, strides, padding):
+    def _padding_mode(self, ori_input, ksize, strides, padding, pads, global_pooling, ceil_mode):
         _, _, fmap_h, fmap_w, _ = ori_input
         _, kernel_h, kernel_w, _ = ksize
         _, self.stride_h, self.stride_w, _ = strides
+        if global_pooling:
+            kernel_h = fmap_h
+            kernel_w = fmap_w
+            padding = "VALID"
         if padding == 'VALID':
             ho = int(math.ceil((fmap_h - kernel_h + 1) / self.stride_h))
             wo = int(math.ceil((fmap_w - kernel_w + 1) / self.stride_w))
             pad_top = pad_left = pad_bottom = pad_right = 0
+            pads_result = (pad_left, pad_right, pad_top, pad_bottom)
 
         if padding == 'SAME':
             ho = (fmap_h + self.stride_h - 1) // self.stride_h
@@ -1226,7 +1230,21 @@ class MaxpoolGrad:
             pad_w = max((wo - 1) * self.stride_w + kernel_w - fmap_w, 0)
             pad_left = pad_w // 2
             pad_right = pad_w - pad_left
-        return wo, ho, pad_left, pad_right, pad_top, pad_bottom
+            pads_result = (pad_left, pad_right, pad_top, pad_bottom)
+        if padding == 'CALCULATED':
+            pad_top, pad_bottom, pad_left, pad_right = pads
+            if ceil_mode:
+                ho = (fmap_h - kernel_h + pad_top + pad_bottom + self.stride_h - 1) // self.stride_h + 1
+                wo = (fmap_w - kernel_w + pad_left + pad_right + self.stride_w - 1) // self.stride_w + 1
+                pad_bottom = (ho - 1) * self.stride_h + kernel_h - fmap_h - pad_top
+                pad_right = (wo - 1) * self.stride_w + kernel_w - fmap_w - pad_left
+            else:
+                ho = (fmap_h - kernel_h + pad_top + pad_bottom) // self.stride_h + 1
+                wo = (fmap_w - kernel_w + pad_left + pad_right) // self.stride_w + 1
+                pad_bottom = max((ho - 1) * self.stride_h + kernel_h - fmap_h - pad_top, 0)
+                pad_right = max((wo - 1) * self.stride_w + kernel_w - fmap_w - pad_left, 0)
+            pads_result = (pad_left, pad_right, pad_top, pad_bottom)
+        return wo, ho, pads_result
 
     def _vector_dup(self, src, src_start, shape, dup_reg, dtype):
         ele_num = _cal_shape_ele(shape)

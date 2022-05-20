@@ -21,6 +21,8 @@ from te import platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.max_pool_grad import MaxpoolGradAtomic
+from impl.max_pool_grad import MaxpoolGrad
 from impl.load3d_common_func import img2col
 
 # MIN VALUE OF FP16
@@ -733,8 +735,12 @@ def max_pool_v3_grad(ori_input,
         strides = list(strides)
         shape_list = [forward_in_shape, forward_ou_shape, grad_shape, forward_in_shape]
         params = [ksize, strides, [0, 0, 0, 0, 0, 0], dtype, kernel_name, padding]
-        result = MaxpoolV3GradAtomic(shape_list, params)
-        return result.get_tik_instance()
+        if tbe_platform.cce_conf.api_check_support("tik.load3dv1"):
+            result = MaxpoolV3GradAtomic(shape_list, params)
+            return result.get_tik_instance()
+        else:
+            result = MaxpoolGradAtomic(shape_list, params)
+            return result.get_tik_instance()
     else:
         if ori_format == "NCHW":
             ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
@@ -745,9 +751,14 @@ def max_pool_v3_grad(ori_input,
         ori_output_shape = ori_output.get("shape")
         grad_shape = grad.get("shape")
         dtype = ori_input.get("dtype").lower()
-        maxpoolv3grad = MaxpoolV3Grad(ori_input_shape, ori_output_shape, grad_shape,
-                                  dtype, ksize, strides, padding, pads, global_pooling, ceil_mode)
-        return maxpoolv3grad.tik_instance_function(kernel_name)
+        if tbe_platform.cce_conf.api_check_support("tik.load3dv1"):
+            maxpoolv3grad = MaxpoolV3Grad(ori_input_shape, ori_output_shape, grad_shape,
+                                          dtype, ksize, strides, padding, pads, global_pooling, ceil_mode)
+            return maxpoolv3grad.tik_instance_function(kernel_name)
+        else:
+            maxpoolv3grad = MaxpoolGrad(ori_input_shape, ori_output_shape, grad_shape,
+                                        dtype, ksize, strides, padding, pads, global_pooling, ceil_mode)
+            return maxpoolv3grad.tik_instance_function(kernel_name)
 
 
 # 'pylint: disable = too-many-instance-attributes,too-few-public-methods
