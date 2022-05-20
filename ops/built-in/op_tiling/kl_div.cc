@@ -71,7 +71,19 @@ bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras,
 
 static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
                                  KLDivCompileInfo& parsed_info) {
-  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
+  int64_t reduction_mode = 0;
+
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mode", reduction_mode),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileValue, get reduce_mode error"), return false);
+
+  if (reduction_mode == 1) {
+    parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
+    OP_LOGD(op_type, "The pattern of op kl_div is: PATTERN_REDUCE");
+  } else {
+    parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_ELEMWISE, compile_info);
+    OP_LOGD(op_type, "The pattern of op kl_div is: PATTERN_ELEMWISE");
+  }
+
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   std::string dtype;

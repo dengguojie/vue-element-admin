@@ -987,6 +987,7 @@ vector_B:
       - ops/built-in/op_tiling/gather_v2.cc
       - ops/built-in/op_tiling/in_top_k.cc
       - ops/built-in/op_tiling/iou.cc
+      - ops/built-in/op_tiling/kl_div.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop.cc
       - ops/built-in/op_tiling/max_pool.cc
       - ops/built-in/op_tiling/max_pool_grad.cc
@@ -2157,7 +2158,6 @@ unkown:
       - ops/built-in/op_tiling/select.cc
       - ops/built-in/op_tiling/gather_elements.cc
       - ops/built-in/op_tiling/pad_common.h
-      - ops/built-in/op_tiling/kl_div.cc
       - ops/built-in/op_tiling/lru_cache_v2.cc
       - ops/built-in/op_tiling/dynamic_rnn_v3.cc
       - ops/built-in/op_tiling/layer_norm.cc

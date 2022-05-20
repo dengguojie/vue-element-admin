@@ -179,11 +179,14 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
         tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", batch_size_dtype)
 
     if reduction == "batchmean":
+        tbe_context.get_context().add_compile_info("reduce_mode", 1)
         output_res = tbe.vmuls(output_res, batch_size)
         final_res = tbe.reduce_sum(output_res, axis=axis["value"])
     elif reduction == "sum":
+        tbe_context.get_context().add_compile_info("reduce_mode", 1)
         final_res = tbe.reduce_sum(output_res, axis=axis["value"])
     elif reduction == "none":
+        tbe_context.get_context().add_compile_info("reduce_mode", 0)
         final_res = output_res
     else:
         error_manager_vector.raise_err_input_value_invalid(kernel_name, 'reduction',
@@ -265,31 +268,52 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     input_x["rel_pos_to_reduce"] = "before"
     input_target["rel_pos_to_reduce"] = "before"
 
-
     x_dtype = input_x.get("dtype")
     x_shape = input_x.get("shape")
     shape_len = len(x_shape)
-    axis_list = list(range(shape_len))
-    input_axis = {"shape": [shape_len], "value": axis_list, "rel_pos_to_reduce": "axis"}
-
-    ins = classify([input_x, input_target, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
 
     schedules, tensors = [], []
 
-    for (x, target, axis) in ins:
-        with tbe.compute():
-            x_shape, target_shape = shape_util.variable_shape([x, target, axis], op_mode="reduce")[0:2]
+    if reduction in ["sum", "batchmean"]:
+        axis_list = list(range(shape_len))
+        input_axis = {"shape": [shape_len], "value": axis_list, "rel_pos_to_reduce": "axis"}
 
-            tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
-            tensor_target = tvm.placeholder(target_shape, x_dtype, "tensor_target")
+        ins = classify([input_x, input_target, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
 
-            res = kl_div_compute(tensor_x, tensor_target, output_y, axis, reduction, x_shape[0], kernel_name)
+        for (x, target, axis) in ins:
+            with tbe.compute():
+                x_shape, target_shape = shape_util.variable_shape([x, target, axis], op_mode="reduce")[0:2]
 
-            tensors.append([tensor_x, tensor_target, res])
+                tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
+                tensor_target = tvm.placeholder(target_shape, x_dtype, "tensor_target")
 
-        with tvm.target.cce():
-            sch = tbe.auto_schedule(res)
-        schedules.append(sch)
+                res = kl_div_compute(tensor_x, tensor_target, output_y, axis, reduction, x_shape[0], kernel_name)
+
+                tensors.append([tensor_x, tensor_target, res])
+
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
+            schedules.append(sch)
+    else:
+        ins = classify([input_x, input_target], OpPatternMode.ELEWISE)
+
+        for (x, target) in ins:
+            with tbe.compute():
+                x_shape, target_shape = shape_util.variable_shape([x, target])[0:2]
+
+                tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
+                tensor_target = tvm.placeholder(target_shape, x_dtype, "tensor_target")
+
+                res = kl_div_compute(tensor_x, tensor_target, output_y, 0, "none", x_shape[0], kernel_name)
+
+                tensors.append([tensor_x, tensor_target, res])
+
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
+            schedules.append(sch)
+
+
+
 
     # build
     config = {"name": kernel_name, "tensor_list": tensors}
