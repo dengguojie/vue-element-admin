@@ -945,6 +945,10 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_insert_nms_bucketize_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_refresh_subgraph_const_node_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_refresh_subgraph_const_node_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_eltwise_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_eltwise_fusion_pass.h
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/data_flow_ops.cc
@@ -3519,10 +3523,6 @@ unkown:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_requant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_fastgelugrad_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_transdata_ub_fusion.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_fusion_pass.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_fusion_pass.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_eltwise_fusion_pass.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/bnupdate/bnupdate_eltwise_eltwise_fusion_pass.h
       - ops/built-in/fusion_pass/common/fusion_addoutput_registry.cc
       - ops/built-in/fusion_pass/common/quant_host_cpu_op_common.cc
       - ops/built-in/fusion_pass/common/fusion_precheck_func.cc
