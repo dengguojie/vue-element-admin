@@ -568,6 +568,20 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_dedx_c_dim_neg_one",
                                         RuntimeError))
 
+# empty tensor
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([12, 1, 1, 12], [0, 104, -1, 12], [-1, 104, -1, 12],
+                                        "float32", "float16", "float16",
+                                        "NHWC", "NHWC", "NHWC",
+                                        [(12, 12), (1, 1), (1, 1), (12, 12)],
+                                        [(0, None), (104, 104), (0, 104), (12, 12)],
+                                        [(0, 64), (104, 104), (0, 147), (12, 12)],
+                                        (1, 1, 2, 1), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_empty_tensor",
+                                        'success'))
+
+
 def test_conv2d_backprop_filter_fuzz_build_generalization(test_arg):
     input_list = [
         {

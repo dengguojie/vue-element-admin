@@ -325,6 +325,19 @@ out_backprop = {'ori_shape': (-1, 15, 50, 76, 32), 'shape': (-1, 15, 50, 76, 32)
 strides = (1, 4, 5, 5, 1)
 bl1_k_smaller_than_width_grads = _run_api_v2(x=x, out_backprop=out_backprop, filter=filter_m, strides=strides)
 
+# Test range lower is 0
+x = {'ori_shape': (4, 18, 4, -1, -1), 'shape': (4, 18, 4, -1, -1),
+     'ori_format': "NCDHW", 'format': "NCDHW", 'dtype': "float16",
+     "range": [(4, 4), (18, 18), (0, 4), (0, 271), (0, 330)]}
+filter_m = {'ori_shape': (24, 18, 1, 3, 3), 'shape': (24, 18, 1, 3, 3),
+            'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float32'}
+out_backprop = {'ori_shape': (-1, -1, 4, 91, -1), 'shape': (-1, -1, 4, 91, -1),
+                'ori_format': "NCDHW", 'format': "NCDHW", 'dtype': "float16",
+                "range": [(0, 44), (0, 36), (4, 4), (91, 91), (0, 127)]}
+strides = (1, 1, 1, 2, 2)
+range_lower_is_0 = _run_api_v2(x=x, out_backprop=out_backprop, filter=filter_m, strides=strides, data_format="NCDHW")
+
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A"],
@@ -340,7 +353,7 @@ ut_case.add_case(["Ascend910A"],
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(dynamic_invalid_fmap_d_case, RuntimeError, "dynamic_invalid_fmap_d_case", True))
 ut_case.add_case(["Ascend910A"],
-                 _gen_data_case(dynamic_invalid_fmap_h_case, RuntimeError, "dynamic_invalid_fmap_h_case", True))
+                 _gen_data_case(dynamic_invalid_fmap_h_case, "success", "dynamic_invalid_fmap_h_case", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(dynamic_invalid_fmap_dims_case, RuntimeError, "dynamic_invalid_fmap_dims_case", True))
 ut_case.add_case(["Ascend910A"],
@@ -386,6 +399,8 @@ ut_case.add_case(["Ascend910A"],
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(bl1_k_smaller_than_width_grads,
                                 "success", "bl1_k_smaller_than_width_grads", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(range_lower_is_0, "success", "range_lower_is_0", True))
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])

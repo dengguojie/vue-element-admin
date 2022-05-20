@@ -19,6 +19,7 @@ from __future__ import absolute_import
 
 import warnings
 
+from impl.util import util_common
 from impl.util import util_select_op_base
 from impl.util import fusion_util
 from impl.util.platform_adapter import para_check
@@ -34,6 +35,10 @@ from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import check_graph_mode
 from impl.util.util_cube_dynamic import calc_max_fmap_w
+from impl.util.util_cube_dynamic import check_tensor_shape
+from impl.util.util_cube_dynamic import set_shape_and_range
+from impl.util.util_cube_dynamic import check_dynamic_range_lower
+from impl.util.util_cube_dynamic import is_empty_tensor_scene
 
 # the dim of shape in conv_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -932,10 +937,48 @@ def _define_binary_mode_vars():
     return var_shape_map
 
 
+def check_empty_tensor(input_fm, out_backprop, filter_grad, pads, strides, dilations, groups=1):
+    def _correct_range():
+        if -1 not in pads:
+            if _get_output(dx_ori_range[3][0], w_ori_shape[3], (pads[2], pads[3]),
+                            stride_hw[1], dilations_nchw[3]) < 2:
+                lower = w_ori_shape[3] - pads[2] - pads[3]
+                upper = max(dx_ori_range[3][1], lower) if dx_ori_range[3][1] else dx_ori_range[3][1]
+                set_shape_and_range(input_fm, 'W', -1, (lower, upper))
+            if _get_output(dx_ori_range[2][0], w_ori_shape[2], (pads[0], pads[1]),
+                            stride_hw[0], dilations_nchw[2]) < 1:
+                lower = w_ori_shape[2] - pads[0] - pads[1]
+                upper = max(dx_ori_range[2][1], lower) if dx_ori_range[2][1] else dx_ori_range[2][1]
+                set_shape_and_range(input_fm, 'H', -1, (lower, upper))
+        else:
+            if util_common.ceil(dx_ori_range[3][0], stride_hw[1]) < 2:
+                lower = stride_hw[1] + 1
+                upper = max(dx_ori_range[3][1], lower) if dx_ori_range[3][1] else dx_ori_range[3][1]
+                set_shape_and_range(input_fm, 'W', -1, (lower, upper))
+
+    if (check_dynamic_range_lower([input_fm, out_backprop, filter_grad]) or
+        is_empty_tensor_scene([input_fm, out_backprop, filter_grad])):
+        ret_nchw = _get_nchw_shape(input_fm, out_backprop, filter_grad, groups)
+        dx_ori_shape = ret_nchw.get("x_shape")
+        w_ori_shape = ret_nchw.get("dedw_shape")
+        dx_ori_range = ret_nchw.get("x_range")
+        stride_hw, _, dilations_nchw = _get_attrs(strides, pads, dilations, input_fm.get("ori_format"))
+
+        is_invalid = (list(input_fm.get("ori_shape")) != [-2] and dx_ori_shape[1] == 0) or 0 in w_ori_shape[1:]
+        if is_invalid:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "fmap_c weight_cdhw not support 0")
+        check_tensor_shape({"tensor": [input_fm, out_backprop, filter_grad],
+                            "value": [-1, -1, 1],
+                            "range": [(1, 1), (1, 1), (1, 1)]})
+
+        if list(input_fm.get("ori_shape")) != [-2]:
+            _correct_range()
+
+
 def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
                                     strides, pads, dilations,
                                     groups, data_format, kernel_name):
-
+    check_empty_tensor(x, out_backprop, y, pads, strides, dilations, groups)
     fmap_dtype = x.get("dtype", "float16").lower()
     dedy_dtype = out_backprop.get("dtype", "float16").lower()
     dedw_dtype = y.get("dtype", "float32").lower()

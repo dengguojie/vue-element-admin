@@ -17,6 +17,7 @@ dynamic depthwise_conv2d_backprop_filter
 """
 from __future__ import absolute_import
 import warnings
+from impl.dynamic.conv2d_backprop_filter import check_empty_tensor
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
@@ -385,6 +386,7 @@ def check_and_config_para(input_fm, out_backprop, filter_grad, strides, dilation
 def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filter_grad,
                                        strides, dilations, pads, data_format, kernel_name):
 
+    check_empty_tensor(input_fm, out_backprop, filter_grad, pads, strides, dilations)
     config_dict = check_and_config_para(input_fm, out_backprop, filter_grad, strides, dilations, pads, data_format)
     in_dtype = input_fm.get('dtype')
     dedy_dtype = out_backprop.get('dtype')

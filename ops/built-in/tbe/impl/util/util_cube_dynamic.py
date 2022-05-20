@@ -20,6 +20,7 @@ from __future__ import absolute_import
 import warnings
 import math
 import copy
+from functools import reduce
 
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import operation
@@ -733,6 +734,81 @@ def check_modify_w_range(input_list, param_list, op_type, dynamic_flag):
     dedy_range_w = (dedy_range_w[0], min(w_max, dedy_range_w[1]))
     fmap_range_w = (fmap_w, fmap_w) if fmap_w_static else fmap_range_w
     return supports, dedy_range_w, fmap_range_w
+
+
+def check_dynamic_range_lower(tensor_list):
+    def _modify_lower(range_in):
+        nonlocal zero_flag
+        new_range = []
+        for x in range_in:
+            if len(x) > 0 and x[0] == 0:
+                x = list(x)
+                x[0] = 1
+                zero_flag = True
+            new_range.append(tuple(x))
+        return tuple(new_range)
+
+    zero_flag = False
+    for tensor in tensor_list:
+        if tensor.get("range"):
+            tensor["range"] = _modify_lower(tensor.get("range"))
+
+        if tensor.get("ori_range"):
+            tensor["ori_range"] = _modify_lower(tensor.get("ori_range"))
+
+    return zero_flag
+
+
+def check_tensor_shape(tensor_dict):
+    tensor_list = tensor_dict.get("tensor")
+    value_list = tensor_dict.get("value")
+    range_list = tensor_dict.get("range")
+
+    for tensor, value, drange in zip(tensor_list, value_list, range_list):
+        is_valid = tensor.get("range") and tensor.get("shape")
+        if is_valid:
+            tensor["range"] = tuple((drange[0], drange[1]) if dim == 0 else tuple(dim_range)
+                                    for dim, dim_range in zip(tensor.get("shape"), tensor.get("range")))
+        if tensor.get("shape"):
+            tensor["shape"] = tuple(value if dim == 0 else dim for dim in tensor.get("shape"))
+
+        is_valid = tensor.get("ori_range") and tensor.get("ori_shape")
+        if is_valid:
+            tensor["ori_range"] = tuple((drange[0], drange[1]) if dim == 0 else tuple(dim_range)
+                                        for dim, dim_range in zip(tensor.get("ori_shape"), tensor.get("ori_range")))
+        if tensor.get("ori_shape"):
+            tensor["ori_shape"] = tuple(value if dim == 0 else dim for dim in tensor.get("ori_shape"))
+
+
+def set_shape_and_range(tensor, dim, dim_value, dim_range):
+    ori_shape, ori_format, ori_range = tensor.get("ori_shape"), tensor.get("ori_format"), tensor.get("ori_range")
+    new_shape = list(ori_shape)
+    new_range = list(ori_range) if ori_range else None
+    for idx, f in enumerate(ori_format):
+        if f == dim:
+            new_shape[idx] = dim_value
+            if new_range:
+                new_range[idx] = tuple(dim_range)
+    if new_range:
+        tensor["ori_range"] = tuple(new_range)
+    tensor["ori_shape"] = tuple(new_shape)
+    shape = tensor.get("shape")
+    in_format = tensor.get("format").replace("C1", "X").replace("C0", "Y") # replace c1 and c0 to x and y
+    in_range = tensor.get("range")
+    new_shape, new_range = list(shape), list(in_range)
+    for idx, f in enumerate(in_format):
+        if f == dim:
+            new_shape[idx] = dim_value
+            new_range[idx] = tuple(dim_range)
+    tensor["range"] = tuple(new_range)
+    tensor["shape"] = tuple(new_shape)
+
+
+def is_empty_tensor_scene(tensor_list):
+    for tensor in tensor_list:
+        if tensor and tensor.get("shape") and 0 in tensor.get("shape"):
+            return True
+    return False
 
 
 class CubeParaProcess:
