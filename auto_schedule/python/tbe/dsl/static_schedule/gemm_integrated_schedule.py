@@ -1961,6 +1961,12 @@ class GemmSchedule:
         else:
             self._norange_kbl1(tiling)
         self.sch.set_var_value(self.dyn_shape_in.get(self.k1_name), self.k_expr)
+        l0c_pb = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
+        al1_attach_flag = tiling.get("attach_at_flag").get("al1_attach_flag")
+        bl1_attach_flag = tiling.get("attach_at_flag").get("bl1_attach_flag")
+        # enable l0c_preload for template_5 because only template_5's performance is improved for now
+        # 2,2,0 means that l0c_double_buffer, no_k_al1_full_load and bl1_full_load
+        self.status_controller.flag_l0c_preload = (l0c_pb == 2 and al1_attach_flag == 2 and bl1_attach_flag == 0)
         tiling = self._tiling_infer_norange(tiling)
 
         return tiling
@@ -3768,6 +3774,8 @@ class GemmSchedule:
         if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2:
             for tensor in self.container.tensors_in_l0c:
                 self.sch[tensor].double_buffer()
+                if self.status_controller.flag_l0c_preload:
+                    self.sch[tensor].preload()
         self._double_buffer_aub_bub()
         self._double_buffer_cub()
 
@@ -3775,10 +3783,12 @@ class GemmSchedule:
         tiling = self.tiling
         params = {"container": self.container, "status_controller": self.status_controller,
                   "cache_tiling": self.cache_tiling}
+        # disable aub_bub_preload when l0c_preload enabled for accuracy error
         if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2:
             if (self.container.tensor_map.get("a_ub") is not None and
                 (not self.is_dynamic or self.cache_tiling) and
-                self.buffer_checker.check_aub_preload(tiling, params)):
+                self.buffer_checker.check_aub_preload(tiling, params) and
+                (not self.status_controller.flag_l0c_preload)):
                 self.sch[self.container.tensor_map.get("a_ub")].preload()
                 if (self.container.tensor_map.get("a_ub_aligned") is not None and
                     self.container.tensor_map.get("a_ub_general") is not None):
@@ -3789,7 +3799,8 @@ class GemmSchedule:
         if tiling.get("manual_pingpong_buffer").get("BUB_pbuffer") == 2:
             if (self.container.tensor_map.get("b_ub") is not None and
                 (not self.is_dynamic or self.cache_tiling) and
-                self.buffer_checker.check_bub_preload(tiling, params)):
+                self.buffer_checker.check_bub_preload(tiling, params) and
+                (not self.status_controller.flag_l0c_preload)):
                 self.sch[self.container.tensor_map.get("b_ub")].preload()
                 if (self.container.tensor_map.get("b_ub_aligned") is not None and
                     self.container.tensor_map.get("b_ub_general") is not None):

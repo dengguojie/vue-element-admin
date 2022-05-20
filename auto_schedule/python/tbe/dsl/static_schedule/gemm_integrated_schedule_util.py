@@ -103,6 +103,7 @@ class GemmScheduleStatusController:
         self.over_head_flag = False
         self.batch_broadcast_flag = False
         self.batch_broadcast_change_attach = False
+        self.flag_l0c_preload = False
 
 
 class BufferChecker:
