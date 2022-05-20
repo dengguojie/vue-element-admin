@@ -995,6 +995,7 @@ class Conv2dSchedule:
         self._quant_fusion_muti_groups_in_cl0 = self._co1_opt % 2 == 1 and self._group_opt > 1 and res.dtype == "int8"
         self._bias_tensor = self._para_dict["bias_tensor"]
         self._bias_flag = self._bias_tensor is not None
+        self._sparse_4to2_flag = conv_param.sparse_4to2_flag
 
         # self._tiling params
         self._tiling_query_param = conv_param.tiling_query_param
@@ -1154,22 +1155,34 @@ class Conv2dSchedule:
             """
             default_tiling = {}
             tiling_m = 1
-            tiling_k = 1
+            tiling_ka = 1
+            tiling_kb = tiling_ka
+            if self._sparse_4to2_flag:
+                if self._kernel_h * self._kernel_w * self._in_c1 > 1:
+                    tiling_ka = 2
+                    tiling_kb = 1
+
+            tiling_n = 2
+            group_cl0 = 1
             if self._quant_fusion_muti_groups_in_cl0:
                 tiling_n = self._co1_opt
                 group_cl0 = 2
-            else:
-                tiling_n = 2
-                group_cl0 = 1
 
-            default_tiling["AL1_shape"] = [1, 1, 1, 1]
+            default_tiling["AL0_matrix"] = [tiling_m, tiling_ka, 16, self._in_c0, 1, 1]
+            default_tiling["BL0_matrix"] = [tiling_kb, tiling_n, 16, self._in_c0, 1, 1]
+            default_tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16, 1, group_cl0]
+            default_tiling["CUB_matrix"] = default_tiling.get("CL0_matrix")
+            default_tiling["AUB_shape"] = [1, 1, 1, 1]
+
+            kal1 = max(1, ceil_div(tiling_ka, self._kernel_h * self._kernel_w)) *\
+                   self._kernel_h * self._kernel_w * self._in_c0
+            default_tiling["AL1_shape"] = [kal1, 1, 1, 1]
             default_tiling["BL1_shape"] = None
 
-            default_tiling["AL0_matrix"] = [tiling_m, tiling_k, 16, self._in_c0, 1, 1]
-            default_tiling["BL0_matrix"] = [tiling_k, tiling_n, 16, self._in_c0, 1, 1]
-            default_tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16, 1, group_cl0]
-            default_tiling["CUB_matrix"] = [tiling_n, tiling_m, 16, 16, 1, 1]
-            default_tiling["AUB_shape"] = [1, 1, 1, 1]
+            if self._sparse_4to2_flag:
+                kbl1 = self._kernel_h * self._kernel_w * self._in_c0
+                default_tiling["BL1_shape"] = [kbl1, 1, 1, 1]
+
             default_tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
                                                         'BL1_pbuffer': 1,
                                                         'AL0_pbuffer': 1,
@@ -1183,7 +1196,6 @@ class Conv2dSchedule:
             default_tiling["A_overhead_opt_flag"] = False
             default_tiling["B_overhead_opt_flag"] = False
             default_tiling["CUB_channel_wise_flag"] = True
-
             default_tiling["block_dim"] = [1, 1, 1, 1]
             if self._batch > 1 and self._core_num > 1:
                 if self._batch <= self._core_num:
@@ -1193,8 +1205,6 @@ class Conv2dSchedule:
                         if self._batch % i == 0:
                             break
                     default_tiling["block_dim"][0] = i
-            else:
-                default_tiling["block_dim"][0] = 1
 
             default_tiling = self._lx_fusion.config_default_tiling(default_tiling)
 
@@ -1204,11 +1214,12 @@ class Conv2dSchedule:
             """
             Get tiling in v220 situation.
             """
+            if self._sparse_4to2_flag:
+                return get_default_tiling()
             tiling = tiling_api.get_tiling(info_dict)
             if tiling is None or tiling["AL0_matrix"][2] == 32:
                 log.warn("get invalid tiling, default tiling will be used")
                 tiling = get_default_tiling()
-
             return tiling
 
         if (self._dynamic_shape.flag or self._binary.flag) and tiling_case:
@@ -1229,7 +1240,7 @@ class Conv2dSchedule:
 
             if tiling["BL0_matrix"]:
                 kb_bl0, nb_bl0, _, _, _, _ = tiling["BL0_matrix"]
-                if ka_al0 != kb_bl0:
+                if not self._sparse_4to2_flag and ka_al0 != kb_bl0:
                     err_man.raise_err_equal_invalid("conv2d", "ka", "kb")
                 if nb_bl0 != nc_cl0:
                     err_man.raise_err_equal_invalid("conv2d", "nb", "nc")
@@ -1248,7 +1259,6 @@ class Conv2dSchedule:
             """
             filter_matrix = list(self._dim_map["filter_matrix_dim"]) # [k1, n1, n0, k0]
             filter_matrix[1] = filter_matrix[1] // n_dim
-
             if self._tiling["BL0_matrix"]:
                 if self._tiling["BL0_matrix"][0: 4] == filter_matrix and group_bl0 == 1:
                     self._tiling["BL0_matrix"] = []
@@ -1258,10 +1268,15 @@ class Conv2dSchedule:
             Modify bl1 tiling in certain circumstances.
             """
             if self._tiling["BL0_matrix"] == []:
+                if self._sparse_4to2_flag:
+                    self._tiling["BL1_shape"] = []
+                    return
                 if ceil_div(self._group_opt, group_dim) == 1:
                     self._tiling["BL1_shape"] = None
                 elif ceil_div(self._group_opt, group_dim) > 1 and self._tiling["BL1_shape"] is not None:
                     self._tiling["BL1_shape"] = []
+                return
+
 
         def check_cub_tiling():
             """
@@ -1272,6 +1287,23 @@ class Conv2dSchedule:
 
         if self._binary.flag:
             return
+
+        def check_sparse_4to2_tiling():
+            if not self._sparse_4to2_flag:
+                return
+            
+            if self._tiling["BL1_shape"] is None:
+                err_man.raise_err_message_cube("BL1_matrix cannot be None in sparse 4to2 scene.")
+            
+            ka = self._tiling["AL0_matrix"][1]
+            n, c1, kh, kw, c0 = self._conv_param.dim_map["weight_tiling_b_shape"]
+            kb_full = c1 * kh * kw
+            kb = kb_full if self._tiling["BL0_matrix"] == [] else self._tiling["BL0_matrix"][0]
+            if ka == kb and kb == kb_full:
+                return
+
+            if ka != 2 * kb:
+                err_man.raise_err_message_cube("ka should be 2kb in sparse 4to2.")
 
         tiling = self._tiling
         bl0_tiling = tiling["BL0_matrix"]
@@ -1294,6 +1326,7 @@ class Conv2dSchedule:
         check_l0_tiling()
         check_overhead_opt_flag()
         check_cub_tiling()
+        check_sparse_4to2_tiling()
 
         #==================modify tiling to be deleted=========================
         modify_bl0_tiling()
@@ -1362,23 +1395,27 @@ class Conv2dSchedule:
             """
             Config bl1 scope.
             """
+            weight_index_l1 = None
+            bl0 = self._conv_param.tensor_map.get(Conv2dTensorName.BL0)
+            if self._sparse_4to2_flag:
+                weight_index = self._conv_param.tensor_map.get(Conv2dTensorName.WEIGHT_INDEX)
+                weight_index_l1 = sch.cache_read(weight_index, cce_params.scope_cbuf, [bl0])
+
             if self._tiling["BL1_shape"] is None:
                 bl1 = None
             elif self._weight_nd2nz.flag:
                 bl1 = weight
                 sch[bl1].set_scope(cce_params.scope_cbuf)
             else:
-                bl1 = sch.cache_read(weight, cce_params.scope_cbuf, [cl0])
-            return bl1
+                bl1 = sch.cache_read(weight, cce_params.scope_cbuf, [bl0])
+            return bl1, weight_index_l1
 
         def config_bl0():
             """
             Config bl0 scope.
             """
-            if self._tiling["BL1_shape"] is None:
-                bl0 = sch.cache_read(weight, cce_params.scope_cb, [cl0])
-            else:
-                bl0 = sch.cache_read(bl1, cce_params.scope_cb, [cl0])
+            bl0 = tensor_map[Conv2dTensorName.BL0]
+            sch[bl0].set_scope(cce_params.scope_cb)
             return bl0
 
         def config_bias():
@@ -1430,7 +1467,7 @@ class Conv2dSchedule:
         fmap_row_major = config_fmap_row_major()
         al1 = config_al1()
         al0 = config_al0()
-        bl1 = config_bl1()
+        bl1, weight_index_l1 = config_bl1()
         bl0 = config_bl0()
         cub = config_cub()
         bias_l1, bias_bt = config_bias()
@@ -1457,7 +1494,9 @@ class Conv2dSchedule:
                         "al1_im2col": al1_im2col,
                         "al0": al0, "bl0": bl0, "cl0": cl0,
                         "bias_l1": bias_l1, "bias_bt": bias_bt,
-                        "cub": cub, "bias_ub": bias_ub, "cub_bias_add": cub_bias_add}
+                        "cub": cub, "bias_ub": bias_ub, "cub_bias_add": cub_bias_add,
+                        "weight_index_l1": weight_index_l1}
+
         return tensor_param
 
     def special_process_pre(self, res, tensor_param):
@@ -2336,7 +2375,7 @@ class Conv2dSchedule:
             else:
                 outer_factor = max(al1_nparts[0], bl1_nparts[0])
                 inner_factor = min(al1_nparts[0], bl1_nparts[0])
-                if outer_factor % inner_factor != 0:
+                if outer_factor % inner_factor != 0 and not self._sparse_4to2_flag:
                     err_man.raise_err_specific("conv2d", "illegal value of AL1_shape & BL1_shape")
                 reuse_al1_flag = al1_nparts[0] <= bl1_nparts[0]
 
@@ -2517,6 +2556,9 @@ class Conv2dSchedule:
                 if bl1_tiling is not None:
                     consumer, target_axis = get_bl1_attach_info()
                     sch[bl1].compute_at(sch[consumer], target_axis)
+                    if self._sparse_4to2_flag:
+                        weight_index_l1 = tensor_param.get("weight_index_l1")
+                        sch[weight_index_l1].compute_at(sch[consumer], target_axis)
 
         def cub_compute_at():
             """
@@ -2595,7 +2637,6 @@ class Conv2dSchedule:
                 k1_al1 = k_al1
             if k1_al1 == 0:
                 k1_al1 = 1
-
         if bl1_tiling:
             k_bl1, multi_n_bl1, _, _ = bl1_tiling
             if not self._binary.flag:
@@ -2950,6 +2991,12 @@ class Conv2dSchedule:
             if not self._dynamic_shape.flag:
                 get_weight_repeat_number()
 
+        def bl0_emit_insn():
+            emit_dict = {}
+            if self._sparse_4to2_flag:
+                emit_dict["enable_sparse"] = 1
+            sch[bl0].emit_insn(bl0.op.axis[0], "dma_copy", emit_dict)
+
         def bl1_emit_insn():
             """
             Emit insn for bl1.
@@ -2961,6 +3008,9 @@ class Conv2dSchedule:
                 if bl1_tiling is not None:
                     sch[bl1].emit_insn(bl1.op.axis[0], "dma_copy")
 
+                if weight_index_l1 is not None:
+                    sch[weight_index_l1].emit_insn(weight_index_l1.op.axis[0], "dma_copy")
+
             if self._weight_nd2nz.flag:
                 return self._weight_nd2nz.bl1_nd2nz_emit_insn(sch, bl1)
 
@@ -2971,6 +3021,8 @@ class Conv2dSchedule:
             Emit insn for cl0.
             """
             mad_dict = {"mad_pattern": 2, "k_outer": k_outer}
+            if self._sparse_4to2_flag:
+                mad_dict["mad_type"] = 1
 
             if self._fmap_dtype == "float32" and conv_param.impl_mode == "high_performance":
                 if tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_mmad", "h322f32"):
@@ -3074,6 +3126,7 @@ class Conv2dSchedule:
         sch = self._sch
         al1 = tensor_param["al1"]
         bl1 = tensor_param["bl1"]
+        weight_index_l1 = tensor_param["weight_index_l1"]
         al0 = tensor_param["al0"]
         bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
@@ -3103,7 +3156,7 @@ class Conv2dSchedule:
 
         bl1_emit_insn()
 
-        sch[bl0].emit_insn(bl0.op.axis[0], "dma_copy")
+        bl0_emit_insn()
 
         cl0_emit_insn()
 

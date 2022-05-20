@@ -33,6 +33,9 @@ from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.common.utils.op_util.op_util_conv2d import is_support_fixpipe
 from tbe.common.utils.op_util.op_util_conv2d import show_class_var
+from tbe.common.utils.op_util.op_util_conv2d import WEIGHT_SPARSE_4_2
+from tbe.common.utils.op_util.op_util_conv2d import WEIGHT_UNZIP
+
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
@@ -481,6 +484,7 @@ class ConvParam:
         cls.multi_conv2d_fusion_flag = False # mark multi conv2d fusion
         cls.bias_init_align_dim_flag = False
         cls.int4_width_out_align_flag = False
+        cls.sparse_4to2_flag = False
         cls.impl_mode = ""
         cls.cache_tiling_flag = False
         cls.fusion_para = {"input_memory_type": [],
@@ -522,7 +526,9 @@ class ConvParam:
     invalid_data_rm_disable = False
     int4_width_out_align_flag = False
     binary_mode = False
+    sparse_4to2_flag = False
     dynamic_para = None
+    compress_index = None
     compress_index_shape = {}
     compress_tiling_ = {}
     compress_tiling_n = {}
@@ -581,11 +587,11 @@ def _fmap_c0_check_value(dtype, optim_dict):
 
     return fmap_c0_check_value
 
-@tvm.target.generic_func
-def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
-                  para_dict, optim_dict=None, dsl_flag=True):
+
+def conv_compress_unzip_weight(inputs, weight_compress, compress_index, compress_index_shape,
+                               para_dict, optim_dict=None, dsl_flag=True):
     """
-    This is conv compress compute.
+    unzip_weight compute
     """
     weight_compress_shape = weight_compress.shape
     compress_tiling_n = tvm.var("compress_tiling_n", dtype="int32")
@@ -605,6 +611,30 @@ def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
                          name=get_name_with_suffix_num('weight_unzip'))
     res = conv(inputs, weight, para_dict, optim_dict, dsl_flag)
     return res
+
+
+def conv_compress_sparse(inputs, weight_compress, compress_index, compress_index_shape,
+                         para_dict, optim_dict=None, dsl_flag=True):
+    """
+    sparse 4to2 compute
+    """
+    res = conv(inputs, weight_compress, para_dict, optim_dict, dsl_flag)
+    return res
+
+
+@tvm.target.generic_func
+def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
+                  para_dict, optim_dict=None, dsl_flag=True):
+    """
+    This is conv compress compute.
+    """
+    if para_dict.get("alg", WEIGHT_UNZIP) == WEIGHT_UNZIP:
+        return conv_compress_unzip_weight(inputs, weight_compress, compress_index,
+                                          compress_index_shape, para_dict, optim_dict, dsl_flag)
+
+    return conv_compress_sparse(inputs, weight_compress, compress_index, compress_index_shape,
+                                para_dict, optim_dict, dsl_flag)
+
 
 @source_info_decorator()
 @tvm.target.generic_func
@@ -2027,7 +2057,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             ConvParam.dim_map["weight_ori_nchw_shape"] = [cout_ori, cin_ori, h_k, w_k]
             ConvParam.dim_map["weight_align_nchw_shape"] = [cout_align, cin_align, h_k, w_k]
             ConvParam.dim_map["weight_fracz_shape"] = [gopt_c1opt_hk_wk, cout1_opt, cout0, cin0]
-            ConvParam.dim_map["weight_tiling_b_shape"] = [cout1_opt*cout0, cin1_opt, h_k, w_k, cin0]
+            tiling_b_cin1_opt = cin1_opt
+            if sparse_4to2_flag:
+                tiling_b_cin1_opt = int_ceil_div(cin1_opt, 2)  # 2: cin in sparse_4_to_2 is ceil(cin/2)
+            ConvParam.dim_map["weight_tiling_b_shape"] = [cout1_opt*cout0, tiling_b_cin1_opt, h_k, w_k, cin0]
             # calculate fmap shape
             batch, cin1, hin, win, _ = para_dict["a_shape"]
 
@@ -2439,7 +2472,6 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if isinstance(pad_w, int):
             para_dict["pad_w"] = [pad_w, pad_w]
 
-
         # modification of input parameters only happens here.
         if ConvParam.pre_relu_flag:
             dsl_flag = False
@@ -2458,6 +2490,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     ConvParam.set_default()
     ConvParam.dynamic_para, ConvParam.dynamic_flag = _get_dynamic_para()
     ConvParam.dyn_var_map = ConvParam.dynamic_para.get("var_map")
+    sparse_4to2_flag = True if para_dict.get("alg", WEIGHT_UNZIP) == WEIGHT_SPARSE_4_2 else False
     if para_dict.get("multi_conv2d_fusion_flag"):
         _, _, _, ori_wi, _ = data.op.attrs["current_shape"]
         # conv + conv fusion, the second conv fmap is [n, c1, h*w, c0],
@@ -2592,6 +2625,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         invalid_data_rm_flag = False
         ConvParam.invalid_data_rm_flag = False
         ConvParam.invalid_data_rm_disable = True
+
+    if sparse_4to2_flag:
+        ConvParam.sparse_4to2_flag = True
+        ConvParam.compress_index = para_dict.get("compress_index", None)
+        if ConvParam.compress_index is None:
+            err_man.raise_err_message_cube("compress_index cannot be None in sparse 4to2 scene.")
 
     # show flags in ConvParam
     show_class_var(ConvParam)

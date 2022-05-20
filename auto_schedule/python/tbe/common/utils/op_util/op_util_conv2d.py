@@ -24,6 +24,12 @@ import tbe
 from tbe.common.context import get_context
 from tbe.common.utils import log
 
+# conv2d_compress support alg
+WEIGHT_UNZIP = "weight_unzip"
+WEIGHT_SPARSE_4_2 = "weight_sparse_4_2"
+COMPRESS_ALG_SUPPORT = [WEIGHT_UNZIP, WEIGHT_SPARSE_4_2]
+
+# binary var range max
 TILING_DIM_MAX = 32
 CONV2D_DILATION_MAX = 255
 CONV2D_STRIDE_MAX = 63
@@ -31,6 +37,7 @@ CONV2D_PAD_MAX = 255
 CONV2D_KERNEL_MAX = 255
 BINARY_CONFIG_KEY = "multiple_templates"
 
+# mkn index
 CUBE_MKN_IDX_M = 0
 CUBE_MKN_IDX_K = 1
 CUBE_MKN_IDX_N = 2
@@ -53,6 +60,8 @@ class Conv2dTensorName(object):
     """
     # weight
     FILTER = "filter"
+    BL0 = "bl0"
+    WEIGHT_INDEX = "weight_index"
 
     # fm
     FMAP = "fmap"

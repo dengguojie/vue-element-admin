@@ -18,22 +18,83 @@ conv2d_compress
 from __future__ import absolute_import
 import math
 import json
+from operator import index
 from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
-from te.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
-from impl.util import util_select_op_base
+from tbe.common.platform import CUBE_MKN
+from tbe.common.utils.op_util.op_util_conv2d import WEIGHT_SPARSE_4_2
+from tbe.common.utils.op_util.op_util_conv2d import WEIGHT_UNZIP
+from tbe.common.utils.op_util.op_util_conv2d import COMPRESS_ALG_SUPPORT
+from tbe.common.utils.op_util.op_util_conv2d import CUBE_MKN_IDX_K
+from tbe.common.utils.op_util.op_util_conv2d import CUBE_MKN_IDX_N
 from impl.util import util_conv2d
 
 
 MAX_FITLER_HW = 1024
+FZ_SHAPE_DIM = 4
+
+
+def get_tensor_dtype(tensor):
+    """
+    get dtype from tensor or dict
+    """
+    if isinstance(tensor, dict):
+        return tensor.get("dtype")
+    elif isinstance(tensor, (tvm.tensor.Tensor, tvm.var)):
+        return tensor.dtype
+    else:
+        err_man_cube.raise_err_message_cube("input should be dict or tensor.")
+        return ""
+
+
+def get_tensor_shape(tensor):
+    """
+    get shape from tensor or dict
+    """
+    if isinstance(tensor, dict):
+        return tensor.get("shape")
+    elif isinstance(tensor, (tvm.tensor.Tensor, tvm.var)):
+        return tensor.shape
+    else:
+        err_man_cube.raise_err_message_cube("input should be dict or tensor.")
+        return []
+
+
+def conv2dcompress_support_check(inputs, weight_compress, compress_index, groups, alg):
+    """
+    compress support check
+    """
+    if groups != 1:
+        err_man_cube.raise_err_three_paras("E62305", "conv2d_compress",
+                                           "groups", "1", "groups={}".format(groups))
+
+    if alg not in COMPRESS_ALG_SUPPORT:
+        err_man_cube.raise_err_message_cube(
+            "only algorithm [{}] are supported, current is {}".format(COMPRESS_ALG_SUPPORT, alg))
+
+    if alg == WEIGHT_UNZIP:
+        util_conv2d.check_soc_and_dtype(
+            {"conv2d_compress": [inputs, weight_compress, compress_index]})
+    
+    if alg == WEIGHT_SPARSE_4_2:
+        if not util_conv2d.is_support_fixpipe():
+            err_man_cube.raise_err_message_cube("only v200 and v300 soc support {} alg".format(WEIGHT_SPARSE_4_2))
+
+        if get_tensor_dtype(inputs) != "int8" or get_tensor_dtype(weight_compress) != "int8" or \
+                get_tensor_dtype(compress_index) != "int8":
+            err_man_cube.raise_err_message_cube("input tesnor dtype should be int8.")
+
+        if len(get_tensor_shape(compress_index)) != FZ_SHAPE_DIM:
+            err_man_cube.raise_err_message_cube("index tensor shape should be 4 dim.")
+
 
 @tbe_platform.fusion_manager.fusion_manager.register("conv2dcompress")
 def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset_w, outputs,
                            strides, pads, dilations, groups=1, data_format='NHWC', offset_x=0,
-                           kernel_name="conv2dcompress", options=None):
+                           alg=WEIGHT_UNZIP, kernel_name="conv2dcompress", options=None):
     """
     conv2dcompress compute
 
@@ -72,22 +133,21 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
     -------
     tvm compute
     """
-    if groups != 1:
-        err_man_cube.raise_err_specific("conv2d_compress", "conv2dcompress_compute only supports groups=1")
-    util_conv2d.check_soc_and_dtype({"conv2d_compress": [inputs, weight_compress, compress_index]})
-    compress_index_shape = compress_index.shape[0]
+    conv2dcompress_support_check(inputs, weight_compress, compress_index, groups, alg)
 
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weight_compress, bias, offset_w, strides, pads, dilations,
         offset_x, groups, kernel_name, data_format, options)
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
-    para_dict["filter_h"] * para_dict["filter_w"] > MAX_FITLER_HW:
+            para_dict["filter_h"] * para_dict["filter_w"] > MAX_FITLER_HW:
         err_man_cube.raise_err_specific("conv2dcompress",
                                         "conv2d Min tiling still exceed ub buffer, when open weight unzip")
-
-    res = tbe.conv_compress(inputs, weight_compress, compress_index, \
-                        compress_index_shape, para_dict, optim_dict)
+    para_dict["alg"] = alg
+    para_dict["compress_index"] = compress_index
+    compress_index_shape = compress_index.shape[0]
+    res = tbe.conv_compress(inputs, weight_compress, compress_index,
+                            compress_index_shape, para_dict, optim_dict)
 
     return res
 
@@ -96,7 +156,7 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
                   (tuple, list), (tuple, list), (tuple, list), int,
                   str, int, str)
 def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations,
-                   groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
+                   groups=1, data_format='NHWC', offset_x=0, alg=WEIGHT_UNZIP, kernel_name="conv2dcompress"):
     """
     algorithm: conv2dcompress
 
@@ -137,10 +197,8 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
     -------
     None
     """
-    if groups != 1:
-        err_man_cube.raise_err_three_paras("E62305", "conv2d_compress",
-                                           "groups", "1", "groups={}".format(groups))
-    util_conv2d.check_soc_and_dtype({"conv2d_compress": [inputs, weight_compress, compress_index]})
+    conv2dcompress_support_check(inputs, weight_compress, compress_index, groups, alg)
+
     in_dtype = inputs.get("dtype")
     w_dtype = weight_compress.get("dtype")
     res_dtype = outputs.get("dtype")
@@ -165,7 +223,71 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
         bias=use_bias, optim_dict=optim_dict,
         fusion_para=fusion_para,
         kernel_name=kernel_name, need_build=True,
-        need_print=False)
+        need_print=False, alg=alg)
+
+
+def get_sparse_weight_fz_shape(cout1_opt, c1_opt, group_opt, shape_w, w_dtype):
+    """
+    calculate sparse 4 to 2 weight fz shape
+    """
+    block_size_k = CUBE_MKN[w_dtype]['mac'][CUBE_MKN_IDX_K]
+    block_size_n = CUBE_MKN[w_dtype]['mac'][CUBE_MKN_IDX_N]
+    _, _, filter_h, filter_w = shape_w
+    # 2: sparse c1_opt is 1/2 of origin c1_opt
+    filter_shape_frac_z_sparse = (group_opt * ((c1_opt + 1) // 2) * filter_h * filter_w,
+                                  cout1_opt, block_size_n, block_size_k)
+    return filter_shape_frac_z_sparse
+
+
+def get_group_opt_params(shape_in, shape_w, w_dtype, groups):
+    """
+    calculate group opt params
+    """
+    c0_val = 16
+    if w_dtype == "int8":
+        c0_val = 32
+    
+    cin_ori = shape_in[1] // groups
+    cout_ori = shape_w[0] // groups
+
+    enlarge = min(util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val) // cin_ori,
+        util_conv2d.lcm(cout_ori, 16) // cout_ori), groups)
+    c1_opt = math.ceil(cin_ori * enlarge / c0_val)
+    cout1_opt = math.ceil(cout_ori * enlarge / 16)
+    group_opt = math.ceil(groups / enlarge)
+    c1in_ori_align = math.ceil(cin_ori * groups / c0_val)
+
+    return c1_opt, cout1_opt, group_opt, enlarge, c1in_ori_align
+
+
+def get_fm_weight_shape(shape_in, shape_w, in_dtype, w_dtype, groups, optim_dict, alg):
+    """
+    get sparse 4to2 weight fz shape
+    """
+    c1_opt, cout1_opt, group_opt, _, c1in_ori_align = get_group_opt_params(shape_in, shape_w,
+                                                                           w_dtype, groups)
+
+    fmap_shape_nc1hwc0, filter_shape_frac_z = util_conv2d.conv_layer_cce_shape_calc(
+        shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
+
+    if alg == WEIGHT_SPARSE_4_2:
+        filter_shape_frac_z = get_sparse_weight_fz_shape(cout1_opt, c1_opt, group_opt, shape_w, w_dtype)
+
+    return fmap_shape_nc1hwc0, filter_shape_frac_z
+
+
+def create_compress_index_tensor(filter_shape_frac_z, index_dtype, alg):
+    """
+    create compress index tensor
+    """
+    if alg == WEIGHT_UNZIP:
+        compress_index_shape = tvm.var("compress_index_shape", dtype="int32")
+        compress_index = tvm.placeholder((compress_index_shape,), name='compress_index', dtype=index_dtype)
+    else:
+        # WEIGHT_SPARSE_4_2, 4: weight's shape is four times weight_index
+        compress_index_shape = filter_shape_frac_z[:-1] + (filter_shape_frac_z[-1] // 4,)
+        compress_index = tvm.placeholder(compress_index_shape, name='compress_index', dtype=index_dtype)
+    return compress_index, compress_index_shape
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple), str, str,
@@ -178,7 +300,8 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
                              offset_x=0, groups=1, offset_w_dtype='int32',
                              offset_w=False, bias=False, optim_dict=None,
                              fusion_para=None, kernel_name="cce_conv",
-                             need_build=False, need_print=False):
+                             need_build=False, need_print=False,
+                             alg=WEIGHT_UNZIP):
     """
     Parameters
     ----------
@@ -252,30 +375,19 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
     shape_in = list(shape_in)
     shape_w = list(shape_w)
     weight_ori_shape_nchw = shape_w
-    cin_ori = shape_in[1]//groups
-    cout_ori = shape_w[0]//groups
 
     shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(
         shape_in, shape_w, padh, padw, strideh, stridew, in_dtype, w_dtype, res_dtype,
         offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, groups)
 
-    c0_val = 16
-    if w_dtype == "int8":
-        c0_val = 32
-    enlarge = min(util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori),
-                  groups)
-    c1_opt = math.ceil(cin_ori*enlarge/c0_val)
-    cout1_opt = math.ceil(cout_ori*enlarge/16)
-    group_opt = math.ceil(groups/enlarge)
     out_channel, _, filter_h, filter_w = shape_w
-    c1in_ori_align = math.ceil(cin_ori*groups/c0_val)
-    fmap_shape_nc1hwc0, filter_shape_frac_z = util_conv2d.conv_layer_cce_shape_calc(
-        shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
-
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and filter_h * filter_w > MAX_FITLER_HW:
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
+            filter_h * filter_w > MAX_FITLER_HW:
         err_man_cube.raise_err_specific("conv2dcompress",
-                                        "conv2d Min tiling still exceed ub buffer, when open weight unzip")
-
+                                        "conv2d Min tiling still exceed ub buffer, "
+                                        "when open weight unzip")
+    fmap_shape_nc1hwc0, filter_shape_frac_z = get_fm_weight_shape(shape_in, shape_w, in_dtype,
+                                                                  w_dtype, groups, optim_dict, alg)
     tensor_list = []
     with tvm.target.cce():
         data = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
@@ -283,8 +395,8 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
         weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
         tensor_list.append(weight)
 
-        compress_index_shape = tvm.var("compress_index_shape", dtype="int32")
-        compress_index = tvm.placeholder((compress_index_shape,), name='compress_index', dtype=index_dtype)
+        compress_index, compress_index_shape = create_compress_index_tensor(
+            filter_shape_frac_z, index_dtype, alg)
         tensor_list.append(compress_index)
         bias_tensor = None
         offset_w_tensor = None
@@ -292,6 +404,7 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
             bias_tensor = tvm.placeholder((out_channel,), name='bias_tensor', dtype=res_dtype)
             tensor_list.append(bias_tensor)
 
+        c1_opt, cout1_opt, group_opt, enlarge, _ = get_group_opt_params(shape_in, shape_w, w_dtype, groups)
         conv_res = tbe.conv_compress(
             data, weight, compress_index, compress_index_shape,
             {"bias_tensor": bias_tensor, "offset_w_tensor": offset_w_tensor, "pad_h": padh, "pad_w": padw,
@@ -299,7 +412,8 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
              "filter_w": filter_w, "offset_x": offset_x, "res_dtype": res_dtype, "mad_dtype": mad_dtype,
              "fusion_para": fusion_para, "group": groups, "enlarge": enlarge, "c1_opt": c1_opt, "cout1_opt": cout1_opt,
              "group_opt": group_opt, "a_shape": fmap_shape_nc1hwc0, "weight_ori_shape_nchw": weight_ori_shape_nchw,
-             "kernel_name": kernel_name},
+             "weight_fracz_shape": filter_shape_frac_z,
+             "kernel_name": kernel_name, "alg": alg, "compress_index": compress_index},
             optim_dict=optim_dict, dsl_flag=False)
         sch = tbe.auto_schedule(conv_res)
         tensor_list.append(conv_res)

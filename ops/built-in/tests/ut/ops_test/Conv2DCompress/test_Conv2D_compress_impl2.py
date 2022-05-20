@@ -60,7 +60,7 @@ def test_conv2d_compress_impl2(test_arg):
         kernel_name = "conv2d_compress"
 
         conv2dcompress(inputs, weight, index, bias, offset_w, outputs, strides, pads, dilations, groups,
-                       data_format, offset_x, kernel_name)
+                       data_format, offset_x, kernel_name=kernel_name)
 
     def fusion_conv2dcompress_compute(testcases):
         for testcase in testcases:

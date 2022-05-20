@@ -420,6 +420,27 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         fmap_im2col_res = im2col_fractal_compute(fmap_l0_shape, fmap_row_major_reshape)
         return fmap_im2col_res
 
+    def l0b_compute():
+        l0b_tensor_map_ = {}
+        if sparse_4to2_flag:
+            weight_index = conv_param.compress_index
+            # 4: weight's shape is four times weight_index
+            weight_l0b = tvm.compute(weight.shape,
+                                     lambda k1_idx, n1_idx, n0_idx, k0_idx: tvm.load_sparse(
+                                         weight(k1_idx, n1_idx, n0_idx, k0_idx),
+                                         weight_index(k1_idx, n1_idx, n0_idx, k0_idx // 4)),
+                                     name=Conv2dTensorName.BL0)
+            l0b_tensor_map_[Conv2dTensorName.BL0] = weight_l0b
+            l0b_tensor_map_[Conv2dTensorName.WEIGHT_INDEX] = weight_index
+            return weight_l0b, l0b_tensor_map_
+
+        weight_l0b = tvm.compute(weight.shape,
+                                 lambda k1_idx, n1_idx, n0_idx, k0_idx: weight(k1_idx, n1_idx,
+                                                                               n0_idx, k0_idx),
+                                 name=Conv2dTensorName.BL0)
+        l0b_tensor_map_[Conv2dTensorName.BL0] = weight_l0b
+        return weight_l0b, l0b_tensor_map_
+
     def get_mad_shape():
         """
         get mad shape
@@ -433,6 +454,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         get mad reduce axis
         """
         weight_k1, _, _, _ = weight_fracz_shape
+        if sparse_4to2_flag:
+            weight_k1 = group_opt * ci1_opt * kernel_h * kernel_w
         reduce_k1 = weight_k1 // group_opt
         axis_k1 = tvm.reduce_axis((0, reduce_k1), name='cin_1_kh_kw')
         axis_k0 = tvm.reduce_axis((0, block_k0), name='cin_0')
@@ -445,10 +468,15 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         mad_shape = get_mad_shape()
         reduce_k1, axis_k1, axis_k0 = get_reduce_sum_axis()
         remove_pad_m = out_height * out_width
+        cout_factor = 1
+        mad_sum_func = tvm.sum
+        if sparse_4to2_flag:
+            cout_factor = 2  # 2: cout_sparse is 1/2 of cout_origin
+            mad_sum_func = tvm.mad_sp
         c_col = tvm.compute(
             mad_shape,
             lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
-            tvm.sum(
+            mad_sum_func(
                 tvm.select(
                     tvm.all((group_idx * reduce_k1 + axis_k1)*block_k0 + axis_k0 < reduce_value),
                     ((fmap_im2col[group_idx,
@@ -457,7 +485,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                   axis_k1,
                                   howo_idx % block_m0,
                                   axis_k0]) *
-                     weight_for_cube[group_idx * reduce_k1 + axis_k1,
+                     weight_for_cube[(group_idx * reduce_k1 + axis_k1) // cout_factor,
                                      co1_idx,
                                      co0_idx,
                                      axis_k0]).astype(mad_dtype)),
@@ -473,10 +501,15 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         """
         mad_shape = get_mad_shape()
         reduce_k1, axis_k1, axis_k0 = get_reduce_sum_axis()
+        mad_sum_func = tvm.sum
+        cout_factor = 1
+        if sparse_4to2_flag:
+            cout_factor = 2  # 2: cout_sparse is 1/2 of cout_origin
+            mad_sum_func = tvm.mad_sp
         c_col = tvm.compute(
             mad_shape,
             lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
-            tvm.sum(
+            mad_sum_func(
                 tvm.select(
                     tvm.all((group_idx * reduce_k1 + axis_k1) * block_k0 + axis_k0 < reduce_value),
                     tvm.select(
@@ -487,7 +520,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                      axis_k1,
                                      howo_idx % block_m0,
                                      axis_k0] *
-                        weight_for_cube[group_idx * reduce_k1 + axis_k1,
+                        weight_for_cube[(group_idx * reduce_k1 + axis_k1) // cout_factor,
                                         co1_idx,
                                         co0_idx,
                                         axis_k0]).astype(mad_dtype) +
@@ -498,7 +531,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                      axis_k1,
                                      howo_idx % block_m0,
                                      axis_k0] *
-                        weight_for_cube[group_idx * reduce_k1 + axis_k1,
+                        weight_for_cube[(group_idx * reduce_k1 + axis_k1) // cout_factor,
                                         co1_idx,
                                         co0_idx,
                                         axis_k0]).astype(mad_dtype))),
@@ -520,7 +553,6 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         err_man.raise_err_message_cube("bias add is not supported for {}".format(get_cur_soc()))
         return None
-
 
     def l0c_to_buffer_compute(l0c, dst_shape, name, tag, attrs):
         """
@@ -644,6 +676,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     # flag
     dynamic_flag = conv_param.dynamic_flag
+    sparse_4to2_flag = conv_param.sparse_4to2_flag
 
     #======================config fractal unit size=======================================
     block_m0, block_k0, block_n0 = CUBE_MKN[fmap.dtype]["mac"]
@@ -764,8 +797,11 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         bias_add_l0c = None
         bias_add_ub = bias_ub
 
+    # l0b
+    l0b, l0b_tensor_map = l0b_compute()
+
     # l0c
-    l0c = l0c_compute(fmap_im2col, weight, bias_add_l0c)
+    l0c = l0c_compute(fmap_im2col, l0b, bias_add_l0c)
 
     # res
     l0c_to_res_tensor_map = {}
@@ -777,6 +813,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         conv_res = remove_pad_compute(cub_bias_add, conv_param.invalid_data_rm_flag)
         l0c_to_res_tensor_map[Conv2dTensorName.CUB] = cub
         l0c_to_res_tensor_map[Conv2dTensorName.CUB_BIAS_ADD] = cub_bias_add
+
     #===========================update tensormap=============================
     update_tensormap = {
         Conv2dTensorName.CL0: l0c,
@@ -786,6 +823,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     }
 
     update_tensormap.update(bias_tensor_map)
+    update_tensormap.update(l0b_tensor_map)
+
     if not dynamic_flag and not l0a_load2d_flag:
         update_tensormap.update({
             Conv2dTensorName.FMAP_ROW_MAJOR: fmap_row_major,

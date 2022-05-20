@@ -275,8 +275,8 @@ cube:
       - ops/built-in/op_tiling/avg_pool.cc
       - ops/built-in/op_tiling/avg_pool_grad.cc
       - ops/built-in/op_tiling/gemm.cc
-      - ops/built-in/op_proto/nn_calculation_ops.cc
       - ops/built-in/op_proto/inc/nn_calculation_ops.h
+      - ops/built-in/op_proto/nn_calculation_ops.cc
       - ops/built-in/op_proto/nn_pooling_ops.cc
       - ops/built-in/op_proto/inc/nn_pooling_ops.h
       - ops/built-in/op_proto/matrix_calculation_ops.cc
@@ -508,6 +508,7 @@ cube-tiling:
       - auto_schedule/python/tbe/dsl/static_schedule/conv_schedule_v2.py
       - auto_schedule/python/tbe/dsl/unify_schedule/conv2d_tilingcase.py
       - ops/built-in/tbe/impl/conv2d.py
+      - ops/built-in/tbe/impl/conv2d_compress.py
       - ops/built-in/tbe/impl/strided_read.py
       - ops/built-in/tbe/impl/strided_write.py
       - ops/built-in/tbe/impl/conv2d_data_rm.py
@@ -2078,7 +2079,6 @@ cube-conv2d:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
       - ops/built-in/op_proto/nn_calculation_ops.cc
-      - ops/built-in/op_proto/inc/nn_calculation_ops.h
       - ops/built-in/op_proto/nn_pooling_ops.cc
       - ops/built-in/op_proto/inc/nn_pooling_ops.h
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h

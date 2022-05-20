@@ -886,6 +886,7 @@ REG_OP(Conv2D)
 * to the input image for int8 type. Ensure that the output is within the
 * effective range. Defaults to 0.
 *@li data_format: Reserved.
+*@li alg: compress algorithm, default weight_unzip.
 *
 *@par Outputs:
 * y: A 4D Tensor of output feature map. Has the same type as "x". With the
@@ -909,6 +910,7 @@ REG_OP(Conv2DCompress)
     .ATTR(groups, Int, 1)
     .ATTR(data_format, String, "NHWC")
     .ATTR(offset_x, Int, 0)
+    .ATTR(alg, String, "weight_unzip")
     .OP_END_FACTORY_REG(Conv2DCompress)
 
 /**

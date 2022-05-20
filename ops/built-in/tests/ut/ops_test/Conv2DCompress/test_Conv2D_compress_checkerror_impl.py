@@ -60,7 +60,7 @@ def test_conv2d_compress_checkerror1(test_arg):
 
         try:
             conv2dcompress(inputs, weight, index, bias, offset_w, outputs, strides, pads, dilations, 2,
-                       data_format, offset_x, kernel_name)
+                       data_format, offset_x, kernel_name=kernel_name)
         except RuntimeError:
             pass
 
