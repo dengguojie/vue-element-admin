@@ -774,7 +774,6 @@ void FastTiling::WeightL1ToL0Reset(Tiling &tiling)
         tilingRangeL0_.kL0.at(l0Data_.kL0Index) == tiling.kBL1ci) {
         // also means nBl1 zero.
         tiling.nBL1Value = 0;
-        tiling.nBL1 = 0;
         tiling.kBL1ci = 0;
         // tiling.kBL1 is tiling.kBL1ci * reduceKAxisAL1_KhDilKwDilCi0_
         tiling.kBL1 = 0;
@@ -805,6 +804,11 @@ void FastTiling::AssignmentL0(Tiling &tiling)
     // nBL1 is FULL_LOAD, pass it to schedule.
     if (tiling.nBL1 != FULL_LOAD) {
         tiling.nBL1 = tiling.nBL1Value == 0 ? 0 : tiling.nBL1Value / tiling.nB;
+    }
+
+    // alignment with schedule team.
+    if (tiling.kBL1 == 0) {
+        tiling.nBL1 = 0;
     }
 }
 
@@ -923,7 +927,8 @@ bool FastTiling::GetUBTiling(Tiling& tiling)
         }
     }
     // set Ub tiling decision
-    tiling.kAub = tilingRangeUB_.kAub.at(ubData_.kAubIndex);
+    // kAub means actual size, which multiply the hk, wk, c0 [=> reduceK].
+    tiling.kAub = tilingRangeUB_.kAub.at(ubData_.kAubIndex) * reduceKAxisAL1_KhDilKwDilCi0_;
     tiling.mAub = tilingRangeUB_.mAub.at(ubData_.mAubIndex);
     tiling.nCFactor = tilingRangeUB_.ncFactor.at(ubData_.ncFactorIndex);
     tiling.mCFactor = tiling.mC;

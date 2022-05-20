@@ -635,7 +635,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case0) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
-  EXPECT_EQ(runInfo.GetTilingKey(), 32793);
+  EXPECT_EQ(runInfo.GetTilingKey(), 32857);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 1 1 16 16 16 16 2 4 3 3 1 1 1 1 0 0 1 2 1 1 2 1 2 18 40 1 18 1 1 18 ");
 }
 
