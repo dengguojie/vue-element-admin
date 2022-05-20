@@ -19,6 +19,7 @@
  * \brief tiling function of conv2d
  */
 #include "conv2d.h"
+#include "graph/compute_graph.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -394,28 +395,54 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
     ge::ConstGeTensorDescPtr biasDesc = opDesc->GetInputDescPtr(2);
     ge::ConstGeTensorDescPtr outputDesc = opDesc->GetOutputDescPtr(0);
 
-    OP_LOGE_IF(inputDesc->GetFormat() != ge::Format::FORMAT_NC1HWC0, false, opType,
-        "input0 only support NC1HWC0 format!");
+    if (inputDesc->GetFormat() == ge::Format::FORMAT_NC1HWC0) {
+        OP_LOGE_IF(inputDesc->GetShape().GetDimNum() != kNC1HWC0DimSize, false, opType,
+            "input0 shape must be 5HD when input format NC1HWC0");
+        OP_LOGE_IF(outputDesc->GetFormat() != ge::Format::FORMAT_NC1HWC0, false, opType,
+            "output format must be NC1HWC0 when input format NC1HWC0");
+        OP_LOGE_IF(outputDesc->GetShape().GetDimNum() != kNC1HWC0DimSize, false, opType,
+            "output shape must be 5HD when input format NC1HWC0");
+    } else if (inputDesc->GetFormat() == ge::Format::FORMAT_NCHW) {
+        OP_LOGE_IF(inputDesc->GetShape().GetDimNum() != kNCHWDimSize, false, opType,
+            "input0 shape must be 4D when input format NCHW");
+        OP_LOGE_IF(outputDesc->GetFormat() != ge::Format::FORMAT_NCHW, false, opType,
+            "output format must be NCHW when input format NCHW");
+        OP_LOGE_IF(outputDesc->GetShape().GetDimNum() != kNCHWDimSize, false, opType,
+            "output shape must be 4D when input format NCHW");
+    }
+
     OP_LOGE_IF(filterDesc->GetFormat() != ge::Format::FORMAT_FRACTAL_Z, false, opType,
         "filter only support FRACZ format!");
-    OP_LOGE_IF(outputDesc->GetFormat() != ge::Format::FORMAT_NC1HWC0, false, opType,
-        "output only support NC1HWC0 format!");
-
-    OP_LOGE_IF(inputDesc->GetShape().GetDimNum() != kNC1HWC0DimSize, false, opType,
-        "input0 shape only support 5HD!");
     OP_LOGE_IF(filterDesc->GetShape().GetDimNum() != kFRACZDimSize || \
         filterDesc->GetOriginShape().GetDimNum() != kNCHWDimSize, false, opType,
         "input1 shape only support FRACZ and ori_shape 4D!");
-    OP_LOGE_IF(outputDesc->GetShape().GetDimNum() != kNC1HWC0DimSize, false, opType,
-        "output shape only support 5D!");
 
     uint32_t cinOri = 0;
     uint32_t coutOri = 0;
     uint32_t c0Val = GetMKN(convParas.bType, 1);
     uint32_t cout0 = GetMKN(convParas.bType, MKN_NINDEX);
     uint32_t groupsOri = 1;
-    OP_LOGE_IF(!ge::AttrUtils::GetInt(opDesc, "groups", groupsOri), false, opType,
+    // get conv attrs
+    ge::ComputeGraphPtr oriGraph = nullptr;
+    ge::OpDescPtr opDescAttr = opDesc;
+    if (ge::AttrUtils::GetGraph(opDesc, "_original_fusion_graph", oriGraph)) {
+        for (auto &node : oriGraph->GetAllNodes()) {
+            if (node->GetType() == opType) {
+                opDescAttr = node->GetOpDesc();
+                GELOGD("[%s] is fusion node, get attrs from _original_fusion_graph", nodeName.c_str());
+                break;
+            }
+        }
+    }
+
+    OP_LOGE_IF(!ge::AttrUtils::GetInt(opDescAttr, "groups", groupsOri), false, opType,
         "get attr groups desc failed!");
+    OP_LOGE_IF(!ge::AttrUtils::GetListInt(opDescAttr, "pads", padList), false, opType,
+        "get attr pads desc failed!");
+    OP_LOGE_IF(!ge::AttrUtils::GetListInt(opDescAttr, "dilations", dilationList), false, opType,
+        "get attr dilations desc failed!");
+    OP_LOGE_IF(!ge::AttrUtils::GetListInt(opDescAttr, "strides", stridesList), false, opType,
+        "get attr strides desc failed!");
     if (inputDesc->GetOriginFormat() == ge::Format::FORMAT_NCHW) {
         cinOri = inputDesc->GetOriginShape().GetDim(kCDimNCHWIdx) / groupsOri;
     } else {
@@ -445,13 +472,6 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
     convParas.wci = c1Opt * c0Val;
     convParas.ho = outputDesc->GetShape().GetDim(kHDimNC1HWC0Idx);
     convParas.wo = outputDesc->GetShape().GetDim(kWDimNC1HWC0Idx);
-    // get conv attrs
-    OP_LOGE_IF(!ge::AttrUtils::GetListInt(opDesc, "pads", padList), false, opType,
-        "get attr pads desc failed!");
-    OP_LOGE_IF(!ge::AttrUtils::GetListInt(opDesc, "dilations", dilationList), false, opType,
-        "get attr dilations desc failed!");
-    OP_LOGE_IF(!ge::AttrUtils::GetListInt(opDesc, "strides", stridesList), false, opType,
-        "get attr strides desc failed!");
     convParas.padu = padList[kPadUpDimIdx];
     convParas.padd = padList[kPadDownDimIdx];
     convParas.padl = padList[kPadLeftDimIdx];
@@ -689,19 +709,19 @@ bool Conv2dBinaryTiling::GenConv2DTiling(const optiling::Conv2DTilingParseInfo& 
  */
 bool Conv2dBinaryTiling::SetRunInfo()
 {
+    runParas.batch = convParas.batch;
+    runParas.cIn = convParas.fmci;
+    runParas.hi = convParas.hi;
+    runParas.wi = convParas.wi;
+    runParas.cOut = convParas.n;
+    runParas.kh = convParas.kh;
+    runParas.kw = convParas.kw;
     runParas.dilationH = convParas.dilations_h;
     runParas.dilationW = convParas.dilations_w;
     runParas.strideH = convParas.stride_h;
     runParas.strideW = convParas.stride_w;
-    runParas.batch = convParas.batch;
-    runParas.hi = convParas.hi;
     runParas.ho = convParas.ho;
-    runParas.wi = convParas.wi;
     runParas.wo = convParas.wo;
-    runParas.c1In = convParas.fmci / GetMKN(convParas.aType, 1);
-    runParas.c1Out = convParas.n / GetMKN(convParas.bType, MKN_NINDEX);
-    runParas.kh = convParas.kh;
-    runParas.kw = convParas.kw;
     runParas.padu = convParas.padu;
     runParas.padd = convParas.padd;
     runParas.padl = convParas.padl;
@@ -712,6 +732,8 @@ bool Conv2dBinaryTiling::SetRunInfo()
     runParas.nDim = convTiling.nDim;
     runParas.mDim = convTiling.mDim;
     runParas.groupDim = convTiling.groupDim;
+    runParas.kAub = convTiling.kAub;
+    runParas.mAub = convTiling.mAub;
     runParas.cubN = convTiling.cubN;
     runParas.nUbL0cFactor = convTiling.nUbL0cFactor;
     runParas.mL0 = convTiling.mL0;
@@ -723,13 +745,13 @@ bool Conv2dBinaryTiling::SetRunInfo()
     runParas.kAl1Factor = convTiling.kAl1Factor;
     runParas.kBl1Factor = convTiling.kBl1Factor;
     GELOGD("[%s] AddTilingData success, tilingdata is %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, \
-        %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d", nodeName.c_str(), runParas.dilationH, \
-        runParas.dilationW, runParas.strideH, runParas.strideW, runParas.batch, runParas.hi, \
-        runParas.ho, runParas.wi, runParas.wo, runParas.c1In, runParas.c1Out, runParas.kh, runParas.kw, \
+        %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d", nodeName.c_str(), runParas.batch, \
+        runParas.cIn, runParas.hi, runParas.wi, runParas.cOut, runParas.kh, runParas.kw, runParas.dilationH, \
+        runParas.dilationW, runParas.strideH, runParas.strideW, runParas.ho, runParas.wo, \
         runParas.padu, runParas.padd, runParas.padl, runParas.padr, runParas.batchSingleCore, \
-        runParas.nSingleCore, runParas.batchDim, runParas.nDim, runParas.mDim, runParas.cubN, \
-        runParas.nUbL0cFactor, runParas.mL0, runParas.kL0, runParas.mAl1Factor, \
-        runParas.nBl1Factor, runParas.kAl116, runParas.kBl116, runParas.kAl1Factor, \
+        runParas.nSingleCore, runParas.batchDim, runParas.nDim, runParas.mDim, runParas.groupDim, \
+        runParas.kAub, runParas.mAub, runParas.cubN, runParas.nUbL0cFactor, runParas.mL0, runParas.kL0, \
+        runParas.mAl1Factor, runParas.nBl1Factor, runParas.kAl116, runParas.kBl116, runParas.kAl1Factor, \
         runParas.kBl1Factor);
 
     return true;
@@ -744,7 +766,7 @@ bool Conv2dBinaryTiling::UpdateRunInfo(utils::OpRunInfo& runInfo)
     bool load2dFlag = (convParas.padu + convParas.padd + convParas.padl + convParas.padr) == 0 &&
         convParas.stride_h*convParas.stride_w == 1 && convParas.kh*convParas.kw == 1 &&
         convParas.bType == ge::DataType::DT_FLOAT16;
-    attachMap.fmapLoadtol0aMode = load2dFlag ? 0 : 1;
+    attachMap.fmapLoadtol0aMode = load2dFlag ? 1 : 0;
 
     /*
         tilingId is int64 type, the meaning of each bits as follows:
@@ -815,8 +837,8 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas,
 
     ge::Format inputFormat = inputDesc->GetFormat();
     std::string xFormat = ge::TypeUtils::FormatToSerialString(inputFormat).c_str();
-    if (xFormat != "NC1HWC0" && xFormat != "NHWC") {
-        OP_LOGE(opType.c_str(), "only support NC1HWC0 or NHWC format.");
+    if (xFormat != "NC1HWC0" && xFormat != "NHWC" && xFormat != "NCHW") {
+        OP_LOGE(opType.c_str(), "only support NC1HWC0 or NHWC or NCHW format.");
     }
 
     if (opInfo.tilingType == "binary") {
@@ -829,7 +851,7 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas,
     int32_t cDim = 1;
     int32_t hDim = 2;
     int32_t wDim = 3;
-    if (xFormat == "NHWC") {
+    if (xFormat == "NHWC" || xFormat == "NCHW") {
         nDim = xFormat.find("N");
         cDim = xFormat.find("C");
         hDim = xFormat.find("H");

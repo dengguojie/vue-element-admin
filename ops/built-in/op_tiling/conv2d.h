@@ -162,19 +162,19 @@ std::map<ge::DataType, ge::DataType> CUBE_MAD_TYPE = {
 
 struct Conv2DRunInfo
 {
+    uint32_t batch = 1;
+    uint32_t cIn = 1;
+    uint32_t hi = 1;
+    uint32_t wi = 1;
+    uint32_t cOut = 1;
+    uint32_t kh = 1;
+    uint32_t kw = 1;
     uint32_t dilationH = 1;
     uint32_t dilationW = 1;
     uint32_t strideH = 1;
     uint32_t strideW = 1;
-    uint32_t batch = 1;
-    uint32_t hi = 1;
     uint32_t ho = 1;
-    uint32_t wi = 1;
     uint32_t wo = 1;
-    uint32_t c1In = 1;
-    uint32_t c1Out = 1;
-    uint32_t kh = 1;
-    uint32_t kw = 1;
     uint32_t padu = 0;
     uint32_t padd = 0;
     uint32_t padl = 0;
@@ -185,6 +185,8 @@ struct Conv2DRunInfo
     uint32_t nDim = 0;
     uint32_t mDim = 0;
     uint32_t groupDim = 0;
+    uint32_t kAub = 0;
+    uint32_t mAub = 0;
     uint32_t cubN = 0;
     uint32_t nUbL0cFactor = 0;
     uint32_t mL0 = 0;
