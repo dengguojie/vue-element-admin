@@ -29,7 +29,7 @@ case1 = {"params": [{"shape": (32, 1, 2, 2, 16), "dtype": "float32", "format": "
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
-         "case_name": "dynamic_resize_nearest_neighbor_v2_grad_d_1",
+         "case_name": "dynamic_resize_nearest_neighbor_v2_grad_1",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -43,13 +43,28 @@ case2 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
-         "case_name": "dynamic_resize_nearest_neighbor_v2_grad_d_1",
+         "case_name": "dynamic_resize_nearest_neighbor_v2_grad_2",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
+                     "ori_shape": (16, 1, 512, 512, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (2,), "dtype": "int32", "format": "NCHW", "ori_shape": (256, 256),
+                     "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
+                     "ori_shape": (16, 1, 256, 256, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_nearest_neighbor_v2_grad_3",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
 
 
 if __name__ == '__main__':
