@@ -1,6 +1,6 @@
 tools:
   commiter:
-    "xxx"
+    "wangchao"
   team: "tools" ##组件名称
   src:
     release:
@@ -79,7 +79,7 @@ onnx:
 
 auto_schedule:
   commiter:
-    "xxx"
+    "mabing"
   team: "auto_schedule" ##组件名称
   src:
     release:
@@ -606,7 +606,7 @@ cube-tiling:
 
 vector_A:
   commiter:
-    "xxx"
+    "hanfuwei"
   team: "vector_A" ##组件名称
   src:
     release:
@@ -1334,8 +1334,6 @@ vector_B:
       - ops/CMakeLists.txt
       - ops/built-in/op_proto/nn_detect_ops.cc
       - ops/built-in/op_proto/inc/nn_detect_ops.h
-      - ops/built-in/op_proto/array_ops.cc
-      - ops/built-in/op_proto/inc/array_ops.h
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
