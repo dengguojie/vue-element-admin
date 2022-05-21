@@ -31,7 +31,7 @@ const int OPERATION_TWO = 2;
 void PrintfInfo(const caffe::LayerParameter* layer) {
   if (layer->eltwise_param().coeff_size() == 0 || layer->eltwise_param().coeff_size() == layer->bottom_size()) {
     OP_LOGI("Eltwise",
-            "Coeff size(%d) check fail,"
+            "Coeff size(%d) is invalid,"
             "Eltwise Layer takes one coefficient per bottom blob.",
             layer->eltwise_param().coeff_size());
   }
@@ -62,7 +62,7 @@ Status ParseParamsEltwise(const Message* op_src, ge::Operator& op_dest) {
         break;
       default:
         OP_LOGE("Eltwise",
-                "Eltwise parse params fail,"
+                "Eltwise parse params is invalid,"
                 "unsupported opration %d.",
                 layer->eltwise_param().operation());
         return PARAM_INVALID;
