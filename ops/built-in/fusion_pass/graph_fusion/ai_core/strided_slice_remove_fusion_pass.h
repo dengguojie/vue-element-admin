@@ -30,6 +30,7 @@ class StridedSliceRemovePass : public PatternFusionBasePass {
 
   private:
     Status ReLinkControlAnchor(ge::NodePtr stridedSliceNode, ge::NodePtr nextNode);
+    bool IsReverseOrderScene(ge::NodePtr &fusedNode);
     const string FUSED_OP_TYPE = "StridedSlice";
 };
 
