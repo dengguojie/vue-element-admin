@@ -172,7 +172,7 @@ bool getParseInfo(const std::string& opType, const nlohmann::json& opCompileInfo
     // get hardware info and ub/vector fusion utilize
     OP_LOGE_IF(!GetHardwareInfo(opType, opCompileInfo, "hardware_info", opInfo), false, opType, "Get hardware failed!");
     OP_LOGE_IF(!GetFusionUtilize(opType, opCompileInfo, "fusion_utilize", opInfo), false, opType, "Get fusion failed!");
-    OP_LOGE_IF(opInfo.tilingType == "binary", true, opType, "No need parse varMap for binary mode!");
+    OP_TILING_CHECK(opInfo.tilingType == "binary", GELOGW("No need parse varMap for binary mode!"), return true);
     // get varMap
     if (opCompileInfo.count("_vars") == 0) {
         GELOGD("Op compile info json doesn't contain _vars info.");
@@ -220,7 +220,7 @@ bool getFuzzyBuildParseInfo(const std::string& opType, const nlohmann::json& opC
         CUBE_INNER_ERR_REPORT(opType.c_str(),
             "Conv2DTilingParseFunc, getFuzzyBuildParseInfo, get firstOpCompileInfo error."),
         return false);
-    OP_LOGE_IF(opInfo.tilingType == "binary", true, opType, "No need parse varMap for binary mode!");
+    OP_TILING_CHECK(opInfo.tilingType == "binary", GELOGW("No need parse varMap for binary mode!"), return true);
     for (size_t i = 1; i < opCompileInfo.size(); i++) {
         auto& info = opCompileInfo[i];
         if (info.count("_vars") == 0 ||
@@ -453,7 +453,7 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
     uint32_t c1Opt = ceil((float)(cinOri * enlarge) / GetMKN(convParas.bType, 1));
     uint32_t cout1Opt = ceil((float)(coutOri * enlarge) / GetMKN(convParas.bType, 2));
     uint32_t groupOpt = ceil((float)groupsOri / max(enlarge, 1));
-    GELOGD("[%s] Get group opt success, enlarge = %d, c1Opt = %d, cout1Opt = %d, groupOpt = %d", \
+    GELOGD("[%s] Get group opt success, enlarge = %d, c1Opt = %u, cout1Opt = %u, groupOpt = %u", \
            nodeName.c_str(), enlarge, c1Opt, cout1Opt, groupOpt);
 
     convParas.groups = groupOpt;
@@ -621,8 +621,8 @@ bool Conv2dBinaryTiling::GenAttachMap()
     // N axis only support whole cut and K aixs not whole cut, no need config split_mode
     attachMap.batchSplitMode = (convParas.batch % fastTiling.batchDim == 0) ? INTEGER_SEGMENT : NO_INTEGER_SEGMENT;
     attachMap.groupSplitMode = (convParas.groups % fastTiling.groupDim == 0) ? INTEGER_SEGMENT : NO_INTEGER_SEGMENT;
-    GELOGD("[%s] Get Conv template success, al1AttachMode: %d, bl1AttachMode: %d, bl0AttachMode: %d, \
-        cubChannelwiseMode: %d, batchSplitMode: %d, groupSplitMode: %d", nodeName.c_str(), attachMap.al1AttachMode,
+    GELOGD("[%s] Get Conv template success, al1AttachMode: %u, bl1AttachMode: %u, bl0AttachMode: %u, \
+        cubChannelwiseMode: %u, batchSplitMode: %u, groupSplitMode: %u", nodeName.c_str(), attachMap.al1AttachMode,
         attachMap.bl1AttachMode, attachMap.bl0AttachMode, attachMap.cubChannelwiseMode,
         attachMap.batchSplitMode, attachMap.groupSplitMode);
 
@@ -636,10 +636,10 @@ bool Conv2dBinaryTiling::GenConv2DTiling(const optiling::Conv2DTilingParseInfo& 
 {
     OP_LOGE_IF(!InitHardwareInfo(opInfo), false, opType, "Get hardwareinfo failed!");
     OP_LOGE_IF(!Conv2dFastTiling(convParas, hardwareInfo, fastTiling), false, opType, "get fasttiling failed!");
-    GELOGD("[%s] Conv2dFastTiling success, fastTiling info is: AL0_matrix: [%d, %d, 16, %d], \
-        CL0_matrix: [%d, %d, 16, 16, 1, 1], CUB_matrix: [%d, %d, 16, 16], BL0_matrix: [%d, %d, 16, %d, 1, 1], \
-        AL1_shape: [%d, %d, 1, 1], AUB_shape: [%d, %d, 1, 1], BL1_shape: [%d, %d, 1, 1], \
-        block_dim: [%d, %d, %d, %d]", nodeName.c_str(), fastTiling.ma, fastTiling.ka, \
+    GELOGD("[%s] Conv2dFastTiling success, fastTiling info is: AL0_matrix: [%u, %u, 16, %u], \
+        CL0_matrix: [%u, %u, 16, 16, 1, 1], CUB_matrix: [%u, %u, 16, 16], BL0_matrix: [%u, %u, 16, %u, 1, 1], \
+        AL1_shape: [%u, %u, 1, 1], AUB_shape: [%u, %u, 1, 1], BL1_shape: [%u, %u, 1, 1], \
+        block_dim: [%u, %u, %u, %u]", nodeName.c_str(), fastTiling.ma, fastTiling.ka, \
         GetMKN(convParas.aType, 1), fastTiling.nc, fastTiling.mc, fastTiling.ncFactor, fastTiling.mcFactor, \
         fastTiling.kb, fastTiling.nb, GetMKN(convParas.bType, 1), \
         fastTiling.kAl1, fastTiling.mAl1, fastTiling.kAub, fastTiling.mAub, fastTiling.kBl1, fastTiling.nBl1, \
@@ -691,9 +691,9 @@ bool Conv2dBinaryTiling::GenConv2DTiling(const optiling::Conv2DTilingParseInfo& 
     // need add kub aub
     convTiling.kAub = fastTiling.kAub;
     convTiling.mAub = fastTiling.mAub;
-    GELOGD("[%s] Get convTiling from fastTiling success, batchSingleCore = %d, nSingleCore = %d, batchDim = %d, \
-        nDim = %d, mDim = %d, groupDim = %d, cubN = %d, nUbL0cFactor = %d, mL0 = %d, kL0 = %d, mAl1Factor = %d, \
-        nBl1Factor = %d, kAl116 = %d, kBl116 = %d, kAl1Factor = %d, kBl1Factor = %d, kAub = %d, mAub = %d", \
+    GELOGD("[%s] Get convTiling from fastTiling success, batchSingleCore = %u, nSingleCore = %u, batchDim = %u, \
+        nDim = %u, mDim = %u, groupDim = %u, cubN = %u, nUbL0cFactor = %u, mL0 = %u, kL0 = %u, mAl1Factor = %u, \
+        nBl1Factor = %u, kAl116 = %u, kBl116 = %u, kAl1Factor = %u, kBl1Factor = %u, kAub = %u, mAub = %u", \
         nodeName.c_str(), convTiling.batchSingleCore, convTiling.nSingleCore, convTiling.batchDim, \
         convTiling.nDim, convTiling.mDim, convTiling.groupDim, convTiling.cubN, convTiling.nUbL0cFactor, \
         convTiling.mL0, convTiling.kL0, convTiling.mAl1Factor, convTiling.nBl1Factor, convTiling.kAl116, \
@@ -744,8 +744,8 @@ bool Conv2dBinaryTiling::SetRunInfo()
     runParas.kBl116 = convTiling.kBl116;
     runParas.kAl1Factor = convTiling.kAl1Factor;
     runParas.kBl1Factor = convTiling.kBl1Factor;
-    GELOGD("[%s] AddTilingData success, tilingdata is %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, \
-        %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d", nodeName.c_str(), runParas.batch, \
+    GELOGD("[%s] AddTilingData success, tilingdata is %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \
+        %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u", nodeName.c_str(), runParas.batch, \
         runParas.cIn, runParas.hi, runParas.wi, runParas.cOut, runParas.kh, runParas.kw, runParas.dilationH, \
         runParas.dilationW, runParas.strideH, runParas.strideW, runParas.ho, runParas.wo, \
         runParas.padu, runParas.padd, runParas.padl, runParas.padr, runParas.batchSingleCore, \
