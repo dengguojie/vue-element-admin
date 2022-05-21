@@ -95,11 +95,7 @@ class CommonIoUGrad(object):
         # func: for task allocation
         self.avail_aicore_num = tik.Dprofile().get_aicore_num()
 
-        self.data_align = 128 if self.all_num > 64 * self.avail_aicore_num else 64
-        self.data_align = 256 if self.all_num > 128 * self.avail_aicore_num else 128
-        self.data_align = 512 if self.all_num > 256 * self.avail_aicore_num else 256
-        self.data_align = 1024 if self.all_num > 512 * self.avail_aicore_num else 512
-
+        self.data_align = self.data_align_count()
         self.mov_rep_time = self.data_align // Constant.BLOCK
         self.dup_rep_time = self.data_align // Constant.MASK_BLOCK
 
@@ -125,10 +121,11 @@ class CommonIoUGrad(object):
                                                 scope=tik.scope_gm)
         self.dgtboxes = self.tik_instance.Tensor(self.dtype, [Constant.BOX_LOC, self.all_num], name="dgtboxes",
                                                  scope=tik.scope_gm)
-        self.dbboxes_ = self.tik_instance.Tensor(self.dtype, [Constant.BOX_LOC, self.all_num_align], name="dbboxes_",
-                                                 scope=tik.scope_gm, is_workspace=True)
-        self.dgtboxes_ = self.tik_instance.Tensor(self.dtype, [Constant.BOX_LOC, self.all_num_align], name="dgtboxes_",
-                                                  scope=tik.scope_gm, is_workspace=True)
+        if self.move_flag:
+            self.dbboxes_ = self.tik_instance.Tensor(self.dtype, [Constant.BOX_LOC, self.all_num_align],
+                                                     name="dbboxes_", scope=tik.scope_gm, is_workspace=True)
+            self.dgtboxes_ = self.tik_instance.Tensor(self.dtype, [Constant.BOX_LOC, self.all_num_align],
+                                                      name="dgtboxes_", scope=tik.scope_gm, is_workspace=True)
 
         # func: apply for the calculation cache of inter/union
         self.inter = None
@@ -165,6 +162,18 @@ class CommonIoUGrad(object):
         self.tmp_b = None
         self.tmp_c = None
         self.tmp_d = None
+
+    def data_align_count(self):
+        task_per_core = self.all_num // self.avail_aicore_num
+        if task_per_core <= 64:
+            return 64
+        if task_per_core <= 128:
+            return 128
+        if task_per_core <= 256:
+            return 256
+        if task_per_core <= 512:
+            return 512
+        return 1024
 
     def paras_check(self, dy, bboxes):
         """paras_check"""
@@ -507,26 +516,19 @@ class CommonIoUGrad(object):
 
     def union_part(self):
         """union_part"""
-        self.tik_instance.h_sub(self.tmp_a, self.b_box.x2, self.b_box.x1)
-        self.tik_instance.h_sub(self.tmp_b, self.b_box.y2, self.b_box.y1)
-
-        self.tik_instance.h_mul(self.tmp_a, self.tmp_a, self.dunion)
-        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.dunion)
-
+        # box1
+        self.tik_instance.h_mul(self.tmp_a, self.b_box.w, self.dunion)
+        self.tik_instance.h_mul(self.tmp_b, self.b_box.h, self.dunion)
         # `for union part : b1x2-b1x1`
         self.tik_instance.h_add(self.b_box.dx2, self.b_box.dx2, self.tmp_b)
         self.tik_instance.h_sub(self.b_box.dx1, self.b_box.dx1, self.tmp_b)
-
         # `for union part : b1y2-b1y1`
         self.tik_instance.h_add(self.b_box.dy2, self.b_box.dy2, self.tmp_a)
         self.tik_instance.h_sub(self.b_box.dy1, self.b_box.dy1, self.tmp_a)
 
-        self.tik_instance.h_sub(self.tmp_c, self.g_box.x2, self.g_box.x1)
-        self.tik_instance.h_sub(self.tmp_d, self.g_box.y2, self.g_box.y1)
-
-        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.dunion)
-        self.tik_instance.h_mul(self.tmp_d, self.tmp_d, self.dunion)
-
+        # box2
+        self.tik_instance.h_mul(self.tmp_c, self.g_box.w, self.dunion)
+        self.tik_instance.h_mul(self.tmp_d, self.g_box.h, self.dunion)
         # `for union part : b2x2-b2x1`
         self.tik_instance.h_add(self.g_box.dx2, self.g_box.dx2, self.tmp_d)
         self.tik_instance.h_sub(self.g_box.dx1, self.g_box.dx1, self.tmp_d)
