@@ -59,6 +59,7 @@ def dynamic_rnn_grad_generalization(x,
                                     num_proj=0,
                                     time_major=True,
                                     forget_bias=0.0,
+                                    gate_order= "ijfo",
                                     kernel_name="dynamic_rnn_grad",
                                     generalize_config=None):
     """
@@ -132,7 +133,8 @@ def dynamic_rnn_grad_generalization(x,
                    wci, wcf, wco, dw, db, dx, dh_prev, dc_prev, dwci, dwcf, dwco,
                    {"cell_type": cell_type}, {"direction": direction}, {"cell_depth": cell_depth},
                    {"use_peephole": use_peephole}, {"keep_prob": keep_prob}, {"cell_clip": cell_clip},
-                   {"num_proj": num_proj}, {"time_major": time_major}, {"forget_bias": forget_bias}])
+                   {"num_proj": num_proj}, {"time_major": time_major}, {"forget_bias": forget_bias}, 
+                   {"gate_order": gate_order}])
     return result
 
 
@@ -149,7 +151,7 @@ def dynamic_rnn_grad_generalization(x,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def dynamic_rnn_grad(x,
                      w,
                      b,
@@ -188,6 +190,7 @@ def dynamic_rnn_grad(x,
                      num_proj=0,
                      time_major=True,
                      forget_bias=0.0,
+                     gate_order= "ijfo",
                      kernel_name="dynamic_rnn_grad"):
     """
     dynamic_rnn_grad

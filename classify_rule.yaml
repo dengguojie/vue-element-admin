@@ -745,6 +745,7 @@ vector_A:
       - ops/built-in/op_proto/psroipooling_ops.cc
       - ops/built-in/op_proto/quantize_ops.cc
       - ops/built-in/op_proto/reduction_ops.cc
+      - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/rnn.cc
       - ops/built-in/op_proto/roipooling_ops.cc
       - ops/built-in/op_proto/ssddetectionoutput_ops.cc
@@ -2270,7 +2271,6 @@ unkown:
       - ops/built-in/op_proto/inc/nn_ops.h
       - ops/built-in/op_proto/inc/lookup_ops.h
       - ops/built-in/op_proto/inc/logging_ops.h
-      - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/inc/math_ops.h
       - ops/built-in/op_proto/inc/npu_loss_scale_ops.h
       - ops/built-in/op_proto/inc/hcom_ops.h
