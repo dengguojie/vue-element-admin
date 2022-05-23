@@ -585,7 +585,7 @@ string GetMatMulInfo(const Operator &op, const std::string &name_attr) {
 static const std::pair<int64_t, int64_t> FULL_RANGE = {1, -1};
 static const std::pair<int64_t, int64_t> EMPTY_RANGE = {0, 0};
 static const int64_t NORMALIZE_INFINITE_RANGE = std::numeric_limits<int64_t>::max();
-static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, NORMALIZE_INFINITE_RANGE};
+static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {0, NORMALIZE_INFINITE_RANGE};
 static const int64_t VALUE_UNKNOWN_RANK = -2;
 static const int64_t INFINITE_RANGE = -1;
 
@@ -879,8 +879,7 @@ bool InferShapeMatMul::InitializeShapeAndRange(const GeShape& shape,
   infer_range = {NORMALIZE_FULL_RANGE, NORMALIZE_FULL_RANGE};
   for (size_t i = 0; i < shape.GetDimNum(); ++i) {
     CHECK(shape.GetDim(i) < UNKNOWN_DIM, OP_LOGE("", "Invalid dim size"), return false);
-    // shape[i] > 0
-    if (shape.GetDim(i) > 0) {
+    if (shape.GetDim(i) >= 0) {
       infer_range[i] = {shape.GetDim(i), shape.GetDim(i)};
       continue;
     }
@@ -1121,8 +1120,7 @@ bool InferShapeBatchMatMul::InitializeShapeAndRange(const GeShape& shape,
     int64_t shape_value = shape.GetDim(i);
     // shape[i] < -1
     CHECK(shape_value < UNKNOWN_DIM, OP_LOGE("", "Invalid dim size"), return false);
-    // shape[i] > 0
-    if (shape_value > 0) {
+    if (shape_value >= 0) {
       infer_range[i] = {shape_value, shape_value};
       continue;
     }

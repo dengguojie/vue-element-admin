@@ -123,7 +123,7 @@ vector<CASE_TUPLE> testcase_batchmatmulv2 = {
                {},
                false,
                true,
-               RES_TUPLE{{2048, -1, 64}, {{2048, 2048}, {1, -1}, {64, 64}}, PASS}},
+               RES_TUPLE{{2048, -1, 64}, {{2048, 2048}, {0, -1}, {64, 64}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{-1, -1, -1, 512}, DT_FLOAT16, FORMAT_ND, {{1, -1}, {2, 3}, {1, 2}, {512, 512}}},
                OP_TUPLE{{512, -1}, DT_FLOAT16, FORMAT_ND, {{512, 52}, {3, 4}}},
                {},
@@ -378,4 +378,3 @@ TEST_F(BatchMatMulV2Test, split_test5) {
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{}, {16, 31}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
-

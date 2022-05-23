@@ -19,8 +19,8 @@ import math
 import warnings
 from enum import Enum
 
-from impl.util import util_gemm
 from impl.util import fusion_util
+from impl.util import util_gemm
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import operation
@@ -32,6 +32,9 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
 from impl.util.util_common import cal_mini_l1_size_matmul
+from impl.util.util_cube_dynamic import check_tensor_shape
+from impl.util.util_cube_dynamic import is_empty_tensor_scene
+from impl.util.util_cube_dynamic import check_dynamic_range_lower
 from tbe.common.context import op_context
 
 
@@ -898,6 +901,19 @@ def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict) -> None:
             operation.var("bub_align_bound")
 
 
+def _check_empty_tensor(input_x1, input_x2, output_z, bias):
+    # if tensor'shape has 0 or range's lower is 0
+    if (check_dynamic_range_lower([input_x1, input_x2, output_z]) or
+        is_empty_tensor_scene([input_x1, input_x2, output_z])):
+        if bias:
+            bias_range = bias.get("range")
+            if bias_range and bias_range[0][0] == 0:
+                bias["range"] = ((1, bias_range[0][1]), )
+        check_tensor_shape({"tensor": [input_x1, input_x2, output_z],
+                            "value": [-1, -1, -1],
+                            "range": [(2, 2), (2, 2), (2, 2)]})
+
+
 def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: dict, output_z: dict, trans_a: bool,
                          trans_b: bool, offset_x: int, kernel_name: str, op_type: str = "BatchMatMulV2"):
     """
@@ -931,6 +947,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     res : dict
     A dict object, dict with input tensor and output tensor
     """
+    _check_empty_tensor(input_x1, input_x2, output_z, bias)
     # check soc_version
     soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -1138,3 +1155,4 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         config.get("build_args")["enable_branch_eliminator_else_case"] = False
     tbe.build(sch, config)
     tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")
+

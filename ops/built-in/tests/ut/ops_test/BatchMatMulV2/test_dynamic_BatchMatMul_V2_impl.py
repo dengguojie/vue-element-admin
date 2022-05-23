@@ -196,7 +196,12 @@ normal_case = [
      ((-1, -1, -1), ((1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
      ((-1,), ((1, 2147483647),), 'float16', 'ND'),
      ((-1, -1, -1), ((1, 2147483647), (1, 2147483647), (1, 2147483647)), 'float16', 'FRACTAL_NZ'),
-     "dynamic_batch_matmul_v2_succ_case3"]
+     "dynamic_batch_matmul_v2_succ_case3"],
+    [((-1, -1, -1), ((0, 87), (0, 66), (0, 62)), 'float16', 'ND', False),
+     ((-1, 0, -1), ((0, 105), (0, None), (0, 17)), 'float16', 'ND', True),
+     ((-1,), ((0, 11),), 'float16', 'ND'),
+     ((-1, -1, 0), ((0, 105), (0, 66), (0, None)), 'float16', 'ND'),
+     "dynamic_batch_matmul_v2_succ_case4"]
 ]
 
 def cus_ceil(v, base):
