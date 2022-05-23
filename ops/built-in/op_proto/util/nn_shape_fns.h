@@ -23,7 +23,7 @@
 
 #include "graph/operator.h"
 #include "graph/debug/ge_log.h"
-#include "./error_util.h"
+#include "error_util.h"
 
 namespace ge {
 #define UNCHANGED_SHAPE()                                      \

@@ -20,7 +20,7 @@
  */
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "error_log.h"
 #include "op_log.h"

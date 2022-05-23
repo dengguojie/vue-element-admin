@@ -22,7 +22,7 @@
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
 #include "op_log.h"
-#include "../../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace domi {
 // Caffe ParseParams

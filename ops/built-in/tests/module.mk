@@ -176,7 +176,7 @@ LOCAL_OP_TILING_ALL_FILES := $(LOCAL_OP_TILING_ALL_FILES:$(LOCAL_OP_TILING_DIR_P
 LOCAL_OP_TILING_ALL_TARGET_FILES := $(filter $(LOCAL_OP_TILING_FILES_SUFFIX),$(LOCAL_OP_TILING_ALL_FILES))
 LOCAL_OP_TILING_ALL_TARGET_FILES := $(LOCAL_OP_TILING_ALL_TARGET_FILES:$(LOCAL_PATH)/%=%)
 LOCAL_OP_TILING_ALL_TARGET_FILES += ../../../cann/ops/built-in/fusion_pass/common/fp16_t.cc
-LOCAL_OP_TILING_ALL_TARGET_FILES += ../../../cann/ops/built-in/op_proto/util/error_util.cc
+LOCAL_OP_TILING_ALL_TARGET_FILES += ../../../cann/ops/common/src/error_util.cc
 
 common_shared_libraries := \
     libc_sec \

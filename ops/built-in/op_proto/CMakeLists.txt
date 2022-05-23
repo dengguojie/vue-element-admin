@@ -26,7 +26,7 @@ set(_op_proto_utils
   util/axis_util.cc
   util/candidate_sampling_shape_fns.cc
   util/common_shape_fns.cc
-  util/error_util.cc
+  ../../common/src/error_util.cc
   util/images_ops_shape_fns.cc
   util/linalg_ops_shape_fns.cc
   util/lookup_ops_shape_fns.cc

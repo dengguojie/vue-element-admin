@@ -25,7 +25,7 @@
 #include "op_tiling_util.h"
 #include <nlohmann/json.hpp>
 #include "graph/utils/op_desc_utils.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace {
   constexpr int32_t FACTOR_TWO = 2;

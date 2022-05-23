@@ -272,6 +272,7 @@ cube:
       - ops/built-in/op_tiling/conv3d_transpose.cc
       - ops/built-in/op_tiling/deconvolution.cc
       - ops/built-in/op_tiling/avg_pool3d_grad.cc
+      - ops/built-in/op_tiling/avg_pool3d.cc
       - ops/built-in/op_tiling/avg_pool.cc
       - ops/built-in/op_tiling/avg_pool_grad.cc
       - ops/built-in/op_tiling/gemm.cc
@@ -568,8 +569,6 @@ cube-tiling:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_clip_mul_div.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_conv2d_mul_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_depthwise_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_depthwise_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.h
@@ -588,12 +587,12 @@ cube-tiling:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_add_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_conv2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_conv2d_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_batchnorm_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_fusion_pass_base.cc
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
-      - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
       - ops/built-in/framework/onnx_plugin/conv2d_plugin.cc
       - ops/built-in/framework/onnx_plugin/split_plugin.cc
-      - ops/built-in/framework/caffe_plugin/caffe_conv2d_plugin.cc
       - ops/built-in/tbe/impl/dynamic/avg_pool.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
       - ops/built-in/tbe/impl/dynamic/fix_pipe.py
@@ -650,6 +649,8 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/upsample_plugin.cc
       - ops/built-in/framework/caffe_plugin/yolo_plugin.cc
       - ops/built-in/framework/tf_plugin/dilation2d_plugin.cc
+      - ops/built-in/framework/caffe_plugin/caffe_batch_matmul_plugin.cc
+      - ops/built-in/framework/caffe_plugin/caffe_deconv_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_rnnv2_tf_plugin.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.h
@@ -827,6 +828,9 @@ vector_B:
       - cmake/template/config.cmake
       - cmake/util/intf_pub_llt_gccnative.cmake
       - ops/common/inc/op_log.h
+      - ops/common/inc/error_code.h
+      - ops/common/inc/error_util.h
+      - ops/common/src/error_util.cc
       - ops/built-in/CMakeLists.txt
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
@@ -961,8 +965,6 @@ vector_B:
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
-      - ops/built-in/op_proto/util/error_util.cc
-      - ops/built-in/op_proto/util/error_util.h
       - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_proto/selection_ops.cc
       - ops/built-in/op_proto/nonlinear_fuc_ops.cc
@@ -994,6 +996,10 @@ vector_B:
       - ops/built-in/op_tiling/gather_v2.cc
       - ops/built-in/op_tiling/in_top_k.cc
       - ops/built-in/op_tiling/iou.cc
+      - ops/built-in/op_tiling/inplace_index_add.cc
+      - ops/built-in/op_tiling/pad_v3_5hd.cc
+      - ops/built-in/op_tiling/pad_v3_grad.cc
+      - ops/built-in/op_tiling/tensor_move.cc
       - ops/built-in/op_tiling/kl_div.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop.cc
       - ops/built-in/op_tiling/max_pool.cc
@@ -2079,9 +2085,6 @@ cube-conv2d:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
-      - ops/built-in/op_proto/nn_calculation_ops.cc
-      - ops/built-in/op_proto/nn_pooling_ops.cc
-      - ops/built-in/op_proto/inc/nn_pooling_ops.h
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
@@ -2304,7 +2307,6 @@ unkown:
       - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
-      - ops/built-in/op_proto/util/error_code.h
       - ops/built-in/op_proto/util/random_ops_shape_fns.cc
       - ops/built-in/op_proto/util/linalg_ops_shape_fns.h
       - ops/built-in/op_proto/util/reduce_infer_util.h

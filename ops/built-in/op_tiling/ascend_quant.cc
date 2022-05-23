@@ -25,7 +25,7 @@
 #include "op_log.h"
 #include "op_tiling_util.h"
 #include "external/graph/operator.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace {
   constexpr int32_t ALIGN_BLOCK = 32;

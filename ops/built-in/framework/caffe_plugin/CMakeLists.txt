@@ -20,7 +20,7 @@ if(NOT ENABLE_TEST)
   protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
   set(_caffe_plugins
-    ../../op_proto/util/error_util.cc
+    ../../../common/src/error_util.cc
     arg_max_with_k_plugin.cc
     basic_rnn_cell_plugin.cc
     bias_plugin.cc

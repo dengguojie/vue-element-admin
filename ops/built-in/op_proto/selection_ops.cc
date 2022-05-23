@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "op_const.h"
 #include "strided_slice_infer_shape.h"

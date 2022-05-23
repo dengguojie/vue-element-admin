@@ -25,7 +25,7 @@
 #include "graph/debug/ge_log.h"
 #include "op_tiling/tiling_handler.h"
 
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "error_log.h"
 #include "vector_tiling_profiling.h"

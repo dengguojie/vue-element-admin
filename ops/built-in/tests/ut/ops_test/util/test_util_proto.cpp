@@ -20,8 +20,8 @@
 
 #include <gtest/gtest.h>
 #include "../util/util.h"
-#include "../util/error_util.h"
-#include "../util/error_code.h"
+#include "error_util.h"
+#include "error_code.h"
 
 using namespace ge;
 

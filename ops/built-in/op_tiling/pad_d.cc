@@ -19,7 +19,7 @@
  * \brief
  */
 #include "pad_common.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "error_log.h"
 
 namespace optiling {

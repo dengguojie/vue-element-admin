@@ -24,7 +24,7 @@
 #include "util/common_shape_fns.h"
 #include "util/random_ops_shape_fns.h"
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/vector_proto_profiling.h"
 #include "graph/utils/node_utils.h"
 #include "register/infer_data_slice_registry.h"

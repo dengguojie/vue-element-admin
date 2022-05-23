@@ -28,7 +28,7 @@
 #include "common/util/error_manager/error_manager.h"
 #include "util/op_common_util.h"
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "graph/utils/node_utils.h"
 #include "register/infer_data_slice_registry.h"

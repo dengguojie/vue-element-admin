@@ -22,7 +22,7 @@ set(_optiling_files
   runtime/max_pool_v3.cc
   ../utils/block_store.cc
   ../utils/block_pool.cc
-  ../op_proto/util/error_util.cc
+  ../../common/src/error_util.cc
   ../fusion_pass/common/fp16_t.cc
   transdata_dsl.cc
   transdata_dsl_general.cc

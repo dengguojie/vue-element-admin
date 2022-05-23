@@ -23,7 +23,7 @@
 #include "op_log.h"
 #include "register/register.h"
 #include "../../op_proto/util/axis_util.h"
-#include "../../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace domi {
 namespace {

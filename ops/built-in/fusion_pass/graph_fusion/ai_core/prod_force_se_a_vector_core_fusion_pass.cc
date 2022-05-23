@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "../../../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "common/util/error_manager/error_manager.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"

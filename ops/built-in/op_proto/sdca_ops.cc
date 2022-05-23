@@ -24,7 +24,7 @@
 #include "common_shape_fns.h"
 #include "util/util.h"
 #include "graph/operator.h"
-#include "util/error_util.h"
+#include "error_util.h"
 
 namespace ge {
 

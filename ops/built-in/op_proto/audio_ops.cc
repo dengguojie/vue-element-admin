@@ -21,7 +21,7 @@
 #include "inc/audio_ops.h"
 #include "op_log.h"
 #include "util/common_shape_fns.h"
-#include "util/error_util.h"
+#include "error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {

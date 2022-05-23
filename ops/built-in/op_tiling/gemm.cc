@@ -27,7 +27,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../op_proto/util/axis_util.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "external/graph/operator.h"
 #include "graph/ge_tensor.h"
 #include "graph/op_desc.h"

@@ -23,7 +23,7 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
-#include "../../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace domi {
 const int OPERATION_ONE = 1;

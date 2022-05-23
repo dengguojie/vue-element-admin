@@ -24,7 +24,7 @@
 #include "common/util/error_manager/error_manager.h"
 #include "op_log.h"
 #include "../../op_proto/util/axis_util.h"
-#include "../../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "graph/operator.h"
 #include "array_ops.h"
 #include "elewise_calculation_ops.h"

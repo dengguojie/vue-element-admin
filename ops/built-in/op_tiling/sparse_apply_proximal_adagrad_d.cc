@@ -26,7 +26,7 @@
 #include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 #include "graph/utils/op_desc_utils.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace optiling {
 const int32_t BYTE_BLOCK = 32;

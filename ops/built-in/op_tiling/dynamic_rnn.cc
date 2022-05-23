@@ -27,7 +27,7 @@
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 
 namespace optiling {

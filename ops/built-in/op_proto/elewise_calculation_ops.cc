@@ -25,7 +25,7 @@
 #include "op_log.h"
 #include "op_const.h"
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/vector_proto_profiling.h"
 #include "util/reduce_infer_util.h"
 #include "graph/utils/node_utils.h"

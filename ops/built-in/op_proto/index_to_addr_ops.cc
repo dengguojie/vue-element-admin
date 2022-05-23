@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "op_log.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/util.h"
 
 namespace ge {

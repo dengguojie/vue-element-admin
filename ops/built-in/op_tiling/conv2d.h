@@ -24,7 +24,7 @@
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "conv2d_fast_tiling.h"
 #include <nlohmann/json.hpp>
 #include "cube_tiling.h"

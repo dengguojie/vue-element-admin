@@ -24,7 +24,7 @@
 #include <map>
 #include "util/util.h"
 #include "op_log.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 
 namespace ge {
 

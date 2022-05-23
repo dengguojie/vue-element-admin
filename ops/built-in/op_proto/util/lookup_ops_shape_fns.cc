@@ -21,7 +21,7 @@
 #include "lookup_ops_shape_fns.h"
 #include "common_shape_fns.h"
 #include "graph/utils/op_desc_utils.h"
-#include "./error_util.h"
+#include "error_util.h"
 
 #include <vector>
 #include <limits>

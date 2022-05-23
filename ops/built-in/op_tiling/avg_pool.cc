@@ -26,7 +26,7 @@
 #include "graph/utils/type_utils.h"
 #include "cube_tiling_new.h"
 #include "op_log.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "error_log.h"
 #include "graph/node.h"
 #include "graph/op_desc.h"

@@ -22,7 +22,7 @@
 #include <utility>
 #include "graph/operator.h"
 #include "op_log.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/common_shape_fns.h"
 #include "util/util.h"
 

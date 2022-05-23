@@ -24,7 +24,7 @@
 #include <vector>
 #include "util/common_shape_fns.h"
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "graph/utils/op_desc_utils.h"
 

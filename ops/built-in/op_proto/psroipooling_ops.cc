@@ -22,7 +22,7 @@
 #include <vector>
 #include <string>
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "inc/nn_detect_ops.h"
 

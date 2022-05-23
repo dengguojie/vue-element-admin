@@ -32,7 +32,7 @@
 #include "op_log.h"
 #include "common/util/error_manager/error_manager.h"
 #include "util/common_shape_fns.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/util.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/common_error_codes.h"

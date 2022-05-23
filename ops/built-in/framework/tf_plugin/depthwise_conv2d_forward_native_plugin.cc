@@ -20,7 +20,7 @@
  */
 #include "graph/utils/op_desc_utils.h"
 #include "register/register.h"
-#include "../../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "common/util/error_manager/error_manager.h"
 #include "op_log.h"
 

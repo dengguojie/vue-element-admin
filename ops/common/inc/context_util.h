@@ -27,20 +27,20 @@
 #include "op_log.h"
 
 namespace ops {
-#define OPS_CHECK_NULL_WITH_CONTEXT(context, ptr) \
-  if ((ptr) == nullptr) { \
-    const char *name = ((context)->GetNodeName() == nullptr) ? "nil" : (context)->GetNodeName(); \
-    OP_LOGE_WITHOUT_REPORT(name, "%s is nullptr!", #ptr); \
-    REPORT_CALL_ERROR("EZ9999", "op[%s], %s is nullptr!", name, #ptr); \
-    return ge::GRAPH_FAILED; \
+#define OPS_CHECK_NULL_WITH_CONTEXT(context, ptr)                                                \
+  if ((ptr) == nullptr) {                                                                        \
+    const char* name = ((context)->GetNodeName() == nullptr) ? "nil" : (context)->GetNodeName(); \
+    OP_LOGE_WITHOUT_REPORT(name, "%s is nullptr!", #ptr);                                        \
+    REPORT_CALL_ERROR("EZ9999", "op[%s], %s is nullptr!", name, #ptr);                           \
+    return ge::GRAPH_FAILED;                                                                     \
   }
 
-#define OPS_CHECK_NULL_WITH_CONTEXT_RET(context, ptr, ret) \
-  if ((ptr) == nullptr) { \
-    const char *name = ((context)->GetNodeName() == nullptr) ? "nil" : (context)->GetNodeName(); \
-    OP_LOGE_WITHOUT_REPORT(name, "%s is nullptr!", #ptr); \
-    REPORT_CALL_ERROR("EZ9999", "op[%s], %s is nullptr!", name, #ptr); \
-    return ret; \
+#define OPS_CHECK_NULL_WITH_CONTEXT_RET(context, ptr, ret)                                       \
+  if ((ptr) == nullptr) {                                                                        \
+    const char* name = ((context)->GetNodeName() == nullptr) ? "nil" : (context)->GetNodeName(); \
+    OP_LOGE_WITHOUT_REPORT(name, "%s is nullptr!", #ptr);                                        \
+    REPORT_CALL_ERROR("EZ9999", "op[%s], %s is nullptr!", name, #ptr);                           \
+    return ret;                                                                                  \
   }
 }  // namespace ops
 #endif  // CANN_OPS_BUILT_IN_CONTEXT_UTIL_H_

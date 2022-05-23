@@ -53,7 +53,7 @@ set(_common_fusion_pass_dep
 
 set(_common_srcs
   ${_proto_h}
-  ../op_proto/util/error_util.cc
+  ../../common/src/error_util.cc
   common/fp16_t.cc
   common/fusion_addoutput_registry.cc
   common/fusion_const2attr_registry.cc

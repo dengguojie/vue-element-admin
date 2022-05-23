@@ -24,7 +24,7 @@
 #include "graph/debug/ge_log.h"
 #include "cube_tiling.h"
 #include "op_log.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace {
   const unsigned int SHAPE_SIZE_6HD = 6;

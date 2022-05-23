@@ -27,7 +27,7 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "graph/utils/graph_utils.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 #include "graph/utils/type_utils.h"
 
 namespace ge {

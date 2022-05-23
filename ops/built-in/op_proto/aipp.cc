@@ -28,7 +28,7 @@
 #include <nlohmann/json.hpp>
 
 #include "graph/utils/graph_utils.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 #include "graph/utils/type_utils.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/common_error_codes.h"

@@ -30,7 +30,7 @@
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "../op_proto/strided_slice_infer_shape.h"
 #include "error_log.h"

@@ -24,7 +24,7 @@
 #include <set>
 #include "util/util.h"
 #include "op_log.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 #include "graph/utils/node_utils.h"
 #include "common/inc/op_log.h"
 #include "util/common_shape_fns.h"

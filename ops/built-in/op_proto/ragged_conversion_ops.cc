@@ -27,7 +27,7 @@
 #include "util/common_shape_fns.h"
 #include "util/ragged_conversion_ops_shape_fns.h"
 #include "util/util.h"
-#include "util/error_util.h"
+#include "error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {

@@ -18,7 +18,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"

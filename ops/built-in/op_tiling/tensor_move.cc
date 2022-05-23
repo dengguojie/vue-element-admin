@@ -23,7 +23,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "op_tiling.h"
 #include "error_log.h"

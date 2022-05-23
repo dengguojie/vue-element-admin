@@ -23,7 +23,7 @@
 #include "cube_tiling.h"
 #include "op_log.h"
 #include "op_tiling.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace {
   constexpr int32_t SHAPE_SIZE_6D = 6;

@@ -20,7 +20,7 @@
  */
 #include "inc/string_ops.h"
 #include "util/common_shape_fns.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "common_shape_fns.h"
 #include "common/inc/op_log.h"
 #include "graph/utils/op_desc_utils.h"

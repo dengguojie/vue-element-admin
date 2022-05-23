@@ -115,7 +115,7 @@ LOCAL_PLUGIN_SRC_TARGET_FILES := $(LOCAL_PLUGIN_SRC_TARGET_FILES:$(LOCAL_PATH)/%
 
 LOCAL_SRC_FILES := \
         $(LOCAL_PLUGIN_SRC_TARGET_FILES) \
-        built-in/op_proto/util/error_util.cc \
+        built-in/../common/src/error_util.cc \
 
 $(warning "---------------print start--------------")
 $(warning $(LOCAL_PATH))
@@ -174,7 +174,7 @@ LOCAL_PLUGIN_SRC_TARGET_FILES := $(LOCAL_PLUGIN_SRC_TARGET_FILES:$(LOCAL_PATH)/%
 
 LOCAL_SRC_FILES := \
         $(LOCAL_PLUGIN_SRC_TARGET_FILES) \
-        built-in/op_proto/util/error_util.cc \
+        built-in/../common/src/error_util.cc \
 
 $(warning "---------------print start--------------")
 $(warning $(LOCAL_PATH))
@@ -220,7 +220,7 @@ LOCAL_CFLAGS += -g -O0 -Dgoogle=ascend_private
 endif
 LOCAL_SRC_FILES := \
         built-in/op_proto/util/util.cc \
-        built-in/op_proto/util/error_util.cc \
+        built-in/../common/src/error_util.cc \
         built-in/op_proto/util/axis_util.cc \
         built-in/op_proto/selection_ops.cc \
         built-in/op_proto/elewise_calculation_ops.cc \
@@ -355,7 +355,7 @@ endif
 
 LOCAL_SRC_FILES := \
         built-in/fusion_pass/common/fp16_t.cc \
-        built-in/op_proto/util/error_util.cc \
+        built-in/../common/src/error_util.cc \
         built-in/op_tiling/auto_tiling.cc \
         built-in/op_tiling/unsorted_segment_sum.cc \
         built-in/op_tiling/unsorted_segment.cc \
@@ -473,7 +473,7 @@ LOCAL_PLUGIN_SRC_TARGET_FILES := $(filter $(LOCAL_SRC_FILES_SUFFIX),$(LOCAL_PLUG
 LOCAL_PLUGIN_SRC_TARGET_FILES := $(LOCAL_PLUGIN_SRC_TARGET_FILES:$(LOCAL_PATH)/%=%)
 
 LOCAL_SRC_FILES := \
-        built-in/op_proto/util/error_util.cc \
+        built-in/../common/src/error_util.cc \
         $(LOCAL_PLUGIN_SRC_TARGET_FILES) \
 
 #$(warning $(LOCAL_SRC_FILES))

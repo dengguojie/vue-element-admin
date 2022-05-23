@@ -21,7 +21,7 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 
 namespace {

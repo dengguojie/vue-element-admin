@@ -21,7 +21,7 @@
 #include <map>
 #include <nlohmann/json.hpp>
 
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "op_log.h"
 #include "op_tiling_util.h"
 #include "op_const.h"

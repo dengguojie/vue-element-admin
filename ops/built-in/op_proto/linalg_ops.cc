@@ -23,7 +23,7 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "linalg_ops_shape_fns.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 #include "util/util.h"
 
 namespace ge {

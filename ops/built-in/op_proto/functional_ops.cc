@@ -21,7 +21,7 @@
 #include "inc/functional_ops.h"
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/util.h"
 
 namespace ge {

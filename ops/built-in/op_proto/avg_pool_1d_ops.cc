@@ -34,7 +34,7 @@
 #include "op_log.h"
 #include "register/infer_data_slice_registry.h"
 #include "util/common_shape_fns.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "util/util.h"
 
 namespace ge {

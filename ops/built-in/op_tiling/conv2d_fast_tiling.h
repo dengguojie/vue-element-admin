@@ -21,7 +21,7 @@
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 #define CHECK_OP_FUNC(cond, post_action_expr, msg, ...)                                                          \
   {                                                                                                              \

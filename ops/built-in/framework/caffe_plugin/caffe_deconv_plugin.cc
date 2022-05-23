@@ -23,7 +23,7 @@
 #include "register/register.h"
 #include "op_log.h"
 #include "../../op_proto/util/axis_util.h"
-#include "../../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace domi {
 static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::AscendString& op_name, ge::Operator& op) {

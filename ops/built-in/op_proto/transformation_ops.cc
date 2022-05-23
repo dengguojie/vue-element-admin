@@ -40,7 +40,7 @@
 #include "util/util.h"
 #include "common_shape_fns.h"
 #include "op_log.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"

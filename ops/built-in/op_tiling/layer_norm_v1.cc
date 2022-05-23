@@ -22,7 +22,7 @@
 #include <string>
 
 #include "../fusion_pass/common/fp16_t.hpp"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"

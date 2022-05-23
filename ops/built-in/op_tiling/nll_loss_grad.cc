@@ -23,7 +23,7 @@
 #include "op_tiling_util.h"
 
 #include "op_log.h"
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "error_log.h"
 #include "vector_tiling_profiling.h"

@@ -13,7 +13,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "graph/debug/ge_log.h"
 #include "graph/utils/op_desc_utils.h"

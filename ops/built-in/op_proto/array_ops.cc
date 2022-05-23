@@ -31,7 +31,7 @@
 #include "graph/utils/tensor_adapter.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 #include "util/util.h"
 #include "framework/common/debug/ge_log.h"
 

@@ -25,7 +25,7 @@
 #include <functional>
 #include <algorithm>
 #include <set>
-#include "./error_util.h"
+#include "error_util.h"
 #include "./vector_proto_profiling.h"
 #include "op_common_util.h"
 #include "graph/utils/type_utils.h"

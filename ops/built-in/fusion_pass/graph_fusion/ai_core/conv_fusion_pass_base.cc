@@ -34,7 +34,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "common/util/error_manager/error_manager.h"
-#include "../../../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace fe {
 Status ConvFusionPassBase::DoFusion(ge::ComputeGraph& graph, ge::NodePtr convNode, ge::NodePtr destNode,

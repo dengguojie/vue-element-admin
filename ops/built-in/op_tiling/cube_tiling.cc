@@ -21,7 +21,7 @@
 #include "cube_tiling.h"
 #include <cstdlib>
 #include <string>
-#include "../op_proto/util/error_util.h"
+#include "error_util.h"
 
 namespace {
   constexpr int32_t kRangeDivShape = 2;
