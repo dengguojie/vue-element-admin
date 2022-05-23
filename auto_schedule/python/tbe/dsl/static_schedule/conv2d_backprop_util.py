@@ -70,6 +70,8 @@ def set_intrinsic_support(tensor_attr):
     tensor_attr["support_ub_to_l1"] = tbe_platform.intrinsic_check_support("Intrinsic_data_move_ub2l1")
     tensor_attr["support_fixpipe"] = (tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out") or
                                       tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub"))
+    tensor_attr["support_l0c_to_ub"] = (tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub") or
+                                        tbe_platform.intrinsic_check_support("Intrinsic_data_move_l0c2ub"))
     return tensor_attr
 
 
@@ -128,7 +130,7 @@ def fetch_requant_fusion_ub_info(sch, tensor_map, tensor_attr):
 
 def fetch_elewise_fusion_ub_info(sch, tensor_map, tensor_attr):
     """
-    get ub info with dx + relugrad fusion
+    get ub info with dx + elewise fusion
     """
     deconv_res = tensor_map.get("deconv_res")
     all_tensor, leaf_tensor = get_all_tensors(deconv_res)
@@ -136,7 +138,7 @@ def fetch_elewise_fusion_ub_info(sch, tensor_map, tensor_attr):
     input_tensor_list = []
     c_ub_res = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
     for key, value in all_tensor.items():
-        if value.op.tag == "conv2d_backprop_input":
+        if value.op.tag in ("conv2d_backprop_input", "fixpipe", "fixpipe_reform"):
             continue
         elif value.op.input_tensors:
             ub_list.append(value)
@@ -162,6 +164,64 @@ def fetch_elewise_fusion_ub_info(sch, tensor_map, tensor_attr):
     return sch, tensor_map, tensor_attr
 
 
+def _get_tensors_vadd_three_inputs(tensor_vadd_res, tensor_map):
+    """
+    get vadd tensor with therr inputs
+    """
+    all_tensors, _ = get_all_tensors(tensor_vadd_res)
+    c_ub_cut, tensor_vadd, tensor_vadd_1, tensor_inter_add_compute = None, None, None, None
+    if len(all_tensors) == 2:
+        c_ub_cut, tensor_vadd = _get_tensors_vadd(tensor_vadd_res)
+    elif len(all_tensors) == 4:
+        placeholder_tensors = []
+        for one_tensor in all_tensors.values():
+            if isinstance(one_tensor.op, tvm.tensor.PlaceholderOp):
+                placeholder_tensors.append(one_tensor)
+            elif one_tensor.op.tag == "conv2d_backprop_input":
+                c_ub_cut = one_tensor
+            elif one_tensor.op.tag == "elewise_binary_add":
+                tensor_inter_add_compute = one_tensor
+        tensor_vadd = placeholder_tensors[1]
+        tensor_vadd_1 = placeholder_tensors[0]
+    tensor_map["tensor_vadd"] = tensor_vadd
+    tensor_map["tensor_vadd_1"] = tensor_vadd_1
+    tensor_map["tensor_inter_add_compute"] = tensor_inter_add_compute
+    return c_ub_cut, tensor_map
+
+
+def _get_tensors_vadd(tensor_vadd_res):
+    """
+    get vadd tensor
+    return c_ub_cut vadd_tensor
+    """
+    tensor_left = tensor_vadd_res.op.input_tensors[0]
+    tensor_right = tensor_vadd_res.op.input_tensors[1]
+    if tensor_left.op.tag == "conv2d_backprop_input":
+        return tensor_left, tensor_right
+    return tensor_right, tensor_left
+
+
+def fetch_relugard_fusion_ub_info(sch, tensor_map, tensor_attr):
+    """
+    get ub info with dx + relugrad fusion
+    """
+    deconv_res = tensor_map.get("deconv_res")
+    tensor_mask = deconv_res.op.input_tensors[0]
+    c_ub_cut = deconv_res.op.input_tensors[1]
+    if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
+        vadd_res = deconv_res.op.input_tensors[1]
+        c_ub_cut, tensor_map = _get_tensors_vadd_three_inputs(vadd_res, tensor_map)
+        tensor_map["vadd_res"] = vadd_res
+    if tensor_attr.get("support_l0c_to_out"):
+        c_ub = c_ub_cut
+    else:
+        c_ub = c_ub_cut.op.input_tensors[0]
+    tensor_map["c_ub_cut"] = c_ub_cut
+    tensor_map["c_ub"] = c_ub
+    tensor_map["mask"] = tensor_mask
+    return sch, tensor_map
+
+
 def get_c_add_bias_tensor(tensor_map):
     """
     get c_add_bias tensor
@@ -172,3 +232,40 @@ def get_c_add_bias_tensor(tensor_map):
         if tensor.name == "c_add_bias":
             return tensor
     return None
+
+
+def get_tensor_workspace(sch, tensor_map, tensor_attr):
+    """
+    get workspace tensor
+    """
+    cache_read_list = []
+    deconv_res = tensor_map.get("deconv_res")
+    all_tensor, _ = get_all_tensors(deconv_res)
+    all_tensor["res"] = deconv_res
+    if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool"):
+        tensor_ub_write = tensor_map.get("c_ub_drelu")
+        if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
+            tensor_ub_write = tensor_map.get("vadd_res")
+            if tensor_map.get("tensor_inter_add_compute") is not None:
+                tensor_ub_write = tensor_map.get("tensor_inter_add_compute")
+    elif "elewise" in deconv_res.op.tag:
+        if len(tensor_map.get("ub_list")) == 1:
+            tensor_ub_write = tensor_map.get("ub_list")[0]
+        else:
+            for tensor_ub in tensor_map.get("ub_list"):
+                if tensor_ub.op.input_tensors[0].op.tag in ("fixpipe_reform", "NZ_trans_ND",
+                                                            "conv2d_backprop_input"):
+                    tensor_ub_write = tensor_ub
+    elif tensor_attr.get("fixpipe_quant_fuse"):
+        tensor_ub_write = all_tensor.get("input_ub", [])
+
+    cache_read_list.append(tensor_ub_write)
+    double_out_tensor = tensor_map.get("double_out_tensor")
+    if len(double_out_tensor) == 2:
+        cache_read_list.append(double_out_tensor[1])
+
+    if tensor_attr.get("support_fixpipe") and not tensor_attr.get("support_l0c_to_ub"):
+        c_ub = tensor_map.get("c_ub")
+        tensor_map["tensor_workspace"] = c_ub
+        tensor_map["tensor_workspace_ub"] = sch.cache_read(c_ub, tbe_platform_info.scope_ubuf, cache_read_list)
+    return sch, tensor_map

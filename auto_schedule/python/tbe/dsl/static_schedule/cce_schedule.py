@@ -1178,7 +1178,7 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
         cce_conv2d_backprop_input_op = CceConv2dBackpropInputOp(
             scope_ubuf,
             need_tensorize=True, need_pragma=True)
-        cce_conv2d_backprop_input_op.schedule(outs[0], outs, sch_list)
+        spec_mid_list = cce_conv2d_backprop_input_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CONV3D_BACKPROP_INPUT_PATTERN:
         cce_conv3d_backprop_input_op = CceConv3dBackpropInputOp(
             scope_ubuf,
@@ -1456,9 +1456,8 @@ def cce_build_code(  # 'pylint: disable=R0912, R0914, R0915
         if tensor not in config_tensor_list_tmp:
             special_tensor_list.append(tensor)
 
-    tensor_list = config_tensor_list_tmp + special_tensor_list
-
-    tensor_list = check_quantfuse_doubleout(tensor_list, sch)
+    tensor_list = check_quantfuse_doubleout(config_tensor_list_tmp, sch)
+    tensor_list = tensor_list + special_tensor_list
     tensor_list = update_gemm_multiout_list(tensor_list)
     ConvParam.conv_deq_req_double_out = False
 

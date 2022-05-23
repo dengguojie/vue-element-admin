@@ -3120,4 +3120,4 @@ def opti_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     """
     dx_sch = Conv2dDxOptiSchedule()
     sch = dx_sch.opti_schedule(tensor, sch_list, tiling_case, var_range)
-    return sch
+    return []

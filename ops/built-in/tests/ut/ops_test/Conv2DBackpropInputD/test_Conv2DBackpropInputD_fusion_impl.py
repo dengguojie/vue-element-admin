@@ -25,7 +25,6 @@ ut_case = OpUT(
     "Conv2DBackpropInputD", "impl.conv2d_backprop_input_d", "conv2d_backprop_input_d"
 )
 
-
 vals = {("CORE_NUM", ): 48,
     ("CUBE_VECTOR_SPLIT",): True,
     ("UB_SIZE", ): 196608,
