@@ -1,0 +1,34 @@
+[
+  {
+    "op": "Adds",
+    "calc_expect_func_file":"test_adds_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "x",
+        "type": "float16",
+        "typical_shape": [125,125]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          125,
+          125
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ],
+    "case_name": "test_Adds_rank_000_ascend910a"
+  }
+]

@@ -430,5 +430,35 @@
     ],
     "attr": [],
     "case_name": "test_dynamic_AbsGrad_000"
+  },
+  {
+    "op": "AbsGrad",
+    "calc_expect_func_file":"test_abs_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "y",
+        "type": "float32",
+        "typical_shape": [2,4,4]
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "dy",
+        "type": "float32",
+        "typical_shape": [2,4,4]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "z",
+        "type": "float32",
+        "typical_shape": [2, 4, 4]
+      }
+    ],
+    "case_name": "test_dynamic_AbsGrad_rank_000_ascend910a"
   }
 ]

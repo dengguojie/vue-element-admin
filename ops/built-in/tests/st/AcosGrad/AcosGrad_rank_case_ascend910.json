@@ -1,0 +1,31 @@
+[
+  {
+    "op": "AcosGrad",
+    "calc_expect_func_file":"test_acos_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "y",
+        "type": "float16",
+        "typical_shape": [10,1]
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "dy",
+        "type": "float16",
+        "typical_shape": [10,1]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [10,1],
+        "format": "ND",
+        "name": "z",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_AcosGrad_rank_000_ascend910a"
+  }
+]

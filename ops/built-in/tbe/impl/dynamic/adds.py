@@ -24,6 +24,15 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class AddsAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_VALUE = OpAttr(0, "value", "Float")
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
@@ -52,7 +61,7 @@ def adds_compute(x, y, value, kernel_name="adds"):
 
 
 @register_operator("Adds")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def adds(x, y, value, kernel_name="adds"):
     """
@@ -83,7 +92,7 @@ def adds(x, y, value, kernel_name="adds"):
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape[0])
             data_input = tvm.placeholder(fuseshape, name="data_input", dtype=dtype)
-            scalar = tvm.const(value, dtype=dtype)
+            scalar = get_attr_by_cls(value, AddsAttrInfo.ATTR_VALUE, dtype)
             res = adds_compute(data_input, y, scalar)
             tensors.append([data_input, res])
         with tvm.target.cce():

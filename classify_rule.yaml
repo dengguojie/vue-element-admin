@@ -1097,6 +1097,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay_assign.py
       - ops/built-in/tbe/impl/dynamic/add.py
       - ops/built-in/tbe/impl/dynamic/add_mat_mat_elements.py
+      - ops/built-in/tbe/impl/dynamic/adds.py
       - ops/built-in/tbe/impl/dynamic/apply_ada_max_d.py
       - ops/built-in/tbe/impl/dynamic/apply_adadelta_d.py
       - ops/built-in/tbe/impl/dynamic/apply_adagrad_d.py
@@ -3031,7 +3032,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/concat_d_tik.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_beta_gamma_backprop.py
       - ops/built-in/tbe/impl/dynamic/strided_slice.py
-      - ops/built-in/tbe/impl/dynamic/adds.py
       - ops/built-in/tbe/impl/dynamic/square_sum_all.py
       - ops/built-in/tbe/impl/dynamic/dynamic_rnn_v3.py
       - ops/built-in/tbe/impl/dynamic/l1_loss_grad.py
