@@ -1218,6 +1218,59 @@ graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensor* tensor, std::vect
   return GRAPH_SUCCESS;
 }
 
+graphStatus GetOutputShapeForEmptyTensor(const Operator &op, const GeTensorDesc &x_desc
+                                         , std::vector<int64_t> &shape_shape) {
+  int64_t neg_index = -1LL;
+  int64_t num_of_neg_1 = 0LL;
+  int64_t product = 1LL;
+  int64_t shape_des_size = 1LL;
+  for (size_t i = 0UL; i < shape_shape.size(); i++) {
+    if (shape_shape[i] == -1LL) {
+      neg_index = i;
+      num_of_neg_1++;
+      continue;
+    }
+    product *= shape_shape[i];
+    shape_des_size = (shape_shape[i] == 0LL) ? shape_des_size : (shape_des_size * shape_shape[i]);
+  }
+  // Case 1 : input[Shape]'s dims do not contain -1 and contain 0,
+  // We will return success and not set shape.
+  // Case 2 : input[Shape]'s dims contain -1 && input[x] dims do not contain -1 or -2,
+  // We need to recalculate shape and return success,
+  // Other cases return failed.
+  if (num_of_neg_1 == 0LL && product == 0LL) {
+    return GRAPH_SUCCESS;
+  } else if (num_of_neg_1 == 1LL) {
+    std::vector<int64_t> x_shape = x_desc.GetShape().GetDims();
+    int64_t x_shape_size = 1LL;
+    for (size_t i = 0UL; i < x_shape.size(); i++) {
+      if (x_shape[i] < 0LL) {
+        REPORT_INNER_ERROR("E19999", "[Node:%s] Check input[x] failed, as input[x]'s dims must not be -1 or -2"
+                           "and input[x]'s shape is %s", TbeGetName(op).c_str(),
+                           x_desc.GetShape().ToString().c_str());
+        GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Input[x]'s dim must not be -1 or -2, " ,
+                   x_desc.GetShape().ToString().c_str());
+        return GRAPH_FAILED;
+      }
+      x_shape_size = (x_shape[i] == 0LL) ? x_shape_size : (x_shape_size * x_shape[i]);
+    }
+    int64_t real_dim = (x_shape_size == shape_des_size) ? 0 : (x_shape_size / shape_des_size);
+    shape_shape[neg_index] = real_dim;
+    return GRAPH_SUCCESS;
+  } else {
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check -1 num in input shape failed, -1 num is %ld, product of specific "
+                     "shape is %ld", TbeGetName(op).c_str(), num_of_neg_1, product);
+    GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check -1 num in input shape failed, -1 num is %ld, "
+             "product of specific shape is %ld", num_of_neg_1, product);
+    return GRAPH_FAILED;
+  }
+}
+
+ // 1、Intput_x (1, 4, 0, 8, 64) intput_shape [0, -1, 8, 64] , -1 is not unkonwn shape
+ // and this means let us calculate by myself.
+ // 2、check valid , only support -1's numbers = 1 , if 1st input(x) is empty tensor,
+ // 2nd(shape) input's element has no zero and the output
+ // case 2 : 1 -- (1, 4, 0, 8, 64) ,  2 -- [-1, 4, 8, 64]  -> [0, 4, 8, 64]
 graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, GeTensor *shape_tensor,
                                GeTensorDesc &out_desc) {
   GE_OP_LOGD("Start empty-tensor preprocess!");
@@ -1246,30 +1299,15 @@ graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, G
 
   GE_OP_LOGD(TbeGetName(op).c_str(), "x shape: %s shape shape: %s", x_desc.GetShape().ToString().c_str(),
              GeShape(shape_shape).ToString().c_str());
-
-  int64_t num_of_neg_1 = 0;
-  int64_t product = 1;
-  for (auto &dim : shape_shape) {
-    if (dim == -1) {  // -1 stand for highest dim here
-      num_of_neg_1++;
-      dim = 0;
-    }
-    product *= dim;
+  ret = GetOutputShapeForEmptyTensor(op, x_desc, shape_shape);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
   }
-
-  // check valid
-  if ((num_of_neg_1 == 0 && product == 0) || (num_of_neg_1 == 1)) {
-    out_desc.SetShape(GeShape(shape_shape));
-    out_desc.SetOriginShape(GeShape(shape_shape));
-    out_desc.SetDataType(x_desc.GetDataType());
-    out_desc.SetOriginDataType(x_desc.GetDataType());
-    return GRAPH_SUCCESS;
-  }
-  REPORT_INNER_ERROR("E19999", "[Node:%s] Check -1 num in input shape failed, -1 num is %ld, product of specific "
-                     "shape is %ld", TbeGetName(op).c_str(), num_of_neg_1, product);
-  GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check -1 num in input shape failed, -1 num is %ld, "
-             "product of specific shape is %ld", num_of_neg_1, product);
-  return GRAPH_FAILED;
+  out_desc.SetShape(GeShape(shape_shape));
+  out_desc.SetOriginShape(GeShape(shape_shape));
+  out_desc.SetDataType(x_desc.GetDataType());
+  out_desc.SetOriginDataType(x_desc.GetDataType());
+  return ret;
 }
 
 IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
