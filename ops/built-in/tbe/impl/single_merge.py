@@ -27,7 +27,7 @@ from impl.merge_sort import MergeSort
 # 'pylint: disable=too-many-arguments,too-many-locals,too-few-public-methods
 class SingleMerge:
     """method to merge and sort on single core"""
-    def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
+    def __init__(self, input_shape, out_shape, k_num, data_type, kernel_name, cont):
         self.channel_num = input_shape[0]
         self.sorted_num = input_shape[1]
         self.k_num = k_num
@@ -59,10 +59,9 @@ class SingleMerge:
         self.int_data_size, self.int_block_data_num, self.int_repeat_data_num = self.method.get_type_const(
             self.int_type)
 
-        result_shape = (self.k_num, )
-        self.output_data = self.tik_inst.Tensor(self.data_type, result_shape,
+        self.output_data = self.tik_inst.Tensor(self.data_type, out_shape,
                                                 self.tik.scope_gm, "output_data")
-        self.output_index = self.tik_inst.Tensor(self.int_type, result_shape,
+        self.output_index = self.tik_inst.Tensor(self.int_type, out_shape,
                                                  self.tik.scope_gm, "output_index")
 
     def mode_compute(self):
@@ -182,7 +181,9 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
     para_check.check_dtype(input_dtype, check_list, param_name="input_proposal")
     para_check.check_shape(input_shape, param_name="input_proposal")
     para_check.check_format(input_format)
+    out_shape = output_data.get("shape")
+    para_check.check_shape(out_shape, param_name="output_data")
     AContainer.reset_instance()
     cont = AContainer.get_instance()
-    obj = SingleMerge(input_shape, k_num, input_dtype, kernel_name, cont)
+    obj = SingleMerge(input_shape, out_shape, k_num, input_dtype, kernel_name, cont)
     obj.mode_compute()

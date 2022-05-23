@@ -61,8 +61,8 @@ def op_select_format(input_data, input_index, output_proposal, k_num, kernel_nam
 class SegmentSort:
     # 'pylint: disable=too-many-arguments
     """define SegmentSort"""
-    def __init__(self, data_num, index_num, data_type, k_num, proposal_shape_result, kernel_name, cont):
-        self.data_num = data_num
+    def __init__(self, input_shape, index_num, data_type, k_num, proposal_shape_result, kernel_name, cont):
+        self.data_num = input_shape[-1]
         self.k_num = k_num
         self.data_type = data_type
         self.kernel_name = kernel_name
@@ -88,7 +88,7 @@ class SegmentSort:
         each_core_data_num = proposal_shape_result[1] - self.tail_proposal_num
         self.channel_num = self.method.ceil_div(self.data_num, each_core_data_num)
 
-        self.input_data = self.tik_inst.Tensor(self.data_type, (self.data_num, ), self.tik.scope_gm, "input_data")
+        self.input_data = self.tik_inst.Tensor(self.data_type, input_shape, self.tik.scope_gm, "input_data")
         self.input_index = self.tik_inst.Tensor(self.data_type, (self.fp16_index_num, ),
                                                 self.tik.scope_gm, "input_index")
         self.temp_proposal = self.tik_inst.Tensor(self.data_type, self.result_shape,
@@ -217,7 +217,7 @@ class SegmentSort:
         score_ub = self.tik_inst.Tensor(self.data_type, score_shape, self.tik.scope_ubuf, "score_ub")
         score_label_0, score_label_1 = 3, 4
         score_block_num = self.method.ceil_div(boxes_num, self.block_data_num)
-        self.tik_inst.data_move(score_ub, self.input_data[boxes_index, ], 0, 1, score_block_num, 0, 0)
+        self.tik_inst.data_move(score_ub, self.input_data[boxes_index], 0, 1, score_block_num, 0, 0)
         mask_h, mask_l, index_last = self.method.get_mask(boxes_num, self.repeat_data_num, self.pro_repeat_num)
         if mask_h != 0 or mask_l != 0:
             self.tik_inst.vector_dup([mask_h, mask_l], score_ub[index_last], self.fp16_ne_inf, 1, 1, 8)
@@ -241,7 +241,10 @@ def check_params(input_data, input_index, kernel_name):
             kernel_name, "dtype of input_data and {}".format("input_index"), "equal", "not equal")
     input_shape_1 = input_data.get("shape")
     input_shape_2 = input_index.get("shape")
-    if len(input_shape_1) != 1:
+    rows = 1
+    for i in range(len(input_shape_1) - 1):
+        rows *= int(input_shape_1[i])
+    if rows != 1:
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "shape of input_data", "size equal 1", "size not equal 1")
     if input_shape_2 != (2048, ):
@@ -286,8 +289,7 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
 
         AContainer.reset_instance()
         cont = AContainer.get_instance()
-        data_num = input_shape[0]
         index_num = input_index.get("shape")[0]
         proposal_shape_result = output_proposal.get("shape")
-        obj = SegmentSort(data_num, index_num, input_dtype, k_num, proposal_shape_result, kernel_name, cont)
+        obj = SegmentSort(input_shape, index_num, input_dtype, k_num, proposal_shape_result, kernel_name, cont)
         obj.mode_compute()

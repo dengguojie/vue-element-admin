@@ -63,7 +63,7 @@ def _get_dtype_min_val(dtype):
     get dtype min val
     """
     val_list = {'float16': -65536, 'float32': -(2 - 2**-23) * 2**127 + 1, 'int32': -(2**31), 'uint32': 0}
-    return val_list[dtype]
+    return val_list.get(dtype)
 
 
 def _ceil_fill(value, block):
@@ -1757,6 +1757,51 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
                               config=build_config)
     else:
         tik_instance.BuildCCE(kernel_name=kernel_name, inputs=ins, outputs=outs, enable_l2=True, config=build_config)
+
+
+# 'pylint: disable=unused-argument,redefined-builtin
+def check_supported(input_tensor,
+                    indices_tensor,
+                    out_tensor,
+                    out_indices_tensor,
+                    k,
+                    sorted=True,
+                    dim=-1,
+                    largest=True,
+                    kernel_name='top_k'):
+    """
+    check whether ai_core is supported
+    max last dim should exist and max last dim of input_tensor should <= 1024 * 2048 and k
+    should <= 4096
+    """
+    unknown_shape = input_tensor.get('shape')
+    unknwon_dim_status = unknown_shape[0]
+    if unknwon_dim_status == -2:
+        reason = "dynamic shape is not supported by aicore. unknwon_dim_status == -2"
+        return False, reason
+
+    shape = input_tensor.get("ori_shape")
+    sorted_axis = dim
+    if sorted_axis < 0:
+        sorted_axis = sorted_axis + len(shape)
+
+    shape_range = input_tensor.get("range")
+    if shape_range:
+        max_last_dim = shape_range[sorted_axis][-1]
+        if not max_last_dim:
+            reason = "get shape_range[sorted_axis][-1] failed, shape_range: %s, sorted_axis:%s"\
+                      % (shape_range, sorted_axis)
+            return False, reason
+    else:
+        max_last_dim = shape[sorted_axis]
+
+    if max_last_dim > 1024 * 2048:
+        reason = "input_tensor is too big(> 1024 * 2048), max_last_dim:%s" % max_last_dim
+        return False, reason
+    if k > 4096:
+        reason = "k is too big(> 4096), k:%s" % k
+        return False, reason
+    return True, ""
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,unused-argument,global-statement,redefined-builtin

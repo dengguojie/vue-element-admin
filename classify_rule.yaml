@@ -933,6 +933,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tile_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_1d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/top_k_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/top_k_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_cast_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
@@ -1080,6 +1082,8 @@ vector_B:
       - ops/built-in/tbe/impl/diag_d.py
       - ops/built-in/tbe/impl/max_pool_with_argmax.py
       - ops/built-in/tbe/impl/tile_d.py
+      - ops/built-in/tbe/impl/top_k_d.py
+      - ops/built-in/tbe/impl/top_k_large.py
       - ops/built-in/tbe/impl/ifmr.py
       - ops/built-in/tbe/impl/dynamic/__init__.py
       - ops/built-in/tbe/impl/dynamic/abs.py
@@ -1271,6 +1275,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/tile.py
       - ops/built-in/tbe/impl/dynamic/tile_d.py
       - ops/built-in/tbe/impl/dynamic/tile_with_axis.py
+      - ops/built-in/tbe/impl/dynamic/top_k_d.py
       - ops/built-in/tbe/impl/dynamic/trans_data.py
       - ops/built-in/tbe/impl/dynamic/trans_data_negative_target_ntc.py
       - ops/built-in/tbe/impl/dynamic/trans_data_negative_target_tc_new.py
@@ -2585,13 +2590,9 @@ unkown:
       - ops/built-in/tbe/impl/eltwise.py
       - ops/built-in/tbe/impl/renorm.py
       - ops/built-in/tbe/impl/scatter_nd_d_help.py
-      - ops/built-in/tbe/impl/top_k_d.py
       - ops/built-in/tbe/impl/non_max_suppression_v7.py
       - ops/built-in/tbe/impl/merge_sort.py
-      - ops/built-in/tbe/impl/single_merge.py
       - ops/built-in/tbe/impl/multi_merge_v2.py
-      - ops/built-in/tbe/impl/segment_sort_v2.py
-      - ops/built-in/tbe/impl/single_merge_v2.py
       - ops/built-in/tbe/impl/strided_slice_last_dim_with_vreducev2.py
       - ops/built-in/tbe/impl/log1p.py
       - ops/built-in/tbe/impl/n_p_u_clear_float_status_v2.py
@@ -2972,7 +2973,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/concat_v2_d_tik.py
       - ops/built-in/tbe/impl/dynamic/dynamic_gru_cell_base.py
       - ops/built-in/tbe/impl/dynamic/get_shape.py
-      - ops/built-in/tbe/impl/dynamic/top_k_d.py
       - ops/built-in/tbe/impl/dynamic/reciprocal_grad.py
       - ops/built-in/tbe/impl/dynamic/pad_common.py
       - ops/built-in/tbe/impl/dynamic/max_pool.py
@@ -3627,7 +3627,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_with_logits_grad.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prelu_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softplus_tanh_mul_fusion.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/top_k_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/diag_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gather_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_with_drop_out_do_mask_fusion_pass.cc
@@ -3752,7 +3751,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/max_pool3d_grad_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/top_k_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concat_fusion_pass.h
@@ -4048,6 +4046,9 @@ pytorch:
       - ops/built-in/tbe/impl/merge_sort_v2.py
       - ops/built-in/tbe/impl/multi_merge.py
       - ops/built-in/tbe/impl/segment_sort.py
+      - ops/built-in/tbe/impl/segment_sort_v2.py
+      - ops/built-in/tbe/impl/single_merge.py
+      - ops/built-in/tbe/impl/single_merge_v2.py
       - ops/built-in/tbe/impl/ciou.py
       - ops/built-in/op_proto/bitwise_ops.cc
       - ops/built-in/op_proto/inc/bitwise_ops.h

@@ -21,6 +21,18 @@ def test_v220_mock():
                                 {"shape": (100000,), "format": "ND", "dtype": "int32", "ori_shape": (100000,), "ori_format": "ND"},
                                 100000, True, -1, True)
 
+                        top_k_d({"shape": (1, 10000), "format": "ND", "dtype": "float16", "ori_shape": (1, 10000), "ori_format": "ND"},
+                                {"shape": (2048, ), "format": "ND", "dtype": "int32", "ori_shape": (2048,), "ori_format": "ND"},
+                                {"shape": (1, 5000), "format": "ND", "dtype": "float16", "ori_shape": (1, 5000), "ori_format": "ND"},
+                                {"shape": (1, 5000), "format": "ND", "dtype": "int32", "ori_shape": (1, 5000), "ori_format": "ND"},
+                                5000, True, -1, True)
+
+                        top_k_d({"shape": (5, 10000), "format": "ND", "dtype": "float16", "ori_shape": (5, 10000), "ori_format": "ND"},
+                                {"shape": (2048,), "format": "ND", "dtype": "int32", "ori_shape": (2048,), "ori_format": "ND"},
+                                {"shape": (5, 5000), "format": "ND", "dtype": "float16", "ori_shape": (5, 5000), "ori_format": "ND"},
+                                {"shape": (5, 5000), "format": "ND", "dtype": "int32", "ori_shape": (5, 5000), "ori_format": "ND"},
+                                5000, True, -1, True)
+
 
 if __name__ == '__main__':
     print("test v220 mock topk10w")

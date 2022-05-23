@@ -31,6 +31,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.dynamic.top_k_d import top_k_d as top_k_template
 from impl.top_k_v220 import build_topk_10w_v220
+from impl.top_k_large import top_k_large
 
 FP16_MINIMUM = -65520
 FP16_MAXMUM = 65520
@@ -889,7 +890,7 @@ def _copy_gm_to_ubuf(tik_instance, dst, src, num_rows, cols, col_start, gm_offse
 # 'pylint: disable=too-many-arguments
 # 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements
-def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest, soc_version):
+def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest, is_lhisi):
     """
     _topk_a_row_by_part
     """
@@ -914,7 +915,7 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
     index_reg = GLOBAL_VAR.index_reg
 
     # set lhisi version
-    if soc_version == "Hi3796CV300CS":
+    if is_lhisi:
         cols_per_part = 512
         len_region_k_limit = 2048
         merge_num = 1024
@@ -1062,9 +1063,7 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
     _emit_vmul(tik_instance, 'int32', indices_out_int32_ub, indices_out_int32_ub, indices_tail_block_ub, cnt=k_padding)
     _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
 
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or
-                              tbe_platform.api_check_support("tik.vgatherb")):
+    if k >= 8 and k < 16 and tbe_platform.api_check_support("tik.set_atomic_add", "float16"):
         _copy_ubuf_to_gm_k_less_16(tik_instance,
                                    'float16',
                                    data_gm_out,
@@ -1185,9 +1184,7 @@ def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, 
         _conv_fp162s32(tik_instance, offset_int32_ub, i * cols_padding, offset_fp16_ub, i * cols_padding, cols_padding)
     _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, rows, cols_padding)
 
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or
-                              tbe_platform.api_check_support("tik.vgatherb")):
+    if k >= 8 and k < 16 and tbe_platform.api_check_support("tik.set_atomic_add", "float16"):
         _copy_ubuf_to_gm_k_less_16(tik_instance,
                                    'float16',
                                    data_gm_out,
@@ -1271,7 +1268,7 @@ def _tiling(rows, cols, cols_limit):
 # 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements
 # 'pylint: disable=too-many-branches
-def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
+def _kernel_ir(tik_instance, ins, outs, k, largest, is_lhisi):
     """
     Funtion for common process in top_k op
     """
@@ -1284,7 +1281,7 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     cols_padding = ((cols + 15) // 16) * 16
     rows = 1
     # max_part_num must be a multiple of 16
-    if soc_version == "Hi3796CV300CS":
+    if is_lhisi:
         max_part_num = 2080
         cols_limit = 2048
         cols_per_part = 512
@@ -1298,7 +1295,7 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     multi_core = True
     rows_cores, turn, batch = _tiling(rows, cols, cols_limit)
 
-    if k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not tbe_platform.api_check_support("tik.vgatherb")):
+    if k < 16 and not tbe_platform.api_check_support("tik.set_atomic_add", "float16"):
         rows_cores = [rows]
         turn = 1
         multi_core = False
@@ -1412,7 +1409,7 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
                                         core_rows_start=core_rows_start,
                                         multi_core=multi_core,
                                         largest=largest,
-                                        soc_version=soc_version)
+                                        is_lhisi=is_lhisi)
             else:
                 with tik_instance.for_range(0, loops1, name='i0') as i:
                     _topk_rows(tik_instance,
@@ -1444,7 +1441,7 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
                                         core_rows_start=core_rows_start,
                                         multi_core=multi_core,
                                         largest=largest,
-                                        soc_version=soc_version)
+                                        is_lhisi=is_lhisi)
             else:
                 with tik_instance.for_range(0, loops2, name='i0') as i:
                     _topk_rows(tik_instance,
@@ -1483,65 +1480,26 @@ def check_supported(input_tensor,
     sorted should == True
     input size > 32768 and k > 0 and k < 16 three conditions cannot be met at the same time
     """
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    unknown_shape = input_tensor.get('shape')
-    unknwon_dim_status = unknown_shape[0]
-    if unknwon_dim_status == -2:
-        reason = "dynamic shape is not supported by aicore. unknwon_dim_status == -2"
-        return False, reason
-
     shape = input_tensor.get("ori_shape")
-    sorted_axis = dim
-    if sorted_axis < 0:
-        sorted_axis = sorted_axis + len(shape)
-
-    shape_range = input_tensor.get("range")
-    if shape_range:
-        max_last_dim = shape_range[sorted_axis][-1]
-        if not max_last_dim:
-            reason = "get shape_range[sorted_axis][-1] failed, shape_range: %s, sorted_axis:%s"\
-                      % (shape_range, sorted_axis)
-            return False, reason
-        if max_last_dim > 1024 * 2048:
-            reason = "input_tensor is too big, max_last_dim:%s" % max_last_dim
-            return False, reason
-        if k > 4096:
-            reason = "k is too big, k:%s" % k
-            return False, reason
-        return True, ""
-
     input_size = functools.reduce(lambda x, y: x * y, shape)
-    # 1040000 indicates max size of the last dimension.
-    # Due to the UB memory limitation, the value of k must be less than or equal to 2048 under lhisi.
-    if soc_version == "Hi3796CV300CS" and (shape[sorted_axis] > 1040000 or k > 2048):
-        reason = "under lhisi version, shape[sorted_axis] or k are too big, shape[sorted_axis]:%s, k:%s"\
-                  % (shape[sorted_axis], k)
-        return False, reason
 
-    # 1458176 indicates max size of the last dimension.
-    # Due to the UB memory limitation, the value of k must be less than or equal to 4096.
-    if shape[sorted_axis] > 1458176 or k > 4096:
-        reason = "shape[sorted_axis] or k are too big, shape[sorted_axis]:%s, k:%s"\
-                  % (shape[sorted_axis], k)
-        return False, reason
     # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
     if sorted is not True:
         return True, ""
-    # When input_size > 32768 and k < 16 and (soc version is not ["Ascend710", "Ascend610"] or not vgatherb),
+    # When input_size > 32768, k < 8 or (k < 16 and not support set_stomic_add with fp16),
     # the AICPU performance is better than the AICore performance.
     # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
-    if input_size > 32768 and k > 0 and k < 16 and (soc_version not in ("Ascend710", "Ascend610") or
-                                                    not tbe_platform.api_check_support("tik.vgatherb")):
-        reason = "input_size is too big, and k is in (0-16), input_size:%s, k:%s"\
-                  % (input_size, k)
-        return False, reason
-    # When input_size > 32768 and k < 8, the AICPU performance is better than the AICore performance.
-    # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
-    if input_size > 32768 and k > 0 and k < 8:
-        reason = "input_size is too big, and k is in (0-8), input_size:%s, k:%s"\
-                  % (input_size, k)
-        return False, reason
+    if input_size > 32768:
+        if k > 0 and k < 8:
+            reason = "input_size is too big(> 32768), and k is in (0-8), input_size:%s, k:%s" \
+                     % (input_size, k)
+            return False, reason
+        if k > 0 and k < 16 and not tbe_platform.api_check_support("tik.set_atomic_add", "float16"):
+            reason = "input_size is too big(> 32768), and k is in (0-16), input_size:%s, k:%s"\
+                      % (input_size, k)
+            return False, reason
     return True, ""
+
 
 # 'pylint: disable=too-many-arguments
 # 'pylint: disable=too-many-local-variables
@@ -1577,27 +1535,6 @@ def top_k_d(input_tensor,
     -------
     None
     """
-    if tbe_platform.api_check_support("tik.vbitsort32"):
-        shape = input_tensor.get("shape")
-        cols = int(shape[-1])
-        rows = 1
-        for i in range(len(shape) - 1):
-            rows = rows * int(shape[i])
-
-        if rows == 1 and cols == 100000 and k == 100000:
-            return build_topk_10w_v220(input_tensor, indices_tensor, out_tensor, out_indices_tensor, k, sorted, dim,
-                                       largest, kernel_name)
-        return top_k_template(input_tensor,
-                              indices_tensor,
-                              out_tensor,
-                              out_indices_tensor,
-                              k,
-                              sorted=sorted,
-                              dim=dim,
-                              largest=largest,
-                              kernel_name=kernel_name,
-                              mode="static")
-
     shape = input_tensor.get("shape")
     input_dtype = input_tensor.get("dtype").lower()
     indices_shape = indices_tensor.get("shape")
@@ -1607,7 +1544,7 @@ def top_k_d(input_tensor,
     out_indices_shape = out_indices_tensor.get("shape")
     out_indices_dtype = out_indices_tensor.get("dtype")
     para_check.check_dtype(input_dtype, ("float16", ), param_name='input_tensor')
-    para_check.check_dtype(input_indices_dtype, ("float16", ), param_name='indices_tensor')
+    para_check.check_dtype(input_indices_dtype, ("float16", "int32"), param_name='indices_tensor')
     para_check.check_dtype(out_dtype, ("float16", ), param_name='out_tensor')
     para_check.check_dtype(out_indices_dtype, ("int32", ), param_name='out_indices_tensor')
     para_check.check_shape(shape, param_name='input_tensor')
@@ -1638,17 +1575,41 @@ def top_k_d(input_tensor,
 
     if k < 1 or k > shape[-1]:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, shape[-1], k)
-    if k > 4096:
-        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, 4096, k)
+
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    is_lhisi = soc_version in ("Hi3796CV300CS", "Hi3796CV300ES", "SD3403")
+    if is_lhisi:
+        # 3000 indicates max size of the last dimension for better performance
+        # 2048 indicates max k_num due to ub memory limitation
+        max_last_size = 3000
+        max_k_num = 2048
+    else:
+        # 5000 indicates max size of the last dimension for better performance
+        # 4096 indicates max k_num due to ub memory limitation
+        max_last_size = 5000
+        max_k_num = 4096
+    if int(shape[-1]) > max_last_size or k > max_k_num:
+        return top_k_large(shape, indices_shape, out_shape, k, input_dtype, input_indices_dtype,
+                           out_indices_dtype, kernel_name)
+
+    if tbe_platform.api_check_support("tik.vbitsort32"):
+        return top_k_template(input_tensor,
+                              indices_tensor,
+                              out_tensor,
+                              out_indices_tensor,
+                              k,
+                              sorted=sorted,
+                              dim=dim,
+                              largest=largest,
+                              kernel_name=kernel_name,
+                              mode="static")
 
     profile = tik.Dprofile()
     tik_instance = tik.Tik(profile)
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
     data_input = tik_instance.Tensor(input_dtype, shape, name='data_a', scope=tik.scope_gm)
     indices = tik_instance.Tensor(input_indices_dtype, indices_shape, name='indices', scope=tik.scope_gm)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or
-                              tbe_platform.api_check_support("tik.vgatherb")):
+    if k >= 8 and k < 16 and tbe_platform.api_check_support("tik.set_atomic_add", "float16"):
         res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm, is_atomic_add=True)
     else:
         res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm)
@@ -1657,6 +1618,6 @@ def top_k_d(input_tensor,
     ins = [data_input, indices]
     outs = [res, indices_out]
 
-    _kernel_ir(tik_instance, ins, outs, k, largest, soc_version)
+    _kernel_ir(tik_instance, ins, outs, k, largest, is_lhisi)
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=ins, outputs=outs, enable_l2=True)

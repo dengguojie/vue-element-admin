@@ -51,10 +51,30 @@ case3 = {"params": [{"shape": (8, 5000), "dtype": "float16", "ori_shape": (8, 50
          "case_name": "TopkD_k_6",
          "expect": "RuntimeError",
          "support_expect": False}
+
+case4 = {"params": [{"shape": (8, 6000), "dtype": "float16", "ori_shape": (8, 6000), "format": "ND", "ori_format": "ND", "range": ((1, 880), (1, 48))},
+                    {"shape": (2048,), "dtype": "float16", "format": "ND", "ori_shape": (2048,),"ori_format": "ND", "range": ((8192,8192),)},
+                    {"shape": (8, 5000), "dtype": "float16", "format": "ND", "ori_shape": (8, 5000),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    {"shape": (8, 5000), "dtype": "int32", "format": "ND", "ori_shape": (8, 5000),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    5000,True,-1,False],
+         "case_name": "TopkD_k_8",
+         "expect": "success",
+         "support_expect": True}
+
+case5 = {"params": [{"shape": (1, 6000), "dtype": "float16", "ori_shape": (1, 32), "format": "ND", "ori_format": "ND", "range": ((1, 880), (1, 48))},
+                    {"shape": (2048,), "dtype": "float16", "format": "ND", "ori_shape": (2048,),"ori_format": "ND", "range": ((8192,8192),)},
+                    {"shape": (1,5000), "dtype": "float16", "format": "ND", "ori_shape": (1,5000),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    {"shape": (1,5000), "dtype": "int32", "format": "ND", "ori_shape": (1,5000),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    5000,True,-1,False],
+         "case_name": "TopkD_k_8",
+         "expect": "success",
+         "support_expect": True}
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case5)
 
 def test_static_1951(test_arg):
     from te.platform.cce_conf import te_set_version
@@ -100,4 +120,16 @@ def test_v220_mock(test_arg):
                                 {"shape": (100000,), "format": "ND", "dtype": "float16", "ori_shape": (100000,), "ori_format": "ND"},
                                 {"shape": (100000,), "format": "ND", "dtype": "int32", "ori_shape": (100000,), "ori_format": "ND"},
                                 100000, True, -1, True)
+
+                        top_k_d({"shape": (1, 10000), "format": "ND", "dtype": "float16", "ori_shape": (1, 10000), "ori_format": "ND"},
+                                {"shape": (2048,), "format": "ND", "dtype": "int32", "ori_shape": (2048,), "ori_format": "ND"},
+                                {"shape": (1, 5000), "format": "ND", "dtype": "float16", "ori_shape": (1, 5000), "ori_format": "ND"},
+                                {"shape": (1, 5000), "format": "ND", "dtype": "int32", "ori_shape": (1, 5000), "ori_format": "ND"},
+                                5000, True, -1, True)
+
+                        top_k_d({"shape": (5, 10000), "format": "ND", "dtype": "float16", "ori_shape": (5, 10000), "ori_format": "ND"},
+                                {"shape": (2048,), "format": "ND", "dtype": "int32", "ori_shape": (2048,), "ori_format": "ND"},
+                                {"shape": (5, 5000), "format": "ND", "dtype": "float16", "ori_shape": (5, 5000), "ori_format": "ND"},
+                                {"shape": (5, 5000), "format": "ND", "dtype": "int32", "ori_shape": (5, 5000), "ori_format": "ND"},
+                                5000, True, -1, True)
 ut_case.add_cust_test_func(test_func=test_v220_mock)

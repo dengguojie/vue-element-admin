@@ -27,7 +27,7 @@ from impl.util.platform_adapter import para_check
 class SingleMerge:
     """method to merge and sort on single core"""
 
-    def __init__(self, input_shape, k_num, score_type, kernel_name):
+    def __init__(self, input_shape, out_shape, k_num, score_type, kernel_name):
         self.k_num = k_num
         self.score_type = score_type
         self.kernel_name = kernel_name
@@ -61,10 +61,9 @@ class SingleMerge:
                                                   is_workspace=True)
 
         self.index_type = "int32"
-        result_shape = (self.k_num, )
-        self.output_data = self.tik_inst.Tensor(self.score_type, result_shape,
+        self.output_data = self.tik_inst.Tensor(self.score_type, out_shape,
                                                 self.tik.scope_gm, "output_data")
-        self.output_index = self.tik_inst.Tensor(self.index_type, result_shape,
+        self.output_index = self.tik_inst.Tensor(self.index_type, out_shape,
                                                  self.tik.scope_gm, "output_index")
 
     def _get_sort_num_dst(self):
@@ -176,6 +175,8 @@ def single_merge_v2(input_proposal, output_proposal, output_index, k_num, includ
     input_format = input_proposal.get("format")
     para_check.check_shape(input_shape, param_name="input_proposal")
     para_check.check_format(input_format)
+    out_shape = output_proposal.get("shape")
+    para_check.check_shape(out_shape, param_name="output_proposal")
 
-    obj = SingleMerge(input_shape, k_num, input_dtype, kernel_name)
+    obj = SingleMerge(input_shape, out_shape, k_num, input_dtype, kernel_name)
     obj.mode_compute()

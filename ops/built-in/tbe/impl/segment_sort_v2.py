@@ -56,8 +56,8 @@ class SegmentSort:
     define SegmentSort
     """
 
-    def __init__(self, score_num, index_num, score_type, index_type, k_num, proposal_shape_result, kernel_name):
-        self.score_num = score_num
+    def __init__(self, score_shape, index_num, score_type, index_type, k_num, proposal_shape_result, kernel_name):
+        self.score_num = score_shape[-1]
         self.index_num = index_num
         self.k_num = k_num
         self.score_type = score_type
@@ -76,7 +76,7 @@ class SegmentSort:
         self.proposal_num_channel = proposal_shape_result[1] - self.proposal_num_tail
         self.channel_num = ceil_div(self.score_num, self.proposal_num_channel)
 
-        self.input_score = self.tik_inst.Tensor(self.score_type, (self.score_num, ), self.tik.scope_gm, "input_score")
+        self.input_score = self.tik_inst.Tensor(self.score_type, score_shape, self.tik.scope_gm, "input_score")
         self.input_index = self.tik_inst.Tensor(self.index_type, (self.index_num,), self.tik.scope_gm, "input_index")
         self.temp_proposal = self.tik_inst.Tensor(self.score_type, proposal_shape_result,
                                                   self.tik.scope_gm, "temp_proposal",
@@ -198,7 +198,10 @@ def check_param(input_score, input_index, k_num, kernel_name):
                                                                  index_type)
     score_shape = input_score.get("shape")
     score_excepted_shape = "len of input shape must be 1"
-    assert len(score_shape) == 1, \
+    rows = 1
+    for i in range(len(score_shape) - 1):
+        rows *= int(score_shape[i])
+    assert rows == 1, \
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                            "input_score",
                                                            score_excepted_shape,
@@ -237,10 +240,10 @@ def segment_sort_v2(input_score, input_index, output_proposal, k_num, kernel_nam
     None
     """
     check_param(input_score, input_index, k_num, kernel_name)
-    score_num = input_score.get("shape")[0]
+    score_shape = input_score.get("shape")
     index_num = input_index.get("shape")[0]
     score_type = input_score.get("dtype").lower()
     index_type = input_index.get("dtype").lower()
     proposal_shape_result = output_proposal.get("shape")
-    obj = SegmentSort(score_num, index_num, score_type, index_type, k_num, proposal_shape_result, kernel_name)
+    obj = SegmentSort(score_shape, index_num, score_type, index_type, k_num, proposal_shape_result, kernel_name)
     obj.mode_compute()

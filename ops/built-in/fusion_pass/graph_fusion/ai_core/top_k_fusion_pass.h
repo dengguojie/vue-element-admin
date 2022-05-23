@@ -21,6 +21,7 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TOP_K_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TOP_K_FUSION_PASS_H_
 
+#include "common/util/platform_info.h"
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
@@ -44,11 +45,13 @@ class TopKFusionPass : public PatternFusionBasePass {
  private:
   const string kFusedOpType = "TopKD";
   bool IsInsertTransposeForOutput(NodePtr& src_node, const int32_t output_index);
-  bool CheckMultiCoreSegment(ge::NodePtr& topk_node, SegmentCalcParams& calcParams);
+  bool CheckMultiCoreSegment(ge::NodePtr& topk_node, SegmentCalcParams& calcParams,
+                             PlatformInfo& platform_info, OptionalInfo& optional_info, int64_t dim_aim);
   Status AddMultiMergeNode(ge::ComputeGraph& graph, ge::NodePtr& topk_node, ge::NodePtr& segmentsort_node,
-                           int64_t segment_num, SegmentCalcParams& calcParams, vector<NodePtr>& fusion_nodes);
+                           int64_t segment_num, SegmentCalcParams& calcParams, int64_t dim_aim,
+                           vector<NodePtr>& fusion_nodes);
   Status AddSegmentSortAndMergeNode(ge::ComputeGraph& graph, ge::NodePtr& topk_node, SegmentCalcParams& calcParams,
-                                    vector<ge::NodePtr>& fusion_nodes);
+                                    int64_t dim_aim, vector<ge::NodePtr>& fusion_nodes);
 };
 }  // namespace fe
 
