@@ -869,8 +869,6 @@ vector_B:
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
-      - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
-      - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
@@ -978,14 +976,12 @@ vector_B:
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/data_flow_ops.cc
-      - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
       - ops/built-in/op_proto/rpn_ops.cc
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
       - ops/built-in/op_proto/transformation_ops.cc
-      - ops/built-in/op_proto/selection_ops.cc
       - ops/built-in/op_proto/nonlinear_fuc_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
@@ -1365,7 +1361,6 @@ vector_B:
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
       - ops/CMakeLists.txt
       - ops/built-in/op_proto/nn_detect_ops.cc
-      - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
@@ -2141,6 +2136,19 @@ cube-conv2d-python:
   llt:
     ut_check: true
     st_check: false
+
+ops_pub:
+  commiter:
+    "pub"
+  team: "OPS_PUB"
+  src:
+    release:
+      - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
+      - ops/built-in/fusion_pass/common/pattern_fusion_util.h
+      - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
+      - ops/built-in/op_proto/inc/nn_detect_ops.h
+      - ops/built-in/op_proto/selection_ops.cc
+    unrelease:
 
 
 unkown:
