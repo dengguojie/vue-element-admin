@@ -225,7 +225,7 @@
         "shape": [
           1
         ],
-        "name": "var",
+        "name": "var_out",
         "shape_range": [
           [
             1,
@@ -246,7 +246,7 @@
         "shape": [
           1
         ],
-        "name": "accum",
+        "name": "accum_out",
         "shape_range": [
           [
             1,
@@ -267,7 +267,7 @@
         "shape": [
           1
         ],
-        "name": "accum_update",
+        "name": "accum_update_out",
         "shape_range": [
           [
             1,
@@ -506,7 +506,7 @@
         "shape": [
           1
         ],
-        "name": "var",
+        "name": "var_out",
         "shape_range": [
           [
             1,
@@ -526,6 +526,94 @@
         ],
         "shape": [
           1
+        ],
+        "name": "accum_out",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "accum_update_out",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "ApplyAdadeltaD_dynamic_konwnshape_ascend910a",
+    "calc_expect_func_file" : "test_ApplyAdadeltaD_golden.py:calc_expect_func",
+    "op": "ApplyAdadeltaD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "var",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
         ],
         "name": "accum",
         "shape_range": [
@@ -535,6 +623,66 @@
           ]
         ],
         "typical_shape": [
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "accum_update",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "lr",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
           1
         ]
       },
@@ -546,9 +694,18 @@
           "float16"
         ],
         "shape": [
-          1
+          -2
         ],
-        "name": "accum_update",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rho",
         "shape_range": [
           [
             1,
@@ -558,6 +715,104 @@
         "typical_shape": [
           1
         ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "epsilon",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grad",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          10
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          10
+        ],
+        "name": "var_out"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          10
+        ],
+        "name": "accum_out"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          10
+        ],
+        "name": "accum_update_out"
       }
     ]
   }

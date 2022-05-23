@@ -196,7 +196,7 @@
           1,
           1
         ],
-        "name": "var",
+        "name": "var_out",
         "shape_range": [
           [
             1,
@@ -219,7 +219,7 @@
           1,
           1
         ],
-        "name": "m",
+        "name": "m_out",
         "shape_range": [
           [
             1,
@@ -430,7 +430,7 @@
           1,
           1
         ],
-        "name": "var",
+        "name": "var_out",
         "shape_range": [
           [
             1,
@@ -453,7 +453,7 @@
           1,
           1
         ],
-        "name": "m",
+        "name": "m_out",
         "shape_range": [
           [
             1,
@@ -463,6 +463,237 @@
         "typical_shape": [
           1,
           1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "ApplyAddSignD_dynamic_knownshape_case_ascend910a",
+    "calc_expect_func_file" : "test_ApplyAddSignD_golden.py:calc_expect_func",
+    "op": "ApplyAddSignD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "var",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "m",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "lr",
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "alpha",
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "sign_decay",
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta",
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grad",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          10
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          10
+        ],
+        "name": "var_out",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          10
+        ],
+        "name": "m_out",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
         ]
       }
     ]
