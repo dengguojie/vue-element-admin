@@ -88,7 +88,13 @@ def _reduce_mean_d(context):
     if axis is None:
         axis = context.other_runtime_params.get("axis")
     axis = __eliminate_duplicate_axes(axis, context.input_arrays[0])
-    return numpy.mean(context.input_arrays[0], axis=axis)
+    x = context.input_arrays[0]
+    if x.dtype == "float16":
+        x = x.astype(numpy.float32)
+        y = numpy.mean(x, axis=axis)
+        return y.astype(numpy.float16)
+    else:
+        return numpy.mean(x, axis=axis)
 
 
 @register_golden(["reduce_any", "reduce_any_d"])
@@ -184,8 +190,4 @@ def bias_add_grad(input_tensor, actual_formats, data_format):
     :return:
     """
     axis = __eliminate_duplicate_axes(_infer_axes(actual_formats[0], data_format, input_tensor.shape), input_tensor)
-    dtype = input_tensor.dtype
-    if dtype == "float32":
-        return numpy.sum(input_tensor, axis=axis, dtype="float64").astype(dtype)
-    else:
-        return numpy.sum(input_tensor, axis=axis)
+    return numpy.sum(input_tensor, axis=axis, dtype="float64")

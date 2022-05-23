@@ -143,7 +143,8 @@ class UniversalTestcaseStructure:
                  "is_valid",
                  "ready_for_profile",
                  "torch_func",
-                 "stc_const_input_indexes")
+                 "stc_const_input_indexes",
+                 "kb_pid")
     identity_headers: Dict[str, tuple] = {
         "testcase_name": (FIELD_TYPES.STRING, None),  # Required
         "network_name": (FIELD_TYPES.STRING, None, None),
@@ -368,6 +369,7 @@ class UniversalTestcaseStructure:
         self.is_valid: Optional[bool] = True
         self.ready_for_profile: Optional[int] = 0
         self.torch_func: Optional[Callable] = None
+        self.kb_pid: int = None
 
     def get_compilation_hash(self, is_binary: Optional[bool] = False) -> int:
         """
@@ -397,7 +399,7 @@ class UniversalTestcaseStructure:
         return hash(str(compilation_params))
 
     def as_dict(self) -> dict:
-        titles = tuple(self.identity_headers.keys() + tuple(self.property_headers.keys()))
+        titles = tuple(self.identity_headers.keys()) + tuple(self.property_headers.keys())
         values = tuple(getattr(self, title) for title in titles)
         return dict(zip(titles, values))
 

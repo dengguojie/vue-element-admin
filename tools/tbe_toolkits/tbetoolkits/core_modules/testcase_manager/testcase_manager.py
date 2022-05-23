@@ -438,9 +438,15 @@ class UniversalTestcaseFactory:
         if get_global_storage().selected_operators:
             if testcase_op_name in get_global_storage().selected_operators:
                 return True
+            else:
+                return False
+        elif get_global_storage().excluded_operators:
+            if testcase_op_name in get_global_storage().excluded_operators:
+                return False
+            else:
+                return True
         else:
             return True
-        return False
 
     @staticmethod
     def __perform_shape_check(testcase_struct: UniversalTestcaseStructure) -> bool:

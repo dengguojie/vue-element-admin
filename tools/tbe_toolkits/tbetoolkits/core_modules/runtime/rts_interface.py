@@ -380,12 +380,17 @@ class RTSInterface:
         """
         if not isinstance(_bin, bytes):
             raise TypeError("Copy binary to hbm supports bytes only, received %s" % str(type(_bin)))
-        c_memory_p = self.malloc(int(math.ceil(len(_bin) / 32) * 32 + 32),
+        aligned_size = int(math.ceil(len(_bin) / 32) * 32 + 32)
+        c_memory_p = self.malloc(aligned_size,
                                  rts_info.RTS_MEMORY_TYPE.RT_MEMORY_HBM,
-                                 "RT_MEMORY_POLICY_HUGE_PAGE_ONLY" if len(_bin) > 2048 else "RT_MEMORY_POLICY_NONE")
-        self.memcpy(c_memory_p, int(math.ceil(len(_bin) / 32) * 32 + 32),
-                    _bin, len(_bin),
-                    "RT_MEMCPY_HOST_TO_DEVICE")
+                                 "RT_MEMORY_POLICY_HUGE_PAGE_ONLY" if aligned_size > 2048 else "RT_MEMORY_POLICY_NONE")
+        missing_size = aligned_size - len(_bin)
+        if missing_size > 0 and len(_bin) > 0:
+            extra_bin =  _bin[-1:] * missing_size
+            self.memcpy(ctypes.c_void_p(c_memory_p.value + len(_bin)), len(extra_bin),
+                        extra_bin, len(extra_bin), "RT_MEMCPY_HOST_TO_DEVICE")
+        self.memcpy(c_memory_p, aligned_size,
+                    _bin, len(_bin), "RT_MEMCPY_HOST_TO_DEVICE")
         return c_memory_p
 
     def copy_hbm_to_hbm(self, c_memory_p: Union[ctypes.c_void_p, int], length: int) -> ctypes.c_void_p:

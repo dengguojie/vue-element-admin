@@ -3,40 +3,25 @@
 Operator Compilation Interface
 """
 # Standard Packages
-import json
-import time
 import copy
 import ctypes
 import inspect
+import json
 import logging
-from types import ModuleType
-from typing import Any
-from typing import Dict
-from typing import Tuple
-from typing import Union
-from typing import Optional
-from typing import Sequence
+import time
 from collections import Callable
+from contextlib import contextmanager
+from types import ModuleType
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 # Third-Party Packages
-from .monkey_patches import build_cfg_monkey_patch
-from .monkey_patches import dynamic_build_monkey_patch
-from .monkey_patches import rl_bank_monkey_patch
-from .monkey_patches import op_pattern_monkey_patch
-from .monkey_patches import ir_pass_monkey_patch
-from .monkey_patches import soc_spec_monkey_patch
+from .monkey_patches import build_cfg_monkey_patch, dynamic_build_monkey_patch, ir_pass_monkey_patch
+from .monkey_patches import op_pattern_monkey_patch, rl_bank_monkey_patch, soc_spec_monkey_patch
 from .special_operator_rules import special_operator_registry
-from ...utilities import get
-from ...utilities import parse_dtype
-from ...utilities import tuple_flatten
-from ...utilities import apply_as_list
-from ...utilities import get_loaded_so_path
-from ...utilities import param_transformation
-from ...utilities import get_global_storage
-from ...utilities import eliminate_scalar_shapes
-from ...utilities import DynamicCompilationResult
-from ...utilities import BinaryCompilationResult
 from ..testcase_manager import UniversalTestcaseStructure
+from ...utilities import BinaryCompilationResult, DynamicCompilationResult
+from ...utilities import apply_as_list, eliminate_scalar_shapes, get, get_global_storage, get_loaded_so_path
+from ...utilities import param_transformation, parse_dtype, tuple_flatten
 
 
 class OperatorInterface:
@@ -66,10 +51,21 @@ class OperatorInterface:
                                              fromlist=["vector_random_buff"]).vector_random_buff
         self.api_config = __import__("tbe.tvm._api_config",
                                      fromlist=["_api_config"]).api_config
+        self.interface = __import__("tbe.common.repository_manager",
+                                    fromlist=["interface"]).interface
+        self.get_soc_spec = __import__("tbe.common.platform.platform_info",
+                                       fromlist=["get_soc_spec"]).get_soc_spec
         # Set platform
         logging.debug(f"Setting te version to "
                       f"{get_global_storage().device_platform} for {get_global_storage().core_type}")
         self.te.platform.cce_conf.te_set_version(get_global_storage().device_platform, get_global_storage().core_type)
+
+    @contextmanager
+    def knowledge_base(self):
+        self.interface.cann_kb_init({"core_num": self.get_soc_spec("CORE_NUM"),
+                                     "soc_version": self.get_soc_spec("SOC_VERSION")}, {}, {})
+        yield
+        self.interface.cann_kb_finalize()
 
     @staticmethod
     def get_operator(module: str, op_name: str) -> Optional[Callable]:
@@ -223,13 +219,8 @@ class OperatorInterface:
 
     def compile_dynamic_shape(self, dyn_params: tuple, testcase: UniversalTestcaseStructure,
                               use_static_context: bool = False,
-                              mode: str = "Dynamic") -> Union[None, Tuple[str,
-                                                              dict,
-                                                              str,
-                                                              Tuple[str],
-                                                              str,
-                                                              str,
-                                                              str]]:
+                              mode: str = "Dynamic") -> Union[None,
+                                                              Tuple[str, dict, str, Tuple[str], str, str, str]]:
         """
         Dynamic shape operator compilation
         """
@@ -262,6 +253,7 @@ class OperatorInterface:
         int64_shape_enable = get_global_storage().int64_shape_mode
         with self.api_config.bit_width_64() if int64_shape_enable else self.api_config.bit_width_32():
             with self.tbe.common.context.op_context.OpContext("dynamic" if not use_static_context else "static") as cxt:
+                cxt.add_addition("master_pid", testcase.kb_pid)
                 op_info_registered = False
                 for line in inspect.getsource(operator_func).split("\n"):
                     if "register_operator" in line:
@@ -292,19 +284,15 @@ class OperatorInterface:
                     sch_count = [0]
                     g_dyn_build = dynamic_build_monkey_patch(self.tbe.dsl, sch_count)
                     next(g_dyn_build)
+                    logging.debug(f"Calling dynamic operator mode {mode}: "
+                                  f"{testcase.op_name}"
+                                  f"({str(tensor_list_list)[1:-1]}, {str(op_kwargs)[1:-1]})")
                     before_compile = time.time()
-                    if testcase.dyn_input_as_list_distribution:
-                        operator_func(*copy.deepcopy(tensor_list_list),
-                                      **copy.deepcopy(op_kwargs))
-                    else:
-                        operator_func(*copy.deepcopy(dyn_params),
-                                      **copy.deepcopy(op_kwargs))
+                    operator_func(*copy.deepcopy(tensor_list_list),
+                                    **copy.deepcopy(op_kwargs))
                     after_compile = time.time()
                 except:
-                    if testcase.dyn_input_as_list_distribution:
-                        param_print = self.print_func_params(dynamic_shape_func_parameters, op_kwargs, tensor_list_list)
-                    else:
-                        param_print = self.print_func_params(dynamic_shape_func_parameters, op_kwargs, dyn_params)
+                    param_print = self.print_func_params(dynamic_shape_func_parameters, op_kwargs, tensor_list_list)
                     logging.error(
                         "%s shape operator func call failure\n" % mode +
                         ("Operator: %s\n" % testcase.op_name) +
@@ -389,8 +377,8 @@ class OperatorInterface:
             if as_list and param_index < len(tensor_list_list):
                 del op_kwargs[param]
         try:
-            before_compile = time.time()
             with self.tbe.common.context.op_context.OpContext("pre-static") as cxt:
+                cxt.add_addition("master_pid", testcase.kb_pid)
                 if testcase.random_buff:
                     self.tbe.common.context.op_context.get_context().add_addition("compile_reset_op", "clear_cube")
                     self.cube_random_buff()
@@ -402,9 +390,13 @@ class OperatorInterface:
                     op_type = testcase.manual_tiling_op_type
                     op_info = self.tbe.common.context.op_info.OpInfo(op_type, op_type)
                     cxt.add_op_info(op_info)
+                logging.debug(f"Calling static operator: "
+                              f"{testcase.op_name}"
+                              f"({str(tensor_list_list)[1:-1]}, {str(op_kwargs)[1:-1]})")
+                before_compile = time.time()
                 stc_operator_func(*copy.deepcopy(tensor_list_list),
                                     **copy.deepcopy(op_kwargs))
-            after_compile = time.time()
+                after_compile = time.time()
         except:
             param_print = self.print_func_params(static_shape_func_parameters, op_kwargs, tensor_list_list)
             logging.error(

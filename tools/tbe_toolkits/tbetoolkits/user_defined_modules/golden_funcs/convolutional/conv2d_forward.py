@@ -12,13 +12,13 @@ from ..registry import register_golden
 @register_golden(["conv2d"])
 def _conv2d(context: "tbetoolkits.UniversalTestcaseStructure"):
     import tensorflow as tf
-    x, conv_filter, bias, offset_w = context.input_arrays
+    x, conv_filter, bias, _ = context.input_arrays
+    _, conv_filter_ori_shape, _, _ = context.dyn_ori_inputs
     strides = context.other_runtime_params.get("strides")
     pads = context.other_runtime_params.get("pads")
     dilations = context.other_runtime_params.get("dilations")
     groups = context.other_runtime_params.get('groups', 1)
     data_format = context.other_runtime_params.get("data_format", "NCHW")
-    offset_x = context.other_runtime_params.get("offset_x", 0)
     # 5HD input only
     if len(x.shape) != 5:
         raise RuntimeError("conv2d testcase golden function supports NC1HWC0 input only!")
@@ -29,16 +29,20 @@ def _conv2d(context: "tbetoolkits.UniversalTestcaseStructure"):
     strideh, stridew = strides[h_index], strides[w_index]
     dilationh, dilationw = dilations[h_index], dilations[w_index]
     IN, IC, IH, IW, C0 = x.shape
-    WC, WH, WW, WN, _ = conv_filter.shape
+    C1KHKW, Cout1, Cout0, C0 = conv_filter.shape
+    _, _, KH, KW = conv_filter_ori_shape
     ON = IN
-    OC = WN
-    OH = (IH + pad_top + pad_bottom - (dilationh * (WH - 1) + 1)) // strideh + 1
-    OW = (IW + pad_left + pad_right - (dilationw * (WW - 1) + 1)) // stridew + 1
+    OC = Cout1 * Cout0
+    OH = (IH + pad_top + pad_bottom - (dilationh * (KH - 1) + 1)) // strideh + 1
+    OW = (IW + pad_left + pad_right - (dilationw * (KW - 1) + 1)) // stridew + 1
     # 5HD to HWCN
-    x = x.transpose(0, 2, 3, 1, 4).reshape(IN, IH, IW, IC * C0).astype(np.float32)
+    x = x.transpose(0, 2, 3, 1, 4).reshape(IN, IH, IW, IC*C0).astype(np.float32)
     tensor_x = tf.compat.v1.placeholder(x.dtype, shape=x.shape)
     # x filter to NHWC
-    conv_filter = conv_filter.transpose(1, 2, 0, 4, 3).reshape(WH, WW, WC * C0, WN).astype(np.float32)
+    conv_filter = conv_filter.transpose(0, 3, 1, 2).reshape(C0*C1KHKW, Cout1, Cout0)
+    conv_filter = conv_filter.reshape(C0*IC, KH*KW, Cout1, Cout0)
+    conv_filter = conv_filter.transpose(1, 0, 2, 3).reshape(KH, KW, C0*IC, Cout1, Cout0)
+    conv_filter = conv_filter.reshape(KH, KW, C0*IC, Cout1*Cout0).astype(np.float32)
     if groups > 1:
         Cout_ori = (conv_filter.shape[3] + 15) // 16 * 16
         Cout_per_group = Cout_ori // groups

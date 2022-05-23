@@ -241,7 +241,6 @@ class ProfilingInstance:
                                 testcases[group_hash] = sub_testcases[group_hash]
         except zipfile.BadZipFile:
             logging.info("Input testcase file is not a valid zip file, switch to normal csv mode...")
-        if not testcases:
             logging.info("Reading normal csv testcases...")
             with open(testcase_path, newline='') as file:
                 testcase_manager = UniversalTestcaseFactory(file)
@@ -274,10 +273,10 @@ class ProfilingInstance:
         if len(usable_devices) <= 0:
             raise RuntimeError("Available device count is zero, aborting.")
         if self.switches.process_per_device is None:
-            self.switches.process_per_device = int(get_cpu_count() * 0.8) // len(usable_devices)
-            self.switches.process_per_device = min(max(len(self.flatten_testcases) * 4 // len(usable_devices),
-                                                       1, self.switches.process_per_device),
-                                                   32)
+            # Use 80% of total cpu cores, not exceed 16
+            self.switches.process_per_device = min(max(int(get_cpu_count() * 0.8) // len(usable_devices), 1), 16)
+            # Not exceed testcase count
+            self.switches.process_per_device = min(self.switches.process_per_device, len(self.flatten_testcases))
         logging.info(f"Process per device: {self.switches.process_per_device}")
         if self.switches.parallel_fatbin is None:
             if self.switches.process_per_device > 8:
@@ -286,9 +285,10 @@ class ProfilingInstance:
                 self.switches.parallel_fatbin = True
         logging.info(f"Parallel fat-bin compilation: {self.switches.parallel_fatbin}")
         for logicid in usable_devices:
-            self.device_to_processes[logicid] = tuple(SimpleCommandProcess(self.mp_context,
-                                                                           name=f"D{logicid}P{i}")
-                                                      for i in range(self.switches.process_per_device))
+            self.device_to_processes[logicid] = tuple(
+                SimpleCommandProcess(self.mp_context, name=f"D{logicid}P{i}",
+                                     debug_mode=self.switches.single_case_debugging)
+                for i in range(self.switches.process_per_device))
             for proc in self.device_to_processes[logicid]:
                 self.process_to_device[proc] = logicid
 

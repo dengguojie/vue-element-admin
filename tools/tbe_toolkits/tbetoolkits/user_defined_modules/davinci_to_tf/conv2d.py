@@ -72,6 +72,22 @@ def param_change(context: "tbetoolkits.UniversalTestcaseStructure", name, new_na
     del params[name]
 
 
+def correct_padding(params: dict):
+    if all(x == 0 for x in params['padding'][0:4]):
+        params['padding'] = "VALID"
+    else:
+        params['padding'] = "SAME"
+
+
+def correct_filter_sizes(params: dict, filter_ori_format: str):
+    if filter_ori_format == "NCHW":
+        params['filter_sizes'] = [params['filter_sizes'][2], params['filter_sizes'][3],
+                                  params['filter_sizes'][1], params['filter_sizes'][0]]
+    elif filter_ori_format == "NHWC":
+        params['filter_sizes'] = [params['filter_sizes'][1], params['filter_sizes'][2],
+                                  params['filter_sizes'][3], params['filter_sizes'][0]]
+
+
 @register_func(["depthwise_conv2d_backprop_filter", ])
 def _dp_conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     is_gpu = get_global_storage().mode.is_gpu()
@@ -80,19 +96,49 @@ def _dp_conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStr
     param_change(context, "filter_size", "filter_sizes")
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
+    correct_padding(params)
     filter_ori_format = context.output_ori_formats[0]
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
-    if filter_ori_format == "NCHW":
-        params['filter_sizes'] = [params['filter_sizes'][2],params['filter_sizes'][3],params['filter_sizes'][1],params['filter_sizes'][0]]
-    elif filter_ori_format == "NHWC":
-        params['filter_sizes'] = [params['filter_sizes'][1],params['filter_sizes'][2],params['filter_sizes'][3],params['filter_sizes'][0]]
-    elif filter_ori_format == "HWCN":
-        params['filter_sizes'] = [params['filter_sizes'][0],params['filter_sizes'][1],params['filter_sizes'][3],params['filter_sizes'][2]]
+    correct_filter_sizes(params, filter_ori_format)
+    if filter_ori_format == "HWCN":
+        params['filter_sizes'] = [params['filter_sizes'][0], params['filter_sizes'][1],
+                                  params['filter_sizes'][3], params['filter_sizes'][2]]
     return context
 
+
+@register_func(["conv2d_bp_filter_transdata", ])
+def _conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
+    is_gpu = get_global_storage().mode.is_gpu
+    if not is_gpu:
+        return context
+    context.other_compilation_params["strides"] = context.other_runtime_params["strides"]
+    context.other_compilation_params["dilations"] = context.other_runtime_params["dilations"]
+    context.other_compilation_params["pads"] = context.other_runtime_params["pads"]
+    context.other_compilation_params["groups"] = context.other_runtime_params["groups"]
+    param_change(context, "filter_size", "filter_sizes")
+    param_change(context, "pads", "padding")
+    params = context.other_runtime_params
+    correct_padding(params)
+    filter_ori_format = context.output_ori_formats[0]
+    correct_filter_sizes(params, filter_ori_format)
+    context.op_name = "conv2d_backprop_filter"
+    return context
+
+
+@register_func(["conv2d_bp_input_transdata",])
+def _conv2d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
+    is_gpu = get_global_storage().mode.is_gpu
+    if not is_gpu:
+        return context
+    context.other_compilation_params["strides"] = context.other_runtime_params["strides"]
+    context.other_compilation_params["dilations"] = context.other_runtime_params["dilations"]
+    context.other_compilation_params["pads"] = context.other_runtime_params["pads"]
+    context.other_compilation_params["groups"] = context.other_runtime_params["groups"]
+    param_change(context, "input_size", "input_sizes")
+    param_change(context, "pads", "padding")
+    params = context.other_runtime_params
+    correct_padding(params)
+    context.op_name = "conv2d_backprop_input"
+    return context
 
 @register_func(["conv2d_backprop_filter", ])
 def _conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
@@ -102,15 +148,9 @@ def _conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStruct
     param_change(context, "filter_size", "filter_sizes")
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
+    correct_padding(params)
     filter_ori_format = context.output_ori_formats[0]
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
-    if filter_ori_format == "NCHW":
-        params['filter_sizes'] = [params['filter_sizes'][2],params['filter_sizes'][3],params['filter_sizes'][1],params['filter_sizes'][0]]
-    elif filter_ori_format == "NHWC":
-        params['filter_sizes'] = [params['filter_sizes'][1],params['filter_sizes'][2],params['filter_sizes'][3],params['filter_sizes'][0]]
+    correct_filter_sizes(params, filter_ori_format)
     return context
 
 
@@ -122,10 +162,7 @@ def _conv2d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructu
     param_change(context, "input_size", "input_sizes")
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
+    correct_padding(params)
     return context
 
 
@@ -137,11 +174,7 @@ def _conv3d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStruct
     param_change(context, "filter_size", "filter_sizes")
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
-
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] and params['padding'][4] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
+    correct_padding(params)
     context.op_name = "conv3d_backprop_filter_v2"
     return context
 
@@ -154,10 +187,7 @@ def _conv3d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructu
     param_change(context, "input_size", "input_sizes")
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] and params['padding'][4] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
+    correct_padding(params)
     context.op_name = "conv3d_backprop_input_v2"
     return context
 
@@ -169,10 +199,7 @@ def _avg_pool3d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
         return context
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] and params['padding'][4] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
+    correct_padding(params)
     return context
 
 
@@ -183,10 +210,7 @@ def _conv3d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
         return context
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
-    if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] and params['padding'][4] == 0:
-        params['padding'] = "VALID"
-    else:
-        params['padding'] = "SAME"
+    correct_padding(params)
     # for gpu, need to delete two None for stc_ori_inputs
     context.stc_ori_inputs = context.stc_ori_inputs[:2]
     return context
@@ -211,4 +235,32 @@ def _mat_mul_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
         context.op_name = "batch_mat_mul"
         param_change(context, "trans_a", "adj_x")
         param_change(context, "trans_b", "adj_y")
+    return context
+
+
+@register_func(["conv2d",])
+def _conv2d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
+    is_gpu = get_global_storage().mode.is_gpu()
+    if not is_gpu:
+        return context
+    context.stc_ori_inputs = context.stc_ori_inputs[:2]
+    param_change(context, "pads", "padding")
+    params = context.other_runtime_params
+    if all(x == 0 for x in params['padding'][0:4]):
+        params['padding'] = "VALID"
+    elif all(x == -1 for x in params['padding'][0:4]):
+        params['padding'] = "SAME"
+    else:
+        params['padding'] = ((0, 0), (params['padding'][0], params['padding'][1]),
+                             (params['padding'][2], params['padding'][3]), (0, 0))
+    filter_size = context.stc_ori_inputs[1]
+    filter_ori_format = context.stc_input_ori_formats[1]
+    if filter_ori_format == "NCHW":
+        params['filter_sizes'] = [filter_size[2], filter_size[3],
+                                  filter_size[1], filter_size[0]]
+    elif filter_ori_format == "NHWC":
+        params['filter_sizes'] = [filter_size[1], filter_size[2],
+                                  filter_size[3], filter_size[0]]
+    params['strides'] = [context.other_runtime_params.setdefault("strides")[2],
+                         context.other_runtime_params.setdefault("strides")[3], 1, 1]
     return context

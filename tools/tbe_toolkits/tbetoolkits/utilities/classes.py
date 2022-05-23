@@ -135,6 +135,7 @@ class SWITCHES:
         "selected_testcase_indexes",
         "selected_testcase_count",
         "selected_operators",
+        "excluded_operators",
         "testcase_server",
         "preserve_original_csv",
         "perf_compare_flag"
@@ -193,6 +194,7 @@ class SWITCHES:
         self.selected_testcase_indexes = []
         self.selected_testcase_count = -1
         self.selected_operators = None
+        self.excluded_operators = None
         self.testcase_server = None
         self.preserve_original_csv = False
 

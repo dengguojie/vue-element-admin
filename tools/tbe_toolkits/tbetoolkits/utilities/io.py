@@ -444,6 +444,14 @@ def __set_testcase_op_name(switches: SWITCHES, secondary_param: str):
         switches.selected_operators = tuple(map(str, secondary_param.split(",")))
 
 
+@register_param(["--no-op", "--exclude-operator"])
+def __set_testcase_excluded_op_name(switches: SWITCHES, secondary_param: str):
+    if not secondary_param:
+        raise RuntimeError("Please specify op_name for excluded testcases")
+    else:
+        switches.excluded_operators = tuple(map(str, secondary_param.split(",")))
+
+
 @register_param(["--pc", "--process-count"])
 def __set_process_count(switches: SWITCHES, secondary_param: str):
     if secondary_param is None:

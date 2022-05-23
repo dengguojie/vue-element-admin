@@ -95,9 +95,9 @@ def _reduce_sum(range_mode,
     elif range_mode == "HIGH":
         if idx == 0:
             if inputA_dtype in ("float16",):
-                return math.pow(math.fabs(maximum) // shape_reduce, 0.5)
+                return math.pow(math.fabs(maximum) / shape_reduce, 0.5)
             else:
-                return math.pow(math.fabs(maximum) // shape_reduce, 0.25)
+                return math.pow(math.fabs(maximum) / shape_reduce, 0.25)
         elif idx == 1:
             return len(dyn_inputs[1]) - 1
         else:
@@ -124,7 +124,7 @@ def _reduce_sum_d(range_mode,
     shape_reduce = 1
     for i in range(0, len(reduce_axis)):
         shape_reduce *= shape_x[reduce_axis[i]]
-    
+
     if shape_reduce == 0:
         return 0
     numpy_dtype = numpy.dtype(input_dtype)
@@ -142,9 +142,9 @@ def _reduce_sum_d(range_mode,
     elif range_mode == "HIGH":
         if idx == 0:
             if input_dtype in ("float16",):
-                return math.pow(math.fabs(maximum) // shape_reduce, 0.5)
+                return math.pow(math.fabs(maximum) / shape_reduce, 0.5)
             else:
-                return math.pow(math.fabs(maximum) // shape_reduce, 0.25)
+                return math.pow(math.fabs(maximum) / shape_reduce, 0.25)
         else:
             raise RuntimeError("Operator ReduceSumD should have one input only!!!")
     else:
@@ -180,9 +180,9 @@ def _bias_add_grad(range_mode,
     elif range_mode == "HIGH":
         if idx == 0:
             if input_dtype in ("float16",):
-                return math.pow(math.fabs(maximum) // shape_reduce, 0.5)
+                return math.pow(math.fabs(maximum) / shape_reduce, 0.5)
             else:
-                return math.pow(math.fabs(maximum) // shape_reduce, 0.25)
+                return math.pow(math.fabs(maximum) / shape_reduce, 0.25)
         else:
             raise RuntimeError("Operator BiasAddGrad should have one input only!!!")
     else:
@@ -221,7 +221,7 @@ def _reduce_mean_d(range_mode,
             raise RuntimeError("Operator ReduceMeanD should have one input only!!!")
     elif range_mode == "HIGH":
         if idx == 0:
-            return math.fabs(maximum) // shape_reduce
+            return math.fabs(maximum) / shape_reduce
         else:
             raise RuntimeError("Operator ReduceMeanD should have one input only!!!")
     else:

@@ -93,7 +93,7 @@ def tensorflow_profiling(context: UniversalTestcaseStructure, device_id):
 def __compile_tf_func(tf_func, context: UniversalTestcaseStructure, device, run_time):
     import tensorflow as tf
     kernel_name = "%s_dev%d" % (context.testcase_name, device)
-    original_params = {**context.other_runtime_params, **context.other_compilation_params}
+    original_params = {**context.other_compilation_params, **context.other_runtime_params}
     params = original_params.copy()
     funcs = []
     input_map = {}

@@ -63,14 +63,24 @@ def _calculate_group(cin, cout, groups):
                  "conv2d_sigmoid",
                  "conv2d_softplus"])
 def _conv2d_input(context: "tbetoolkits.UniversalTestcaseStructure"):
-    ipt_0, ipt_1, ipt_2, ipt_3 = context.input_arrays[:4]
-    if get(context.dyn_input_formats, 1) == "NC1HWC0":
-        input_data_ranges = context.actual_input_data_ranges
-        low, high = input_data_ranges[1]
-        shape = list(ipt_1.shape)
-        N, C1, H, W, C0 = shape
-        N = (N + 15) // 16 * 16
-        shape = [C1, H, W, N, C0]
+    is_gpu = get_global_storage().mode.is_gpu()
+    ipt_0, ipt_1 = context.input_arrays[:2]
+    ipt_2 = ipt_3 = None
+    low, high = context.input_data_ranges[0]
+    shape = list(ipt_1.shape)
+    if get(context.dyn_input_formats, 1) == "NC1HWC0" and not is_gpu:
+        # Cout Cin1 kh kw C0; C0=16 if dtype='fp16' else 32
+        Cout, C1, H, W, C0 = shape
+        # FracZ format C // C0 * kH * kW, Cout//16, N0, C0
+        block_size_n = 16
+        block_size_k = 16 if C0 == 16 else 32
+        Cout1 = (Cout + C0 - 1) // block_size_n
+        shape = [C1*H*W, Cout1, block_size_n, block_size_k]
+    if is_gpu:
+        Cout, Cin, KH, KW = shape
+        ipt_1 = np.random.uniform(low, high, [KH, KW, Cin, Cout]).astype(np.float16)
+    else:
+        ipt_2, ipt_3 = context.input_arrays[2:4]
         ipt_1 = np.random.uniform(low, high, shape).astype(ipt_1.dtype)
     return (ipt_0, ipt_1, ipt_2, ipt_3), (ipt_0, ipt_1, ipt_2, ipt_3)
 
