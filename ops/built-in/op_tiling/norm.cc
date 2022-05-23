@@ -78,7 +78,6 @@ namespace {
       dst[i] = src[i];
     }
     dst_len = src_len;
-    return;
   }
 
   template<typename T>
@@ -585,7 +584,7 @@ bool Norm::GetNormPattern() {
       CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
       CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
       broadcast_pattern = 0;
-      for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
+      for (std::size_t j = 0; j < before_broadcast_input_num; j++) {
         broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(NormBroadcastMode::OTHERS);
       }
       break;
@@ -638,6 +637,14 @@ bool Norm::GetUbSizeInfo() {
   return true;
 }
 
+bool Norm::GetBlockSize() {
+  if (compileInfo.block_size_map.count(norm_pattern) != 0) {
+    block_size = compileInfo.block_size_map.at(norm_pattern);
+  }
+
+  return true;
+}
+
 bool Norm::CalcInputAlignShape() {
   for (std::size_t i = 0; i < dim_len; i++) {
     if (i == dim_len - 1) {
@@ -671,19 +678,13 @@ bool Norm::IsNeedPartialReorder() {
 
 
 bool Norm::IsNeedWorkspace() const {
-  // pure move
-  if (!is_discontinuous_reduce_axis && reduce_product == 1) {
-    return false;
-  }
-
-  int64_t shape_product = reduce_align_product;
-
-  // nlast reduce need judge r_product * align(last_a) and ub_size
+  int64_t nlast_common_product = 1;
   for (std::size_t i = last_r_axis_index + 1; i < dim_len; i++) {
-    shape_product = shape_product * input_align_shape[i];
+    nlast_common_product = nlast_common_product * input_align_shape[i];
   }
+  nlast_common_product = std::min(nlast_common_product, static_cast<int64_t>(block_size * NORM_BLOCKS_NUMBER));
 
-  return shape_product > common_max_ub_count;
+  return reduce_align_product * nlast_common_product > common_max_ub_count;
 }
 
 bool Norm::IsNeedReduceTranspose() const {
@@ -704,7 +705,11 @@ bool Norm::IsNeedReduceTranspose() const {
     return false;
   }
 
-  if (last_dim > NORM_REDUCE_TRANSPOSE_THRESHOLD || last_dim % block_size == 0) {
+  if (last_dim > NORM_REDUCE_TRANSPOSE_THRESHOLD) {
+    return false;
+  }
+
+  if (!compileInfo.exist_vc_unsupported_type && last_dim % block_size == 0) {
     return false;
   }
 
@@ -1213,6 +1218,29 @@ bool Norm::CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& c
          tail_tail_ub_elem_count >= block_size;
 }
 
+bool Norm::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_t& cur_ub_factor,
+                                       const int64_t& cur_dim) const {
+  bool is_nlast_split_last_a = !is_last_axis_reduce && index == dim_len - 1;
+  bool is_factor_not_align = cur_ub_factor > block_size + block_size && cur_ub_factor % block_size != 0;
+  if (is_nlast_split_last_a && is_factor_not_align) {
+    return true;
+  }
+
+  bool is_last_split_last_a = is_last_axis_reduce && index == dim_len - reduce_axis_len - 1;
+  bool is_factor_not_eight_align = cur_ub_factor > NORM_CONSTANT_EIGHT + NORM_CONSTANT_EIGHT &&
+    cur_ub_factor % NORM_CONSTANT_EIGHT != 0;
+  if (compileInfo.is_const && is_last_split_last_a && is_discontinuous_reduce_axis) {
+    if (cur_ub_factor == cur_dim) {
+        return false;
+    }
+    if (is_factor_not_eight_align) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
   // right_align_product: ub can put in A axis after block_inner
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
@@ -1249,6 +1277,7 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
   }
 
   int64_t cur_ub_factor = ub_size / right_product_align;
+  bool is_nlast_split_last_a = !is_last_axis_reduce && index == dim_len - 1;
   for (; cur_ub_factor >= 1; cur_ub_factor--) {
     if (CheckNormalCurUbFactor(cur_ub_factor, current_dim, current_dim_tail, right_product)) {
       tilingInfo.ub_tiling_axis = reorderInfo.reorder_to_ori_pos[index];
@@ -1258,14 +1287,14 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
       // if entire_cut ub_factor is illegal, turn to common_cut ub_factor
       bool is_entire_cut_illegal = tilingInfo.ub_tiling_factor > ub_size / right_product_align ||
                                    tilingInfo.ub_tiling_factor * right_product < block_size;
-      if (is_entire_cut_illegal) {
+      if (is_entire_cut_illegal || JudgeNormalCurUbFactorIsBad(index, tilingInfo.ub_tiling_factor, current_dim)) {
         tilingInfo.ub_tiling_factor = std::min(cur_ub_factor, current_dim);
       }
       // storage align last A when is nlast reduce, but align_factor * right_product is larger than max_ub
-      bool is_common_cut_illegal = !is_last_axis_reduce && index == dim_len - 1 &&
+      bool is_common_cut_illegal = is_nlast_split_last_a &&
                                    (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size *
                                    right_product_align > ub_size;
-      if (!is_common_cut_illegal) {
+      if (!is_common_cut_illegal && !JudgeNormalCurUbFactorIsBad(index, tilingInfo.ub_tiling_factor, current_dim)) {
         return true;
       }
     }
@@ -1521,6 +1550,7 @@ bool Norm::ConstPostCalcTiling() {
   bool ret = EliminateOne();
   ret = ret && FusedAxis();
   ret = ret && GetNormPattern();
+  ret = ret && GetBlockSize();
   tiling_key = norm_pattern;
   ret = ret && CalcInputAlignShape();
   auto align_product_pair = CalcShapeProduct(input_align_shape, reduce_axis, dim_len, reduce_axis_len);
@@ -1556,14 +1586,13 @@ bool Norm::CalcNormInfo() {
     is_last_axis_reduce && (!is_discontinuous_reduce_axis) && (dim_len - reduce_axis_len <= 1);
   is_reduce_transpose = IsNeedReduceTranspose();
   is_align_and_remove_pad = IsNeedAlignedInUb();
-  bool is_last_reduce_align =
-    !is_reduce_transpose && is_last_axis_reduce && input_shape[dim_len - 1] % block_size == 0;
+  bool is_last_reduce_align = is_last_axis_reduce && input_shape[dim_len - 1] % block_size == 0;
   // determine ub size
   if (is_need_workspace) {
     ub_size = workspace_max_ub_count;
   } else if (is_reduce_transpose) {
     ub_size = reduce_trans_max_ub_count;
-    sch_type = NORM_REDUCE_TRANSPOSE_SCH_TYPE;
+    sch_type = is_last_reduce_align ? NORM_ALIGN_REDUCE_TRANSPOSE_SCH_TYPE : NORM_REDUCE_TRANSPOSE_SCH_TYPE;
   } else if (is_align_and_remove_pad) {
     ub_size = pad_max_ub_count;
     sch_type = NORM_ALIGNED_IN_UB_SCH_TYPE;
@@ -1610,6 +1639,7 @@ bool Norm::CalcTiling() {
 
   ret = ret && GetNormPattern();
   ret = ret && GetUbSizeInfo();
+  ret = ret && GetBlockSize();
   // calculate align shape
   ret = ret && CalcInputAlignShape();
   // calculate norm info
@@ -1758,6 +1788,12 @@ void NormCompileInfo::ParseGraphInfo(const nlohmann::json& parsed_json_obj) {
     parsed_json_obj.at("_available_ub_size").get<std::unordered_map<std::string, std::vector<int32_t>>>();
   for (const auto& single_item : local_available_ub_size) {
     available_ub_size[std::stoi(single_item.first)] = single_item.second;
+  }
+  if (parsed_json_obj.contains("_block_size")) {
+    const auto& local_block_size = parsed_json_obj.at("_block_size").get<std::unordered_map<std::string, int32_t>>();
+    for (const auto& single_item : local_block_size) {
+      block_size_map[std::stoi(single_item.first)] = single_item.second;
+    }
   }
   // workspace info
   if (parsed_json_obj.contains("_workspace_info")) {

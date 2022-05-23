@@ -22,6 +22,7 @@ from tbe.dsl.base.operation import add_build_arg
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
 
+from .norm_tilingcase import BLOCK_SIZE_BYTE
 from .norm_tilingcase import NormComputeGraphInfo
 from .norm_tilingcase import NormInfo
 from .norm_tilingcase import NormTilingCase
@@ -40,9 +41,11 @@ BLOCK_IDX = "blockIdx.x"
 LOCAL_UB = "local.UB"
 NO_OVERLAP = "no_overlap"
 STORAGE_BOUND = "storage_bound"
+ENABLE_ALIGN_EIGHT_DUP = "enable_align_eight_dup"
 ENABLE_VNCHWCONV = "enable_vnchwconv"
 TRANS_THRESHOLD = "trans_threshold"
 AVOID_BANK_CONFLICT = "avoid_bank_conflict"
+REDUCE_OPT_MODE = "reduce_opt_mode"
 REDUCE_TRANS = "trans"
 TRANS_THRESHOLD_VALUE = 32
 
@@ -222,6 +225,7 @@ class NormNormalSchedule:
         self._storage_align_map = {}
         self._compute_at_map = {}
         self._compute_root_tensors = set()
+        self._set_value_tensor_set = set()
         self._emit_insn_map = {}
 
         self._is_last_common_axis_split_block = False
@@ -296,14 +300,14 @@ class NormNormalSchedule:
 
     def _pre_process(self):
         if self._tiling_case.is_aligned_in_ub_case:
-            self._available_size = self._graph_info.pad_available_ub_size
+            self._available_size = self._norm_info.pad_available_ub_size
         elif self._tiling_case.is_reduce_transpose_case:
-            self._available_size = self._graph_info.reduce_transpose_available_ub_size
+            self._available_size = self._norm_info.reduce_transpose_available_ub_size
         else:
-            self._available_size = self._graph_info.available_ub_size
+            self._available_size = self._norm_info.available_ub_size
 
         if self._tiling_case.is_enable_db:
-            self._available_size = self._graph_info.const_db_size
+            self._available_size = self._norm_info.const_common_db_size
 
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._graph_info.input_tensor_set)
@@ -632,13 +636,13 @@ class NormNormalSchedule:
                 .union(self._align_pad_and_ori_tensor_map.keys())\
                 .union(self._remove_pad_and_ori_tensor_map.keys())\
                 .union(self._rfactor_and_reduce_tensor_map.keys()):
-            storage_bound_value = self._available_size * DTYPE_BYTE_MAPPING.get(self._graph_info.max_type) // \
-                                  DTYPE_BYTE_MAPPING.get(single_tensor.dtype)
+            storage_bound_value = \
+                self._available_size * self._norm_info.max_bytes // DTYPE_BYTE_MAPPING.get(single_tensor.dtype)
             self._sch[single_tensor].set_buffer_size(storage_bound_value)
 
         if self._res_tensor.op.tag == FAKE_NODE_TAG:
-            storage_bound_value = self._available_size * DTYPE_BYTE_MAPPING.get(self._graph_info.max_type) // \
-                                  DTYPE_BYTE_MAPPING.get(self._res_tensor.dtype)
+            storage_bound_value = \
+                self._available_size * self._norm_info.max_bytes // DTYPE_BYTE_MAPPING.get(self._res_tensor.dtype)
             self._sch[self._res_tensor].set_buffer_size(storage_bound_value)
 
     def _do_set_constraint(self):
@@ -669,7 +673,7 @@ class NormNormalSchedule:
         self._sch.set_constraint(shape_in_ub <= self._available_size)
         # last dim is align
         if self._tiling_case.is_last_reduce_align_case:
-            self._sch.set_constraint((ori_shape[-1] % DTYPE_BYTE_MAPPING.get(self._graph_info.min_type)).equal(0))
+            self._sch.set_constraint((ori_shape[-1] % get_align_factor(self._graph_info.min_type)).equal(0))
 
     def _calc_compute_at(self):
         for single_tensor in (self._mid_tensor_set - self._compute_inline_tensors)\
@@ -693,7 +697,8 @@ class NormNormalSchedule:
         if not self._tiling_case.is_enable_db:
             return
 
-        for single_tensor in (self._mid_tensor_set - self._compute_inline_tensors)\
+        for single_tensor in (
+                self._mid_tensor_set - self._compute_inline_tensors - self._graph_info.real_output_tensor_set)\
                 .union(self._cache_read_buffer_and_tensor_map.keys())\
                 .union(self._cache_write_buffer_and_tensor_map.keys())\
                 .union(self._align_pad_and_ori_tensor_map.keys())\
@@ -708,31 +713,39 @@ class NormNormalSchedule:
             reused_tensor = list(self._backward_compute_graph_map.get(single_tensor))[0]
             if reused_tensor in self._cache_read_tensor_and_buffer_map:
                 reused_tensor = self._cache_read_tensor_and_buffer_map.get(reused_tensor)
+            if single_tensor in self._cache_write_tensor_and_buffer_map:
+                single_tensor = self._cache_write_tensor_and_buffer_map.get(single_tensor)
             self._sch[reused_tensor].reused_by(single_tensor)
             self._sch[single_tensor].reused_by(reuse_data=True)
+            self._set_value_tensor_set.add(single_tensor)
 
     def _do_set_store_predicate(self):
-        for single_tensor in self._graph_info.set_value_tensor_set:
+        for single_tensor in self._set_value_tensor_set:
             self._sch[single_tensor].set_store_predicate(single_tensor.op.body[0].condition)
 
     def _calc_emit_insn(self):
         def __handle_reduce_tensor(_single_tensor, _insn):
+            attr_storage_bound_value = \
+                self._available_size * self._norm_info.max_bytes // DTYPE_BYTE_MAPPING.get(_single_tensor.dtype)
             if _single_tensor not in self._reduce_and_rfactor_tensor_map:
                 _emit_insn_axis = self._sch[_single_tensor].op.axis[emit_insn_axis_index]\
                     if self._norm_info.is_reduce_last_axis else self._sch[_single_tensor].op.reduce_axis[0]
                 self._emit_insn_map[_single_tensor] = [_emit_insn_axis, _insn,
-                                                       {STORAGE_BOUND: self._available_size}]
+                                                       {STORAGE_BOUND: attr_storage_bound_value}]
             else:
                 _rfactor_tensor = self._reduce_and_rfactor_tensor_map.get(_single_tensor)
                 self._emit_insn_map[_rfactor_tensor] = [self._sch[_rfactor_tensor].op.reduce_axis[0], _insn,
-                                                        {STORAGE_BOUND: self._available_size}]
+                                                        {STORAGE_BOUND: attr_storage_bound_value}]
                 self._emit_insn_map[_single_tensor] = [self._sch[_single_tensor].op.axis[emit_insn_axis_index], _insn,
-                                                       {STORAGE_BOUND: self._available_size}]
+                                                       {STORAGE_BOUND: attr_storage_bound_value}]
 
         def __handle_real_output_tensor():
             for out_tensor in self._graph_info.real_output_tensor_set:
                 if self._is_split_block_and_ub and out_tensor == self._res_tensor:
-                    _emit_insn_axis = self._ub_split_result.get("inner_itervar")
+                    if self._is_last_common_axis_split_ub:
+                        _emit_insn_axis = out_tensor.op.axis[min(self._norm_info.reduce_axis_indices)]
+                    else:
+                        _emit_insn_axis = self._ub_split_result.get("inner_itervar")
                 else:
                     _emit_insn_axis = out_tensor.op.axis[emit_insn_axis_index]
                 # enable nooverlap 2:
@@ -756,16 +769,26 @@ class NormNormalSchedule:
         def __handle_special_insn():
             for _single_tensor, _param in self._emit_insn_map.items():
                 if self._tiling_case.is_reduce_transpose_case:
-                    if _param[1] in ("vector_reduce_sum", "vector_reduce_max", "vector_reduce_min"):
+                    if _param[1] in ("vector_reduce_max", "vector_reduce_min"):
                         _param[2].update({REDUCE_TRANS: True})
+                    if _param[1] == "vector_reduce_sum" and not self._tiling_case.is_last_reduce_align_case:
+                        _param[2].update({REDUCE_TRANS: True})
+                else:
+                    if _param[1] == "vector_reduce_sum" and self._norm_info.reduce_pattern == "AR":
+                        _param[2].update({REDUCE_OPT_MODE: "entire_reduce"})
 
-                is_enable_vnchwconv = _param[1] == "vector_broadcast"
-                if is_enable_vnchwconv:
-                    broadcast_axis_list = get_broadcast_axis(_single_tensor)
-                    # fp32 broadcast two axis dont enable vnchwconv now
-                    if _single_tensor.dtype == "float32" and len(broadcast_axis_list) > 1:
-                        continue
-                    _param.append({ENABLE_VNCHWCONV: True, TRANS_THRESHOLD: TRANS_THRESHOLD_VALUE})
+                if _param[1] == "vector_broadcast":
+                    _enable_eight_dup = self._norm_info.is_discontinuous_reduce_axis and \
+                        _single_tensor in self._storage_align_map and \
+                        get_context().get_current_compute().get("_mode") == "const"
+                    if _enable_eight_dup:
+                        _param.append({ENABLE_ALIGN_EIGHT_DUP: True})
+                    else:
+                        _broadcast_axis_list = get_broadcast_axis(_single_tensor)
+                        # fp32 broadcast two axis dont enable vnchwconv now
+                        if _single_tensor.dtype == "float32" and len(_broadcast_axis_list) > 1:
+                            continue
+                        _param.append({ENABLE_VNCHWCONV: True, TRANS_THRESHOLD: TRANS_THRESHOLD_VALUE})
 
         emit_insn_axis_index = 0
         __handle_real_output_tensor()
@@ -922,6 +945,15 @@ class NormWorkspaceSchedule:
         self._split_tensor_and_sub_graph_map = graph_info.split_tensor_and_sub_graph_map
         # get last endpoint output tensor
         self._res_tensor = graph_info.endpoint_output_tensor
+        # tensors that need compute at block outer
+        self._compute_at_block_out_tensor_set = graph_info.special_after_reduce_tensor_set
+        # workspace compute at res when:
+        # 1. there is no after reduce output(need compute at block outer)
+        # 2. there is no after reduce workspace(need compute at block outer)
+        # 3. last_reduce and reduce one dim
+        self._is_workspace_compute_at_res = not self._compute_at_block_out_tensor_set and \
+            not (self._workspace_tensor_set & self._graph_info.after_reduce_tensor_set) and \
+            norm_info.is_reduce_last_axis and len(norm_info.reduce_axis_indices) == 1
         self._norm_info = norm_info
         self._tiling_case = tiling_case
         # actual workspace tensor list
@@ -963,6 +995,9 @@ class NormWorkspaceSchedule:
         self._is_split_block = not norm_info.is_all_reduce
         self._is_const = not get_context().get("_const_and_dynamic_mixed") and \
             get_context().get_current_compute().get("_mode") == "const"
+        self._available_size = self._norm_info.workspace_available_ub_size
+        if self._tiling_case.is_enable_db:
+            self._available_size = self._norm_info.const_workspace_db_size
 
     def do_schedule(self):
         """
@@ -972,7 +1007,8 @@ class NormWorkspaceSchedule:
         real_output_tensor_op_list = [self._graph_info.endpoint_output_tensor.op]
         for workspace_tensor in self._real_workspace_tensor_list:
             self._outs.append(workspace_tensor)
-            real_output_tensor_op_list.append(workspace_tensor.op)
+            if not self._is_workspace_compute_at_res:
+                real_output_tensor_op_list.append(workspace_tensor.op)
 
         self._sch = tvm.create_schedule(real_output_tensor_op_list)
         self._sch.tiling_key = self._tiling_case.tiling_key
@@ -1015,6 +1051,8 @@ class NormWorkspaceSchedule:
         self._calc_compute_at()
         self._do_compute_at()
         self._do_compute_root()
+
+        self._do_double_buffer()
 
         self._calc_reused_by()
         self._do_reused_by()
@@ -1206,7 +1244,7 @@ class NormWorkspaceSchedule:
             self._workspace_map.get(workspace_tensor)["ub_tensor"] = workspace_ub_tensor
 
         for workspace_tensor in self._workspace_tensor_set:
-            self._sch[workspace_tensor].set_scope("global")
+            self._sch[workspace_tensor].set_scope("")
 
         for special_tensor, ori_tensor in self._graph_info.special_cast_tensor_and_ori_tensor_map.items():
             if ori_tensor in self._workspace_map:
@@ -1498,6 +1536,8 @@ class NormWorkspaceSchedule:
         # nlast reduce or last reduce but workspace tensor is before reduce tensor
         if len(self._norm_info.shape_before_reduce) == 1:
             return
+        if self._is_workspace_compute_at_res:
+            return
         for workspace_tensor in self._real_workspace_tensor_set:
             if not self._norm_info.is_reduce_last_axis or\
                     workspace_tensor in self._graph_info.before_reduce_tensor_set:
@@ -1522,14 +1562,16 @@ class NormWorkspaceSchedule:
                 fuse_axis_list = [block_bind_axis]
             self._multi_core_bind_axis_map[self._res_tensor] = self._sch[self._res_tensor].fuse(*fuse_axis_list)
 
-            for workspace_tensor in self._workspace_tensor_set:
-                block_bind_axis = self._block_split_result.get(workspace_tensor).get("outer_itervar")
-                if workspace_tensor in self._reorder_map:
-                    reorder_axis = self._reorder_map.get(workspace_tensor)
-                    fuse_axis_list = reorder_axis[:reorder_axis.index(block_bind_axis) + 1]
-                else:
-                    fuse_axis_list = [block_bind_axis]
-                self._multi_core_bind_axis_map[workspace_tensor] = self._sch[workspace_tensor].fuse(*fuse_axis_list)
+            if not self._is_workspace_compute_at_res:
+                for workspace_tensor in self._workspace_tensor_set:
+                    block_bind_axis = self._block_split_result.get(workspace_tensor).get("outer_itervar")
+                    if workspace_tensor in self._reorder_map:
+                        reorder_axis = self._reorder_map.get(workspace_tensor)
+                        fuse_axis_list = reorder_axis[:reorder_axis.index(block_bind_axis) + 1]
+                    else:
+                        fuse_axis_list = [block_bind_axis]
+                    self._multi_core_bind_axis_map[workspace_tensor] = \
+                        self._sch[workspace_tensor].fuse(*fuse_axis_list)
 
     def _do_multi_core(self):
         if self._multi_core_bind_axis_map:
@@ -1543,8 +1585,10 @@ class NormWorkspaceSchedule:
                 .union(self._cache_write_buffer_and_tensor_dual_map.keys())\
                 .union(self._cache_clone_buffer_and_tensor_dual_map.keys())
 
+        workspace_ub_tensor_set = set()
         for workspace_tensor in self._workspace_tensor_set:
             workspace_ub_tensor = self._workspace_map.get(workspace_tensor).get("ub_tensor")
+            workspace_ub_tensor_set.add(workspace_ub_tensor)
             reread_workspace_ub_tensor_map = self._workspace_map.get(workspace_tensor).get("reread_ub_tensor")
             storage_bound_tensors.add(workspace_ub_tensor)
             storage_bound_tensors = storage_bound_tensors.union(reread_workspace_ub_tensor_map.keys())
@@ -1553,35 +1597,38 @@ class NormWorkspaceSchedule:
             storage_bound_tensors.add(self._res_tensor)
 
         for single_tensor in storage_bound_tensors:
-            storage_bound_value = self._graph_info.workspace_available_ub_size * \
-                                  DTYPE_BYTE_MAPPING.get(self._graph_info.max_type) // \
-                                  DTYPE_BYTE_MAPPING.get(single_tensor.dtype)
+            is_last_reduce = single_tensor.op.reduce_axis and self._norm_info.is_reduce_last_axis
+            need_aggregate = single_tensor in self._compute_at_block_out_tensor_set or \
+                single_tensor in workspace_ub_tensor_set or \
+                single_tensor in self._cache_write_buffer_and_tensor_dual_map
+            if is_last_reduce and not need_aggregate:
+                storage_bound_value = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(single_tensor.dtype)
+            else:
+                storage_bound_value = self._available_size * self._norm_info.max_bytes // \
+                                      DTYPE_BYTE_MAPPING.get(single_tensor.dtype)
             self._sch[single_tensor].set_buffer_size(storage_bound_value)
 
     def _do_set_constraint(self):
         if self._is_const:
             return
 
-        ori_shape = self._res_tensor.shape
         ub_split_inner = self._ub_split_result.get(self._res_tensor).get("factor")
-        ori_ub_axis = self._tiling_case.ub_split_axis_index
-        reduce_axis_index = self._norm_info.reduce_axis_indices
-        is_reduce_last_axis = self._norm_info.is_reduce_last_axis
-        reduce_reorder_shape, _, ori_to_reorder_axis_map = _reorder_reduce_shape(ori_shape,
-                                                                                 reduce_axis_index,
-                                                                                 is_reduce_last_axis)
-        reorder_ub_axis = ori_to_reorder_axis_map.get(ori_ub_axis)
+        self._sch.set_constraint(ub_split_inner <= self._available_size)
+
+        reduce_reorder_shape, _, ori_to_reorder_axis_map = _reorder_reduce_shape(
+            self._res_tensor.shape, self._norm_info.reduce_axis_indices, self._norm_info.is_reduce_last_axis
+        )
+        reorder_ub_axis = ori_to_reorder_axis_map.get(self._tiling_case.ub_split_axis_index)
         shape_in_ub = ub_split_inner
-        self._sch.set_constraint(ub_split_inner <= self._graph_info.workspace_available_ub_size)
         for i in range(reorder_ub_axis + 1, len(reduce_reorder_shape)):
             shape_in_ub *= reduce_reorder_shape[i]
-            self._sch.set_constraint(reduce_reorder_shape[i] <= self._graph_info.workspace_available_ub_size)
+            self._sch.set_constraint(reduce_reorder_shape[i] <= self._available_size)
         if self._is_last_common_axis_split_block:
             blk_split_inner = self._block_split_result.get(self._res_tensor).get("factor")
             shape_in_ub = shape_in_ub // reduce_reorder_shape[-1] * blk_split_inner
-            self._sch.set_constraint(blk_split_inner <= self._graph_info.workspace_available_ub_size)
+            self._sch.set_constraint(blk_split_inner <= self._available_size)
 
-        self._sch.set_constraint(shape_in_ub <= self._graph_info.workspace_available_ub_size)
+        self._sch.set_constraint(shape_in_ub <= self._available_size)
 
     def _calc_compute_at(self):
         def __get_compute_at_workspace_ub_tensor(_ori_compute_at_tensor):
@@ -1662,7 +1709,7 @@ class NormWorkspaceSchedule:
                     local_compute_at_tensor = __get_compute_at_workspace_ub_tensor(local_compute_at_tensor)
                     # compute at tensor is reduce output tensor
                     local_compute_at_tensor = self._get_reduce_tensor_cache_write_buffer(local_compute_at_tensor)
-                    if workspace_tensor in special_after_reduce_tensor_set:
+                    if workspace_tensor in self._compute_at_block_out_tensor_set:
                         __handle_special_after_reduce_tensor(reread_workspace_ub_tensor, local_compute_at_tensor)
                     else:
                         self._compute_at_map[reread_workspace_ub_tensor] =\
@@ -1685,10 +1732,11 @@ class NormWorkspaceSchedule:
                     else:
                         self._compute_root_tensors.add(workspace_ub_tensor)
 
-        # need compute at block outer
-        special_after_reduce_tensor_set = (self._graph_info.reduce_fork_tensor_set |
-                                           self._graph_info.after_mid_out_and_before_broadcast_tensor_set |
-                                           self._graph_info.before_mid_out_and_after_reduce_tensor_set)
+                # workspace compute at block inner
+                if self._is_workspace_compute_at_res:
+                    if self._res_tensor in self._block_split_result:
+                        self._compute_at_map[workspace_tensor] =\
+                            [self._res_tensor, self._block_split_result.get(self._res_tensor).get("inner_itervar")]
 
         for single_tensor in self._mid_tensor_set - self._compute_inline_tensors - self._workspace_tensor_set:
             for sub_graph_split_tensor, sub_graph_map in self._split_tensor_and_sub_graph_map.items():
@@ -1696,7 +1744,7 @@ class NormWorkspaceSchedule:
                 if single_tensor in sub_tensor_list and single_tensor != sub_graph_split_tensor:
                     compute_at_tensor = __get_compute_at_workspace_ub_tensor(sub_graph_split_tensor)
                     compute_at_tensor = self._get_reduce_tensor_cache_write_buffer(compute_at_tensor)
-                    if single_tensor in special_after_reduce_tensor_set:
+                    if single_tensor in self._compute_at_block_out_tensor_set:
                         __handle_special_after_reduce_tensor(single_tensor, compute_at_tensor)
                         continue
                     if single_tensor in self._graph_info.reduce_tensor_set:
@@ -1710,7 +1758,7 @@ class NormWorkspaceSchedule:
             ori_compute_at_tensor = list(tensor_map.values())[0]
             compute_at_tensor = __get_compute_at_workspace_ub_tensor(ori_compute_at_tensor)
             compute_at_tensor = self._get_reduce_tensor_cache_write_buffer(compute_at_tensor)
-            if ori_tensor in special_after_reduce_tensor_set:
+            if ori_tensor in self._compute_at_block_out_tensor_set:
                 __handle_special_after_reduce_tensor(single_tensor, compute_at_tensor)
                 continue
             self._compute_at_map[single_tensor] = [compute_at_tensor,
@@ -1721,7 +1769,7 @@ class NormWorkspaceSchedule:
             ori_compute_at_tensor = list(tensor_map.values())[0]
             compute_at_tensor = __get_compute_at_workspace_ub_tensor(ori_compute_at_tensor)
             compute_at_tensor = self._get_reduce_tensor_cache_write_buffer(compute_at_tensor)
-            if ori_tensor in special_after_reduce_tensor_set:
+            if ori_tensor in self._compute_at_block_out_tensor_set:
                 __handle_special_after_reduce_tensor(single_tensor, compute_at_tensor)
                 continue
             if ori_tensor in self._graph_info.reduce_tensor_set:
@@ -1736,7 +1784,7 @@ class NormWorkspaceSchedule:
             ori_compute_at_tensor = list(tensor_map.values())[0]
             compute_at_tensor = __get_compute_at_workspace_ub_tensor(ori_compute_at_tensor)
             compute_at_tensor = self._get_reduce_tensor_cache_write_buffer(compute_at_tensor)
-            if ori_tensor in special_after_reduce_tensor_set:
+            if ori_tensor in self._compute_at_block_out_tensor_set:
                 __handle_special_after_reduce_tensor(single_tensor, compute_at_tensor)
                 continue
             self._compute_at_map[single_tensor] = [compute_at_tensor,
@@ -1752,7 +1800,64 @@ class NormWorkspaceSchedule:
         for single_tensor in self._compute_root_tensors:
             self._sch[single_tensor].compute_root()
 
+    def _do_double_buffer(self):
+        if not self._tiling_case.is_enable_db:
+            return
+
+        db_tensors = (
+            self._mid_tensor_set - self._compute_inline_tensors -
+            self._workspace_tensor_set - self._graph_info.real_output_tensor_set)\
+            .union(self._cache_read_buffer_and_tensor_dual_map.keys())\
+            .union(self._cache_write_buffer_and_tensor_dual_map.keys())\
+            .union(self._cache_clone_buffer_and_tensor_dual_map.keys())
+
+        for workspace_tensor in self._workspace_tensor_set:
+            workspace_ub_tensor = self._workspace_map.get(workspace_tensor).get("ub_tensor")
+            reread_workspace_ub_tensor_map = self._workspace_map.get(workspace_tensor).get("reread_ub_tensor")
+            db_tensors.add(workspace_ub_tensor)
+            db_tensors = db_tensors.union(reread_workspace_ub_tensor_map.keys())
+
+        for single_tensor in db_tensors:
+            self._sch[single_tensor].double_buffer()
+
+        add_build_arg("double_buffer_non_reuse", True)
+
     def _calc_reused_by(self):
+        def __handle_common_set_value_tensor(ori_set_value_tensor):
+            for sub_graph_split_tensor, sub_graph_map in self._split_tensor_and_sub_graph_map.items():
+                sub_tensor_list = sub_graph_map.get("sub_tensor_list")
+                if ori_set_value_tensor not in sub_tensor_list or ori_set_value_tensor == sub_graph_split_tensor:
+                    continue
+
+                reused_tensor = list(sub_graph_map.get("sub_tensor_producers_map").get(ori_set_value_tensor))[0]
+                # if set value tensor has been cache clone:
+                # 1. ori set value tensor should reuse previous tensor
+                # 2. cache clone set value tensor should reuse previous cache clone tensor
+                if ori_set_value_tensor in self._cache_clone_tensor_and_buffer_dual_map:
+                    cache_clone_reuse_tensor = \
+                        _get_sub_dict_first_key(self._cache_clone_tensor_and_buffer_dual_map, ori_set_value_tensor)
+
+                    if reused_tensor not in self._cache_read_tensor_and_buffer_dual_map:
+                        cache_clone_reused_tensor = \
+                            _get_sub_dict_first_key(self._cache_clone_tensor_and_buffer_dual_map, reused_tensor)
+                        self._reused_map[cache_clone_reuse_tensor] = cache_clone_reused_tensor
+                        self._reused_map[ori_set_value_tensor] = reused_tensor
+                        continue
+
+                    sub_dict = self._cache_read_tensor_and_buffer_dual_map.get(reused_tensor)
+                    sub_graph_split_tensor = \
+                        _get_sub_dict_first_value(self._cache_clone_tensor_and_buffer_dual_map, ori_set_value_tensor)
+                    for cache_read_buffer in sub_dict:
+                        if sub_dict[cache_read_buffer] == sub_graph_split_tensor:
+                            self._reused_map[cache_clone_reuse_tensor] = cache_read_buffer
+                        else:
+                            self._reused_map[ori_set_value_tensor] = cache_read_buffer
+                else:
+                    if reused_tensor in self._cache_read_tensor_and_buffer_dual_map:
+                        reused_tensor = \
+                            _get_sub_dict_first_key(self._cache_read_tensor_and_buffer_dual_map, reused_tensor)
+                    self._reused_map[ori_set_value_tensor] = reused_tensor
+
         for single_tensor in self._graph_info.set_value_tensor_set:
             if single_tensor in self._graph_info.workspace_tensor_set:
                 sub_tensor_producers_map =\
@@ -1767,27 +1872,15 @@ class NormWorkspaceSchedule:
                 self._reused_map[self._workspace_map.get(single_tensor).get("ub_tensor")] = reused_tensor
                 continue
 
-            for sub_graph_split_tensor, sub_graph_map in self._split_tensor_and_sub_graph_map.items():
-                sub_tensor_list = sub_graph_map.get("sub_tensor_list")
-                if single_tensor in sub_tensor_list and single_tensor != sub_graph_split_tensor:
-                    reused_tensor = list(sub_graph_map.get("sub_tensor_producers_map").get(single_tensor))[0]
-                    if single_tensor in self._cache_clone_tensor_and_buffer_dual_map:
-                        reuse_tensor = _get_sub_dict_first_key(self._cache_clone_tensor_and_buffer_dual_map,
-                                                               single_tensor)
-                        sub_graph_split_tensor = \
-                            _get_sub_dict_first_value(self._cache_clone_tensor_and_buffer_dual_map, single_tensor)
-                        if reused_tensor in self._cache_read_tensor_and_buffer_dual_map:
-                            sub_dict = self._cache_read_tensor_and_buffer_dual_map.get(reused_tensor)
-                            for cache_read_buffer in sub_dict:
-                                if sub_dict[cache_read_buffer] == sub_graph_split_tensor:
-                                    self._reused_map[reuse_tensor] = cache_read_buffer
-                                else:
-                                    self._reused_map[single_tensor] = cache_read_buffer
-                    elif reused_tensor in self._cache_read_tensor_and_buffer_dual_map:
-                        self._reused_map[single_tensor] = \
-                            _get_sub_dict_first_key(self._cache_read_tensor_and_buffer_dual_map, single_tensor)
-                    else:
-                        self._reused_map[single_tensor] = reused_tensor
+            if single_tensor == self._res_tensor:
+                sub_tensor_producers_map =\
+                    self._split_tensor_and_sub_graph_map.get(single_tensor).get("sub_tensor_producers_map")
+                reused_tensor = list(sub_tensor_producers_map.get(single_tensor))[0]
+                reuse_tensor = _get_sub_dict_first_key(self._cache_write_tensor_and_buffer_dual_map, single_tensor)
+                self._reused_map[reuse_tensor] = reused_tensor
+                continue
+
+            __handle_common_set_value_tensor(single_tensor)
 
     def _do_reused_by(self):
         for single_tensor, reuse_tensor in self._reused_map.items():
@@ -1799,6 +1892,12 @@ class NormWorkspaceSchedule:
             self._sch[single_tensor].set_store_predicate(single_tensor.op.body[0].condition)
 
     def _calc_emit_insn(self):
+        def __reduce_tensor_process(_tensor, _ori_tensor, _emit_insn_axis):
+            attr_storage_bound_value = self._available_size * self._norm_info.max_bytes // \
+                                       DTYPE_BYTE_MAPPING.get(_ori_tensor.dtype)
+            self._emit_insn_map[_tensor] = [_emit_insn_axis, _get_insn(_ori_tensor),
+                                            {STORAGE_BOUND: attr_storage_bound_value}]
+
         def __handle_workspace_tensor():
             for workspace_tensor in self._workspace_tensor_set:
                 workspace_ub_tensor = self._workspace_map.get(workspace_tensor).get("ub_tensor")
@@ -1832,10 +1931,8 @@ class NormWorkspaceSchedule:
                     if is_align:
                         self._emit_insn_map.get(workspace_tensor).append({NO_OVERLAP: 0})
 
-                    self._emit_insn_map[workspace_ub_tensor] =\
-                        [self._ub_split_result.get(workspace_ub_tensor).get("inner_itervar"),
-                         _get_insn(workspace_tensor),
-                         {STORAGE_BOUND: self._graph_info.workspace_available_ub_size}]
+                    __reduce_tensor_process(workspace_ub_tensor, workspace_tensor,
+                                            self._ub_split_result.get(workspace_ub_tensor).get("inner_itervar"))
 
                 for reread_workspace_ub_tensor in reread_workspace_ub_tensor_map:
                     self._emit_insn_map[reread_workspace_ub_tensor] =\
@@ -1864,9 +1961,8 @@ class NormWorkspaceSchedule:
                 self._emit_insn_map[single_tensor] = [single_tensor.op.axis[0], "phony_insn"]
                 continue
             if single_tensor in self._graph_info.reduce_tensor_set:
-                self._emit_insn_map[single_tensor] = \
-                    [self._ub_split_result.get(single_tensor).get("inner_itervar"), _get_insn(single_tensor),
-                     {STORAGE_BOUND: self._graph_info.workspace_available_ub_size}]
+                __reduce_tensor_process(single_tensor, single_tensor,
+                                        self._ub_split_result.get(single_tensor).get("inner_itervar"))
                 continue
 
             self._emit_insn_map[single_tensor] = [single_tensor.op.axis[0], _get_insn(single_tensor)]
@@ -1884,9 +1980,8 @@ class NormWorkspaceSchedule:
         for single_buffer, tensor_map in self._cache_write_buffer_and_tensor_dual_map.items():
             ori_tensor = list(tensor_map.keys())[0]
             if ori_tensor in self._graph_info.reduce_tensor_set:
-                self._emit_insn_map[single_buffer] = \
-                    [self._ub_split_result.get(single_buffer).get("inner_itervar"), _get_insn(ori_tensor),
-                     {STORAGE_BOUND: self._graph_info.workspace_available_ub_size}]
+                __reduce_tensor_process(single_buffer, ori_tensor,
+                                        self._ub_split_result.get(single_buffer).get("inner_itervar"))
                 continue
             self._emit_insn_map[single_buffer] = [single_buffer.op.axis[0], _get_insn(ori_tensor)]
 

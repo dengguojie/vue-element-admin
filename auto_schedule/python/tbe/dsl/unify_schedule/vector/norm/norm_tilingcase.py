@@ -17,6 +17,7 @@
 """
 norm tilingcase
 """
+import copy
 import functools
 from typing import Any
 from typing import Callable
@@ -45,13 +46,21 @@ from tbe.tvm.tensor import Tensor
 
 from ... import util
 from ...computation import Computation
+from ...constants import BROADCAST_INSNS
 from ...constants import CompileInfo
+from ...constants import DST_SRC_NO_REUSE_SET
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import FAKE_NODE_TAG
 from ...constants import NormPattern
 from ...constants import Pattern
+from ...constants import REDUCE_INSNS
 from ...constants import SUPPORT_SCALAR_INSNS
 from ...constants import TERNARY_INSNS
+
+COMMON_MODE = "common_mode"
+PAD_MODE = "pad_mode"
+REDUCE_TRANS_MODE = "reduce_trans_mode"
+WORKSPACE_MODE = "workspace_mode"
 
 BLOCK = 16
 BLOCK_SIZE_BYTE = 32
@@ -71,7 +80,7 @@ VNCHWCONV_TEMP_SPACE_FP32 = 8192
 # number extra nodes that enable reduce transpose
 REDUCE_TRANSPOSE_EXTRA_NODES = 2
 # number extra nodes that enable align and remove pad
-ALIGN_AND_REMOVE_PAD_EXTRA_NODES = 3
+ALIGN_AND_REMOVE_PAD_EXTRA_NODES = 2
 # temp space for enable align and remove pad with avoiding bank conflict
 ALIGN_AND_REMOVE_PAD_TEMP_SPACE = 1024
 # number extra nodes that enable no overlap 3
@@ -80,6 +89,8 @@ NO_OVERLAP_THREE_EXTRA_NODES = 2
 REDUCE_TRANSPOSE_UPPER_THRESHOLD = 128
 # number extra nodes that enable broadcast not align
 NO_ALIGN_BROADCAST_EXTRA_NODES = 2
+# bytes that one repeat can process
+ONE_REPEAT_PROCESS_BYTES = 256
 
 
 DTYPE_AND_BLOCK_SIZE_MAP = {
@@ -130,18 +141,18 @@ class CalcNormTilingCase(Computation):
         outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
 
         current_compute = get_context().get_current_compute()
+        if _judge_current_compute_is_const():
+            current_compute.add("_mode", "const")
 
         # construct information of graph and add them to ComputeContext
         norm_compute_graph_info = NormComputeGraphInfo(outs)
         norm_info = NormInfo(norm_compute_graph_info)
         current_compute.add("_compute_graph_info", norm_compute_graph_info)
         current_compute.add("_norm_info", norm_info)
-        if _judge_current_compute_is_const():
-            current_compute.add("_mode", "const")
 
         tiling_case_list = []
         tiling_case_list += _add_tiling_case(norm_compute_graph_info, norm_info)
-        _apply_compile_info(norm_compute_graph_info)
+        _apply_compile_info(norm_compute_graph_info, norm_info)
         # calc tiling key
         for tiling_case in tiling_case_list:
             _calc_tiling_key(tiling_case)
@@ -207,8 +218,7 @@ def get_broadcast_axis(broadcast_tensor):
 
     broadcast_axis = []
     for idx in range(dst_shape_len):
-        if not util.expr_equal(src_shape[idx], dst_shape[idx]) or\
-                (util.expr_equal(src_shape[idx], 1) and util.expr_equal(dst_shape[idx], 1)):
+        if not util.expr_equal(src_shape[idx], dst_shape[idx]):
             broadcast_axis.append(idx)
 
     return broadcast_axis
@@ -252,11 +262,11 @@ def _traverse_tensor_list(root_tensor, visited_list, traverse_map, stop_tensor_s
         return
 
 
-def _apply_compile_info(graph_info):
+def _apply_compile_info(graph_info, norm_info):
     # common info
     core_num = get_soc_spec("CORE_NUM")
     min_block_size = get_block_size(graph_info.min_type)
-    common_info = [core_num, min_block_size, graph_info.transpose_max_entire_size]
+    common_info = [core_num, min_block_size, norm_info.transpose_max_entire_size]
     add_compile_info_inner("_common_info", common_info)
     # whether there is output after reduce
     exist_output_after_reduce = False
@@ -267,13 +277,19 @@ def _apply_compile_info(graph_info):
     # available size list of each compute, including:
     # common sch available size, workspace sch available size and aligned or removed in ub sch
     current_compute = get_context().get_current_compute()
-    current_available_ub_size_list = current_compute.get("_available_ub_size_list")
+    current_available_ub_size_list = current_compute.get("_available_ub_size_list")[:]
     current_norm_pattern = current_compute.get("_norm_pattern")
     pattern_and_available_size_map = get_compile_info().get("_available_ub_size")
     if pattern_and_available_size_map is None:
         pattern_and_available_size_map = {}
         add_compile_info_inner("_available_ub_size", pattern_and_available_size_map)
     pattern_and_available_size_map[current_norm_pattern] = current_available_ub_size_list
+
+    pattern_and_block_size_map = get_compile_info().get("_block_size")
+    if pattern_and_block_size_map is None:
+        pattern_and_block_size_map = {}
+        add_compile_info_inner("_block_size", pattern_and_block_size_map)
+    pattern_and_block_size_map[current_norm_pattern] = get_block_size(graph_info.min_type)
 
     if graph_info.exist_vc_unsupported_type:
         add_compile_info_inner("_exist_vc_unsupported_type", graph_info.exist_vc_unsupported_type)
@@ -287,9 +303,9 @@ def _calc_reduce_product(before_reduce_shape, reduce_axis, block_size):
     for reduce_idx in reduce_axis:
         reduce_dim = before_reduce_shape[reduce_idx]
         if isinstance(reduce_dim, int):
-            last_dim = (reduce_dim + block_size - 1) // block_size * block_size\
-                if reduce_idx == len(before_reduce_shape) - 1 else reduce_dim
-            reduce_product *= last_dim
+            if reduce_idx == len(before_reduce_shape) - 1:
+                reduce_dim = (reduce_dim + block_size - 1) // block_size * block_size
+            reduce_product *= reduce_dim
 
     return reduce_product
 
@@ -308,7 +324,6 @@ def _enable_align_and_remove_pad(is_continuous_pattern, pad_shape, reduce_axis,
     # there are several common axis(current do not support AARR...)
     if len(pad_shape) - len(reduce_axis) > 1:
         return False
-
 
     reduce_product = _calc_reduce_product(pad_shape, reduce_axis, block_size)
     if reduce_product > ub_size:
@@ -382,8 +397,11 @@ def _enable_reduce_transpose(shape, reduce_axis, block_size, ub_size, entire_siz
     if isinstance(shape[-1], int):
         if shape[-1] > threshold_dim_size:
             return False
-        if shape[-1] > REDUCE_TRANSPOSE_UPPER_THRESHOLD or shape[-1] % block_size == 0:
+        if shape[-1] > REDUCE_TRANSPOSE_UPPER_THRESHOLD:
             return False
+        if not exist_vc_unsupported_type:
+            if shape[-1] % block_size == 0:
+                return False
 
     last_dim_lower_bound = util.get_bound(shape[-1])[0]
     if last_dim_lower_bound > last_dim_lower_bound or last_dim_lower_bound > REDUCE_TRANSPOSE_UPPER_THRESHOLD:
@@ -422,7 +440,7 @@ def _add_tiling_case(norm_graph_info, norm_info):
             tiling_case_list.append(_tiling_case)
         # normal sch, dont split block and ub
         # product of known reduce dims is not greater than ub available size
-        if reduce_product <= norm_graph_info.available_ub_size:
+        if reduce_product <= norm_info.available_ub_size:
             _tiling_case = NormTilingCase()
             _tiling_case.multi_core = False
             tiling_case_list.append(_tiling_case)
@@ -437,7 +455,7 @@ def _add_tiling_case(norm_graph_info, norm_info):
         tiling_case_list.append(_tiling_case)
 
     def __add_last_reduce_align_case():
-        if reduce_product > norm_graph_info.available_ub_size:
+        if reduce_product > norm_info.available_ub_size:
             return
         if norm_info.is_all_reduce:
             _tiling_case = NormTilingCase()
@@ -460,12 +478,13 @@ def _add_tiling_case(norm_graph_info, norm_info):
                     _tiling_case.is_last_reduce_align_case = True
                     tiling_case_list.append(_tiling_case)
 
-    def __add_reduce_transpose_tiling_case():
+    def __add_reduce_transpose_tiling_case(_is_align=False):
         _tiling_case = NormTilingCase()
         _tiling_case.block_split_axis_index = 0
         _tiling_case.ub_split_axis_index = 0
         _tiling_case.multi_core = True
         _tiling_case.is_reduce_transpose_case = True
+        _tiling_case.is_last_reduce_align_case = _is_align
         tiling_case_list.append(_tiling_case)
 
     shape_before_reduce = util.shape_to_list(norm_info.shape_before_reduce)
@@ -481,7 +500,7 @@ def _add_tiling_case(norm_graph_info, norm_info):
         for ub_split_axis in range(len(shape_before_reduce)):
             # ub tiling axis is after block tiling axis if ub tiling split normal axis
             illegal_normal_case = ub_split_axis not in reduce_axis_index and \
-                (ub_split_axis < block_split_axis or reduce_product > norm_graph_info.available_ub_size)
+                (ub_split_axis < block_split_axis or reduce_product > norm_info.available_ub_size)
             if illegal_normal_case:
                 continue
             # last reduce and reduce dim is 1 don't need workspace sch that ub split last dim
@@ -513,8 +532,8 @@ def _add_tiling_case(norm_graph_info, norm_info):
     # 4. num of not_1 axes in ub must greater than or equal to 2
     if _enable_align_and_remove_pad(norm_info.is_continuous_data_move, shape_before_reduce,
                                     reduce_axis_index, block_size,
-                                    norm_graph_info.pad_available_ub_size,
-                                    norm_graph_info.transpose_max_entire_size):
+                                    norm_info.pad_available_ub_size,
+                                    norm_info.transpose_max_entire_size):
         __add_aligned_in_ub_tiling_case()
 
     # enable last reduce align sch
@@ -528,10 +547,14 @@ def _add_tiling_case(norm_graph_info, norm_info):
     # 2. last axis * entire_size is less than or equal to ub tensor size
     # 3. num of not_1 axes in ub must greater than or equal to 2
     if _enable_reduce_transpose(shape_before_reduce, reduce_axis_index, block_size,
-                                norm_graph_info.reduce_transpose_available_ub_size,
-                                norm_graph_info.transpose_max_entire_size,
+                                norm_info.reduce_transpose_available_ub_size,
+                                norm_info.transpose_max_entire_size,
                                 norm_graph_info.exist_vc_unsupported_type):
         __add_reduce_transpose_tiling_case()
+        _enable_align_reduce_transpose = norm_graph_info.exist_vc_unsupported_type and \
+            not (isinstance(shape_before_reduce[-1], int) and shape_before_reduce[-1] % block_size != 0)
+        if _enable_align_reduce_transpose:
+            __add_reduce_transpose_tiling_case(_is_align=True)
 
     return tiling_case_list
 
@@ -553,7 +576,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
     def __select_tiling_format():
         if norm_info.is_all_reduce:
             # all reduce but reduce product can be put in ub, normal sch
-            if before_reduce_product <= graph_info.available_ub_size:
+            if before_reduce_product <= norm_info.available_ub_size:
                 _tiling_format = {}
             # workspace sch
             else:
@@ -627,44 +650,59 @@ def _gen_const_tiling_case(norm_info, graph_info):
 
     def __enable_double_buffer():
         # const enable db:
-        # 1. multi reduce but not partial_reorder
-        # 2. don't have after reduce output
-        # 3. don't exist fake node
-        if graph_info.endpoint_output_tensor.op.tag == FAKE_NODE_TAG:
-            return False
-        if not norm_info.is_discontinuous_reduce_axis:
+        # 1. don't have reduce fork or broadcast fork or after reduce mid_output
+        # 2. isn't partial reorder case
+        # 3. is multi reduce or need workpace or nlast reduce or align
+        # 4. cannot use reduce transpose
+        has_fork = graph_info.broadcast_fork_tensor_set or graph_info.special_after_reduce_tensor_set
+        if has_fork:
             return False
         if const_tiling_case.is_partial_reorder_case:
             return False
-        _compile_info = get_compile_info()
-        if _compile_info.get("_exist_output_after_reduce"):
+        last_and_continuous_reduce = norm_info.is_reduce_last_axis and not norm_info.is_discontinuous_reduce_axis
+        no_workspace_and_not_align = not need_workspace and before_reduce_shape[-1] % block_size != 0
+        if last_and_continuous_reduce and no_workspace_and_not_align:
+            return False
+        # use reduce transpose
+        if graph_info.exist_vc_unsupported_type and before_reduce_shape[-1] <= REDUCE_TRANSPOSE_UPPER_THRESHOLD:
             return False
 
+        _compile_info = get_compile_info()
         _current_norm_pattern = get_context().get_current_compute().get("_norm_pattern")
         _available_ub_list = _compile_info.get("_available_ub_size").get(_current_norm_pattern)
-        _available_ub_list[0] = graph_info.const_db_size
+        _available_ub_list[0] = norm_info.const_common_db_size
+        _available_ub_list[1] = norm_info.const_workspace_db_size
 
         return True
 
     def __rollback_double_buffer(_ori_tiling_data, _ori_run_info):
         # in some cases, double buffer should not enable
-        # 1. ub split r axis
-        # 2. ub factor is 1
+        # 1. don't split block or ub
+        # 2. ub split r axis but dont need workspace when disable db
+        # 3. ub outer is 1
+        _block_index = const_tiling_case.block_split_axis_index
+        _ub_index = const_tiling_case.ub_split_axis_index
         _need_rollback_double_buffer = False
-        if const_tiling_case.ub_split_axis_index in reduce_axis_index:
+    
+        if _block_index is None or _ub_index is None:
             _need_rollback_double_buffer = True
-        if const_tiling_case.ub_factor == 1:
-            _need_rollback_double_buffer = True
+        else:
+            if not need_workspace and _ub_index in reduce_axis_index:
+                _need_rollback_double_buffer = True
+            _ub_dim = before_reduce_shape[_ub_index] if _block_index != _ub_index else const_tiling_case.block_factor
+            if _ub_dim // const_tiling_case.ub_factor == 1:
+                _need_rollback_double_buffer = True
 
         if not _need_rollback_double_buffer:
             return _ori_tiling_data, _ori_run_info
 
         const_tiling_case.is_enable_db = False
         _compile_info = get_compile_info()
-        _current_norm_pattern = get_context().get_current_compute().get("_norm_pattern")
-        _available_ub_list = _compile_info.get("_available_ub_size").get(_current_norm_pattern)
-        _ori_ub_size = get_context().get_current_compute().get("_available_ub_size_list")[0]
-        _available_ub_list[0] = _ori_ub_size
+        _current_compute = get_context().get_current_compute()
+        _cur_ub_list = _compile_info.get("_available_ub_size").get(_current_compute.get("_norm_pattern"))
+        _ori_ub_size_list = get_context().get_current_compute().get("_available_ub_size_list")
+        _cur_ub_list[0] = _ori_ub_size_list[0]
+        _cur_ub_list[1] = _ori_ub_size_list[1]
 
         return __obtain_tiling_data_and_run_info()
 
@@ -703,6 +741,8 @@ def _gen_const_tiling_case(norm_info, graph_info):
     outputs = []
     __construct_inputs_and_outputs()
 
+    need_workspace = \
+        _calc_reduce_product(before_reduce_align_shape, reduce_axis_index, block_size) > norm_info.available_ub_size
     const_tiling_case.is_enable_db = __enable_double_buffer()
     # invoke op_tiling interface and decode
     tiling_data, run_info = __obtain_tiling_data_and_run_info()
@@ -713,8 +753,8 @@ def _gen_const_tiling_case(norm_info, graph_info):
     # 2. last axis * entire_size is less than or equal to ub tensor size
     # 3. num of not_1 axes in ub must greater than or equal to 2
     const_tiling_case.is_reduce_transpose_case = _enable_reduce_transpose(
-        before_reduce_shape, reduce_axis_index, block_size, graph_info.reduce_transpose_available_ub_size,
-        graph_info.transpose_max_entire_size, graph_info.exist_vc_unsupported_type, const_tiling_case.ub_factor)
+        before_reduce_shape, reduce_axis_index, block_size, norm_info.reduce_transpose_available_ub_size,
+        norm_info.transpose_max_entire_size, graph_info.exist_vc_unsupported_type, const_tiling_case.ub_factor)
     # cases that const can enable align and remove pad sch:
     # 1. AR pattern
     # 2. last axis is not align
@@ -723,12 +763,12 @@ def _gen_const_tiling_case(norm_info, graph_info):
     # 5. ub_factor is not equal to 1
     const_tiling_case.is_aligned_in_ub_case = not const_tiling_case.is_reduce_transpose_case and \
         _enable_align_and_remove_pad(norm_info.is_continuous_data_move, before_reduce_shape,
-                                     reduce_axis_index, block_size, graph_info.pad_available_ub_size,
-                                     graph_info.transpose_max_entire_size, const_tiling_case.ub_factor)
+                                     reduce_axis_index, block_size, norm_info.pad_available_ub_size,
+                                     norm_info.transpose_max_entire_size, const_tiling_case.ub_factor)
     # cases that const can enable last reduce align sch
     # 1. last reduce
     # 2. last axis is align
-    const_tiling_case.is_last_reduce_align_case = not const_tiling_case.is_reduce_transpose_case and \
+    const_tiling_case.is_last_reduce_align_case = \
         _enable_last_reduce_align(norm_info.is_reduce_last_axis, before_reduce_shape, block_size)
     const_tiling_case.tiling_key = current_compute.get("_norm_pattern")
 
@@ -763,7 +803,9 @@ def _calc_tiling_key(tiling_case):
 
     db = 0
     sch_type = 0
-    if tiling_case.is_partial_reorder_case:
+    if tiling_case.is_last_reduce_align_case and tiling_case.is_reduce_transpose_case:
+        sch_type = 5
+    elif tiling_case.is_partial_reorder_case:
         sch_type = 1
     elif tiling_case.is_aligned_in_ub_case:
         sch_type = 2
@@ -958,7 +1000,6 @@ class NormComputeGraphInfo:
         """
         Initialize containers and try to collect info
         """
-        self.soc_ub_size = get_soc_spec("UB_SIZE")
         self.output_tensor_set: Optional[Set[Tensor]] = None
         # real_output_tensor_set: output set doesn't contain fake_node
         self.real_output_tensor_set: Optional[Set[Tensor]] = None
@@ -985,11 +1026,11 @@ class NormComputeGraphInfo:
         self.cache_clone_tensor_list: List[Tensor] = []
         self.cache_clone_tensor_and_num_path_map: Dict[Tensor, int] = {}
         # extra workspace tensor and its info
-        self.workspace_info_map: Dict[Tensor, Dict] = {}
         self.workspace_tensor_and_sub_graph_map: Dict[Tensor, Dict] = {}
         # extra split tensor and its sub_graph
         self.split_tensor_and_sub_graph_map: Dict[Tensor, Dict] = {}
         # special tensors
+        self.special_after_reduce_tensor_set: Set[Tensor] = set()
         self.broadcast_fork_tensor_set: Set[Tensor] = set()
         self.reduce_fork_tensor_set: Set[Tensor] = set()
         self.after_mid_out_and_before_broadcast_tensor_set: Set[Tensor] = set()
@@ -1003,15 +1044,6 @@ class NormComputeGraphInfo:
         # max type and min type in graph
         self.max_type: Optional[str] = None
         self.min_type: Optional[str] = None
-        # ub size
-        self.temp_ub_size = 0
-        self.broadcast_temp_size = 0
-        self.available_ub_size = 0
-        self.workspace_available_ub_size = 0
-        self.pad_available_ub_size = 0
-        self.reduce_transpose_available_ub_size = 0
-        self.transpose_max_entire_size = 0
-        self.const_db_size = 0
         # exist vc unsupported type flag
         self.exist_vc_unsupported_type = False
         # do info collection
@@ -1021,7 +1053,6 @@ class NormComputeGraphInfo:
         self.get_tensors_in_fork()
         self.get_mid_out_special_tensors()
         self.find_workspace_tensor()
-        self.calc_coexisting_quantities_and_temp_buffer_size()
         self.is_exist_vc_unsupported_type()
 
     def collect_info(self, output_tensors: Iterable[Tensor]):
@@ -1220,15 +1251,13 @@ class NormComputeGraphInfo:
             # visited tensor cannot include reduce tensor
             if visited_set & self.reduce_tensor_set:
                 continue
-
-            for single_tensor in visited_set:
-                self.broadcast_fork_tensor_set.add(single_tensor)
+            self.broadcast_fork_tensor_set.update(visited_set)
         # output reduce fork tensor
         for out_tensor in self.real_pure_output_tensor_set & self.after_reduce_tensor_set:
             visited_set = set()
             _traverse_tensor_set(out_tensor, visited_set, self.tensor_producers_map, self.reduce_tensor_set)
-            for single_tensor in visited_set:
-                self.reduce_fork_tensor_set.add(single_tensor)
+            self.reduce_fork_tensor_set.update(visited_set)
+        self.special_after_reduce_tensor_set.update(self.reduce_fork_tensor_set)
 
     def get_mid_out_special_tensors(self):
         """
@@ -1240,14 +1269,13 @@ class NormComputeGraphInfo:
                 after_visited_set = set()
                 _traverse_tensor_set(mid_output, after_visited_set, self.tensor_consumers_map,
                                      self.broadcast_tensor_set)
-                for single_tensor in after_visited_set - self.broadcast_tensor_set:
-                    self.after_mid_out_and_before_broadcast_tensor_set.add(single_tensor)
+                self.after_mid_out_and_before_broadcast_tensor_set.update(
+                    after_visited_set - self.broadcast_tensor_set)
                 # before mid output tensor and after reduce
                 before_visited_set = set()
                 _traverse_tensor_set(mid_output, before_visited_set, self.tensor_producers_map,
                                      self.reduce_tensor_set)
-                for single_tensor in before_visited_set:
-                    self.before_mid_out_and_after_reduce_tensor_set.add(single_tensor)
+                self.before_mid_out_and_after_reduce_tensor_set.update(before_visited_set)
             if "elewise_single_cast" in mid_output.op.tag:
                 # mid_output tensor is fp32->fp16
                 # its consumer tensor is fp16->fp32
@@ -1263,6 +1291,10 @@ class NormComputeGraphInfo:
                     producer_tensor.dtype == "float32"
                 if find_special_cast_tensor:
                     self.special_cast_tensor_and_ori_tensor_map[consumer_tensor] = producer_tensor
+
+        self.special_after_reduce_tensor_set.update(
+            self.after_mid_out_and_before_broadcast_tensor_set | self.before_mid_out_and_after_reduce_tensor_set
+        )
 
     def find_workspace_tensor(self):
         """
@@ -1383,317 +1415,11 @@ class NormComputeGraphInfo:
         if not self.real_pure_output_tensor_set & last_sub_tensor_set == self.real_pure_output_tensor_set:
             raise_error("norm schedule does not support output fork now")
 
-    def calc_coexisting_quantities_and_temp_buffer_size(self):
-        """
-        calculate the number of coexisting quantities and temp buffer size
-        """
-        def _correct_ub_size_by_cmp_sel(_tensor):
-            if util.is_vcmp_insn(_tensor):
-                self.temp_ub_size += BLOCK_SIZE_BYTE * (VCMP_INPUT_NUMBER - len(_tensor.op.input_tensors))
-            if util.is_vsel_insn(_tensor):
-                self.temp_ub_size += BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
-                if util.is_v200() and (VSEL_INPUT_NUMBER == len(_tensor.op.input_tensors)):
-                    self.temp_ub_size += BLOCK_SIZE_BYTE
-            if util.is_vcmpsel_insn(_tensor):
-                self.temp_ub_size += BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
-
-        def _correct_ub_size_by_reduce(_tensor):
-            tag = _tensor.op.tag
-            dtype = _tensor.dtype
-
-            def _reduce_sum_space():
-                if all_axes[-1] not in reduce_axes:
-                    self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
-                else:
-                    if len(reduce_axes) == 1:
-                        self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
-                    # rfactor
-                    else:
-                        self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE + COMMON_REDUCE_TEMP_SPACE
-
-            def _reduce_max_space():
-                if dtype in ["float32", "int32"]:
-                    if all_axes[-1] not in reduce_axes:
-                        self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
-                    else:
-                        if len(reduce_axes) == 1:
-                            self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE + BLOCK_SIZE_BYTE + BLOCK_SIZE_BYTE
-                        # rfactor
-                        else:
-                            self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE + BLOCK_SIZE_BYTE + \
-                                BLOCK_SIZE_BYTE + COMMON_REDUCE_TEMP_SPACE
-                elif dtype in ["float16", ]:
-                    if all_axes[-1] not in reduce_axes:
-                        self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
-                    else:
-                        if len(reduce_axes) == 1:
-                            self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
-                        # rfactor
-                        else:
-                            self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE + COMMON_REDUCE_TEMP_SPACE
-                else:
-                    raise RuntimeError("Not support dtype in reduce_max(min) is %s" % dtype)
-
-            def _reduce_prod_space():
-                if all_axes[-1] not in reduce_axes:
-                    self.temp_ub_size += 64
-                else:
-                    self.temp_ub_size += 512
-
-            if tag.find("reduce") != -1:
-                reduce_axes = util.get_reduce_axes(_tensor)
-                all_axes = util.get_reduce_all_axes(_tensor)
-                if tag in ["reduce_sum"]:
-                    _reduce_sum_space()
-                elif tag in ["reduce_max", "reduce_min"]:
-                    _reduce_max_space()
-                elif tag in ["reduce_prod"]:
-                    _reduce_prod_space()
-                else:
-                    raise RuntimeError("Unknown reduce_insn is %s" % tag)
-
-        def _calc_current_coexist_node(_tensor, _is_workspace=False, _is_pad=False, _is_reduce_transpose=False):
-            def __handle_input_and_output(__current_coexist_node):
-                if _is_reduce_transpose:
-                    pass
-                elif _is_pad:
-                    if _tensor in self.input_tensor_set:
-                        __current_coexist_node += ALIGN_AND_REMOVE_PAD_EXTRA_NODES
-                    if _tensor in self.real_output_tensor_set:
-                        # the space that remove pad buffer need
-                        _pad_space = __current_coexist_node + ALIGN_AND_REMOVE_PAD_EXTRA_NODES -\
-                            len(self.tensor_producers_map.get(_tensor))
-                        __current_coexist_node = max(__current_coexist_node, _pad_space)
-                else:
-                    if _tensor in self.real_output_tensor_set:
-                        # the space that enable no_overlap 3 need
-                        _no_overlap_three_space = __current_coexist_node + NO_OVERLAP_THREE_EXTRA_NODES -\
-                            len(self.tensor_producers_map.get(_tensor))
-                        __current_coexist_node = max(__current_coexist_node, _no_overlap_three_space)
-
-                return __current_coexist_node
-
-            def __handle_reduce(__current_coexist_node):
-                if _is_reduce_transpose:
-                    __current_coexist_node += REDUCE_TRANSPOSE_EXTRA_NODES
-                elif "reduce_max" in _tensor.op.tag and _tensor.dtype == "float16":
-                    __current_coexist_node += 1
-
-                return __current_coexist_node
-
-            def __handle_unified_broadcast(__current_coexist_node):
-                __broadcast_axis = get_broadcast_axis(_tensor)
-                __broadcast_num = len(__broadcast_axis)
-                __tensor_shape = util.shape_to_list(_tensor.shape)
-                __is_last_broadcast = len(__tensor_shape) - 1 in __broadcast_axis
-                __last_dim_is_align = isinstance(__tensor_shape[-1], int) and \
-                    __tensor_shape[-1] % get_block_size(self.min_type) == 0
-
-                if _is_reduce_transpose and not __last_dim_is_align:
-                    if __broadcast_num == 1:
-                        __current_coexist_node += NO_ALIGN_BROADCAST_EXTRA_NODES
-                    elif __broadcast_num > 1:
-                        __current_coexist_node += 1
-
-                    return __current_coexist_node
-
-                if _is_workspace and __broadcast_num > 1:
-                    __current_coexist_node += 1
-
-                    return __current_coexist_node
-
-                __is_enable_vnchwconv_fp16 = _tensor.dtype == "float16" and __is_last_broadcast
-                __is_enable_vnchwconv_fp32 = _tensor.dtype == "float32" and __is_last_broadcast and __broadcast_num == 1
-                if __is_enable_vnchwconv_fp16:
-                    __current_coexist_node += 1
-                    self.broadcast_temp_size = max(VNCHWCONV_TEMP_SPACE_FP16 + BLOCK_SIZE_BYTE,
-                                                   self.broadcast_temp_size)
-                elif __is_enable_vnchwconv_fp32:
-                    self.broadcast_temp_size = max(VNCHWCONV_TEMP_SPACE_FP32 + BLOCK_SIZE_BYTE,
-                                                   self.broadcast_temp_size)
-                elif __broadcast_num > 1:
-                    __current_coexist_node += 1
-
-                return __current_coexist_node
-
-            # one of the input of the ternary instruction must be reused with the output
-            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
-                _current_coexist_node = len(dependent_map)
-            else:
-                _current_coexist_node = len(dependent_map) + 1
-
-            if util.need_extent_node(_tensor):
-                _current_coexist_node += 1
-
-            if util.need_temp_space(_tensor) or _need_external_space(_tensor):
-                self.temp_ub_size += BLOCK_SIZE_BYTE
-
-            if _tensor in self.before_reduce_tensor_set:
-                _current_coexist_node = __handle_input_and_output(_current_coexist_node)
-
-            if _tensor in self.reduce_tensor_set:
-                _current_coexist_node = __handle_reduce(_current_coexist_node)
-
-            if util.is_unified_broadcast(_tensor):
-                _current_coexist_node = __handle_unified_broadcast(_current_coexist_node)
-
-            return _current_coexist_node
-
-        def _r_coexisting(_tensor, _producer_map, _consumer_map, _is_workspace=False, _is_pad=False,
-                          _is_reduce_transpose=False):
-            if _tensor in dependent_map:
-                return len(dependent_map)
-            _coexist_node_list = []
-            for _tensor_i in _producer_map.get(_tensor):
-                _coexist_node_list.append(_r_coexisting(_tensor_i, _producer_map, _consumer_map,
-                                                        _is_workspace, _is_pad, _is_reduce_transpose))
-
-            _current_coexist_node = _calc_current_coexist_node(_tensor, _is_workspace=_is_workspace, _is_pad=_is_pad,
-                                                               _is_reduce_transpose=_is_reduce_transpose)
-
-            # correct ub size in vcmp or vsel or vcmpsel
-            _correct_ub_size_by_cmp_sel(_tensor)
-            # correct ub size in reduce
-            _correct_ub_size_by_reduce(_tensor)
-
-            _coexist_node_list.append(_current_coexist_node)
-            _refresh_dependent(_tensor, _producer_map)
-            if _tensor not in dependent_map:
-                dependent_map[_tensor] = _consumer_map.get(_tensor).copy()
-
-            return max(_coexist_node_list)
-
-        def _refresh_dependent(_tensor, _producer_map):
-            for _tensor_i in _producer_map.get(_tensor):
-                if _tensor_i not in dependent_map:
-                    continue
-                dependent_map.get(_tensor_i).remove(_tensor)
-                if not dependent_map.get(_tensor_i):
-                    dependent_map.pop(_tensor_i)
-
-        def _need_external_space(_tensor):
-            op_tag = util.get_dsl_insn(_tensor)
-            support_vector_scalar_insns = ("elewise_binary_add", "elewise_binary_mul")
-            if op_tag in set(SUPPORT_SCALAR_INSNS) - set(support_vector_scalar_insns):
-                return True
-
-            if util.is_v100() and op_tag in support_vector_scalar_insns and _tensor.dtype == "int32":
-                return True
-
-        def _refine_coexisting_quantity(_coexisting_quantity, _workspace_tensor):
-            sub_tensor_list = self.workspace_tensor_and_sub_graph_map.get(_workspace_tensor).get("sub_tensor_list")
-            for reduce_tensor in self.reduce_tensor_set:
-                if reduce_tensor in sub_tensor_list:
-                    _coexisting_quantity += 1
-
-            return _coexisting_quantity
-
-        _out = self.endpoint_output_tensor
-        self.transpose_max_entire_size = max(get_transpose_entire_size(self.min_type) *
-                                             DTYPE_BYTE_MAPPING.get(self.min_type) //
-                                             DTYPE_BYTE_MAPPING.get(self.max_type),
-                                             get_transpose_entire_size(self.max_type))
-        # common sch
-        coexisting_quantities = []
-        dependent_map = {}
-        for tensor_i in self.tensor_producers_map.get(_out):
-            coexisting_quantities.append(_r_coexisting(tensor_i, self.tensor_producers_map,
-                                                       self.tensor_consumers_map))
-        if not _out.op.tag == FAKE_NODE_TAG:
-            _local_current_coexist_node = _calc_current_coexist_node(_out)
-            # correct ub size in vcmp or vsel or vcmpsel
-            _correct_ub_size_by_cmp_sel(_out)
-            # correct ub size in reduce
-            _correct_ub_size_by_reduce(_out)
-            coexisting_quantities.append(_local_current_coexist_node)
-        tensor_space = (self.soc_ub_size - self.temp_ub_size - self.broadcast_temp_size) // max(coexisting_quantities)
-        self.available_ub_size =\
-            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
-        const_db_tensor_space =\
-            (self.soc_ub_size // 2 - self.temp_ub_size - self.broadcast_temp_size) // max(coexisting_quantities)
-        self.const_db_size =\
-            const_db_tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
-
-        # align and remove pad sch
-        coexisting_quantities = []
-        dependent_map = {}
-        self.temp_ub_size = 0
-        self.broadcast_temp_size = 0
-        for tensor_i in self.tensor_producers_map.get(_out):
-            coexisting_quantities.append(_r_coexisting(tensor_i, self.tensor_producers_map, self.tensor_consumers_map,
-                                                       _is_pad=True))
-        if not _out.op.tag == FAKE_NODE_TAG:
-            _local_current_coexist_node = _calc_current_coexist_node(_out, _is_pad=True)
-            # correct ub size in vcmp or vsel or vcmpsel
-            _correct_ub_size_by_cmp_sel(_out)
-            # correct ub size in reduce
-            _correct_ub_size_by_reduce(_out)
-            coexisting_quantities.append(_local_current_coexist_node)
-        tensor_space = (self.soc_ub_size - self.temp_ub_size - self.broadcast_temp_size -
-                        ALIGN_AND_REMOVE_PAD_TEMP_SPACE) // max(coexisting_quantities)
-        self.pad_available_ub_size =\
-            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
-
-        # reduce transpose sch
-        coexisting_quantities = []
-        dependent_map = {}
-        self.temp_ub_size = 0
-        self.broadcast_temp_size = 0
-        for tensor_i in self.tensor_producers_map.get(_out):
-            coexisting_quantities.append(_r_coexisting(tensor_i, self.tensor_producers_map, self.tensor_consumers_map,
-                                                       _is_reduce_transpose=True))
-        if not _out.op.tag == FAKE_NODE_TAG:
-            _local_current_coexist_node = _calc_current_coexist_node(_out, _is_reduce_transpose=True)
-            # correct ub size in vcmp or vsel or vcmpsel
-            _correct_ub_size_by_cmp_sel(_out)
-            # correct ub size in reduce
-            _correct_ub_size_by_reduce(_out)
-            coexisting_quantities.append(_local_current_coexist_node)
-        tensor_space = (self.soc_ub_size - self.temp_ub_size - self.broadcast_temp_size) // max(coexisting_quantities)
-        self.reduce_transpose_available_ub_size =\
-            tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
-
-        # workspace sch
-        # calculate the number of coexisting quantities and available ub size of sub graph
-        for workspace_tensor in self.workspace_tensor_and_sub_graph_map:
-            sub_tensor_producers_map = \
-                self.workspace_tensor_and_sub_graph_map.get(workspace_tensor).get("sub_tensor_producers_map")
-            sub_tensor_consumers_map = \
-                self.workspace_tensor_and_sub_graph_map.get(workspace_tensor).get("sub_tensor_consumers_map")
-            coexisting_quantities = []
-            dependent_map = {}
-            self.temp_ub_size = 0
-            for tensor_i in sub_tensor_producers_map.get(workspace_tensor):
-                coexisting_quantities.append(_r_coexisting(tensor_i, sub_tensor_producers_map,
-                                                           sub_tensor_consumers_map, _is_workspace=True))
-            _local_current_coexist_node = _calc_current_coexist_node(workspace_tensor, _is_workspace=True)
-            _correct_ub_size_by_cmp_sel(workspace_tensor)
-            _correct_ub_size_by_reduce(workspace_tensor)
-            coexisting_quantities.append(_local_current_coexist_node)
-            coexisting_quantity = _refine_coexisting_quantity(max(coexisting_quantities), workspace_tensor)
-            if coexisting_quantity == 1:
-                self.temp_ub_size += BLOCK_SIZE_BYTE
-            self.workspace_info_map[workspace_tensor] = {
-                "temp_ub_size": self.temp_ub_size,
-                "coexisting_quantity": coexisting_quantity
-            }
-        sub_graph_available_ub_size_list = []
-        for tensor in self.workspace_info_map:
-            local_ub_size = self.soc_ub_size - self.workspace_info_map.get(tensor).get("temp_ub_size")
-            tensor_space = local_ub_size // self.workspace_info_map.get(tensor).get("coexisting_quantity")
-            sub_graph_available_ub_size_list.append(tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE)
-        self.workspace_available_ub_size = \
-            min(sub_graph_available_ub_size_list) // DTYPE_BYTE_MAPPING.get(self.max_type)
-
-        get_context().get_current_compute().add("_available_ub_size_list", [self.available_ub_size,
-                                                                            self.workspace_available_ub_size,
-                                                                            self.pad_available_ub_size,
-                                                                            self.reduce_transpose_available_ub_size])
-
     def is_exist_vc_unsupported_type(self):
         for tensor in self.reduce_tensor_set:
-            if ("reduce_max" in tensor.op.tag or "reduce_min" in tensor.op.tag) and tensor.dtype == "float32":
-                self.exist_vc_unsupported_type = True
+            if len(tensor.op.input_tensors[0].shape) - 1 in util.get_reduce_axis_indexes(tensor):
+                if ("reduce_max" in tensor.op.tag or "reduce_min" in tensor.op.tag) and tensor.dtype == "float32":
+                    self.exist_vc_unsupported_type = True
 
 
 class NormInfo:
@@ -1713,10 +1439,28 @@ class NormInfo:
         self.is_reduce_last_axis: bool = len(self.shape_before_reduce) - 1 in self.reduce_axis_indices
         self.is_all_reduce: bool = len(self.shape_before_reduce) == len(self.reduce_axis_indices)
         self.is_none_reduce = self._judge_non_reduce()
+        self.reduce_pattern = self._gen_reduce_pattern()
         # RAR/ARAR/...
         self.is_discontinuous_reduce_axis = self._judge_discontinuous_reduce_axis()
         # AR/ARR/ARRR... or RR/RRR...
         self.is_continuous_data_move = self.is_reduce_last_axis and not self.is_discontinuous_reduce_axis
+        # bytes of max_type and min_type
+        self.max_bytes = DTYPE_BYTE_MAPPING.get(compute_graph_info.max_type)
+        self.min_bytes = DTYPE_BYTE_MAPPING.get(compute_graph_info.min_type)
+        # transpose entire size
+        self.transpose_max_entire_size = self._calc_transpose_max_entire_size()
+        # ub size
+        self.soc_ub_size = get_soc_spec("UB_SIZE")
+        self.temp_ub_size = 0
+        self.broadcast_temp_size = 0
+        self.available_ub_size = 0
+        self.workspace_available_ub_size = 0
+        self.pad_available_ub_size = 0
+        self.reduce_transpose_available_ub_size = 0
+        self.const_common_db_size = 0
+        self.const_workspace_db_size = 0
+        # calculate available ub size
+        self._calc_coexisting_quantities_and_temp_buffer_size()
 
     def _judge_non_reduce(self):
         for reduce_axis in self.reduce_axis_indices:
@@ -1724,6 +1468,12 @@ class NormInfo:
                 return False
 
         return True
+
+    def _gen_reduce_pattern(self):
+        pattern_list = [
+            "R" if index in self.reduce_axis_indices else "A" for index in range(len(self.shape_before_reduce))
+        ]
+        return ''.join(pattern_list)
 
     def _judge_discontinuous_reduce_axis(self):
         if len(self.reduce_axis_indices) <= 1:
@@ -1734,6 +1484,344 @@ class NormInfo:
                 discontinuous_axis_num += 1
 
         return discontinuous_axis_num >= 2
+
+    def _calc_transpose_max_entire_size(self):
+        """
+        calculate transposs max entire size
+        """
+        return max(get_transpose_entire_size(self.graph_info.min_type) * self.min_bytes // self.max_bytes,
+                   get_transpose_entire_size(self.graph_info.max_type))
+
+    def _calc_coexisting_quantities_and_temp_buffer_size(self):
+        """
+        calculate the number of coexisting quantities and temp buffer size
+        """
+        def _correct_ub_size_by_cmp_sel(_tensor):
+            if util.is_vcmp_insn(_tensor):
+                self.temp_ub_size += BLOCK_SIZE_BYTE * (VCMP_INPUT_NUMBER - len(_tensor.op.input_tensors))
+            if util.is_vsel_insn(_tensor):
+                self.temp_ub_size += BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
+                if util.is_v200() and (VSEL_INPUT_NUMBER == len(_tensor.op.input_tensors)):
+                    self.temp_ub_size += BLOCK_SIZE_BYTE
+            if util.is_vcmpsel_insn(_tensor):
+                self.temp_ub_size += BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
+
+        def _correct_ub_size_by_reduce(_tensor):
+            tag = _tensor.op.tag
+            dtype = _tensor.dtype
+
+            def _reduce_sum_space():
+                self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
+
+            def _reduce_max_space():
+                if dtype in ["float32", "int32"]:
+                    if not self.is_reduce_last_axis:
+                        self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
+                    else:
+                        self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE + BLOCK_SIZE_BYTE + BLOCK_SIZE_BYTE
+                elif dtype in ["float16", ]:
+                    self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
+                else:
+                    raise RuntimeError("Not support dtype in reduce_max(min) is %s" % dtype)
+
+            def _reduce_prod_space():
+                if not self.is_reduce_last_axis:
+                    self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE
+                else:
+                    self.temp_ub_size += COMMON_REDUCE_TEMP_SPACE + BLOCK_SIZE_BYTE + BLOCK_SIZE_BYTE
+
+            if tag.find("reduce") != -1:
+                if tag in ["reduce_sum"]:
+                    _reduce_sum_space()
+                elif tag in ["reduce_max", "reduce_min"]:
+                    _reduce_max_space()
+                elif tag in ["reduce_prod"]:
+                    _reduce_prod_space()
+                else:
+                    raise RuntimeError("Unknown reduce_insn is %s" % tag)
+
+        def _calc_current_coexist_node(_tensor, _producers_map, _mode):
+            def __handle_input_and_output(__current_coexist_node, __dst_is_no_reuse):
+                _extra_node = 1 if not __dst_is_no_reuse else 0
+                if _mode == REDUCE_TRANS_MODE:
+                    pass
+                elif _mode == PAD_MODE:
+                    if _tensor in self.graph_info.input_tensor_set:
+                        __current_coexist_node += ALIGN_AND_REMOVE_PAD_EXTRA_NODES + 1
+                    if _tensor in self.graph_info.real_output_tensor_set:
+                        # the space that remove pad buffer need
+                        _pad_space = __current_coexist_node + _extra_node + 1 -\
+                            len(self.graph_info.tensor_producers_map.get(_tensor)) + ALIGN_AND_REMOVE_PAD_EXTRA_NODES
+                        __current_coexist_node = max(__current_coexist_node, _pad_space)
+                else:
+                    if _tensor in self.graph_info.real_output_tensor_set:
+                        # the space that enable no_overlap 3 need
+                        _no_overlap_three_space = __current_coexist_node + _extra_node - \
+                             len(self.graph_info.tensor_producers_map.get(_tensor)) + NO_OVERLAP_THREE_EXTRA_NODES
+                        __current_coexist_node = max(__current_coexist_node, _no_overlap_three_space)
+
+                return __current_coexist_node
+
+            def __handle_reduce(__current_coexist_node):
+                if _mode == REDUCE_TRANS_MODE:
+                    __current_coexist_node += REDUCE_TRANSPOSE_EXTRA_NODES
+                    return __current_coexist_node
+
+                _reduce_max_or_min_need_extra_node = _tensor.op.tag in ("reduce_max", "reduce_min") and \
+                    self.is_reduce_last_axis and _tensor.dtype == "float16"
+                if _mode != WORKSPACE_MODE and _reduce_max_or_min_need_extra_node:
+                    __current_coexist_node += 1
+
+                _last_dim = util.shape_to_list(self.shape_before_reduce)[-1]
+                _last_dim_is_known = isinstance(_last_dim, int)
+                _eight_blocks_value = ONE_REPEAT_PROCESS_BYTES // DTYPE_BYTE_MAPPING.get(_tensor.dtype)
+                _reduce_sum_use_vc = _tensor.op.tag == "reduce_sum" and self.reduce_pattern == "AR"
+                _last_dim_is_not_larger_than_eight_blocks = _last_dim_is_known and _last_dim <= _eight_blocks_value
+                if _mode != WORKSPACE_MODE and _reduce_sum_use_vc and not _last_dim_is_not_larger_than_eight_blocks:
+                    __current_coexist_node += 1
+
+                return __current_coexist_node
+
+            def __handle_unified_broadcast(__current_coexist_node):
+                _broadcast_axis = get_broadcast_axis(_tensor)
+                _broadcast_num = len(_broadcast_axis)
+                _tensor_shape = util.shape_to_list(_tensor.shape)
+                _is_last_broadcast = len(_tensor_shape) - 1 in _broadcast_axis
+                _last_dim_is_align = isinstance(_tensor_shape[-1], int) and \
+                    _tensor_shape[-1] % get_block_size(self.graph_info.min_type) == 0
+
+                if _mode == REDUCE_TRANS_MODE and not _last_dim_is_align:
+                    if _broadcast_num == 1:
+                        __current_coexist_node += NO_ALIGN_BROADCAST_EXTRA_NODES
+                    elif _broadcast_num > 1:
+                        __current_coexist_node += 1
+
+                    return __current_coexist_node
+
+                if _mode == WORKSPACE_MODE:
+                    if _broadcast_num > 1:
+                        __current_coexist_node += 1
+
+                    return __current_coexist_node
+
+                _is_enable_vnchwconv_fp16 = _tensor.dtype == "float16" and _is_last_broadcast
+                _is_enable_vnchwconv_fp32 = \
+                    _tensor.dtype == "float32" and _is_last_broadcast and _broadcast_num == 1
+                if _is_enable_vnchwconv_fp16:
+                    _is_enable_eight_dup = self.is_discontinuous_reduce_axis and \
+                        get_context().get_current_compute().get("_mode") == "const"
+                    if not _is_enable_eight_dup:
+                        __current_coexist_node += 1
+                        self.broadcast_temp_size = max(VNCHWCONV_TEMP_SPACE_FP16 + BLOCK_SIZE_BYTE,
+                                                       self.broadcast_temp_size)
+                elif _is_enable_vnchwconv_fp32:
+                    self.broadcast_temp_size = max(VNCHWCONV_TEMP_SPACE_FP32 + BLOCK_SIZE_BYTE,
+                                                   self.broadcast_temp_size)
+                elif _broadcast_num > 1:
+                    __current_coexist_node += 1
+
+                return __current_coexist_node
+
+            def __calc_dependent_coexist_node(_ori_dependent_map, _after_refresh_dependent_map):
+                _tensor_insn = util.get_dsl_insn(_tensor)
+                _insn_can_not_reuse = _tensor_insn in DST_SRC_NO_REUSE_SET or \
+                    _tensor_insn in BROADCAST_INSNS or _tensor_insn in REDUCE_INSNS
+                # if src are all in after refresh dependent map, dst can not reuse src
+                _dst_and_src_independent = \
+                    set(_tensor.op.input_tensors).issubset(set(_after_refresh_dependent_map.keys()))
+                # if input tensor has nlast broadcast, dst can not reuse src
+                _exist_nlast_broadcast_input = False
+                for _input_tensor in _tensor.op.input_tensors:
+                    if util.is_unified_broadcast(_input_tensor):
+                        if len(_input_tensor.shape) - 1 not in get_broadcast_axis(_input_tensor):
+                            _exist_nlast_broadcast_input = True
+                _dst_can_not_reuse_src = util.is_placeholder(_tensor) or _insn_can_not_reuse or \
+                    _dst_and_src_independent or _exist_nlast_broadcast_input
+                # 1. one of the input of the ternary instruction must be reused with the output
+                # 2. tensor in dependent_map
+                # 3. dst can not reuse src
+                if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in _ori_dependent_map or \
+                        not _dst_can_not_reuse_src:
+                    __current_coexist_node = len(_ori_dependent_map)
+                else:
+                    __current_coexist_node = len(_ori_dependent_map) + 1
+
+                if _mode == WORKSPACE_MODE:
+                    # if depended tensor is last reduce tensor and it does not aggregate,
+                    # its tensor size is less than 32B
+                    for _depended_tensor in _ori_dependent_map:
+                        if util.get_dsl_insn(_depended_tensor) not in REDUCE_INSNS:
+                            continue
+                        _is_only_one_element_reduce = self.is_continuous_data_move and \
+                            _depended_tensor not in self.graph_info.special_after_reduce_tensor_set
+                        if _is_only_one_element_reduce:
+                            __current_coexist_node -= 1
+                            self.temp_ub_size += BLOCK_SIZE_BYTE
+
+                return __current_coexist_node, _dst_can_not_reuse_src
+
+            _ori_dependent_map = copy.deepcopy(dependent_map)
+            _refresh_dependent(_tensor, _producers_map)
+            _current_coexist_node, _dst_is_no_reuse = __calc_dependent_coexist_node(_ori_dependent_map, dependent_map)
+
+            if util.need_extent_node(_tensor):
+                _current_coexist_node += 1
+
+            if util.need_temp_space(_tensor) or _need_external_space(_tensor):
+                self.temp_ub_size += BLOCK_SIZE_BYTE
+
+            if _tensor in self.graph_info.before_reduce_tensor_set:
+                _current_coexist_node = __handle_input_and_output(_current_coexist_node, _dst_is_no_reuse)
+
+            if _tensor in self.graph_info.reduce_tensor_set:
+                _current_coexist_node = __handle_reduce(_current_coexist_node)
+
+            if util.is_unified_broadcast(_tensor):
+                _current_coexist_node = __handle_unified_broadcast(_current_coexist_node)
+
+            return _current_coexist_node
+
+        def _r_coexisting(_tensor, _producers_map, _consumers_map, _mode):
+            if _tensor in dependent_map:
+                return len(dependent_map)
+            _coexist_node_list = []
+            for _tensor_i in _producers_map.get(_tensor):
+                _coexist_node_list.append(_r_coexisting(_tensor_i, _producers_map, _consumers_map, _mode))
+
+            _current_coexist_node = _calc_current_coexist_node(_tensor, _producers_map, _mode)
+
+            # correct ub size in vcmp or vsel or vcmpsel
+            _correct_ub_size_by_cmp_sel(_tensor)
+            # correct ub size in reduce
+            _correct_ub_size_by_reduce(_tensor)
+
+            _coexist_node_list.append(_current_coexist_node)
+            if _tensor not in dependent_map:
+                dependent_map[_tensor] = _consumers_map.get(_tensor).copy()
+
+            return max(_coexist_node_list)
+
+        def _refresh_dependent(_tensor, _producers_map):
+            for _tensor_i in _producers_map.get(_tensor):
+                if _tensor_i not in dependent_map:
+                    continue
+                dependent_map.get(_tensor_i).remove(_tensor)
+                if not dependent_map.get(_tensor_i):
+                    dependent_map.pop(_tensor_i)
+
+        def _need_external_space(_tensor):
+            _op_tag = util.get_dsl_insn(_tensor)
+            _support_vector_scalar_insns = ("elewise_binary_add", "elewise_binary_mul")
+            if _op_tag in set(SUPPORT_SCALAR_INSNS) - set(_support_vector_scalar_insns):
+                return True
+
+            if util.is_v100() and _op_tag in _support_vector_scalar_insns and _tensor.dtype == "int32":
+                return True
+
+            return False
+
+        def _refine_workspace_coexisting_quantity(_workspace_tensor=None):
+            _extra_node = 0
+            _extra_size = 0
+            if _workspace_tensor is None:
+                _sub_tensor_list = self.graph_info.reduce_tensor_set
+            else:
+                _sub_tensor_list = \
+                    self.graph_info.workspace_tensor_and_sub_graph_map.get(_workspace_tensor).get("sub_tensor_list")
+
+            for _reduce_tensor in self.graph_info.reduce_tensor_set:
+                if _reduce_tensor in _sub_tensor_list:
+                    _is_only_one_element_reduce = self.is_continuous_data_move and \
+                        _reduce_tensor not in self.graph_info.special_after_reduce_tensor_set
+                    if _is_only_one_element_reduce:
+                        _extra_size += BLOCK_SIZE_BYTE
+                    else:
+                        _extra_node += 1
+
+            return _extra_node, _extra_size
+
+        def _calc_available_ub_size(_graph_map_tuple, _res_tensor, _mode, _extra_size=0, _extra_node=0):
+            _producers_map, _consumers_map = _graph_map_tuple
+            for _tensor_i in _producers_map.get(_res_tensor):
+                coexisting_quantities.append(_r_coexisting(_tensor_i, _producers_map, _consumers_map, _mode))
+            if not _res_tensor.op.tag == FAKE_NODE_TAG:
+                _local_current_coexist_node = _calc_current_coexist_node(_res_tensor, _producers_map, _mode)
+                # correct ub size in vcmp or vsel or vcmpsel
+                _correct_ub_size_by_cmp_sel(_res_tensor)
+                # correct ub size in reduce
+                _correct_ub_size_by_reduce(_res_tensor)
+                coexisting_quantities.append(_local_current_coexist_node)
+
+            _tensor_space = (self.soc_ub_size - self.temp_ub_size - self.broadcast_temp_size - _extra_size) //\
+                (max(coexisting_quantities) + _extra_node)
+            _ub_size = _tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // self.max_bytes
+            _db_tensor_space = \
+                (self.soc_ub_size // 2 - self.temp_ub_size - self.broadcast_temp_size - _extra_size) // \
+                (max(coexisting_quantities) + _extra_node)
+            _db_ub_size = _db_tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // self.max_bytes
+
+            return _ub_size, _db_ub_size
+
+        def _init_before_calculate():
+            _coexisting_quantities = []
+            _dependent_map = {}
+            self.temp_ub_size = 0
+            self.broadcast_temp_size = 0
+
+            return _coexisting_quantities, _dependent_map
+
+        _out = self.graph_info.endpoint_output_tensor
+
+        # common sch
+        coexisting_quantities, dependent_map = _init_before_calculate()
+        self.available_ub_size, self.const_common_db_size = _calc_available_ub_size(
+            (self.graph_info.tensor_producers_map, self.graph_info.tensor_consumers_map), _out, COMMON_MODE
+        )
+
+        # align and remove pad sch
+        coexisting_quantities, dependent_map = _init_before_calculate()
+        self.pad_available_ub_size, _ = _calc_available_ub_size(
+            (self.graph_info.tensor_producers_map, self.graph_info.tensor_consumers_map), _out, PAD_MODE,
+            _extra_size = ALIGN_AND_REMOVE_PAD_TEMP_SPACE
+        )
+
+        # reduce transpose sch
+        coexisting_quantities, dependent_map = _init_before_calculate()
+        self.reduce_transpose_available_ub_size, _ = _calc_available_ub_size(
+            (self.graph_info.tensor_producers_map, self.graph_info.tensor_consumers_map), _out, REDUCE_TRANS_MODE
+        )
+
+        # workspace sch
+        is_sub_graph_dependent = not self.graph_info.special_after_reduce_tensor_set and \
+            not (self.graph_info.workspace_tensor_set & self.graph_info.after_reduce_tensor_set) and \
+            self.is_reduce_last_axis and len(self.reduce_axis_indices) == 1
+
+        if not is_sub_graph_dependent:
+            sub_graph_available_ub_size_list, sub_graph_available_db_ub_size_list = [], []
+            # calculate the number of coexisting quantities and available ub size of sub graph
+            for workspace_tensor, sub_graph_map in self.graph_info.workspace_tensor_and_sub_graph_map.items():
+                coexisting_quantities, dependent_map = _init_before_calculate()
+                extra_node, extra_size = _refine_workspace_coexisting_quantity(_workspace_tensor=workspace_tensor)
+                cur_available_ub_size, cur_available_db_ub_size = _calc_available_ub_size(
+                    (sub_graph_map.get("sub_tensor_producers_map"), sub_graph_map.get("sub_tensor_consumers_map")),
+                    workspace_tensor, WORKSPACE_MODE, _extra_node=extra_node, _extra_size=extra_size
+                )
+                sub_graph_available_ub_size_list.append(cur_available_ub_size)
+                sub_graph_available_db_ub_size_list.append(cur_available_db_ub_size)
+            self.workspace_available_ub_size = min(sub_graph_available_ub_size_list)
+            self.const_workspace_db_size = min(sub_graph_available_db_ub_size_list)
+        else:
+            coexisting_quantities, dependent_map = _init_before_calculate()
+            extra_node, extra_size = _refine_workspace_coexisting_quantity()
+            self.workspace_available_ub_size, self.const_workspace_db_size = _calc_available_ub_size(
+                (self.graph_info.tensor_producers_map, self.graph_info.tensor_consumers_map), _out, WORKSPACE_MODE,
+                _extra_node=extra_node, _extra_size=extra_size
+            )
+
+        get_context().get_current_compute().add("_available_ub_size_list", [self.available_ub_size,
+                                                                            self.workspace_available_ub_size,
+                                                                            self.pad_available_ub_size,
+                                                                            self.reduce_transpose_available_ub_size])
 
 
 class NormTilingCase:

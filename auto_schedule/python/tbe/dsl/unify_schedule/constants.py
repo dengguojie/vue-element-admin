@@ -388,6 +388,14 @@ BROADCAST_INSNS = [
     "unknown_broadcast",
 ]
 
+REDUCE_INSNS = [
+    "tuple_reduce_sum",
+    "reduce_sum",
+    "reduce_min",
+    "reduce_max",
+    "reduce_prod"
+]
+
 DTYPE_BYTE_MAPPING = {
     "uint1": 0.125,
     "bool": 1,

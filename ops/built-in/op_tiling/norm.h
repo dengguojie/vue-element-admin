@@ -42,7 +42,10 @@ constexpr int32_t NORM_PARTIAL_REORDER_SCH_TYPE = 1;
 constexpr int32_t NORM_ALIGNED_IN_UB_SCH_TYPE = 2;
 constexpr int32_t NORM_LAST_REDUCE_ALIGN_SCH_TYPE = 3;
 constexpr int32_t NORM_REDUCE_TRANSPOSE_SCH_TYPE = 4;
+constexpr int32_t NORM_ALIGN_REDUCE_TRANSPOSE_SCH_TYPE = 5;
 constexpr int32_t NORM_REDUCE_TRANSPOSE_THRESHOLD = 128;
+constexpr int32_t NORM_BLOCKS_NUMBER = 8;
+constexpr int32_t NORM_CONSTANT_EIGHT = 8;
 
 struct NormCompileInfo {
   // construct func
@@ -67,6 +70,7 @@ struct NormCompileInfo {
   bool exist_output_after_reduce{false};
   bool exist_workspace_after_reduce{false};
   std::unordered_map<int32_t, std::vector<int32_t>> available_ub_size;
+  std::unordered_map<int32_t, int32_t> block_size_map;
   bool exist_vc_unsupported_type{false};
   // common info
   int32_t core_num{-1};
@@ -148,6 +152,7 @@ class Norm {
                           const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const;
     bool FusedAxis();
     bool GetUbSizeInfo();
+    bool GetBlockSize();
     bool ProcessBlockTilingAndReorder();
     bool ProcessTiling();
     bool JudgePartialReorderZeroDimSplitBlock(const int64_t& right_product, const int64_t& right_align_product,
@@ -162,6 +167,8 @@ class Norm {
     bool GetPartialReorderUbTilingInfo();
     bool CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& cur_dim,
                                 const int64_t& cur_dim_tail, const int64_t& right_product) const;
+    bool JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_t& cur_ub_factor,
+                                     const int64_t& cur_dim) const;
     bool JudgeNormalCurDimSplitUb(const std::size_t& index);
     bool JudgeWorkspaceCurDimSplitUb(const std::size_t& index);
     bool GetUbTilingInfo();

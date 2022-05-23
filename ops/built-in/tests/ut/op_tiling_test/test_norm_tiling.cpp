@@ -131,6 +131,9 @@ static bool compare_norm_struct(const NormCompileInfo& actual_struct,
   if (actual_struct.exist_vc_unsupported_type != expect_struct.exist_vc_unsupported_type) {
     return false;
   }
+  if (!compare_map(actual_struct.block_size_map, expect_struct.block_size_map)) {
+    return false;
+  }
   return true;
 }
 
@@ -181,7 +184,7 @@ TEST_F(NormTilingTest, ParseSuccessTest1) {
 }
 
 TEST_F(NormTilingTest, ParseTest1) {
-  std::string compileInfo = R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})";
+  std::string compileInfo = R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_block_size": {"4000": 16}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})";
   nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
 
   NormCompileInfo actual_struct("norm", op_info);
@@ -194,6 +197,7 @@ TEST_F(NormTilingTest, ParseTest1) {
   expect_struct.exist_output_after_reduce = false;
   expect_struct.exist_workspace_after_reduce = false;
   expect_struct.available_ub_size = {{4000, {15792, 16120, 15792, 15792}}};
+  expect_struct.block_size_map = {{4000, 16}};
   expect_struct.workspace_info = {{200400000, {32}}};
   expect_struct.norm_vars = {{200400000, {20000, 20001, 30000, 40000}}};
   expect_struct.is_fuse_axis = true;
@@ -276,6 +280,7 @@ TEST_F(NormTilingTest, TilingTest1) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4000, {15792, 16120, 15792, 15792}}};
+  op_compile_info.block_size_map = {{4000, 16}};
   op_compile_info.workspace_info = {{400400000, {32}}};
   op_compile_info.norm_vars = {{400400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -313,6 +318,7 @@ TEST_F(NormTilingTest, TilingTest2) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4000, {15792, 16120, 15792, 15792}}};
+  op_compile_info.block_size_map = {{4000, 16}};
   op_compile_info.workspace_info = {{400001, {4}}};
   op_compile_info.norm_vars = {{400001, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -350,14 +356,15 @@ TEST_F(NormTilingTest, TilingTest3) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{9000, {21784, 16360, 16336, 16336}}};
-  op_compile_info.workspace_info = {{900021, {4}}};
-  op_compile_info.norm_vars = {{900021, {20000, 20001, 20002, 30000, 40000}}};
+  op_compile_info.block_size_map = {{9000, 8}};
+  op_compile_info.workspace_info = {{900022, {4}}};
+  op_compile_info.norm_vars = {{900022, {20000, 20001, 20002, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
   ASSERT_TRUE(norm.DoTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 5 15003 7504 2 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 5 15003 7504 3752 ");
 }
 
 TEST_F(NormTilingTest, TilingTest4) {
@@ -387,6 +394,7 @@ TEST_F(NormTilingTest, TilingTest4) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4000, {21448, 16120, 16088, 16088}}};
+  op_compile_info.block_size_map = {{4000, 8}};
   op_compile_info.workspace_info = {{400400000, {32}}};
   op_compile_info.norm_vars = {{400400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -424,6 +432,7 @@ TEST_F(NormTilingTest, TilingTest5) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
   op_compile_info.available_ub_size = {{12000, {16216, 13000, 16216, 16216}}};
+  op_compile_info.block_size_map = {{12000, 8}};
   op_compile_info.workspace_info = {{101200010, {4, -4, -4}}};
   op_compile_info.norm_vars = {{101200010, {20000, 20001, 20002, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -461,6 +470,7 @@ TEST_F(NormTilingTest, TilingTest6) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{9000, {21784, 16360, 16336, 16336}}};
+  op_compile_info.block_size_map = {{9000, 8}};
   op_compile_info.is_fuse_axis = false;
   op_compile_info.is_const = true;
   op_compile_info.is_const_post = false;
@@ -496,6 +506,7 @@ TEST_F(NormTilingTest, TilingTest7) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{9000, {21784, 16360, 16336, 16336}}};
+  op_compile_info.block_size_map = {{9000, 8}};
   op_compile_info.is_fuse_axis = false;
   op_compile_info.is_const = true;
   op_compile_info.is_const_post = true;
@@ -534,6 +545,7 @@ TEST_F(NormTilingTest, TilingTest8) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4000, {15792, 16120, 15792, 15792}}};
+  op_compile_info.block_size_map = {{4000, 8}};
   op_compile_info.workspace_info = {{400400000, {32}}};
   op_compile_info.norm_vars = {{400400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -571,6 +583,7 @@ TEST_F(NormTilingTest, TilingTest9) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{14000, {16216, 13000, 16216, 16216}}};
+  op_compile_info.block_size_map = {{14000, 8}};
   op_compile_info.workspace_info = {{1400090, {4}}};
   op_compile_info.norm_vars = {{1400090, {20000, 20001, 20002, 40000}}};
   op_compile_info.is_fuse_axis = false;
@@ -608,6 +621,7 @@ TEST_F(NormTilingTest, TilingTest10) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{5000, {21784, 16360, 16336, 16336}}};
+  op_compile_info.block_size_map = {{5000, 8}};
   op_compile_info.workspace_info = {{500011, {32}}};
   op_compile_info.norm_vars = {{500011, {20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -645,6 +659,7 @@ TEST_F(NormTilingTest, TilingTest11) {
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4012, {10552, 10744, 10552, 10552}}};
+  op_compile_info.block_size_map = {{4012, 8}};
   op_compile_info.workspace_info = {{401201, {4, 4, 4, 4, 4}}};
   op_compile_info.norm_vars = {{401201, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -682,6 +697,7 @@ TEST_F(NormTilingTest, TilingTest12) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
   op_compile_info.available_ub_size = {{20000, {16216, 13000, 16216, 16216}}};
+  op_compile_info.block_size_map = {{20000, 8}};
   op_compile_info.workspace_info = {{102000001, {4, -4, -4}}};
   op_compile_info.norm_vars = {{102000001, {20000, 20001, 20002, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -721,6 +737,7 @@ TEST_F(NormTilingTest, TilingTest13) {
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864, 15864}}};
+  op_compile_info.block_size_map = {{4005, 8}};
   op_compile_info.workspace_info = {{1300400500, {32}}};
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -759,6 +776,7 @@ TEST_F(NormTilingTest, TilingTest14) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = true;
   op_compile_info.available_ub_size = {{42000, {15920, 12840, 15920, 15920}}};
+  op_compile_info.block_size_map = {{42000, 16}};
   op_compile_info.workspace_info = {{304200000, {32}}};
   op_compile_info.norm_vars = {{304200000, {20000, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -796,6 +814,7 @@ TEST_F(NormTilingTest, TilingTest15) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4012, {9056, 7048, 9056, 9056}}};
+  op_compile_info.block_size_map = {{4012, 16}};
   op_compile_info.workspace_info = {{300401200, {32, 32}}};
   op_compile_info.norm_vars = {{300401200, {20000, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -833,6 +852,7 @@ TEST_F(NormTilingTest, TilingTest16) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{10044, {9056, 7048, 9056, 9056}}, {12044, {9056, 7048, 9056, 9056}}};
+  op_compile_info.block_size_map = {{10044, 16}};
   op_compile_info.workspace_info = {{1004401, {4, 4}}};
   op_compile_info.norm_vars = {{1004401, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -874,6 +894,7 @@ TEST_F(NormTilingTest, TilingTest17) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4012, {9040, 7256, 9056, 9056}}};
+  op_compile_info.block_size_map = {{4012, 16}};
   op_compile_info.workspace_info = {{300401200, {32, 32}}};
   op_compile_info.norm_vars = {{300401200, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -918,6 +939,7 @@ TEST_F(NormTilingTest, TilingTest18) {
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4005, {21080, 16350, 15808, 15808}}};
+  op_compile_info.block_size_map = {{4005, 16}};
   op_compile_info.workspace_info = {{1300400500, {32}}};
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -958,6 +980,7 @@ TEST_F(NormTilingTest, TilingTest19) {
   op_compile_info.exist_output_after_reduce = false;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4000, {15824, 16360, 15824, 15824}}};
+  op_compile_info.block_size_map = {{4000, 16}};
   op_compile_info.workspace_info = {{300400000, {32}}};
   op_compile_info.norm_vars = {{300400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
@@ -1000,6 +1023,7 @@ TEST_F(NormTilingTest, TilingTest20) {
   op_compile_info.exist_output_after_reduce = true;
   op_compile_info.exist_workspace_after_reduce = false;
   op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864, 15864}}};
+  op_compile_info.block_size_map = {{4005, 8}};
   op_compile_info.workspace_info = {{1300400500, {32}}};
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
