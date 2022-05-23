@@ -77,7 +77,7 @@ vector<FusionPattern*> MatMulTransdataFusionPass::DefinePatterns() {
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("MatmulTransdataFusionPass");
   FUSION_PASS_CHECK(
     pattern0 == nullptr || pattern1 == nullptr,
-    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
     return patterns
   );
   pattern0->AddOpDesc(PATTERN_MATMUL, {OP_TYPE_MATMUL})
@@ -107,13 +107,12 @@ vector<FusionPattern*> MatMulTransdataFusionPass::DefinePatterns() {
 
 Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                          vector<ge::NodePtr>& /* fusion_nodes */) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter MatMulTransdataFusionPass.");
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
   FUSION_PASS_CHECK(
     PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Get platform_info failed."),
-    return FAILED
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get platform_info failed."),
+    return NOT_CHANGED
   );
   map<string, vector<string>> intrinsic_map = platform_info.ai_core_intrinsic_dtype_map;
   if (intrinsic_map.size() == 0 || intrinsic_map.find("Intrinsic_fix_pipe_l0c2out") == intrinsic_map.end()) {
@@ -126,24 +125,25 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   ge::NodePtr left_mul_node = GetNodeFromMapping(PATTERN_MUL, mapping);
   ge::NodePtr add_node = GetNodeFromMapping(PATTERN_ADD, mapping);
   ge::NodePtr cast_node = GetNodeFromMapping(PATTERN_CAST, mapping);
-  FUSION_PASS_CHECK(
-    matmul_node == nullptr || left_transdata_node == nullptr || left_mul_node == nullptr || add_node == nullptr,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "some node is null, fusion failed."),
-    return PARAM_INVALID
-  );
+  FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "matmul_node is null, fusion failed."),
+                    return NOT_CHANGED);
+
+  FUSION_PASS_CHECK(left_transdata_node == nullptr,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "left_transdata_node, fusion failed."), return NOT_CHANGED);
+
+  FUSION_PASS_CHECK(add_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "add_node is null, fusion failed."),
+                    return NOT_CHANGED);
+
+  FUSION_PASS_CHECK(left_mul_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "left_mul_node is null, fusion failed."),
+                    return NOT_CHANGED);
 
   ge::NodePtr right_mul_node = GetPeerOutNodeWithInDataAnchor(add_node, 1);
-  FUSION_PASS_CHECK(
-    right_mul_node == nullptr,
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "right_mul_node is null, fusion failed."),
-    return NOT_CHANGED
-  );
+  FUSION_PASS_CHECK(right_mul_node == nullptr, OP_LOGW(right_mul_node, "right_mul_node is null, fusion failed."),
+                    return NOT_CHANGED);
   ge::NodePtr right_transdata_node = GetPeerOutNodeWithInDataAnchor(right_mul_node, 0);
-  FUSION_PASS_CHECK(
-    right_transdata_node == nullptr || right_transdata_node->GetType() != OP_TYPE_TRANDATA,
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "right_transdata_node is null or not transdata, fusion failed."),
-    return NOT_CHANGED
-  );
+  FUSION_PASS_CHECK(right_transdata_node == nullptr || right_transdata_node->GetType() != OP_TYPE_TRANDATA,
+                    OP_LOGW(right_transdata_node, "right_transdata_node is null or not transdata, fusion failed."),
+                    return NOT_CHANGED);
 
   // get the input and output node
   ge::NodePtr c_node = GetPeerOutNodeWithInDataAnchor(right_transdata_node, 0);
@@ -159,7 +159,7 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   if (with_cast_flag) {
     FUSION_PASS_CHECK(
       ge::GraphUtils::RemoveEdge(matmul_node->GetOutDataAnchor(0), cast_node->GetInDataAnchor(0)) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove edge between matmul_node and cast_node"),
+      CUBE_INNER_ERR_REPORT(matmul_node, "fail to remove edge between matmul_node and cast_node"),
       return FAILED
     );
   } else {
@@ -309,7 +309,7 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove right_transdata_node"),
     return FAILED
   );
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "remove right_transdata_node");
+  OP_LOGI(matmul_node, "matmul transdata fusion success!");
   return SUCCESS;
 }
 

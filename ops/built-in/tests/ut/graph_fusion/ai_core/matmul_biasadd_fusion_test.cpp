@@ -5,6 +5,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "elewise_calculation_ops.h"
+#include "nonlinear_fuc_ops.h"
 #include "matrix_calculation_ops.h"
 #include "nn_pooling_ops.h"
 #include "array_ops.h"
@@ -62,6 +63,58 @@ TEST_F(matmul_biasadd_fusion_test, batchMatMul_BiasAdd_fusion_success) {
                               .set_input_x(batchMatMulOp)
                               .set_input_bias(data_bias)
                               .set_attr_data_format("NHWC");
+  // Set Graph and Expected Res
+  std::vector<Operator> inputs{inputData1, inputData2, data_bias};
+  std::vector<Operator> outputs{biasAdd};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("MatMulBiasAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool fusionSuccess = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == BIASADD) {
+      fusionSuccess = false;
+    }
+  }
+  EXPECT_EQ(fusionSuccess, true);
+}
+
+// Test Batch MatMul BiasAdd relu fusion Success(Functional)
+TEST_F(matmul_biasadd_fusion_test, batchMatMul_BiasAdd_relu_fusion_success) {
+  ge::Graph graph("batchMatMul_BiasAdd_fusion_test");
+  // Construt input Data 1
+  std::vector<int64_t> dims1{2, 2, 16, 16};
+  ge::Shape shapeA(dims1);
+  ge::TensorDesc tensorDescA(shapeA, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData1 = op::Data("BatchMatMul_input_data1");
+  inputData1.update_input_desc_x(tensorDescA);
+  inputData1.update_output_desc_y(tensorDescA);
+  // Construt input Data 2
+  std::vector<int64_t> dimsB{2, 2, 16, 1024};
+  ge::Shape shapeB(dimsB);
+  ge::TensorDesc tensorDescB(shapeB, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData2 = op::Data("BatchMatMul_input_data2");
+  inputData2.update_input_desc_x(tensorDescB);
+  inputData2.update_output_desc_y(tensorDescB);
+  // Construct BatchMatMul and BiasAdd fusion
+  auto batchMatMulOp = ge::op::BatchMatMul("BatchMatMul")
+                                          .set_input_x1(inputData1)
+                                          .set_input_x2(inputData2)
+                                          .set_attr_adj_x1(false)
+                                          .set_attr_adj_x2(false);
+  auto bias_shape = vector<int64_t>({1024});
+  ge::TensorDesc bias_desc(ge::Shape(bias_shape), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto data_bias = op::Data("data_bias");
+  data_bias.update_input_desc_x(bias_desc);
+  data_bias.update_output_desc_y(bias_desc);
+
+  auto biasAdd = op::BiasAdd("bias_add")
+                              .set_input_x(batchMatMulOp)
+                              .set_input_bias(data_bias)
+                              .set_attr_data_format("NHWC");
+
+  auto relu = op::Relu("relu")
+                              .set_input_x(biasAdd);
   // Set Graph and Expected Res
   std::vector<Operator> inputs{inputData1, inputData2, data_bias};
   std::vector<Operator> outputs{biasAdd};
@@ -254,6 +307,198 @@ TEST_F(matmul_biasadd_fusion_test, matmul_add_no_fusion_with_norange) {
   auto addOp = op::Add("add_op")
                       .set_input_x1(data_bias)
                       .set_input_x2(batchMatMulOp);
+  // Set Graph and Expected Res
+  std::vector<Operator> inputs{inputData1, inputData2, data_bias};
+  std::vector<Operator> outputs{addOp};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("MatMulBiasAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool fusionSuccess = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == ADD) {
+      fusionSuccess = false;
+    }
+  }
+  EXPECT_EQ(fusionSuccess, false);
+}
+
+// Test MatMul Add Fusion Success1(Functional)
+TEST_F(matmul_biasadd_fusion_test, MatMul_Add_fusion_success1) {
+  ge::Graph graph("MatMul_Add_fusion_test1");
+  // Construt input Data 1
+  std::vector<int64_t> dims1{16, 16};
+  ge::Shape shapeA(dims1);
+  ge::TensorDesc tensorDescA(shapeA, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData1 = op::Data("MatMul_input_data1");
+  inputData1.update_input_desc_x(tensorDescA);
+  inputData1.update_output_desc_y(tensorDescA);
+  // Construt input Data 2
+  std::vector<int64_t> dimsB{16, 1024};
+  ge::Shape shapeB(dimsB);
+  ge::TensorDesc tensorDescB(shapeB, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData2 = op::Data("MatMul_input_data2");
+  inputData2.update_input_desc_x(tensorDescB);
+  inputData2.update_output_desc_y(tensorDescB);
+  // Construct BatchMatMul and BiasAdd fusion
+  auto MatMulOp = ge::op::MatMul("MatMul")
+                                          .set_input_x1(inputData1)
+                                          .set_input_x2(inputData2)
+                                          .set_attr_transpose_x1(false)
+                                          .set_attr_transpose_x2(false);
+  auto bias_shape = vector<int64_t>({1024});
+  ge::TensorDesc bias_desc(ge::Shape(bias_shape), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto data_bias = op::Data("add_node");
+  data_bias.update_input_desc_x(bias_desc);
+  data_bias.update_output_desc_y(bias_desc);
+
+  auto addOp = op::Add("add_op")
+                      .set_input_x1(data_bias)
+                      .set_input_x2(MatMulOp);
+  // Set Graph and Expected Res
+  std::vector<Operator> inputs{inputData1, inputData2, data_bias};
+  std::vector<Operator> outputs{addOp};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("MatMulBiasAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool fusionSuccess = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == ADD) {
+      fusionSuccess = false;
+    }
+  }
+  EXPECT_EQ(fusionSuccess, true);
+}
+
+// Test MatMul Add Fusion Dynamic shape fail1(Functional)
+TEST_F(matmul_biasadd_fusion_test, MatMul_Add_fusion_fail1) {
+  ge::Graph graph("MatMul_Add_fusion_test1");
+  // Construt input Data 1
+  std::vector<int64_t> dims1{-1, -1};
+  ge::Shape shapeA(dims1);
+  ge::TensorDesc tensorDescA(shapeA, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData1 = op::Data("MatMul_input_data1");
+  inputData1.update_input_desc_x(tensorDescA);
+  inputData1.update_output_desc_y(tensorDescA);
+  // Construt input Data 2
+  std::vector<int64_t> dimsB{16, 1024};
+  ge::Shape shapeB(dimsB);
+  ge::TensorDesc tensorDescB(shapeB, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData2 = op::Data("MatMul_input_data2");
+  inputData2.update_input_desc_x(tensorDescB);
+  inputData2.update_output_desc_y(tensorDescB);
+  // Construct BatchMatMul and BiasAdd fusion
+  auto MatMulOp = ge::op::MatMul("MatMul")
+                                          .set_input_x1(inputData1)
+                                          .set_input_x2(inputData2)
+                                          .set_attr_transpose_x1(false)
+                                          .set_attr_transpose_x2(false);
+  auto bias_shape = vector<int64_t>({-1});
+  ge::TensorDesc bias_desc(ge::Shape(bias_shape), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto data_bias = op::Data("add_node");
+  data_bias.update_input_desc_x(bias_desc);
+  data_bias.update_output_desc_y(bias_desc);
+
+  auto addOp = op::Add("add_op")
+                      .set_input_x1(data_bias)
+                      .set_input_x2(MatMulOp);
+  // Set Graph and Expected Res
+  std::vector<Operator> inputs{inputData1, inputData2, data_bias};
+  std::vector<Operator> outputs{addOp};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("MatMulBiasAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool fusionSuccess = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == ADD) {
+      fusionSuccess = false;
+    }
+  }
+  EXPECT_EQ(fusionSuccess, false);
+}
+
+// Test MatMul Add Fusion Success1(Functional)
+TEST_F(matmul_biasadd_fusion_test, MatMul_Add_fusion_input0_matmul_success1) {
+  ge::Graph graph("MatMul_Add_fusion_test1");
+  // Construt input Data 1
+  std::vector<int64_t> dims1{16, 16};
+  ge::Shape shapeA(dims1);
+  ge::TensorDesc tensorDescA(shapeA, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData1 = op::Data("MatMul_input_data1");
+  inputData1.update_input_desc_x(tensorDescA);
+  inputData1.update_output_desc_y(tensorDescA);
+  // Construt input Data 2
+  std::vector<int64_t> dimsB{16, 1024};
+  ge::Shape shapeB(dimsB);
+  ge::TensorDesc tensorDescB(shapeB, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData2 = op::Data("MatMul_input_data2");
+  inputData2.update_input_desc_x(tensorDescB);
+  inputData2.update_output_desc_y(tensorDescB);
+  // Construct BatchMatMul and BiasAdd fusion
+  auto MatMulOp = ge::op::MatMul("MatMul")
+                                          .set_input_x1(inputData1)
+                                          .set_input_x2(inputData2)
+                                          .set_attr_transpose_x1(false)
+                                          .set_attr_transpose_x2(false);
+  auto bias_shape = vector<int64_t>({1024});
+  ge::TensorDesc bias_desc(ge::Shape(bias_shape), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto data_bias = op::Data("add_node");
+  data_bias.update_input_desc_x(bias_desc);
+  data_bias.update_output_desc_y(bias_desc);
+
+  auto addOp = op::Add("add_op")
+                      .set_input_x1(MatMulOp)
+                      .set_input_x2(data_bias);
+  // Set Graph and Expected Res
+  std::vector<Operator> inputs{inputData1, inputData2, data_bias};
+  std::vector<Operator> outputs{addOp};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("MatMulBiasAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool fusionSuccess = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == ADD) {
+      fusionSuccess = false;
+    }
+  }
+  EXPECT_EQ(fusionSuccess, true);
+}
+
+// Test MatMul Add Fusion Dynamic shape fail1(Functional)
+TEST_F(matmul_biasadd_fusion_test, MatMul_Add_fusion_input0_matmul_fail1) {
+  ge::Graph graph("MatMul_Add_fusion_test1");
+  // Construt input Data 1
+  std::vector<int64_t> dims1{-1, -1};
+  ge::Shape shapeA(dims1);
+  ge::TensorDesc tensorDescA(shapeA, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData1 = op::Data("MatMul_input_data1");
+  inputData1.update_input_desc_x(tensorDescA);
+  inputData1.update_output_desc_y(tensorDescA);
+  // Construt input Data 2
+  std::vector<int64_t> dimsB{16, 1024};
+  ge::Shape shapeB(dimsB);
+  ge::TensorDesc tensorDescB(shapeB, ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto inputData2 = op::Data("MatMul_input_data2");
+  inputData2.update_input_desc_x(tensorDescB);
+  inputData2.update_output_desc_y(tensorDescB);
+  // Construct BatchMatMul and BiasAdd fusion
+  auto MatMulOp = ge::op::MatMul("MatMul")
+                                          .set_input_x1(inputData1)
+                                          .set_input_x2(inputData2)
+                                          .set_attr_transpose_x1(false)
+                                          .set_attr_transpose_x2(false);
+  auto bias_shape = vector<int64_t>({-1});
+  ge::TensorDesc bias_desc(ge::Shape(bias_shape), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto data_bias = op::Data("add_node");
+  data_bias.update_input_desc_x(bias_desc);
+  data_bias.update_output_desc_y(bias_desc);
+
+  auto addOp = op::Add("add_op")
+                      .set_input_x1(MatMulOp)
+                      .set_input_x2(data_bias);
   // Set Graph and Expected Res
   std::vector<Operator> inputs{inputData1, inputData2, data_bias};
   std::vector<Operator> outputs{addOp};

@@ -33,7 +33,10 @@ protected:
 private:
   Status LinkOutputEdgeWithoutControl(const ge::NodePtr &matmul_node, const ge::NodePtr &cast_node) const;
   Status IsMatch(const ge::NodePtr &matmul_node, const ge::NodePtr &cast_node) const;
-  Status DoFusion(const ge::NodePtr &matmul_node) const;
+  Status DoFusion(const ge::NodePtr &matmul_node, ge::DataType &matmul_output_dtype,
+                  ge::DataType &matmul_output_ori_dtype) const;
+  void RestoreDtype(ge::NodePtr &matmul_node, const ge::DataType &matmul_output_dtype,
+                    const ge::DataType &matmul_output_ori_dtype) const;
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_CAST_FUSION_PASS_H_
