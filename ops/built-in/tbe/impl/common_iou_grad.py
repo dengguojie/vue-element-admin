@@ -303,27 +303,21 @@ class CommonIoUGrad(object):
         self.tik_instance.data_move(self.g_box.h, self.gtboxes[self.all_num * 3 + task_idx * self.data_align], 0, 1,
                                     self.mov_rep_time, 0, 0)
 
-        b1w_half = self.tik_instance.Tensor("float32", [self.data_align], name="b1w_half", scope=tik.scope_ubuf)
-        b1h_half = self.tik_instance.Tensor("float32", [self.data_align], name="b1h_half", scope=tik.scope_ubuf)
+        self.tik_instance.h_mul(self.tmp_a, self.b_box.w, Constant.HALF)
+        self.tik_instance.h_mul(self.tmp_b, self.b_box.h, Constant.HALF)
 
-        b2w_half = self.tik_instance.Tensor("float32", [self.data_align], name="b2w_half", scope=tik.scope_ubuf)
-        b2h_half = self.tik_instance.Tensor("float32", [self.data_align], name="b2h_half", scope=tik.scope_ubuf)
+        self.tik_instance.h_sub(self.b_box.x1, self.b_box.x, self.tmp_a)
+        self.tik_instance.h_add(self.b_box.x2, self.b_box.x, self.tmp_a)
+        self.tik_instance.h_sub(self.b_box.y1, self.b_box.y, self.tmp_b)
+        self.tik_instance.h_add(self.b_box.y2, self.b_box.y, self.tmp_b)
 
-        self.tik_instance.h_mul(b1w_half, self.b_box.w, Constant.HALF)
-        self.tik_instance.h_mul(b1h_half, self.b_box.h, Constant.HALF)
+        self.tik_instance.h_mul(self.tmp_c, self.g_box.w, Constant.HALF)
+        self.tik_instance.h_mul(self.tmp_d, self.g_box.h, Constant.HALF)
 
-        self.tik_instance.h_sub(self.b_box.x1, self.b_box.x, b1w_half)
-        self.tik_instance.h_add(self.b_box.x2, self.b_box.x, b1w_half)
-        self.tik_instance.h_sub(self.b_box.y1, self.b_box.y, b1h_half)
-        self.tik_instance.h_add(self.b_box.y2, self.b_box.y, b1h_half)
-
-        self.tik_instance.h_mul(b2w_half, self.g_box.w, Constant.HALF)
-        self.tik_instance.h_mul(b2h_half, self.g_box.h, Constant.HALF)
-
-        self.tik_instance.h_sub(self.g_box.x1, self.g_box.x, b2w_half)
-        self.tik_instance.h_add(self.g_box.x2, self.g_box.x, b2w_half)
-        self.tik_instance.h_sub(self.g_box.y1, self.g_box.y, b2h_half)
-        self.tik_instance.h_add(self.g_box.y2, self.g_box.y, b2h_half)
+        self.tik_instance.h_sub(self.g_box.x1, self.g_box.x, self.tmp_c)
+        self.tik_instance.h_add(self.g_box.x2, self.g_box.x, self.tmp_c)
+        self.tik_instance.h_sub(self.g_box.y1, self.g_box.y, self.tmp_d)
+        self.tik_instance.h_add(self.g_box.y2, self.g_box.y, self.tmp_d)
 
     def trans_false(self, task_idx):
         # func: for bboxes
@@ -351,6 +345,18 @@ class CommonIoUGrad(object):
 
         self.tik_instance.h_sub(self.g_box.w, self.g_box.x2, self.g_box.x1)
         self.tik_instance.h_sub(self.g_box.h, self.g_box.y2, self.g_box.y1)
+
+        self.tik_instance.h_mul(self.tmp_a, self.b_box.w, Constant.HALF)
+        self.tik_instance.h_mul(self.tmp_b, self.b_box.h, Constant.HALF)
+
+        self.tik_instance.h_sub(self.b_box.x, self.b_box.x2, self.tmp_a)
+        self.tik_instance.h_sub(self.b_box.y, self.b_box.y2, self.tmp_b)
+
+        self.tik_instance.h_mul(self.tmp_c, self.g_box.w, Constant.HALF)
+        self.tik_instance.h_mul(self.tmp_d, self.g_box.h, Constant.HALF)
+
+        self.tik_instance.h_sub(self.g_box.x, self.g_box.x2, self.tmp_c)
+        self.tik_instance.h_sub(self.g_box.y, self.g_box.y2, self.tmp_d)
 
     def update_forward_part(self):
         """update_forward_part"""
@@ -516,7 +522,7 @@ class CommonIoUGrad(object):
 
     def union_part(self):
         """union_part"""
-        # box1
+        # b_box
         self.tik_instance.h_mul(self.tmp_a, self.b_box.w, self.dunion)
         self.tik_instance.h_mul(self.tmp_b, self.b_box.h, self.dunion)
         # `for union part : b1x2-b1x1`
@@ -526,7 +532,7 @@ class CommonIoUGrad(object):
         self.tik_instance.h_add(self.b_box.dy2, self.b_box.dy2, self.tmp_a)
         self.tik_instance.h_sub(self.b_box.dy1, self.b_box.dy1, self.tmp_a)
 
-        # box2
+        # g_box
         self.tik_instance.h_mul(self.tmp_c, self.g_box.w, self.dunion)
         self.tik_instance.h_mul(self.tmp_d, self.g_box.h, self.dunion)
         # `for union part : b2x2-b2x1`

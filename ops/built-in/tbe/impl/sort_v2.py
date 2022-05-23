@@ -291,8 +291,8 @@ class SortV2(object):
                     num_list, input_ub, offset = self.merge2(num_list, input_ub, offset, src_pos_ub, index,
                                                              dest_pos_ub)
                 elif res == 1:
-                    self.tik_instance.data_move(input_ub[dest_pos_ub + offset * self.align],
-                                                input_ub[src_pos_ub + offset * self.align], 0, 1,
+                    self.tik_instance.data_move(input_ub[dest_pos_ub + offset * self.num_offset],
+                                                input_ub[src_pos_ub + offset * self.num_offset], 0, 1,
                                                 num_list[index] * self.struce_len // 32, 0, 0)
                 else:
                     break
