@@ -2,7 +2,8 @@
  * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
+ * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the
+ License.
 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,7 +33,7 @@
 #include "op_log.h"
 #include "op_desc.h"
 #include "all_ops.h"
-#include "common/utils/ut_op_util.h"
+#include "common/utils/ut_op_common.h"
 
 class LayerNormTest : public testing::Test {
  protected:
@@ -83,6 +84,9 @@ TEST_F(LayerNormTest, layer_norm_test_2) {
   EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_y_shape);
   EXPECT_EQ(output_mean_desc.GetShape().GetDims(), expected_mv_shape);
   EXPECT_EQ(output_var_desc.GetShape().GetDims(), expected_mv_shape);
+
+  // rt2.0 infershape check
+  CommonInferShapeOperator(op, {expected_y_shape, expected_mv_shape, expected_mv_shape});
 }
 
 TEST_F(LayerNormTest, layer_norm_data_slice_test_001) {
@@ -90,12 +94,10 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_001) {
 
   op.UpdateInputDesc("x",
                      create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
-  op.UpdateInputDesc("gamma",
-                     create_desc_with_ori({512}, ge::DT_FLOAT, ge::FORMAT_ND, {512}, ge::FORMAT_ND));
-  op.UpdateInputDesc("beta",
-                     create_desc_with_ori({512}, ge::DT_FLOAT, ge::FORMAT_ND, {512}, ge::FORMAT_ND));
+  op.UpdateInputDesc("gamma", create_desc_with_ori({512}, ge::DT_FLOAT, ge::FORMAT_ND, {512}, ge::FORMAT_ND));
+  op.UpdateInputDesc("beta", create_desc_with_ori({512}, ge::DT_FLOAT, ge::FORMAT_ND, {512}, ge::FORMAT_ND));
   op.UpdateOutputDesc("y",
-                     create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
+                      create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
 
   int begin_params_axis = -1;
   op.SetAttr("begin_params_axis", begin_params_axis);
@@ -126,14 +128,12 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_001) {
 TEST_F(LayerNormTest, layer_norm_data_slice_test_002) {
   ge::op::LayerNorm op;
 
-  op.UpdateInputDesc("x",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_FRACTAL_NZ, {32, 62}, ge::FORMAT_ND));
-  op.UpdateInputDesc("gamma",
-                     create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
-  op.UpdateInputDesc("beta",
-                     create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
-  op.UpdateOutputDesc("y",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_FRACTAL_NZ, {32, 62}, ge::FORMAT_ND));
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_FRACTAL_NZ, {32, 62}, ge::FORMAT_ND));
+  op.UpdateInputDesc("gamma", create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
+  op.UpdateInputDesc("beta", create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
+  op.UpdateOutputDesc(
+      "y", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_FRACTAL_NZ, {32, 62}, ge::FORMAT_ND));
 
   int begin_params_axis = -1;
   op.SetAttr("begin_params_axis", begin_params_axis);
@@ -170,14 +170,12 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_002) {
 TEST_F(LayerNormTest, layer_norm_data_slice_test_003) {
   ge::op::LayerNorm op;
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  op.UpdateInputDesc("x",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {4, 2, 16, 16}, ge::FORMAT_NCHW));
-  op.UpdateInputDesc("gamma",
-                     create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
-  op.UpdateInputDesc("beta",
-                     create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
-  op.UpdateOutputDesc("y",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {4, 2, 16, 16}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {4, 2, 16, 16}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc("gamma", create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
+  op.UpdateInputDesc("beta", create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
+  op.UpdateOutputDesc(
+      "y", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {4, 2, 16, 16}, ge::FORMAT_NCHW));
 
   int begin_params_axis = -1;
   op.SetAttr("begin_params_axis", begin_params_axis);
@@ -188,14 +186,12 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_003) {
 TEST_F(LayerNormTest, layer_norm_data_slice_test_004) {
   ge::op::LayerNorm op;
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  op.UpdateInputDesc("x",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NHWC, {4, 2, 16, 16}, ge::FORMAT_NHWC));
-  op.UpdateInputDesc("gamma",
-                     create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
-  op.UpdateInputDesc("beta",
-                     create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
-  op.UpdateOutputDesc("y",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NHWC, {4, 2, 16, 16}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NHWC, {4, 2, 16, 16}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc("gamma", create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
+  op.UpdateInputDesc("beta", create_desc_with_ori({16}, ge::DT_FLOAT, ge::FORMAT_ND, {16}, ge::FORMAT_ND));
+  op.UpdateOutputDesc(
+      "y", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NHWC, {4, 2, 16, 16}, ge::FORMAT_NHWC));
 
   auto status = op_desc->InferDataSlice();
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -206,12 +202,10 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_005) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   op.UpdateInputDesc("x",
                      create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDC1HWC0, {32, 62}, ge::FORMAT_ND));
-  op.UpdateInputDesc("gamma",
-                     create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
-  op.UpdateInputDesc("beta",
-                     create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
-  op.UpdateOutputDesc("y",
-                     create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_FRACTAL_NZ, {32, 62}, ge::FORMAT_ND));
+  op.UpdateInputDesc("gamma", create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
+  op.UpdateInputDesc("beta", create_desc_with_ori({62}, ge::DT_FLOAT, ge::FORMAT_ND, {62}, ge::FORMAT_ND));
+  op.UpdateOutputDesc(
+      "y", create_desc_with_ori({4, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_FRACTAL_NZ, {32, 62}, ge::FORMAT_ND));
 
   auto status = op_desc->InferDataSlice();
   EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -227,7 +221,7 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_006) {
   op.UpdateInputDesc("beta",
                      create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
   op.UpdateOutputDesc("y",
-                     create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
+                      create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
 
   int begin_params_axis = 0;
   op.SetAttr("begin_params_axis", begin_params_axis);
@@ -260,12 +254,10 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_007) {
 
   op.UpdateInputDesc("x",
                      create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
-  op.UpdateInputDesc("gamma",
-                     create_desc_with_ori({256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {256, 512}, ge::FORMAT_ND));
-  op.UpdateInputDesc("beta",
-                     create_desc_with_ori({256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {256, 512}, ge::FORMAT_ND));
+  op.UpdateInputDesc("gamma", create_desc_with_ori({256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {256, 512}, ge::FORMAT_ND));
+  op.UpdateInputDesc("beta", create_desc_with_ori({256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {256, 512}, ge::FORMAT_ND));
   op.UpdateOutputDesc("y",
-                     create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
+                      create_desc_with_ori({30, 256, 512}, ge::DT_FLOAT, ge::FORMAT_ND, {30, 256, 512}, ge::FORMAT_ND));
 
   int begin_params_axis = 1;
   op.SetAttr("begin_params_axis", begin_params_axis);

@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <utility>
+#include "error_util.h"
 
 namespace ops {
 
@@ -36,5 +37,46 @@ inline std::shared_ptr<_T> make_shared_nothrow(_Args&&... __args) noexcept(
     return std::shared_ptr<_T>();
   }
 }
+
+template <typename T1, typename T2>
+bool is_dim_valid(const T1 shape_size, const T2 dim_value) {
+  int64_t minimum_num = static_cast<int64_t>(shape_size) * (-1);
+  int64_t maximum_num = static_cast<int64_t>(shape_size) - 1;
+
+  return static_cast<int64_t>(dim_value) >= minimum_num && static_cast<int64_t>(dim_value) <= maximum_num;
+}
+
+template <typename T1, typename T2>
+std::string gen_invalid_dim_msg(const std::string dim_name, const T1 shape_size, const T2 dim_value) {
+  std::string wrong_val = ge::ConcatString(static_cast<int64_t>(dim_value));
+  // will be "[-rank, rank)"
+  std::string neg_rank = ge::ConcatString(static_cast<int64_t>(shape_size) * (-1));
+  std::string expect_val =
+      ge::ConcatString("[", neg_rank, ", ", ge::ConcatString(static_cast<int64_t>(shape_size)), ")");
+
+  return ge::GetAttrValueErrMsg(dim_name, wrong_val, expect_val);
+}
+
+template <typename T1, typename T2>
+std::string gen_invalid_dim_msg(const std::string dim_name, const size_t dim_idx, const T1 shape_size,
+                                const T2 dim_value) {
+  std::string invalid_dim_name = ge::ConcatString(dim_name, "[", ge::ConcatString(dim_idx), "]");
+
+  return gen_invalid_dim_msg(invalid_dim_name, shape_size, dim_value);
+}
+
+/*
+ * @brief: get datatype string from enum
+ * @param [in] type: enum datatype
+ * @return string: datatype string
+ */
+std::string to_string(const ge::DataType& type);
+
+/*
+ * @brief: get format string from enum
+ * @param [in] format: enum format
+ * @return string: format string
+ */
+std::string to_string(const ge::Format& format);
 }  // namespace ops
 #endif  // CANN_OPS_BUILT_IN_OP_UTIL_H_

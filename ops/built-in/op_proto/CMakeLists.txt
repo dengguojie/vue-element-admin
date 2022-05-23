@@ -27,6 +27,7 @@ set(_op_proto_utils
   util/candidate_sampling_shape_fns.cc
   util/common_shape_fns.cc
   ../../common/src/error_util.cc
+  ../../common/src/op_util.cc
   util/images_ops_shape_fns.cc
   util/linalg_ops_shape_fns.cc
   util/lookup_ops_shape_fns.cc
@@ -46,6 +47,8 @@ set(_op_proto_srcs
   runtime/broadcast_infer.cc
   runtime/flatten.cc
   runtime/max_pool_v3.cc
+  runtime/transpose.cc
+  runtime/layer_norm.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc

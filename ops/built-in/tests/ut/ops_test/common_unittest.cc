@@ -16,16 +16,19 @@
 #include "common/utils/ut_op_common.h"
 
 static std::map<std::string, std::vector<std::vector<std::string>>> operator_info_map = {
-  {"Add", {{"x1", "x2"}, {"y"}, {}}},
-  {"Mul", {{"x1", "x2"}, {"y"}, {}}},
-  {"ReduceSum", {{"x", "axes"}, {"y"}, {"keep_dims"}}},
-  {"MaxPoolV3", {{"x"}, {"y"}, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}}},
-  {"Flatten", {{"x"}, {"y"}, {"axis"}}},
-  {"Cast", {{"x"}, {"y"}, {"dst_type"}}},
+    {"Add", {{"x1", "x2"}, {"y"}, {}}},
+    {"LayerNorm",
+     {{"x", "gamma", "beta"}, {"y", "mean", "variance"}, {"begin_norm_axis", "begin_params_axis", "epsilon"}}},
+    {"Mul", {{"x1", "x2"}, {"y"}, {}}},
+    {"ReduceSum", {{"x", "axes"}, {"y"}, {"keep_dims"}}},
+    {"MaxPoolV3",
+     {{"x"}, {"y"}, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}}},
+    {"Flatten", {{"x"}, {"y"}, {"axis"}}},
+    {"Cast", {{"x"}, {"y"}, {"dst_type"}}},
 };
 
-void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const,
-                               vector<string> attrs, vector<vector<int64_t>> expect_shapes) {
+void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vector<string> attrs,
+                               vector<vector<int64_t>> expect_shapes) {
   ATTACH_OPERATOR_TO_HOLDER2(holder, op, input_const, attrs);
 
   std::string optype = op.GetOpType();
@@ -37,8 +40,8 @@ void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const,
   }
 }
 
-void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
-                                       vector<string> attrs, vector<vector<int64_t>> expect_shapes) {
+void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum, vector<string> attrs,
+                                       vector<vector<int64_t>> expect_shapes) {
   ATTACH_OPERATOR_TO_HOLDER3(holder, op, irnum, attrs);
 
   std::string optype = op.GetOpType();
