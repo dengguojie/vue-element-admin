@@ -68,13 +68,13 @@ def op_select_format(x, y, kernel_name="l2_loss"):
         format_base_out = format_base_out + [other_format] * len(base_data_type)
 
     dtype_base_in = list(dtype_base_out)
-    
+
     is_atomic_fp16 = tbe_platform.api_check_support("tik.set_atomic_add", "float16")
     is_atomic_fp32 = tbe_platform.api_check_support("tik.set_atomic_add", "float32")
-    
+
     if is_atomic_fp32 and not is_atomic_fp16:
         dtype_base_out = ["float"] * len(dtype_base_out)
-        
+
     dtype_in_str = ','.join(dtype_base_in)
     dtype_out_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
@@ -89,11 +89,11 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
-    
+
 
 # 'pylint: disable=unused-argument,invalid-name
 @register_operator_compute("L2Loss", op_mode="dynamic", support_fusion=True)
-def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
+def l2_loss_compute(x, y, kernel_name="l2_loss"):
     """
     l2_loss compute
 
@@ -101,8 +101,6 @@ def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
     ----------
     x: TVM tensor
         input tensor.
-    axes: int, list, tuple or NONETYPE
-        the axes for reduce.
     y: dict
         the dict of output tensor.
     kernel_name: str
@@ -113,17 +111,27 @@ def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
     res: TVM tensor
         output tensor, has the same type as input tensor.
     """
+    axes = [0]
+
+    if x.op.attrs:
+        if 'axis' in x.op.attrs:
+            axes_new = []
+            axes = list(x.op.attrs["axis"])
+            for i in axes:
+                axes_new.append(int(i))
+            axes = axes_new
+
     coeff_dtype = x.dtype
     y_dtype = y.get("dtype")
 
     if x.dtype != y_dtype:
         x = tbe.cast_to(x, y_dtype)
         coeff_dtype = y_dtype
-    
-    coeff_sqrt = tvm.const(1.0 / (2**0.5), dtype=coeff_dtype)
+
+    coeff_sqrt = tvm.const(1.0 / (2 ** 0.5), dtype=coeff_dtype)
     data_mul = tbe.vmuls(x, coeff_sqrt)
     data_sqr = tbe.vmul(data_mul, data_mul)
-    
+
     res = tbe.reduce_sum(data_sqr, axis=axes)
 
     return res
@@ -174,8 +182,9 @@ def l2_loss(x, y, kernel_name="l2_loss"):
             shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             data_input_x = tvm.placeholder(shape_x, name="data_input_x",
                                            dtype=dtype_lower_x)
-                                           
-            res = l2_loss_compute(data_input_x, axes.get("value"), y)
+
+            data_input_x.op.attrs["axis"] = axes.get("value")
+            res = l2_loss_compute(data_input_x, y, kernel_name)
             tensors.append([data_input_x, res])
         with tvm.target.cce():
             schedule = tbe.auto_schedule(res)
