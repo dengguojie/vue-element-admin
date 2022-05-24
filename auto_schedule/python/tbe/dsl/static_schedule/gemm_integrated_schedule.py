@@ -998,14 +998,26 @@ class GemmSchedule:
         elif self.get_a_matrix_mode == "nd2Zz":
             self._set_data_layout_a_in_nd2zz()
 
+        self._handle_virtual_align()
         self._add_tensor_to_list(self.container.tensor_map.get("a_int82fp16"), [tensors_in_aub])
         self._add_tensor_to_list(self.container.tensor_map.get("a_ub"), [tensors_in_aub])
         self._add_tensor_to_list(self.container.tensor_map.get("a_ub_fract"), [tensors_in_aub])
         self._add_tensor_to_list(self.container.tensor_map.get("a_transpose"), [tensors_in_aub])
 
+    def _handle_virtual_align(self):
+        a_ub = self.container.tensor_map.get("a_ub")
+        # set a_ub as a_ub_virtual_align, a_ub_virtual_align will do nothing, and reuse this two
+        if a_ub is not None and "virtual_align" in a_ub.op.attrs:
+            self.container.tensor_map["a_ub_virtual_align"] = a_ub
+            self.container.tensor_map["a_ub"] = self.sch.cache_read(self.container.tensor_map.get("a_placehold"),
+                                                                    tbe_platform_info.scope_ubuf, [a_ub])
+            self._add_key_value(self.container.tensor_map.get("a_ub_virtual_align"),
+                                self.container.tensor_map.get("a_ub"))
+            self._add_tensor_to_list(self.container.tensor_map.get("a_ub_virtual_align"),
+                                     [self.container.tensors_in_aub])
+
     def _set_data_layout_b_matrix(self):
         tensors_in_bub = self.container.tensors_in_bub
-
         if self.is_dynamic:
             self._get_tensor_and_set_scope("tensor_b_keep_origin",
                                            tbe_platform_info.scope_ubuf, "b_ub_aligned")
@@ -1065,7 +1077,6 @@ class GemmSchedule:
         self._get_tensor_and_set_scope("tensor_bias_ub", tbe_platform_info.scope_ubuf, "bias_ub")
         self._get_tensor_and_set_scope("tensor_bias_nz", tbe_platform_info.scope_cc, "bias_l0c")
         self._get_tensor_and_set_scope("tensor_mmad_with_bias", tbe_platform_info.scope_cc, "c_add_bias")
-
         if self.status_controller.need_init_bias:
             self._get_tensor_and_set_scope('tensor_init_value_of_bias_ub', tbe_platform_info.scope_ubuf,
                 'init_value_of_bias_ub')
@@ -1087,14 +1098,11 @@ class GemmSchedule:
         self._get_tensor_and_set_scope("tensor_mmad_with_scale", tbe_platform_info.scope_ubuf, "c_ub_fract")
 
         add_bias_in_l0c = self.status_controller.have_bias and (not self.status_controller.cube_vector_split)
-        add_bias_in_fb = self.status_controller.have_bias and self.status_controller.cube_vector_split
         add_bias_in_ub = self.status_controller.have_c
         bias_ub_compute_at = []
         if add_bias_in_l0c:
             bias_ub_compute_at = tensors_in_l0c
             self._set_scope_bias_in_l0c()
-        if add_bias_in_fb:
-            pass
         if add_bias_in_ub:
             bias_ub_compute_at = tensors_in_cub
             self._get_tensor_and_set_scope("tensor_gemm", tbe_platform_info.scope_ubuf, "c_add_bias_ub")
@@ -1355,7 +1363,6 @@ class GemmSchedule:
 
         if self.out_addr_type == 1:
             self._set_tensor_scope(self.res, tbe_platform_info.scope_cbuf_fusion)
-
         if self.in_addr_type == 1:
             tensor_a = self.container.tensor_map.get("a_placehold")
             self._set_tensor_scope(tensor_a, tbe_platform_info.scope_cbuf_fusion)
@@ -1501,7 +1508,6 @@ class GemmSchedule:
         self._print_debug(self.status_controller.quant_fusion, "quant_fusion")
         self._print_debug(self.status_controller.requant_fusion, "requant_fusion")
         self._print_debug(self.status_controller.dequant_fusion, "dequant_fusion")
-
         self.container.tensor_map["tensor_reform_by_vadds"] = self._match_and_get_tensor(
             compute_tensors, "reform_by_vadds")
         self.container.tensor_map["tensor_reform_by_vmuls"] = self._match_and_get_tensor(
@@ -1700,7 +1706,6 @@ class GemmSchedule:
 
         tensor_list : list
             record tensors in the order of Depth-First-Search.
-
         """
         if out_tensor is None:
             return
@@ -2339,7 +2344,6 @@ class GemmSchedule:
         l0a_shape, l0b_shape = (
             (l0b_shape, l0a_shape) if self.status_controller.mmad_mode == "gemv"
             else (l0a_shape, l0b_shape))
-
         a_shape = [
             1,
             l0a_shape[-3],
@@ -3458,7 +3462,6 @@ class GemmSchedule:
         return bub_shape, bub_tiling
 
     def _bub_process(self):
-
         b_ub = self.container.tensor_map.get("b_ub")
         if b_ub in (None, []):
             return
@@ -3994,6 +3997,7 @@ class GemmSchedule:
         else:
             # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
             self._emit_insn_func(self.container.tensor_map.get("a_ub"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("a_ub_virtual_align"), 0, "phony_insn", mode=1)
 
     def _emit_insn_elemwise_tensor(self):
         for ten_in in self.container.elemwise_tensors:
@@ -4600,7 +4604,6 @@ class GemmSchedule:
         data_size = tile_k * tile_n * block_unit
         if data_size > block_size_max:
             error_manager_cube.raise_err_message_cube("block_size cannot be greater than block_size_max")
-
         return int(data_size)
 
     def _set_compress_info(self, compress_tensor, compress_index, tile_k, tile_n, out_axis):
@@ -5731,7 +5734,6 @@ class ComputeTiling:
         return self._assembly_tiling(tiling_factors, double_buffers)
 
     def _assembly_tiling(self, tiling_factors, double_buffers):
-
         block_reduce = self.block_reduce
         block_in = self.block_in
         block_out = self.block_out

@@ -1159,6 +1159,8 @@ class GEMMCompute(FormatCompute):
         else:
             if self.src_dtype in ("uint8", "int8"):
                 m_shape = int_ceil_div(ori_m_shape, 32) * 32 // 16
+                if self.int8_not_double_m:
+                    m_shape = int_ceil_div(ori_m_shape, self.block_in)
             else:
                 m_shape = int_ceil_div(ori_m_shape, self.block_in)
             km_shape = int_ceil_div(ori_km_shape, self.block_reduce)
@@ -1294,7 +1296,9 @@ class GEMMCompute(FormatCompute):
             ),
             name="tensor_{}_aligned".format(tensor_name)
         )
-
+        if self.int8_not_double_m and tensor_name == "a":
+            # virtual_align means use aligned shape, but do not pad zero.
+            tensor_aligned.op.attrs["virtual_align"] = True
         return tensor_aligned
 
     def _do_shape_aligned_for_dynamic(self, tensor_need_align, shape_aligned, tensor_name,
@@ -1356,7 +1360,6 @@ class GEMMCompute(FormatCompute):
         not_pad_for_int8_nd = self.tensor_a.dtype in ("int8", "uint8") and \
                               self.format_a == "ND" and (self.alpha is None)
         self.int8_not_double_m = not_pad_for_int8_nd
-        need_check_align = need_check_align and (not not_pad_for_int8_nd)
         if self.format_a in ("ND", "NC1HWC0"):
             tensor_a_aligned = self._do_align_nd_shape(self.tensor_a, "a", self.src_dtype, need_check_align)
         else:
