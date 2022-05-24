@@ -43,6 +43,7 @@ from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import GemmScheduleContainer
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import GemmScheduleStatusController
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import BufferChecker
+from tbe.dsl.static_schedule.gemm_integrated_schedule_util import UbBufferReuser
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
@@ -525,6 +526,9 @@ class GemmSchedule:
         self._update_flag_after_tiling()
         self._set_nd_out_compute_inline()
         self._atomic_add_k_axis()
+        if self.cache_tiling and self.format_a == "ND" and self.format_b == "ND":
+            ub_reuse_obj = UbBufferReuser(self.tiling, self.container.tensor_map, self.container.buffer_reuse_dict)
+            ub_reuse_obj.set_post_ub_reuse_pre_ub(self.status_controller.split_k_axis_by_tiling)
         self._print_ir_matmul("atomic_add_k_axis", self.sch)
         self.sch_agent = ScheduleAgent(self.sch)
         self._tiling_l0_process()
@@ -795,7 +799,6 @@ class GemmSchedule:
         self.container.compute_inline_list = []
         self.container.tensor_map = {}
         # for compute at and db
-
         self.container.compute_tensors = self._get_compute_tensor(res)
         self._set_fusion_flag()
         self._set_data_layout_base_tensor()
@@ -1231,7 +1234,6 @@ class GemmSchedule:
         insn = self.requant_fusion_insn_map.get(tensor_reform.op.name)
         # axiss are batch, n1, m1, n0.outer(2), m0, n0.inner(16), the axis n0.outer should be out of emit_insn axis
         self.sch[tensor_reform].emit_insn(tensor_reform.op.axis[-3], insn)
-
         return
 
     def _dequant_fusion_proc(self):
@@ -1327,13 +1329,10 @@ class GemmSchedule:
     def _quantify_fusion_entry(self):
         if not self.status_controller.quantify_fusion:
             return
-
         if self.status_controller.requant_fusion:
             self._requant_fusion_proc()
-
         if self.status_controller.dequant_fusion:
             self._dequant_fusion_proc()
-
         if self.status_controller.quant_fusion:
             self._quant_fusion_proc()
 
@@ -1349,7 +1348,6 @@ class GemmSchedule:
                 tensor_reform.op.axis[tensor_len_c - 3],
                 tensor_reform.op.axis[tensor_len_c - 2],
                 reform_c_inner)
-
         return
 
     def _set_scope_fusion(self):

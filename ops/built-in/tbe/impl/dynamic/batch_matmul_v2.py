@@ -176,7 +176,6 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b) -> tuple:
         (("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float16", "ND"), ("int8", "ND"),
          ("float16", "FRACTAL_NZ"))]
 
-
     cube_vector_scenario = [
         (("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float32", "ND"),
          ("int8", "ND"), ("float16", "FRACTAL_NZ")),

@@ -432,3 +432,54 @@ class BufferChecker:
             if c_ub_storage_align:
                 base_buffer_size += c_add_size
         return base_buffer_size, c_ub_storage_align
+
+
+class UbBufferReuser:
+    # This Class is used to set CUB to Reuse AUB/BUB in cache Tiling Mode.
+    def __init__(self, tiling, tensor_map, buffer_reuse_dict):
+        self.tiling = tiling
+        self.tensor_map = tensor_map
+        self.buffer_reuse_dict = buffer_reuse_dict
+
+    def set_post_ub_reuse_pre_ub(self, split_k):
+        # The following attach flag can only be enabled in cacheTiling mode.
+        al1_attach_flag = self.tiling.get("attach_at_flag").get("al1_attach_flag")
+        bl1_attach_flag = self.tiling.get("attach_at_flag").get("bl1_attach_flag")
+        aub_attach_flag = self.tiling.get("attach_at_flag").get("aub_multi_flag")
+        bub_attach_flag = self.tiling.get("attach_at_flag").get("bub_multi_flag")
+        al1_full_load = al1_attach_flag == 0
+        bl1_full_load = bl1_attach_flag == 0
+        aub_full_load = aub_attach_flag == 1
+        bub_full_load = bub_attach_flag == 1
+        # To avoid Preload Precision Problem or Double Buffer Failure Problem,
+        # reused is disable when L1 and UB are full load at the same time.
+        aub_vacant_flag = al1_full_load and not aub_full_load
+        bub_vacant_flag = bl1_full_load and not bub_full_load
+
+        a_ub = self.tensor_map.get("a_ub")
+        a_ub_fract = self.tensor_map.get("a_ub_fract")
+        b_ub = self.tensor_map.get("b_ub")
+        b_ub_fract = self.tensor_map.get("b_ub_fract")
+        if split_k:
+            c_ub = self.tensor_map.get("c_ub_fract")
+        else:
+            c_ub = self.tensor_map.get("cast_to_fp16")
+        cub_nz_to_nd = self.tensor_map.get("nz_to_nd")
+        # Only reusing nz_to_nd if it is not split K scene.
+        nz_to_nd_reused_list = list()
+        if aub_vacant_flag and not bub_vacant_flag:
+            self._add_to_reused_dict(c_ub, a_ub)
+            nz_to_nd_reused_list = [a_ub_fract]
+        elif bub_vacant_flag and not aub_vacant_flag:
+            self._add_to_reused_dict(c_ub, b_ub)
+            nz_to_nd_reused_list = [b_ub_fract]
+        elif aub_vacant_flag and bub_vacant_flag:
+            self._add_to_reused_dict(c_ub, [a_ub, b_ub])
+            nz_to_nd_reused_list = [a_ub_fract, b_ub_fract]
+        if not split_k:
+            self._add_to_reused_dict(cub_nz_to_nd, nz_to_nd_reused_list)
+
+    def _add_to_reused_dict(self, src_tensor, reuse_tensor):
+        # Allowing reuse_tensor(or reuse_tensors) to reuse the spaces of src_tensor.
+        if (src_tensor is not None) and (reuse_tensor is not None):
+            self.buffer_reuse_dict[src_tensor] = reuse_tensor

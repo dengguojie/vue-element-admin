@@ -512,12 +512,11 @@ bool GetGemmCompileValue(const json &compile_info, shared_ptr<GemmCompileInfo> &
     compile_value->params.l2_size = binary_attrs["l2_size"];
     compile_value->params.trans_a_flag = compile_value->trans_a;
     compile_value->params.trans_b_flag = compile_value->trans_b;
-    compile_value->params.ubdb_flag = false;
     compile_value->params.at_l1_flag = true;
-    compile_value->params.fused_double_operand_num = compile_value->params.nd_flag ? 1 : 0;
+    compile_value->params.fused_double_operand_num =
+        compile_value->params.nd_flag && !compile_value->params.split_k_flag ? 1 : 0;
     compile_value->params.aub_double_num = compile_value->params.nd_flag ? 1 : 0;
     compile_value->params.bub_double_num = compile_value->params.nd_flag ? 1 : 0;
-    compile_value->params.cub_reused_flag = false;
   }
 
   if (compile_info.contains("repo_seeds") && compile_info.contains("repo_range")) {

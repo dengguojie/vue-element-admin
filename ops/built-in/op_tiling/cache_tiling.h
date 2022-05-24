@@ -43,9 +43,7 @@ struct BatchmatmulCompileParas {
   bool nd_flag = false;
   bool trans_a_flag = false;
   bool trans_b_flag = false;
-  bool ubdb_flag = false;
   bool at_l1_flag = true;
-  bool cub_reused_flag = false;
   bool split_k_flag = false;
   float fused_double_operand_num = 0;
   float aub_double_num = 0;
@@ -228,6 +226,24 @@ struct UbStatus {
   int32_t aub_align_bound = 0;
   int32_t bub_align_bound = 0;
   int32_t ub_rest_size = 0;
+  int32_t safe_ub_rest_size = 0;
+  // Ten tiling candidates for AUb. Two means tiling candidates results for M_aub and K_aub.
+  int32_t aub_results[10][2] = {0};
+  int32_t aub_cnt = 0;
+  // Two tiling candidates for BUb. The second Two means tiling candidates results for K_bub and N_bub.
+  int32_t bub_results[2][2] = {0};
+  int32_t bub_cnt = 0;
+  int32_t cub_dtype_multi = 1;
+  bool cub_reuse_aub_flag = false;
+  bool cub_reuse_bub_flag = false;
+  bool a_bank_conflict = false;
+  bool b_bank_conflict = false;
+};
+
+struct SingleCoreStatus {
+  L0Status l0Status;
+  L1Status l1Status;
+  UbStatus ubStatus;
 };
 
 class Tiling {

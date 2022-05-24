@@ -23,7 +23,6 @@
 using namespace std;
 
 namespace optiling {
-static const int32_t kNONE = -INT_MAX;
 static const int32_t kL1Size = (1024 * 1024);
 static const int32_t kL0cSize = (256 * 1024);
 static const int32_t kUbSize = (256 * 1024);
@@ -61,7 +60,7 @@ static const double kBlockingPctGate = 0.5;
 static const double kLoadSizeGate = 0.13;
 static const int32_t kCoreUseLowRange = 5;
 static const int32_t kCoreUseHighRange = 9;
-static const int32_t UbFp16Size = kUbSize / kFp16Bytes;
+static const int32_t kUbFp16Size = kUbSize / kFp16Bytes;
 static const int32_t kNumZero = 0;
 static const int32_t kNumOne = 1;
 static const int32_t kNumTwo = 2;
@@ -71,12 +70,82 @@ static const int32_t kBankConflictFactor = 4;
 static const int32_t kL1FactorsLen = 6;
 static const int32_t kCandidateLen = 2;
 static const int32_t kMinSplitKCoreNum = 8;
+static const double kWorstBandWidthUtilMulti = 8;
 static const int32_t kHbmBandwidth8Core = 250;
 static const int32_t kHbmBandwidth32Core = 1100;
 static const int32_t kL2Bandwidth8Core = 1300;
 static const int32_t kL2Bandwidth32Core = 3300;
 static const int32_t kCoreNum32 = 32;
 static const int32_t kMNPntMax = 16;
+
+struct AUbStatusCondition {
+  /* This struct is used to storage the tiling condition of AUb.
+  condition_m2_k2 : all data in m_dim and k_dim are loaded to Ub
+  condition_ml1_kl1 : all data of m_dim and k_dim in L1 buffer are loaded to Ub
+  condition_ml1_kl0: all data of m_dim in L1 buffer and the equivalent data of kl0 in L1 buffer are loaded to Ub.
+  condition_ml1_k0: all data of m_dim in L1 buffer and partial data of kl0 in L1 buffer are loaded to Ub.
+  condition_ml0_kl1 : all data of k_dim in L1 buffer and the equivalent data of ml0 in L1 buffer are loaded to Ub.
+  condition_m0_kl1 : all data of k_dim in L1 buffer and the partial data of ml0 in L1 buffer are loaded to Ub.
+  condition_ml0_kl0 : the equivalent data of kl0 and ml0 in L1 buffer are loaded to Ub.
+  condition_ml0_k0 : the equivalent data of ml0 in m_dim and one block of data in k_dim are loaded to Ub.
+  condition_m0_kl0 : the equivalent data of kl0 in m_dim and one block of data in m_dim are loaded to Ub.
+  condition_m0_k0 : one block of data in m_dim and one block of data in k_dim are loaded to Ub.
+  */
+  bool condition_m2_k2 = false;
+  bool condition_ml1_kl1 = false;
+  bool condition_ml1_kl0 = false;
+  bool condition_ml1_k0 = false;
+  bool condition_ml0_kl1 = false;
+  bool condition_m0_kl1 = false;
+  bool condition_ml0_kl0 = false;
+  bool condition_ml0_k0 = false;
+  bool condition_m0_kl0 = false;
+  bool condition_m0_k0 = false;
+};
+
+struct BUbStatusCondition {
+  /* This struct is used to storage the tiling condition of BUb.
+  condition_k2_n2 : all data in k_dim and n_dim are loaded to Ub
+  condition_kl1_nl1 : all data of k_dim and n_dim in L1 buffer are loaded to Ub
+  condition_kl0_nl1: all data of n_dim in L1 buffer and the equivalent data of kl0 in L1 buffer are loaded to Ub.
+  condition_k0_nl1: all data of n_dim in L1 buffer and partial data of kl0 in L1 buffer are loaded to Ub.
+  condition_kl1_nl0 : all data of k_dim in L1 buffer and the equivalent data of nl0 in L1 buffer are loaded to Ub.
+  condition_kl1_n0 : all data of k_dim in L1 buffer and the partial data of nl0 in L1 buffer are loaded to Ub.
+  condition_kl0_nl0 : the equivalent data of kl0 and nl0 in L1 buffer are loaded to Ub.
+  condition_k0_nl0 : the equivalent data of nl0 in m_dim and one block of data in k_dim are loaded to Ub.
+  condition_kl0_n0 : the equivalent data of kl0 in m_dim and one block of data in n_dim are loaded to Ub.
+  condition_k0_n0 : one block of data in n_dim and one block of data in k_dim are loaded to Ub.
+  */
+  bool condition_k2_n2 = false;
+  bool condition_kl1_nl1 = false;
+  bool condition_kl0_nl1 = false;
+  bool condition_k0_nl1 = false;
+  bool condition_kl1_nl0 = false;
+  bool condition_kl1_n0 = false;
+  bool condition_kl0_nl0 = false;
+  bool condition_k0_nl0 = false;
+  bool condition_kl0_n0 = false;
+  bool condition_k0_n0 = false;
+};
+
+class PreUbTiling
+{
+public:
+  int32_t k_aub = 1;
+  int32_t m_aub = 1;
+  int32_t k_bub = 1;
+  int32_t n_bub = 1;
+  PreUbTiling() = default;
+  void update_tiling(int32_t new_k_aub, int32_t new_m_aub, int32_t new_k_bub, int32_t new_n_bub)
+  {
+    k_aub = new_k_aub;
+    m_aub = new_m_aub;
+    k_bub = new_k_bub;
+    n_bub = new_n_bub;
+  }
+  ~PreUbTiling() = default;
+};
+
 
 void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, const L1Status &l1Status,
                        const UbStatus &ubStatus, const BatchmatmulParas &params)
@@ -98,6 +167,8 @@ void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, c
   db_cub = ubStatus.db_cub;
   k_org_dim = coreStatus.k * kBlockSize;
   db_l0c = l0Status.db_l0c;
+  al1_full_load = l1Status.al1_full_load;
+  bl1_full_load = l1Status.bl1_full_load;
   if (params.compile_params->nd_flag) {
     k_aub = ubStatus.k_aub;
     m_aub = ubStatus.m_aub;
@@ -113,17 +184,11 @@ void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, c
     bub_align_bound = ubStatus.bub_align_bound;
   }
 
-  if (m_al1 == kNONE) {
-    al1_full_load = true;
-    if (coreStatus.batch == 1) {
-      db_al1 = 1;
-    }
+  if (al1_full_load && coreStatus.batch == 1) {
+    db_al1 = 1;
   }
-  if (n_bl1 == kNONE) {
-    bl1_full_load = true;
-    if (!params.run_params->b_have_batch || coreStatus.batch == 1) {
-      db_bl1 = 1;
-    }
+  if (bl1_full_load && (!params.run_params->b_have_batch || coreStatus.batch == 1)) {
+    db_bl1 = 1;
   }
   min_kl1_cmp_kl0 = (min(kal1_16, kbl1_16) == k_l0) ? 0 : 1;
 }
@@ -133,15 +198,15 @@ void Tiling::SetAttachFlag()
   // find kernel ID
   bool kAl1FullLoad = kal1_16 * kBlockSize == k_org_dim;
   bool kBl1FullLoad = kbl1_16 * kBlockSize == k_org_dim;
-  bool template1 = m_al1 == kNONE && n_bl1 == kNONE;
-  bool template2 = m_al1 == kNONE && n_bl1 != kNONE && kBl1FullLoad;
-  bool template3 = m_al1 == kNONE && n_bl1 != kNONE && !kBl1FullLoad;
-  bool template4 = m_al1 != kNONE && n_bl1 == kNONE && kAl1FullLoad;
-  bool template5 = m_al1 != kNONE && n_bl1 == kNONE && !kAl1FullLoad;
-  bool template6 = m_al1 != kNONE && n_bl1 != kNONE && kAl1FullLoad && kBl1FullLoad;
-  bool template7 = m_al1 != kNONE && n_bl1 != kNONE && kAl1FullLoad && !kBl1FullLoad;
-  bool template8 = m_al1 != kNONE && n_bl1 != kNONE && !kAl1FullLoad && kBl1FullLoad;
-  bool template9 = m_al1 != kNONE && n_bl1 != kNONE && !kAl1FullLoad && !kBl1FullLoad;
+  bool template1 = al1_full_load && bl1_full_load;
+  bool template2 = al1_full_load && !bl1_full_load && kBl1FullLoad;
+  bool template3 = al1_full_load && !bl1_full_load && !kBl1FullLoad;
+  bool template4 = !al1_full_load && bl1_full_load && kAl1FullLoad;
+  bool template5 = !al1_full_load && bl1_full_load && !kAl1FullLoad;
+  bool template6 = !al1_full_load && !bl1_full_load && kAl1FullLoad && kBl1FullLoad;
+  bool template7 = !al1_full_load && !bl1_full_load && kAl1FullLoad && !kBl1FullLoad;
+  bool template8 = !al1_full_load && !bl1_full_load && !kAl1FullLoad && kBl1FullLoad;
+  bool template9 = !al1_full_load && !bl1_full_load && !kAl1FullLoad && !kBl1FullLoad;
   bool condition1 = template1 || template2 || template3;
   bool condition2 = template4 || template6 || template7;
   bool condition3 = template5 || template8 || template9;
@@ -1148,12 +1213,72 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const C
   OP_LOGD(op_type.c_str(), "tiling db_al1:%d, db_bl1:%d", l1Status.db_al1, l1Status.db_bl1);
 }
 
-bool CheckABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub, const int32_t &n_bub,
-                   const BatchmatmulCompileParas &params, UbStatus &ubStatus)
-{
-  ubStatus.aub_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
-  ubStatus.bub_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
-  return (ubStatus.aub_size + ubStatus.bub_size) <= ubStatus.ub_rest_size;
+void UpdateUbReuseFlagAndRestSize(const CoreStatus& coreStatus, const L1Status& l1Status, const L0Status& l0Status,
+                                  UbStatus& ubStatus) {
+  // Initialization
+  ubStatus.aub_multi_flag = kNumZero;
+  ubStatus.bub_multi_flag = kNumZero;
+  ubStatus.cub_reuse_aub_flag = l1Status.al1_full_load;
+  ubStatus.cub_reuse_bub_flag = l1Status.bl1_full_load;
+  // Get AUB Full Load Flag
+  if (l1Status.kal1_16 == ubStatus.k_aub && l1Status.m_al1 * l0Status.m_l0 == ubStatus.m_aub) {
+    ubStatus.aub_multi_flag = kAttachFlagOne;
+  }
+  bool aub_full_load = ubStatus.aub_multi_flag == kAttachFlagOne;
+  // remove invalid reused scenario(preload is effected)
+  if (l1Status.al1_full_load && aub_full_load) {
+    ubStatus.cub_reuse_aub_flag = false;
+  }
+  // Get BUB Full Load Flag
+  if (l1Status.kbl1_16 == ubStatus.k_bub && l1Status.n_bl1 * l0Status.n_l0 == ubStatus.n_bub) {
+    ubStatus.bub_multi_flag = kAttachFlagOne;
+  }
+  // Check how many ub spaces are left.
+  bool bub_full_load = ubStatus.bub_multi_flag == kAttachFlagOne;
+  // remove invalid reused scenario(preload is effected)
+  if (l1Status.bl1_full_load && bub_full_load) {
+    ubStatus.cub_reuse_bub_flag = false;
+  }
+  // Update UB rest Size ---> available space for AUb and BUb
+  if (!ubStatus.cub_reuse_aub_flag && !ubStatus.cub_reuse_bub_flag) {
+    ubStatus.ub_rest_size = kUbFp16Size - ubStatus.min_dma_size;
+  } else {
+    ubStatus.ub_rest_size = kUbFp16Size;
+  }
+}
+
+bool CheckABUbSize(const PreUbTiling& pre_ub_tiling, const BatchmatmulCompileParas& params,
+                   const CoreStatus& coreStatus, SingleCoreStatus& singleCoreStatus,
+                   const bool unsafe_ubStatus = false) {
+  const int32_t& k_aub = pre_ub_tiling.k_aub;
+  const int32_t& m_aub = pre_ub_tiling.m_aub;
+  const int32_t& k_bub = pre_ub_tiling.k_bub;
+  const int32_t& n_bub = pre_ub_tiling.n_bub;
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  UbStatus tmp_ubStatus = ubStatus;
+  tmp_ubStatus.aub_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
+  tmp_ubStatus.bub_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
+  tmp_ubStatus.k_aub = k_aub;
+  tmp_ubStatus.m_aub = m_aub;
+  tmp_ubStatus.k_bub = k_bub;
+  tmp_ubStatus.n_bub = n_bub;
+  UpdateUbReuseFlagAndRestSize(coreStatus, l1Status, l0Status, tmp_ubStatus);
+  if (!unsafe_ubStatus && !params.split_k_flag) {
+    if (tmp_ubStatus.cub_reuse_aub_flag && !tmp_ubStatus.cub_reuse_bub_flag) {
+      tmp_ubStatus.aub_size = max(tmp_ubStatus.aub_size, ubStatus.min_dma_size);
+    } else if (!tmp_ubStatus.cub_reuse_aub_flag && tmp_ubStatus.cub_reuse_bub_flag) {
+      tmp_ubStatus.bub_size = max(tmp_ubStatus.bub_size, ubStatus.min_dma_size);
+    } else if (tmp_ubStatus.cub_reuse_aub_flag && tmp_ubStatus.cub_reuse_bub_flag) {
+      // AUB BUB and CUB used the same space
+      tmp_ubStatus.aub_size = max(tmp_ubStatus.aub_size, max(tmp_ubStatus.bub_size, ubStatus.min_dma_size));
+      tmp_ubStatus.bub_size = 0;
+    }
+    return (tmp_ubStatus.aub_size + tmp_ubStatus.bub_size) <= tmp_ubStatus.ub_rest_size;
+  }
+  // Dont know if reused can be enabled so do not reused.
+  return (tmp_ubStatus.aub_size + tmp_ubStatus.bub_size) <= tmp_ubStatus.safe_ub_rest_size;
 }
 
 void GetABUbMax(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub, const int32_t &n_bub,
@@ -1163,140 +1288,254 @@ void GetABUbMax(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub
   ubStatus.aub_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
   ubStatus.bub_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
   if (max_num == kNumZero) {
-    ubStatus.k_aub = (ubStatus.ub_rest_size - ubStatus.bub_size) /
+    ubStatus.k_aub = (ubStatus.safe_ub_rest_size - ubStatus.bub_size) /
       (kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num));
   } else if (max_num == kNumOne) {
-    ubStatus.k_bub = (ubStatus.ub_rest_size - ubStatus.aub_size) /
+    ubStatus.k_bub = (ubStatus.safe_ub_rest_size - ubStatus.aub_size) /
       (kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num));
   } else if (max_num == kNumTwo) {
-    ubStatus.m_aub = (ubStatus.ub_rest_size - ubStatus.bub_size) /
+    ubStatus.m_aub = (ubStatus.safe_ub_rest_size - ubStatus.bub_size) /
       (k_aub * kBlockSize * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num));
   } else if (max_num == kNumThree) {
-    ubStatus.n_bub = (ubStatus.ub_rest_size - ubStatus.aub_size) /
+    ubStatus.n_bub = (ubStatus.safe_ub_rest_size - ubStatus.aub_size) /
       (k_bub * kBlockSize * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num));
   }
 }
 
-void GetAUbFactors(const CoreStatus &coreStatus, const L1Status &l1Status, const L0Status &l0Status,
-                   const BatchmatmulCompileParas &params, UbStatus &ubStatus)
-{
+void UpdateAUbCandidateStatusPhase1(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                                    const AUbStatusCondition& ub_condition, SingleCoreStatus& singleCoreStatus) {
+  // Get All AUB Candidate Tiling result.
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
   int32_t al1_m = l1Status.m_al1 * l0Status.m_l0;
-  bool condition_m2_k2 = (!params.at_l1_flag &&
-    CheckABUbSize(coreStatus.k, coreStatus.m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_ml1_kl1 =
-    CheckABUbSize(l1Status.kal1_16, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
-  bool condition_ml1_kl0 = (params.trans_a_flag &&
-    CheckABUbSize(l0Status.k_l0, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_ml1_k0 = (params.trans_a_flag &&
-    CheckABUbSize(1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_ml0_kl1 = (!params.trans_a_flag &&
-    CheckABUbSize(l1Status.kal1_16, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_m0_kl1 = (!params.trans_a_flag &&
-    CheckABUbSize(l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_ml0_kl0 =
-    CheckABUbSize(l0Status.k_l0, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
-  bool condition_ml0_k0 = (params.trans_a_flag &&
-    CheckABUbSize(1, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_m0_kl0 = (!params.trans_a_flag &&
-    CheckABUbSize(l0Status.k_l0, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_m0_k0 = CheckABUbSize(1, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
-  if (condition_m2_k2) {
-    ubStatus.k_aub = coreStatus.k;
-    ubStatus.m_aub = coreStatus.m;
-  } else if (condition_ml1_kl1) {
-    ubStatus.k_aub = l1Status.kal1_16;
-    ubStatus.m_aub = al1_m;
-  } else if (condition_ml1_kl0) {
-    ubStatus.k_aub = l0Status.k_l0;
-    ubStatus.m_aub = al1_m;
-  } else if (condition_ml1_k0) {
+
+  if (ub_condition.condition_m2_k2) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = coreStatus.k;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = coreStatus.m;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_ml1_kl1) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = l1Status.kal1_16;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = al1_m;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_ml1_kl0) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = l0Status.k_l0;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = al1_m;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_ml1_k0) {
     ubStatus.k_aub = 1;
     ubStatus.m_aub = al1_m;
     GetABUbMax(1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumZero);
     GetNearestFactor(l1Status.kal1_16, ubStatus.k_aub);
-  } else if (condition_ml0_kl1) {
-    ubStatus.k_aub = l1Status.kal1_16;
-    ubStatus.m_aub = l0Status.m_l0;
-  } else if (condition_m0_kl1) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = ubStatus.k_aub;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = ubStatus.m_aub;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_ml0_kl1) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = l1Status.kal1_16;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = l0Status.m_l0;
+    ubStatus.aub_cnt += 1;
+  }
+}
+
+void UpdateAUbCandidateStatusPhase2(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                                    const AUbStatusCondition& ub_condition, SingleCoreStatus& singleCoreStatus) {
+  // Get All AUB Candidate Tiling result.
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  int32_t al1_m = l1Status.m_al1 * l0Status.m_l0;
+  if (ub_condition.condition_m0_kl1) {
     ubStatus.k_aub = l1Status.kal1_16;
     ubStatus.m_aub = 1;
     GetABUbMax(l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumTwo);
     GetNearestFactor(al1_m, ubStatus.m_aub);
-  } else if (condition_ml0_kl0) {
-    ubStatus.k_aub = l0Status.k_l0;
-    ubStatus.m_aub = l0Status.m_l0;
-  } else if (condition_ml0_k0) {
-    ubStatus.k_aub = 1;
-    ubStatus.m_aub = l0Status.m_l0;
-  } else if (condition_m0_kl0) {
-    ubStatus.k_aub = l0Status.k_l0;
-    ubStatus.m_aub = 1;
-  } else if (condition_m0_k0) {
-    ubStatus.k_aub = 1;
-    ubStatus.m_aub = 1;
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = ubStatus.k_aub;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = ubStatus.m_aub;
+    ubStatus.aub_cnt += 1;
   }
-  ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
+  if (ub_condition.condition_ml0_kl0) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = l0Status.k_l0;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = l0Status.m_l0;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_ml0_k0) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = 1;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = l0Status.m_l0;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_m0_kl0) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = l0Status.k_l0;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = 1;
+    ubStatus.aub_cnt += 1;
+  }
+  if (ub_condition.condition_m0_k0) {
+    ubStatus.aub_results[ubStatus.aub_cnt][0] = 1;
+    ubStatus.aub_results[ubStatus.aub_cnt][1] = 1;
+    ubStatus.aub_cnt += 1;
+  }
 }
 
-void GetBUbFactors(const CoreStatus &coreStatus, const L1Status &l1Status, const L0Status &l0Status,
-                   const BatchmatmulCompileParas &params, UbStatus &ubStatus)
-{
+void GetAUbFactors(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                   SingleCoreStatus& singleCoreStatus) {
+  // Get All AUB Candidate Tiling result.
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  AUbStatusCondition ub_condition;
+  PreUbTiling pre_ub_tiling;
+  int32_t al1_m = l1Status.m_al1 * l0Status.m_l0;
+  pre_ub_tiling.update_tiling(coreStatus.k, coreStatus.m, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_m2_k2 =
+      (!params.at_l1_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(l1Status.kal1_16, al1_m, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_ml1_kl1 = CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus);
+  pre_ub_tiling.update_tiling(l0Status.k_l0, al1_m, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_ml1_kl0 =
+      (params.trans_a_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(1, al1_m, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_ml1_k0 =
+      (params.trans_a_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus, true));
+  pre_ub_tiling.update_tiling(l1Status.kal1_16, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_ml0_kl1 =
+      (!params.trans_a_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_m0_kl1 =
+      (!params.trans_a_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus, true));
+  pre_ub_tiling.update_tiling(l0Status.k_l0, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_ml0_kl0 = CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus);
+  pre_ub_tiling.update_tiling(1, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_ml0_k0 =
+      (params.trans_a_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(l0Status.k_l0, 1, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_m0_kl0 =
+      (!params.trans_a_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(1, 1, ubStatus.k_bub, ubStatus.n_bub);
+  ub_condition.condition_m0_k0 = CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus);
+
+  UpdateAUbCandidateStatusPhase1(coreStatus, params, ub_condition, singleCoreStatus);
+  UpdateAUbCandidateStatusPhase2(coreStatus, params, ub_condition, singleCoreStatus);
+}
+
+void UpdateBUbCandidateStatusPhase1(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                                    const BUbStatusCondition& ub_condition, SingleCoreStatus& singleCoreStatus) {
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
   int32_t bl1_n = l1Status.n_bl1 * l0Status.n_l0;
-  bool condition_k2_n2 = (!params.at_l1_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, coreStatus.k, coreStatus.n, params, ubStatus));
-  bool condition_kl1_nl1 =
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, bl1_n, params, ubStatus);
-  bool condition_kl0_nl1 = (!params.trans_b_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, bl1_n, params, ubStatus));
-  bool condition_k0_nl1 = (!params.trans_b_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus));
-  bool condition_kl1_nl0 = (params.trans_b_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, l0Status.n_l0, params, ubStatus));
-  bool condition_kl1_n0 = (params.trans_b_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus));
-  bool condition_kl0_nl0 =
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, l0Status.n_l0, params, ubStatus);
-  bool condition_k0_nl0 = (!params.trans_b_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, 1, l0Status.n_l0, params, ubStatus));
-  bool condition_kl0_n0 = (params.trans_b_flag &&
-    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, 1, params, ubStatus));
-  bool condition_k0_n0 = CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, 1, 1, params, ubStatus);
-  if (condition_k2_n2) {
-    ubStatus.k_bub = coreStatus.k;
-    ubStatus.n_bub = coreStatus.n;
-  } else if (condition_kl1_nl1) {
-    ubStatus.k_bub = l1Status.kbl1_16;
-    ubStatus.n_bub = bl1_n;
-  } else if (condition_kl0_nl1) {
-    ubStatus.k_bub = l0Status.k_l0;
-    ubStatus.n_bub = bl1_n;
-  } else if (condition_k0_nl1) {
+  if (ub_condition.condition_k2_n2) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = coreStatus.k;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = coreStatus.n;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_kl1_nl1 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = l1Status.kbl1_16;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = bl1_n;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_kl0_nl1 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = l0Status.k_l0;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = bl1_n;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_k0_nl1 && ubStatus.bub_cnt < kNumTwo) {
     ubStatus.k_bub = 1;
     ubStatus.n_bub = bl1_n;
     GetABUbMax(ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus, kNumOne);
     GetNearestFactor(l1Status.kbl1_16, ubStatus.k_bub);
-  } else if (condition_kl1_nl0) {
-    ubStatus.k_bub = l1Status.kbl1_16;
-    ubStatus.n_bub = l0Status.n_l0;
-  } else if (condition_kl1_n0) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = ubStatus.k_bub;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = ubStatus.n_bub;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_kl1_nl0 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = l1Status.kbl1_16;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = l0Status.n_l0;
+    ubStatus.bub_cnt += 1;
+  }
+}
+
+void UpdateBUbCandidateStatusPhase2(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                                    const BUbStatusCondition& ub_condition, SingleCoreStatus& singleCoreStatus) {
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  int32_t bl1_n = l1Status.n_bl1 * l0Status.n_l0;
+  if (ub_condition.condition_kl1_n0 && ubStatus.bub_cnt < kNumTwo) {
     ubStatus.k_bub = l1Status.kbl1_16;
     ubStatus.n_bub = 1;
     GetABUbMax(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus, kNumThree);
     GetNearestFactor(bl1_n, ubStatus.n_bub);
-  } else if (condition_kl0_nl0) {
-    ubStatus.k_bub = l0Status.k_l0;
-    ubStatus.n_bub = l0Status.n_l0;
-  } else if (condition_k0_nl0) {
-    ubStatus.k_bub = 1;
-    ubStatus.n_bub = l0Status.n_l0;
-  } else if (condition_kl0_n0) {
-    ubStatus.k_bub = l0Status.k_l0;
-    ubStatus.n_bub = 1;
-  } else if (condition_k0_n0) {
-    ubStatus.k_bub = 1;
-    ubStatus.n_bub = 1;
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = ubStatus.k_bub;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = ubStatus.n_bub;
+    ubStatus.bub_cnt += 1;
   }
-  ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
+  if (ub_condition.condition_kl0_nl0 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = l0Status.k_l0;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = l0Status.n_l0;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_k0_nl0 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = 1;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = l0Status.n_l0;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_kl0_n0 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = l0Status.k_l0;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = 1;
+    ubStatus.bub_cnt += 1;
+  }
+  if (ub_condition.condition_k0_n0 && ubStatus.bub_cnt < kNumTwo) {
+    ubStatus.bub_results[ubStatus.bub_cnt][0] = 1;
+    ubStatus.bub_results[ubStatus.bub_cnt][1] = 1;
+    ubStatus.bub_cnt += 1;
+  }
+}
+
+void GetBUbFactors(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                   SingleCoreStatus& singleCoreStatus)
+{
+  // Initialize the candidate array. Data will be overwritten so we can keep it dirty
+  // Get All AUB Candidate Tiling result.
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  BUbStatusCondition ub_condition;
+  PreUbTiling pre_ub_tiling;
+  ubStatus.bub_cnt = 0;
+  int32_t bl1_n = l1Status.n_bl1 * l0Status.n_l0;
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, coreStatus.k, coreStatus.n);
+  ub_condition.condition_k2_n2 =
+      (!params.at_l1_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, bl1_n);
+  ub_condition.condition_kl1_nl1 = CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus);
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, bl1_n);
+  ub_condition.condition_kl0_nl1 =
+      (!params.trans_b_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n);
+  ub_condition.condition_k0_nl1 =
+      (!params.trans_b_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus, true));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, l0Status.n_l0);
+  ub_condition.condition_kl1_nl0 =
+      (params.trans_b_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1);
+  ub_condition.condition_kl1_n0 =
+      (params.trans_b_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus, true));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, l0Status.n_l0);
+  ub_condition.condition_kl0_nl0 = CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus);
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, 1, l0Status.n_l0);
+  ub_condition.condition_k0_nl0 =
+      (!params.trans_b_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, 1);
+  ub_condition.condition_kl0_n0 =
+      (params.trans_b_flag && CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus));
+  pre_ub_tiling.update_tiling(ubStatus.k_aub, ubStatus.m_aub, 1, 1);
+  ub_condition.condition_k0_n0 = CheckABUbSize(pre_ub_tiling, params, coreStatus, singleCoreStatus);
+
+  UpdateBUbCandidateStatusPhase1(coreStatus, params, ub_condition, singleCoreStatus);
+  UpdateBUbCandidateStatusPhase2(coreStatus, params, ub_condition, singleCoreStatus);
 }
 
 void GetABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub, const int32_t &n_bub,
@@ -1305,172 +1544,345 @@ void GetABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bu
   ubStatus.bub_bank_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
   ubStatus.aub_size = ubStatus.aub_bank_size;
   ubStatus.bub_size = ubStatus.bub_bank_size;
+  ubStatus.a_align_value = 1;
+  ubStatus.b_align_value = 1;
+  ubStatus.a_bank_conflict = false;
+  ubStatus.b_bank_conflict = false;
   if (params.trans_a_flag && m_aub % kBankConflictFactor == 0) {
+    ubStatus.a_bank_conflict = true;
     ubStatus.a_align_value = (m_aub + 1) * kBlockSize;
     ubStatus.aub_bank_size += k_aub * kBlockSize * kBlockSize * ubStatus.db_aub;
     ubStatus.aub_align_bound += k_aub * kBlockSize * kBlockSize;
   } else if (!params.trans_a_flag && k_aub % kBankConflictFactor == 0) {
+    ubStatus.a_bank_conflict = true;
     ubStatus.a_align_value = (k_aub + 1) * kBlockSize;
     ubStatus.aub_bank_size += kBlockSize * m_aub * kBlockSize * ubStatus.db_aub;
     ubStatus.aub_align_bound += kBlockSize * m_aub * kBlockSize;
   }
   if (params.trans_b_flag && k_bub % kBankConflictFactor == 0) {
+    ubStatus.b_bank_conflict = true;
     ubStatus.b_align_value = (k_bub + 1) * kBlockSize;
     ubStatus.bub_bank_size += kBlockSize * n_bub * kBlockSize * ubStatus.db_bub;
     ubStatus.bub_align_bound += kBlockSize * n_bub * kBlockSize;
   } else if (!params.trans_b_flag && n_bub % kBankConflictFactor == 0) {
+    ubStatus.b_bank_conflict = true;
     ubStatus.b_align_value = (n_bub + 1) * kBlockSize;
     ubStatus.bub_bank_size += k_bub * kBlockSize * kBlockSize * ubStatus.db_bub;
     ubStatus.bub_align_bound += k_bub * kBlockSize * kBlockSize;
   }
 }
 
-void CheckBankConflict(const BatchmatmulCompileParas &params, UbStatus &ubStatus) {
-  GetABUbSize(ubStatus.k_aub, ubStatus.m_aub, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
-  if (ubStatus.aub_bank_size + ubStatus.bub_bank_size <= ubStatus.ub_rest_size) {
-    ubStatus.aub_size = ubStatus.aub_bank_size;
-    ubStatus.bub_size = ubStatus.bub_bank_size;
+void GetABUbStorageSize(const UbStatus& ubStatus, int32_t& aub_storage_size, int32_t& bub_storage_size,
+                        int32_t& aub_bank_storage_size, int32_t& bub_bank_storage_size) {
+  // After Reused, the storage size is the actual tensor storage size used.
+  aub_storage_size = ubStatus.cub_reuse_aub_flag ? max(ubStatus.aub_size, ubStatus.min_dma_size) : ubStatus.aub_size;
+  bub_storage_size = ubStatus.cub_reuse_bub_flag ? max(ubStatus.bub_size, ubStatus.min_dma_size) : ubStatus.bub_size;
+  aub_bank_storage_size =
+      ubStatus.cub_reuse_aub_flag ? max(ubStatus.aub_bank_size, ubStatus.min_dma_size) : ubStatus.aub_bank_size;
+  bub_bank_storage_size =
+      ubStatus.cub_reuse_bub_flag ? max(ubStatus.bub_bank_size, ubStatus.min_dma_size) : ubStatus.bub_bank_size;
+}
+
+int GetAllUbReusedAlignMode(const UbStatus& ubStatus, const int& aub_bank_storage_size,
+                            const int& bub_bank_storage_size) {
+  int align_mode = kNumZero;
+  int32_t max_bank_storage_size = max(max(ubStatus.aub_bank_size, ubStatus.min_dma_size), ubStatus.bub_bank_size);
+  if (max_bank_storage_size <= ubStatus.ub_rest_size) {
+    align_mode = kNumThree;
+  } else if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
+    if (ubStatus.aub_bank_size > ubStatus.bub_bank_size) {
+      // Aub_bank_storage_size > Bub_bank_storage_size and AUB_bank_storage_size exceeds UB buffer size
+      align_mode = (bub_bank_storage_size <= ubStatus.ub_rest_size) ? kNumTwo : kNumZero;
+    } else {
+      // Bub_bank_storage_size > Aub_bank_storage_size and Bub_bank_storage_size exceeds UB buffer size
+      align_mode = (aub_bank_storage_size <= ubStatus.ub_rest_size) ? kNumOne : kNumZero;
+    }
+  }
+  return align_mode;
+}
+
+int GetAlignMode(const UbStatus& ubStatus) {
+  int align_mode = kNumZero;
+  int32_t aub_storage_size, bub_storage_size, aub_bank_storage_size, bub_bank_storage_size;
+  GetABUbStorageSize(ubStatus, aub_storage_size, bub_storage_size, aub_bank_storage_size, bub_bank_storage_size);
+  // Process storage_size when all ub tensors are reused together.
+  bool a_b_c_ub_reused_together = ubStatus.cub_reuse_aub_flag && ubStatus.cub_reuse_bub_flag;
+  // There‘s 4 align_mode here, 0->neither align, 1->AUB align and BUB not, 2->AUB not and BUB align, 3-> all aligned
+  if (a_b_c_ub_reused_together) {
+    align_mode = GetAllUbReusedAlignMode(ubStatus, aub_bank_storage_size, bub_bank_storage_size);
   } else {
-    // There‘s 3 align_mode here, 0->neither align, 1->AUB align and BUB not, 2->AUB not and BUB align
-    int align_mode = kNumZero;
-    if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
+    if (aub_bank_storage_size + bub_bank_storage_size <= ubStatus.ub_rest_size) {
+      align_mode = kNumThree;
+    } else if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
       if (ubStatus.aub_bank_size > ubStatus.bub_bank_size) {
-        align_mode = (ubStatus.aub_bank_size + ubStatus.bub_size <= ubStatus.ub_rest_size)
-            ? kNumOne
-            : ((ubStatus.aub_size + ubStatus.bub_bank_size <= ubStatus.ub_rest_size) ? kNumTwo : kNumZero);
+        align_mode = (aub_bank_storage_size + bub_storage_size <= ubStatus.ub_rest_size)
+                         ? kNumOne
+                         : ((aub_storage_size + bub_bank_storage_size <= ubStatus.ub_rest_size) ? kNumTwo : kNumZero);
       } else {
-        align_mode = (ubStatus.aub_size + ubStatus.bub_bank_size <= ubStatus.ub_rest_size)
-            ? kNumTwo
-            : ((ubStatus.aub_bank_size + ubStatus.bub_size <= ubStatus.ub_rest_size) ? kNumOne : kNumZero);
+        align_mode = (aub_storage_size + bub_bank_storage_size <= ubStatus.ub_rest_size)
+                         ? kNumTwo
+                         : ((aub_bank_storage_size + bub_storage_size <= ubStatus.ub_rest_size) ? kNumOne : kNumZero);
       }
     }
-    if (align_mode == kNumZero) {
-      ubStatus.a_align_value = 1;
-      ubStatus.b_align_value = 1;
-      ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
-      ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
-    } else if (align_mode == kNumOne) {
-      ubStatus.b_align_value = 1;
-      ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
-      ubStatus.aub_size = ubStatus.aub_bank_size;
-    } else if (align_mode == kNumTwo) {
-      ubStatus.a_align_value = 1;
-      ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
-      ubStatus.bub_size = ubStatus.bub_bank_size;
-    }
+  }
+  return align_mode;
+}
+
+void CheckBankConflict(const BatchmatmulCompileParas& params, UbStatus& ubStatus) {
+  GetABUbSize(ubStatus.k_aub, ubStatus.m_aub, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
+  // There‘s 4 align_mode here, 0->neither align, 1->AUB align and BUB not, 2->AUB not and BUB align, 3-> all aligned
+  int align_mode = GetAlignMode(ubStatus);
+  if (align_mode == kNumZero) {
+    ubStatus.a_align_value = 1;
+    ubStatus.b_align_value = 1;
+    ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
+    ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
+  } else if (align_mode == kNumOne) {
+    ubStatus.a_bank_conflict = false;
+    ubStatus.b_align_value = 1;
+    ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
+    ubStatus.aub_size = ubStatus.aub_bank_size;
+  } else if (align_mode == kNumTwo) {
+    ubStatus.b_bank_conflict = false;
+    ubStatus.a_align_value = 1;
+    ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
+    ubStatus.bub_size = ubStatus.bub_bank_size;
+  } else {
+    // align_mode is 3-> all aligned.
+    ubStatus.aub_size = ubStatus.aub_bank_size;
+    ubStatus.bub_size = ubStatus.bub_bank_size;
+    ubStatus.a_bank_conflict = false;
+    ubStatus.b_bank_conflict = false;
   }
 }
 
-void GetABUbFactors(const CoreStatus &coreStatus, const L1Status &l1Status, const L0Status &l0Status,
-                    const BatchmatmulCompileParas &params, UbStatus &ubStatus)
+void GetCUbFactors(const L0Status& l0Status, const BatchmatmulCompileParas& params, UbStatus& ubStatus) {
+  // Initialize n_cub status.
+  ubStatus.n_cub = l0Status.n_l0;
+  bool condition_cub_n = ubStatus.max_dma_size + ubStatus.min_load_size > kUbFp16Size;
+  if (condition_cub_n) {
+    ubStatus.max_dma_size = kUbFp16Size - ubStatus.min_load_size;
+    if (params.bias_flag) {
+      ubStatus.max_dma_size -= l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
+    }
+    ubStatus.n_cub =
+        ubStatus.max_dma_size / (l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) *
+                                 ubStatus.db_cub * ubStatus.cub_dtype_multi);
+    GetNearestFactor(l0Status.n_l0, ubStatus.n_cub);
+  }
+  // The following CUB Size has no need to be uploaded.
+  ubStatus.cub_size = ubStatus.n_cub * l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) *
+                      ubStatus.db_cub * ubStatus.cub_dtype_multi;
+  if (params.bias_flag) {
+    ubStatus.cub_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
+  }
+  // Solve CUB Bank Conflict need to check cub_size.
+}
+
+void UpdateUbLoadSize(const BatchmatmulCompileParas& params, const L0Status& l0Status, UbStatus& ubStatus) {
+  // Only valid when fused_double_operand_num is smaller than aub_double_num / bub_double_num
+  float cub_aub_ratio = (params.fused_double_operand_num + 1) / (params.aub_double_num + 1);
+  float cub_bub_ratio = (params.fused_double_operand_num + 1) / (params.bub_double_num + 1);
+  if (!ubStatus.cub_reuse_aub_flag && !ubStatus.cub_reuse_bub_flag) {
+    ubStatus.min_load_size = ubStatus.aub_size + ubStatus.bub_size;
+  } else if (ubStatus.cub_reuse_aub_flag && !ubStatus.cub_reuse_bub_flag) {
+    ubStatus.min_load_size = ubStatus.bub_size + static_cast<int32_t>(ubStatus.aub_size * (1.0 - cub_aub_ratio));
+    ubStatus.max_dma_size = max(ubStatus.max_dma_size, static_cast<int32_t>(ubStatus.aub_size * cub_aub_ratio));
+  } else if (!ubStatus.cub_reuse_aub_flag && ubStatus.cub_reuse_bub_flag) {
+    ubStatus.min_load_size = ubStatus.aub_size + static_cast<int32_t>(ubStatus.bub_size * (1.0 - cub_bub_ratio));
+    ubStatus.max_dma_size = max(ubStatus.max_dma_size, static_cast<int32_t>(ubStatus.bub_size * cub_bub_ratio));
+  } else {
+    ubStatus.min_load_size = static_cast<int32_t>(ubStatus.aub_size * (1.0 - cub_aub_ratio)) +
+                             static_cast<int32_t>(ubStatus.bub_size * (1.0 - cub_bub_ratio));
+    ubStatus.max_dma_size =
+        max(ubStatus.max_dma_size,
+            static_cast<int32_t>(max(ubStatus.aub_size * cub_aub_ratio, ubStatus.bub_size * cub_bub_ratio)));
+  }
+}
+
+void UpdateUbStatus(const UbStatus &src_ub, UbStatus &dst_ub) {
+  // Update dst UbStatus from source ubStataus
+  dst_ub.k_aub = src_ub.k_aub;
+  dst_ub.m_aub = src_ub.m_aub;
+  dst_ub.k_bub = src_ub.k_bub;
+  dst_ub.n_bub = src_ub.n_bub;
+  dst_ub.aub_multi_flag = src_ub.aub_multi_flag;
+  dst_ub.bub_multi_flag = src_ub.bub_multi_flag;
+  dst_ub.n_cub = src_ub.n_cub;
+
+  dst_ub.a_align_value = src_ub.a_align_value;
+  dst_ub.b_align_value = src_ub.b_align_value;
+  dst_ub.aub_align_bound = src_ub.aub_align_bound;
+  dst_ub.bub_align_bound = src_ub.bub_align_bound;
+}
+
+int32_t GetUbMTE2Cost(const BatchmatmulCompileParas& params, const SingleCoreStatus& singleCoreStatus) {
+  // Get The Cost of UB MTE2 process which is constructed as copy_gm_to_ub and nd2nz
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  const UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  // Calculate MTE2 cost for AUB
+  int32_t multi_k_aub_l1 = l1Status.kal1_16 / ubStatus.k_aub;
+  int32_t multi_m_ub_l1 = l1Status.m_al1 * l0Status.m_l0 / ubStatus.m_aub;
+  // Do compensation if Pre Ub still have bank conflict.
+  multi_m_ub_l1 = ubStatus.a_bank_conflict ? multi_m_ub_l1 * kNumFour : multi_m_ub_l1;
+  double aub_brand_width_utilization = params.trans_a_flag
+                                           ? max((kWorstBandWidthUtilMulti / static_cast<double>(ubStatus.m_aub)), 1.0)
+                                           : max((kWorstBandWidthUtilMulti / static_cast<double>(ubStatus.k_aub)), 1.0);
+  int32_t aub_mte2_cost = static_cast<int32_t>(multi_k_aub_l1 * multi_m_ub_l1 * aub_brand_width_utilization);
+  // Calculate MTE2 cost for BUB
+  int32_t multi_k_bub_l1 = l1Status.kbl1_16 / ubStatus.k_bub;
+  int32_t multi_n_ub_l1 = l1Status.n_bl1 * l0Status.n_l0 / ubStatus.n_bub;
+  // Do compensation if Pre Ub still have bank conflict.
+  multi_n_ub_l1 = ubStatus.b_bank_conflict ? multi_n_ub_l1 * kNumFour : multi_n_ub_l1;
+  double bub_brand_width_utilization = params.trans_b_flag
+                                           ? max((kWorstBandWidthUtilMulti / static_cast<double>(ubStatus.k_bub)), 1.0)
+                                           : max((kWorstBandWidthUtilMulti / static_cast<double>(ubStatus.n_bub)), 1.0);
+  int32_t bub_mte2_cost = static_cast<int32_t>(multi_k_bub_l1 * multi_n_ub_l1 * bub_brand_width_utilization);
+  return aub_mte2_cost * bub_mte2_cost;
+}
+
+void GetUbFactorsInND(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+                      SingleCoreStatus& singleCoreStatus) {
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  // multi_m_ub_l1 * multi_k_aub_l1 (with bank conflict kNumTwo and worst brand utilization) + multi_n_ub_l1 *
+  // multi_k_bub_l1
+  int32_t min_ub_cost = l1Status.kal1_16 * l1Status.m_al1 * l0Status.m_l0 * kNumFour * kWorstBandWidthUtilMulti *
+                        l1Status.kbl1_16 * l1Status.n_bl1 * l0Status.n_l0 * kNumFour * kWorstBandWidthUtilMulti;
+  // Two means both aub and bub have bank conflict.
+  int8_t min_bank_conflict_level = kNumTwo;
+  int32_t min_multi_n_ub_l0 = l0Status.n_l0;
+  UbStatus final_ub_status;
+  GetAUbFactors(coreStatus, params, singleCoreStatus);
+  for (int32_t aub_idx = 0; aub_idx < ubStatus.aub_cnt; aub_idx++) {
+    ubStatus.k_aub = ubStatus.aub_results[aub_idx][0];
+    ubStatus.m_aub = ubStatus.aub_results[aub_idx][1];
+    GetBUbFactors(coreStatus, params, singleCoreStatus);
+    for (int32_t bub_idx = 0; bub_idx < ubStatus.bub_cnt; bub_idx++) {
+      ubStatus.k_bub = ubStatus.bub_results[bub_idx][0];
+      ubStatus.n_bub = ubStatus.bub_results[bub_idx][1];
+      // Initialize min/max dma copy size before updating it.
+      ubStatus.min_dma_size = l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) *
+                              ubStatus.db_cub * ubStatus.cub_dtype_multi;
+      ubStatus.max_dma_size = l0Status.n_l0 * ubStatus.min_dma_size;
+      ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
+      ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
+      UpdateUbReuseFlagAndRestSize(coreStatus, l1Status, l0Status, ubStatus);
+      CheckBankConflict(params, ubStatus);
+      UpdateUbLoadSize(params, l0Status, ubStatus);
+      GetCUbFactors(l0Status, params, ubStatus);
+      // Calculate CUB cost
+      int32_t multi_n_ub_l0 = l0Status.n_l0 / ubStatus.n_cub;
+      int32_t tmp_ub_cost = GetUbMTE2Cost(params, singleCoreStatus);
+      int8_t tmp_bank_conflict_level =
+          static_cast<int8_t>(ubStatus.a_bank_conflict) + static_cast<int8_t>(ubStatus.b_bank_conflict);
+      if (tmp_ub_cost < min_ub_cost ||
+          (tmp_ub_cost == min_ub_cost && tmp_bank_conflict_level < min_bank_conflict_level) ||
+          (tmp_ub_cost == min_ub_cost && tmp_bank_conflict_level == min_bank_conflict_level &&
+           multi_n_ub_l0 < min_multi_n_ub_l0)) {
+        min_ub_cost = tmp_ub_cost;
+        min_bank_conflict_level = tmp_bank_conflict_level;
+        min_multi_n_ub_l0 = multi_n_ub_l0;
+        UpdateUbStatus(ubStatus, final_ub_status);
+      }
+    }
+  }
+  UpdateUbStatus(final_ub_status, ubStatus); // Update final result to ubStatus.
+}
+
+void SetUbReuseFlag(const L1Status& l1Status, UbStatus& ubStatus) {
+  // Set UB Reused Flag
+  if (l1Status.both_full_load) {
+    ubStatus.cub_reuse_aub_flag = true;
+    ubStatus.cub_reuse_bub_flag = true;
+  } else if (l1Status.al1_full_load && !l1Status.bl1_full_load) {
+    ubStatus.cub_reuse_aub_flag = true;
+  } else if (!l1Status.al1_full_load && l1Status.bl1_full_load) {
+    ubStatus.cub_reuse_bub_flag = true;
+  }
+}
+
+void UpdateL1FullLoadFlag(const string &op_type, const CoreStatus &coreStatus, const L0Status &l0Status,
+                          L1Status &l1Status)
 {
-  GetAUbFactors(coreStatus, l1Status, l0Status, params, ubStatus);
-  GetBUbFactors(coreStatus, l1Status, l0Status, params, ubStatus);
-  CheckBankConflict(params, ubStatus);
+  // initialize the full load flag
+  l1Status.both_full_load = false;
+  l1Status.al1_full_load = false;
+  l1Status.bl1_full_load = false;
+  if (coreStatus.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == coreStatus.k) {
+    l1Status.al1_full_load = true;
+    OP_LOGD(op_type.c_str(), "check special template, tiling al1 changed to full load");
+  }
+  if (l1Status.n_bl1 * l0Status.n_l0 == coreStatus.n && l1Status.kbl1_16 == coreStatus.k) {
+    l1Status.bl1_full_load = true;
+    OP_LOGD(op_type.c_str(), "check special template, tiling bl1 changed to full load");
+  }
+  // Update the full_load flag in l1Status to ensure they are correct.
+  if (l1Status.al1_full_load && l1Status.bl1_full_load) {
+    l1Status.both_full_load = true;
+  }
 }
 
 void GetUbFactors(const string &op_type, const BatchmatmulCompileParas &params, const CoreStatus &coreStatus,
-                  const L1Status &l1Status, const L0Status &l0Status, UbStatus &ubStatus)
+                  SingleCoreStatus &singleCoreStatus)
 {
-  if (!params.ubdb_flag) {
-    ubStatus.db_aub = kDbOn;
-    ubStatus.db_bub = kDbOn;
-    ubStatus.db_cub = kDbOn;
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const L1Status& l1Status = singleCoreStatus.l1Status;
+  UbStatus& ubStatus = singleCoreStatus.ubStatus;
+  // Set reused condition based on L1 attach situation
+  if (params.split_k_flag) {
+    // data in cub is in fp32 so the size used is double.
+    ubStatus.cub_dtype_multi = kNumTwo;
   }
+  SetUbReuseFlag(l1Status, ubStatus);
+  // UB double Buffer default On
+  ubStatus.db_aub = kDbOn;
+  ubStatus.db_bub = kDbOn;
+  ubStatus.db_cub = kDbOn;
+
   ubStatus.n_cub = l0Status.n_l0;
-  ubStatus.min_dma_size =
-    l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) * ubStatus.db_cub;
+  ubStatus.min_dma_size = l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) *
+                          ubStatus.db_cub * ubStatus.cub_dtype_multi;
   ubStatus.max_dma_size = l0Status.n_l0 * ubStatus.min_dma_size;
   if (params.bias_flag) {
     ubStatus.min_dma_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
     ubStatus.max_dma_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
   }
-  // first get AUB BUB factors
+
   if (params.nd_flag) {
-    ubStatus.ub_rest_size = UbFp16Size - ubStatus.min_dma_size;
-    GetABUbFactors(coreStatus, l1Status, l0Status, params, ubStatus);
-    bool condition_db_bub = (params.ubdb_flag &&
-      (ubStatus.bub_size * kDbOn + ubStatus.aub_size + ubStatus.min_dma_size <= UbFp16Size));
-    bool condition_db_aub = (params.ubdb_flag &&
-      (ubStatus.bub_size + ubStatus.aub_size * kDbOn + ubStatus.min_dma_size <= UbFp16Size));
-    if (condition_db_bub) {
-      ubStatus.db_bub = kDbOn;
-      ubStatus.bub_size *= kDbOn;
-    }
-    if (condition_db_aub) {
-      ubStatus.db_aub = kDbOn;
-      ubStatus.aub_size *= kDbOn;
-    }
-    ubStatus.min_load_size = (params.cub_reused_flag ?
-      (ubStatus.aub_size / (1 + params.aub_double_num) + ubStatus.bub_size / (1 + params.bub_double_num)) :
-      (ubStatus.aub_size + ubStatus.bub_size));
-    if (l1Status.kal1_16 == ubStatus.k_aub && l1Status.m_al1 * l0Status.m_l0 == ubStatus.m_aub) {
-      ubStatus.aub_multi_flag = kAttachFlagOne;
-    }
-    if (l1Status.n_bl1 * l0Status.n_l0 == ubStatus.n_bub && l1Status.kbl1_16 == ubStatus.k_bub) {
-      ubStatus.bub_multi_flag = kAttachFlagOne;
-    }
-  }
-  // second get CUB factors
-  bool condition_cub_n = (params.cub_reused_flag &&
-    max(ubStatus.max_dma_size, ubStatus.min_load_size) + ubStatus.min_load_size > UbFp16Size) ||
-    (!params.cub_reused_flag && ubStatus.max_dma_size + ubStatus.min_load_size > UbFp16Size);
-  if (condition_cub_n) {
-    ubStatus.max_dma_size = UbFp16Size - ubStatus.min_load_size;
-    if (params.bias_flag) {
-      ubStatus.max_dma_size -= l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
-    }
-    ubStatus.n_cub = ubStatus.max_dma_size /
-      (l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) * ubStatus.db_cub);
-    GetNearestFactor(l0Status.n_l0, ubStatus.n_cub);
-  }
-  ubStatus.cub_size =
-    ubStatus.n_cub * l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) * ubStatus.db_cub;
-  if (params.bias_flag) {
-    ubStatus.cub_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
-  }
-  bool condition_db_cub = params.ubdb_flag &&
-    (max(ubStatus.cub_size * kDbOn, ubStatus.min_load_size) + ubStatus.min_load_size <= UbFp16Size);
-  if (condition_db_cub) {
-    ubStatus.db_cub = kDbOn;
+    ubStatus.safe_ub_rest_size = kUbFp16Size - ubStatus.min_dma_size;
+    GetUbFactorsInND(coreStatus, params, singleCoreStatus);
+  } else {
+    // Get CUB factors for NZ in Mode
+    GetCUbFactors(l0Status, params, ubStatus);
   }
   OP_LOGD(op_type.c_str(), "tiling n_cub:%d, db_cub:%d", l0Status.n_l0, l0Status.db_cub);
 }
 
-void CheckSpecialTemplate(const string &op_type, const CoreStatus &coreStatus, const L0Status &l0Status,
-                          L1Status &l1Status)
-{
-  if (coreStatus.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == coreStatus.k) {
-    l1Status.m_al1 = kNONE;
-    OP_LOGD(op_type.c_str(), "check special template, tiling al1 changed to full load");
-  }
-  if (l1Status.n_bl1 * l0Status.n_l0 == coreStatus.n && l1Status.kbl1_16 == coreStatus.k) {
-    l1Status.n_bl1 = kNONE;
-    OP_LOGD(op_type.c_str(), "check special template, tiling bl1 changed to full load");
-  }
-}
 
 void GenTiling(const string &op_type, const BatchmatmulCompileParas &compile_params,
-               const BatchmatmulRunParas &run_params, Tiling &tiling, string &tilingId) {
+               const BatchmatmulRunParas &run_params, Tiling &tiling, string &tilingId)
+{
   OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%d, m:%d, k:%d, n:%d", run_params.batch_32, run_params.m_32,
           run_params.k_32, run_params.n_32);
   CoreStatus coreStatus;
-  L0Status l0Status;
-  L1Status l1Status;
-  UbStatus ubStatus;
+  SingleCoreStatus singleCoreStatus;
   BatchmatmulParas params;
   params.compile_params = &compile_params;
   params.run_params = &run_params;
-  l0Status.SetInitLoadStatus();
+  singleCoreStatus.l0Status.SetInitLoadStatus();
   if (compile_params.split_k_flag) {
     GetSplitKdim(op_type, params, coreStatus);
   }
   int32_t blockValue = GetBlockDim(op_type, params, coreStatus);
-  GetL0Factors(op_type, coreStatus, blockValue, l0Status);
-  GetL1Factors(op_type, params, coreStatus, l0Status, l1Status);
-  GetUbFactors(op_type, compile_params, coreStatus, l1Status, l0Status, ubStatus);
-  CheckSpecialTemplate(op_type, coreStatus, l0Status, l1Status);
-  tiling.SetParams(coreStatus, l0Status, l1Status, ubStatus, params);
+  GetL0Factors(op_type, coreStatus, blockValue, singleCoreStatus.l0Status);
+  GetL1Factors(op_type, params, coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status);
+  UpdateL1FullLoadFlag(op_type, coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status);
+  GetUbFactors(op_type, compile_params, coreStatus, singleCoreStatus);
+
+  tiling.SetParams(coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status, singleCoreStatus.ubStatus, params);
   tiling.SetAttachFlag();
   tiling.GetTilingId(compile_params);
   tilingId = tiling.tiling_id;
