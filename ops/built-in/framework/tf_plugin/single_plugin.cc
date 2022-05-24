@@ -1600,4 +1600,46 @@ REGISTER_CUSTOM_OP("FFT2D")
     .OriginOpType("FFT2D")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomGammaV2 op to GE
+REGISTER_CUSTOM_OP("StatelessRandomGammaV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StatelessRandomGammaV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomUniformFullInt op to GE
+REGISTER_CUSTOM_OP("StatelessRandomUniformFullInt")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StatelessRandomUniformFullInt")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomUniformFullIntV2 op to GE
+REGISTER_CUSTOM_OP("StatelessRandomUniformFullIntV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StatelessRandomUniformFullIntV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomUniformIntV2 op to GE
+REGISTER_CUSTOM_OP("StatelessRandomUniformIntV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StatelessRandomUniformIntV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomBinomial op to GE
+REGISTER_CUSTOM_OP("StatelessRandomBinomial")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType({"StatelessRandomBinomial"})
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomPoisson op to GE
+REGISTER_CUSTOM_OP("StatelessRandomPoisson")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StatelessRandomPoisson")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

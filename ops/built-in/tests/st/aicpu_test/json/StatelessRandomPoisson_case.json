@@ -1,0 +1,202 @@
+[
+    {
+      "case_name": "Test_StatelessRandomPoisson_Case001",
+      "op": "StatelessRandomPoisson",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2, 3],
+          "is_const": true,
+          "data_distribute": "uniform"
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [3],
+          "type": ["int32"],
+          "value": [1, 0, 1]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [2, 3]
+        }
+      ],
+      "attr": [
+        {
+          "name": "dtype",
+          "type": "data_type",
+          "value": "int64"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomPoisson_Case002",
+      "op": "StatelessRandomPoisson",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [3],
+          "type": ["int64"],
+          "is_const": true,
+          "value": [2, 3, 4],
+          "data_distribute": "uniform"
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [4],
+          "type": ["int32"],
+          "value": [1, 0, 1, 0]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [2, 3, 4]
+        }
+      ],
+      "attr": [
+        {
+          "name": "dtype",
+          "type": "data_type",
+          "value": "int64"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomPoisson_Case003",
+      "op": "StatelessRandomPoisson",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [4],
+          "type": ["int32"],
+          "is_const": true,
+          "value": [2, 3, 4, 5],
+          "data_distribute": "uniform"
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [5],
+          "type": ["int32"],
+          "value": [1, 0, 1, 0, 1]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [2, 3, 4, 5]
+        }
+      ],
+      "attr": [
+        {
+          "name": "dtype",
+          "type": "data_type",
+          "value": "int64"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomPoisson_Case004",
+      "op": "StatelessRandomPoisson",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [5],
+          "type": ["int32"],
+          "is_const": true,
+          "value": [5, 3, 4, 5, 3],
+          "data_distribute": "uniform"
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [3],
+          "type": ["int32"],
+          "value": [1, 0, 1]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [5, 3, 4, 5, 3]
+        }
+      ],
+      "attr": [
+        {
+          "name": "dtype",
+          "type": "data_type",
+          "value": "int64"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomPoisson_Case005",
+      "op": "StatelessRandomPoisson",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [6],
+          "type": ["int32"],
+          "is_const": true,
+          "value": [5, 3, 4, 5, 3, 4],
+          "data_distribute": "uniform"
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [4],
+          "type": ["int32"],
+          "value": [1, 0, 1, 0]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [5, 3, 4, 5, 3, 4]
+        }
+      ],
+      "attr": [
+        {
+          "name": "dtype",
+          "type": "data_type",
+          "value": "int64"
+        }
+      ]
+    }
+  ]

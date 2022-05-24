@@ -1,0 +1,233 @@
+[
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_1D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [1],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [3],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3]
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_2D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3, 4]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [4],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3, 4]
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_3D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [3],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3, 4, 5]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [5],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3, 4, 5]
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_4D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [4],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3, 4, 5, 6]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [6],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3, 4, 5, 6]
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_5D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [5],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3, 4, 5, 6, 7]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [7],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3, 4, 5, 6, 7]
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_6D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [6],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3, 4, 5, 6, 7, 4]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [4],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3, 4, 5, 6, 7, 4]
+        }
+      ]
+    },
+    {
+      "case_name": "Test_StatelessRandomGammaV2_DT_case_7D",
+      "op": "StatelessRandomGammaV2",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "shape": [7],
+          "type": ["int32"],
+          "is_const": true,
+          "data_distribute": ["uniform"],
+          "value": [3, 4, 5, 6, 7, 4, 1]
+        },
+        {
+          "format": ["ND"],
+          "shape": [2],
+          "type": ["int32"],
+          "value": [2 ,2]
+        },
+        {
+          "format": ["ND"],
+          "shape": [1],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [3, 4, 5, 6, 7, 4, 1]
+        }
+      ]
+    }
+  ]

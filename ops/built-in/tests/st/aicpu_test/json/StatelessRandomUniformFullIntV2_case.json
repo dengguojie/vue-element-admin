@@ -1,0 +1,692 @@
+[
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_512",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1,4,4,4]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1,4,4,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_1K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [2,4,4,4]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,4,4,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_2K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [4,4,4,4]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [4,4,4,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_4K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [8,4,4,4]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,4,4,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_8K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [8,8,4,4]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,8,4,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_16K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [8,8,8,4]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,8,8,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_32K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [8,8,8,8]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,8,8,8]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_64K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [16,8,8,8]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,8,8,8]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_128K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [16,16,8,8]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,16,8,8]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_256K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [16,16,16,8]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,16,16,8]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_512K",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [16,16,16,16]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,16,16,16]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_1M",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [32,16,16,16]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,16,16,16]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_2M",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [32,32,16,16]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32,16,16]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_8M",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [32,32,32,32]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32,32,32]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomUniformFullIntV2_DT_INT64_128M",
+        "op": "StatelessRandomUniformFullIntV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [64,64,64,64]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["uint64"],
+                "shape": [2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "is_const": true,
+                "data_distribute": ["uniform"],
+                "value": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [64,64,64,64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "int64"
+            }
+        ]
+    }
+]

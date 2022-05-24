@@ -201,6 +201,163 @@ REG_OP(StatelessTruncatedNormalV2)
     .ATTR(dtype, Type, DT_FLOAT)
     .OP_END_FACTORY_REG(StatelessTruncatedNormalV2)
 
+/**
+* @brief Outputs deterministic pseudorandom random numbers from a gamma distribution. \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li seed: 2 seeds (shape [2]).
+* @li alpha: The concentration of the gamma distribution. Shape must match the rightmost dimensions of shape. \n
+
+* @par Outputs:
+* y: A Tensor. Has the same type as alpha. \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomGammaV2 operator.
+*/
+
+REG_OP(StatelessRandomGammaV2)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(StatelessRandomGammaV2)
+
+/**
+* @brief Outputs deterministic pseudorandom random integers from a uniform distribution . \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li seed: 2 seeds (shape [2]). \n
+
+* @par Attributes:
+* dtype:Output data type . \n
+
+* @par Outputs:
+* y: Returns Random values with specified shape . \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomUniformFullInt operator.
+*/
+
+REG_OP(StatelessRandomUniformFullInt)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_INT64, DT_UINT32, DT_UINT64}))
+    .ATTR(dtype, Type, DT_INT32)
+    .OP_END_FACTORY_REG(StatelessRandomUniformFullInt)
+
+/**
+* @brief Outputs deterministic pseudorandom random integers from a uniform distribution . \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li key: Key for the counter-based RNG algorithm.
+* @li counter: Initial counter for the counter-based RNG algorithm.
+* @li alg: 0-D. The RNG algorithm. \n
+
+* @par Attributes:
+* dtype:Output data type . \n
+
+* @par Outputs:
+* y: Returns Random values with specified shape . \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomUniformFullIntV2 operator.
+*/
+
+REG_OP(StatelessRandomUniformFullIntV2)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(key, TensorType({DT_UINT64}))
+    .INPUT(counter, TensorType({DT_UINT64}))
+    .INPUT(alg, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_INT64, DT_UINT32, DT_UINT64}))
+    .ATTR(dtype, Type, DT_INT32)
+    .OP_END_FACTORY_REG(StatelessRandomUniformFullIntV2)
+
+/**
+* @brief Outputs deterministic pseudorandom random integers from a uniform distribution . \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li key: Key for the counter-based RNG algorithm.
+* @li counter: Initial counter for the counter-based RNG algorithm.
+* @li alg: 0-D. The RNG algorithm.
+* @li minval: Minimum value (inclusive, scalar).
+* @li maxval: Maximum value (exclusive, scalar) . \n
+
+* @par Outputs:
+* y: Returns Random values with specified shape . \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomUniformIntV2 operator.
+*/
+
+REG_OP(StatelessRandomUniformIntV2)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(key, TensorType({DT_UINT64}))
+    .INPUT(counter, TensorType({DT_UINT64}))
+    .INPUT(alg, TensorType({DT_INT32}))
+    .INPUT(minval, TensorType({DT_INT32, DT_INT64, DT_UINT32, DT_UINT64}))
+    .INPUT(maxval, TensorType({DT_INT32, DT_INT64, DT_UINT32, DT_UINT64}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_INT64, DT_UINT32, DT_UINT64}))
+    .OP_END_FACTORY_REG(StatelessRandomUniformIntV2)
+
+/**
+* @brief Outputs deterministic pseudorandom random integers from a binomial distribution. \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li seed: 2 seeds (shape [2]).
+* @li counts: The counts of the binomial distribution. Must be broadcastable with probs,
+* and broadcastable with the rightmost dimensions of shape.
+* @li probs: The probability of success for the binomial distribution.
+* Must be broadcastable with counts and broadcastable with the rightmost dimensions of shape. \n
+
+* @par Attributes:
+* @li dtype: A optional int32, specifying the output data type. Defaults to "DT_INT32". \n
+
+* @par Outputs:
+* @li y: Returns Random values with specified shape. \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomBinomial operator.
+*/
+REG_OP(StatelessRandomBinomial)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(counts, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64}))
+    .INPUT(probs, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .ATTR(dtype, Type, DT_INT32)
+    .OP_END_FACTORY_REG(StatelessRandomBinomial)
+
+/**
+* @brief Outputs deterministic pseudorandom random integers from a poisson distribution . \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li seed: 2 seeds (shape [2]).
+* @li lam: mean value value of poisson distribution . \n
+
+* @par Attributes:
+* dtype:Output data type . \n
+
+* @par Outputs:
+* y: Returns Random values with specified shape . \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomUniformInt operator.
+*/
+
+REG_OP(StatelessRandomPoisson)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(lam, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_DT_INT32, DT_INT64}))
+    .REQUIRED_ATTR(dtype, Type)
+    .OP_END_FACTORY_REG(StatelessRandomPoisson)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_STATELESS_RANDOM_OPS_H_
