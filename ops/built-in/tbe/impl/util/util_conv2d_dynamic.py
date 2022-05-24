@@ -320,6 +320,7 @@ class Conv2dParaProcess(CubeParaProcess):
                 dict["ori_shape"].append(i.value)
             dict["dtype"] = tensor.dtype
             dict["ori_format"] = tensor.op.attrs['ori_format'].value
+            dict["format"] = tensor.op.attrs['format'].value
 
             if need_range is True:
                 dict["range"] = []
@@ -377,8 +378,15 @@ class Conv2dParaProcess(CubeParaProcess):
         """
         demo
         """
-        if self.strides == [-1, -1, -1, -1] or self.strides == (-1, -1, -1, -1):
-            self.cache_tiling_flag = True
+        condition_list = [
+            self.strides == [-1, -1, -1, -1],
+            self.strides == (-1, -1, -1, -1),
+            self.inputs.get("range") == [[1, None], [1, -1], [1, None], [1, None]]
+            and self.inputs.get("format") == "NCHW"
+        ]
+        for cond in condition_list:
+            if cond:
+                self.cache_tiling_flag = True
 
     def check_support_valid(self, in_shape, w_shape):
         """

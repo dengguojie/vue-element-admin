@@ -45,9 +45,10 @@ def test_conv2d_dynamic_transdata_fusion(test_arg):
 
             data = tvm.placeholder(fmap_shape_nchw, name='fmap', dtype=in_dtype, attrs={"range": [[1, -1], [1, -1], [1, -1], [1, -1]],
                                                                                         "ori_shape": [-1, -1, -1, -1],
+                                                                                        "format": "NCHW",
                                                                                         "ori_format": "NCHW",})
-            weight = tvm.placeholder(shape_w_fracz, name='weight', dtype=in_dtype, attrs={'ori_shape': [-1, -1, -1, -1], 'ori_format': "NCHW"})
-            bias = tvm.placeholder((Co0*Co1,), name='bias', dtype=in_dtype, attrs={'ori_shape': [-1], 'ori_format': "ND"}) if bias_flag else None
+            weight = tvm.placeholder(shape_w_fracz, name='weight', dtype=in_dtype, attrs={'ori_shape': [-1, -1, -1, -1], 'ori_format': "NCHW", "format": "FRACTAL_Z",})
+            bias = tvm.placeholder((Co0*Co1,), name='bias', dtype=in_dtype, attrs={'ori_shape': [-1], 'ori_format': "ND", 'format': "ND"}) if bias_flag else None
 
             conv_in = trans_data_fusion_compute(data, None, "NCHW", "NC1HWC0")
 

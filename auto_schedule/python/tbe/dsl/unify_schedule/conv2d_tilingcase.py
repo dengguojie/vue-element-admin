@@ -63,7 +63,7 @@ BINARY_BASE_TILING = {
     "BUB_shape": None,
     "AL1_shape": [-1, -1, 1, 1],
     "BL1_shape": [-1, -1, 1, 1],
-    "AUB_shape": [-1, -1],
+    "AUB_shape": [-1, -1, 1, 1],
     "n_bef_batch_flag": 0, "n_bef_group_flag": 0, "batch_bef_group_flag": 0,
     "A_overhead_opt_flag": 0, "B_overhead_opt_flag": 0,
     "AUB_channel_wise_flag": None, "BUB_channel_wise_flag": None, "CUB_channel_wise_flag": None,
@@ -354,7 +354,7 @@ def get_ub_fusion_utilize(fused_coefficient_list):
     return ub_utilize_dict
 
 
-def get_vec_fusion_utilize(op_type_list):
+def get_vec_fusion_utilize(tiling_dict):
     """
     get the number of pre/post fusion vector utilize and save in a dict
 
@@ -364,32 +364,15 @@ def get_vec_fusion_utilize(op_type_list):
 
     Parameters
     ----------
-    op_type_list: list
-        op types of ops
+    tiling_dict: dict
 
     Returns
     -------
     vec_utilize_dict: dict of pre/post fusion utilize
     """
-    # Currently only support TransData + Conv2D + TransData.
-    def is_supported_fusion(op_type_list):
-        supported_fused_op_type_num = 3
-        supported_fused_op_type = ['TransData', 'Conv2D', 'TransData']
-        if len(op_type_list) != supported_fused_op_type_num:
-            return False
-        for index, value in enumerate(supported_fused_op_type):
-            if op_type_list[index] != value:
-                return False
-        return True
-
-    pre_fusion = "pre_fusion_vector_utilize"
-    post_fusion = "post_fusion_vector_utilize"
-    vec_utilize_dict = {pre_fusion: 0, post_fusion: 0}
-    # >>> start: Currently only support TransData + Conv2D + TransData.
-    if is_supported_fusion(op_type_list):
-        vec_utilize_dict[pre_fusion] = 0 # temp
-        vec_utilize_dict[post_fusion] = 0 # temp
-    # <<< end: Currently only support TransData + Conv2D + TransData.
+    pre_vec_util, post_vec_util = tiling_dict.get("fusion_vector_utilize", [0, 0])
+    vec_utilize_dict = {"pre_fusion_vector_utilize": pre_vec_util,
+                        "post_fusion_vector_utilize": post_vec_util}
     return vec_utilize_dict
 
 
@@ -430,7 +413,7 @@ def add_tiling_compile_info(tiling_dict):
     # >>> start: add vector/ub fusion utilize info in compile_info
     utilize_dict = {}
     utilize_dict.update(get_ub_fusion_utilize(tiling_dict.get("fused_coefficient")))
-    utilize_dict.update(get_vec_fusion_utilize(op_type_list))
+    utilize_dict.update(get_vec_fusion_utilize(tiling_dict))
     add_compile_info("fusion_utilize", utilize_dict)
     # <<< end: add vector/ub fusion utilize info in compile_info
     # >>> start: add hardware info in compile_info

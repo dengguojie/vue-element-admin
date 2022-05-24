@@ -19,6 +19,7 @@ common function for check ops parameter
 """
 from functools import reduce
 
+from tbe.common import platform
 from tbe.common.context import get_context
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
@@ -368,6 +369,59 @@ def _produce_convout_shape(inputs: list):
     return shape_out
 
 
+def _cube_transdata_shape(inputs: list):
+    """
+    get cube transdata fusion shape
+    """
+    fmap = inputs[0]
+    if fmap.get("format") != "NCHW":
+        return []
+
+    in_range = fmap.get("range")
+    ori_shape = list(fmap.get("ori_shape"))
+    ori_format = fmap.get("ori_format")
+    in_range_nchw = _get_input_range_nchw("cube", ori_shape, ori_format, in_range)
+    in_dtype = fmap.get("data_type")
+
+    _binary_flag = False
+    if in_range == [(1, None), (1, None), (1, None), (1, None)]:
+        _binary_flag = True
+
+    n_dim = 0
+    c_dim = 1
+    h_dim = 2
+    w_dim = 3
+    if _binary_flag:
+        batch_n = operation.var("batch_n", in_range_nchw[n_dim])
+        c_in = operation.var("c_in", in_range_nchw[c_dim])
+        fmap_h = operation.var("fmap_h", in_range_nchw[h_dim])
+        fmap_w = operation.var("fmap_w", in_range_nchw[w_dim])
+        c_out = operation.var("c_out")
+        k_h = operation.var("k_h")
+        k_w = operation.var("k_w")
+
+        block_size_k, block_size_n = platform.CUBE_MKN[in_dtype]["mac"][1:3]
+        ci1 = (c_in + block_size_k - 1) // block_size_k
+        co1 = (c_out + block_size_n - 1) // block_size_n
+
+        fmap_shape_nchw = (batch_n, c_in, fmap_h, fmap_w)
+        shape_w_fracz = (ci1*k_h*k_w, co1, block_size_n, block_size_k)
+        bias_shape = (co1*block_size_n,)
+
+    shape_out = []
+    for i, input in enumerate(inputs):
+        in_shape = input.get("shape")[:]
+        if _binary_flag:
+            if i == 0:
+                in_shape = fmap_shape_nchw
+            elif i == 1:
+                in_shape = shape_w_fracz
+            elif (i == 2 and in_shape != 'NULL'):
+                in_shape = bias_shape
+        shape_out.append(in_shape)
+    return shape_out
+
+
 def _cube_variable_shape(inputs: list):
     shape_out = []
     n_dim = 0
@@ -383,7 +437,12 @@ def _cube_variable_shape(inputs: list):
             groups = op_info.attrs[3]
             break
 
-    if inputs and inputs[0].get("input_pattern") != "cube":
+    if not inputs:
+        return []
+    input0_pattern = inputs[0].get("input_pattern")
+    if input0_pattern == "cube_transdata":
+        return _cube_transdata_shape(inputs)
+    elif input0_pattern != "cube":
         # vector inputs process for conv + eltwise（double input）fusion
         return _produce_convout_shape(inputs)
 

@@ -316,7 +316,7 @@ bool Conv2dBinaryTiling::InitConvUbUtilize(const optiling::Conv2DTilingParseInfo
     convParas.preFusionUbUtilize = opInfo.preFusionUbUtilize;
     convParas.preFusionVectorUtilize = opInfo.preFusionVectorUtilize;
     convParas.postFusionUbUtilize = opInfo.postFusionUbUtilize;
-    convParas.postFusionVectorUtilize = opInfo.preFusionVectorUtilize;
+    convParas.postFusionVectorUtilize = opInfo.postFusionVectorUtilize;
     GELOGD("Conv2dBinaryTiling fusion utilize info: "
         "preFusionUbUtilize=%.3f, preFusionVectorUtilize=%d, postFusionUbUtilize=%.3f, postFusionVectorUtilize=%d",
         convParas.preFusionUbUtilize, convParas.preFusionVectorUtilize,

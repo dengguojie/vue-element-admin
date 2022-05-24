@@ -50,5 +50,27 @@ def cube_varible_shape1(test_arg):
 print("adding cube_varible_shape")
 ut_case.add_cust_test_func(test_func=cube_varible_shape1)
 
+def cube_transdata_varible_shape(test_arg):
+    try:
+        input_dict_list = [{'L1_addr_offset':0, 'L1_fusion_type':-1, 'L1_workspace_size':-1, 'addr_type':0, 'data_type':'float16',
+            'format':'NCHW', 'name':'-1_0_Relu_18_0', 'ori_format':'NCHW', 'ori_range':[[1, -1], [1, -1], [1, -1], [1, -1]],
+            'ori_shape':[-1, -1, -1, -1], 'range':[(1, None), (1, None), (1, None), (1, None)], 'sgt_slice_shape':[], 'shape':[-1, -1, -1, -1],
+            'slice_offset':[], 'split_index':0, 'sub_format':0, 'total_shape':[-1, -1, -1, -1], 'valid_shape':[], "input_pattern": "cube_transdata"},
+            {'L1_addr_offset':0, 'L1_fusion_type':-1, 'L1_workspace_size':-1, 'addr_type':0, 'data_type':'float16',
+            'format':'FRACTAL_Z', 'name':'-1_0_Relu_18_0', 'ori_format':'NCHW', 'ori_range':[[128, 128], [128, 128], [3, 3], [3, 3]],
+            'ori_shape':[128, 128, 3, 3], 'range':[[72, 72], [8, 8], [16, 16], [16, 16]], 'sgt_slice_shape':[], 'shape':[72, 8, 16, 16],
+            'slice_offset':[], 'split_index':0, 'sub_format':0, 'total_shape':[72, 8, 16, 16], 'valid_shape':[], "input_pattern": "cube"}]
+        shape_util._cube_variable_shape(input_dict_list)
+
+    except (RuntimeError, ValueError, TypeError, AttributeError):
+        msg = traceback.format_exc()
+        print(msg)
+        return False
+    else:
+        return True
+
+print("adding cube_transdata_varible_shape")
+ut_case.add_cust_test_func(test_func=cube_transdata_varible_shape)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend710"])

@@ -131,16 +131,13 @@ class InputNd2Nz:
 
             sch[self._fmap_in_ub.get("transpose_hw_c0")].mem_unique()
 
-    def input_nd_binary_compute_at(self, sch, al1, _tiling):
+    def input_nd_binary_compute_at(self, sch, al1, aub_nparts):
         """
         compute at in binary input_nd
         """
         if self.mode == "NCHW":
-            if not _tiling["AUB_shape"]:
-                err_man.raise_err_specific("conv2d", "aub tiling cannot be None when fm nd2nz.")
-            aub_h, aub_ci1, *_ = _tiling["AUB_shape"]
-            c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[2], nparts=aub_h)
-            h_outer, h_inner = sch[al1].split(sch[al1].op.axis[3], nparts=aub_ci1)
+            c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[2], nparts=aub_nparts[0])
+            h_outer, h_inner = sch[al1].split(sch[al1].op.axis[3], nparts=aub_nparts[1])
             sch[al1].reorder(c1_outer, h_outer, sch[al1].op.axis[0],
                              sch[al1].op.axis[1], c1_inner, h_inner)
             for tensor in self._fmap_in_ub.values():
@@ -467,8 +464,8 @@ class DynamicShape:
         tiling["CL0_matrix"][1] = self.cache_tiling[TilingDataKey.M_L0]
         tiling["CUB_matrix"][0] = self.cache_tiling[TilingDataKey.CUB_N1]
         tiling["CUB_matrix"][1] = self.cache_tiling[TilingDataKey.M_L0]
-        tiling["AUB_shape"][0] = self.cache_tiling[TilingDataKey.AUB_H]
-        tiling["AUB_shape"][1] = self.cache_tiling[TilingDataKey.AUB_CI1]
+        tiling["AUB_shape"][0] = self.cache_tiling[TilingDataKey.K_AUB]
+        tiling["AUB_shape"][1] = self.cache_tiling[TilingDataKey.M_AUB]
 
         if attach_at_flag.get("bl0_attach_flag") == AttachMode.ATTACH_FULL_LOAD:
             tiling["BL0_matrix"] = []
@@ -584,9 +581,9 @@ class DynamicShape:
             al1_tiling = tiling_param["al1_tiling"]
             stride_h_update = tiling_param["stride_h_update"]
             m_cl0 = tiling_param["m_cl0"]
-            aub_h, aub_ci1 = 1, 1
-            if tiling_param["aub_tiling"]:
-                aub_h, aub_ci1, *_ = tiling_param["aub_tiling"]
+            k_aub_nparts, m_aub_nparts = 1, 1
+            if tiling_param["aub_nparts"]:
+                k_aub_nparts, m_aub_nparts = tiling_param["aub_nparts"]
 
             stride_h = conv_param.stride_h
             kernel_h = conv_param.filter_h
@@ -615,13 +612,13 @@ class DynamicShape:
                             additional_rows = 2
                     m_al1 = modify_m_for_load3d()
                 al1_bound = m_al1 * k1_al1 * in_c0
-                aub_bound_ceil = ceil(m_al1//aub_h, in_c0) * k1_al1//aub_ci1 * in_c0
+                aub_bound_ceil = ceil(m_al1//m_aub_nparts, in_c0) * k1_al1//k_aub_nparts * in_c0
             else:
                 if strideh_opti_flag:
                     in_height = (in_height - 1) // stride_h + 1
                 m_al1 = ceil(in_height * in_width, in_c0)
                 al1_bound = m_al1 * in_c1 * in_c0
-                aub_bound_ceil = ceil(m_al1//aub_h, in_c0) * in_c1//aub_ci1 * in_c0
+                aub_bound_ceil = ceil(m_al1//m_aub_nparts, in_c0) * in_c1//k_aub_nparts * in_c0
 
             sch[al1].set_buffer_size(al1_bound)
             return aub_bound_ceil
@@ -1052,10 +1049,32 @@ class Conv2dSchedule:
             """
             get cub space coefficient for get_tiling.
             """
-            eltwise_coeff, channelwise_coeff, scalar_num = self._eltwise_ub_fusion.coeff_eltwise_cal(self._res)
-            eltwise_coeff += self._quant_fusion.cal_quant_coeff()
-            eltwise_coeff += self._pooling_fusion.cal_pooling_coeff()
-            return eltwise_coeff, channelwise_coeff, scalar_num
+            cub_eltwise_coeff, channelwise_coeff, scalar_num = self._eltwise_ub_fusion.coeff_eltwise_cal(self._res)
+            cub_eltwise_coeff += self._quant_fusion.cal_quant_coeff()
+            cub_eltwise_coeff += self._pooling_fusion.cal_pooling_coeff()
+            if self._output_nz2nd.mode == "NCHW":
+                cub_eltwise_coeff += 2
+            return cub_eltwise_coeff, channelwise_coeff, scalar_num
+
+        def cal_aub_coeff():
+            """
+            get aub space coefficient for get_tiling.
+            """
+            aub_coeff = 0
+            if self._input_nd2nz.mode == "NCHW":
+                aub_coeff += 2
+            return aub_coeff
+
+        def cal_fusion_vector_utilize():
+            """
+            get pre_vec_util, post_vec_util for fast tiling.
+            """
+            pre_vec_util, post_vec_util = 0, 0
+            if self._input_nd2nz.mode == "NCHW":
+                pre_vec_util += 2
+            if self._output_nz2nd.mode == "NCHW":
+                post_vec_util += 1
+            return pre_vec_util, post_vec_util
 
         def get_info_dict_cdtype(c_dtype):
             """
@@ -1091,7 +1110,9 @@ class Conv2dSchedule:
         if is_support_fixpipe_op():
             eltwise_flag, eltwise_dtype = self._fixpipe_fusion.fetch_eltwise_info()
 
-        eltwise_coeff, channelwise_coeff, scalar_num = cal_cub_coeff()
+        cub_eltwise_coeff, channelwise_coeff, scalar_num = cal_cub_coeff()
+
+        aub_coeff = cal_aub_coeff()
 
         pooling_shape, pooling_stride = self._pooling_fusion.config_window_stride()
 
@@ -1138,11 +1159,14 @@ class Conv2dSchedule:
                                       "scalar_num": scalar_num,
                                      },
                      "placeholder_fmap_5hd_shape": list(self._dim_map["fmap_5hd_shape"]),
-                     "fused_coefficient": [0, 0, eltwise_coeff],
+                     "fused_coefficient": [aub_coeff, 0, cub_eltwise_coeff],
                      "fused_channel_wise": [0, 0, channelwise_coeff],
                      "pooling_shape": pooling_shape,
                      "pooling_stride": pooling_stride,
                     }
+        if self._binary:
+            pre_vec_util, post_vec_util = cal_fusion_vector_utilize()
+            info_dict.update({"fusion_vector_utilize": [pre_vec_util, post_vec_util]})
         return info_dict
 
     def fetch_tiling(self, info_dict, tiling_case):
@@ -2674,6 +2698,14 @@ class Conv2dSchedule:
         else:
             bl1_nparts = [1, n_dim]
 
+        if aub_tiling:
+            k_aub, m_aub, *_ = aub_tiling
+            k1_aub = k_aub // (((kernel_h - 1)*dilate_h + 1)*((kernel_w - 1)*dilate_w + 1)*block_k0)
+            if al1_tiling:
+                aub_nparts = [k1_al1 // k1_aub, multi_m_al1 // m_aub]
+            else:  # al1 full load
+                aub_nparts = [ci1_opt // k1_aub, ceil_div(cl0_factor[1], m_aub)]
+
         #===========================split and compute at=========================================
         sch = self._sch
         al1 = tensor_param["al1"]
@@ -2730,7 +2762,7 @@ class Conv2dSchedule:
         self._convbn1.bn1fusion_compute_at(sch, res, cub_at_res_axis)
 
         if self._binary.flag:
-            self._input_nd2nz.input_nd_binary_compute_at(sch, al1, self._tiling)
+            self._input_nd2nz.input_nd_binary_compute_at(sch, al1, aub_nparts)
             self._output_nz2nd.output_nd_binary_compute_at(sch, res, cub_at_res_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
@@ -2764,6 +2796,8 @@ class Conv2dSchedule:
             tiling_param.update({"multi_m_al1": multi_m_al1,
                                  "k_al1": k_al1,
                                  "k1_al1": k1_al1})
+        if aub_tiling:
+            tiling_param.update({"aub_nparts": aub_nparts})
 
         emit_insn_dict = {"al0_axis_list": al0_axis_list,
                           "bindcore_axis": bindcore_axis,
