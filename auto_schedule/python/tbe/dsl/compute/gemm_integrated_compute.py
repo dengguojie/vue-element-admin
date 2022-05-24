@@ -31,7 +31,6 @@ from tbe.dsl.base.operation import in_dynamic
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_cube
-from tbe.common.utils.errormgr import error_manager_util
 from tbe.tvm.tensor import Tensor
 from .gemm_compute_util import FormatCompute
 
@@ -457,13 +456,11 @@ class GEMMCompute(FormatCompute):
         """
         offset_x = 0
         offset_w = None
-        if cube_util.is_v200_version_new():
-            if dtype_a in ("uint8", "int8", "int4"):
-                if attrs_dict.get("offset_a") is not None:
-                    offset_x = attrs_dict.get("offset_a")
-                if dtype_b in ("int8", "int4"):
-                    if attrs_dict.get("offset_b") is not None:
-                        offset_w = attrs_dict.get("offset_b")
+        if cube_util.is_v200_version_new() and dtype_a in ("uint8", "int8", "int4"):
+            if attrs_dict.get("offset_a") is not None:
+                offset_x = attrs_dict.get("offset_a")
+            if dtype_b in ("int8", "int4"):
+                offset_w = attrs_dict.get("offset_b")
 
         return offset_x, offset_w
 
@@ -473,8 +470,10 @@ class GEMMCompute(FormatCompute):
         get a shape's format nc1hwc0 inorder to get tiling
         """
         if GEMMComputeParam.batch_a:
-            return [tensor_a_zz.shape[0], tensor_a_zz.shape[2], tensor_a_zz.shape[1], 16, 16]
-        return [1, tensor_a_zz.shape[1], tensor_a_zz.shape[0], 16, 16]
+            return [tensor_a_zz.shape[0], tensor_a_zz.shape[2], tensor_a_zz.shape[1],
+                    GEMMComputeParam.block_in, GEMMComputeParam.block_reduce]
+        return [1, tensor_a_zz.shape[1], tensor_a_zz.shape[0],
+                GEMMComputeParam.block_in, GEMMComputeParam.block_reduce]
 
     @staticmethod
     def _get_shape_b_in_nc1hwc0(tensor_b_zn):
@@ -482,8 +481,10 @@ class GEMMCompute(FormatCompute):
         get b shape's format nc1hwc0 inorder to get tiling
         """
         if GEMMComputeParam.batch_b:
-            return [tensor_b_zn.shape[1] * 16, tensor_b_zn.shape[2], 1, 1, 16]
-        return [tensor_b_zn.shape[0] * 16, tensor_b_zn.shape[1], 1, 1, 16]
+            return [tensor_b_zn.shape[1] * GEMMComputeParam.block_reduce, tensor_b_zn.shape[2],
+                    1, 1, GEMMComputeParam.block_out]
+        return [tensor_b_zn.shape[0] * GEMMComputeParam.block_reduce, tensor_b_zn.shape[1],
+                1, 1, GEMMComputeParam.block_out]
 
     @staticmethod
     def _get_compress_tensor_compute(tensor_src, comp_index, op_name):
@@ -517,8 +518,9 @@ class GEMMCompute(FormatCompute):
                                         "block_dim_n": n_dim}
                                  )
         else:
-            error_manager_cube.raise_err_message_cube("The compress tensor is not supported, dim is {}".format(
-                len(shape_src)))
+            reason = "The compress feature only support the tensor with 4 dims, "\
+                     "but the length of input tensor is {}.".format(len(shape_src))
+            error_manager_cube.raise_err_specific("GEMM", reason)
         return tensor
 
     @staticmethod
@@ -547,11 +549,8 @@ class GEMMCompute(FormatCompute):
                 scale_drq_tensor = quantize_params.get("scale_drq")
                 sqrt_out = quantize_params.get("sqrt_mode_out")
             else:
-                dict_args = {
-                    'errCode': 'E61001',
-                    'reason': "dst tensor's dtype should be float16, while it is {}".format(dtype_dst)
-                }
-                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                reason = "Dst tensor's dtype should be float16, while it is {}.".format(dtype_dst)
+                error_manager_cube.raise_err_specific("GEMM", reason)
 
         return scale_drq, scale_drq_tensor, sqrt_out
 
@@ -559,28 +558,19 @@ class GEMMCompute(FormatCompute):
     def _check_quantize_params(quantize_params=None):
         """
         Parameters:
-        quantize_params: quantization parameters,
-                not None means enable quantization, it is dictionary structure
-
-            quantize_alg: quantize mode,
-                support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
-
-            scale_mode_a: tensor_a inbound quantization mode,
-                    support 'SCALAR' and 'VECTOR'
-            scale_mode_b: tensor_b inbound quantization mode,
-                    support 'SCALAR' and 'VECTOR'
-            scale_mode_out: out tensor quantization mode,
-                    support 'SCALAR' and 'VECTOR'
-
+        quantize_params: not None means enable quantization, it is dictionary structure
+            probable param keys as following:
+            quantize_alg: quantize mode, support 'NON_OFFSET' 'HALF_OFFSET_A' 'HALF_OFFSET_B' 'ALL_OFFSET'
+            scale_mode_a: tensor_a inbound quantization mode, support 'SCALAR' and 'VECTOR'
+            scale_mode_b: tensor_b inbound quantization mode, support 'SCALAR' and 'VECTOR'
+            scale_mode_out: out tensor quantization mode, support 'SCALAR' and 'VECTOR'
             sqrt_mode_a: tensor_a inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
             sqrt_mode_b: tensor_b inbound sqrt mode, support 'NON_SQRT' and 'SQRT'
             sqrt_mode_out: out tensor sqrt mode, support 'NON_SQRT' and 'SQRT'
-
             scale_q_a: scale placeholder for tensor_a inbound quantization
             offset_q_a: offset placeholder for tensor_a inbound quantization
             scale_q_b: scale placeholder for tensor_b inbound quantization
             offset_q_b: offset placeholder for tensor_b inbound quantization
-
             scale_drq: scale placeholder for requantization or dequantization
             offset_drq: scale placeholder for requantization or dequantization
         """
@@ -601,41 +591,41 @@ class GEMMCompute(FormatCompute):
         dict_args = {'errCode': 'E61001', 'reason': "TEMP REASON."}
         for param_str in params_not_support:
             if param_str in quantize_params:
-                dict_args['reason'] = "Parameter {} is not supported.".format(param_str)
-                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                reason = "Parameter {} is not supported in the current version.".format(param_str)
+                error_manager_cube.raise_err_specific("GEMM", reason)
         for param_str in params_necessary:
             if param_str not in quantize_params:
-                dict_args['reason'] = "Lack of parameter {}, need to supply it.".format(param_str)
-                raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+                reason = "Lack of parameter {}, need to supply it.".format(param_str)
+                error_manager_cube.raise_err_specific("GEMM", reason)
 
         quantize_mode = quantize_params["quantize_alg"]
         if quantize_mode not in ("NON_OFFSET", "HALF_OFFSET_A"):
-            dict_args['reason'] = "Parameter quantize_alg should be 'NON_OFFSET' or "\
-                                  "'HALF_OFFSET_A', while it is {}.".format(quantize_mode)
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            reason = "Parameter quantize_alg should be 'NON_OFFSET' or "\
+                     "'HALF_OFFSET_A', while it is {}.".format(quantize_mode)
+            error_manager_cube.raise_err_specific("GEMM", reason)
 
         scale_out = quantize_params["scale_mode_out"]
         if scale_out not in ("SCALAR", "VECTOR"):
-            dict_args['reason'] = "Parameter scale_mode_out should be 'SCALAR' or "\
-                                  "'VECTOR', while it is {}.".format(scale_out)
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            reason = "Parameter scale_mode_out should be 'SCALAR' or "\
+                     "'VECTOR', while it is {}.".format(scale_out)
+            error_manager_cube.raise_err_specific("GEMM", reason)
 
         sqrt_out = quantize_params["sqrt_mode_out"]
         if sqrt_out not in ("NON_SQRT", "SQRT"):
-            dict_args['reason'] = "Parameter sqrt_mode_out should be 'NON_SQRT' or "\
-                                  "'SQRT', while it is {}.".format(sqrt_out)
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            reason = "Parameter sqrt_mode_out should be 'NON_SQRT' or "\
+                     "'SQRT', while it is {}.".format(sqrt_out)
+            error_manager_cube.raise_err_specific("GEMM", reason)
 
         scale_drq_tensor = quantize_params.get("scale_drq")
         if scale_drq_tensor is None:
-            dict_args['reason'] = "scale_drq_tensor is None, need to supply it."
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            reason = "scale_drq_tensor is None, need to supply it."
+            error_manager_cube.raise_err_specific("GEMM", reason)
 
     def calculate(self):
         """
         the main func of gemm
         """
-        self._tensor_b_reorder_axes()
+        self._tensor_b_swap_c1_hw()
         self._init_func()
         self.ops_format = self.format_a
 
@@ -693,6 +683,7 @@ class GEMMCompute(FormatCompute):
             n_shape, self.ops_data_flow_mode, self.format_out,
             n_shape_dynamic_flag) if self.ops_format == "ND" else 1
 
+        # padl means a_fused_num, and padr means b_fused_num, and padu means is_gevm/is_gemv
         GEMMComputeParam.tiling_info_dict = {
             "A_shape": self._get_shape_a_in_nc1hwc0(tensor_a_zz),
             "B_shape": self._get_shape_b_in_nc1hwc0(tensor_b_zn),
@@ -753,12 +744,8 @@ class GEMMCompute(FormatCompute):
     def _check_and_renew_block(self, gevm_mode_flag, gemv_mode_flag, both_fractal, only_use_gevm_gemv_flow):
         is_vector_mul_vector = gevm_mode_flag and gemv_mode_flag and both_fractal
         if is_vector_mul_vector:
-            dict_args = {
-                "errCode": "E61001",
-                "op_name": "GEMM",
-                "reason": "not support vector mul vector when A and B both fractal."
-            }
-            raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+            reason = "Not support vector mul vector when A and B both fractal."
+            error_manager_cube.raise_err_specific("GEMM", reason)
         mmad_mode = "gevm" if gevm_mode_flag else ("gemv" if gemv_mode_flag else "gemm")
         mmad_mode = "gemm" if (gevm_mode_flag and gemv_mode_flag) else mmad_mode
         if not only_use_gevm_gemv_flow:
@@ -865,7 +852,7 @@ class GEMMCompute(FormatCompute):
 
         return tensor_mmad_with_scale
 
-    def _tensor_b_reorder_axes(self):
+    def _tensor_b_swap_c1_hw(self):
         if self.op_type == "BatchMatMulV2":
             shape_b_ori = self.tensor_b.op.attrs["ori_shape"]
             shape_b = self.tensor_b.shape
@@ -887,13 +874,13 @@ class GEMMCompute(FormatCompute):
 
                 c1hw, n1, n0, c0 = shape_b
                 c1 = c1hw // (height * width)
-                shape_b_reorder_axes = [height * width, c1, n1, n0, c0]
-                self.tensor_b = tvm.compute(shape_b_reorder_axes,
+                shape_b_swap_c1_hw = [height * width, c1, n1, n0, c0]
+                self.tensor_b = tvm.compute(shape_b_swap_c1_hw,
                                             lambda hw_idx, c1_idx, n1_idx, n0_idx, c0_idx:
                                             self.tensor_b(c1_idx * height * width + hw_idx, n1_idx, n0_idx, c0_idx),
-                                            name="tensor_b_reorder_axes",
+                                            name="tensor_b_swap_c1_hw",
                                             attrs={"ori_batch_shape": self.para_dict.get("batch_shape_b")})
-                self.shape_b = shape_b_reorder_axes
+                self.shape_b = shape_b_swap_c1_hw
 
     def _compute_res(self, tensor_gemm):
         res_tag = self._get_ops_tag()
@@ -1319,10 +1306,10 @@ class GEMMCompute(FormatCompute):
         # and the remaining one will be mapped as "phony_insn".
         shape_aligned = ori_shape[:-2] + shape_aligned
 
-        tensor_keep_origin = tvm.compute(
+        tensor_already_aligned = tvm.compute(
             shape_aligned,
             lambda *indices: tensor_need_align(*indices),
-            name="tensor_{}_keep_origin".format(tensor_name)
+            name="tensor_{}_already_aligned".format(tensor_name)
         )
         tensor_do_align = tvm.compute(
             shape_aligned,
@@ -1339,7 +1326,7 @@ class GEMMCompute(FormatCompute):
         )
         tensor_aligned = tvm.compute(
             shape_aligned,
-            lambda *indices: tensor_keep_origin(*indices)
+            lambda *indices: tensor_already_aligned(*indices)
                 + tensor_do_align(*indices),
             name="tensor_{}_aligned".format(tensor_name),
             attrs={"use_aligned_pattern": use_aligned_pattern}
@@ -1903,28 +1890,14 @@ class GEMMCompute(FormatCompute):
         }
         format_a_temp = merge_format_dict.get(self.format_a)
         if format_a_temp is None:
-            reason = "The current format_a is not supported, format_a is {}".format(self.format_a)
-            args_dict = {
-                "errCode": "E60108",
-                "op_name": "GEMM",
-                "reason": reason
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+            reason = "The current format_a is not supported, format_a is {}.".format(self.format_a)
+            error_manager_cube.raise_err_specific("GEMM", reason)
         self.format_a = format_a_temp
 
         format_b_temp = merge_format_dict.get(self.format_b)
         if format_b_temp is None:
-            reason = "The current format_b is not supported, format_b is {}".format(self.format_b)
-            args_dict = {
-                "errCode": "E60108",
-                "op_name": "GEMM",
-                "reason": reason
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+            reason = "The current format_b is not supported, format_b is {}.".format(self.format_b)
+            error_manager_cube.raise_err_specific("GEMM", reason)
         self.format_b = format_b_temp
 
         self._set_output_format()
@@ -1935,15 +1908,8 @@ class GEMMCompute(FormatCompute):
         }
         format_out_temp = merge_format_output_dict.get(self.format_out)
         if format_out_temp is None:
-            reason = "The current format_out is not supported, format_out is {}".format(self.format_out)
-            args_dict = {
-                "errCode": "E60108",
-                "op_name": "GEMM",
-                "reason": reason
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+            reason = "The current format_out is not supported, format_out is {}.".format(self.format_out)
+            error_manager_cube.raise_err_specific("GEMM", reason)
         self.format_out = format_out_temp
         # ---------- handle dataflow ---------- #
         connect_str = "2"
@@ -1975,15 +1941,8 @@ class GEMMCompute(FormatCompute):
         self.ops_data_flow_mode = merge_data_flow_dict.get(self.ops_data_flow_mode)
         if self.ops_data_flow_mode is None:
             reason = ("The current input and output dtype is not supported, "
-                      "input dtype is {}, output dtype is {}".format(self.src_dtype, self.dst_dtype))
-            args_dict = {
-                "errCode": "E60108",
-                "op_name": "GEMM",
-                "reason": reason
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+                      "input dtype is {}, output dtype is {}.".format(self.src_dtype, self.dst_dtype))
+            error_manager_cube.raise_err_specific("GEMM", reason)
         block_reduce_dict = {
             "int82int32": tbe_platform.BLOCK_REDUCE_INT8,
             "int42int32": tbe_platform.BLOCK_REDUCE_INT4,
@@ -2056,14 +2015,7 @@ class GEMMCompute(FormatCompute):
         if self.format_b == "ND" and (n_shape % tbe_platform.BLOCK_OUT != 0) and self.alpha is not None:
             reason = ("When the input format is ND, "
                       "the n direction must be aligned to {}.".format(tbe_platform.BLOCK_OUT))
-            args_dict = {
-                "errCode": "E60108",
-                "op_name": "GEMM",
-                "reason": reason
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+            error_manager_cube.raise_err_specific("GEMM", reason)
 
     def _check_gevm_and_gemv(self):
         shape_a = self.shape_a
@@ -2073,23 +2025,15 @@ class GEMMCompute(FormatCompute):
             k_shape = shape_a[-4] if self.format_a == "FRACTAL_NZ" else shape_a[-3]
             k_align_flag = (block_in == tbe_platform.BLOCK_VECTOR) and (k_shape % tbe_platform.BLOCK_IN != 0)
             if k_align_flag:
-                args_dict = {
-                    "errCode": "E61001",
-                    "op_name": "GEMM",
-                    "reason": "for fractal gevm input, K should be multiple of {}.".format(tbe_platform.BLOCK_IN
-                        * self.block_reduce)
-                }
-                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+                reason = "For fractal gevm input, K should be multiple of {}.".format(tbe_platform.BLOCK_IN *
+                                                                                      self.block_reduce)
+                error_manager_cube.raise_err_specific("GEMM", reason)
 
         if len(shape_b) in (4, 5):
             block_out = shape_b[-1] if self.format_b == "FRACTAL_NZ" else shape_b[-2]
             k_shape = shape_b[-3] if self.format_b == "FRACTAL_NZ" else shape_b[-4]
             k_align_flag = (block_out == tbe_platform.BLOCK_VECTOR) and (k_shape % tbe_platform.BLOCK_OUT != 0)
             if k_align_flag:
-                args_dict = {
-                    "errCode": "E61001",
-                    "op_name": "GEMM",
-                    "reason": "for fractal gemv input, K should be multiple of {}.".format(tbe_platform.BLOCK_OUT
-                        * self.block_reduce)
-                }
-                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+                reason = "For fractal gemv input, K should be multiple of {}.".format(tbe_platform.BLOCK_OUT *
+                                                                                      self.block_reduce)
+                error_manager_cube.raise_err_specific("GEMM", reason)

@@ -469,7 +469,7 @@ def get_single_matmul_tensor(tensor_map, all_tensor):
     tensor_map["virtual_aub"] = all_tensor.get("tensor_a_aligned")
     tensor_map["virtual_bub"] = all_tensor.get("tensor_b_aligned")
     # b_reshape
-    tensor_map["tensor_b_reshape"] = all_tensor.get("tensor_b_reorder_axes")
+    tensor_map["tensor_b_reshape"] = all_tensor.get("tensor_b_swap_c1_hw")
 
 
 def get_fusion_matmul_tensor(tensor_map, all_tensor, leaf_tensor):

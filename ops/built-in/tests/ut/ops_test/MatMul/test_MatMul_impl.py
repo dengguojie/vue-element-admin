@@ -736,7 +736,6 @@ def test_cast_matmul_4(test_arg):
             print(e)
             print("test_cast_matmul_4 success")
 
-
 ut_case.add_cust_test_func(test_func=test_cast_matmul_4)
 
 

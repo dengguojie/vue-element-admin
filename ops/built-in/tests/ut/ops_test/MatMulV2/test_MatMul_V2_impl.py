@@ -958,6 +958,7 @@ ut_case.add_cust_test_func(test_func=test_nd_k_full_load_conflict)
 for case_info in nd_cases:
     ut_case.add_case(["Ascend310"], case_info)
 
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     from case_nd_in_nd_out import cases

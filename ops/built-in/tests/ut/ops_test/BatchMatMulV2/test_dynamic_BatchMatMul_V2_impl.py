@@ -288,6 +288,7 @@ def test_batch_matmul_v2_fuzzy_generalization(test_arg):
     batch_matmul_v2_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, offset_w={}, output_z=output_dynamic,
                                    trans_a=False, trans_b=False, offset_x=0, kernel_name="batchmatmul_generalization",
                                    generalize_config={"mode": "keep_rank"})
+
 ut_case.add_cust_test_func(test_func=test_batch_matmul_v2_fuzzy_generalization)
 
 

@@ -950,7 +950,7 @@ class GemmSchedule:
     def _set_data_layout_a_matrix(self):
         tensors_in_aub = self.container.tensors_in_aub
         if self.is_dynamic:
-            self._get_tensor_and_set_scope("tensor_a_keep_origin",
+            self._get_tensor_and_set_scope("tensor_a_already_aligned",
                                            tbe_platform_info.scope_ubuf, "a_ub_aligned")
             self._get_tensor_and_set_scope("tensor_a_do_align",
                                            tbe_platform_info.scope_ubuf, "a_ub_general")
@@ -1019,7 +1019,7 @@ class GemmSchedule:
     def _set_data_layout_b_matrix(self):
         tensors_in_bub = self.container.tensors_in_bub
         if self.is_dynamic:
-            self._get_tensor_and_set_scope("tensor_b_keep_origin",
+            self._get_tensor_and_set_scope("tensor_b_already_aligned",
                                            tbe_platform_info.scope_ubuf, "b_ub_aligned")
             self._get_tensor_and_set_scope("tensor_b_do_align",
                                            tbe_platform_info.scope_ubuf, "b_ub_general")

@@ -111,6 +111,7 @@ def test_fully_connection_requant_fusion_dsl():
 
     return test_func
 
+
 ut_case.add_cust_test_func(
     ["Ascend710", "Ascend910A"], test_func=test_fully_connection_requant_fusion_dsl()
 )

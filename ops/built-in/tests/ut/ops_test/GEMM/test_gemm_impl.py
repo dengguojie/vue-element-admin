@@ -2,6 +2,8 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 from gemm_ut_testcase import gemm_op_testcase
+from impl.util.platform_adapter import tbe
+from te import tvm
 
 
 ut_case = OpUT("GEMM", "impl.gemm", "gemm")
@@ -735,6 +737,398 @@ def test_gemm_error_bias_shape_3(test_arg):
     else:
         raise RuntimeError("run test_gemm_error_bias_shape_2 fail.")
 
+def test_gemm_error_quantize_params_1(test_arg):
+    quantize_params = {'scale_mode_a': None}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_1'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_quantize_params_2(test_arg):
+    quantize_params = {'quantize_alg': 'NON_OFFSET', 'scale_mode_out': 'SCALAR',
+                       'sqrt_mode_out': 'NON_SQRT'}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_2'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_quantize_params_3(test_arg):
+    scale_drq_tensor = tvm.placeholder((1, ), dtype='int8', name='tensor_scale')
+    quantize_params = {'quantize_alg': 'NON_OFFSETTTTT', 'scale_mode_out': 'SCALAR',
+                       'sqrt_mode_out': 'NON_SQRT', 'scale_drq': scale_drq_tensor}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_3'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_quantize_params_4(test_arg):
+    scale_drq_tensor = tvm.placeholder((1, ), dtype='int8', name='tensor_scale')
+    quantize_params = {'quantize_alg': 'NON_OFFSET', 'scale_mode_out': 'SCALARRRRRR',
+                       'sqrt_mode_out': 'NON_SQRT', 'scale_drq': scale_drq_tensor}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_4'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_quantize_params_5(test_arg):
+    scale_drq_tensor = tvm.placeholder((1, ), dtype='int8', name='tensor_scale')
+    quantize_params = {'quantize_alg': 'NON_OFFSET', 'scale_mode_out': 'SCALAR',
+                       'sqrt_mode_out': 'NON_SQRTTTTTT', 'scale_drq': scale_drq_tensor}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_5'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_quantize_params_6(test_arg):
+    scale_drq_tensor = None
+    quantize_params = {'quantize_alg': 'NON_OFFSET', 'scale_mode_out': 'SCALAR',
+                       'sqrt_mode_out': 'NON_SQRT', 'scale_drq': scale_drq_tensor}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_6'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_quantize_params_7(test_arg):
+    scale_drq_tensor = tvm.placeholder((1, ), dtype='int8', name='tensor_scale')
+    quantize_params = {'quantize_alg': 'NON_OFFSET', 'scale_mode_out': 'SCALAR',
+                       'sqrt_mode_out': 'NON_SQRT', 'scale_drq': scale_drq_tensor}
+    input_x1 = tvm.placeholder((1, 512), dtype='int8', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 16, 32), dtype='int8', name='tensor_b')
+    index_size = tvm.var("index_size", dtype="int32")
+    compress_index = tvm.placeholder([index_size, ], name='compress_index', dtype="int8")
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int32',
+        "tensor_c": None,
+        "quantize_params": quantize_params,
+        "format_out": 'FRACTAL_NZ',
+        "compress_index": compress_index,
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_quantize_params_7'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_format_1(test_arg):
+    input_x1 = tvm.placeholder((16, 32), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((2, 1, 16, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'NDDDDDDDDDDDDD',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_format_1'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_format_2(test_arg):
+    input_x1 = tvm.placeholder((16, 32), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((2, 1, 16, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_ZZZZZ',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_format_2'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_format_3(test_arg):
+    input_x1 = tvm.placeholder((16, 32), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((2, 1, 16, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZZZZZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_format_3'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_dtype(test_arg):
+    input_x1 = tvm.placeholder((16, 32), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((2, 1, 16, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'int4',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_dtype'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_b_shape(test_arg):
+    input_x1 = tvm.placeholder((16, 32), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((32, 17), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'ND',
+        "format_b": 'ND',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm',
+        "alpha": tvm.placeholder((1,), dtype='float16', name='tensor_alpha')
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_b_shape'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_a_k(test_arg):
+    input_x1 = tvm.placeholder((1, 2, 1, 16), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((2, 1, 16, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'FRACTAL_Z',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_a_k'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_b_k(test_arg):
+    input_x1 = tvm.placeholder((1, 2, 16, 16), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((2, 1, 1, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'FRACTAL_Z',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_b_k'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
+def test_gemm_error_vector_mul_vector(test_arg):
+    input_x1 = tvm.placeholder((1, 16, 1, 16), dtype='float16', name='tensor_a')
+    input_x2 = tvm.placeholder((16, 1, 1, 16), dtype='float16', name='tensor_b')
+    para_dict = {
+        "trans_a": False,
+        "trans_b": False,
+        "format_a": 'FRACTAL_Z',
+        "format_b": 'FRACTAL_Z',
+        "dst_dtype": 'float16',
+        "tensor_c": None,
+        "format_out": 'FRACTAL_NZ',
+        "offset_a": 0,
+        "offset_b": None,
+        "kernel_name": 'test_gemm'
+    }
+    try:
+        result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
+    except RuntimeError as e:
+        print(e)
+    else:
+        func_name = 'test_gemm_error_vector_mul_vector'
+        raise RuntimeError("Run {} fail.".format(func_name))
+
 ut_case.add_cust_test_func(test_func=test_gemm_shapa_a_and_b_dtype_not_equal)
 ut_case.add_cust_test_func(test_func=test_gemm_shapa_alpha_beta_dtype_not_equal)
 ut_case.add_cust_test_func(test_func=test_gemm_shapa_alpha_out_dtype_not_equal)
@@ -750,9 +1144,23 @@ ut_case.add_cust_test_func(test_func=test_gemm_error_bias_shape)
 ut_case.add_cust_test_func(test_func=test_gemm_error_bias_shape_2)
 ut_case.add_cust_test_func(test_func=test_gemm_error_bias_shape_3)
 ut_case.add_cust_test_func(test_func=test_gemm_error_bias_shape_len)
-
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_1)
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_2)
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_3)
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_4)
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_5)
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_6)
+ut_case.add_cust_test_func(test_func=test_gemm_error_quantize_params_7)
+ut_case.add_cust_test_func(test_func=test_gemm_error_format_1)
+ut_case.add_cust_test_func(test_func=test_gemm_error_format_2)
+ut_case.add_cust_test_func(test_func=test_gemm_error_format_3)
+ut_case.add_cust_test_func(test_func=test_gemm_error_dtype)
+ut_case.add_cust_test_func(test_func=test_gemm_error_b_shape)
+ut_case.add_cust_test_func(test_func=test_gemm_error_a_k)
+ut_case.add_cust_test_func(test_func=test_gemm_error_b_k)
+ut_case.add_cust_test_func(test_func=test_gemm_error_vector_mul_vector)
 
 
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910A")
     exit(0)
