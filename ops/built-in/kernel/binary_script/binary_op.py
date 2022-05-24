@@ -15,6 +15,7 @@
 """
 binary_op.py
 """
+import hashlib
 import itertools
 import json
 import os
@@ -230,10 +231,8 @@ class PATH:
     path
     """
     OPP_PATH = os.environ.get("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp")
-    CONFIG_PATH = OPP_PATH + "/op_impl/built-in/ai_core/tbe/config/"
     IMPL_PATH = OPP_PATH + "/op_impl/built-in/ai_core/tbe/"
     BINARY_CONFIG_PATH = "../binary_config/"
-    CSV_PATH = "./opc_info.csv"
 
 
 class FormatConstant:
@@ -582,8 +581,7 @@ class BinaryBase:
     def add_gen_binary(self, result, format_type, dtype_type):
         for k, case in enumerate(result):
             tensor_list, attr_list = case
-            bin_filename = self.op_type + "_" + str(k)
-            self.add_bin_file_name(bin_filename)
+            bin_filename = []
             for i, tensor in enumerate(tensor_list):
                 if tensor is not None:
                     tensor_format_mode, tensor_dtype_mode = format_type[i], dtype_type[i]
@@ -602,10 +600,11 @@ class BinaryBase:
                         tensor.pop(BinaryBase.DTYPE_MODE_KEY)
 
                 if i < self.input_num:
-                    self.add_input_tensor(tensor)
+                    bin_filename = self.add_input_tensor(tensor, bin_filename)
                 else:
                     self.add_output_tensor(tensor)
-            self.add_attr(attr_list)
+            bin_filename = self.add_attr(attr_list, bin_filename)
+            self.add_bin_file_name(bin_filename)
             self.add_binary_case()
 
     def gen_binary_json(self, ops_info_file, format_type, dtype_type, attr_type, format_nd_info, soc, select_format):
@@ -675,6 +674,7 @@ class BinaryBase:
         """
         if self.one_binary_case_info is None:
             self.init_binary_case()
+        bin_filename = "_".join(bin_filename)
         self.one_binary_case_info["bin_filename"] = bin_filename
 
     def init_binary_json(self):
@@ -703,7 +703,7 @@ class BinaryBase:
         self.binary_json.get("op_list").append(self.one_binary_case_info)
         self.one_binary_case_info = None
 
-    def add_input_tensor(self, tensor):
+    def add_input_tensor(self, tensor, bin_filename):
         """
         add_input_tensor
 
@@ -718,7 +718,20 @@ class BinaryBase:
         """
         if self.one_binary_case_info is None:
             self.init_binary_case()
+        if tensor is None:
+            bin_filename = bin_filename.append("TensorNone")
+        else:
+            name_dype = tensor.get("dtype")
+            name_shape = str(tensor.get("shape"))
+            name_format = tensor.get("format")
+            name_ori_shape = str(tensor.get("ori_shape", name_shape))
+            name_ori_format = tensor.get("ori_format", name_format)
+            name_list = [name_dype, name_shape, name_format, name_ori_shape, name_ori_format]
+            name_list = "_".join(name_list)
+            bin_filename.append(name_list)
+
         self.one_binary_case_info.get("inputs").append(tensor)
+        return bin_filename
 
     def get_input_tensor(self, tensor_key):
         """
@@ -765,14 +778,17 @@ class BinaryBase:
                 return tensor
         return None
 
-    def add_attr(self, attr_list):
+    def add_attr(self, attr_list, bin_filename):
         """
         add attr list to one_binary_case_info
         """
         if self.one_binary_case_info is None:
             self.init_binary_case()
         if attr_list != []:
+            for attr in attr_list:
+                bin_filename.append(str(attr.get("value")))
             self.one_binary_case_info["attrs"] = attr_list
+        return bin_filename
 
     def get_attr(self, attr_key):
         """
@@ -795,6 +811,15 @@ class BinaryBase:
         flags = os.O_WRONLY | os.O_CREAT
         modes = stat.S_IWUSR | stat.S_IRUSR
         with os.fdopen(os.open(file_path, flags, modes), 'w') as fp:
+            fp.truncate()
+            self.binary_json.get("op_list").sort(key=lambda x: x.get("bin_filename"))
+            for i, kernel in enumerate(self.binary_json.get("op_list")):
+                bin_filename = kernel.get("bin_filename")
+                hash_md5 = hashlib.md5()
+                hash_md5.update(bin_filename.encode())
+                hash_bin_filename = hash_md5.hexdigest()
+                op_bin_filename = self.op_type + "_" + str(hash_bin_filename)
+                self.binary_json.get("op_list")[i]["bin_filename"] = op_bin_filename
             json.dump(self.binary_json, fp, indent=2)
 
     def load_binary_file_to_json(self, file_path):
@@ -808,36 +833,29 @@ class BinaryBase:
             self.binary_json = json.load(file_op)
 
 
-def fuzz_opinfo_cfg(op_info, soc_version, format_type, dtype_type, attrs, nd_info):
-    op_type = op_info.get("op_type")
-    op_name = op_info.get("op_name")
-    select_format = op_info.get("select_format")
-    for soc in soc_version:
-        op_ob = BinaryBase(op_type)
-        cfg_soc = soc.lower()
-        op_info_cfg = PATH.CONFIG_PATH + cfg_soc + "/aic-" + cfg_soc + "-ops-info.json"
-        op_info_binary_cfg_path = PATH.BINARY_CONFIG_PATH + cfg_soc + "/" + op_type + "/"
-
-        try:
-            is_gen = op_ob.gen_binary_json(op_info_cfg, format_type, dtype_type,
-                                           attrs, nd_info, soc, select_format)
-            if is_gen:
-                os.makedirs(op_info_binary_cfg_path)
-                op_info_binary_cfg = op_info_binary_cfg_path + op_name + ".json"
-                op_ob.dump_binary_json_to_file(op_info_binary_cfg)
-                print("[INFO] success, {} dump binary json in {}".format(op_type, soc))
-            else:
-                print("[ERROR]{} dump binary json fail in {}".format(op_type, soc))
-
-        except FileExistsError:
-            print("[Warning]{} binary config already exists in {}".format(op_type, soc))
+#---------------------------------------------------------------------------------
+#  binary_fuzz_json
+def writer_config_csv(op_type, op_name, config_csv_path):
+    """
+    writer_config_csv
+    """
+    with open (config_csv_path) as f:
+        read_csv = csv.reader(f)
+        column = [row[0] for row in read_csv]
+    if op_type not in column:
+        flags = os.O_WRONLY | os.O_CREAT
+        modes = stat.S_IWUSR | stat.S_IRUSR
+        with os.fdopen(os.open(config_csv_path, flags, modes), 'a') as f:
+            row = [op_type, op_name + ".json"]
+            write_csv = csv.writer(f)
+            write_csv.writerow(row)
 
 
-def get_operator_func():
+def get_operator_func(csv_path):
     """
     get_operator_func
     """
-    with open (PATH.CSV_PATH) as f:
+    with open (csv_path) as f:
         f_csv = csv.DictReader(f)
         operator_func = {}
         for item in f_csv:
@@ -848,6 +866,41 @@ def get_operator_func():
     return operator_func
 
 
+def fuzz_opinfo_cfg(op_type, op_name, soc_version, format_type, dtype_type, attrs, nd_info):
+    """
+    fuzz_opinfo_cfg
+    """
+    for soc in soc_version:
+        op_ob = BinaryBase(op_type)
+        cfg_soc = soc.lower()
+        op_info_cfg = "./aic-" + cfg_soc + "-ops-info.json"
+        csv_path = "./aic-" + cfg_soc + "-opc-info.csv"
+        op_info_binary_cfg_path = PATH.BINARY_CONFIG_PATH + cfg_soc + "/" + op_type + "/"
+        config_csv_path =  PATH.BINARY_CONFIG_PATH + "binary_config.csv"
+
+        os.system("bash gen_opinfo_json_from_ini.sh {} {}".format(cfg_soc, op_info_cfg))
+        os.system("python3 gen_opcinfo_from_opinfo.py {} {}".format(op_info_cfg, csv_path))
+        operator_func = get_operator_func(csv_path)
+        select_format = operator_func.get(op_type)
+
+        is_gen = op_ob.gen_binary_json(op_info_cfg, format_type, dtype_type,
+                                       attrs, nd_info, soc, select_format)
+        if is_gen:
+            try:
+                os.makedirs(op_info_binary_cfg_path)
+                op_info_binary_cfg = op_info_binary_cfg_path + op_name + ".json"
+                op_ob.dump_binary_json_to_file(op_info_binary_cfg)
+                print("[INFO] success, {} dump binary json in {}".format(op_type, soc))
+            except FileExistsError:
+                print("[Warning]{} binary config already exists in {}".format(op_type, soc))
+                op_info_binary_cfg = op_info_binary_cfg_path + op_name + ".json"
+                op_ob.dump_binary_json_to_file(op_info_binary_cfg)
+                print("[INFO] success, {} dump binary json in {}".format(op_type, soc))
+            writer_config_csv(op_type, op_name, config_csv_path)
+        else:
+            print("[ERROR]{} dump binary json fail in {}".format(op_type, soc))
+
+ 
 def get_attrs(var_attrs, enumerate_attrs):
     """
     get_attrs
@@ -891,9 +944,6 @@ def binary_cfg(op_type, soc_version):
     else:
         soc_version = soc_version.strip(',').split(',')
 
-    # 获取实际算子执行文件
-    operator_func = get_operator_func()
-
     # 生成算子的json
     for operator in op_type:
         try:
@@ -928,9 +978,7 @@ def binary_cfg(op_type, soc_version):
         attrs = None if attrs == {} else attrs
 
         # fuzz json
-        select_format = operator_func.get(operator)
-        op_info = {"op_type": operator, "op_name": op_name, "select_format": select_format}
-        fuzz_opinfo_cfg(op_info, soc_version, format_type, dtype_type, attrs, nd_info)
+        fuzz_opinfo_cfg(operator, op_name, soc_version, format_type, dtype_type, attrs, nd_info)
 
 
 def mate_json(op_type, binary_file, input_tensors):

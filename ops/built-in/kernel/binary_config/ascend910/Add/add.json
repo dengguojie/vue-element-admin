@@ -2,7 +2,7 @@
   "op_type": "Add",
   "op_list": [
     {
-      "bin_filename": "Add_0",
+      "bin_filename": "Add_d2db1a80c523e7e59a032c95969880af",
       "inputs": [
         {
           "name": "x1",
@@ -42,7 +42,47 @@
       ]
     },
     {
-      "bin_filename": "Add_1",
+      "bin_filename": "Add_5c5e58e043224cccf51a06108010ae13",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Add_8098b79498645e9c0da095babdeaf862",
       "inputs": [
         {
           "name": "x1",
@@ -82,47 +122,7 @@
       ]
     },
     {
-      "bin_filename": "Add_2",
-      "inputs": [
-        {
-          "name": "x1",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "x2",
-          "index": 1,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Add_3",
+      "bin_filename": "Add_2060cf8d69781f9a7462e2f67555909f",
       "inputs": [
         {
           "name": "x1",
@@ -162,12 +162,12 @@
       ]
     },
     {
-      "bin_filename": "Add_4",
+      "bin_filename": "Add_209e1e3c807895591394a370155f4fc6",
       "inputs": [
         {
           "name": "x1",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -178,7 +178,7 @@
         {
           "name": "x2",
           "index": 1,
-          "dtype": "float32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -191,7 +191,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
