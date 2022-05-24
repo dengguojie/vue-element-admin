@@ -65,6 +65,11 @@ std::string gen_invalid_dim_msg(const std::string dim_name, const size_t dim_idx
   return gen_invalid_dim_msg(invalid_dim_name, shape_size, dim_value);
 }
 
+template <typename T>
+T CeilDiv(T x, T y) {
+  return y == 0 ? x : (x + y - 1) / y;
+}
+
 /*
  * @brief: get datatype string from enum
  * @param [in] type: enum datatype

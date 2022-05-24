@@ -223,7 +223,14 @@ static gert::Tensor *GetConstTensor(ge::Operator& op, const size_t index) {
 }
 
 void CommonInferShapeOperator(ge::Operator& op, std::vector<std::vector<int64_t>> expect_shapes);
+void CommonInferShapeOperatorFail(ge::Operator& op);
+
 void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const,
                                vector<string> attrs, vector<vector<int64_t>> expect_shapes);
+void CommonInferShapeOperator2Fail(ge::Operator& op, vector<bool> input_const,
+                                   vector<string> attrs);
+
 void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
                                        vector<string> attrs, vector<vector<int64_t>> expect_shapes);
+void CommonInferShapeOperatorWithIrNumFail(ge::Operator& op, vector<uint32_t> irnum,
+                                           vector<string> attrs);

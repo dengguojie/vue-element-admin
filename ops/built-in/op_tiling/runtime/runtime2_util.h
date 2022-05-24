@@ -25,20 +25,21 @@
 #include "context_util.h"
 #include "register/op_impl_registry.h"
 #include "runtime/continuous_vector.h"
-#include "runtime/infer_shape_context.h"
 #include "runtime/storage_shape.h"
 #include "runtime/tiling_context.h"
+#include "runtime/tiling_parse_context.h"
 #include <nlohmann/json.hpp>
 
 namespace optiling {
-template<typename T>
-T *MutableCompileInfo(gert::KernelContext *context) {
-  return context->GetOutputPointer<T>(0);
+template <typename T>
+T* MutableCompileInfo(gert::TilingParseContext* context) {
+  return context->GetCompiledInfo<T>();
 }
 
-std::unique_ptr<nlohmann::json> GetJsonObj(gert::KernelContext *context);
+std::unique_ptr<nlohmann::json> GetJsonObj(gert::TilingParseContext* context);
 
-bool AddWorkspace(gert::TilingContext *context, const size_t workspace);
+bool AddWorkspace(gert::TilingContext* context, const size_t workspace);
+int64_t GetPartShapeSize(const gert::Shape& shape, size_t begin, size_t end);
 }  // namespace optiling
 
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_RUNTIME2_UTIL_H_

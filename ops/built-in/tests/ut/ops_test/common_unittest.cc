@@ -40,8 +40,16 @@ void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vecto
   }
 }
 
-void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum, vector<string> attrs,
-                                       vector<vector<int64_t>> expect_shapes) {
+void CommonInferShapeOperator2Fail(ge::Operator& op, vector<bool> input_const,
+                                   vector<string> attrs) {
+  ATTACH_OPERATOR_TO_HOLDER2(holder, op, input_const, attrs);
+
+  std::string optype = op.GetOpType();
+  HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_FAILED);
+}
+
+void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
+                                       vector<string> attrs, vector<vector<int64_t>> expect_shapes) {
   ATTACH_OPERATOR_TO_HOLDER3(holder, op, irnum, attrs);
 
   std::string optype = op.GetOpType();
@@ -51,6 +59,14 @@ void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
   for (size_t i = 0; i < expect_count; i++) {
     VERIFY_OUTPUT_SHAPE(holder, i, expect_shapes[i]);
   }
+}
+
+void CommonInferShapeOperatorWithIrNumFail(ge::Operator& op, vector<uint32_t> irnum,
+                                           vector<string> attrs) {
+  ATTACH_OPERATOR_TO_HOLDER3(holder, op, irnum, attrs);
+
+  std::string optype = op.GetOpType();
+  HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_FAILED);
 }
 
 void CommonInferShapeOperator(ge::Operator& op, std::vector<std::vector<int64_t>> expect_shapes) {
@@ -67,4 +83,15 @@ void CommonInferShapeOperator(ge::Operator& op, std::vector<std::vector<int64_t>
   for (size_t i = 0; i < expect_count; i++) {
     VERIFY_OUTPUT_SHAPE(holder, i, expect_shapes[i]);
   }
+}
+
+void CommonInferShapeOperatorFail(ge::Operator& op) {
+  std::string optype = op.GetOpType();
+  auto find_it = operator_info_map.find(optype);
+  ASSERT_NE(find_it, operator_info_map.end());
+  auto input_output_attr = find_it->second;
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, input_output_attr[2]);
+
+  HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_FAILED);
 }

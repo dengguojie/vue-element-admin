@@ -1389,6 +1389,7 @@ vector_B:
       - ops/built-in/op_proto/runtime/cast.cc
       - ops/built-in/op_proto/runtime/transpose.cc
       - ops/built-in/op_proto/runtime/layer_norm.cc
+      - ops/built-in/op_proto/runtime/concat_d.cc
       - ops/built-in/op_proto/runtime/runtime_util.h
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.h

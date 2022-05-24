@@ -42,6 +42,7 @@ set(_op_proto_utils
 
 set(_op_proto_srcs
   runtime/cast.cc
+  runtime/concat_d.cc
   runtime/moving_sum_with_sigmoid.cc
   runtime/reduce_infer.cc
   runtime/broadcast_infer.cc

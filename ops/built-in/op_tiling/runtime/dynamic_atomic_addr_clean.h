@@ -50,5 +50,5 @@ struct DynamicAtomicAddrCleanCompileInfo {
   uint32_t ub_size = 0;
   std::vector<int64_t> _workspace_size_list;
 };
-}  // namespace gert
+}  // namespace optiling
 #endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_DYNAMIC_ATOMIC_ADDR_CLEAN_IMPL_H_

@@ -35,5 +35,5 @@ struct FlattenCompileInfo {
   int64_t ub_size;
   int64_t block_size;
 };
-}  // namespace gert
+}  // namespace optiling
 #endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_FLATTEN_RUNTIME2_H_

@@ -61,5 +61,5 @@ struct MaxPoolV3CompileInfo {
   int32_t pad_right = 0;
   int32_t global = 0;
 };
-}  // namespace gert
+}  // namespace optiling
 #endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_MAX_POOL_V3_RUNTIME2_H_

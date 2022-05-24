@@ -28,5 +28,5 @@ struct MovingSumWithSigmoidTilingData {
 struct MovingSumWithSigmoidCompileInfo {
   int32_t core_num = 1;
 };
-}  // namespace gert
+}  // namespace optiling
 #endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H_

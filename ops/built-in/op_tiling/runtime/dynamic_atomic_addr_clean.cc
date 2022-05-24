@@ -16,6 +16,7 @@
 #include "dynamic_atomic_addr_clean.h"
 #include "runtime2_util.h"
 #include "op_tiling_util.h"
+#include "op_util.h"
 
 using namespace ge;
 
@@ -26,8 +27,6 @@ constexpr uint32_t BYTE_FP32 = 4;
 constexpr uint32_t MASK_FP32 = 64;
 constexpr uint32_t MAX_REPEAT_TIME = 255;
 
-#define CEIL_DIV(num, factor) (((num) + (factor) - 1) / (factor))
-
 static void ComputeParamsOneCore(const int32_t& ele_num_one_core,
                                  const int32_t& ele_num_full_mask_full_repeat_time_input_scalar,
                                  InputScalar& input_scalar) {
@@ -36,7 +35,7 @@ static void ComputeParamsOneCore(const int32_t& ele_num_one_core,
   input_scalar.init_times_full_mask_full_repeat_time = ele_num_one_core / scaler;
   input_scalar.ele_num_front_part = input_scalar.init_times_full_mask_full_repeat_time * scaler;
   uint32_t ele_num_last_part = ele_num_one_core - input_scalar.ele_num_front_part;
-  input_scalar.burst_len_last_part = CEIL_DIV(ele_num_last_part * BYTE_FP32, BYTE_BLOCK);
+  input_scalar.burst_len_last_part = CeilDiv(ele_num_last_part * BYTE_FP32, BYTE_BLOCK);
   if (ele_num_last_part % MASK_FP32 == 0) {
     input_scalar.repeat_time_last_part = ele_num_last_part / MASK_FP32;
   } else {
@@ -44,12 +43,12 @@ static void ComputeParamsOneCore(const int32_t& ele_num_one_core,
   }
 }
 
-void InitTilingParams(DynamicAtomicAddrCleanTilingData *params) {
+void InitTilingParams(DynamicAtomicAddrCleanTilingData* params) {
   std::memset(params, 0, sizeof(DynamicAtomicAddrCleanTilingData));
 }
 
-ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext *context) {
-  auto compile_info = reinterpret_cast<const DynamicAtomicAddrCleanCompileInfo *>(context->GetCompileInfo());
+ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext* context) {
+  auto compile_info = reinterpret_cast<const DynamicAtomicAddrCleanCompileInfo*>(context->GetCompileInfo());
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
 
   auto params = context->GetTilingData<DynamicAtomicAddrCleanTilingData>();
@@ -58,10 +57,11 @@ ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext *context) {
   uint32_t core_num = compile_info->core_num;
   for (auto workspace_size : compile_info->_workspace_size_list) {
     OP_TILING_CHECK(
-      ((workspace_size < 0) || (workspace_size % 32 != 0)),
-      VECTOR_INNER_ERR_REPORT_TILIING(
-          context->GetNodeName(), "workspace_size %ld error! must be a natural multiple of 32", workspace_size),
-      return ge::GRAPH_FAILED);
+        ((workspace_size < 0) || (workspace_size % 32 != 0)),
+        VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(),
+                                        "workspace size must be a natural multiple of 32, but it is %ld",
+                                        workspace_size),
+        return ge::GRAPH_FAILED);
     uint32_t ele_num_fp32 = workspace_size / BYTE_FP32;
     // init tiling params
     InitTilingParams(params);
@@ -79,27 +79,23 @@ ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext *context) {
     if (params->need_core_num_input_scalar == 1) {
       // use one core
       params->ele_num_front_core_input_scalar = ele_num_fp32;
-      ComputeParamsOneCore(
-          params->ele_num_front_core_input_scalar, params->ele_num_full_mask_full_repeat_time_input_scalar,
-          params->front_core_input_scalar);
+      ComputeParamsOneCore(params->ele_num_front_core_input_scalar,
+                           params->ele_num_full_mask_full_repeat_time_input_scalar, params->front_core_input_scalar);
 
       params->ele_num_last_core_input_scalar = params->ele_num_front_core_input_scalar;
-      ComputeParamsOneCore(
-          params->ele_num_last_core_input_scalar, params->ele_num_full_mask_full_repeat_time_input_scalar,
-          params->last_core_input_scalar);
+      ComputeParamsOneCore(params->ele_num_last_core_input_scalar,
+                           params->ele_num_full_mask_full_repeat_time_input_scalar, params->last_core_input_scalar);
     } else if (params->need_core_num_input_scalar > 1) {
       // use all core
       // front core
       params->ele_num_front_core_input_scalar = ele_num_fp32 / params->need_core_num_input_scalar;
-      ComputeParamsOneCore(
-          params->ele_num_front_core_input_scalar, params->ele_num_full_mask_full_repeat_time_input_scalar,
-          params->front_core_input_scalar);
+      ComputeParamsOneCore(params->ele_num_front_core_input_scalar,
+                           params->ele_num_full_mask_full_repeat_time_input_scalar, params->front_core_input_scalar);
       // last core
       params->ele_num_last_core_input_scalar =
           ele_num_fp32 - params->ele_num_front_core_input_scalar * (params->need_core_num_input_scalar - 1);
-      ComputeParamsOneCore(
-          params->ele_num_last_core_input_scalar, params->ele_num_full_mask_full_repeat_time_input_scalar,
-          params->last_core_input_scalar);
+      ComputeParamsOneCore(params->ele_num_last_core_input_scalar,
+                           params->ele_num_full_mask_full_repeat_time_input_scalar, params->last_core_input_scalar);
     }
     context->SetBlockDim(params->need_core_num_input_scalar);
   }
@@ -107,18 +103,14 @@ ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext *context) {
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus TilingPrepareForDynamicAtomicAddrClean(gert::KernelContext *context) {
+ge::graphStatus TilingPrepareForDynamicAtomicAddrClean(gert::TilingParseContext* context) {
   auto compile_info = MutableCompileInfo<DynamicAtomicAddrCleanCompileInfo>(context);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
   std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
-  OP_TILING_CHECK(
-    compile_info == nullptr || parsed_object_cinfo == nullptr,
-    VECTOR_INNER_ERR_REPORT_TILIING("AtomicAddrClean", "compile_info or json_str nullptr!"),
-    return ge::GRAPH_FAILED);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
-  OP_TILING_CHECK(
-    vars.empty(),
-    VECTOR_INNER_ERR_REPORT_TILIING("AtomicAddrClean", "get vars failed."),
-    return ge::GRAPH_FAILED);
+  OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
+                  return ge::GRAPH_FAILED);
   GetCompileValue(*parsed_object_cinfo, "_workspace_size_list", compile_info->_workspace_size_list);
   GetCompileValue(vars, "ub_size", compile_info->ub_size);
   GetCompileValue(vars, "core_num", compile_info->core_num);
@@ -129,4 +121,4 @@ ge::graphStatus TilingPrepareForDynamicAtomicAddrClean(gert::KernelContext *cont
 IMPL_OP(DynamicAtomicAddrClean)
     .Tiling(TilingForDynamicAtomicAddrClean)
     .TilingParse<DynamicAtomicAddrCleanCompileInfo>(TilingPrepareForDynamicAtomicAddrClean);
-}  // namespace gert
+}  // namespace optiling

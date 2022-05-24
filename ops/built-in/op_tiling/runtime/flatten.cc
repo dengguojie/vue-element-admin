@@ -16,20 +16,13 @@
 #include "flatten.h"
 #include "runtime2_util.h"
 #include "op_tiling_util.h"
+#include "op_util.h"
 
 using namespace ge;
 
 namespace optiling {
-static int64_t GetCeilInt(gert::TilingContext *context, int64_t value1, int64_t value2) {
-  OP_TILING_CHECK(value2 == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(),
-                                                  "In the GetCeilInt function, the divisor is 0"),
-                  return value1);
-  return static_cast<int64_t>((value1 + value2 - 1) / value2);
-}
-
-ge::graphStatus TilingForFlatten(gert::TilingContext *context) {
-  auto compile_info = reinterpret_cast<const FlattenCompileInfo *>(context->GetCompileInfo());
+ge::graphStatus TilingForFlatten(gert::TilingContext* context) {
+  auto compile_info = reinterpret_cast<const FlattenCompileInfo*>(context->GetCompileInfo());
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
 
   auto params = context->GetTilingData<FlattenTilingData>();
@@ -49,9 +42,9 @@ ge::graphStatus TilingForFlatten(gert::TilingContext *context) {
   if (data_size < block_size) {
     core_number = 1;
   }
-  params->core_data = GetCeilInt(context, data_size, core_number);
-  params->core_data = GetCeilInt(context, params->core_data, block_size) * block_size;
-  params->core_used = GetCeilInt(context, data_size, params->core_data);
+  params->core_data = CeilDiv(data_size, core_number);
+  params->core_data = CeilDiv(params->core_data, block_size) * block_size;
+  params->core_used = CeilDiv(data_size, params->core_data);
   int64_t core_last = params->core_data;
   if (data_size % params->core_data != 0) {
     core_last = data_size % params->core_data;
@@ -73,25 +66,19 @@ ge::graphStatus TilingForFlatten(gert::TilingContext *context) {
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus TilingPrepareForFlatten(gert::KernelContext *context) {
+ge::graphStatus TilingPrepareForFlatten(gert::TilingParseContext* context) {
   auto compile_info = MutableCompileInfo<FlattenCompileInfo>(context);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
   std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
-  OP_TILING_CHECK(
-    compile_info == nullptr || parsed_object_cinfo == nullptr,
-    VECTOR_INNER_ERR_REPORT_TILIING("Flatten", "compile_info or json_str nullptr!"),
-    return ge::GRAPH_FAILED);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
-  OP_TILING_CHECK(
-    vars.empty(),
-    VECTOR_INNER_ERR_REPORT_TILIING("Flatten", "get vars failed."),
-    return ge::GRAPH_FAILED);
+  OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
+                  return ge::GRAPH_FAILED);
   GetCompileValue(vars, "ub_size", compile_info->ub_size);
   GetCompileValue(vars, "core_num", compile_info->core_num);
   GetCompileValue(vars, "block_size", compile_info->block_size);
   return ge::GRAPH_SUCCESS;
 }
 
-IMPL_OP(Flatten)
-    .Tiling(TilingForFlatten)
-    .TilingParse<FlattenCompileInfo>(TilingPrepareForFlatten);
-}  // namespace gert
+IMPL_OP(Flatten).Tiling(TilingForFlatten).TilingParse<FlattenCompileInfo>(TilingPrepareForFlatten);
+}  // namespace optiling
