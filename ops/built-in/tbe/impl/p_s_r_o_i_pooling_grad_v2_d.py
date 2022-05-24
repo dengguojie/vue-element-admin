@@ -113,6 +113,9 @@ class PSROIPoolingGradV2DClass(object):
         """
         check if the input shapes are valid
         """
+        if self.spatial_scale <= 0:
+            raise RuntimeError('spatial_scale must be larger than zero.')
+
         if self.roi_shape[0] != self.y_shape[0]:
             error_info = {'errCode': 'E81009'}
             raise RuntimeError(error_info, "The batch of output y[%s] and rois[%s] must be equal."
@@ -467,7 +470,12 @@ class PSROIPoolingGradV2DClass(object):
         ub_output_dim = params["ub_output_dim"]
         diff_value = self.tik_instance.Scalar(self.dtype, name="diff_value", init_value=0)
         y_dst = self.y
-        with self.tik_instance.for_range(0, self.output_dim, thread_num=2) as out_dim:
+
+        if self.output_dim <= 1:
+            thread_num = 1
+        else:
+            thread_num = 2
+        with self.tik_instance.for_range(0, self.output_dim, thread_num=thread_num) as out_dim:
             ub_bin_input_buf = self.tik_instance.Tensor(self.dtype,
                                                         (self.ub_one_buf_elem,), name="ub_bin_input_buf",
                                                         scope=tbe_platform.scope_ubuf)
@@ -518,10 +526,13 @@ class PSROIPoolingGradV2DClass(object):
         ub_output_dim = params["ub_output_dim"]
         diff_value = self.tik_instance.Scalar(self.dtype, name="diff_value", init_value=0)
         y_dst = self.y
-        with self.tik_instance.for_range(0, self.output_dim, thread_num=2) as out_dim:
-            ub_bin_input_buf = self.tik_instance.Tensor(self.dtype,
-                                                        (self.ub_one_buf_elem,), name="ub_bin_input_buf",
-                                                        scope=tbe_platform.scope_ubuf)
+        if self.output_dim <= 1:
+            thread_num = 1
+        else:
+            thread_num = 2
+        with self.tik_instance.for_range(0, self.output_dim, thread_num=thread_num) as out_dim:
+            ub_bin_input_buf = self.tik_instance.Tensor(self.dtype, (self.ub_one_buf_elem,),
+                                                        name="ub_bin_input_buf", scope=tbe_platform.scope_ubuf)
             diff_value.set_as(ub_output_dim[out_dim])
             output_dim_index = out_dim * self.k2 + params["bin_i_offset"]
             bin_i_offset_c1 = output_dim_index // C0

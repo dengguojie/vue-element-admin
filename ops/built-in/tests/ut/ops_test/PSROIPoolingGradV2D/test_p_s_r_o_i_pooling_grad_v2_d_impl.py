@@ -218,6 +218,18 @@ ut_case.add_case("Ascend910A",
                      11, 3, 0.0625, (15, 15),
                      "psroipooling_v2_d_o17", RuntimeError))
 
+# normal shape 3
+ut_case.add_case("Ascend910A",
+                 gen_psroipooling_v2_d_case(
+                     {"shape": (6, 9, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (6, 9, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 6), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 6), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (1, 9*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 9*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     140, 3, -1.0, (14, 14),
+                     "psroipooling_v2_d_18", RuntimeError))
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
     exit(0)

@@ -134,15 +134,10 @@ class PSROIPoolingV2Class(object):
         para_check.check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
 
         if self.dtype != self.roi_dtype or self.dtype != self.y_dtype:
-            error_info = {'errCode': 'E80017',
-                          'param_name1': self.dtype,
-                          'param_name2': self.roi_dtype,
-                          'param_name3': self.y_dtype,
-                          'op_name': 'PSROIPoolingV2'}
+            error_info = {'errCode': 'E80017'}
             raise RuntimeError(error_info, "In op[%s], the dtype of input x[%s], "
                                            "rois[%s] and y[%s] must be equal."
-                               % (error_info['op_name'], error_info['param_name1'],
-                                  error_info['param_name2'], error_info['param_name3']))
+                               % ('PSROIPoolingV2', self.dtype, self.roi_dtype, self.y_dtype))
 
         para_check.check_shape(self.x_shape, param_name="x")
         para_check.check_shape(self.roi_shape, param_name="rois")
@@ -151,73 +146,49 @@ class PSROIPoolingV2Class(object):
         para_check.check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
         para_check.check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
 
+        if self.spatial_scale <= 0:
+            raise RuntimeError('spatial_scale must be larger than zero.')
+
         if self.roi_shape[0] != self.x_shape[0]:
-            error_info = {'errCode': 'E81009',
-                          'param_value1': self.x_shape[0],
-                          'param_value2': self.roi_shape[0],
-                          'op_name': 'PSROIPoolingV2'}
-            raise RuntimeError(error_info, "In op[%s], the batch of input x[%s] and rois[%s] must be equal."
-                               % (error_info['op_name'], error_info['param_value1'], error_info['param_value2']))
+            raise RuntimeError("In op PSROIPoolingV2, the batch of input x[%s] and rois[%s] must be equal."
+                               % (self.x_shape[0], self.roi_shape[0]))
 
         if self.roi_shape[1] != DIGIT_5:
-            error_info = {'errCode': 'E80000',
-                          'param_name': "roi_shape[1]",
-                          'op_name': 'PSROIPoolingV2',
-                          'expect_value': DIGIT_5,
-                          'real_value': self.roi_shape[1]}
+            error_info = {'errCode': 'E80000'}
             raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be equal 5, but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+                               % ('PSROIPoolingV2', "roi_shape[1]", self.roi_shape[1]))
 
         if self.roi_shape[0] * self.roi_shape[2] != self.y_shape[0]:
-            error_info = {'errCode': 'E81009',
-                          'param_value1': self.roi_shape[0] * self.roi_shape[2],
-                          'param_value2': self.y_shape[0],
-                          'op_name': 'PSROIPoolingV2'}
+            error_info = {'errCode': 'E81009'}
             raise RuntimeError(error_info, "In op[%s], all num of rois must be equal to "
                                            "y_shape[0][%s],but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_value2'], error_info['param_value1']))
+                               % ('PSROIPoolingV2', self.y_shape[0], self.roi_shape[0] * self.roi_shape[2]))
 
         if self.group_size >= DIGIT_128:
-            error_info = {'errCode': 'E80002',
-                          'param_name': 'group_size',
-                          'op_name': 'PSROIPoolingV2'}
+            error_info = {'errCode': 'E80002'}
             raise RuntimeError(error_info, "In op[%s], the parameter[%s] must be "
                                            "less than [%s],but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_name'], DIGIT_128, self.group_size))
+                               % ('PSROIPoolingV2', 'group_size', DIGIT_128, self.group_size))
 
         if self.ori_x_shape[1] // self.ori_y_shape[1] != self.ori_y_shape[2] * self.ori_y_shape[3]:
-            error_info = {'errCode': 'E81010',
-                          'param_name': 'ori_x_shape[1]',
-                          'op_name': 'PSROIPoolingV2',
-                          'param_value1': self.ori_x_shape[1],
-                          'param_value2': self.ori_y_shape[1],
-                          'param_value3': self.ori_y_shape[2],
-                          'param_value4': self.ori_y_shape[3]}
-            raise RuntimeError(error_info, "In op[%s], the parameter %s is invalid, "
-                                           "it should follow the rule: "
-                                           "self.ori_x_shape[1](%s)//self.ori_y_shape[1](%s) "
-                                           "== self.ori_y_shape[2](%s)*self.ori_y_shape[3](%s)."
-                               % (error_info['op_name'], error_info['param_name'], error_info['param_value1'],
-                                  error_info['param_value2'], error_info['param_value3'],
-                                  error_info['param_value4']))
+            error_info = {'errCode': 'E81010'}
+            raise RuntimeError(error_info, "In op PSROIPoolingV2, the parameter ori_x_shape[1] is invalid, "
+                                           "it should follow the rule: ori_x_shape[1](%s)//ori_y_shape[1](%s) "
+                                           "== ori_y_shape[2](%s) * ori_y_shape[3](%s)."
+                               % (self.ori_x_shape[1], self.ori_y_shape[1], self.ori_y_shape[2],
+                                  self.ori_y_shape[3]))
 
         if self.group_size != self.y_shape[2] or self.group_size != self.y_shape[3]:
-            error_info = {'errCode': 'E80017',
-                          'param_value1': self.y_shape[2],
-                          'param_value2': self.y_shape[3],
-                          'op_name': 'PSROIPoolingV2'}
+            error_info = {'errCode': 'E80017'}
             raise RuntimeError(error_info, "In op[%s], the shape of y_shape[2] and y_shape[3] "
                                            "must be equal to group_size[%s],but actually is %s and %s."
-                               % (error_info['op_name'], self.group_size, error_info['param_value1'],
-                                  error_info['param_value2']))
+                               % ('PSROIPoolingV2', self.group_size, self.y_shape[2],
+                                  self.y_shape[3]))
 
         if _ceil_value(self.output_dim, C0) != self.y_shape[1]:
-            error_info = {'errCode': 'E81011',
-                          'param_name': 'output_dim',
-                          'op_name': 'PSROIPoolingV2'}
-            raise RuntimeError(error_info, "In op[%s], the parameter[%s] is invalid,it should "
-                                           "follow the rule:(output_dim + C0 -1) // C0 == y_shape[1]"
-                               % (error_info['op_name'], error_info['param_name']))
+            error_info = {'errCode': 'E81011'}
+            raise RuntimeError(error_info, "In op PSROIPoolingV2, the parameter output_dim is invalid,it should "
+                                           "follow the rule:(output_dim + C0 -1) // C0 == y_shape[1]")
 
     def __init__(self, x_dict, rois_dict, y_dict, params, kernel_name):
         """
@@ -983,7 +954,7 @@ class PSROIPoolingV2Class(object):
                     self._bias_f32_f16_int32(bin_start_h_ub_fp32, bin_start_h_floor,
                                              bin_start_h_floor, 'floor', DIGIT_128 // DIGIT_64)
 
-                # scalar_roi_start_h + scalar_bin_height*(1...128)
+                # scalar_roi_start_h add scalar_bin_height*(1...128)
                 self.tik_instance.vmuls(self.mask, bin_start_h_ub,
                                         self.const_1_128_ub, scalar_bin_height,
                                         DIGIT_128 // self.vec_elem_num,
@@ -995,7 +966,7 @@ class PSROIPoolingV2Class(object):
                 self.tik_instance.vadds(MASK64, bin_start_h_ub_fp32, bin_start_h_ub_fp32,
                                         scalar_roi_start_h, DIGIT_128 // DIGIT_64,
                                         STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                # vconv.ceil: f162s32f or f322s32f
+
                 if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) not in \
                         (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
