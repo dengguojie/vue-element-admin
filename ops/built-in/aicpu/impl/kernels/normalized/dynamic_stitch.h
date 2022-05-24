@@ -28,8 +28,8 @@ class DynamicStitchKernel : public CpuKernel {
  private:
   static bool SameExtraShape(const Tensor *data0, const Tensor *indices0,
                              const Tensor *data1, const Tensor *indices1) {
-    int64_t indices0_dim = indices0->GetTensorShape()->GetDims();
-    int64_t indices1_dim = indices1->GetTensorShape()->GetDims();
+    int32_t indices0_dim = indices0->GetTensorShape()->GetDims();
+    int32_t indices1_dim = indices1->GetTensorShape()->GetDims();
 
     const int extra0 = data0->GetTensorShape()->GetDims() - indices0_dim;
     const int extra1 = data1->GetTensorShape()->GetDims() - indices1_dim;

@@ -52,19 +52,19 @@ uint32_t DynamicStitchKernel::GetInputAndCheck(const CpuKernelContext &ctx,
       max_index = std::max(m(), max_index);
     }
     if (data_elements_size) {
-      *data_elements_size += indices->NumElements();
+      *data_elements_size += static_cast<int>(indices->NumElements());
     }
   }
 
   *first_dim_size = max_index + 1;
 
   // Validate that data[i].shape = indices[i].shape + constant
-  Tensor *data0 = ctx.Input(n_);
+  Tensor *data0 = ctx.Input(static_cast<uint32_t>(n_));
   Tensor *indices0 = ctx.Input(0);
   input_dtype_ = static_cast<DataType>(data0->GetDataType());
   for (int input_num = 0; input_num < n_; input_num++) {
-    Tensor *indices = ctx.Input(input_num);
-    Tensor *data = ctx.Input(n_ + input_num);
+    Tensor *indices = ctx.Input(static_cast<uint32_t>(input_num));
+    Tensor *data = ctx.Input(static_cast<uint32_t>(n_ + input_num));
     KERNEL_CHECK_FALSE(
         StartsWith(data->GetTensorShape(), indices->GetTensorShape()),
         KERNEL_STATUS_PARAM_INVALID,
@@ -117,11 +117,11 @@ uint32_t CalDynamicStitch(const CpuKernelContext &ctx, int first_dim_size,
     const auto slice_size = merged_flat.dimension(1);
     const size_t slice_bytes = slice_size * sizeof(T);
     for (int input_num = 0; input_num < n; input_num++) {
-      Tensor *indices_ms = ctx.Input(input_num);
+      Tensor *indices_ms = ctx.Input(static_cast<uint32_t>(input_num));
       EigenTensor indices(indices_ms, indices_ms->GetData());
 
       auto indices_vec = indices.flat<int32_t>();
-      Tensor *data_ms = ctx.Input(input_num + n);
+      Tensor *data_ms = ctx.Input(static_cast<uint32_t>(input_num + n));
       Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor>> data_flat(
           (T*)data_ms->GetData(), indices_vec.dimension(0), slice_size);
       T *merged_base = merged_flat.data();
