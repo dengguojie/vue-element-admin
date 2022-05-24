@@ -182,7 +182,7 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
         input_axis = {"shape": [-1], "rel_pos_to_reduce": "axis"}
     else:
         data_format = data_format.upper()
-        data_format_tuple = ("NCHW", "NHWC")
+        data_format_tuple = ("NCHW", "NHWC", "NDHWC", "NCDHW")
         para_check.check_format(data_format, data_format_tuple, param_name="x")
         if len(shape) < 2:
             error_detail = "cce_bias_add_grad shape should be larger than 2D"

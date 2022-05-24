@@ -1,16 +1,18 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic reduce_min
 """
 from impl.util.platform_adapter import tbe
@@ -27,8 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 # 'pylint: disable=unused-argument,invalid-name
 @register_operator_compute("ReduceMin", op_mode="dynamic", support_fusion=True)
-def reduce_min_compute(x, axes, y, keepdims=None,
-                       kernel_name="reduce_min"):
+def reduce_min_compute(x, axes, y, keepdims=None, kernel_name="reduce_min"):
     """
     reduce_min compute
 
@@ -111,12 +112,10 @@ def reduce_min(x, axes, y, keepdims=False, kernel_name="reduce_min"):
     for (_x, _axes) in ins:
         with tbe.compute():
             shape_x, shape_axes = shape_util.variable_shape([_x, _axes], op_mode="reduce")
-            data_input_x = tvm.placeholder(shape_x, name="data_input_x",
-                                           dtype=dtype_lower_x)
-            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
-                                              dtype=dtype_lower_axes)
+            data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_lower_x)
+            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes", dtype=dtype_lower_axes)
             axes_d = shape_util.axis_check(len(shape_x), _axes.get("value"))
-            res = reduce_min_compute(data_input_x, axes_d, y, keepdims)
+            res = reduce_min_compute(data_input_x, axes_d, y, keepdims, kernel_name)
             tensors.append([data_input_x, data_input_axes, res])
 
         with tvm.target.cce():
@@ -124,6 +123,5 @@ def reduce_min(x, axes, y, keepdims=False, kernel_name="reduce_min"):
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

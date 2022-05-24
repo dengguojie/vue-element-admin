@@ -243,8 +243,11 @@ from .log import log
 from .logical_and import logical_and
 from .logical_not import logical_not
 from .reduce_all import reduce_all
+from .reduce_all_d import reduce_all_d
 from .reduce_any import reduce_any
+from .reduce_any_d import reduce_any_d
 from .reduce_prod import reduce_prod
+from .reduce_prod_d import reduce_prod_d
 from .relu6 import relu6
 from .relu6_grad import relu6_grad
 from .relu_grad import relu_grad

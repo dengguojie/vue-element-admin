@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-reduce all
+dyncmic reduce all
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -103,18 +103,16 @@ def reduce_all(x, axes, y, keepdims=False, kernel_name="reduce_all"):
         axes["value"] = list(axes["const_value"])
 
     schedules = []
-    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
     tensors = []
+    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (_x, _axes) in ins:
         with tbe.compute():
             shape_x, shape_axes = shape_util.variable_shape([_x, _axes], op_mode="reduce")
-            data_input_x = tvm.placeholder(shape_x, name="data_input_x",
-                                           dtype=dtype_lower_x)
-            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
-                                              dtype=dtype_lower_axes)
+            data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_lower_x)
+            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes", dtype=dtype_lower_axes)
             axes_d = shape_util.axis_check(len(shape_x), _axes.get("value"))
-            res = reduce_all_compute(data_input_x, axes_d, y, keepdims)
+            res = reduce_all_compute(data_input_x, axes_d, y, keepdims, kernel_name)
             tensors.append([data_input_x, data_input_axes, res])
 
         with tvm.target.cce():
@@ -122,6 +120,5 @@ def reduce_all(x, axes, y, keepdims=False, kernel_name="reduce_all"):
         schedules.append(schedule)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

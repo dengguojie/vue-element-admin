@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
 """
 dynamic reduce mean
 """
-import collections
-
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
@@ -28,10 +26,31 @@ from impl.util.platform_adapter import OpImplMode
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_compute import get_cof
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
 # 'pylint: disable=unused-argument,invalid-name
+def get_calc_dtype(dtype_x, impl_mode):
+    """
+    get calc dtype
+    """
+    if dtype_x == "float32":
+        calc_dtype = "float32"
+    elif dtype_x == "float16":
+        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        if not tbe_platform.api_check_support("tbe.dsl.sum", "float32"):
+            calc_dtype = "float16"
+        elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:
+            calc_dtype = "float16"
+        else:
+            calc_dtype = "float32"
+    else:
+        # int8 and uint8
+        calc_dtype = "float16"
+    return calc_dtype
+
+
 @register_operator_compute("ReduceMean", op_mode="dynamic", support_fusion=False)
 def reduce_mean_compute(x,
                         axes,
@@ -39,8 +58,7 @@ def reduce_mean_compute(x,
                         keepdims=None,
                         noop_with_empty_axes=True,
                         kernel_name="reduce_mean",
-                        impl_mode=OpImplMode.HIGH_PERFORMANCE,
-                        is_5hdc=False):
+                        impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """reduce_mean compute
 
     Parameters:
@@ -61,33 +79,10 @@ def reduce_mean_compute(x,
     res: TVM tensor
         output tensor, has the same shape and type as input tensor.
     """
-    shape_x = x.shape
-
-    reduce_elts = 1.0
-    if isinstance(axes, collections.Iterable):
-        for i in axes:
-            if isinstance(shape_x[i], tvm.expr.IntImm):
-                reduce_elts *= shape_x[i].value
-            else:
-                reduce_elts *= shape_x[i]
-    else:
-        reduce_elts = shape_x[axes]
-
-    dtype = x.dtype
-    if dtype == "float32":
-        calc_dtype = "float32"
-    elif dtype == "float16":
-        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-        if not tbe_platform.api_check_support("tbe.dsl.sum",
-                                              "float32"):
-            calc_dtype = "float16"
-        elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:
-            calc_dtype = "float16"
-        else:
-            calc_dtype = "float32"
-    else:
-        # int8 and uint8
-        calc_dtype = "float16"
+    shape_x = shape_util.shape_to_list(x.shape)
+    dtype_x = x.dtype
+    reduce_elts = get_cof(axes, shape_x)
+    calc_dtype = get_calc_dtype(dtype_x, impl_mode)
 
     if isinstance(reduce_elts, float):
         if reduce_elts == 0:
@@ -97,10 +92,10 @@ def reduce_mean_compute(x,
                 nan_data = tvm.const(2**62, dtype=calc_dtype)
             sum_data_shape0 = tbe.reduce_sum(x, axis=axes, keepdims=keepdims)
             vadds_data_shape0 = tbe.vadds(sum_data_shape0, nan_data)
-            res = tbe.cast_to(vadds_data_shape0, dtype)
+            res = tbe.cast_to(vadds_data_shape0, dtype_x)
             return res
 
-        cof = reduce_elts ** (-1)
+        cof = reduce_elts**(-1)
         cof = tvm.const(cof, dtype=calc_dtype)
     else:
         cof = tbe.var("cof", dtype=calc_dtype)
@@ -108,7 +103,7 @@ def reduce_mean_compute(x,
             tbe.var("cof_empty", dtype=calc_dtype)
         tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", calc_dtype)
 
-    if dtype != calc_dtype:
+    if dtype_x != calc_dtype:
         data_input_tmp = tbe.cast_to(x, calc_dtype)
     else:
         data_input_tmp = x
@@ -116,11 +111,11 @@ def reduce_mean_compute(x,
     data_input_tmp = tbe.vmuls(data_input_tmp, cof)
     res = tbe.reduce_sum(data_input_tmp, axis=axes, keepdims=keepdims)
 
-    if dtype != calc_dtype:
-        if dtype in ("int8", "uint8"):
-            res = tbe.cast_to(res, dtype, False)
+    if dtype_x != calc_dtype:
+        if dtype_x in ("int8", "uint8"):
+            res = tbe.cast_to(res, dtype_x, False)
         else:
-            res = tbe.cast_to(res, dtype)
+            res = tbe.cast_to(res, dtype_x)
 
     return res
 
@@ -128,8 +123,13 @@ def reduce_mean_compute(x,
 @register_operator("ReduceMean")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_mean(x, axes, y,
-                keepdims=False, noop_with_empty_axes=True, kernel_name="reduce_mean"):
+def reduce_mean(x,
+                axes,
+                y,
+                keepdims=False,
+                noop_with_empty_axes=True,
+                kernel_name="reduce_mean",
+                impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     Reduce a tensor on a certa in axes based on mean.
 
@@ -144,6 +144,8 @@ def reduce_mean(x, axes, y,
     keepdims : bool, NoneType
         if true, retains reduced dimensions with length 1,
         default value is None.
+    noop_with_empty_axes : bool, NoneType
+        useless attr to avoid dynamic reduce_mean_d compile error.
     kernel_name : str
         cce kernel name, default value is reduce_mean_d
 
@@ -175,13 +177,16 @@ def reduce_mean(x, axes, y,
     for (_x, _axes) in ins:
         with tbe.compute():
             shape_x, shape_axes = shape_util.variable_shape([_x, _axes], op_mode="reduce")
-            data_input_x = tvm.placeholder(shape_x, name="data_input_x",
-                                           dtype=dtype_lower_x)
-            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
-                                              dtype=dtype_lower_axes)
+            data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_lower_x)
+            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes", dtype=dtype_lower_axes)
             axes_d = shape_util.axis_check(len(shape_x), _axes.get("value"))
-            res = reduce_mean_compute(data_input_x, axes_d, y,
-                                      keepdims, noop_with_empty_axes)
+            res = reduce_mean_compute(data_input_x,
+                                      axes_d,
+                                      y,
+                                      keepdims,
+                                      noop_with_empty_axes=noop_with_empty_axes,
+                                      kernel_name=kernel_name,
+                                      impl_mode=impl_mode)
             tensors.append([data_input_x, data_input_axes, res])
 
         with tvm.target.cce():
@@ -189,6 +194,5 @@ def reduce_mean(x, axes, y,
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

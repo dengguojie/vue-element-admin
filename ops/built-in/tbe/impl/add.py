@@ -184,7 +184,7 @@ def op_sub_select_format(x1, x2, y, kernel_name="add"):
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
-# 'pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
+# 'pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate,too-many-return-values
 def _can_broad(x, y):
     if x[2]:
         x[0] *= 16

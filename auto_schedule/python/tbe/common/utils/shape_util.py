@@ -164,7 +164,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
     max_dim_length = max(len(list(shape)) for shape in shapes)
     input_shapes = []
     for shape in shapes:
-        input_shapes.append([tvm.const(1) for _ in range(max_dim_length - len(shape))] + list(shape))
+        input_shapes.append(shape_to_list([tvm.const(1) for _ in range(max_dim_length - len(shape))] + list(shape)))
     input_shapes = list(map(list, zip(*input_shapes)))
     max_shape = [_max(shape) for shape in input_shapes]
     const_type = (_expr.IntImm, _expr.UIntImm, int)

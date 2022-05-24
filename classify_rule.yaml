@@ -1074,6 +1074,7 @@ vector_B:
       - ops/built-in/op_tiling/unsorted_segment_sum.cc
       - ops/built-in/op_tiling/as_strided.cc
       - ops/built-in/op_tiling/as_strided.h
+      - ops/built-in/tbe/impl/add.py
       - ops/built-in/tbe/impl/adam_apply_one.py
       - ops/built-in/tbe/impl/add_mat_mat_elements.py
       - ops/built-in/tbe/impl/apply_adagrad_d.py
@@ -1232,8 +1233,20 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/power.py
       - ops/built-in/tbe/impl/dynamic/prelu.py
       - ops/built-in/tbe/impl/dynamic/reciprocal.py
+      - ops/built-in/tbe/impl/dynamic/reduce_any.py
+      - ops/built-in/tbe/impl/dynamic/reduce_sum.py
+      - ops/built-in/tbe/impl/dynamic/reduce_max.py
+      - ops/built-in/tbe/impl/dynamic/reduce_all.py
       - ops/built-in/tbe/impl/dynamic/reduce_mean.py
       - ops/built-in/tbe/impl/dynamic/reduce_min.py
+      - ops/built-in/tbe/impl/dynamic/reduce_prod.py
+      - ops/built-in/tbe/impl/dynamic/reduce_mean_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_max_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_min_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_sum_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_any_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_prod_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_all_d.py
       - ops/built-in/tbe/impl/dynamic/reduce_std_v2_update.py
       - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad.py
       - ops/built-in/tbe/impl/dynamic/relu.py
@@ -2555,7 +2568,6 @@ unkown:
       - ops/built-in/tbe/impl/fused_mul_apply_momentum.py
       - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2_unify.py
-      - ops/built-in/tbe/impl/add.py
       - ops/built-in/tbe/impl/nd_2_nz.py
       - ops/built-in/tbe/impl/square.py
       - ops/built-in/tbe/impl/lamb_next_m_v.py
@@ -2944,7 +2956,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/relu6_grad.py
       - ops/built-in/tbe/impl/dynamic/ascend_anti_quant.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss_grad.py
-      - ops/built-in/tbe/impl/dynamic/reduce_mean_d.py
       - ops/built-in/tbe/impl/dynamic/reduce_mean_with_count.py
       - ops/built-in/tbe/impl/dynamic/tabulate_fusion.py
       - ops/built-in/tbe/impl/dynamic/greater.py
@@ -2963,19 +2974,15 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/reverse_v2.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_grad.py
       - ops/built-in/tbe/impl/dynamic/masked_fill.py
-      - ops/built-in/tbe/impl/dynamic/reduce_max.py
-      - ops/built-in/tbe/impl/dynamic/reduce_all.py
       - ops/built-in/tbe/impl/dynamic/sub.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_dynamic_common.py
       - ops/built-in/tbe/impl/dynamic/non_zero.py
       - ops/built-in/tbe/impl/dynamic/acos.py
       - ops/built-in/tbe/impl/dynamic/ascend_dequant.py
-      - ops/built-in/tbe/impl/dynamic/reduce_sum.py
       - ops/built-in/tbe/impl/dynamic/one_hot.py
       - ops/built-in/tbe/impl/dynamic/prod_env_mat_a.py
       - ops/built-in/tbe/impl/dynamic/prod_env_mat_a_calc_descrpt.py
       - ops/built-in/tbe/impl/dynamic/tan.py
-      - ops/built-in/tbe/impl/dynamic/reduce_any.py
       - ops/built-in/tbe/impl/dynamic/pack.py
       - ops/built-in/tbe/impl/dynamic/fused_mul_apply_momentum.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_proximal_adagrad_d.py
@@ -3010,11 +3017,8 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_v2_d.py
-      - ops/built-in/tbe/impl/dynamic/reduce_max_d.py
-      - ops/built-in/tbe/impl/dynamic/reduce_min_d.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adadelta_d.py
       - ops/built-in/tbe/impl/dynamic/lru_cache_v2.py
-      - ops/built-in/tbe/impl/dynamic/reduce_sum_d.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad_v2_d.py
       - ops/built-in/tbe/impl/dynamic/atan2.py
       - ops/built-in/tbe/impl/dynamic/split.py
@@ -3023,7 +3027,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/non_max_suppression_bucketize.py
       - ops/built-in/tbe/impl/dynamic/split_d.py
       - ops/built-in/tbe/impl/dynamic/pad_not_align.py
-      - ops/built-in/tbe/impl/dynamic/reduce_prod.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_tik.py
       - ops/built-in/tbe/impl/dynamic/extract_image_patches.py

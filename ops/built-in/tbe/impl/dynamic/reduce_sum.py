@@ -1,17 +1,19 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
-reduce sum
+dynamic reduce_sum
 """
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -28,8 +30,7 @@ from impl.util.platform_adapter import register_operator_compute
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
 @register_operator_compute("ReduceSum", op_mode="dynamic", support_fusion=True)
 def reduce_sum_compute(x, axes, y, keepdims=None, kernel_name="reduce_sum"):
-    """
-    reduce_sum compute
+    """reduce_sum compute
 
     Parameters:
     ----------
@@ -103,18 +104,16 @@ def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
         axes["value"] = list(axes["const_value"])
 
     schedules = []
-    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
     tensors = []
+    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (x, axes) in ins:
         with tbe.compute():
             shape_x, shape_axes = shape_util.variable_shape([x, axes], op_mode="reduce")
-            data_input_x = tvm.placeholder(shape_x, name="data_input_x",
-                                           dtype=dtype_lower_x)
-            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
-                                              dtype=dtype_lower_axes)
+            data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_lower_x)
+            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes", dtype=dtype_lower_axes)
             axes_d = shape_util.axis_check(len(shape_x), axes.get("value"))
-            res = reduce_sum_compute(data_input_x, axes_d, y, keepdims)
+            res = reduce_sum_compute(data_input_x, axes_d, y, keepdims, kernel_name)
             tensors.append([data_input_x, data_input_axes, res])
 
         with tvm.target.cce():
@@ -122,6 +121,5 @@ def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
         schedules.append(schedule)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

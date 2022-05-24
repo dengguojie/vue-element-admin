@@ -1,16 +1,18 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.
-You may not use this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic reduce_min_d
 """
 from impl.util.platform_adapter import tbe
@@ -49,6 +51,12 @@ def reduce_min_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_min
     res: TVM tensor
          output tensor, has the same shape and type as input tensor.
     """
+    shape = shape_util.shape_to_list(x.shape)
+    shape_len = len(shape)
+    if not axes:
+        axes = range(shape_len)
+    if hasattr(axes, 'index'):
+        axes = list(axes)
     dtype = x.dtype
     if dtype in ("int8", "uint8"):
         x = tbe.cast_to(x, "float16")
@@ -111,9 +119,8 @@ def reduce_min_d(x, y, axes=None, keepdims=None, kernel_name="reduce_min_d"):
     for (x, axes) in ins:
         with tbe.compute():
             shape_var_new = shape_util.variable_shape([x, axes], op_mode="reduce")[0]
-            data_input = tvm.placeholder(shape_var_new, name="data_input",
-                                         dtype=dtype_lower)
-            res = reduce_min_d_compute(data_input, y, axes.get("value"), keepdims)
+            data_input = tvm.placeholder(shape_var_new, name="data_input", dtype=dtype_lower)
+            res = reduce_min_d_compute(data_input, y, axes.get("value"), keepdims, kernel_name)
             tensors.append([data_input, res])
 
         with tvm.target.cce():
@@ -121,6 +128,5 @@ def reduce_min_d(x, y, axes=None, keepdims=None, kernel_name="reduce_min_d"):
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-dynamic reduce sum
+dynamic reduce_sum_d
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -29,12 +29,8 @@ from impl.util.platform_adapter import OpPatternMode
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=redefined-argument-from-local
 @register_operator_compute("ReduceSumD", op_mode="dynamic", support_fusion=True)
-def reduce_sum_d_compute(x,
-                         y,
-                         axis=None,
-                         keepdims=None,
-                         kernel_name="reduce_sum_d"):
-    """redusce_sum_d compute
+def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
+    """reduce_sum_d compute
 
     Parameters:
     ----------
@@ -54,6 +50,12 @@ def reduce_sum_d_compute(x,
     res: TVM tensor
         output tensor, has the same shape and type as input tensor.
     """
+    shape = shape_util.shape_to_list(x.shape)
+    shape_len = len(shape)
+    if not axis:
+        axis = range(shape_len)
+    if hasattr(axis, 'index'):
+        axis = list(axis)
     dtype = x.dtype
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
@@ -108,15 +110,13 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
 
     schedules = []
     tensors = []
-    ins = classify([x, input_axis], OpPatternMode.REDUCE,
-                   {"keepdims": keepdims is True})
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (x, axis) in ins:
         with tbe.compute():
             shape_var_new = shape_util.variable_shape([x, axis], op_mode="reduce")[0]
-            data_input = tvm.placeholder(shape_var_new, name="data_input",
-                                         dtype=dtype_lower)
-            res = reduce_sum_d_compute(data_input, y, axis.get("value"), keepdims)
+            data_input = tvm.placeholder(shape_var_new, name="data_input", dtype=dtype_lower)
+            res = reduce_sum_d_compute(data_input, y, axis.get("value"), keepdims, kernel_name)
             tensors.append([data_input, res])
 
         with tvm.target.cce():
@@ -124,6 +124,5 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

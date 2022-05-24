@@ -15,6 +15,7 @@
 """
 common function
 """
+import collections
 import tbe.common.utils as tbe_utils
 from te.tvm import api as tvm
 from te.lang.cce.te_compute.elewise_compute import vmuls
@@ -54,6 +55,26 @@ def sign(input_data):
     res = vdiv(new_data, denominator)
 
     return res
+
+
+def get_cof(axes, shape):
+    """
+    get cof
+    ----------
+    Parameters
+        axes: all reduce axes
+        shape: input shape
+    ----------
+    Returns
+        the product of reduce axes
+    """
+    reduce_elts = 1.0
+    if isinstance(axes, collections.Iterable):
+        for i in axes:
+            reduce_elts *= shape[i]
+    else:
+        reduce_elts = shape[axes]
+    return reduce_elts
 
 
 def check_fc_fuse(input_tensor):

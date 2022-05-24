@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-dynamic reduce_max_d
+dynamic reduce_any_d
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
@@ -27,10 +27,10 @@ from impl.util.platform_adapter import OpPatternMode
 
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=redefined-argument-from-local
-@register_operator_compute("ReduceMaxD", op_mode="dynamic", support_fusion=True)
-def reduce_max_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
+@register_operator_compute("ReduceAnyD", op_mode="dynamic", support_fusion=True)
+def reduce_any_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_any_d"):
     """
-    reduce_max_d compute
+    reduce_any_d compute
 
     Parameters:
     ----------
@@ -43,7 +43,7 @@ def reduce_max_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_max
     keepdims: bool or NONETYPE
         if true, retains reduced dimensions with length 1.
     kernel_name: str
-        cce kernel name, default value is "reduce_max_d".
+        cce kernel name, default value is "reduce_any_d".
 
     Returns
     -------
@@ -57,19 +57,19 @@ def reduce_max_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_max
     if hasattr(axes, 'index'):
         axes = list(axes)
     dtype = x.dtype
-    if dtype in ("int8", "uint8"):
-        x = tbe.cast_to(x, "float16")
-    res_max = tbe.reduce_max(x, axis=axes, keepdims=keepdims)
-    res = tbe.cast_to(res_max, dtype)
+    data_fp16 = tbe.cast_to(x, "float16")
+    data_abs = tbe.vabs(data_fp16)
+    res_any = tbe.reduce_max(data_abs, axis=axes, keepdims=keepdims)
+    res = tbe.cast_to(res_any, dtype)
 
     return res
 
 
 # 'pylint: disable=too-many-locals,invalid-name
-@register_operator("ReduceMaxD")
+@register_operator("ReduceAnyD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
+def reduce_any_d(x, y, axes=None, keepdims=None, kernel_name="reduce_any_d"):
     """
     reduce a tensor on a certain axes based on max.
 
@@ -87,7 +87,7 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
         if true, retains reduced dimensions with length 1,
         default value is None
     kernel_name : str
-        kernel name, default value is "reduce_max_d"
+        kernel name, default value is "reduce_any_d"
 
     Returns
     -------
@@ -96,7 +96,7 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
 
     dtype = x["dtype"]
     dtype_lower = dtype.lower()
-    check_list = ("float16", "float32", "int8", "uint8", "int32")
+    check_list = ("int8")
     para_check.check_dtype(dtype_lower, check_list)
     x["rel_pos_to_reduce"] = "before"
 
@@ -117,7 +117,7 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
         with tbe.compute():
             shape_var_new = shape_util.variable_shape([x, axes], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input", dtype=dtype_lower)
-            res = reduce_max_d_compute(data_input, y, axes.get("value"), keepdims, kernel_name)
+            res = reduce_any_d_compute(data_input, y, axes.get("value"), keepdims, kernel_name)
             tensors.append([data_input, res])
 
         with tvm.target.cce():
