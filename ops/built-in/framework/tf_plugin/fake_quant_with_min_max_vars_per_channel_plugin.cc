@@ -20,10 +20,15 @@
  */
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
+#include "op_log.h"
 
 namespace domi {
 Status FakeQuantWithMinMaxVarsPerChannelMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  Status ret = AutoMappingFn(op_src, op);
+  if (ret != SUCCESS) {
+    OP_LOGE("FakeQuantWithMinMaxVarsPerChannel", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc org_tensor_w = op_dsc->GetInputDesc(0);
   ge::GeTensorDesc org_tensor_w1 = op_dsc->GetOutputDesc(0);
@@ -31,7 +36,7 @@ Status FakeQuantWithMinMaxVarsPerChannelMappingFn(const Message* op_src, ge::Ope
   org_tensor_w1.SetOriginFormat(ge::FORMAT_NHWC);
   org_tensor_w.SetFormat(ge::FORMAT_NHWC);
   org_tensor_w1.SetFormat(ge::FORMAT_NHWC);
-  auto ret = op_dsc->UpdateInputDesc(0, org_tensor_w);
+  ret = op_dsc->UpdateInputDesc(0, org_tensor_w);
   auto ret1 = op_dsc->UpdateOutputDesc(0, org_tensor_w1);
   if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS) {
     return FAILED;

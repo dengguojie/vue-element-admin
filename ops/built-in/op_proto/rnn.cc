@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -273,7 +273,7 @@ IMPLEMT_INFERFUNC(DynamicGRUCellGrad, DynamicGRUCellGradInferShape) {
   int64_t dim_num = shapeDY.GetDims().size();
   int64_t batch_size = 0;
   int64_t output_dim_size = 0;
-  if(dim_num != 3) {
+  if (dim_num != 3) {
     OP_LOGE(TbeGetName(op).c_str(), "The input shape of dy is not right, please check!");
     return GRAPH_FAILED;
   }
@@ -635,7 +635,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
     inputSize = inputXShape.GetDims().at(1);
     hiddenSize = inputHShape.GetDims().at(1);
   } else {
-    std::string err_msg = OtherErrMsg(ConcatString("dim_num_x:",dim_num_x, "&&", "dim_num_h:",dim_num_h, "The input shape of X and H should be 2"));
+    std::string err_msg = OtherErrMsg(ConcatString("dim_num_x:",dim_num_x, "&&", "dim_num_h:",dim_num_h,
+                                                   "The input shape of X and H should be 2"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -659,7 +660,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
     dbDims = {hiddenSize * 4, 1, 1, 1};
   } else {
     string expected_format_list = ConcatString("FORMAT_HWCN, FORMAT_NCHW, FORMAT_NHWC, FORMAT_ND");
-    std::string err_msg = GetInputFormatNotSupportErrMsg("outputdw_format", expected_format_list, ConcatString(outputdw_format));
+    std::string err_msg = GetInputFormatNotSupportErrMsg("outputdw_format", expected_format_list,
+                                                         ConcatString(outputdw_format));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
 
@@ -705,8 +707,9 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
   if (dim_num_w == 2) {
     inputSize = inputWShape.GetDims().at(0) - hiddenSize;
   } else {
-    std::string err_msg = OtherErrMsg(ConcatString("dim_num_w:",dim_num_w,"The input shape of W should be 2, please check!"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);   
+    std::string err_msg = OtherErrMsg(ConcatString("dim_num_w:", dim_num_w,
+                                                   "The input shape of W should be 2, please check!"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1259,7 +1262,7 @@ VERIFY_FUNC_REG(DynamicAUGRUGrad, DynamicAUGRUGradVerify);
 
 // ----------------EmbeddingDenseGrad Begin-------------------
 bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
-                                         const int64_t& input_idx_1, 
+                                         const int64_t& input_idx_1,
                                          const int64_t& input_idx_2,
                                          const int64_t& output_idx)
 {
@@ -1281,7 +1284,8 @@ bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
 
     const GeShape &shape_x = tensordesc_input_1->MutableShape();
     GeShape &shape_y = tensordesc_output->MutableShape();
-    OP_LOGI(TbeGetName(op).c_str(), "shape_x: %s, shape_y: %s.", to_string(shape_x).c_str(), to_string(shape_y).c_str());
+    OP_LOGI(TbeGetName(op).c_str(), "shape_x: %s, shape_y: %s.",
+            to_string(shape_x).c_str(), to_string(shape_y).c_str());
 
     int64_t num_weights_value = 0;
     op.GetAttr("num_weights", num_weights_value);
@@ -1325,8 +1329,7 @@ IMPLEMT_VERIFIER(EmbeddingDenseGrad, EmbeddingDenseGradVerify)
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(g_embeddingDenseGradInferShape)
-{   
-
+{
     if (InferShapeAndTypeEmbeddingDenseGrad(op, 0, 1, 0))
     {
         return GRAPH_SUCCESS;
@@ -1342,9 +1345,9 @@ VERIFY_FUNC_REG(EmbeddingDenseGrad, EmbeddingDenseGradVerify);
 
 // ----------------RnnGenMaskV2 Begin-------------------
 bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
-                                         const char* seq_length,
-                                         const char* x,
-                                         const char* seq_mask)
+                                   const char* seq_length,
+                                   const char* x,
+                                   const char* seq_mask)
 {
   OP_LOGI(TbeGetName(op).c_str(), " RnnGenMaskV2 inferShape begin!");
   TensorDesc tensordesc_input = op.GetInputDescByName(seq_length);
@@ -1360,7 +1363,7 @@ bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
   ge::Shape length_shape = tensordesc_input.GetShape();
   std::vector<int64_t> dim_length = length_shape.GetDims();
 
-  if(dim_length.size() != 1){
+  if (dim_length.size() != 1) {
     OP_LOGE("RnnGenMaskV2", "Unexcepeted Input Shape.");
     return false;
   }
@@ -1386,10 +1389,10 @@ bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
     op.GetInputDescByName(x).GetShapeRange(input_x_range);
 
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;
-    if (input_range.empty()){
-      output_shape_range = {{1, -1},{1, -1},{1, -1}};
+    if (input_range.empty()) {
+      output_shape_range = {{1, -1}, {1, -1}, {1, -1}};
     }
-    else{
+    else {
       output_shape_range = {input_x_range[0], input_x_range[1],
                             {hidden_size, hidden_size}};
     }
@@ -1409,7 +1412,7 @@ IMPLEMT_VERIFIER(RnnGenMaskV2, RnnGenMaskV2Verify)
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(g_rnnGenMaskV2InferShape)
 {
-  if (InferShapeAndTypeRnnGenMaskV2(op, "seq_length", "x","seq_mask")){
+  if (InferShapeAndTypeRnnGenMaskV2(op, "seq_length", "x", "seq_mask")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -1613,7 +1616,7 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
   int64_t num_step = 0;
   int64_t state = 0;
   bool time_major = false;
-  op.GetAttr("time_major", time_major); 
+  op.GetAttr("time_major", time_major);
   if (dim_num == 3) {
     batch_size = shapex.GetDims().at(0);
     num_step = shapex.GetDims().at(1);

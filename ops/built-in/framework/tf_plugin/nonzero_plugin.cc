@@ -25,8 +25,8 @@ namespace domi {
 Status AutoMappingFnNonZero(const google::protobuf::Message* op_src, ge::Operator& op) {
   Status ret = AutoMappingFn(op_src, op);
   ge::DataType dataType;
-  op.GetAttr("output_type", dataType);
-  op.SetAttr("dtype", dataType);
+  (void)op.GetAttr("output_type", dataType);
+  (void)op.SetAttr("dtype", dataType);
   return ret;
 }
 

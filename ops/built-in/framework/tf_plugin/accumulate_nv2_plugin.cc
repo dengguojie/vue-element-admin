@@ -24,7 +24,9 @@ namespace domi {
 Status AutoMappingFnAccumulateNV2(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("x", "N");
-  AutoMappingFnDynamic(op_src, op, value);
+  if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS) {
+    return FAILED;
+  }
   return SUCCESS;
 }
 

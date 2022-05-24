@@ -24,6 +24,7 @@ static const char* const kOpType = "DynamicGRU";
 static const char* const kTranspose = "transpose";
 static const char* const kGruFwWhileNoTransposeType = "gru_fw_while_no_transpose";
 static const char* const kGruBwWhileNoTransposeType = "gru_bw_while_no_transpose";
+static const int NODE_NUM_ADDV2 = 5;
 
 
 std::vector<ScopeFusionPatterns> ScopeDynamicGRUPass::DefinePatterns() {
@@ -47,15 +48,15 @@ void ScopeDynamicGRUPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  fw_while_no_transpose->SetSubType(kGruFwWhileNoTransposeType);
+  (void)fw_while_no_transpose->SetSubType(kGruFwWhileNoTransposeType);
   // The number of AddV2 is a multiple of 3.
-  fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", 5, 0));
+  (void)fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", NODE_NUM_ADDV2, 0));
   // The number of Mul is a multiple of 3.
-  fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3, 0));
+  (void)fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3, 0));
   // The number of Tanh is a multiple of 1.
-  fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", 1, 0));
+  (void)fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", 1, 0));
   // The number of Transpose is -1.
-  fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
+  (void)fw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
 
   batch1.push_back(fw_while_no_transpose);
 
@@ -66,17 +67,17 @@ void ScopeDynamicGRUPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  bw_while_no_transpose->SetSubType(kGruFwWhileNoTransposeType);
+  (void)bw_while_no_transpose->SetSubType(kGruFwWhileNoTransposeType);
   // The number of AddV2 is a multiple of 3.
-  bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", 5, 0));
+  (void)bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", NODE_NUM_ADDV2, 0));
   // The number of Mul is a multiple of 3.
-  bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3, 0));
+  (void)bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3, 0));
   // The number of ReverseV2 is -1.
-  bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", -1, 0));
+  (void)bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", -1, 0));
   // The number of Tanh is a multiple of 1.
-  bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", 1, 0));
+  (void)bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", 1, 0));
   // The number of Transpose is -1.
-  bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
+  (void)bw_while_no_transpose->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
 
   batch1.push_back(bw_while_no_transpose);
   patterns.push_back(batch1);

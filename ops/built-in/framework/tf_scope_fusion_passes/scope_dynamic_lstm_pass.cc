@@ -57,17 +57,17 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     return;
   }
 
-  basic_lstm_cell_tanh->SetSubType(kLstmCellTanhType);
-  basic_lstm_cell_tanh->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_tanh->SetSubType(kLstmCellTanhType);
+  (void)basic_lstm_cell_tanh->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Sigmoid", 0, 3));  // The number of Sigmoid is a multiple of 3.
-  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
-  basic_lstm_cell_tanh->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
+  (void)basic_lstm_cell_tanh->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Tanh", 0, 2));  // The number of Tanh is a multiple of 2.
-  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
+  (void)basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
   ScopeAttrValue split_attr_value1;
   // The Split node has a "num_split" attribute which value is 4.
   split_attr_value1.SetIntValue(4);
-  basic_lstm_cell_tanh->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value1));
+  (void)basic_lstm_cell_tanh->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value1));
   batch1.push_back(basic_lstm_cell_tanh);
 
   ScopePattern* basic_lstm_cell_relu = new (std::nothrow) ScopePattern();
@@ -78,17 +78,17 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     return;
   }
 
-  basic_lstm_cell_relu->SetSubType(kLstmCellReluType);
-  basic_lstm_cell_relu->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_relu->SetSubType(kLstmCellReluType);
+  (void)basic_lstm_cell_relu->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Sigmoid", 0, 3));  // The number of Sigmoid is a multiple of 3.
-  basic_lstm_cell_relu->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
-  basic_lstm_cell_relu->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_relu->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
+  (void)basic_lstm_cell_relu->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Relu", 0, 2));  // The number of Relu is a multiple of 2.
-  basic_lstm_cell_relu->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
+  (void)basic_lstm_cell_relu->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
   ScopeAttrValue split_attr_value2;
   // The Split node has a "num_split" attribute which value is 4.
   split_attr_value2.SetIntValue(4);
-  basic_lstm_cell_relu->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value2));
+  (void)basic_lstm_cell_relu->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value2));
   batch1.push_back(basic_lstm_cell_relu);
 
   ScopePattern* basic_lstm_cell_relu6 = new (std::nothrow) ScopePattern();
@@ -98,17 +98,17 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  basic_lstm_cell_relu6->SetSubType(kLstmCellRelu6Type);
-  basic_lstm_cell_relu6->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_relu6->SetSubType(kLstmCellRelu6Type);
+  (void)basic_lstm_cell_relu6->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Sigmoid", 0, 3));  // The number of Sigmoid is a multiple of 3.
-  basic_lstm_cell_relu6->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
-  basic_lstm_cell_relu6->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_relu6->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
+  (void)basic_lstm_cell_relu6->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Relu6", 0, 2));  // The number of Relu6 is a multiple of 2.
-  basic_lstm_cell_relu6->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
+  (void)basic_lstm_cell_relu6->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
   ScopeAttrValue split_attr_value3;
   // The Split node has a "num_split" attribute which value is 4.
   split_attr_value3.SetIntValue(4);
-  basic_lstm_cell_relu6->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value3));
+  (void)basic_lstm_cell_relu6->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value3));
   batch1.push_back(basic_lstm_cell_relu6);
 
   ScopePattern* basic_lstm_cell_sigmoid = new (std::nothrow) ScopePattern();
@@ -118,19 +118,19 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  basic_lstm_cell_sigmoid->SetSubType(kLstmCellSigmoidType);
-  basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_sigmoid->SetSubType(kLstmCellSigmoidType);
+  (void)basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Sigmoid", 0, 5));  // The number of Sigmoid is a multiple of 5.
-  basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(
+  (void)basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(
       NodeOpTypeFeature("Mul", 0, 3));  // The number of Mul is a multiple of 3.
-  basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("Relu6", -1, 0));  // Doesn't has Relu6.
-  basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("Relu", -1, 0));   // Doesn't has Relu.
-  basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", -1, 0));   // Doesn't has Tanh.
-  basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
+  (void)basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("Relu6", -1, 0));  // Doesn't has Relu6.
+  (void)basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("Relu", -1, 0));   // Doesn't has Relu.
+  (void)basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", -1, 0));   // Doesn't has Tanh.
+  (void)basic_lstm_cell_sigmoid->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));  // The number of MatMul is 1.
   ScopeAttrValue split_attr_value4;
   // The Split node has a "num_split" attribute which value is 4.
   split_attr_value4.SetIntValue(4);
-  basic_lstm_cell_sigmoid->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value4));
+  (void)basic_lstm_cell_sigmoid->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value4));
   batch1.push_back(basic_lstm_cell_sigmoid);
   patterns.push_back(batch1);
 
@@ -143,8 +143,8 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  p_lstm_tanh_while->SetSubType(kWhileType);
-  p_lstm_tanh_while->AddScopeFeature(ScopeFeature(kLstmCellTanhType, 1, "while"));
+  (void)p_lstm_tanh_while->SetSubType(kWhileType);
+  (void)p_lstm_tanh_while->AddScopeFeature(ScopeFeature(kLstmCellTanhType, 1, "while"));
   batch2.push_back(p_lstm_tanh_while);
 
   ScopePattern* p_lstm_relu_while = new (std::nothrow) ScopePattern();
@@ -154,8 +154,8 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  p_lstm_relu_while->SetSubType(kWhileType);
-  p_lstm_relu_while->AddScopeFeature(ScopeFeature(kLstmCellReluType, 1, "while"));
+  (void)p_lstm_relu_while->SetSubType(kWhileType);
+  (void)p_lstm_relu_while->AddScopeFeature(ScopeFeature(kLstmCellReluType, 1, "while"));
   batch2.push_back(p_lstm_relu_while);
 
   ScopePattern* p_lstm_relu6_while = new (std::nothrow) ScopePattern();
@@ -165,8 +165,8 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  p_lstm_relu6_while->SetSubType(kWhileType);
-  p_lstm_relu6_while->AddScopeFeature(ScopeFeature(kLstmCellRelu6Type, 1, "while"));
+  (void)p_lstm_relu6_while->SetSubType(kWhileType);
+  (void)p_lstm_relu6_while->AddScopeFeature(ScopeFeature(kLstmCellRelu6Type, 1, "while"));
   batch2.push_back(p_lstm_relu6_while);
   ScopePattern* p_lstm_sigmoid_while = new (std::nothrow) ScopePattern();
   if (p_lstm_sigmoid_while == nullptr) {
@@ -175,8 +175,8 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  p_lstm_sigmoid_while->SetSubType(kWhileType);
-  p_lstm_sigmoid_while->AddScopeFeature(ScopeFeature(kLstmCellSigmoidType, 1, "while"));
+  (void)p_lstm_sigmoid_while->SetSubType(kWhileType);
+  (void)p_lstm_sigmoid_while->AddScopeFeature(ScopeFeature(kLstmCellSigmoidType, 1, "while"));
   batch2.push_back(p_lstm_sigmoid_while);
   patterns.push_back(batch2);
 
@@ -188,11 +188,11 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  fw_while->SetSubType(kFwWhileType);
-  fw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "fw"));
-  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
-  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
-  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 0, 1));
+  (void)fw_while->SetSubType(kFwWhileType);
+  (void)fw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "fw"));
+  (void)fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  (void)fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
+  (void)fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 0, 1));
   batch3.push_back(fw_while);
 
   ScopePattern* bw_while = new (std::nothrow) ScopePattern();
@@ -202,12 +202,12 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  bw_while->SetSubType(kBwWhileType);
-  bw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "bw"));
-  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
-  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
-  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 0, 1));
-  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseSequence", -1, 0));
+  (void)bw_while->SetSubType(kBwWhileType);
+  (void)bw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "bw"));
+  (void)bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  (void)bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
+  (void)bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 0, 1));
+  (void)bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseSequence", -1, 0));
   batch3.push_back(bw_while);
 
   ScopePattern* rnn_while = new (std::nothrow) ScopePattern();
@@ -217,11 +217,11 @@ void ScopeDynamicLSTMPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  rnn_while->SetSubType(kRnnWhileType);
-  rnn_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "rnn"));
-  rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
-  rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
-  rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 0, 1));
+  (void)rnn_while->SetSubType(kRnnWhileType);
+  (void)rnn_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "rnn"));
+  (void)rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  (void)rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("TensorArrayV3", 0, 1));
+  (void)rnn_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 0, 1));
   batch3.push_back(rnn_while);
   patterns.push_back(batch3);
 }

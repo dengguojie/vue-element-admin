@@ -35,9 +35,9 @@ Status ParseParamsByOperatorCorrelation(const ge::Operator& op_src, ge::Operator
     OP_LOGI("Correlation Parse Params for Correlation begin");
     int groups = 1;
     if (op_src.GetAttr("groups", groups) == ge::GRAPH_SUCCESS) {
-      op_dest.SetAttr("groups", groups);
+      (void)op_dest.SetAttr("groups", groups);
     } else {
-      op_dest.SetAttr("groups", 1);
+      (void)op_dest.SetAttr("groups", 1);
     }
     OP_LOGI("Correlation Parse Params for Correlation end");
     return SUCCESS;

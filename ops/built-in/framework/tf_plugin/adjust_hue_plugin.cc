@@ -25,12 +25,16 @@
 
 namespace domi {
 Status ParseAdjustHue(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  Status ret = AutoMappingFn(op_src, op);
+  if (ret != SUCCESS) {
+    OP_LOGE("AdjustHue", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
 
   ge::TensorDesc input_tensor = op.GetInputDesc("images");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
   input_tensor.SetFormat(ge::FORMAT_NHWC);
-  auto ret = op.UpdateInputDesc("images", input_tensor);
+  ret = op.UpdateInputDesc("images", input_tensor);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "update input format failed.");
     return FAILED;
