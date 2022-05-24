@@ -5,8 +5,14 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
-
+#include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
+#include "array_ops.h"
+#include "rnn.h"
+#include "dynamic_rnn_v3.h"
 using namespace std;
+using namespace ut_util;
+using namespace ge;
 
 class DynamicRnnV3Tiling : public testing::Test {
  protected:
@@ -154,7 +160,6 @@ TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 8 0 ");
-  
 }
 
 TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_2) {
@@ -448,4 +453,244 @@ TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_6) {
   op_compile_info.key = "123456a007";
   OpRunInfo runInfo;
   ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+}
+
+#include "test_common.h"
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_7) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[-1, -1, 0], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, v3_input_shapes[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, b, v3_input_shapes[2], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "32 8 0 ");
+}
+
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_8) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32, 120, 0], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, v3_input_shapes[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, b, v3_input_shapes[2], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "32 8 0 ");
+}
+
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_9) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[98, 99, 0], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, v3_input_shapes[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, b, v3_input_shapes[2], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_FAILED);
+}
+
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_10) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[98, 99], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, v3_input_shapes[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, b, v3_input_shapes[2], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_FAILED);
+}
+
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_11) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[98, 99], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, v3_input_shapes[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_FAILED);
+}
+
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_12) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[-1, -1, 0], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32,8,16,16},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, {}, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, b, v3_input_shapes[2], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_FAILED);
+}
+
+TEST_F(DynamicRnnV3Tiling, dynamic_rnn_v3_tiling_13) {
+  std::string op_name = "DynamicRNNV3";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[-1, -1, 0], [99, 99, 1]]}}";
+
+  vector<vector<int64_t>> v3_input_shapes = {
+      {32,32},
+      {40,32,16,16},
+      {512},
+  };
+
+  vector<int64_t> v3_output_shape = {32,8,8,16,16};
+
+  auto opParas = op::DynamicRNNV3(op_name);
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, v3_input_shapes[0], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, w, v3_input_shapes[1], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, b, v3_input_shapes[2], DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_h, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, output_c, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, i, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, j, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, f, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, o, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, tanhc, v3_output_shape, DT_FLOAT16, FORMAT_ND, {});
+
+  optiling::DynamicRNNV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynamicRnnV3TilingData);
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynamicRNNV3", compileInfo, info);
+
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynamicRNNV3", ge::GRAPH_FAILED);
 }

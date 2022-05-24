@@ -20,6 +20,7 @@ set(_optiling_files
   runtime/dynamic_atomic_addr_clean.cc
   runtime/flatten.cc
   runtime/max_pool_v3.cc
+  runtime/dynamic_rnn_v3.cc
   ../utils/block_store.cc
   ../utils/block_pool.cc
   ../../common/src/error_util.cc

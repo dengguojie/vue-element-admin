@@ -1386,6 +1386,7 @@ vector_B:
       - ops/built-in/op_proto/runtime/moving_sum_with_sigmoid.cc
       - ops/built-in/op_proto/runtime/reduce_infer.cc
       - ops/built-in/op_proto/runtime/broadcast_infer.cc
+      - ops/built-in/op_proto/runtime/dynamic_rnn_v3.cc
       - ops/built-in/op_proto/runtime/flatten.cc
       - ops/built-in/op_proto/runtime/max_pool_v3.cc
       - ops/built-in/op_proto/runtime/cast.cc
@@ -1401,6 +1402,8 @@ vector_B:
       - ops/built-in/op_tiling/runtime/max_pool_v3.h
       - ops/built-in/op_tiling/runtime/moving_sum_with_sigmoid.cc
       - ops/built-in/op_tiling/runtime/moving_sum_with_sigmoid.h
+      - ops/built-in/op_tiling/runtime/dynamic_rnn_v3.cc
+      - ops/built-in/op_tiling/runtime/dynamic_rnn_v3.h
       - ops/built-in/op_tiling/runtime/runtime2_util.cc
       - ops/built-in/op_tiling/runtime/runtime2_util.h
       - ops/common/inc/context_util.h

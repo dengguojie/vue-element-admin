@@ -25,6 +25,11 @@ static std::map<std::string, std::vector<std::vector<std::string>>> operator_inf
      {{"x"}, {"y"}, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}}},
     {"Flatten", {{"x"}, {"y"}, {"axis"}}},
     {"Cast", {{"x"}, {"y"}, {"dst_type"}}},
+    {"DynamicRNNV3",
+     {{"x", "w", "b", "seq_length", "init_h", "init_c", "wci", "wcf", "wco", "mask", "real_mask", "project"},
+      {"y", "output_h", "output_c", "i", "j", "f", "o", "tanhc"},
+      {"cell_type", "direction", "cell_depth", "use_peephole", "keep_prob", "cell_clip",
+       "num_proj", "time_major", "activation", "forget_bias", "is_training"}}},
 };
 
 void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vector<string> attrs,

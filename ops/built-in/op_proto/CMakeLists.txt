@@ -50,6 +50,7 @@ set(_op_proto_srcs
   runtime/max_pool_v3.cc
   runtime/transpose.cc
   runtime/layer_norm.cc
+  runtime/dynamic_rnn_v3.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc
