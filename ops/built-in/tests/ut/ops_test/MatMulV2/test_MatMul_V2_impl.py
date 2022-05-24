@@ -895,6 +895,56 @@ def test_matmul_nd(test_arg):
         }
         cce_build_code(sch, config)
 
+
+def test_nd_k_full_load_conflict(test_arg):
+    # for DTS2022041902436
+    te_set_version("Ascend910A")
+    tiling_params = {
+        'op_type': 'matmul', 'A_shape': [1, 16, 32, 16, 16], 'B_shape': [256, 32, 1, 1, 16],
+        'C_shape': None, 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float32',
+        'mad_dtype': 'float32', 'padl': 10, 'padr': 10, 'padu': 0, 'padd': 0, 'strideH': 0,
+        "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 3, 'dilationW': 1,
+        'group': 1, 'bias_flag': False, 'fused_double_operand_num': 0.0, 'shape_a_align': 1,
+        'shape_b_align': 1, 'kernel_name': "matmul_nd_k_full_load_conflict", 'scalar_size': 0, 'batch_type': 0,
+        'reduce_fusion': 0, "tiling_access_version": 0}
+    tiling_dict = {
+        "matmul_nd_k_full_load_conflict": {
+            'AL0_matrix': [1, 4, 16, 16, 1, 1], 'AL1_shape': [128, 1, 1, 1], 'AUB_channel_wise_flag': None,
+            'AUB_shape': [128, 1, 1, 1], 'A_overhead_opt_flag': 0,
+            'BL0_matrix': [4, 16, 16, 16, 1, 1], 'BL1_shape': [128, 1, 1, 1], 'BUB_channel_wise_flag': None,
+            'BUB_shape': [128, 16, 1, 1], 'B_overhead_opt_flag': 0,
+            'CL0_matrix': [16, 1, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [16, 1, 16, 16, 1, 1],
+            'batch_bef_group_flag': 0, 'block_dim': [1, 1, 1, 2],
+            'manual_pingpong_buffer': {
+                'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1,
+                'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1
+            },
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0
+        }
+    }
+    with cce():
+        x1 = tvm.placeholder((512, 256), name="x1",
+                             attrs={'format': "ND", "ori_shape": (512, 256)}, dtype="float16")
+        x2 = tvm.placeholder((512, 256), name="x2",
+                             attrs={'format': "ND", "ori_shape": (512, 256)}, dtype="float16")
+        output_y = {"shape": (32, 32, 16, 16), "dtype": "float32",
+                    "ori_shape": (32, 32, 16, 16), "format": "FRACTAL_NZ", "ori_format": "FRACTAL_NZ"}
+        matmul_out = mat_mul_compute_self(x1, x2, None, None, output_y, False, True, 0, "matmul_nd_k_full_load_conflict", "")
+        tensor_list = [x1, x2, matmul_out]
+        cur_tiling_type = TILING_INSTANCE.get_tiling_type()
+        TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+        sch = auto_schedule(matmul_out)
+        TILING_INSTANCE.instance_refresh(cur_tiling_type, tiling_params, {})
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_nd_k_full_load_conflict",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version("Ascend310")
+
+
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
@@ -902,6 +952,8 @@ ut_case.add_cust_test_func(test_func=test_auto_tiling)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k)
 ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
+ut_case.add_cust_test_func(test_func=test_nd_k_full_load_conflict)
+
 
 for case_info in nd_cases:
     ut_case.add_case(["Ascend310"], case_info)

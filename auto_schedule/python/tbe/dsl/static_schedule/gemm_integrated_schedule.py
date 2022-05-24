@@ -4376,7 +4376,7 @@ class GemmSchedule:
         a_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
         k_bound_tiling = (self._int_ceil_div(a_matrix_dim[-3], self.tiling.get("AL0_matrix")[1])
             * self.tiling.get("AL0_matrix")[1] * self.block_reduce)
-        return k_bound_tiling
+        return self._int_ceil_div(k_bound_tiling, self.tiling.get("block_dim")[-1])
 
     def _get_b_max_k_bound(self):
         """
@@ -4386,7 +4386,7 @@ class GemmSchedule:
         b_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
         k_bound_tiling = (self._int_ceil_div(b_matrix_dim[-4], self.tiling.get("BL0_matrix")[0])
                 * self.tiling.get("BL0_matrix")[0] * self.block_reduce)
-        return k_bound_tiling
+        return self._int_ceil_div(k_bound_tiling, self.tiling.get("block_dim")[-1])
 
     def do_aub_storage_align(self):
         """
