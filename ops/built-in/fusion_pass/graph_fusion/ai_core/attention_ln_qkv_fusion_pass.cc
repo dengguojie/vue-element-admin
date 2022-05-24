@@ -49,7 +49,6 @@
 #include "pattern_fusion_util.h"
 
 namespace fe {
-static bool g_trainingFlag = true;
 static const int kKernelNum = 3;
 static const int kXIndex = 0;
 static const int kGammaIndex = 4;
@@ -61,10 +60,12 @@ static const int kLnVarIndex = 2;
 static const int kBiasInputIndex = 6;
 static const int kOutDimSize = 6;
 static const int kMInnerIndex = 3;
+static const int kInferOutNum = 4;
 static const size_t kCoreNum8 = 8;
 static const size_t kCoreNum32 = 32;
 static const int64_t kC0 = 16;
-static const int64_t kInferMinMShape = 12288;
+static const int64_t kInferMinMShape = 1536;
+static const int64_t kTrainMinMShape = 6144;
 static const int64_t kCandidateN1 = 1024;
 static const int64_t kCandidateN2 = 768;
 static const int64_t kCandidateTilingM1 = 12;
@@ -79,7 +80,6 @@ static const string kOpLayernorm = "LayerNorm";
 static const string kOpMatmul = "MatMulV2";
 static const string kOpTransdata = "TransData";
 static const string kOpReformat = "ReFormat";
-static const string kOpAdd = "Add";
 static const string kOpConfusionTranspose = "ConfusionTransposeD";
 static const string kOpAttentionLnQKV = "AttentionLnQKV";
 vector<FusionPattern *> AttentionLnQKVFusionPass::DefinePatterns() {
@@ -122,7 +122,11 @@ Status AttentionLnQKVFusionPass::Fusion(ge::ComputeGraph &graph,
     OP_LOGW(FUSED_OP_TYPE, "Fail to get platform info.");
     optional_info.soc_version == "";
   }
-  if (optional_info.soc_version != "Ascend710") {
+  size_t core_num = platform_info.soc_info.ai_core_cnt;
+  const auto &instrinsicMap = platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"];
+  bool support_fp32_flag =
+      find(instrinsicMap.begin(), instrinsicMap.end(), "float32") != instrinsicMap.end();
+  if (!support_fp32_flag || (core_num != kCoreNum8 && core_num != kCoreNum32)) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "platform not supported.");
     return NOT_CHANGED;
   }
@@ -158,7 +162,7 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
   // pattern check
   auto out_anchor = ln_node->GetOutDataAnchor(0);
   auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
-  // training/inference both has 2 outputs
+  // training/inference both has 2 or more outputs
   if (peer_in_anchors.size() <= 1) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "output nodes nums of LN [%d] unmatched!", peer_in_anchors.size());
     return false;
@@ -167,13 +171,15 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
   //   layer_norm-> add(1) + transdata-> reformat-> transdata->mm_q + transdata->mm_k + transdata->mm_v
   auto trans_node = peer_in_anchors.at(0)->GetOwnerNode();
   if (kOpTransdata != trans_node->GetType()) {
-    g_trainingFlag = false;
-    if (kOpAdd != trans_node->GetType()) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "add node [%s] match failed in inference.", trans_node->GetName().c_str());
+    training_flag = false;
+    // layernorm outputs are add node and three matmuls in inference
+    if (peer_in_anchors.size() != kInferOutNum) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "num of layernorm outs should be 4 in inference, but is [%d] now.",
+          peer_in_anchors.size());
       return false;
     }
   }
-  if (g_trainingFlag) {
+  if (training_flag) {
     auto reformat_node = trans_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(0)->GetOwnerNode();
     if (kOpReformat != reformat_node->GetType()) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "second node [%s] match failed.", reformat_node->GetName().c_str());
@@ -226,7 +232,13 @@ bool AttentionLnQKVFusionPass::ShapeCheck(const ge::NodePtr &ln_node,
     return false;
   }
   if (ln_out_shape[0] % kInferMinMShape != 0) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "in inference, m_shape should be times of 12288, actual is [%d].", ln_out_shape[0]);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "m_shape should be times of kInferMinMShape [%d] in inference, but is [%d] now.",
+        kInferMinMShape, ln_out_shape[0]);
+    return false;
+  }
+  if (training_flag && ln_out_shape[0] % kTrainMinMShape != 0) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "m_shape should be times of kTrainMinMShape [%d] in training, but is [%d] now.",
+        kTrainMinMShape, ln_out_shape[0]);
     return false;
   }
   vector<int64_t> out_shape = conf_trans_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
@@ -253,11 +265,11 @@ bool AttentionLnQKVFusionPass::UpgradeNodeList(const ge::OutDataAnchorPtr &out_a
     return false;
   }
   // in inference, out index of matmul starts at 1
-  for (int i = !g_trainingFlag; i < static_cast<int>(peer_in_anchors.size()); i++) {
+  for (int i = !training_flag; i < static_cast<int>(peer_in_anchors.size()); i++) {
     auto next_node = peer_in_anchors.at(i)->GetOwnerNode();
     auto next_matmul_node = next_node;
     // in training, pre node of matmul is trans_data
-    if (g_trainingFlag) {
+    if (training_flag) {
       if (kOpTransdata != next_node->GetType()) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "next node of ReFormat is not TransData, but [%s].",
             next_node->GetType().c_str());
@@ -270,7 +282,7 @@ bool AttentionLnQKVFusionPass::UpgradeNodeList(const ge::OutDataAnchorPtr &out_a
       return false;
     }
     // only first three transdata->matmul pattern need to be processed
-    if (i >= kKernelNum + !g_trainingFlag) {
+    if (i >= kKernelNum + !training_flag) {
       continue;
     }
     bool trans_a = false;
@@ -423,12 +435,12 @@ Status AttentionLnQKVFusionPass::ProcessLayerNorm(ge::ComputeGraph &graph,
   }
   std::vector<ge::NodePtr> remove_node_list = {ln_node};
   // in training, mean&&variance should be passed to LayerNormBackprop
-  if (g_trainingFlag && SUCCESS != ProcessLayerNormBackprop(ln_node, attention_ln_qkv_node, remove_node_list)) {
+  if (training_flag && SUCCESS != ProcessLayerNormBackprop(ln_node, attention_ln_qkv_node, remove_node_list)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "ProcessLayerNormBackprop failed in training.");
     return FAILED;
   }
   // remove edge from ln to add
-  auto ln_out_anchor = ln_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(g_trainingFlag);
+  auto ln_out_anchor = ln_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(training_flag);
   if (ge::GraphUtils::RemoveEdge(ln_node->GetOutDataAnchor(0), ln_out_anchor) != SUCCESS) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge from ln_node to [%s] failed.",
         ln_out_anchor->GetOwnerNode()->GetName().c_str());
@@ -499,3 +511,4 @@ Status AttentionLnQKVFusionPass::ReplaceAttentionLnQKV(ge::ComputeGraph &graph,
 
 REGISTER_PASS("ZAttentionLnQKVFusionPass", SECOND_ROUND_BUILT_IN_GRAPH_PASS, AttentionLnQKVFusionPass);
 } // namespace fe
+

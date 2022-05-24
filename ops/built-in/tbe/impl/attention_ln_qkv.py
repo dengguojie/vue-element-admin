@@ -409,9 +409,12 @@ class AttentionLnQKV:
         tik_instance.data_move(bl1, kernel_gm[bl1_src_offset:], 0, self.matmul_n_l0, self.matmul_k_bl1 * Constant.C0,
             (self.k1_shape - self.matmul_k_bl1) * Constant.C0, 0)
         with tik_instance.for_range(0, self.matmul_m_al1 // self.matmul_m_l0):
-            # al0 process
-            al0 = tik_instance.Tensor(self.dtype, (self.matmul_m_l0, self.matmul_k_l0, Constant.M0, Constant.C0),
-                name="al0_" + ping_pong_suffix, scope=tik.scope_ca)
+            # al0 process, al0_ping reuse x_l0a manually
+            if ping_pong == 0:
+                al0 = self.x_l0a
+            else:
+                al0 = tik_instance.Tensor(self.dtype, (self.matmul_m_l0, self.matmul_k_l0, Constant.M0, Constant.C0),
+                    name="al0_" + ping_pong_suffix, scope=tik.scope_ca)
             with tik_instance.for_range(0, self.matmul_m_l0) as mal0_idx:
                 al1_offset = (Constant.DOUBLE_BUFFER * kl1_factor_idx + ping_pong) * self.matmul_k_al1 * \
                     self.matmul_m_al1 * Constant.M0 * Constant.C0 + mal0_idx * Constant.M0 * Constant.C0

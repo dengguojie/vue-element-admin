@@ -39,8 +39,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_1) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -279,8 +280,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_2) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -459,8 +461,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_3) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -651,8 +654,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_4) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -827,8 +831,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_5) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -1000,8 +1005,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_6) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -1169,8 +1175,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_7) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -1345,8 +1352,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_8) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -1514,8 +1522,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_9) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -1694,8 +1703,8 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_10) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 2;
-    opti_compilation_info.soc_version = "Ascend310";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -1874,8 +1883,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_11) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -2054,8 +2064,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_12) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -2234,8 +2245,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_13) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -2474,8 +2486,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_14) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -2714,8 +2727,9 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_15) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"] = {"float32"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     auto input_x_data = op::Data("input_x_data");
@@ -2759,12 +2773,19 @@ TEST_F(attention_ln_qkv_fusion_test, attention_ln_qkv_fusion_test_15) {
     end_op_variance.set_input_x(layer_norm, "variance");
     end_op_variance.set_attr_dst_type(1);
 
-    auto reformat_0 = op::ReFormat("reformat");
+    auto reformat_0 = op::ReFormat("reformat0");
     TensorDesc reformat_in_desc(ge::Shape({12288, 1024}), FORMAT_ND, DT_FLOAT16);
     TensorDesc reformat_out_desc(ge::Shape({12288, 1024}), FORMAT_NHWC, DT_FLOAT16);
     reformat_0.update_input_desc_x(reformat_in_desc);
     reformat_0.update_output_desc_y(reformat_out_desc);
     reformat_0.set_input_x(layer_norm, "y");
+
+    auto reformat_1 = op::ReFormat("reformat1");
+    TensorDesc reformat_in_desc1(ge::Shape({12288, 1024}), FORMAT_ND, DT_FLOAT16);
+    TensorDesc reformat_out_desc1(ge::Shape({12288, 1024}), FORMAT_NHWC, DT_FLOAT16);
+    reformat_1.update_input_desc_x(reformat_in_desc1);
+    reformat_1.update_output_desc_y(reformat_out_desc1);
+    reformat_1.set_input_x(layer_norm, "y");
 
     TensorDesc kernel_query_desc(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
     Tensor kernel_query_tensor(kernel_query_desc);

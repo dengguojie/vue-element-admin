@@ -32,6 +32,7 @@ class AttentionLnQKVFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
+  bool training_flag = true;
   bool IsMatch(const ge::NodePtr &ln_node,
                std::vector<ge::NodePtr> &conf_trans_list,
                std::vector<ge::NodePtr> &matmul_list);
@@ -61,3 +62,4 @@ class AttentionLnQKVFusionPass : public PatternFusionBasePass {
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_LN_QKV_FUSION_PASS_H
+
