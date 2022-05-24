@@ -1092,6 +1092,7 @@ vector_B:
       - ops/built-in/tbe/impl/clip_by_norm_no_div_sum.py
       - ops/built-in/tbe/impl/clip_by_value.py
       - ops/built-in/tbe/impl/combined_non_max_suppression.py
+      - ops/built-in/tbe/impl/confusion_transpose_d.py
       - ops/built-in/tbe/impl/diag_d.py
       - ops/built-in/tbe/impl/max_pool_with_argmax.py
       - ops/built-in/tbe/impl/tile_d.py
@@ -1353,6 +1354,7 @@ vector_B:
       - ops/built-in/tbe/impl/square_sum_v1.py
       - ops/built-in/tbe/impl/strided_slice_d.py
       - ops/built-in/tbe/impl/tile_with_axis.py
+      - ops/built-in/tbe/impl/trans_data.py
       - ops/built-in/tbe/impl/trans_data_common_func.py
       - ops/built-in/tbe/impl/trans_data_negative_target_ntc.py
       - ops/built-in/tbe/impl/trans_data_negative_target_tc.py
@@ -2659,7 +2661,6 @@ unkown:
       - ops/built-in/tbe/impl/soft_shrink_grad.py
       - ops/built-in/tbe/impl/fused_mul_add_add.py
       - ops/built-in/tbe/impl/nhwc_2_fractal_z_c04.py
-      - ops/built-in/tbe/impl/confusion_transpose_d.py
       - ops/built-in/tbe/impl/fake_quant_with_min_max_vars_per_channel_gradient.py
       - ops/built-in/tbe/impl/adam_apply_one_with_decay.py
       - ops/built-in/tbe/impl/rpn_proposals_d.py
@@ -2834,7 +2835,6 @@ unkown:
       - ops/built-in/tbe/impl/relu6_d.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/mod.py
-      - ops/built-in/tbe/impl/trans_data.py
       - ops/built-in/tbe/impl/trans_data_rnn.py
       - ops/built-in/tbe/impl/atan.py
       - ops/built-in/tbe/impl/scatter_mul.py
