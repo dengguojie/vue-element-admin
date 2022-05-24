@@ -1341,6 +1341,8 @@ vector_B:
       - ops/built-in/tbe/impl/matrix_diag_part_d.py
       - ops/built-in/tbe/impl/minimum_grad.py
       - ops/built-in/tbe/impl/not_equal.py
+      - ops/built-in/tbe/impl/relu_v2.py
+      - ops/built-in/tbe/impl/relu_grad_v2.py
       - ops/built-in/tbe/impl/prelu_grad.py
       - ops/built-in/tbe/impl/range_d.py
       - ops/built-in/tbe/impl/reduce_mean_d.py
@@ -2650,7 +2652,6 @@ unkown:
       - ops/built-in/tbe/impl/reduce_min_d.py
       - ops/built-in/tbe/impl/hwcn_2_fractal_z_g.py
       - ops/built-in/tbe/impl/binary_cross_entropy.py
-      - ops/built-in/tbe/impl/relu_v2.py
       - ops/built-in/tbe/impl/basic_lstm_cell_c_state_grad_v2.py
       - ops/built-in/tbe/impl/deformable_offsets_grad.py
       - ops/built-in/tbe/impl/max_pool.py
@@ -2664,7 +2665,6 @@ unkown:
       - ops/built-in/tbe/impl/mask2_argmax.py
       - ops/built-in/tbe/impl/nz_2_nd.py
       - ops/built-in/tbe/impl/pass_through_forward.py
-      - ops/built-in/tbe/impl/relu_grad_v2.py
       - ops/built-in/tbe/impl/scatter_nd_sub.py
       - ops/built-in/tbe/impl/gather_nd.py
       - ops/built-in/tbe/impl/tile.py

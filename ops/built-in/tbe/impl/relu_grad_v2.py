@@ -19,6 +19,15 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from impl.dynamic.relu_grad_v2 import get_op_support_info as relu_get_op_support_info
+
+
+# 'pylint: disable=locally-disabled,too-many-argument,unused-argument,invalid-name
+def get_op_support_info(gradients, mask, backprops, kernel_name="relu_grad_v2"):
+    """
+    get_op_support_info
+    """
+    return get_op_support_info(gradients, mask, backprops, kernel_name="relu_grad_v2")
 
 
 # 'pylint: disable=locally-disabled,unused-argument
