@@ -2078,8 +2078,11 @@ vector_D:
   team: "vector_D"
   src:
     release:
+      - auto_schedule/python/tbe/dsl/static_schedule/softmax_cross_entropy_with_logits_schedule.py
+      - ops/built-in/op_proto/nn_norm_ops.cc
       - ops/built-in/tbe/impl/max_pool_grad.py
       - ops/built-in/tbe/impl/max_pool_v3_grad.py
+      - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
     unrelease:
       - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
@@ -2292,7 +2295,6 @@ unkown:
       - ops/built-in/op_proto/control_flow_ops.cc
       - ops/built-in/op_proto/state_ops.cc
       - ops/built-in/op_proto/no_op.cc
-      - ops/built-in/op_proto/nn_norm_ops.cc
       - ops/built-in/op_proto/outfeed_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/linalg_ops.cc
@@ -2600,7 +2602,6 @@ unkown:
       - ops/built-in/tbe/impl/pad_v2_align_reorder_ub.py
       - ops/built-in/tbe/impl/apply_ftrl_v2_d.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_loss.py
-      - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
       - ops/built-in/tbe/impl/in_top_k.py
       - ops/built-in/tbe/impl/strided_slice_last_dim_one.py
       - ops/built-in/tbe/impl/ndhwc_2_fractal_z_3d.py
@@ -3946,7 +3947,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/static_schedule/split_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/pooling3d_max_grad_grad_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_grad_schedule_nd.py
-      - auto_schedule/python/tbe/dsl/static_schedule/softmax_cross_entropy_with_logits_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/read_select_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/depthwise_conv2d_schedule.py
       - auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py

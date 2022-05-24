@@ -475,9 +475,9 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGD(TbeGetName(op),
+  OP_LOGI(TbeGetName(op),
           "after complete, input_features_dim is [%d, %d]", input_features_dim_0, input_features_dim_1);
-  OP_LOGD(TbeGetName(op),
+  OP_LOGI(TbeGetName(op),
           "after complete, input_labels_dim is [%d, %d]", input_labels_dim_0, input_labels_dim_1);
 
 

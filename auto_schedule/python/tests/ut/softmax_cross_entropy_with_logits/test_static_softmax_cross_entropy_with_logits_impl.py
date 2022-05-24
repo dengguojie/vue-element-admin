@@ -200,6 +200,15 @@ case24 = {"params": [{"shape": (6272, 27910), "dtype": "float32", "format": "NHW
           "expect": "success",
           "format_expect": [],
           "support_expect": True}
+case25 = {"params": [{"shape": (4096, 17191), "dtype": "float16", "format": "NHWC", "ori_shape": (4096, 17191), "ori_format": "NHWC"},
+                     {"shape": (4096, 17191), "dtype": "float16", "format": "NHWC", "ori_shape": (4096, 17191), "ori_format": "NHWC"},
+                     {"shape": (4096,), "dtype": "float16", "format": "NHWC", "ori_shape": (4096,), "ori_format": "NHWC"},
+                     {"shape": (4096, 17191), "dtype": "float16", "format": "NHWC", "ori_shape": (4096, 17191), "ori_format": "NHWC"}],
+          "addition_params": {"impl_mode": "high_precision"},
+          "case_name": "softmax_cross_entropy_with_logits_25",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
 
 compile_case_list = [
     case1,
@@ -225,11 +234,12 @@ compile_case_list = [
     case21,
     case22,
     case23,
-    case24
+    case24,
+    case25
 ]
 
 for item in compile_case_list:
-    ut_case.add_case(["Ascend910A"], case=item)
+    ut_case.add_case(["Ascend920A", "Ascend910A"], case=item)
 
 if __name__ == '__main__':
     import os

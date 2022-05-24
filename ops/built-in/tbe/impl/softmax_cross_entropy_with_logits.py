@@ -214,8 +214,16 @@ def softmax_cross_entropy_with_logits_compute(
 
     # Last axis is too large, use L1 workspace compute
     # and special designed schedule
-    current_csize_maximum_fp32 = 15360
-    high_perf_csize_maximum_fp32 = 20000
+    # except 920A, UB SIZE equals 256*1024, 920A UB SZIE equals 192*1024
+    # max_coexisting num is 4, dtype_size = 4, temp space needs 1024 nums
+    # `15360 = 256*1024 / 4 / 4 - 1024`
+    # `11264 = 192*1024 / 4 / 4 - 1024`
+    # over 20000, the performance is worse than using workspace, 20000 is an empirical value
+    # On 920A, the empirical is 15000
+    not_920 = tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_data_move_l12ub")
+    current_csize_maximum_fp32 = 15360 if not_920 else 11264
+    high_perf_csize_maximum_fp32 = 20000 if not_920 else 15000
+
     if current_csize_maximum_fp32 < shape_broadcast[1] < \
             high_perf_csize_maximum_fp32 and \
             tbe_platform.api_check_support("te.lang.cce.vexp",

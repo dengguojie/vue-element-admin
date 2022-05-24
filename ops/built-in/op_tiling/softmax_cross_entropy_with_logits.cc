@@ -162,7 +162,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& in
                       return false);
     }
   }
-  GELOGD("op [%s] after complete shape, input_shapes = [%lld, %lld], [%lld, %lld]", op_type.c_str(),
+  GELOGI("op [%s] features' shape = [%lld, %lld], labels' shape = [%lld, %lld]", op_type.c_str(),
          input_shapes[0][0], input_shapes[0][1], input_shapes[1][0], input_shapes[1][1]);
   return true;
 }

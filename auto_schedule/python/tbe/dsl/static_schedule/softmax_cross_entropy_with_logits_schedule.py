@@ -507,7 +507,13 @@ def logits_2d_schedule(res, input_tensors):
     output_backprop = res[1]
     shape = [var.value for var in output_backprop.shape]
     c_size = int(shape[1])
-    current_csize_maximum = 15360
+    # except 920A, UB SIZE equals 256*1024, 920A UB SZIE equals 192*1024
+    # max_coexisting num is 4, dtype_size = 4, temp space needs 1024 nums
+    # `15360 = 256*1024 / 4 / 4 - 1024`
+    # `11264 = 192*1024 / 4 / 4 - 1024`
+    not_920 = tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_data_move_l12ub")
+    current_csize_maximum = 15360 if not_920 else 11264
+
     if c_size > current_csize_maximum:
         return logits_2d_schedule_large_axis(res, input_tensors)
 
@@ -725,7 +731,11 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     output_backprop = res[1]
     c_size = int(res[1].shape[-1])
     # If the value is greater than or equal to 20,000, L1 cannot handle the problem
-    current_csize_maximum = 19999
+    # over 20000, the performance is worse than using workspace, 20000 is an empirical value
+    # On 920A, the empirical is 15000
+    not_920 = tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_data_move_l12ub")
+    current_csize_maximum = 19999 if not_920 else 14999
+
     if c_size > current_csize_maximum:
         return logits_2d_schedule_large_axis_workspace(res, input_tensors)
     # This node can be used to collect reduce result
