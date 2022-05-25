@@ -41,8 +41,9 @@ set(_op_proto_utils
 )
 
 set(_op_proto_srcs
-  runtime/cast.cc
   runtime/concat_d.cc
+  runtime/runtime_util.cc
+  runtime/elewise.cc
   runtime/moving_sum_with_sigmoid.cc
   runtime/reduce_infer.cc
   runtime/broadcast_infer.cc
@@ -53,6 +54,7 @@ set(_op_proto_srcs
   runtime/dynamic_rnn_v3.cc
   runtime/dyn_seq_outer.cc
   runtime/expand.cc
+  runtime/trans_data.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc

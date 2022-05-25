@@ -32,6 +32,7 @@ static std::map<std::string, std::vector<std::vector<std::string>>> operator_inf
       {"y", "output_h", "output_c", "i", "j", "f", "o", "tanhc"},
       {"cell_type", "direction", "cell_depth", "use_peephole", "keep_prob", "cell_clip",
        "num_proj", "time_major", "activation", "forget_bias", "is_training"}}},
+    {"TransData", {{"src"}, {"dst"}, {}}}
 };
 
 void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vector<string> attrs,

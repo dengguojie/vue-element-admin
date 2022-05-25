@@ -12,6 +12,8 @@
 #include "op_log.h"
 #include "op_tiling/op_tiling_util.h"
 #include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
+#include "runtime/trans_data.h"
 
 using namespace std;
 using namespace ge;
@@ -127,6 +129,20 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   }
 }
 
+static void run_case_runtime2(std::vector<int64_t> input_shape, std::vector<int64_t> output_shape, std::string data_dtype,
+                     std::string src_format, std::string dst_format, std::string compile_json,
+                     std::string expect_tiling, const int32_t &tiling_len) {
+  auto test_op = op::TransData("TransData");
+  add_input_desc_by_idx(test_op, 0, input_shape, input_shape, data_dtype, src_format, src_format);
+  add_output_desc_by_idx(test_op, 0, output_shape, output_shape, data_dtype, dst_format, dst_format);
+  optiling::TransDataCompileInfo compile_info;
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("TransData", compile_json, compile_info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, test_op, tiling_len, compile_info);
+  HOLDER_DO_TILING(holder, "TransData", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int64_t, expect_tiling);
+}
+
 TEST_F(TransDataTiling, TransData_tiling1) {
   std::vector<int64_t> input_shape = {1, 16, 7, 7};
   std::vector<int64_t> output_shape = {1, 1, 7, 7, 16};
@@ -141,6 +157,8 @@ TEST_F(TransDataTiling, TransData_tiling1) {
       "1 784 1 1 0 49 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling2) {
@@ -157,6 +175,8 @@ TEST_F(TransDataTiling, TransData_tiling2) {
       "1 0 1 1 1 1 10 157 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1010Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling3) {
@@ -173,6 +193,8 @@ TEST_F(TransDataTiling, TransData_tiling3) {
       "2 0 1 1 10 1 3 3191 2 1 1 1 10 1 3 3191 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1010Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling4) {
@@ -189,6 +211,8 @@ TEST_F(TransDataTiling, TransData_tiling4) {
       "3952 1 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling5) {
@@ -205,6 +229,8 @@ TEST_F(TransDataTiling, TransData_tiling5) {
       "86016 71904 112 1 16 1 1 0 1 3952 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling6) {
@@ -237,6 +263,8 @@ TEST_F(TransDataTiling, TransData_tiling7) {
       "76832 72030 76832 72030 14 1 1 0 1 1 0 2 1 76832 1 1 0 2401 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling8) {

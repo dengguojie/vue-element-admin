@@ -22,6 +22,12 @@ set(_optiling_files
   runtime/max_pool_v3.cc
   runtime/dynamic_rnn_v3.cc
   runtime/dyn_seq_outer.cc
+  runtime/trans_data.cc
+  runtime/trans_data_positive_source_tc_1010.cc
+  runtime/trans_data_negative_target_tc_201.cc
+  runtime/trans_data_positive_source_ntc_100.cc
+  runtime/trans_data_positive_source_tc_1011.cc
+  runtime/trans_data_negative_target_ntc.cc
   ../utils/block_store.cc
   ../utils/block_pool.cc
   ../../common/src/error_util.cc

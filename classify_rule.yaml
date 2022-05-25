@@ -1398,11 +1398,20 @@ vector_B:
       - ops/built-in/op_proto/runtime/dynamic_rnn_v3.cc
       - ops/built-in/op_proto/runtime/flatten.cc
       - ops/built-in/op_proto/runtime/max_pool_v3.cc
-      - ops/built-in/op_proto/runtime/cast.cc
       - ops/built-in/op_proto/runtime/transpose.cc
       - ops/built-in/op_proto/runtime/layer_norm.cc
       - ops/built-in/op_proto/runtime/concat_d.cc
+      - ops/built-in/op_proto/runtime/elewise.cc
+      - ops/built-in/op_proto/runtime/trans_data.cc
+      - ops/built-in/op_tiling/runtime/trans_data.cc
+      - ops/built-in/op_tiling/runtime/trans_data.h
+      - ops/built-in/op_tiling/runtime/trans_data_negative_target_ntc.cc
+      - ops/built-in/op_tiling/runtime/trans_data_negative_target_tc_201.cc
+      - ops/built-in/op_tiling/runtime/trans_data_positive_source_ntc_100.cc
+      - ops/built-in/op_tiling/runtime/trans_data_positive_source_tc_1010.cc
+      - ops/built-in/op_tiling/runtime/trans_data_positive_source_tc_1011.cc
       - ops/built-in/op_proto/runtime/runtime_util.h
+      - ops/built-in/op_proto/runtime/runtime_util.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.h
       - ops/built-in/op_tiling/runtime/flatten.cc

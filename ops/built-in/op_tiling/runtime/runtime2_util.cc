@@ -43,4 +43,24 @@ int64_t GetPartShapeSize(const gert::Shape& shape, size_t begin, size_t end) {
   }
   return size;
 }
+
+int64_t CeilAlign(int64_t u_value, int64_t d_value) {
+  int64_t res_value = 0;
+  if (d_value == 0) {
+    return u_value;
+  }
+  res_value = (u_value + d_value - 1) / d_value * d_value;
+
+  return res_value;
+}
+
+int64_t GetRemainder(int64_t u_value, int64_t d_value) {
+  int64_t res_value = 0;
+  if (d_value == 0) {
+    return u_value;
+  }
+  res_value = u_value % d_value;
+
+  return res_value;
+}
 }  // namespace optiling

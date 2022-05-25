@@ -40,6 +40,12 @@ std::unique_ptr<nlohmann::json> GetJsonObj(gert::TilingParseContext* context);
 
 bool AddWorkspace(gert::TilingContext* context, const size_t workspace);
 int64_t GetPartShapeSize(const gert::Shape& shape, size_t begin, size_t end);
-}  // namespace optiling
 
+// ceil(u_value/d_value)*d_value
+// eg. CeilAlign(4,3) -> 6, CeilAlign(4,2) -> 4, CeilAlign(4,0) -> 4
+int64_t CeilAlign(int64_t u_value, int64_t d_value);
+
+// if d_value == 0 return u_value, else return u_value % d_value
+int64_t GetRemainder(int64_t u_value, int64_t d_value);
+}  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_RUNTIME2_UTIL_H_

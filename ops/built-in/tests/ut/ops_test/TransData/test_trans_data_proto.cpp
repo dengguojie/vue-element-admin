@@ -23,6 +23,7 @@
 #include "op_proto_test_util.h"
 #include "common/utils/ut_profiling_reg.h"
 #include "transformation_ops.h"
+#include "common/utils/ut_op_common.h"
 
 class trans_data : public testing::Test {
  protected:
@@ -74,4 +75,16 @@ TEST_F(trans_data, trans_data_infer_shape_with_diff_format) {
   std::vector<int64_t> expected_output_shape = {};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(trans_data, trans_data_infer_rt2) {
+  ge::op::TransData op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  auto tensor_desc =
+      create_desc_shape_range({16, 16, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {64}, ge::FORMAT_NCHW, shape_range);
+  auto tensor_desc_out = create_desc_shape_range({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW, shape_range);
+  op.UpdateInputDesc("src", tensor_desc);
+  op.UpdateOutputDesc("dst", tensor_desc_out);
+  std::vector<int64_t> expected_output_shape = {16, 16, 16, 16};
+  CommonInferShapeOperator(op, {expected_output_shape});
 }

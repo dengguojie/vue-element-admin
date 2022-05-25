@@ -25,12 +25,5 @@ ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext *context) {
 
   *out_shape = *in_shape;
   return ge::GRAPH_SUCCESS;
-}
-
-IMPL_OP(Cast)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(Tanh)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(ZerosLike)
-    .InferShape(InferShapeForOneInOneOut);
+  }
 }  // namespace ops

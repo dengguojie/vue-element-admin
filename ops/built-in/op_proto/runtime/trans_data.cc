@@ -13,23 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "runtime_util.h"
 
-/*!
- * \file runtime_util.h
- * \brief
- */
-#ifndef OPS_BUILT_IN_OP_PROTO_RUNTIME_RUNTIME_UTIL_H_
-#define OPS_BUILT_IN_OP_PROTO_RUNTIME_RUNTIME_UTIL_H_
-
-#include "context_util.h"
-#include "register/op_impl_registry.h"
-#include "runtime/continuous_vector.h"
-#include "runtime/infer_shape_context.h"
-#include "runtime/storage_shape.h"
-#include "error_util.h"
+using namespace ge;
 namespace ops {
-// Do infershape for OP which is single-input single-output and in-shape equal out-shape.
- ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext *context);
-}
-
-#endif  // OPS_BUILT_IN_OP_PROTO_RUNTIME_RUNTIME_UTIL_H_
+IMPL_OP(TransData)
+    .InferShape(InferShapeForOneInOneOut);
+}  // namespace ops
