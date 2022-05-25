@@ -69,7 +69,7 @@ void EigenThreadPool::ParallelFor(int64_t total, int64_t per_unit_size,
       "Eigen threadpool parallel for begin, total[%ld], per_unit_size[%ld]",
       total, per_unit_size);
   if ((total <= 0) || (work == nullptr) || (per_unit_size <= 0)) {
-    KERNEL_LOG_ERROR(
+    KERNEL_LOG_WARN(
         "Invalid param: total[%ld] <= 0 or per_unit_size[%ld] <= 0 or work "
         "is "
         "nullptr",
