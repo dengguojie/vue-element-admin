@@ -11,7 +11,8 @@
         "UBFusion":{
             "TbeMatmulFixpipeFusionPass": "off",
             "TbeDxFixpipeFusionPass": "off",
-            "TbeDwFixpipeFusionPass": "off"
+            "TbeDwFixpipeFusionPass": "off",
+            "TbeConvDequantSigmoidMulAddFusionPass": "off"
         }
     },
     "Priority":{

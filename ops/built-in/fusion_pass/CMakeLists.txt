@@ -116,6 +116,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/pooling/tbe_antiquant_maxpooling_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/pooling/tbe_pooling_quant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv_clipByValue_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_sigmoid_mul_add_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/tbe_dw_fixpipe_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/tbe_dw_transdata_fusion_pass.cc

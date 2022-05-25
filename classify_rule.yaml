@@ -4042,6 +4042,8 @@ pytorch:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/roi_extractor_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_loss_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_loss_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_sigmoid_mul_add_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_sigmoid_mul_add_pass.h
       - ops/built-in/op_proto/inc/encoding_ops.h
       - ops/built-in/op_proto/encoding_ops.cc
       - ops/built-in/tbe/impl/lp_norm.py
