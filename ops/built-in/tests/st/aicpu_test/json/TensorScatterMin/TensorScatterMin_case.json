@@ -1,0 +1,442 @@
+[
+    {
+        "case_name": "Test_TensorScatterMin_DT_INT8",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int8"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int8"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int8"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_INT16",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int16"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int16"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int16"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_INT32",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_INT64",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2],
+                "value_range": [[0, 100]],
+                "data_distribute": "uniform",
+                "value":[8,50]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_FLOAT16",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["float16"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1.0,2.0,3.0,4.0,5.0],[6.0,7.0,8.0,9.0,10.0]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["float16"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[8.0,50.0]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float16"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_FLOAT",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1.0,2.0,3.0,4.0,5.0],[6.0,7.0,8.0,9.0,10.0]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[8.0,50.0]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_DOUBLE",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1.0,2.0,3.0,4.0,5.0],[6.0,7.0,8.0,9.0,10.0]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[8.0,50.0]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_UINT8",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["uint8"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["uint8"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["uint8"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_UINT16",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["uint16"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["uint16"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["uint16"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_UINT32",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["uint32"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["uint32"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["uint32"],
+                "shape": [2,5]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorScatterMin_DT_UINT64",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["uint64"],
+                "shape": [2,5],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform",
+                "value":[[1,2,3,4,5],[6,7,8,9,10]]
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int32"],
+                "shape": [2,2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[[0,0],[1,4]]
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["uint64"],
+                "shape": [2],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform",
+                "value":[2,3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["uint64"],
+                "shape": [2,5]
+            }
+        ]
+    }
+]

@@ -1156,6 +1156,35 @@ REG_OP(CdistGrad)
     .ATTR(p, Float, 2.0)
     .OP_END_FACTORY_REG(CdistGrad)
 
+/**
+* @brief  Computes the RaggedBincount. \n
+
+* @par Inputs:
+* Four inputs, including:
+* @li splits: A tensor with shpae: BxPXM. Must be one of the following types:
+*     int64.
+* @li values: A tensor with shpae: BxPXM. Must be one of the following types:
+*     float16, float32.
+* @li size: A tensor with shpae: BxRxM. Must be one of the following types:
+*     int32, int64.
+* @li weights: A tensor with shpae: BxRxM.
+*     Must be one of the following types: int32, int64, float, double. \n
+
+* @par Attributes:
+* @li binary_output: An optional bool \n
+
+* @par Outputs:
+* output: Must be one of the following types: int32, int64, float, double. \n
+*/
+REG_OP(RaggedBincount)
+    .INPUT(splits, TensorType({DT_INT64}))
+    .INPUT(values, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(size, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(weights, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .ATTR(binary_output, Bool, false)
+    .OP_END_FACTORY_REG(RaggedBincount)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

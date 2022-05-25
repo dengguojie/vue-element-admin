@@ -1,0 +1,398 @@
+[
+    {
+      "case_name": "Test_RaggedBincount_Case001",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case1",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [10, 1],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [10,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "case_name": "Test_RaggedBincount_Case002",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case2",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [10, 10],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [100,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "case_name": "Test_RaggedBincount_Case003",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case3",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [16, 16],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [256,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "case_name": "Test_RaggedBincount_Case004",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case4",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [32, 32],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [1024,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+  
+    {
+      "case_name": "Test_RaggedBincount_Case005",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case5",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [64, 64],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [4096,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+  
+    {
+      "case_name": "Test_RaggedBincount_Case006",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case6",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [128, 128],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [16384,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+  
+    {
+      "case_name": "Test_RaggedBincount_Case007",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case7",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [256, 256],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [65536,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+  
+    {
+      "case_name": "Test_RaggedBincount_Case008",
+      "op": "RaggedBincount",
+      "fuzz_impl": "./RB.py:fuzz_branch_case8",
+      "fuzz_case_num": 1,
+      "input_desc": [
+        {
+          "name": "splits",
+          "format": "ND",
+          "shape": "fuzz",
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform",
+          "value": "fuzz"
+        },{
+          "format": "ND",
+          "shape": [512, 512],
+          "type": ["int64"],
+          "value_range": [[1, 20]],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [],
+          "type": ["int64"],
+          "value": [10],
+          "data_distribute": "uniform"
+        },{
+          "format": "ND",
+          "shape": [10],
+          "type": ["int64"],
+          "value_range": [[1,10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [262144,10]
+        }
+      ],
+      "attr":[
+        {
+          "name": "binary_output",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "case_name":"DATA_TYPE_DT_FLOAT_001",
+        "op": "BandedTriangularSolve",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [2, 4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [   
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [1, 4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [1, 4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "lower",            
+                "type": "bool",
+                "value": false
+            },
+            {
+                "name": "adjoint",            
+                "type": "bool",
+                "value": false
+            }
+        ]
+    }
+]

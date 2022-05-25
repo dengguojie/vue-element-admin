@@ -1,0 +1,482 @@
+[
+    {
+      "case_name": "Test_IsotonicRegression_DT_float16_512",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [4, 4, 4, 2],
+          "type": ["float16"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float16"],
+          "shape": [4, 4, 4, 2]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [4, 4, 4, 2]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float16"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_float32_1k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [4, 8, 4, 2],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [4, 8, 4, 2]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [4, 8, 4, 2]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_double_2k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [8, 8, 4, 2],
+          "type": ["double"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["double"],
+          "shape": [8, 8, 4, 2]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [8, 8, 4, 2]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "double"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int8_4k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [8, 8, 8, 2],
+          "type": ["int8"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [8, 8, 8, 2]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [8, 8, 8, 2]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int8_8k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [8, 8, 8, 4],
+          "type": ["int8"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [8, 8, 8, 4]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [8, 8, 8, 4]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int16_16k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [8, 8, 8, 8],
+          "type": ["int16"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [8, 8, 8, 8]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [8, 8, 8, 8]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int16_32k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [16, 8, 8, 8],
+          "type": ["int16"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [16, 8, 8, 8]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [16, 8, 8, 8]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int32_64k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [16, 16, 8, 8],
+          "type": ["int32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["double"],
+          "shape": [16, 16, 8, 8]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [16, 16, 8, 8]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "double"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int32_128k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [16, 16, 16, 8],
+          "type": ["int32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["double"],
+          "shape": [16, 16, 16, 8]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [16, 16, 16, 8]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "double"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int64_256k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [16, 16, 16, 16],
+          "type": ["int64"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["double"],
+          "shape": [16, 16, 16, 16]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [16, 16, 16, 16]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "double"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_int64_512k",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [32, 16, 16, 16],
+          "type": ["int64"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["double"],
+          "shape": [32, 16, 16, 16]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [32, 16, 16, 16]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "double"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_float32_1M",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [64, 32, 32, 4],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [64, 32, 32, 4]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [64, 32, 32, 4]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_float32_2M",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [64, 64, 32, 4],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [64, 64, 32, 4]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [64, 64, 32, 4]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_float32_4M",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [64, 64, 32, 16],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [64, 64, 32, 16]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [64, 64, 32, 16]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    },
+    {
+      "case_name": "Test_IsotonicRegression_DT_float32_8M",
+      "op": "IsotonicRegression",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [64, 64, 32, 32],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["float32"],
+          "shape": [64, 64, 32, 32]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int32"],
+          "shape": [64, 64, 32, 32]
+        }
+      ],
+      "attr": [
+        {
+          "name": "output_dtype",
+          "type": "data_type",
+          "value": "float32"
+        }
+      ]
+    }
+  ]

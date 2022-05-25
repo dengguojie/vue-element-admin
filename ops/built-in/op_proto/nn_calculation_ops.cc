@@ -10662,4 +10662,32 @@ IMPLEMT_VERIFIER(Dilation, DilationVerify)
 
 COMMON_INFER_FUNC_REG(Dilation, DilationInferShape);
 VERIFY_FUNC_REG(Dilation, DilationVerify);
+
+
+// ----------------IsotonicRegression Begin------------------------
+IMPLEMT_COMMON_INFERFUNC(IsotonicRegressionInferShape) {
+  Shape x_shape = op.GetInputDescByName("input").GetShape();
+  DataType output_dtype = ge::DT_FLOAT;
+  if (op.GetAttr("output_dtype", output_dtype) != GRAPH_SUCCESS) {
+    OP_LOGI(TbeGetName(op), "No output_dtype setting, use output_dtype as float32");
+  }
+  if (output_dtype != ge::DT_FLOAT16 && output_dtype != ge::DT_FLOAT && output_dtype != ge::DT_DOUBLE){
+    std::string err_msg = 
+      ConcatString("The output_dtype only support DT_FLOAT16, DT_FLOAT and DT_DOUBLE, but got ", output_dtype);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  TensorDesc output = op.GetOutputDescByName("output");
+  output.SetShape(x_shape);
+  output.SetDataType(output_dtype);
+  (void)op.UpdateOutputDesc("output", output);
+  TensorDesc segments = op.GetOutputDescByName("segments");
+  segments.SetShape(x_shape);
+  segments.SetDataType(DT_INT32);
+  (void)op.UpdateOutputDesc("segments", segments);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(IsotonicRegression, IsotonicRegressionInferShape);
+// ----------------IsotonicRegression END---------------------------------
 } // namespace ge

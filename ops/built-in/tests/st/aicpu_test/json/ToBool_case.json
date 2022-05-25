@@ -1,0 +1,183 @@
+[
+    {
+      "case_name": "Test_ToBool_Case001",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [170, 3],
+          "type": ["float32"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case002",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [],
+          "type": ["float32"],
+          "value_range": [[0.1,1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case003",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [],
+          "type": ["float32"],
+          "value": [0],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case004",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [170, 3],
+          "type": ["double"],
+          "value_range": [[0.1, 1.0]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case005",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [],
+          "type": ["double"],
+          "value": [0.1],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case006",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [],
+          "type": ["double"],
+          "value": [0],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case007",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [],
+          "type": ["int32"],
+          "value": [0],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case008",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [20,10],
+          "type": ["int32"],
+          "value_range": [[1, 10]],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    },
+    {
+      "case_name": "Test_ToBool_Case009",
+      "op": "ToBool",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [],
+          "type": ["int32"],
+          "value": [1],
+          "data_distribute": "uniform"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["bool"],
+          "shape": []
+        }
+      ]
+    }
+  ]
+  

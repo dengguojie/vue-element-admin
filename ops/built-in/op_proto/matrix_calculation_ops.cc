@@ -4403,4 +4403,62 @@ INFER_FUNC_REG(Pinverse, PinverseInferShape);
 VERIFY_FUNC_REG(Pinverse, PinverseVerify);
 // ----------------Pinverse END---------------------------------
 
+// ----------------TensorScatterMax------------
+IMPLEMT_VERIFIER(TensorScatterMax, TensorScatterMaxVerify) {
+  if (!CheckTwoInputDtypeSame(op, "input", "updates")) {
+    AscendString op_name_str;
+    if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+      OP_LOGE(op_name_str.GetString(), "get op name faild!");
+      return GRAPH_FAILED;
+    }
+    const char *op_name = op_name_str.GetString();
+    OP_LOGE(op_name, "The input dtype of input updates is not equal, please check!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(TensorScatterMaxInferShape) {
+  Shape input_shape = op.GetInputDescByName("input").GetShape();
+  DataType input_dtype = op.GetInputDescByName("input").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("output");
+  td.SetShape(ge::Shape(input_shape));
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("output", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TensorScatterMax, TensorScatterMaxInferShape);
+VERIFY_FUNC_REG(TensorScatterMax, TensorScatterMaxVerify);
+// ------------------TensorScatterMax END------------------
+
+// ----------------TensorScatterMin------------
+IMPLEMT_VERIFIER(TensorScatterMin, TensorScatterMinVerify) {
+  if (!CheckTwoInputDtypeSame(op, "input", "updates")) {
+    AscendString op_name_str;
+    if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+      OP_LOGE(op_name_str.GetString(), "get op name faild!");
+      return GRAPH_FAILED;
+    }
+    const char *op_name = op_name_str.GetString();
+    OP_LOGE(op_name, "The input dtype of input updates is not equal, please check!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(TensorScatterMinInferShape) {
+  Shape input_shape = op.GetInputDescByName("input").GetShape();
+  DataType input_dtype = op.GetInputDescByName("input").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("output");
+  td.SetShape(ge::Shape(input_shape));
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("output", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TensorScatterMin, TensorScatterMinInferShape);
+VERIFY_FUNC_REG(TensorScatterMin, TensorScatterMinVerify);
+// ------------------TensorScatterMin END------------------
+
 }  // namespace ge

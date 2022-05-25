@@ -1514,4 +1514,57 @@ COMMON_INFER_FUNC_REG(CdistGrad, CdistGradInferShape);
 VERIFY_FUNC_REG(CdistGrad, CdistGradVerify);
 // ----------------CdistGrad END---------------------------------
 
+// ----------------RaggedBincount Begin------------------------
+IMPLEMT_COMMON_INFERFUNC(RaggedBincountInferShape) {
+    TensorDesc output_desc = op.GetOutputDescByName("output");
+    ge::Shape splits_shape = op.GetInputDescByName("splits").GetShape();
+    ge::Shape values_shape = op.GetInputDescByName("values").GetShape();
+    ge::Shape size_shape = op.GetInputDescByName("size").GetShape();
+    DataType weights_dtype = op.GetInputDescByName("weights").GetDataType();
+    std::vector<int64_t> splits_dim = splits_shape.GetDims();
+    std::vector<int64_t> values_dim = values_shape.GetDims();
+    std::vector<int64_t> size_dim = size_shape.GetDims();
+
+    if (splits_dim.size() != 1) {
+      OP_LOGE(TbeGetName(op).c_str(), "split dim must be 1\n");
+      return GRAPH_FAILED;
+    }
+    if (values_dim.size() != 2) {
+      OP_LOGE(TbeGetName(op).c_str(), "values dim must be 2\n");
+      return GRAPH_FAILED;
+    }
+    if (size_dim.size() != 0) {
+      OP_LOGE(TbeGetName(op).c_str(), "size must be scalar\n");
+      return GRAPH_FAILED;
+    }
+
+    Tensor dims0_tensor;
+    const int32_t* dims0_data;
+    if (op.GetInputConstData("size", dims0_tensor) == GRAPH_SUCCESS) {
+      const uint8_t* dims0 = dims0_tensor.GetData();
+      dims0_data = reinterpret_cast<const int32_t*>(dims0);
+    } else {
+      dims0_data = reinterpret_cast<const int32_t*>(&UNKNOWN_DIM);
+    }
+
+    std::vector<int64_t> dims = {splits_dim[0] - 1, *dims0_data};
+    output_desc.SetShape(Shape(dims));
+    output_desc.SetDataType(weights_dtype);
+    op.UpdateOutputDesc("output", output_desc);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(RaggedBincount, RaggedBincountVerify) {
+    DataType weights_dtype = op.GetInputDescByName("weights").GetDataType();
+    DataType output_dtype = op.GetOutputDescByName("output").GetDataType();
+
+    if (weights_dtype != output_dtype) {
+      OP_LOGE(TbeGetName(op).c_str(), "the weights input datatype must not be same output datatype\n");
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(RaggedBincount, RaggedBincountInferShape);
+VERIFY_FUNC_REG(RaggedBincount, RaggedBincountVerify);
+// ----------------RaggedBincount END---------------------------------
 }  // namespace ge

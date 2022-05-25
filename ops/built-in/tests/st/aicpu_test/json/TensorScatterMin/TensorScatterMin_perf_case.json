@@ -1,0 +1,964 @@
+[
+    {
+        "case_name": "Test_Perf_double_512",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,8],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,2],
+                "value_range": [[0, 7]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,8]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_1K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,16],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,2],
+                "value_range": [[0, 7]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8,16]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_4K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [16,32],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512,2],
+                "value_range": [[0, 15]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [512],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [16,32]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_8K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [32,32],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [[1024,2]],
+                "value_range": [[0, 31]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1024],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [32,32]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_16K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [[32,64]],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [[2048,2]],
+                "value_range": [0, 31],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [2048],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [32,64]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_32K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64,64],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [4096,2],
+                "value_range": [[0, 63]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [4096],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64,64]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_64K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64,128],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8192,2],
+                "value_range": [[0, 63]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [8192],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [64,128]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_128K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128,128],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16384,2],
+                "value_range": [0, 127],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [16384],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128,128]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_256K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128,256],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32768,2],
+                "value_range": [[0, 127]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [32768],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [128,256]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_512K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [256,256],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [65536,2],
+                "value_range": [[0, 255]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [65536],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [256,256]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_1M",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [256,512],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [131072,2],
+                "value_range": [[0, 255]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [131072],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [256,512]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_4M",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [512,1024],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [524288,2],
+                "value_range": [[0, 511]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [524288],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [512,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_double_8M",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1024,1024],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1048576,2],
+                "value_range": [[0, 1023]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1048576],
+                "value_range": [[0, 10.0]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["double"],
+                "shape": [1024,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_512",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,8],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,2],
+                "value_range": [[0, 7]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,8]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_1K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,16],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,2],
+                "value_range": [[0, 7]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8,16]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_4K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16,32],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512,2],
+                "value_range": [[0, 15]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16,32]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_8K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32,32],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [[1024,2]],
+                "value_range": [[0, 31]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1024],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32,32]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_16K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [[32,64]],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [[2048,2]],
+                "value_range": [0, 31],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [2048],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32,64]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_32K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,64],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [4096,2],
+                "value_range": [[0, 63]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [4096],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,64]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_64K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,128],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8192,2],
+                "value_range": [[0, 63]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [8192],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [64,128]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_128K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,128],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16384,2],
+                "value_range": [0, 127],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [16384],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,128]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_256K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,256],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32768,2],
+                "value_range": [[0, 127]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [32768],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [128,256]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_512K",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [256,256],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [65536,2],
+                "value_range": [[0, 255]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [65536],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [256,256]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_1M",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [256,512],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [131072,2],
+                "value_range": [[0, 255]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [131072],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [256,512]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_4M",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512,1024],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [524288,2],
+                "value_range": [[0, 511]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [524288],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [512,1024]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Perf_int64_8M",
+        "op": "TensorScatterMin", 
+        "input_desc": [
+            {
+                "name": "input",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1024,1024],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "indices",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1048576,2],
+                "value_range": [[0, 1023]],
+                "data_distribute": "uniform"
+            },
+            {
+                "name": "updates",
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1048576],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int64"],
+                "shape": [1024,1024]
+            }
+        ]
+    }
+]

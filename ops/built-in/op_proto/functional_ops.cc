@@ -210,4 +210,27 @@ IMPLEMT_VERIFIER(StatefulPartitionedCall, StatefulPartitionedCallVerify) {
   return GRAPH_SUCCESS;
 }
 VERIFY_FUNC_REG(StatefulPartitionedCall, StatefulPartitionedCallVerify);
+
+// ----------------ToBool Begin------------------------
+IMPLEMT_INFERFUNC(ToBool, ToBoolInfer) {
+  TensorDesc output_desc = op.GetOutputDescByName("output");
+  vector<int64_t> output_shape_vector = {};
+  ge::Shape output_shape(output_shape_vector);
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(ge::DT_BOOL);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(ToBool, ToBoolInfer);
+IMPLEMT_VERIFIER(ToBool, ToBoolVerify) {
+  DataType output_dtype = op.GetOutputDescByName("output").GetDataType();
+  if (output_dtype != DT_BOOL) {
+    string reason = "output should be DT_BOOL, actually is " + DataTypeToStringDesc(output_dtype);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", TbeGetName(op).c_str(), reason.c_str());
+    GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+VERIFY_FUNC_REG(ToBool, ToBoolVerify);
+// ----------------ToBool End------------------------
 }  // namespace ge

@@ -1690,5 +1690,24 @@ REG_OP(FixPipe)
     .ATTR(eltwise_mode, String, "")
     .OP_END_FACTORY_REG(FixPipe)
 
+/**
+* @brief Solves a batch of isotonic regression problems. \n
+
+* @par Inputs:
+* @li input: A Tensor.  \n
+
+* @par Attributes:
+* @li output_dtype: The data type of output. \n
+
+* @par Outputs:
+* @li output: A Tensor. A Tensor of type float16, float32, double.
+* @li segments: A Tensor. A Tensor of type int32 \n
+*/
+REG_OP(IsotonicRegression)
+    .INPUT(input, TensorType::RealNumberType())
+    .OUTPUT(output, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(segments, TensorType({DT_INT32}))
+    .ATTR(output_dtype, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(IsotonicRegression)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_CALCULATION_OPS_H_

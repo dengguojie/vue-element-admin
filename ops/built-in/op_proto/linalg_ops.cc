@@ -798,4 +798,54 @@ IMPLEMT_INFERFUNC(TridiagonalSolve, TridiagonalSolveInfer) {
 }
 
 INFER_FUNC_REG(TridiagonalSolve, TridiagonalSolveInfer);
+
+// ----------------------BandedTriangularSolve Start----------------------
+IMPLEMT_COMMON_INFERFUNC(BandedTriangularSolveInfer) {
+  auto bands_tensor = op.GetInputDescByName("bands");
+  auto rhs_tensor = op.GetInputDescByName("rhs");
+  DataType type = op.GetInputDescByName("bands").GetDataType();
+
+  TensorDesc output_desc = op.GetOutputDescByName("output");
+  output_desc.SetShape(op.GetInputDescByName("rhs").GetShape());
+  output_desc.SetDataType(type);
+  output_desc.SetFormat(op.GetInputDescByName("rhs").GetFormat());
+  op.UpdateOutputDesc("output", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(BandedTriangularSolve, BandedTriangularSolveVerify) {
+  std::string error_msg;
+  DataType input_type_bands = op.GetInputDescByName("bands").GetDataType();
+  DataType input_type_rhs = op.GetInputDescByName("rhs").GetDataType();
+  if (input_type_bands != input_type_rhs) {
+    error_msg = ConcatString("failed to match datatype of banks and rhs",".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  
+  Shape shape_bands = op.GetInputDescByName("bands").GetShape();
+  vector<int64_t> bands_dims = shape_bands.GetDims();
+  auto  bands_n = shape_bands.GetDimNum();
+  Shape shape_rhs = op.GetInputDescByName("rhs").GetShape();
+  vector<int64_t> rhs_dims = shape_rhs.GetDims();
+  auto rhs_n = shape_rhs.GetDimNum();
+  Shape shape_output = op.GetOutputDescByName("output").GetShape();
+  if (bands_dims[bands_n-1] != rhs_dims[rhs_n-2]) {
+    error_msg = ConcatString("the dim[0] of banks should be equal to the dim[1] of rhs, ","but get bands_dims[0] is",bands_dims[0]," and rhs_dims[1] is ", rhs_dims[1],".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  } 
+  for (size_t i=1; i<bands_n; i++) {
+    if (rhs_dims[i-1] > bands_dims[i]) {
+      return GRAPH_FAILED;
+    }
+  }
+  if(shape_rhs.GetDims() != shape_output.GetDims()) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(BandedTriangularSolve, BandedTriangularSolveInfer);
+VERIFY_FUNC_REG(BandedTriangularSolve, BandedTriangularSolveVerify);
+// ----------------------BandedTriangularSolve End---------------------
 }  // namespace ge

@@ -88,6 +88,7 @@ set(_tf_plugins
   avg_pool_grad_plugin.cc
   avg_pool_plugin.cc
   avg_pool3d_grad_plugin.cc
+  banded_triangular_solve_plugin.cc
   basic_lstm_cell_grad_plugin.cc
   basic_lstm_cell_plugin.cc
   batch_matmul_plugin.cc
@@ -338,6 +339,7 @@ set(_tf_plugins
   queue_enqueue_plugin.cc
   queue_is_close_plugin.cc
   queue_size_plugin.cc
+  ragged_bincount_plugin.cc
   random_shuffle_queue_plugin.cc
   random_uniform_plugin.cc
   random_gamma_plugin.cc
@@ -449,10 +451,13 @@ set(_tf_plugins
   tensor_map_stack_keys_plugin.cc
   tensorflow_fusion_op_parser_util.cc
   tensor_scatter_add_plugin.cc
+  tensor_scatter_max_plugin.cc
+  tensor_scatter_min_plugin.cc
   tensor_scatter_sub_plugin.cc
   tensor_scatter_update_plugin.cc
   tile_plugin.cc
   to_absolute_bbox_plugin.cc
+  to_bool_plugin.cc
   top_k_plugin.cc
   transpose_plugin.cc
   truncate_div_plugin.cc
