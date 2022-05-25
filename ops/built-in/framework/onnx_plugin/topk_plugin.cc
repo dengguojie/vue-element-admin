@@ -56,13 +56,18 @@ Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
 
-  opDesc->AddDynamicInputDesc("x", 1);
-  opDesc->AddDynamicOutputDesc("output", 1);
+  // 1.add dynamic input and out
+  int op_input_size = node->input_size();
+  int op_output_size = node->output_size();
+  opDesc->AddDynamicInputDesc("x", op_input_size);
+  opDesc->AddDynamicOutputDesc("y", op_output_size);
 
+  // 2.set original_type
   ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::9::TopK");
   int axis = -1;
   int64_t data = -1;
   
+  // 3.set attr if needed
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "k" && attr.type() == ge::onnx::AttributeProto::INT) {
       data = attr.i();
@@ -95,6 +100,7 @@ static Status ParseOpToGraphTopKV9(const ge::Operator& op, ge::Graph& graph) {
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
   output_indexs.emplace_back(topk, vector<std::size_t>{0});
+  output_indexs.emplace_back(topk, vector<std::size_t>{1});
   graph.SetInputs(inputs).SetOutputs(output_indexs);
   return SUCCESS;
 }
