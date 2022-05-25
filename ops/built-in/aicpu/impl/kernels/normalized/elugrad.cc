@@ -22,7 +22,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
-const char *KEluGrad = "EluGrad";
+const char *const KEluGrad = "EluGrad";
 
 #define ELUGRAD_COMPUTE_CASE(DTYPE, TYPE, CTX)           \
   case (DTYPE): {                                        \
@@ -52,7 +52,7 @@ uint32_t EluGradCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   return KERNEL_STATUS_OK;
 }
-uint32_t EluGradCpuKernel::EluGradCheck(CpuKernelContext &ctx) {
+uint32_t EluGradCpuKernel::EluGradCheck(const CpuKernelContext &ctx) const {
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input 0 failed.")
   KERNEL_CHECK_NULLPTR(ctx.Input(1)->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -73,14 +73,14 @@ uint32_t EluGradCpuKernel::EluGradCheck(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 template <typename T>
-uint32_t EluGradCpuKernel::EluGradCompute(CpuKernelContext &ctx) {
+uint32_t EluGradCpuKernel::EluGradCompute(const CpuKernelContext &ctx) {
   auto input_0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input_1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto output = reinterpret_cast<T *>(ctx.Output(0)->GetData());
 
   auto data_type = ctx.Input(0)->GetDataType();
   int64_t data_num = ctx.Output(0)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   auto num0 = static_cast<T>(0);
   auto num1 = static_cast<T>(1);
   if ((data_type == DT_FLOAT16 && data_size <= 128 * 1024) ||

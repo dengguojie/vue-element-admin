@@ -26,15 +26,13 @@ class EluGradCpuKernel : public CpuKernel {
  public:
   EluGradCpuKernel() = default;
   ~EluGradCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t EluGradCheck(CpuKernelContext &ctx);
+  uint32_t EluGradCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t EluGradCompute(CpuKernelContext &ctx);
+  uint32_t EluGradCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif
