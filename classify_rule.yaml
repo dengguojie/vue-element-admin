@@ -759,7 +759,6 @@ vector_A:
       - ops/built-in/op_proto/psroipooling_ops.cc
       - ops/built-in/op_proto/quantize_ops.cc
       - ops/built-in/op_proto/reduction_ops.cc
-      - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/rnn.cc
       - ops/built-in/op_proto/roipooling_ops.cc
       - ops/built-in/op_proto/ssddetectionoutput_ops.cc
@@ -2171,6 +2170,7 @@ ops_pub:
       - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/nn_detect_ops.h
+      - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/selection_ops.cc
     unrelease:
 
