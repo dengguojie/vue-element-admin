@@ -24,7 +24,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kEmbeddingLookup = "EmbeddingLookup";
+const char *const kEmbeddingLookup = "EmbeddingLookup";
 }
 
 namespace aicpu {
@@ -36,19 +36,19 @@ uint32_t EmbeddingLookuptMsCpuKernel::Compute(CpuKernelContext &ctx) {
 
   switch (index_type_) {
     case DT_INT8: {
-      EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int8_t>(ctx);
+      res = EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int8_t>(ctx);
       break;
     }
     case DT_INT16: {
-      EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int16_t>(ctx);
+      res = EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int16_t>(ctx);
       break;
     }
     case DT_INT32: {
-      EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int32_t>(ctx);
+      res = EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int32_t>(ctx);
       break;
     }
     case DT_INT64: {
-      EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int64_t>(ctx);
+      res = EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int64_t>(ctx);
       break;
     }
     default: {
@@ -58,12 +58,12 @@ uint32_t EmbeddingLookuptMsCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }
-  return KERNEL_STATUS_OK;
+  return res;
 }
 
 template <typename T>
-uint32_t EmbeddingLookuptMsCpuKernel::DoComputeForEachType(CpuKernelContext &ctx) {
-  size_t type_size = GetSizeByDataType(param_type_);
+uint32_t EmbeddingLookuptMsCpuKernel::DoComputeForEachType(const CpuKernelContext &ctx) {
+  int64_t type_size = GetSizeByDataType(param_type_);
   char *param = reinterpret_cast<char *>(ioAddrs_[0]);
   T *indices = reinterpret_cast<T *>(ioAddrs_[1]);
   char *emb = reinterpret_cast<char *>(ioAddrs_[3]);
@@ -102,7 +102,7 @@ uint32_t EmbeddingLookuptMsCpuKernel::DoComputeForEachType(CpuKernelContext &ctx
   return KERNEL_STATUS_OK;
 }
 
-uint32_t EmbeddingLookuptMsCpuKernel::GetInput(CpuKernelContext &ctx) {
+uint32_t EmbeddingLookuptMsCpuKernel::GetInput(const CpuKernelContext &ctx) {
   // get input Tensors
   const int kNumInput = 3;
   for (int i = 0; i < kNumInput; ++i) {

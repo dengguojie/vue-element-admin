@@ -26,10 +26,10 @@ class EmbeddingLookuptMsCpuKernel : public CpuKernel {
 
  private:
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
-  uint32_t GetInput(CpuKernelContext &ctx);
+  uint32_t GetInput(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t DoComputeForEachType(CpuKernelContext &ctx);
+  uint32_t DoComputeForEachType(const CpuKernelContext &ctx);
 
   std::vector<void *> ioAddrs_;
   int64_t offset_ = 0;
