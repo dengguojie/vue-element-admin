@@ -181,6 +181,9 @@ Status TabulateFusionFusionPass::CreateConcatNodes(ge::ComputeGraph &graph, ge::
  */
 Status TabulateFusionFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into TabulateFusion fusion pass.");
+  bool isSupport = false;
+  FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSupportVectorCore(FUSED_OP_TYPE, isSupport) != SUCCESS || !isSupport,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit for no support vector core"), return NOT_CHANGED);
 
   ge::NodePtr tabulateNode = GetNodeFromMapping(PATTERN_TABULATEFUSIONA, mapping);
   FUSION_PASS_CHECK(tabulateNode == nullptr,

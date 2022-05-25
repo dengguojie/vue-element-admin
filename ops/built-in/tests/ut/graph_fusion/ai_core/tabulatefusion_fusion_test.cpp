@@ -27,6 +27,8 @@
 #include "selection_ops.h"
 #include "deep_md.h"
 #include "fusion_pass_test_utils.h"
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -62,6 +64,14 @@ Data CreateDataNode(const std::string& nodeName, const std::vector<int64_t>& dim
 }
 
 TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_01) {
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
   std::string testCaseName = "tabulatefusion_fusion_test_01";
   int64_t nloc = 8192;
   int64_t nnei = 92;
@@ -127,6 +137,14 @@ TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_01) {
 }
 
 TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_02) {
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
   std::string testCaseName = "tabulatefusion_fusion_test_02";
   int64_t nloc = -1;
   int64_t nnei = -1;

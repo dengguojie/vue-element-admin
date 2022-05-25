@@ -725,6 +725,10 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prior_box_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prodenvmata_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prodenvmata_v2_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/rnn_fusion_pass.cc
@@ -770,6 +774,7 @@ vector_A:
       - ops/built-in/op_tiling/dynamic_rnn.cc
       - ops/built-in/op_tiling/dynamic_gru_v2.cc
       - ops/built-in/op_tiling/softmax_tiling.cc
+      - ops/built-in/op_tiling/tabulate_fusion.cc
       - ops/built-in/tbe/impl/ascend_quant.py
       - ops/built-in/tbe/impl/ascend_quant_util.py
       - ops/built-in/tbe/impl/basic_lstm_cell.py
@@ -794,6 +799,7 @@ vector_A:
       - ops/built-in/tbe/impl/mish.py
       - ops/built-in/tbe/impl/mvn.py
       - ops/built-in/tbe/impl/prior_box_d_v2.py
+      - ops/built-in/tbe/impl/dynamic/tabulate_fusion.py
       - ops/built-in/tbe/impl/softmax_grad.py
       - ops/built-in/tbe/impl/yolo_boxes_encode.py
       - ops/built-in/tbe/impl/anchor_response_flags.py
@@ -2201,7 +2207,6 @@ unkown:
       - ops/built-in/op_tiling/resize_common.h
       - ops/built-in/op_tiling/tile.cc
       - ops/built-in/op_tiling/sigmoid_cross_entropy_with_logits_grad_v2.cc
-      - ops/built-in/op_tiling/tabulate_fusion.cc
       - ops/built-in/op_tiling/cube_tiling_new.h
       - ops/built-in/op_tiling/op_tiling_util.cc
       - ops/built-in/op_tiling/error_log.h
@@ -2960,7 +2965,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/ascend_anti_quant.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss_grad.py
       - ops/built-in/tbe/impl/dynamic/reduce_mean_with_count.py
-      - ops/built-in/tbe/impl/dynamic/tabulate_fusion.py
       - ops/built-in/tbe/impl/dynamic/greater.py
       - ops/built-in/tbe/impl/dynamic/dynamic_gru_v2.py
       - ops/built-in/tbe/impl/dynamic/act_ulq_clamp_max_grad.py
@@ -3572,7 +3576,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_grad_align_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/combined_non_max_suppression_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/arg_max_with_k_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.cc
@@ -3595,8 +3598,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_maximum_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_max_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/keras_momentum_lossscale_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_preprocess_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unpack_fusion_pass.h
@@ -3801,7 +3802,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/cast_cast_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transposed_update_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/diag_part_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/sparse_softmax_cross_entropy_with_logits_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_min_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_fusion_pass.cc

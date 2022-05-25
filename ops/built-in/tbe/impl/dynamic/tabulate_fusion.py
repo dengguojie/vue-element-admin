@@ -122,6 +122,9 @@ class TabulateFusion():
         self.lower = None
         self.upper = None
         self.max = None
+        self.lower_ub = None
+        self.upper_ub = None
+        self.max_ub = None
         self.stride0 = None
         self.stride1 = None
 
@@ -194,6 +197,13 @@ class TabulateFusion():
         self.stride0.set_as(table_info_ub[self.NUM_3])
         self.stride1.set_as(table_info_ub[self.NUM_4])
 
+        self.lower_ub = self.tik_inst.Tensor(self.dtype, (self.vector_elems,), name="lower_ub", scope=tik.scope_ubuf)
+        self.upper_ub = self.tik_inst.Tensor(self.dtype, (self.vector_elems,), name="upper_ub", scope=tik.scope_ubuf)
+        self.max_ub = self.tik_inst.Tensor(self.dtype, (self.vector_elems,), name="max_ub", scope=tik.scope_ubuf)
+        self.tik_inst.vector_dup(self.NUM_64, self.lower_ub, self.lower, 1, 1, 8)
+        self.tik_inst.vector_dup(self.NUM_64, self.upper_ub, self.upper, 1, 1, 8)
+        self.tik_inst.vector_dup(self.NUM_64, self.max_ub, self.max, 1, 1, 8)
+
     def _get_tiling_args(self):
         """
         get runtime params from tiling data
@@ -239,11 +249,11 @@ class TabulateFusion():
 
             repeats_int16 = ceiling_value(repeats * self.NUM_4, self.NUM_128)
             # `xx >= lower`
-            self.tik_inst.vcmpvs_ge(mask_tensor1_not, em_x_ub, self.lower, repeats, 1, 8)
+            self.tik_inst.vcmpv_ge(mask_tensor1_not, em_x_ub, self.lower_ub, repeats, 1, 1, 8, 0)
             mask_tensor1_not_int16 = mask_tensor1_not.reinterpret_cast_to(self.dtype_int16)
 
             # `xx < upper`
-            self.tik_inst.vcmpvs_lt(mask_tensor2, em_x_ub, self.upper, repeats, 1, 8)
+            self.tik_inst.vcmpv_lt(mask_tensor2, em_x_ub, self.upper_ub, repeats, 1, 1, 8, 0)
             mask_tensor2_int16 = mask_tensor2.reinterpret_cast_to(self.dtype_int16)
             # `vnot: xx >= upper`
             self.tik_inst.vnot(self.NUM_128, mask_tensor2_not, mask_tensor2_int16, repeats_int16, 1, 1, 8, 8)
@@ -252,7 +262,7 @@ class TabulateFusion():
                                repeats_int16, 1, 1, 1, 8, 8, 8)
 
             # `xx < max`
-            self.tik_inst.vcmpvs_lt(mask_tensor3, em_x_ub, self.max, repeats, 1, 8)
+            self.tik_inst.vcmpv_lt(mask_tensor3, em_x_ub, self.max_ub, repeats, 1, 1, 8, 0)
             mask_tensor3_int16 = mask_tensor3.reinterpret_cast_to(self.dtype_int16)
             # `4. vnot: xx >= max`
             mask_tensor4_int16 = mask_tensor4.reinterpret_cast_to(self.dtype_int16)
@@ -301,6 +311,9 @@ class TabulateFusion():
             em_x_ub, xx_new_ub, table_idx_ub, inner_fp32_ub = ub_tensors
             inner_int32_ub = self.tik_inst.Tensor(self.dtype_int32, (self.vector_elems,), name="inner_int32_ub",
                                                   scope=tik.scope_ubuf)
+            first_stride_ub = self.tik_inst.Tensor(self.dtype_int32, (self.vector_elems,), name="first_stride_ub",
+                                                   scope=tik.scope_ubuf)
+            self.tik_inst.vector_dup(self.NUM_64, first_stride_ub, first_stride, 1, 1, 8)
             stride1_r_s = 1 / self.stride1
 
             with self.tik_inst.for_range(0, repeats) as i:
@@ -313,8 +326,8 @@ class TabulateFusion():
                     self.tik_inst.vmuls(mask, inner_fp32_ub, inner_fp32_ub, stride1_r_s, 1, 1, 1, 8, 8)
                     # `int((xx - upper) / stride1)`
                     self.tik_inst.vconv(mask, "floor", inner_int32_ub, inner_fp32_ub, 1, 1, 1, 8, 8)
-                    self.tik_inst.vadds(mask, table_idx_ub[self.NUM_64 * i], inner_int32_ub, first_stride,
-                                        1, 1, 1, 8, 8)
+                    self.tik_inst.vadd(mask, table_idx_ub[self.NUM_64 * i], inner_int32_ub, first_stride_ub,
+                                       1, 1, 1, 1, 8, 8, 8)
 
                     # calculate xx_new
                     self.tik_inst.vconv(mask, "none", inner_fp32_ub, inner_int32_ub, 1, 1, 1, 8, 8)
@@ -337,12 +350,15 @@ class TabulateFusion():
             second_stride.set_as(max_sub_upper / self.stride1)
             # calculate table_idx
             table_idx_value = first_stride + second_stride - 1
+            table_idx_value_ub = self.tik_inst.Tensor(self.dtype_int32, (self.vector_elems,),
+                                                      name="table_idx_value_ub", scope=tik.scope_ubuf)
+            self.tik_inst.vector_dup(self.NUM_64, table_idx_value_ub, table_idx_value, 1, 1, 8)
 
             with self.tik_inst.for_range(0, repeats) as i:
                 mask_right.set_as(mask_tensor4[i])
                 with self.tik_inst.if_scope(mask_right != 0):
-                    self.tik_inst.vadds([mask_left, mask_right], table_idx_ub[self.NUM_64 * i],
-                                        table_idx_ub[self.NUM_64 * i], table_idx_value, 1, 1, 1, 8, 8)
+                    self.tik_inst.vadd([mask_left, mask_right], table_idx_ub[self.NUM_64 * i],
+                                       table_idx_ub[self.NUM_64 * i], table_idx_value_ub, 1, 1, 1, 1, 8, 8, 8)
 
     def _cal_table_idx_and_xx(self, mask_tensors, ub_tensors, repeats):
         """
@@ -460,6 +476,46 @@ class TabulateFusion():
                 # `ago==xx, break`
                 for_end_s.set_as(0)
 
+    def _move_result_not_align(self, nloc_i_res, out_i_offset):
+        """
+        move result to gm, last_layer_size is not align.
+        """
+        tail = self.last_layer_size % self.block_elems
+        last_layer_size_pad = aligned_value(self.last_layer_size, self.block_elems)
+        # unroll
+        for row in range(3):
+            for idx in range(tail):
+                nloc_i_res[row * self.last_size_align + self.last_layer_size + idx].set_as(
+                    nloc_i_res[(row + 1) * self.last_size_align + idx])
+
+        # last 1 block
+        block_ub = self.tik_inst.Tensor(self.dtype, (self.block_elems,), name="block_ub", scope=tik.scope_ubuf)
+        last_block_start = self.last_size_align * self.NUM_3 + self.last_layer_size - self.block_elems
+        block_ub[self.NUM_0].set_as(nloc_i_res[last_block_start])
+        block_ub[self.NUM_1].set_as(nloc_i_res[last_block_start + self.NUM_1])
+        block_ub[self.NUM_2].set_as(nloc_i_res[last_block_start + self.NUM_2])
+        block_ub[self.NUM_3].set_as(nloc_i_res[last_block_start + self.NUM_3])
+        block_ub[self.NUM_4].set_as(nloc_i_res[last_block_start + self.NUM_4])
+        block_ub[self.NUM_5].set_as(nloc_i_res[last_block_start + self.NUM_5])
+        block_ub[self.NUM_6].set_as(nloc_i_res[last_block_start + self.NUM_6])
+        block_ub[self.NUM_7].set_as(nloc_i_res[last_block_start + self.NUM_7])
+
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            self.tik_inst.data_move(self.descriptor_gm[out_i_offset], nloc_i_res, 0, 1,
+                                    last_layer_size_pad // self.block_elems, 0, 0)
+            self.tik_inst.data_move(self.descriptor_gm[out_i_offset + self.last_layer_size],
+                                    nloc_i_res[self.last_size_align], 0, 1,
+                                    last_layer_size_pad // self.block_elems, 0, 0)
+            self.tik_inst.data_move(self.descriptor_gm[out_i_offset + self.last_layer_size * 2],
+                                    nloc_i_res[self.last_size_align * 2], 0, 1,
+                                    last_layer_size_pad // self.block_elems, 0, 0)
+        self.tik_inst.data_move(self.descriptor_gm[out_i_offset + self.last_layer_size * 3],
+                                nloc_i_res[self.last_size_align * 3], 0, 1,
+                                self.last_layer_size // self.block_elems, 0, 0)
+        self.tik_inst.data_move(
+            self.descriptor_gm[out_i_offset + self.last_layer_size * self.NUM_4 - self.block_elems],
+            block_ub, 0, 1, 1, 0, 0)
+
     def _cal_output_not_align(self, nloc_i_res, res_size, var_ub, ll_values, ago, xx, out_i_offset, nnei_j, for_end_s):
         """
         calculate result of nloc_i, last_layer_size is not 32 bytes align.
@@ -484,32 +540,36 @@ class TabulateFusion():
             self.tik_inst.vmuls(self.NUM_64, out_i, out_i, self.nnei - nnei_j, out_repeats, 1, 1, 8, 8)
             self.tik_inst.vadd(self.NUM_64, nloc_i_res, nloc_i_res, out_i, out_repeats, 1, 1, 1, 8, 8, 8)
 
-            self.tik_inst.v4dtrans(False, out_i, nloc_i_res, self.NUM_8, self.last_size_align)
-            self.tik_inst.v4dtrans(True, nloc_i_res, out_i, self.NUM_8, self.last_layer_size)
+            if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+                self.tik_inst.v4dtrans(False, out_i, nloc_i_res, self.NUM_8, self.last_size_align)
+                self.tik_inst.v4dtrans(True, nloc_i_res, out_i, self.NUM_8, self.last_layer_size)
 
-            # move result to gm
-            if self.last_layer_size % self.NUM_2 == 0:
-                self.tik_inst.data_move(self.descriptor_gm[out_i_offset], nloc_i_res, 0, 1,
-                                        self.last_layer_size * self.NUM_4 // self.block_elems, 0, 0)
+                # move result to gm
+                if self.last_layer_size % self.NUM_2 == 0:
+                    self.tik_inst.data_move(self.descriptor_gm[out_i_offset], nloc_i_res, 0, 1,
+                                            self.last_layer_size * self.NUM_4 // self.block_elems, 0, 0)
+                else:
+                    # store last 1 block
+                    block_ub = self.tik_inst.Tensor(self.dtype, (self.block_elems,), name="block_ub",
+                                                    scope=tik.scope_ubuf)
+                    last_size_start = self.last_size_align * self.NUM_3 + self.last_layer_size - self.block_elems
+                    # unroll
+                    block_ub[self.NUM_0].set_as(nloc_i_res[last_size_start])
+                    block_ub[self.NUM_1].set_as(nloc_i_res[last_size_start + self.NUM_1])
+                    block_ub[self.NUM_2].set_as(nloc_i_res[last_size_start + self.NUM_2])
+                    block_ub[self.NUM_3].set_as(nloc_i_res[last_size_start + self.NUM_3])
+                    block_ub[self.NUM_4].set_as(nloc_i_res[last_size_start + self.NUM_4])
+                    block_ub[self.NUM_5].set_as(nloc_i_res[last_size_start + self.NUM_5])
+                    block_ub[self.NUM_6].set_as(nloc_i_res[last_size_start + self.NUM_6])
+                    block_ub[self.NUM_7].set_as(nloc_i_res[last_size_start + self.NUM_7])
+
+                    self.tik_inst.data_move(self.descriptor_gm[out_i_offset], nloc_i_res, 0, 1,
+                                            self.last_layer_size * self.NUM_4 // self.block_elems - 1, 0, 0)
+                    self.tik_inst.data_move(
+                        self.descriptor_gm[out_i_offset + self.last_layer_size * self.NUM_4 - self.block_elems],
+                        block_ub, 0, 1, 1, 0, 0)
             else:
-                # store last 1 block
-                block_ub = self.tik_inst.Tensor(self.dtype, (self.block_elems,), name="block_ub", scope=tik.scope_ubuf)
-                last_size_start = self.last_size_align * self.NUM_3 + self.last_layer_size - self.block_elems
-                # unroll
-                block_ub[self.NUM_0].set_as(nloc_i_res[last_size_start])
-                block_ub[self.NUM_1].set_as(nloc_i_res[last_size_start + self.NUM_1])
-                block_ub[self.NUM_2].set_as(nloc_i_res[last_size_start + self.NUM_2])
-                block_ub[self.NUM_3].set_as(nloc_i_res[last_size_start + self.NUM_3])
-                block_ub[self.NUM_4].set_as(nloc_i_res[last_size_start + self.NUM_4])
-                block_ub[self.NUM_5].set_as(nloc_i_res[last_size_start + self.NUM_5])
-                block_ub[self.NUM_6].set_as(nloc_i_res[last_size_start + self.NUM_6])
-                block_ub[self.NUM_7].set_as(nloc_i_res[last_size_start + self.NUM_7])
-
-                self.tik_inst.data_move(self.descriptor_gm[out_i_offset], nloc_i_res, 0, 1,
-                                        self.last_layer_size * self.NUM_4 // self.block_elems - 1, 0, 0)
-                self.tik_inst.data_move(
-                    self.descriptor_gm[out_i_offset + self.last_layer_size * self.NUM_4 - self.block_elems],
-                    block_ub, 0, 1, 1, 0, 0)
+                self._move_result_not_align(nloc_i_res, out_i_offset)
 
             # `ago==xx, break`
             for_end_s.set_as(0)
