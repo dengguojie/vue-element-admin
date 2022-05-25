@@ -23,13 +23,13 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kIndexToAddr = "IndexToAddr";
+const char *const kIndexToAddr = "IndexToAddr";
 const char *kMatrix = "Matrix";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 1;
 
 template <typename T>
-uint32_t IndexToAddr(aicpu::CpuKernelContext &ctx) {
+uint32_t IndexToAddr(const aicpu::CpuKernelContext &ctx) {
   T *base_addr = static_cast<T *>(ctx.Input(0)->GetData());
   T row = static_cast<T *>(ctx.Input(1)->GetData())[0];
   T col = static_cast<T *>(ctx.Input(1)->GetData())[1];
@@ -74,7 +74,7 @@ uint32_t IndexToAddr(aicpu::CpuKernelContext &ctx) {
 }  // namespace
 
 namespace aicpu {
-uint32_t IndexToAddrCpuKernel::Check(CpuKernelContext &ctx) const {
+uint32_t IndexToAddrCpuKernel::Check(const CpuKernelContext &ctx) const {
   Tensor *base_addr = ctx.Input(0);
   Tensor *x = ctx.Input(1);
   Tensor *output = ctx.Output(0);
