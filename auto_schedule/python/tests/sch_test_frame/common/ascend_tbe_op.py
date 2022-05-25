@@ -226,7 +226,8 @@ class AscendOpKernelParam:
                  shape=None,
                  dtype=None,
                  ascend_device: AscendRTSApi = None,
-                 hbm_pointer: ctypes.c_void_p = None):
+                 hbm_pointer: ctypes.c_void_p = None,
+                 need_sync=True):
         if np_data is not None:
             self._np_data = np_data
             self._is_const = True
@@ -237,6 +238,7 @@ class AscendOpKernelParam:
             self._is_const = False
             self.shape = shape
             self.dtype = dtype
+        self.need_sync = need_sync
         shape_size = shape_utils.calc_shape_size(self.shape)
         if shape_size < 0:
             raise RuntimeError("Shape size < 0.")
@@ -280,6 +282,8 @@ class AscendOpKernelParam:
             self._np_data = np.reshape(np_data, self.shape)
 
     def sync_to_device(self, ascend_device: AscendRTSApi):
+        if not self.need_sync:
+            return
         self._ascend_device = ascend_device
         self._hbm_pointer = self._ascend_device.copy_bin_to_hbm(
             self._np_data.tobytes())
@@ -296,10 +300,14 @@ class AscendOpKernelParam:
             self._ascend_device = None
 
     def concat_into_kernel_args(self, kernel_args: List):
-        kernel_args.append(self._hbm_pointer)
+        if self.need_sync:
+            kernel_args.append(self._hbm_pointer)
+        else:
+            kernel_args.append(self._np_data)
 
     def get_data(self):
-        self.sync_from_device()
+        if self.need_sync:
+            self.sync_from_device()
         return self._np_data
 
     def create_ref(self):
@@ -351,6 +359,10 @@ class AscendOpKernelRunner:
         if isinstance(data, str):
             kernel_param = AscendOpKernelParam.build_op_param_by_data_file(
                 data_file_path=data, shape=shape, dtype=dtype)
+        elif isinstance(data, dict):
+            kernel_param = AscendOpKernelParam.build_op_param_by_np_data(
+                np_data=data["data"])
+            kernel_param.need_sync = False
         else:
             kernel_param = AscendOpKernelParam.build_op_param_by_np_data(
                 np_data=data)
@@ -487,10 +499,9 @@ class AscendOpKernelRunner:
         self._fill_workspace(kernel, workspace_hbm_p_list, kernel_args)
         tiling_hbm = []
         self._fill_tiling(kernel, tiling, tiling_hbm, kernel_args)
-        knl_args = [arg.value for arg in kernel_args]
         if not block_dim:
             block_dim = kernel.block_dim
-        self._execute_kernel(kernel, knl_args, block_dim)
+        self._execute_kernel(kernel, kernel_args, block_dim)
         for workspace_hbm_p in workspace_hbm_p_list:
             self.ascend_device.free(workspace_hbm_p)
         for tiling_hbm_p in tiling_hbm:

@@ -20,6 +20,8 @@ import os
 import time
 import math
 import ctypes
+import numpy as np
+import struct
 from typing import Union
 
 from . import rts_info
@@ -635,14 +637,15 @@ class AscendRTSApi:
                       args: tuple, s_args: int,
                       sm_desc: ctypes.c_uint64, stream: ctypes.c_uint64) -> None:
         c_block_dim = ctypes.c_uint32(block_dim)
-        c_args = ctypes.c_uint64 * s_args
-        c_args_p = c_args(*args)
-        c_s_args = ctypes.c_uint32(s_args * 8)
+        packfmt = "".join(("i" if isinstance(x, np.ndarray) else "Q" for x in args))
+        packdata = [x[0] if isinstance(x, np.ndarray) else x.value for x in args]
+        c_args = struct.pack(packfmt, *packdata)
+        c_s_args = ctypes.c_uint32(len(c_args))
         c_sm_dec = ctypes.c_void_p(sm_desc)
         self.rtsdll.rtKernelLaunch.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtKernelLaunch(stub_func,
                                               c_block_dim,
-                                              ctypes.c_void_p(ctypes.addressof(c_args_p)),
+                                              c_args,
                                               c_s_args,
                                               c_sm_dec,
                                               stream)

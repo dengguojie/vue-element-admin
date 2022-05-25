@@ -23,6 +23,7 @@ import stat
 import json
 import inspect
 import traceback
+import subprocess
 from enum import Enum
 from typing import List
 from typing import Dict
@@ -283,7 +284,12 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                                            distribution=distribution)
             param_info["value"] = data
 
-        if "data_path" in param_info.keys():
+        if param_info.get("param_type") == "var":
+            param_info["value"] = {
+                "type": "variable",
+                "data": np.array([param_info["run_value"]], param_info["dtype"])
+            }
+        elif "data_path" in param_info.keys():
             _deal_data_path()
         else:
             _deal_no_param_data_path()
@@ -313,7 +319,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         output_list = []
         for arg in param_list:
             param_type = OpUT._get_param_type(arg)
-            if param_type == "input":
+            if param_type in ("input", "var"):
                 _add_to_params(input_list, arg)
             if param_type == "output":
                 _add_to_params(output_list, arg)
@@ -381,7 +387,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 else:
                     _save_input_data(arg, input_idx)
                     input_idx += 1
-            if param_type == "output":
+            if param_type == "output" and arg.get("param_attr") != "workspace":
                 if isinstance(arg, list):
                     for sub_param in arg:
                         _save_output_data(sub_param, output_idx)
@@ -555,6 +561,35 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 return True
         return False
 
+    def _compile_cce(cce_file, o_file):
+        cmd = ["ccec",
+               "-c",
+               "-O2",
+               cce_file,
+               "--cce-aicore-arch=dav-c100",
+               "--cce-aicore-only",
+               "-o",
+               o_file,
+               "-mllvm",
+               "-cce-aicore-function-stack-size=16000",
+               "-mllvm",
+               "-cce-aicore-record-overflow=true"
+        ]
+        proc = subprocess.run(cmd, capture_output=True)
+        if proc.returncode != 0:
+            raise RuntimeError("ccec compile error {}".format(cce_file))
+        return True
+
+    @staticmethod
+    def _compile_modified_cce(kernel_name):
+        cce_file = os.path.join(OpUT.KERNEL_DIR, "{}.cce".format(kernel_name))
+        o_file = os.path.join(OpUT.KERNEL_DIR, "{}.o".format(kernel_name))
+        if os.path.isfile(cce_file) and os.path.isfile(o_file):
+            if os.path.getmtime(cce_file) > os.path.getmtime(o_file):
+                OpUT._compile_cce(cce_file, o_file)
+                return True
+        return False
+
     def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         if not case_info.addition_params:
@@ -584,6 +619,9 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
 
             else:
+                use_cce = OpUT._compile_modified_cce(kernel_name)
+                if use_cce:
+                    return call_op_success, err_msg
                 op_func(*case_info.op_params, **addition_params)
         except BaseException as run_err:  # pylint: disable=broad-except
             if case_info.expect != op_status.SUCCESS:
@@ -599,7 +637,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if case_info.expect == op_status.SUCCESS and call_op_success:
             if check_exist and not self._check_kernel_so_exist(self.KERNEL_DIR, kernel_name):
                 call_op_success = False
-                err_msg = "Call op func success, but no .o and .json generated."
+                err_msg = "Call op func success, but no .o and .json generated. {}".format(kernel_name)
 
         return call_op_success, err_msg
 
@@ -843,7 +881,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if case_info.addition_params:
             addition_params = case_info.addition_params
         try:
-            output_tensors = case_info.expect_out_fn(*case_info.op_params, **addition_params)
+            op_params = [x for x in case_info.op_params if x.get("param_type") != "var"]
+            output_tensors = case_info.expect_out_fn(*op_params, **addition_params)
         except BaseException as _:  # pylint: disable=broad-except
             err_trace = get_trace_info()
             return False, err_trace
@@ -851,7 +890,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if not isinstance(output_tensors, (list, tuple)):
             output_tensors = [output_tensors, ]
 
-        output_list = self._get_outputs(case_info.op_params)
+        op_params = [x for x in op_params if x.get("param_attr") != "workspace"]
+        output_list = self._get_outputs(op_params)
         if len(output_list) != len(output_tensors):
             err_msg = "calc_expect_func's return tensor count(%d) not equal output dict count(%d)." % (
                 len(output_tensors), len(output_list))
@@ -875,7 +915,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         return stage_status
 
     def _compare_output(self, case_info: op_ut_case_info.OpUTCase):
-        output_list = self._get_outputs(case_info.op_params)
+        op_params = [x for x in case_info.op_params if x.get("param_attr") != "workspace"]
+        output_list = self._get_outputs(op_params)
         err_msg = ""
         compare_success = True
         for idx, output in enumerate(output_list):

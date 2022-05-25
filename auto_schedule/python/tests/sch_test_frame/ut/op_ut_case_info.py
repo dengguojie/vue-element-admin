@@ -153,7 +153,8 @@ class OpUTCase(OpUTBaseCase):  # pylint: disable=too-many-instance-attributes
         super().__init__(support_soc=support_soc, op_type=op_type, case_name=case_name, case_usage=case_usage,
                          case_file=case_file, case_line_num=case_line_num)
 
-        self.op_params = op_params
+
+        self.op_params = OpUTCase._prepare_op_params(op_params)
         self.expect = expect
         self.expect_out_fn = expect_out_fn
         self.precision_standard = precision_standard
@@ -220,6 +221,21 @@ class OpUTCase(OpUTBaseCase):  # pylint: disable=too-many-instance-attributes
             "precision_standard": self.precision_standard.to_json_obj() if self.precision_standard else None,
             "op_imply_type": self.op_imply_type
         }
+
+    @staticmethod
+    def _prepare_op_params(op_params):
+        var_dict = {}
+        for param in op_params:
+            if param.get("param_type") == "var":
+                var_dict[param["var_name"]] = param["run_value"]
+
+        for param in op_params:
+            shape = param.get("shape")
+            if not shape:
+                continue
+            param["pre_shape"] = param["shape"]
+            param["shape"] = [var_dict[x] if isinstance(x, str) else x for x in shape]
+        return op_params
 
     @staticmethod
     def parser_json_obj(json_obj):
