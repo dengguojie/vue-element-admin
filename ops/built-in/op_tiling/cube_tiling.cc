@@ -121,7 +121,7 @@ namespace {
     }
 
     if (!compile_info.contains("tiling_range")) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no tiling_range in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the tiling_range");
       return tiling_id;
     }
 
@@ -141,7 +141,8 @@ namespace {
                                      const nlohmann::json &compile_info) {
     std::string tiling_id;
     if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(),
+                            "compile_info does not contain the key value of the repo_sends or repo_range");
       return tiling_id;
     }
 
@@ -162,7 +163,7 @@ namespace {
 
     if (tiling_id.empty()) {
       if (!compile_info.contains(kCompileCostRange)) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the cost_range");
         return tiling_id;
       }
 
@@ -223,7 +224,7 @@ namespace {
   string cube_tiling_nhw(const std::string &op_type, const std::vector<int64_t> &cur_shape, const std::string &x_format,
                          const nlohmann::json &compile_info, string tiling_id) {
     if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the repo_seeds or repo_range");
       return tiling_id;
     }
 
@@ -253,7 +254,7 @@ namespace {
     }
     if (tiling_id.empty()) {
       if (!compile_info.contains(kCompileCostRange)) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the cost_range.");
         return tiling_id;
       }
 
@@ -276,7 +277,7 @@ namespace {
           return tilingIdIndex;
       }
       if (compileInfo.tilingRangeList.size() == 0) {
-          CUBE_INNER_ERR_REPORT(opType.c_str(), "no tiling_range in compile info struct.");
+          CUBE_INNER_ERR_REPORT(opType.c_str(), "compile_info does not contain the key value of the tiling_range");
           return tilingIdIndex;
       }
       for (size_t i = 0; i < compileInfo.tilingRangeList.size(); i++) {
@@ -314,7 +315,7 @@ namespace {
       }
       if (tilingIdIndex >= compileInfo.tilingKeyList.size()) {
           if (compileInfo.costRangeList.size() == 0) {
-              CUBE_INNER_ERR_REPORT(opType.c_str(), "no cost_range in compile info struct.");
+              CUBE_INNER_ERR_REPORT(opType.c_str(), "compile_info does not contain the key value of the cost_range.");
               return tilingIdIndex;
           }
           for (size_t i = 0; i < compileInfo.costRangeList.size(); i++) {
@@ -395,7 +396,7 @@ bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_
     }
 
     if (!compile_info.contains("block_dim")) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the block_dim");
       return false;
     }
 
@@ -442,7 +443,7 @@ bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_
               return false;
           }
           if (compileInfo.blockDimList.size() == 0) {
-              CUBE_INNER_ERR_REPORT(opType.c_str(), "no block_dim in compile info struct.");
+              CUBE_INNER_ERR_REPORT(opType.c_str(), "compile_info does not contain the key value of the block_dim.");
               return false;
           }
 
@@ -530,7 +531,7 @@ bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_
       }
 
       if (!compile_info.contains("block_dim")) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the block_dim");
         return false;
       }
 

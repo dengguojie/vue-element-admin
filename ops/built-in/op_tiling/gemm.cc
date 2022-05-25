@@ -70,6 +70,7 @@ const int32_t CACHE_TILING_ID_LEN_ND = 9;
 const int32_t CACHE_TILING_ID_LEN_ND_SPLIT_K = 10;
 const int64_t KBLOCK_SIZE = 16;
 const int64_t KMULTI = 4;
+const size_t kInputSizeLimit = 2;
 /*
 TilingID from 20000 to 30000 means this tilingkey is used for aligned shape only. The range
 is ensured by gemm_tilingcase.py.
@@ -554,8 +555,13 @@ bool GemmParseFunc(const string &op_type, const json &compile_info, vector<share
 
 bool UpdateGemmCompileValue(const string &op_type, const ge::Operator &op_paras,
                             shared_ptr<GemmCompileInfo> &compile_value, BatchmatmulRunParas &run_params) {
-  OP_TILING_CHECK((op_paras.GetInputsSize() < 2), CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_paras is unvalid"),
-                  return false);
+  size_t gemm_input_size = op_paras.GetInputsSize();
+  OP_TILING_CHECK(
+      (gemm_input_size < kInputSizeLimit),
+      CUBE_INNER_ERR_REPORT(
+          op_type.c_str(),
+          "The number of inputs to the operator should not be less than 2, but it is actually %zu.", gemm_input_size),
+      return false);
 
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_desc is nullptr"), return false);

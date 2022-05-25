@@ -28,6 +28,7 @@
 
 namespace {
   const unsigned int SHAPE_SIZE_6HD = 6;
+  static const int kDimIndex = 2;
 }
 
 namespace optiling {
@@ -43,6 +44,7 @@ bool Conv3DTiling(const std::string& opType,
                   const ge::Operator& opParas,
                   const nlohmann::json& opCompileInfo,
                   utils::OpRunInfo& runInfo) {
+  GELOGD("Start Conv3DTiling process");
   if (opParas.GetInputsSize() == 0 ||
       opParas.GetOutputsSize() == 0 ||
       (opParas.GetInputDesc(0).GetShape().GetDimNum() < SHAPE_SIZE_6HD) ||
@@ -56,9 +58,14 @@ bool Conv3DTiling(const std::string& opType,
   }
 
   // the dim index of input x channel is 2
-  if (opCompileInfo.contains("fmap_c1") && opParas.GetInputDesc(0).GetShape().GetDim(2) != opCompileInfo["fmap_c1"]) {
-    CUBE_INNER_ERR_REPORT(opType.c_str(), "not support, input x channel should be equal to filter * groups");
-    return false;
+  int32_t input_channel_dim = opParas.GetInputDesc(0).GetShape().GetDim(kDimIndex);
+  if (opCompileInfo.contains("fmap_c1")) {
+    int32_t fmap_c1 = opCompileInfo["fmap_c1"];
+    OP_LOGE_IF(input_channel_dim != fmap_c1, false, opType,
+               "unsupported input, input x channel [%d] should be equal to filter * groups [%d]",
+               input_channel_dim, fmap_c1);
+  } else {
+    OP_LOGE(opType, "compile_info does not contain the key value of the fmap_c1");
   }
 
   nlohmann::json opInfo;

@@ -46,12 +46,17 @@ bool Conv3DBackpropInputTiling(const std::string& op_type,
                                const ge::Operator& op_paras,
                                const nlohmann::json& compile_info,
                                utils::OpRunInfo& run_info) {
-  if ((op_paras.GetInputsSize() <= kConv3dBpInputDedyInputIndex) ||
-      (op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDimNum() != kConv3dBpInputDimSizeLimit) ||
-      (op_paras.GetOutputDesc(0).GetShape().GetDimNum() != kConv3dBpInputDimSizeLimit)) {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "param check failed");
-    return false;
-  }
+  GELOGD("Start Conv3DBackpropInputTiling process");
+  int32_t input_size = op_paras.GetInputsSize();
+  int32_t dedy_dimnum = op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDimNum();
+  int32_t output_dimnum = op_paras.GetOutputDesc(0).GetShape().GetDimNum();
+  OP_LOGE_IF(input_size <= kConv3dBpInputDedyInputIndex, false, op_type,
+             "The number of inputs to the operator should not be less than 3, but it is actually %d.",
+             input_size);
+  OP_LOGE_IF(dedy_dimnum != kConv3dBpInputDimSizeLimit, false, op_type,
+             "The dimension of the dedy should be 6, but it is actually %d.", dedy_dimnum);
+  OP_LOGE_IF(output_dimnum != kConv3dBpInputDimSizeLimit, false, op_type,
+             "The dimension of the output should be 6, but it is actually %d.", output_dimnum);
 
   if (compile_info.empty()) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "op compile info is empty");
@@ -59,10 +64,14 @@ bool Conv3DBackpropInputTiling(const std::string& op_type,
   }
 
   // the dim index of input dedy channel is 2
-  if (compile_info.contains("dedy_c1") &&
-      op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDim(kDimIndex) != compile_info["dedy_c1"]) {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");
-    return false;
+  int32_t dedy_channel_dim = op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDim(kDimIndex);
+  if (compile_info.contains("dedy_c1")) {
+    int32_t dedy_c1 = compile_info["dedy_c1"];
+    OP_LOGE_IF(dedy_channel_dim != dedy_c1, false, op_type,
+               "unsupported input, input dedy channel [%d] should be equal to filter [%d]", dedy_channel_dim,
+               dedy_c1);
+  } else {
+    OP_LOGE(op_type, "compile_info does not contain the key value of the dedy_c1");
   }
 
   nlohmann::json opInfo;

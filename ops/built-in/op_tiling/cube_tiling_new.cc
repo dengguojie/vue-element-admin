@@ -82,7 +82,7 @@ namespace {
     }
 
     if (!compile_info.contains("tiling_range")) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no tiling_range in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the tiling_range");
       return tiling_id;
     }
     auto& tiling_range = compile_info.at("tiling_range");
@@ -98,8 +98,9 @@ namespace {
   string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                          const nlohmann::json& compile_info, string tiling_id) {
     if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
-        return tiling_id;
+      CUBE_INNER_ERR_REPORT(op_type.c_str(),
+                            "compile_info does not contain the key value of the repo_sends or repo_range");
+      return tiling_id;
     }
 
     int32_t seedHDim = 1;
@@ -124,7 +125,7 @@ namespace {
     }
     if (tiling_id.empty()) {
       if (!compile_info.contains("cost_range")) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the cost_range");
         return tiling_id;
       }
 
@@ -315,7 +316,7 @@ namespace optiling {
       }
 
       if (!compile_info.contains("block_dim")) {
-          CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
+          CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the block_dim");
           return false;
       }
 

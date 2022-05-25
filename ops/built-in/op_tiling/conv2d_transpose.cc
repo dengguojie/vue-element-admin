@@ -43,23 +43,26 @@ const size_t kConv2dTransInputSizeLimit = 2;
  */
 bool Conv2DTransposeTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                            utils::OpRunInfo& runInfo) {
+  GELOGD("Start Conv2DTransposeTiling process");
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
-  if (op_desc == nullptr) {
-    GELOGE(ge::FAILED, "the op_desc is nullptr.");
-    return false;
-  }
+  OP_LOGE_IF(op_desc == nullptr, false, opType, "GetOpDescFromOperator failed!");
   // the input tensor's index is 1
   ge::ConstGeTensorDescPtr tensor_in_desc = op_desc->GetInputDescPtr(1);
   ge::ConstGeTensorDescPtr tensor_out_desc = op_desc->GetOutputDescPtr(0);
   const ge::GeShape &tensor_in_shape = tensor_in_desc->GetShape();
   const ge::GeShape &tensor_out_shape = tensor_out_desc->GetShape();
   size_t output_dimnum = tensor_out_shape.GetDimNum();
-  bool unvalid_size = opParas.GetInputsSize() < kConv2dTransInputSizeLimit || opParas.GetOutputsSize() == 0 ||
-                      tensor_in_shape.GetDimNum() < kConv2dDimNumLimit || output_dimnum < kConv2dDimNumLimit;
-  if (unvalid_size) {
-    GELOGE(ge::FAILED, "the size is unvalid.");
-    return false;
-  }
+  size_t input_size = opParas.GetInputsSize();
+  size_t output_size = opParas.GetOutputsSize();
+  size_t input_dimnum = tensor_in_shape.GetDimNum();
+  OP_LOGE_IF(input_size < kConv2dTransInputSizeLimit, false, opType,
+             "The number of inputs to the operator should not be less than 2, but it is actually %zu.",
+             input_size);
+  OP_LOGE_IF(output_size == 0, false, opType, "The output of the operator is 0 ");
+  OP_LOGE_IF(input_dimnum < kConv2dDimNumLimit, false, opType,
+             "The dimension of the input should not be less than 4, but it is actually %zu.", input_dimnum);
+  OP_LOGE_IF(output_dimnum < kConv2dDimNumLimit, false, opType,
+             "The dimension of the output should not be less than 4, but it is actually %zu.", output_dimnum);
   GELOGD("Current format is %s, Ori format is %s",
          ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetFormat()).c_str(),
          ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetOriginFormat()).c_str());

@@ -46,23 +46,36 @@ bool Conv3DBpFilterTiling(const std::string& op_type,
                           const ge::Operator& op_paras,
                           const nlohmann::json& compile_info,
                           utils::OpRunInfo& run_info) {
-  bool invalid_input = (op_paras.GetInputsSize() < kConv3dBpInputsNum ||
-      (op_paras.GetInputDesc(0).GetShape().GetDimNum() != kConv3dDimSizeLimit) ||
-      (op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDimNum() != kConv3dDimSizeLimit));
-  if (invalid_input) {
-    OP_LOGE(op_type.c_str(), "Input paramters check failed");
-    return false;
-  }
+  GELOGD("Start Conv3DBpFilterTiling process");
+  int32_t input_size = op_paras.GetInputsSize();
+  int32_t input_dimnum = op_paras.GetInputDesc(0).GetShape().GetDimNum();
+  int32_t dedy_dimnum = op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDimNum();
+  OP_LOGE_IF(input_size < kConv3dBpInputsNum, false, op_type,
+             "The number of inputs to the operator should not be less than 3, but it is actually %d.",
+             input_size);
+  OP_LOGE_IF(input_dimnum != kConv3dDimSizeLimit, false, op_type,
+             "The dimension of the input should be 6, but it is actually %d.", input_dimnum);
+  OP_LOGE_IF(dedy_dimnum != kConv3dDimSizeLimit, false, op_type,
+             "The dimension of the input should be 6, but it is actually %d.", dedy_dimnum);
   // the dim index of input x channel is 2
-  if (compile_info.contains("fmap_c1") && op_paras.GetInputDesc(0).GetShape().GetDim(2) != compile_info["fmap_c1"]) {
-    OP_LOGE(op_type.c_str(), "not support, input x channel should be equal to filter * groups");
-    return false;
+  int32_t input_channel_dim = op_paras.GetInputDesc(0).GetShape().GetDim(kDimIndex);
+  if (compile_info.contains("fmap_c1")) {
+    int32_t fmap_c1 = compile_info["fmap_c1"];
+    OP_LOGE_IF(input_channel_dim != fmap_c1, false, op_type,
+               "unsupported input, input x channel [%d] should be equal to filter * groups [%d]",
+               input_channel_dim, fmap_c1);
+  } else {
+    OP_LOGE(op_type, "compile_info does not contain the key value of the fmap_c1");
   }
   // the dim index of input dedy channel is 2
-  if (compile_info.contains("dedy_c1") &&
-      op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDim(kDimIndex) != compile_info["dedy_c1"]) {
-    OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
-    return false;
+  int32_t dedy_channel_dim = op_paras.GetInputDesc(kConv3DBpFilterDedyInputIdx).GetShape().GetDim(kDimIndex);
+  if (compile_info.contains("dedy_c1")) {
+    int32_t dedy_c1 = compile_info["dedy_c1"];
+    OP_LOGE_IF(dedy_channel_dim != dedy_c1, false, op_type,
+               "unsupported input, input dedy channel [%d] should be equal to filter [%d]", dedy_channel_dim,
+               dedy_c1);
+  } else {
+    OP_LOGE(op_type, "compile_info does not contain the key value of the dedy_c1");
   }
 
   return Conv3DCommonTiling("Conv3DBackpropFilter",
