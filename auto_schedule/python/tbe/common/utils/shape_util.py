@@ -409,8 +409,8 @@ def _cube_transdata_shape(inputs: list):
         bias_shape = (co1*block_size_n,)
 
     shape_out = []
-    for i, input in enumerate(inputs):
-        in_shape = input.get("shape")[:]
+    for i, input_node in enumerate(inputs):
+        in_shape = input_node.get("shape")[:]
         if _binary_flag:
             if i == 0:
                 in_shape = fmap_shape_nchw

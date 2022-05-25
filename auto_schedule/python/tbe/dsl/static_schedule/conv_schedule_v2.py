@@ -582,7 +582,7 @@ class DynamicShape:
             stride_h_update = tiling_param["stride_h_update"]
             m_cl0 = tiling_param["m_cl0"]
             k_aub_nparts, m_aub_nparts = 1, 1
-            if tiling_param["aub_nparts"]:
+            if "aub_nparts" in tiling_param:
                 k_aub_nparts, m_aub_nparts = tiling_param["aub_nparts"]
 
             stride_h = conv_param.stride_h

@@ -61,7 +61,6 @@ def cube_transdata_varible_shape(test_arg):
             'ori_shape':[128, 128, 3, 3], 'range':[[72, 72], [8, 8], [16, 16], [16, 16]], 'sgt_slice_shape':[], 'shape':[72, 8, 16, 16],
             'slice_offset':[], 'split_index':0, 'sub_format':0, 'total_shape':[72, 8, 16, 16], 'valid_shape':[], "input_pattern": "cube"}]
         shape_util._cube_variable_shape(input_dict_list)
-
     except (RuntimeError, ValueError, TypeError, AttributeError):
         msg = traceback.format_exc()
         print(msg)
