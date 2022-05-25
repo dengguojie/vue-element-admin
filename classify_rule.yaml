@@ -1318,6 +1318,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/xlog1py.py
       - ops/built-in/tbe/impl/dynamic/xlogy.py
       - ops/built-in/tbe/impl/dynamic/fill_d.py
+      - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression.py
       - ops/built-in/tbe/impl/elu.py
       - ops/built-in/tbe/impl/equal.py
       - ops/built-in/tbe/impl/exp.py
@@ -2717,7 +2718,6 @@ unkown:
       - ops/built-in/tbe/impl/strided_slice_for_last_dim.py
       - ops/built-in/tbe/impl/read_select.py
       - ops/built-in/tbe/impl/resize_nearest_neighbor_v2_grad_d.py
-      - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression.py
       - ops/built-in/tbe/impl/split_d.py
       - ops/built-in/tbe/impl/atomic_addr_clean.py
       - ops/built-in/tbe/impl/zn_2_nchw.py
@@ -3025,7 +3025,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad_v2_d.py
       - ops/built-in/tbe/impl/dynamic/atan2.py
       - ops/built-in/tbe/impl/dynamic/split.py
-      - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression.py
       - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression_new.py
       - ops/built-in/tbe/impl/dynamic/non_max_suppression_bucketize.py
       - ops/built-in/tbe/impl/dynamic/split_d.py
@@ -4077,6 +4076,8 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/diou.py
       - ops/built-in/tbe/impl/dynamic/elu_grad_v2.py
+      - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression.py
+      - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression_norm_class.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

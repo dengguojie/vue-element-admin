@@ -26,7 +26,7 @@ Status ParseParamsBatchMultiClassNMS(const Message* op_src, ge::Operator& op_des
   float score_threshold = 0.0;
   int max_size_per_class = 0;
   int max_total_size = 0;
-
+  std::vector<int64_t> image_size;
   for (auto attr : node->attribute()) {
     if (attr.name() == "iou_threshold" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
       iou_threshold = attr.f();
@@ -40,6 +40,11 @@ Status ParseParamsBatchMultiClassNMS(const Message* op_src, ge::Operator& op_des
     } else if (attr.name() == "max_total_size" && attr.type() == ge::onnx::AttributeProto::INT) {
       max_total_size = attr.i();
       op_dest.SetAttr("max_total_size", max_total_size);
+    } else if (attr.name() == "image_size") {
+      for (auto i = 0; i < attr.ints_size(); ++i) {
+        image_size.push_back(attr.ints(i));
+      }
+      op_dest.SetAttr("image_size", image_size);
     }
   }
 

@@ -2021,7 +2021,7 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
 @register_operator('BatchMuiltClassNonMaxSuppression')
 def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_boxes, nmsed_boxes, nmsed_scores,
         nmsed_classes, nmsed_num, score_threshold, iou_threshold, max_size_per_class, max_total_size,
-        change_coordinate_frame, transpose_box, kernel_name="batch_multi_class_non_max_suppression",
+        change_coordinate_frame, transpose_box, image_size=(), kernel_name="batch_multi_class_non_max_suppression",
         impl_mode="high_performance"):
     """
     do non_max_suppression for multi batch and multi class

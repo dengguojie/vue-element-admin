@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 import te
-import te.platform as tepf
 from te import platform as cce_conf
 from tbe.common.context import op_context
 from tbe.common.context.op_context import OpContext
@@ -47,14 +46,20 @@ def get_impl_list(batch_size, num_boxes, num_class, num_class_boxes, score_thres
 
 
 def test_vector_core():
-    old_soc_version = tepf.get_soc_spec(tepf.SOC_VERSION)
-    old_aicore_type = tepf.get_soc_spec(tepf.AICORE_TYPE)
-    tepf.te_set_version("Ascend710", "VectorCore")
+    old_soc_version = cce_conf.get_soc_spec(cce_conf.SOC_VERSION)
+    old_aicore_type = cce_conf.get_soc_spec(cce_conf.AICORE_TYPE)
+    cce_conf.te_set_version("Ascend710", "VectorCore")
     params = get_impl_list(8, 100, 90, 90, 0.5, 0.5, 100, 100, True, True, True)
     batch_multi_class_non_max_suppression(*params)
     params = get_impl_list(8, 40800, 90, 90, 0.5, 0.5, 100, 100, True, True, False)
     batch_multi_class_non_max_suppression(*params, impl_mode="high_precision")
-    tepf.te_set_version(old_soc_version, old_aicore_type)
+
+    # impl == norm_class
+    cce_conf.te_set_version("Ascend710")
+    params = get_impl_list(8, 1024, 80, 1, 0.01, 0.66, 256, 256, False, False, False)
+    batch_multi_class_non_max_suppression(*params, image_size=(2048, 2048), impl_mode="norm_class")
+
+    cce_conf.te_set_version(old_soc_version, old_aicore_type)
 
 
 soc_version = cce_conf.get_soc_spec("SOC_VERSION")
@@ -102,9 +107,11 @@ def get_impl_list_920(batch_size, num_boxes, num_class, num_class_boxes,
     return input_list + par_list
 
 
+# 'pylint: disable = unused-argument
 def side_effects(*args):
     # return vals[args]
     return True
+
 
 def test_op_mask_1981_test_2():
     from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS

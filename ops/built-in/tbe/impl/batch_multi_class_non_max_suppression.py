@@ -25,7 +25,8 @@ from impl.util.util_common import is_vector_core
 from impl.util.util_tik_comm_func import ub2ub
 from impl.batch_multi_class_nms_topk import sort_within_ub
 from impl.batch_multi_class_nms_topk import sort_with_ub
-
+from impl.batch_multi_class_non_max_suppression_norm_class import norm_class_support
+from impl.batch_multi_class_non_max_suppression_norm_class import batch_multi_class_non_max_suppression_norm_class
 
 # 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
@@ -1716,11 +1717,13 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
-                            para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_BOOL,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_boxes,
                                           nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_num,
                                           score_threshold, iou_threshold, max_size_per_class,
                                           max_total_size, change_coordinate_frame, transpose_box,
+                                          image_size=(),
                                           kernel_name="batch_multi_class_non_max_suppression",
                                           impl_mode="high_performance"):
     """
@@ -1785,6 +1788,17 @@ def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_
     -------
     tik_instance
     """
+    if norm_class_support(boxes, scores, clip_window, num_valid_boxes,
+                          nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_num,
+                          score_threshold, iou_threshold, max_size_per_class,
+                          max_total_size, change_coordinate_frame, transpose_box,
+                          image_size, kernel_name, impl_mode):
+        return batch_multi_class_non_max_suppression_norm_class(
+            boxes, scores, clip_window, num_valid_boxes,
+            nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_num,
+            score_threshold, iou_threshold, max_size_per_class,
+            max_total_size, change_coordinate_frame, transpose_box,
+            image_size, kernel_name, impl_mode)
     nms = BatchMultiClassNonMaxSuppression(boxes, scores, num_valid_boxes, clip_window,
                                            score_threshold, iou_threshold, max_size_per_class,
                                            max_total_size, change_coordinate_frame, impl_mode)

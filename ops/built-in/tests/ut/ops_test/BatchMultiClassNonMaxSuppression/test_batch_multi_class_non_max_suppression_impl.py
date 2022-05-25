@@ -101,6 +101,7 @@ ut_case.add_case(["Ascend310"], case9)
 ut_case.add_case(["Ascend310"], case10)
 
 
+# 'pylint: disable = unused-argument
 def test_vector_core(test_arg):
     import te.platform as tepf
     from impl.batch_multi_class_non_max_suppression import batch_multi_class_non_max_suppression
@@ -111,6 +112,12 @@ def test_vector_core(test_arg):
     batch_multi_class_non_max_suppression(*params)
     params = get_impl_list(8, 40800, 90, 90, 0.5, 0.5, 100, 100, True, True, False)
     batch_multi_class_non_max_suppression(*params, impl_mode="high_precision")
+
+    # impl == norm_class
+    tepf.te_set_version("Ascend710")
+    params = get_impl_list(8, 1024, 80, 1, 0.01, 0.66, 256, 256, False, False, False)
+    batch_multi_class_non_max_suppression(*params, image_size=(2048, 2048), impl_mode="norm_class")
+
     tepf.te_set_version(old_soc_version, old_aicore_type)
 
 
