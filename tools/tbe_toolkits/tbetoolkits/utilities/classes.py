@@ -138,7 +138,8 @@ class SWITCHES:
         "excluded_operators",
         "testcase_server",
         "preserve_original_csv",
-        "perf_compare_flag"
+        "perf_compare_flag",
+        "plugins"
     ]
 
     def __init__(self):
@@ -197,6 +198,13 @@ class SWITCHES:
         self.excluded_operators = None
         self.testcase_server = None
         self.preserve_original_csv = False
+        self.plugins = {}
+
+    def has_plugin(self, plugin_type: str, op: str):
+        return self.plugins and self.plugins[plugin_type] and op in self.plugins[plugin_type]
+
+    def get_plugin(self, plugin_type: str, op: str):
+        return self.plugins[plugin_type][op] if self.has_plugin(plugin_type, op) else None
 
 
 class OPTestSwitch:

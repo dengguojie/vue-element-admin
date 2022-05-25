@@ -4,11 +4,27 @@
 Main Entrance
 """
 # Standard Packages
+import os
 import sys
 import logging
 
 # Third-Party Packages
 import tbetoolkits
+from tbetoolkits.plugins import import_all_plugins, Plugins
+
+
+def _load_plugins(csv_files) -> None:
+    if not csv_files:
+        return
+    if isinstance(csv_files, str):
+        csv_files = csv_files.split(',')
+    py_files = set()
+    for cf in csv_files:
+        cf_name = os.path.splitext(cf)[0]
+        py_file = ''.join([cf_name, "_csv", ".py"])
+        if os.path.exists(py_file):
+            py_files.add(py_file)
+    import_all_plugins(py_files)
 
 
 def _initialize_switches(args) -> tbetoolkits.utilities.SWITCHES:
@@ -29,6 +45,9 @@ def _initialize_switches(args) -> tbetoolkits.utilities.SWITCHES:
     # Dump switch, you can select from NO, INPUT, OUTPUT, GOLDEN, INOUT, INGOLD, OUTGOLD and FULL
     switches.dump_mode = tbetoolkits.utilities.DUMP_LEVEL.NO
     tbetoolkits.utilities.parse_params(switches, args)
+    # Load plugins
+    _load_plugins(args[0])
+    switches.plugins = Plugins.get_all()
     return switches
 
 

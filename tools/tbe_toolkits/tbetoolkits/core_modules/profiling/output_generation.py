@@ -25,7 +25,8 @@ def __gen_output(context: UniversalTestcaseStructure):
     # 2. Precision Test Disabled
     if not context.input_arrays:
         return
-    if not get_global_storage().do_precision_test:
+    switches = get_global_storage()
+    if not switches.do_precision_test:
         context.golden_arrays = ("SUPPRESSED",)
         context.output_byte_arrays = tuple(numpy.zeros(shape, get(output_dtypes, idx)).tobytes()
                                            for idx, shape in enumerate(context.stc_outputs) if shape is not None)
@@ -38,7 +39,10 @@ def __gen_output(context: UniversalTestcaseStructure):
     else:
         golden_arrays = []
         if context.op_name not in golden_funcs:
-            if context.op_name in numpy.__dir__() and isinstance(getattr(numpy, context.op_name), Callable):
+            golden_plugin = switches.get_plugin("golden", context.op_name)
+            if golden_plugin:
+                golden_funcs[context.op_name] = golden_plugin
+            elif context.op_name in numpy.__dir__() and isinstance(getattr(numpy, context.op_name), Callable):
                 golden_funcs[context.op_name] = getattr(numpy, context.op_name)
         if context.op_name in golden_funcs:
             ################################
