@@ -194,7 +194,7 @@ def square_compute(input_x, output_y, kernel_name="square"):
 
 
 @register_operator_compute("SquareSumV1", op_mode="dynamic", support_fusion=True)
-def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum_v1", impl_mode=None):
+def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum_v1"):
     """
     calculating data
 
@@ -206,8 +206,7 @@ def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum
     -------
     output tensor
     """
-    if impl_mode == "high_precision":
-        input_x = tbe.cast_to(input_x, "float32")
+
     square = square_compute(input_x, {}, kernel_name)
     sum0 = reduce_sum_d_compute(square, {}, axis, keepdims=attr2, kernel_name=kernel_name)
 
@@ -218,7 +217,7 @@ def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1", impl_mode=None):
+def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
     """
     calculating data
 
@@ -258,8 +257,9 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
             shape_var_new = shape_util.variable_shape([_input_x, _axis], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input", dtype=input_dtype)
 
+            data_input.op.attrs["format"] = x_format
             res = square_sum_v1_compute(data_input, output1, _axis.get("value"),
-                                        attr2, kernel_name, impl_mode=impl_mode)
+                                        attr2, kernel_name)
             tensors.append([data_input, res])
 
         with tvm.target.cce():
