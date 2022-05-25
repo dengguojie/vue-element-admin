@@ -226,10 +226,12 @@ class OpUTCase(OpUTBaseCase):  # pylint: disable=too-many-instance-attributes
     def _prepare_op_params(op_params):
         var_dict = {}
         for param in op_params:
-            if param.get("param_type") == "var":
+            if isinstance(param, dict) and param.get("param_type") == "var":
                 var_dict[param["var_name"]] = param["run_value"]
 
         for param in op_params:
+            if not isinstance(param, dict):
+                continue
             shape = param.get("shape")
             if not shape:
                 continue

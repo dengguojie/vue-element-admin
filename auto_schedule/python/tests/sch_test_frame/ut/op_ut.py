@@ -881,7 +881,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if case_info.addition_params:
             addition_params = case_info.addition_params
         try:
-            op_params = [x for x in case_info.op_params if x.get("param_type") != "var"]
+            op_params = [x for x in case_info.op_params
+                         if not (isinstance(x, dict) and x.get("param_type") == "var")]
             output_tensors = case_info.expect_out_fn(*op_params, **addition_params)
         except BaseException as _:  # pylint: disable=broad-except
             err_trace = get_trace_info()
@@ -890,7 +891,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if not isinstance(output_tensors, (list, tuple)):
             output_tensors = [output_tensors, ]
 
-        op_params = [x for x in op_params if x.get("param_attr") != "workspace"]
+        op_params = [x for x in op_params
+                     if not (isinstance(x, dict) and x.get("param_attr") == "workspace")]
         output_list = self._get_outputs(op_params)
         if len(output_list) != len(output_tensors):
             err_msg = "calc_expect_func's return tensor count(%d) not equal output dict count(%d)." % (
@@ -915,7 +917,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         return stage_status
 
     def _compare_output(self, case_info: op_ut_case_info.OpUTCase):
-        op_params = [x for x in case_info.op_params if x.get("param_attr") != "workspace"]
+        op_params = [x for x in case_info.op_params
+                     if not (isinstance(x, dict) and x.get("param_attr") == "workspace")]
         output_list = self._get_outputs(op_params)
         err_msg = ""
         compare_success = True
