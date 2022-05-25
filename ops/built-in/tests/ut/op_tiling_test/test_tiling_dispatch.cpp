@@ -82,6 +82,24 @@ TEST_F(TilingDispatch, TilingDispatchReduce) {
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
 
+TEST_F(TilingDispatch, TilingDispatchTupleReduce) {
+  using namespace optiling;
+  auto op = op::SoftmaxV2("TilingDispatchTupleReduce");
+  optiling::utils::OpRunInfo runInfo;
+  std::string op_name = "AutoTiling";
+
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  optiling::OpTilingFuncInfo& op_func_info = iter->second;
+  ASSERT_TRUE(op_func_info.IsFunctionV4());
+  const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
+  const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
+  ge::AscendString compileInfo(R"({"_pattern": "TupleReduce"})");
+  std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
+  ASSERT_TRUE(op_compile_info != nullptr);
+  ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
+}
+
 TEST_F(TilingDispatch, TilingDispatchNorm) {
   using namespace optiling;
   auto op = op::SoftmaxV2("TilingDispatchNorm");

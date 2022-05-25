@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding:utf-8 -*-
 # Copyright 2019-2021 Huawei Technologies Co., Ltd
 #
@@ -18,12 +19,28 @@ Schedule primitive enhancement plug-in
 """
 # Standard Packages
 from typing import Set
+from typing import Dict
 from typing import List
+from typing import Tuple
+from typing import AnyStr
 from typing import Mapping
+from typing import Iterable
+from typing import Optional
 from enum import Enum
 from enum import auto
 # Ascend Packages
 from tbe import tvm
+from tbe.common.utils.errormgr import get_error_message
+
+
+def _raise_error(message: AnyStr):
+    """
+    Raise error
+    @param message:
+    @return:
+    """
+    dict_args = {"errCode": "E90001", "detailed_cause": message}
+    raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 class TensorType(Enum):
@@ -58,8 +75,8 @@ class Schedule:
         self.ori_tensors: List[tvm.tensor.Tensor] = self.tensors
 
         self.stages_not_on_ub: Set[tvm.schedule.Stage] = set()
-        self.cache_read_stages: Set[tvm.schedule.Stage] = set()
-        self.cache_write_stages: Set[tvm.schedule.Stage] = set()
+        self.cache_read_stages: Dict[tvm.schedule.Stage, tvm.tensor.Tensor] = {}
+        self.cache_write_stages: Dict[tvm.schedule.Stage, tvm.tensor.Tensor] = {}
     
     def __getitem__(self, stage: tvm.schedule.Stage):
         return self.sch[stage]
@@ -96,6 +113,49 @@ class Schedule:
     @property
     def stages_on_ub(self) -> Set[tvm.schedule.Stage]:
         return set(self.stages) - self.stages_not_on_ub
+
+    @property
+    def postorder(self) -> List[tvm.schedule.Stage]:
+        def postorder_traversal(root):
+            if root in visited:
+                return
+            visited.add(root)
+            for p in self.producer(root):
+                postorder_traversal(p)
+            postorder.append(root)
+
+        postorder = []
+        visited = set()
+        postorder_traversal(self.stage_map[self.real_outputs[0]])
+        return postorder
+
+    @property
+    def reduce_stages(self) -> List[tvm.schedule.Stage]:
+        return list(filter(lambda stage: stage.op.tag.find("reduce") != -1, self.stages))
+
+    @property
+    def reduce_tensors(self) -> List[tvm.tensor.Tensor]:
+        return list(filter(lambda tensor: tensor.op.tag.find("reduce") != -1, self.tensors))
+
+    @property
+    def broadcast_stages(self) -> List[tvm.schedule.Stage]:
+        return list(filter(lambda stage: stage.op.tag.find("broadcast") != -1, self.stages))
+    
+    @property
+    def broadcast_tensors(self) -> List[tvm.tensor.Tensor]:
+        return list(filter(lambda tensor: tensor.op.tag.find("broadcast") != -1, self.tensors))
+
+    @property
+    def broadcast_branch(self) -> Set[tvm.schedule.Stage]:
+        return set().union(*[self.poset(stage) for stage in self.broadcast_stages])
+
+    @property
+    def broadcast_branch_roots(self) -> Set[tvm.schedule.Stage]:
+        return set(filter(lambda stage: stage not in self.broadcast_branch, self.broadcast_stages))
+
+    @staticmethod
+    def get_insn(stage: tvm.schedule.Stage):
+        pass
     
     @staticmethod
     def create_schedule(outs: List[tvm.tensor.Tensor]) -> tvm.schedule.Schedule:
@@ -178,7 +238,7 @@ class Schedule:
     def cache_read(self, tensor, scope, readers) -> tvm.tensor.Tensor:
         self.stages_not_on_ub.add(self.get_stage(tensor))
         ub_tensor: tvm.tensor.Tensor = self.sch.cache_read(tensor, scope, readers)
-        self.cache_read_stages.add(self.get_stage(ub_tensor))
+        self.cache_read_stages.update({self.get_stage(ub_tensor): tensor})
         self.ori_tensors.append(ub_tensor)
         return ub_tensor
     
@@ -187,10 +247,134 @@ class Schedule:
             self.stages_not_on_ub.add(self.get_stage(t))
         ub_tensor: tvm.tensor.Tensor = self.sch.cache_write(tensor, scope)
         for t in ub_tensor:
-            self.cache_write_stages.add(self.get_stage(t))
+            self.cache_write_stages.update({self.get_stage(t): tensor})
             self.ori_tensors.append(t)
         return ub_tensor
     
     def rfactor(self, tensor, axis, factor_axis=0):
         tfactor = self.sch.rfactor(tensor, axis, factor_axis)
         return tfactor
+
+    def info(self):
+        pass
+
+    def ir(self):
+        pass
+
+
+class Compute:
+    """
+    Compute Graph helper
+    """
+
+    def __init__(self, outs: List[tvm.tensor.Tensor] or Tuple[tvm.tensor.Tensor]):
+        self.ratio = 2
+        self.outs: List[tvm.tensor.Tensor] = outs
+        self.tensors: List[tvm.tensor.Tensor] = self.postorder_traversal
+        self.broadcast_tensors: List[tvm.tensor.Tensor] = list(
+            filter(lambda tensor: tensor.op.tag.find("broadcast") != -1, self.tensors))
+        self.reduce_tensors: List[tvm.tensor.Tensor] = list(
+            filter(lambda tensor: tensor.op.tag.find("reduce") != -1, self.tensors))
+        self.broadcast_branch: Set[tvm.tensor.Tensor] = set().union(
+            *[self.poset(tensor) for tensor in self.broadcast_tensors])
+        self.placeholder: List[tvm.tensor.Tensor] = [
+            tensor for tensor in self.tensors if isinstance(tensor.op, tvm.tensor.PlaceholderOp)]
+
+    @property
+    def postorder_traversal(self):
+        """
+        postorder_traversal
+        :return:
+        """
+
+        def traversal(root):
+            if root in visited:
+                return
+            visited.add(root)
+            for p in self.producer(root):
+                traversal(p)
+            postorder.append(root)
+
+        postorder = []
+        visited = set()
+        traversal(self.outs[0])
+        return postorder
+    
+    @staticmethod
+    def producer(tensor: tvm.tensor.Tensor):
+        """
+        producers of tensor
+        :param tensor:
+        :return:
+        """
+        return tensor.op.input_tensors
+
+    @staticmethod
+    def poset(tensor: tvm.tensor.Tensor):
+        """
+        partially ordered set
+        :param tensor:
+        :return:
+        """
+        tensors = set(tensor.op.input_tensors)
+        queue = set(tensor.op.input_tensors)
+        while queue:
+            t = queue.pop()
+            tensors.update(t.op.input_tensors)
+            queue.update(t.op.input_tensors)
+        return tensors
+
+    def consumer(self, tensor: tvm.tensor.Tensor):
+        return list(filter(lambda t: tensor in t.op.input_tensors, self.tensors))
+
+    def branch_root(self, subgraph: Iterable[tvm.tensor.Tensor]):
+        """
+        find the roots of given subgraph
+        :param subgraph:
+        :return:
+        """
+        return list(filter(lambda tensor: set(tensor.op.input_tensors).intersection(subgraph)
+                                          and tensor not in subgraph, self.tensors))
+
+    def buffer_count(self,
+                     grande: Optional[tvm.tensor.Tensor] = None,
+                     short: Optional[tvm.tensor.Tensor] = None,
+                     unique: Optional[tvm.tensor.Tensor] = None):
+        # para_check
+        if short is None and grande is None:
+            grande = set(self.tensors)
+            short = set()
+        elif grande is None:
+            grande = set(self.tensors) - set(short)
+        elif short is None:
+            short = set(self.tensors) - set(grande)
+        elif set(self.tensors) != set(grande).union(short):
+            _raise_error("grande tensor set UNION short tensor set should equal to all tensors in this compute.")
+
+        # process unique
+        if unique is None:
+            unique = set()
+
+        grande_count = lambda m: sum(key in grande for key in m.keys())
+        short_count = lambda m: sum(key in short for key in m.keys())
+
+        allocate_order = self.postorder_traversal
+        tensor_alive = {}
+        grande_buffer_count = 0
+        short_buffer_count = 0
+
+        for tensor in allocate_order:
+            if tensor in grande:
+                grande_buffer_count = max(grande_count(tensor_alive) + 1, grande_buffer_count)
+            if tensor in short:
+                if tensor.op.tag.find("tuple_reduce_sum") != -1:
+                    short_buffer_count = max(short_count(tensor_alive) + 2, short_buffer_count)
+                else:
+                    short_buffer_count = max(short_count(tensor_alive) + 1, short_buffer_count)
+            tensor_alive.update({tensor: self.consumer(tensor)})
+            for k, v in tensor_alive.items():
+                tensor_alive[k] = list(filter(lambda x: x != tensor, v))
+            tensor_alive = dict(filter(lambda x: len(x[1]) > 0 or x[0] in unique, tensor_alive.items()))
+
+        return [grande_buffer_count, short_buffer_count]
+

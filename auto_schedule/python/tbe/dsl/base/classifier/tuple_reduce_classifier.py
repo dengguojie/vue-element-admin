@@ -165,7 +165,7 @@ class TupleReduceClassifier:
     def onehot_encode(self):
         reduce_code = [1 if i in self.reduce_axis else 0 for i, _ in enumerate(self.inputs[0])]
         disable_fuse_code = [i if i in self.disable_fuse_axes else 0 for i, _ in enumerate(self.inputs[0])]
-        broadcast_code = [-1 for _ in reduce_code]
+        broadcast_code = [0 for _ in reduce_code]
         for broadcast_axis in self.broadcast_axes:
             for axis_index in broadcast_axis:
                 broadcast_code[axis_index] += 1

@@ -32,6 +32,7 @@ class TupleReducePatternParser(PatternParser):
     def __init__(self, outs, compute_type_size_map, compute_type_tensor_map):
         # type: (Union[Tensor, List[Tensor]], Dict[ComputeType, int], Dict[ComputeType, List[Tensor]]) -> None
         super().__init__(outs, compute_type_size_map, compute_type_tensor_map)
+        self.outs = self.outs
 
     @staticmethod
     def _poset(_tensor):
@@ -48,9 +49,14 @@ class TupleReducePatternParser(PatternParser):
         """
         check whether compute graph matches the current pattern
         """
+        if not isinstance(self.outs, List):
+            self.outs = [self.outs]
         if ComputeType.REDUCE not in self.compute_type_tensor_map:
             return False
         reduce_tensors = self.compute_type_tensor_map.get(ComputeType.REDUCE)
+        # check reduce tensor number
+        if len(reduce_tensors) < 2:
+            return False
         # check reduce tensors' shape
         reduce_tensor_shape = [tensor.shape for tensor in reduce_tensors]
         reduce_tensor_shape = set([tuple(map(str, _shape)) for _shape in reduce_tensor_shape])
@@ -73,7 +79,7 @@ class TupleReducePatternParser(PatternParser):
         broadcast_tensors = self.compute_type_tensor_map[ComputeType.BROADCAST]
         reduce_broadcast_tensor_set: Set = set(reduce_tensors).union(set(broadcast_tensors))
         for tensor in broadcast_tensors:
-            if reduce_broadcast_tensor_set.intersection(self._poset(tensor)):
+            if set(reduce_tensors).intersection(self._poset(tensor)):
                 return False
 
         return True
