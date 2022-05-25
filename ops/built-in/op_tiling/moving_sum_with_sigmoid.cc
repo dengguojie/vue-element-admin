@@ -30,13 +30,13 @@
 namespace optiling {
     const int64_t OFFSET_NUMS = 3;
     const int64_t BATCHSIZE_MAX = 256;
-    const int64_t INT_BTYES = 4;
+    const int64_t INT_BYTES = 4;
+    constexpr size_t INDEX_OFFSET = 2;
+
     struct MovingSumWithSigmoidTilingParam {
-        int32_t core_num;
         int32_t batch_size;
     };
     void InitRunningParams(MovingSumWithSigmoidTilingParam& params) {
-        params.core_num = 0;
         params.batch_size = 0;
     }
 
@@ -61,7 +61,6 @@ namespace optiling {
     void PrintTilingParams(const MovingSumWithSigmoidTilingParam &tiling_params)
     {
         OP_LOGD("PrintTilingParams is running.");
-        OP_LOGD("op [MovingSumWithSigmoidTilingParam] : core_used=%d.", tiling_params.core_used);
         OP_LOGD("op [MovingSumWithSigmoidTilingParam] : batch_size=%d.", tiling_params.batch_size);
     }
 
@@ -76,11 +75,11 @@ namespace optiling {
         OP_TILING_CHECK(!GetCompileParams(op_type, op_compile_info, core_num),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed."),
                   return false);
-        run_params.core_num = core_num;
 
         auto op_desc = OpDescUtils::GetOpDescFromOperator(op_paras);
-        auto offset_desc = op_desc->GetInputDescPtr(2);
+        auto offset_desc = op_desc->GetInputDescPtr(INDEX_OFFSET);
         auto offset_shape = offset_desc->GetShape();
+        // offset is concat of two part. 
         run_params.batch_size = offset_shape.GetDim(0) / 2;
         if (run_params.batch_size > BATCHSIZE_MAX)
         {
@@ -90,7 +89,7 @@ namespace optiling {
         SetRunningInfo(run_params, run_info);
         PrintTilingParams(run_params);
 
-        int64_t workspace = INT_BTYES * BATCHSIZE_MAX * OFFSET_NUMS;
+        int64_t workspace = INT_BYTES * BATCHSIZE_MAX * OFFSET_NUMS;
         run_info.AddWorkspace(workspace);
         run_info.SetBlockDim(core_num);
  

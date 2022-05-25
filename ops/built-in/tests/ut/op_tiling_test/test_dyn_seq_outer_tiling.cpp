@@ -28,6 +28,8 @@
 #include "test_common.h"
 #include "op_tiling/op_tiling_util.h"
 #include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
+#include "dyn_seq_outer.h"
 
 using namespace std;
 using namespace ge;
@@ -79,4 +81,12 @@ TEST_F(DynSeqOuterTiling, tset_0) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 512 ");
+
+  optiling::DynSeqOuterCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DynSeqOuterTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("DynSeqOuter", compile_info, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, test_op, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DynSeqOuter", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "8 512 ");
 }

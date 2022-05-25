@@ -22,7 +22,7 @@ using namespace ge;
 namespace optiling {
 constexpr int64_t OFFSET_NUMS = 3;
 constexpr int64_t BATCHSIZE_MAX = 256;
-constexpr int64_t INT_BTYES = 4;
+constexpr int64_t INT_BYTES = 4;
 constexpr size_t INDEX_OFFSET = 2;
 constexpr size_t TWICE = 2;
 
@@ -42,7 +42,7 @@ ge::graphStatus TilingForMovingSumWithSigmoid(gert::TilingContext* context) {
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "batch_size is over 256."),
                   return ge::GRAPH_FAILED);
 
-  AddWorkspace(context, INT_BTYES * BATCHSIZE_MAX * OFFSET_NUMS);
+  AddWorkspace(context, INT_BYTES * BATCHSIZE_MAX * OFFSET_NUMS);
   context->SetBlockDim(compile_info->core_num);
 
   return ge::GRAPH_SUCCESS;

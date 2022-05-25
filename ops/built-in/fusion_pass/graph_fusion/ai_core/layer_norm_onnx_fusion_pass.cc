@@ -473,12 +473,18 @@ static Status GetScalarFromOp(ge::NodePtr node, float& value) {
     OP_LOGW("LayerNorm", "add0_node type is not float or fp16, not change");
     return NOT_CHANGED;
   }
-  float* tensor_data_ptr = reinterpret_cast<float*>(const_input.GetData());
-  if (tensor_data_ptr == nullptr) {
-    OP_LOGE("LayerNorm", "const data of %s node is null.", node->GetName().c_str());
-    return GRAPH_FAILED;
+  if (dtype == ge::DT_FLOAT16) {
+      fp16_t* constDataPtr = reinterpret_cast<fp16_t*>(const_input.GetData());
+      FUSION_PASS_CHECK(constDataPtr == nullptr, OP_LOGE("LayerNorm", "const data of %s node is null.",
+                        node->GetName().c_str()), return GRAPH_FAILED); 
+      fp16_t constData = *constDataPtr;
+      value = constData.toFloat();
+  } else {
+     float* tensor_data_ptr = reinterpret_cast<float*>(const_input.GetData());     
+     FUSION_PASS_CHECK(tensor_data_ptr == nullptr, OP_LOGE("LayerNorm", "const data of %s node is null.",
+                       node->GetName().c_str()), return GRAPH_FAILED); 
+     value = *tensor_data_ptr;
   }
-  value = *tensor_data_ptr;
   return SUCCESS;
 }
 

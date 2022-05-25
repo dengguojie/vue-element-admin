@@ -2212,7 +2212,6 @@ unkown:
       - ops/built-in/op_tiling/reflection_pad_v3.h
       - ops/built-in/op_tiling/layer_norm_beta_gamma_backprop.cc
       - ops/built-in/op_tiling/avg_pool_1d.cc
-      - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc
       - ops/built-in/op_tiling/dyn_seq_outer.cc
       - ops/built-in/op_tiling/tabulate_fusion_grad.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
@@ -3700,7 +3699,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_transdatarnn_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/remap_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/im2col_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pooling_matrix_pass.h
@@ -4013,6 +4011,12 @@ pytorch:
   team: "pytorch"
   src:
     release:
+      - ops/built-in/op_proto/runtime/dyn_seq_outer.cc
+      - ops/built-in/op_tiling/runtime/dyn_seq_outer.cc
+      - ops/built-in/op_tiling/runtime/dyn_seq_outer.h
+      - ops/built-in/op_proto/runtime/expand.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
+      - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_pass.cc
