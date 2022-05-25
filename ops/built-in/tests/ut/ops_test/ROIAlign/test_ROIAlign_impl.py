@@ -331,12 +331,41 @@ def roi_align_v200_005(test_arg):
               0.25, 5, 5, 2, 0)
     cce_conf.cce_conf.te_set_version(test_arg)
 
+def roi_align_v200_006(test_arg):
+    set_current_compile_soc_info("Ascend610")
+    roi_align({"shape": (3, 32, 5, 5, 16), "dtype": "float16", "format": "NC1HWC0",
+               "ori_shape": (3, 512, 5, 5), "ori_format": "NHWC"},
+              {"shape": (3, 5), "dtype": "float16", "format": "NHWC",
+               "ori_shape": (3, 5), "ori_format": "NHWC"},
+              {"shape": (3,), "dtype": "float16", "format": "NHWC",
+               "ori_shape": (3,), "ori_format": "NHWC"},
+              {"shape": (1, 32, 10, 10, 16), "dtype": "float16", "format": "NC1HWC0",
+               "ori_shape": (1, 512, 10, 10), "ori_format": "NHWC"},
+              0.25, 5, 5, -2, 0)
+
+    set_current_compile_soc_info(test_arg)
+
+def roi_align_v200_007(test_arg):
+    set_current_compile_soc_info("SD3403")
+    roi_align({"shape": (3, 32, 5, 5, 16), "dtype": "float16", "format": "NC1HWC0",
+               "ori_shape": (3, 512, 5, 5), "ori_format": "NHWC"},
+              {"shape": (3, 5), "dtype": "float16", "format": "NHWC",
+               "ori_shape": (3, 5), "ori_format": "NHWC"},
+              {"shape": (3,), "dtype": "float16", "format": "NHWC",
+               "ori_shape": (3,), "ori_format": "NHWC"},
+              {"shape": (1, 32, 10, 10, 16), "dtype": "float16", "format": "NC1HWC0",
+               "ori_shape": (1, 512, 10, 10), "ori_format": "NHWC"},
+              0.25, 5, 5, -2, 0)
+
+    set_current_compile_soc_info(test_arg)
 
 ut_case.add_cust_test_func(test_func=roi_align_v200_001)
 ut_case.add_cust_test_func(test_func=roi_align_v200_002)
 ut_case.add_cust_test_func(test_func=roi_align_v200_003)
 ut_case.add_cust_test_func(test_func=roi_align_v200_004)
 ut_case.add_cust_test_func(test_func=roi_align_v200_005)
+ut_case.add_cust_test_func(test_func=roi_align_v200_006)
+ut_case.add_cust_test_func(test_func=roi_align_v200_007)
 ut_case.run("Ascend910A")
 vals = {("tik.vextract", "float16"): False,
         ("tik.vextract", "float32"): False,
