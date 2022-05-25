@@ -33,6 +33,7 @@ dynamic_conv2d_bp_input_op_testcase = [
 
     ((3, 3, 16, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], RuntimeError, "conv2d_bp_input_dedy_c_not_equal_filer"),
     ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1], RuntimeError, "conv2d_bp_input_dedy_nhw_large_than_1"),
+    ((0, 29, 1, 84), (8, 0, -1, 192), (8, 84, -1, -1), (1, 2), (-1, -1, -1, -1), "NHWC", 1, [2, 3], RuntimeError, "conv2d_bp_input_empty_tensor_fail"),
 ]
 
 

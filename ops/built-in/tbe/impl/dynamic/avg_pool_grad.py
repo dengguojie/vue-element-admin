@@ -33,6 +33,7 @@ from impl.util.util_cube_dynamic import modify_w_range_max
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
 from impl.util.util_cube_dynamic import check_modify_w_range
+from impl.dynamic.conv2d_backprop_input import check_empty_tensor
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -631,6 +632,11 @@ def avg_pool_grad_generalization(orig_input_shape,
     return result
 
 
+def _check_empty_tensor(input_grad, kernel_matrix, out_grad, strides, padding):
+    pads = [-1, -1, -1, -1] if padding == "SAME" else [0, 0, 0, 0]
+    check_empty_tensor(kernel_matrix, input_grad, out_grad, strides, pads)
+
+
 @tbe_register.register_operator("AvgPoolGrad")
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (tuple, list), (tuple, list, str), str, str)
@@ -678,9 +684,7 @@ def avg_pool_grad(orig_input_shape,
     -------
     None
     """
-    input_grad = _check_dynamic_range(input_grad)
-    out_grad = _check_dynamic_range(out_grad)
-
+    _check_empty_tensor(input_grad, kernel_matrix, out_grad, strides, padding)
     stride_h, stride_w, input_c = _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
                                                           padding, data_format, kernel_name)
 

@@ -185,6 +185,23 @@ pads = [1, 2, 1, 2, 1, 2]
 case18 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
                   input_size=input_size, filter=filter, pads=pads)
 
+# test empty tensor
+input_size = {'shape': (5,), 'format': 'NDHWC', 'ori_shape': (5,), 'ori_format': 'NDHWC', 'dtype': 'int32'}
+filter = {'shape': (540, 1, 16, 16), 'ori_shape': (2, 15, 9, 1, 27), 'ori_format': 'DHWCN', 'dtype': 'float16',
+          'range': ((540, 540), (1, 1), (16, 16), (16, 16))}
+out_backprop = {'ori_shape': (-1, 32, 81, -1, 27), 'ori_format': 'NDHWC', 'dtype': 'float16',
+                'shape': (-1, 32, 2, 81, -1, 16), 'format': 'NDC1HWC0', 'dtype': 'float16',
+                'range': ((0, 50), (32, 32), (2, 2), (81, 81), (0, 204), (16, 16)),
+                'ori_range': ((0, 50), (32, 32), (81, 81), (0, 204), (27, 27)), 'format': 'NDC1HWC0'}
+y = {'ori_shape': (-1, -1, 81, -1, 27), 'ori_format': 'NDHWC', 'dtype': 'float16',
+     'shape': (-1, -1, 2, 81, -1, 16), 'format': 'NDC1HWC0', 'dtype': 'float16',
+     'range': ((0, 50), (529, 545), (2, 2), (81, 81), (1, 204), (16, 16)),
+     'ori_range': ((0, 50), (529, 545), (81, 81), (1, 204), (27, 27)), 'format': 'NDC1HWC0'}
+strides = (1, 17, 1, 1, 1)
+pads = [0, 0, 7, 7, 4, 4]
+groups = 27
+case19 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
+                  input_size=input_size, filter=filter, pads=pads, groups=groups)
 
 # Add test Cases
 # Params is the input params of the operator.
@@ -224,6 +241,8 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case17, RuntimeError, "dynamic_case17", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case18, RuntimeError, "dynamic_case18", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case19, "success", "dynamic_case19", True))
 
 # test_conv3d_backprop_input_fuzz_build_generalization
 print("adding conv3d test_conv3d_backprop_input_fuzz_build_generalization testcase")

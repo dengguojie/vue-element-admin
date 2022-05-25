@@ -8,6 +8,7 @@ conv2d_backprop_input
 
 from __future__ import absolute_import
 import warnings
+
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
 from impl.util.util_conv2d import transform_shape_with_format
@@ -18,6 +19,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import ceil_div
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
+from impl.util.util_cube_dynamic import CubeParaProcess
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_w_range_max
 from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
@@ -25,6 +27,11 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_cube_dynamic import check_graph_mode
 from impl.util.util_cube_dynamic import check_para_fuzz_compile
 from impl.util.util_cube_dynamic import set_default_para
+from impl.util.util_cube_dynamic import check_tensor_shape
+from impl.util.util_cube_dynamic import check_dynamic_range_lower
+from impl.util.util_cube_dynamic import is_empty_tensor_scene
+from impl.util.util_cube_dynamic import correct_range
+from impl.util.platform_adapter import error_manager_cube
 
 NONETYPE = type(None)
 H_DIM = 2
@@ -271,9 +278,36 @@ def conv2dbp_input_fusion_compute(input_size,  # pylint: disable=W0622,C0103,R09
     return res
 
 
+def check_empty_tensor(filters, out_backprop, y, strides, pads, dilations=(1, 1, 1, 1)):
+    if check_dynamic_range_lower([filters, out_backprop, y]) or is_empty_tensor_scene([filters, out_backprop, y]):
+        data_format = y.get("ori_format")
+        paras = {"data_format": data_format, "pads": pads, "strides": strides, "dilations": dilations}
+        cube_para = CubeParaProcess(paras)
+
+        cube_para.get_attr_nchw(data_format)
+        stride_nchw = cube_para.strides
+        dilation_nchw = cube_para.dilations
+
+        w_shape_nchw = cube_para.get_input_nchw(filters.get("ori_shape"), filters.get("ori_format"))
+        fmap_shape_nchw, fmap_range_nchw = cube_para.get_input_nchw(y.get("ori_shape"),
+                                                                          y.get("ori_format"),
+                                                                          y.get("range"))
+
+        if fmap_shape_nchw[1] == 0 or 0 in w_shape_nchw[1:]:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_c weight_cdhw not support 0")
+        check_tensor_shape({"tensor": [filters, out_backprop, y],
+                            "value": [1, -1, -1],
+                            "range": [(1, 1), (1, 1), (1, 1)]})
+
+        if list(out_backprop.get("ori_shape")) != [-2]:
+            correct_range(y, fmap_range_nchw, w_shape_nchw, stride_nchw, dilation_nchw, pads, 'NCHW')
+
+
 def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides, pads,
                                    dilations=(1, 1, 1, 1), groups=1, data_format='NHWC',
                                    kernel_name='conv2d_backprop_input'):  # pylint: disable=invalid-name, R0913
+    if isinstance(out_backprop, dict):
+        check_empty_tensor(filters, out_backprop, y, strides, pads)
     ori_paras = {
         "input_size": input_size, "filters": filters, "out_backprop": out_backprop, "y": y,
         "strides": strides, "pads": pads, "dilations": dilations, "groups": groups, "data_format": data_format,

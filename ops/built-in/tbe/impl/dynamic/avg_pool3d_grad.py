@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-
+from impl.dynamic.conv3d_backprop_input import check_empty_tensor
 
 _BLOCK_SIZE = 16
 _C0_SIZE = tbe_platform.C0_SIZE
@@ -405,6 +405,7 @@ def avg_pool3d_grad(orig_input_shape,
     -------
     None
     """
+    check_empty_tensor(grads, filter, output, strides, pads)
     grads_ori_format = grads.get("ori_format")
     grads_ori_shape = grads.get("ori_shape")
     grads_dtype = grads.get("dtype").lower()

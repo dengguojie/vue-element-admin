@@ -22,7 +22,7 @@ from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
 from impl.util.util_cube_dynamic import check_modify_w_range
 from impl.util.util_cube_dynamic import set_default_para
-
+from impl.dynamic.conv2d_backprop_input import check_empty_tensor
 
 NONETYPE = type(None)
 H_DIM = 2
@@ -213,6 +213,7 @@ def _collect_ori_tensors(ori_paras):
 def _depthwise_conv2d_backprop_input_compute(
         input_size, filters, out_backprop, input_grad, strides, pads, dilations=(1, 1, 1, 1), data_format='NHWC',
         kernel_name='depthwise_conv2d_backprop_input'):  # pylint: disable=invalid-name, R0913
+    check_empty_tensor(filters, out_backprop, input_grad, strides, pads)
     ori_paras = {
         "input_size": input_size, "filters": filters, "out_backprop": out_backprop, "input_grad": input_grad,
         "strides": strides, "pads": pads, "dilations": dilations, "data_format": data_format,

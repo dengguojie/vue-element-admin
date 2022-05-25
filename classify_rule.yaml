@@ -492,6 +492,7 @@ cube:
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d_backprop_filter.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d_backprop_input.py
       - ops/built-in/tbe/impl/dynamic/avg_pool3d_grad.py
+      - ops/built-in/tbe/impl/dynamic/avg_pool3d.py
       - ops/built-in/tbe/impl/dynamic/avg_pool_grad.py
       - ops/built-in/tbe/impl/mat_mul.py
       - ops/built-in/tbe/impl/attention_score.py

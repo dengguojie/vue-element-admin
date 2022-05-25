@@ -32,7 +32,10 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_register
-
+from impl.util.util_cube_dynamic import check_tensor_shape
+from impl.util.util_cube_dynamic import check_dynamic_range_lower
+from impl.util.util_cube_dynamic import is_empty_tensor_scene
+from impl.util.util_cube_dynamic import correct_range
 
 # [strides_batch, strides_depth, strides_height,
 #  strides_width, strides_channel]
@@ -674,6 +677,36 @@ def _check_variable_range(range_i, mini, maxi=MAX_SHAPE_NUM, name=None):
             "conv3d", [mini, maxi], name, range_i[1])
 
 
+def check_empty_tensor(fmap, weight, output, strides, pads, dilation=(1, 1, 1, 1, 1), groups=1):
+    if check_dynamic_range_lower([fmap, weight, output]) or is_empty_tensor_scene([fmap, weight, output]):
+        in_shape = list(fmap.get("ori_shape"))
+        w_shape = list(weight.get("ori_shape"))
+        in_format = fmap.get("ori_format")
+        w_format = weight.get("ori_format")
+        in_range = fmap.get("range")
+        strides_ncdhw = _get_shape_ncdhw(strides, in_format)
+        dilation_ncdhw = _get_shape_ncdhw(dilation, in_format)
+        fmap_ncdhw, w_shape_ncdhw, _, _ = _format_normalize(in_format, w_format, in_shape,
+                                                            w_shape, strides, dilation, groups)
+
+        if list(in_shape) == DYNAMIC_RANK_FLAG:
+            fmap_range_ncdhw = [(1, None), (w_shape_ncdhw[1] * groups, w_shape_ncdhw[1] * groups),
+                                (1, None), (1, None), (1, None)]
+        else:
+            range_ndchw = _get_fmap_range(in_range, fmap_ncdhw, in_format)
+            fmap_range_ncdhw = [range_ndchw[0], range_ndchw[2], range_ndchw[1]] + range_ndchw[3:]
+
+        if fmap_ncdhw[1] == 0 or 0 in w_shape_ncdhw[1:]:
+            error_manager_cube.raise_err_specific_user("conv3d", "fmap_c weight_cdhw not support 0")
+
+        check_tensor_shape({"tensor": [fmap, weight, output],
+                            "value": [-1, 1, -1],
+                            "range": [(1, 1), (1, 1), (1, 1)]})
+
+        if list(fmap.get("ori_shape")) != DYNAMIC_RANK_FLAG:
+            correct_range(fmap, fmap_range_ncdhw, w_shape_ncdhw, strides_ncdhw, dilation_ncdhw, pads, "NCDHW")
+
+
 def _check_and_config_para(fmap,
                            weight,
                            bias,
@@ -878,6 +911,7 @@ def _conv3d_compute(fmap,
     tvm compute
     """
 
+    check_empty_tensor(fmap, weight, output, strides, pads, dilations, groups)
     # shape_fm/shape_filter format is NCDHW, fmap_range/out_range format is NDCHW
     config_dict = _check_and_config_para(fmap, weight, bias, offset_w, output, strides, pads, dilations, groups)
     shape_fm = config_dict.get('shape_fm')

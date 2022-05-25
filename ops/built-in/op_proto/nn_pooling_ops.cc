@@ -376,7 +376,7 @@ static void UpdateSameRange(ge::Operator& op, const int64_t& strides, const int6
     if (strides == 0) {
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
       return;
-    } 
+    }
     int64_t first_range = dim_range.first == 0 ? 0 : (dim_range.first+strides - 1) / strides;
     int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second + strides - 1) / strides;
     dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
@@ -2522,10 +2522,12 @@ void AvgPool3DCalOutputRange(int32_t ksize, int32_t stride, const string& paddin
   fmap_range.second = fmap_range.second == -1 ? kDynamicRangeUpperBound : fmap_range.second;
   if (padding == "SAME") {
     output_range.first = std::max((fmap_range.first + stride - 1) / stride, kDynamicRangeLowerBound);
-    output_range.second = std::min((fmap_range.second + stride - 1) / stride, kDynamicRangeUpperBound);
+    output_range.second = std::min(std::max(int64_t(1), (fmap_range.second + stride - 1) / stride),
+                                   kDynamicRangeUpperBound);
   } else {
     output_range.first = std::max((fmap_range.first - ksize) / stride + 1, kDynamicRangeLowerBound);
-    output_range.second = std::min((fmap_range.second - ksize) / stride + 1, kDynamicRangeUpperBound);
+    output_range.second = std::min(std::max(int64_t(1), (fmap_range.second - ksize) / stride + 1),
+                                   kDynamicRangeUpperBound);
   }
 }
 
@@ -3575,10 +3577,10 @@ void AvgPool3DGradCalDedxRange(int64_t ksize, int64_t stride, const string &padd
   grads_range.second = grads_range.second == -1 ? kDynamicRangeUpperBound : grads_range.second;
   if (padding == "SAME") {
     fmap_range.first = std::max(stride * (grads_range.first - 1) + 1, kDynamicRangeLowerBound);
-    fmap_range.second = std::min(stride * grads_range.second, kDynamicRangeUpperBound);
+    fmap_range.second = std::min(std::max(int64_t(1), stride * grads_range.second), kDynamicRangeUpperBound);
   } else {
     fmap_range.first = std::max(stride * (grads_range.first - 1) + ksize, kDynamicRangeLowerBound);
-    fmap_range.second = std::min(stride * (grads_range.second - 1) + ksize + stride - 1,
+    fmap_range.second = std::min(std::max(int64_t(1), stride * (grads_range.second - 1) + ksize + stride - 1),
                                  kDynamicRangeUpperBound);
   }
 }
@@ -7441,7 +7443,7 @@ static void UpdateMaskW(const int64_t& out_h, const int64_t& out_w,
                         const int64_t& first_h, const int64_t& first_w,
                         const int64_t& second_h, const int64_t& second_w,
                         int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
-  constexpr int C0_SIZE = 16;                        
+  constexpr int C0_SIZE = 16;
   if (dim_size != -1) {
     int64_t mask_w = out_h * out_w;
     if (mask_w % C0_SIZE != 0) {

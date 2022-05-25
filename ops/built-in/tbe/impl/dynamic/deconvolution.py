@@ -23,6 +23,7 @@ from impl.util.util_cube_dynamic import check_fuzz_n_dim
 from impl.util.util_cube_dynamic import check_generalize_config
 from impl.util.util_cube_dynamic import DeconvolutionParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+from impl.dynamic.conv2d_backprop_input import check_empty_tensor
 
 H_DIM = 2
 W_DIM = 3
@@ -183,11 +184,20 @@ def _collect_ori_tensors(ori_paras):
     return ori_tensors
 
 
+def _check_empty_tensor(filters, x, y, strides, pads, data_format):
+    new_stride = [1, 1, 1, 1]
+    dim_h, dim_w = data_format.find('H'), data_format.find('W')
+    new_stride[dim_h] = strides[0]
+    new_stride[dim_w] = strides[1]
+    check_empty_tensor(filters, x, y, new_stride, pads)
+
+
 def _deconvolution_compute(x, filter, bias, offset_w,
                            y, strides, pads,
                            dilations=(1, 1, 1, 1),
                            groups=1, data_format='NHWC', offset_x=0,
                            kernel_name='deconvolution'):
+    _check_empty_tensor(filter, x, y, strides, pads, data_format)
     ori_paras = {
         "x": x, "filters": filter, "bias": bias, "offset_w": offset_w, "y": y,
         "strides": strides, "pads": pads, "dilations": dilations, "groups": groups,

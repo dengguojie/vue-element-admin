@@ -628,6 +628,41 @@ case37 = _run_api_end_with_d(fmap=fmap)
 fmap = {'ori_shape': (-2,), 'shape': (-2,),
         'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}
 case38 = _run_api_end_with_d(fmap=fmap)
+
+# test empty tensor
+fmap = {'ori_shape': (92, -1, 0, -1, 14), 'shape': (92, -1, 1, 0, -1, 16),
+        'ori_format': 'NCDHW', 'format': 'NDC1HWC0', 'dtype': 'float16',
+        "range": [(92, 92), (0, 98), (1, 1), (0, None), (0, 842), (16, 16)],
+        "ori_range": [(92, 92), (0, 98), (0, None), (0, 842), (14, 14)]}
+weight = {'ori_shape': (0, 14, 184, 64, 180), 'shape': (2119680, 0, 16, 16),
+          'ori_format': 'NCDHW', 'format': 'FRACTAL_Z_3D', 'dtype': 'float16',
+          "range": [(64, 64), (32, 32), (2, 2), (2, 2), (2,2)]}
+output = {'ori_shape': (92, -1, 0, -1, 0), 'shape': (92, -1, 0, 0, -1, 16),
+          'ori_format': 'NDHWC', 'format': 'NDC1HWC0', 'dtype': 'float16',
+          "range": [(92, 92), (1, 24), (0, None), (0, None), (1, 20), (16, 16)],
+          "ori_range": [(92, 92), (1, 24), (0, None), (1, 20), (0, None)]}
+strides = (1, 4, 51, 41, 1)
+pads = (-1, -1, -1, -1, -1, -1)
+data_format="NDHWC"
+case39 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, data_format=data_format, pads=pads)
+
+# test empty tensor
+fmap = {'ori_shape': (0, -1, -1, -1, 35), 'shape': (0, -1, 3, -1, -1, 16),
+        'ori_format': 'NDHWC', 'format': 'NDC1HWC0', 'dtype': 'float16',
+        "range": [(0, None), (0, None), (3, 3), (0, None), (0, None), (16, 16)],
+        "ori_range": [(0, None), (0, None), (0, None), (0, None), (35, 35)]}
+weight = {'ori_shape': (103, 44, 136, 35, 0), 'shape': (1849056, 0, 16, 16),
+          'ori_format': 'DHWCN', 'format': 'FRACTAL_Z_3D', 'dtype': 'float16',
+          "range": [(1849056, 1849056), (1, None), (16, 16), (16, 16)]}
+output = {'ori_shape': (0, -1, -1, -1, 0), 'shape': (0, -1, 0, -1, -1, 16),
+          'ori_format': 'NDHWC', 'format': 'NDC1HWC0', 'dtype': 'float16',
+          "range": [(0, None), (1, None), (0, None), (1, None), (1, None), (16, 16)],
+          "ori_range": [(0, None), (1, None), (1, None), (1, None), (0, None)]}
+strides = (1, 53, 12, 32, 1)
+pads = (0, 0, 0, 0, 0, 0)
+data_format="NDHWC"
+case40 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, data_format=data_format, pads=pads)
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A", "Ascend310"],
@@ -743,6 +778,12 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case38, RuntimeError, "dynamic_case38", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case39, "success", "dynamic_case39", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case40, "success", "dynamic_case40", True))
 
 # ut for tilingcase fuzzy compile
 def test_conv3d_fuzz_build_tilingcase(test_arg):

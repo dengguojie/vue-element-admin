@@ -20,8 +20,8 @@ from __future__ import absolute_import
 import warnings
 import math
 import copy
-from functools import reduce
 
+from impl.util import util_common
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
@@ -809,6 +809,48 @@ def is_empty_tensor_scene(tensor_list):
         if tensor and tensor.get("shape") and 0 in tensor.get("shape"):
             return True
     return False
+
+
+def correct_range(fmap, fmap_range, w_ori_shape, strides, dilations, pads, data_format):
+    def _get_output(x_in, k_size, pads, stride, dilations):
+        return (x_in + pads[0] + pads[1] - dilations * (k_size - 1) - 1) // stride + 1
+
+    dim_h, dim_w = data_format.find('H'), data_format.find('W')
+    dim_d = None
+    pad_h, pad_w = 0, 2
+    if 'D' in data_format:
+        dim_d = data_format.find('D')
+        pad_d, pad_h, pad_w = 0, 2, 4
+
+    if -1 in pads:
+        if util_common.ceil(fmap_range[dim_w][0], strides[dim_w]) < 2:
+            lower = strides[dim_w] + 1
+            upper = fmap_range[dim_w][1]
+            if fmap_range[dim_w][1]:
+                upper = max(fmap_range[dim_w][1], lower)
+            set_shape_and_range(fmap, 'W', -1, (lower, upper))
+    else:
+        if _get_output(fmap_range[dim_w][0], w_ori_shape[dim_w], (pads[pad_w], pads[pad_w + 1]),
+                       strides[dim_w], dilations[dim_w]) < 2:
+            lower = strides[dim_w] + w_ori_shape[dim_w] - pads[pad_w] - pads[pad_w + 1]
+            upper = fmap_range[dim_w][1]
+            if fmap_range[dim_w][1]:
+                upper = max(fmap_range[dim_w][1], lower)
+            set_shape_and_range(fmap, 'W', -1, (lower, upper))
+        if _get_output(fmap_range[dim_h][0], w_ori_shape[dim_h], (pads[pad_h], pads[pad_h + 1]),
+                       strides[dim_h], dilations[dim_h]) <= 0:
+            lower = w_ori_shape[dim_h] - pads[pad_h] - pads[pad_h + 1]
+            upper = fmap_range[dim_h][1]
+            if fmap_range[dim_h][1]:
+                upper = max(fmap_range[dim_h][1], lower)
+            set_shape_and_range(fmap, 'H', -1, (lower, upper))
+        if dim_d and _get_output(fmap_range[dim_d][0], w_ori_shape[dim_d], (pads[pad_d], pads[pad_d + 1]),
+                             strides[dim_d], dilations[dim_d]) <= 0:
+            lower = w_ori_shape[dim_d] - pads[pad_d] - pads[pad_d + 1]
+            upper = fmap_range[dim_d][1]
+            if fmap_range[dim_d][1]:
+                upper = max(fmap_range[dim_d][1], lower)
+            set_shape_and_range(fmap, 'D', -1, (lower, upper))
 
 
 class CubeParaProcess:

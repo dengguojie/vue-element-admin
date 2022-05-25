@@ -23,6 +23,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.dynamic.conv3d_backprop_input import check_empty_tensor
 
 Nonetype = type(None)
 _X_TARGET_FORMAT = "NDHWC"
@@ -224,6 +225,7 @@ def _check_output_padding(output_padding, stride, dilation, data_format):
 def _conv3d_transpose_compute(filters, out_backprop, y_input, input_size, strides, pads,
                               dilations=(1, 1, 1, 1, 1), groups=1, output_padding=(0, 0, 0, 0, 0),
                               data_format="NDHWC", kernel_name="conv3d_transpose"):
+    check_empty_tensor(out_backprop, filters, y_input, strides, pads, dilations)
     _check_output_padding(output_padding, strides, dilations, data_format)
     res = check_and_config_para(
         filters, out_backprop, y_input, input_size, strides, pads, dilations, groups, data_format, kernel_name)

@@ -30,7 +30,10 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_register
-
+from impl.util.util_cube_dynamic import check_tensor_shape
+from impl.util.util_cube_dynamic import check_dynamic_range_lower
+from impl.util.util_cube_dynamic import is_empty_tensor_scene
+from impl.util.util_cube_dynamic import correct_range
 
 # the dim of shape in conv_backprop must be 5
 _CONV_BACKPROP_SHAPE_DIM = 5
@@ -638,6 +641,41 @@ def check_conv3dbp_input_params(shape_filter,
     return result
 
 
+def check_empty_tensor(out_backprop, weight, y, strides, pads, dilations=(1, 1, 1, 1, 1)):
+    if check_dynamic_range_lower([out_backprop, weight, y]) or is_empty_tensor_scene([out_backprop, weight, y]):
+        shape_filters_dhwcn, _, shape_strides, shape_dilations, _, input_sizes = \
+            _get_ndhwc_shape(weight.get("ori_format"),
+                            weight.get("ori_shape"),
+                            out_backprop.get("ori_format"),
+                            out_backprop.get("ori_shape"),
+                            strides,
+                            dilations,
+                            y.get("range"),
+                            y.get("ori_format"),
+                            list(y.get("ori_shape")))
+        shape_filters = (shape_filters_dhwcn[4],) + shape_filters_dhwcn[:3] + (shape_filters_dhwcn[3],)
+        fmap_format = y.get("ori_format")
+        range_input = y.get("range")
+        pos_d = fmap_format.find("D")
+        pos_h = fmap_format.find("H")
+        pos_w = fmap_format.find("W")
+        pos_c = fmap_format.find("C")
+        pos_n = fmap_format.find("N")
+        if len(range_input) == FORMAT_5D_DIMS:
+            fmap_range = [range_input[pos_n], range_input[pos_d],
+                          range_input[pos_h], range_input[pos_w], range_input[pos_c]]
+        elif len(range_input) == FORMAT_6D_DIMS:
+            fmap_range = [range_input[0], range_input[1],
+                          range_input[3], range_input[4], (input_sizes[4], input_sizes[4])]
+
+        if input_sizes[4] == 0 or 0 in shape_filters[1:]:
+            error_manager_cube.raise_err_specific_user("conv3d_backprop_input", "fmap_c, weight_cdhw not support 0")
+        check_tensor_shape({"tensor": [out_backprop, weight, y],
+                            "value": [-1, 1, -1],
+                            "range": [(1, 1), (1, 1), (1, 1)]})
+        correct_range(y, fmap_range, shape_filters, shape_strides, shape_dilations, pads, "NDHWC")
+
+
 def check_and_config_para(weight, out_backprop, y, input_size, strides, pads,
                           dilations, groups, data_format, kernel_name, is_fuzzy_build=False):
     """
@@ -752,7 +790,7 @@ def check_and_config_para(weight, out_backprop, y, input_size, strides, pads,
 def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, strides, pads,
                                    dilations=(1, 1, 1, 1, 1), groups=1, data_format="NDHWC",
                                    kernel_name="conv3d_backprop_input"):
-
+    check_empty_tensor(out_backprop, filters, y_input, strides, pads, dilations)
     res = check_and_config_para(filters, out_backprop, y_input, input_size, strides, pads,
                                  dilations, groups, data_format, kernel_name)
     (dx_shape, dedy, filter_frac, shape_filter, input_sizes, strides,

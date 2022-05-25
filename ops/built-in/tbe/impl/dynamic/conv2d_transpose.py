@@ -25,6 +25,7 @@ from impl.util.util_cube_dynamic import check_fuzz_n_dim
 from impl.util.util_cube_dynamic import check_generalize_config
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+from impl.dynamic.conv2d_backprop_input import check_empty_tensor
 
 H_DIM = 2
 W_DIM = 3
@@ -225,6 +226,7 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
                               dilations=(1, 1, 1, 1),
                               groups=1, data_format='NHWC', output_padding=(0, 0, 0, 0), offset_x=0,
                               kernel_name='conv2d_transpose'):
+    check_empty_tensor(filter, x, y, strides, pads)
     ori_paras = {
         "input_size": input_size, "x": x, "filters": filter, "bias": bias, "offset_w": offset_w, "y": y,
         "strides": strides, "pads": pads, "dilations": dilations, "groups": groups, "data_format": data_format,

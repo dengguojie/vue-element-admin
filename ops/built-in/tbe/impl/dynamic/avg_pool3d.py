@@ -15,6 +15,7 @@
 """
 avg_pool3d
 """
+from impl.dynamic import conv3d
 from impl.util import util_common
 from impl.util import util_conv3d
 from impl.util.platform_adapter import error_manager_vector
@@ -292,6 +293,18 @@ def _trans_range_to_6d(shape_range, ori_format):
     return [range_n, range_d, range_c1, range_h, range_w, range_c0]
 
 
+def _check_empty_tensor(x, filters, y, strides, pads):
+    def _check_dynamic_range_upper(tensor):
+        if tensor.get("range"):
+            tensor["range"] = tuple((lower, _UPPER_RANGE) if upper is None else (lower, upper)
+                                    for _, (lower, upper) in enumerate(tensor.get("range")))
+        if tensor.get("ori_range"):
+            tensor["ori_range"] = tuple((lower, _UPPER_RANGE) if upper is None else (lower, upper)
+                                    for _, (lower, upper) in enumerate(tensor.get("ori_range")))
+    _check_dynamic_range_upper(x)
+    conv3d.check_empty_tensor(x, filters, y, strides, pads)
+
+
 @register_operator("AvgPool3D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -344,7 +357,7 @@ def avg_pool3d(x,
     -------
     Only support global model currently.
     """
-
+    _check_empty_tensor(x, filter, y, strides, pads)
     fmap_ori_format = x.get("ori_format")
     fmap_ori_shape = x.get("ori_shape")
     fmap_dtype = x.get("dtype")
