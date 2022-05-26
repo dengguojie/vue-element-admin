@@ -29,9 +29,9 @@ const char *const SPARSETODENSE = "SparseToDense";
 }
 
 namespace aicpu {
-uint32_t SparseToDenseCpuKernel::SparseToDense(const CpuKernelContext &ctx, 
+uint32_t SparseToDenseCpuKernel::SparseToDense(const CpuKernelContext &ctx,
                                                SparseTensor &st,
-                                               Tensor *indices,
+                                               const Tensor *indices,
                                                Tensor *output) {
   KERNEL_LOG_INFO("Start to execute SparseToDense");
   if (indices == nullptr || output == nullptr) {
@@ -229,8 +229,8 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
       reinterpret_cast<char *>(default_value_tensor->GetData());
   char *output_addr = reinterpret_cast<char *>(output_tensor->GetData());
   for (int index = 0; index < output_size; ++index) {
-    int cpyRet = memcpy_s(output_addr + (index * type_size), type_size,
-                          default_value_addr, type_size);
+    int cpyRet = memcpy_s(output_addr + (index * type_size), static_cast<size_t>(type_size),
+                          default_value_addr, static_cast<size_t>(type_size));
     if (cpyRet < 0) {
       KERNEL_LOG_ERROR("memcpy_s default value failed index [%d], type_size [%d].",
                        index, type_size);

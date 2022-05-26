@@ -40,7 +40,7 @@ class SpatialTransformerCpuKernel : public CpuKernel {
    * @param ctx cpu kernel context
    * @return status if success
    */
-  uint32_t GetInputAndCheckValid(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheckValid(const CpuKernelContext &ctx);
 
   /**
    * @brief compute for all types

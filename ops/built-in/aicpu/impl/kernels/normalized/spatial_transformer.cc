@@ -57,7 +57,7 @@ const uint32_t kTotalThetaNumber = 6;
 }
 
 namespace aicpu {
-uint32_t SpatialTransformerCpuKernel::GetInputAndCheckValid(CpuKernelContext &ctx) {
+uint32_t SpatialTransformerCpuKernel::GetInputAndCheckValid(const CpuKernelContext &ctx) {
   input_tensor_ = ctx.Input(0);
   input_theta_ = ctx.Input(1);
   output_tensor_ = ctx.Output(0);
@@ -69,21 +69,21 @@ uint32_t SpatialTransformerCpuKernel::GetInputAndCheckValid(CpuKernelContext &ct
   // only support NCHW and NHWC
   date_format_ = input_tensor_->GetTensorShape()->GetFormat();
   if (date_format_ == FORMAT_NCHW) {
-    input_n_ = input_tensor_->GetTensorShape()->GetDimSize(0);
-    input_c_ = input_tensor_->GetTensorShape()->GetDimSize(1);
-    input_h_ = input_tensor_->GetTensorShape()->GetDimSize(2);
-    input_w_ = input_tensor_->GetTensorShape()->GetDimSize(3);
-    output_h_ = output_tensor_->GetTensorShape()->GetDimSize(2);
-    output_w_ = output_tensor_->GetTensorShape()->GetDimSize(3);
+    input_n_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(0));
+    input_c_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(1));
+    input_h_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(2));
+    input_w_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(3));
+    output_h_ = static_cast<int32_t>(output_tensor_->GetTensorShape()->GetDimSize(2));
+    output_w_ = static_cast<int32_t>(output_tensor_->GetTensorShape()->GetDimSize(3));
   } else if (date_format_ == FORMAT_NC1HWC0) {
-    input_n_ = input_tensor_->GetTensorShape()->GetDimSize(0);
-    input_c1_ = input_tensor_->GetTensorShape()->GetDimSize(1);
-    input_h_ = input_tensor_->GetTensorShape()->GetDimSize(2);
-    input_w_ = input_tensor_->GetTensorShape()->GetDimSize(3);
-    input_c0_ = input_tensor_->GetTensorShape()->GetDimSize(4);
+    input_n_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(0));
+    input_c1_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(1));
+    input_h_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(2));
+    input_w_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(3));
+    input_c0_ = static_cast<int32_t>(input_tensor_->GetTensorShape()->GetDimSize(4));
     input_c_ = input_c1_ * input_c0_;
-    output_h_ = output_tensor_->GetTensorShape()->GetDimSize(2);
-    output_w_ = output_tensor_->GetTensorShape()->GetDimSize(3);
+    output_h_ = static_cast<int32_t>(output_tensor_->GetTensorShape()->GetDimSize(2));
+    output_w_ = static_cast<int32_t>(output_tensor_->GetTensorShape()->GetDimSize(3));
   }
   else {
     KERNEL_LOG_ERROR("Can't support data format[%d].", date_format_);
@@ -123,7 +123,7 @@ uint32_t SpatialTransformerCpuKernel::GetInputAndCheckValid(CpuKernelContext &ct
   AttrValue *ori_channel_ptr = ctx.GetAttr("stn_ori_channel");
   KERNEL_CHECK_NULLPTR(ori_channel_ptr, KERNEL_STATUS_PARAM_INVALID,
       "[%s] get attr stn_ori_channel fail.", kSpatialTransformer);
-  stn_ori_channel_ = ori_channel_ptr->GetInt();
+  stn_ori_channel_ = static_cast<int32_t>(ori_channel_ptr->GetInt());
 
   return KERNEL_STATUS_OK;
 }
@@ -142,8 +142,8 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
   // init var
   std::vector<float> theta(6);
   uint32_t input_theta_idx = 0;
-  uint32_t output_idx = 0;
-  uint32_t input_idx = 0;
+  int32_t output_idx = 0;
+  int32_t input_idx = 0;
   float res, x_floor, y_floor, x_ref_1, y_ref_1, x_ref_0, y_ref_0, x, y = 0;
   int32_t m, n;
   for (int32_t i = 0; i < input_n_; i++) {
@@ -163,7 +163,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
     // compute grid
     for (int32_t s = 0; s < output_h_; ++s) {
       for (int32_t t = 0; t < output_w_; ++t) {
-        uint32_t input_grid_idx = (s * output_w_ + t) * 2;
+        uint32_t input_grid_idx = static_cast<uint32_t>((s * output_w_ + t) * 2);
         float ref_output_grid_1 = (float)s / output_h_ * 2 - 1;
         float ref_output_grid_2 = (float)t / output_w_ * 2 - 1;
         input_grid[input_grid_idx] = (ref_output_grid_1 * theta[0] +
@@ -188,26 +188,26 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
         y_ref_0 = 1.0f - y_ref_1;
         res = 0.0f;
 
-        m = x_floor;
-        n = y_floor;
+        m = static_cast<int32_t>(x_floor);
+        n = static_cast<int32_t>(y_floor);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_0 * y_ref_0 * (float)input_data_ptr[input_idx + m * input_w_ + n];
         }
 
-        m = x_floor;
-        n = y_floor + 1;
+        m = static_cast<int32_t>(x_floor);
+        n = static_cast<int32_t>(y_floor + 1);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_0 * y_ref_1 * (float)input_data_ptr[input_idx + m * input_w_ + n];
         }
 
-        m = x_floor + 1;
-        n = y_floor;
+        m = static_cast<int32_t>(x_floor + 1);
+        n = static_cast<int32_t>(y_floor);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_1 * y_ref_0 * (float)input_data_ptr[input_idx + m * input_w_ + n];
         }
 
-        m = x_floor + 1;
-        n = y_floor + 1;
+        m = static_cast<int32_t>(x_floor + 1);
+        n = static_cast<int32_t>(y_floor + 1);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_1 * y_ref_1 * (float)input_data_ptr[input_idx + m * input_w_ + n];
         }
@@ -268,7 +268,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
     // compute grid
     for (int32_t s = 0; s < output_h_; ++s) {
       for (int32_t t = 0; t < output_w_; ++t) {
-        uint32_t input_grid_idx = (s * output_w_ + t) * 2;
+        uint32_t input_grid_idx = static_cast<uint32_t>((s * output_w_ + t) * 2);
         float ref_output_grid_1 = (float)s / output_h_ * 2 - 1;
         float ref_output_grid_2 = (float)t / output_w_ * 2 - 1;
         input_grid[input_grid_idx] = (ref_output_grid_1 * theta[0] +
@@ -293,39 +293,39 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         x_ref_0 = 1.0f - x_ref_1;
         y_ref_0 = 1.0f - y_ref_1;
 
-        memset_s(res, sizeof(float) * input_c0_, 0.0f, sizeof(float) * input_c0_);
+        (void)memset_s(res, sizeof(float) * input_c0_, 0.0f, sizeof(float) * input_c0_);
 
-        m = x_floor;
-        n = y_floor;
+        m = static_cast<int32_t>(x_floor);
+        n = static_cast<int32_t>(y_floor);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
-          uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
+          int32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_0 * y_ref_0 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
-        m = x_floor;
-        n = y_floor + 1;
+        m = static_cast<int32_t>(x_floor);
+        n = static_cast<int32_t>(y_floor + 1);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
-          uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
+          int32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_0 * y_ref_1 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
-        m = x_floor + 1;
-        n = y_floor;
+        m = static_cast<int32_t>(x_floor + 1);
+        n = static_cast<int32_t>(y_floor);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
-          uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
+          int32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_1 * y_ref_0 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
-        m = x_floor + 1;
-        n = y_floor + 1;
+        m = static_cast<int32_t>(x_floor + 1);
+        n = static_cast<int32_t>(y_floor + 1);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
-          uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
+          int32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_1 * y_ref_1 * (float)input_data[input_data_spos + c0_i];
           }
@@ -364,8 +364,8 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
   // init var
   std::vector<float> theta(6);
   uint32_t input_theta_idx = 0;
-  uint32_t output_idx = 0;
-  uint32_t input_idx = 0;
+  int32_t output_idx = 0;
+  int32_t input_idx = 0;
   float res, x_floor, y_floor, x_ref_1, y_ref_1, x_ref_0, y_ref_0, x, y = 0;
   int32_t m, n;
   for (int32_t i = 0; i < input_n_; i++) {
@@ -385,7 +385,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
     // compute grid
     for (int32_t s = 0; s < output_h_; ++s) {
       for (int32_t t = 0; t < output_w_; ++t) {
-        uint32_t input_grid_idx = (s * output_w_ + t) * 2;
+        uint32_t input_grid_idx = static_cast<uint32_t>((s * output_w_ + t) * 2);
         float ref_output_grid_1 = (float)s / output_h_ * 2 - 1;
         float ref_output_grid_2 = (float)t / output_w_ * 2 - 1;
         input_grid[input_grid_idx] = (ref_output_grid_1 * theta[0] +
@@ -412,26 +412,26 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
 
         res = 0;
 
-        m = x_floor;
-        n = y_floor;
+        m = static_cast<int32_t>(x_floor);
+        n = static_cast<int32_t>(y_floor);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_0 * y_ref_0 * (float)input_data_ptr[input_idx + m * input_w_ * input_c0_ + n * input_c0_];
         }
 
-        m = x_floor;
-        n = y_floor + 1;
+        m = static_cast<int32_t>(x_floor);
+        n = static_cast<int32_t>(y_floor + 1);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_0 * y_ref_1 * (float)input_data_ptr[input_idx + m * input_w_ * input_c0_ + n * input_c0_];
         }
 
-        m = x_floor + 1;
-        n = y_floor;
+        m = static_cast<int32_t>(x_floor + 1);
+        n = static_cast<int32_t>(y_floor);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_1 * y_ref_0 * (float)input_data_ptr[input_idx + m * input_w_ * input_c0_ + n * input_c0_];
         }
 
-        m = x_floor + 1;
-        n = y_floor + 1;
+        m = static_cast<int32_t>(x_floor + 1);
+        n = static_cast<int32_t>(y_floor + 1);
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           res += x_ref_1 * y_ref_1 * (float)input_data_ptr[input_idx + m * input_w_ * input_c0_ + n * input_c0_];
         }

@@ -60,7 +60,7 @@ uint32_t TopKPQDistanceCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t TopKPQDistanceCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t TopKPQDistanceCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   InputsData<T> input_data;
   uint32_t ret = GetInputAndCheck(ctx, input_data);
   if (ret != KERNEL_STATUS_OK) {
@@ -93,11 +93,11 @@ uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx,
       "TopKPQDistance getInputAndCheck order_[%s], is_min_heap_ is[%d], "
       "data_batch_ is[%d]",
       order_.c_str(), is_min_heap_, data_batch_);
-  k_ = ctx.GetAttr("k")->GetInt();
+  k_ = static_cast<int32_t>(ctx.GetAttr("k")->GetInt());
   KERNEL_CHECK_FALSE((k_ != 0), KERNEL_STATUS_PARAM_INVALID,
       "k_[%d] should not be equal to zero.", k_);
 
-  group_size_ = ctx.GetAttr("group_size")->GetInt();
+  group_size_ = static_cast<int32_t>(ctx.GetAttr("group_size")->GetInt());
   for (uint32_t i = 0; i < data_batch_; i++) {
     Tensor *actual_count_tensor = ctx.Input(data_batch_ * 0 + i);
     int32_t actual_count =
@@ -135,9 +135,9 @@ uint32_t TopKPQDistanceCpuKernel::ProcessResult(const CpuKernelContext &ctx,
   Tensor *topk_ivf = ctx.Output(1);
   Tensor *topk_index = ctx.Output(2);
 
-  if (topk_distance->GetDataSize() < sizeof(T) * k_ ||
-      topk_ivf->GetDataSize() < sizeof(int32_t) * k_ ||
-      topk_index->GetDataSize() < sizeof(int32_t) * k_) {
+  if (topk_distance->GetDataSize() < static_cast<uint64_t>(sizeof(T) * k_) ||
+      topk_ivf->GetDataSize() < static_cast<uint64_t>(sizeof(int32_t) * k_) ||
+      topk_index->GetDataSize() < static_cast<uint64_t>(sizeof(int32_t) * k_)) {
     KERNEL_LOG_ERROR("outputs data size error");
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -270,7 +270,7 @@ void TopKPQDistanceCpuKernel::InitGrpExtreme(Item<T> grp_extreme_ptr[],
 
 template <typename T>
 void TopKPQDistanceCpuKernel::MakeHeap(Item<T> arr_ptr[], const int32_t n) {
-  for (int32_t i = (n >> 1) - 1; i >= 0; i--) {
+  for (int32_t i = (static_cast<uint32_t>(n) >> 1) - 1; i >= 0; i--) {
     HeapFixdown(arr_ptr, i, n);
   }
 }
@@ -311,7 +311,7 @@ inline void TopKPQDistanceCpuKernel::HeapFixdown(Item<T> a[],
 
     a[i] = a[j];
     i = j;
-    j = (i << 1) + 1;
+    j = (static_cast<uint32_t>(i) << 1) + 1;
   }
   a[i] = temp;
 }

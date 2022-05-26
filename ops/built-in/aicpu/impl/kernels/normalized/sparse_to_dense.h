@@ -57,7 +57,7 @@ class SparseToDenseCpuKernel : public CpuKernel {
    * @param output: output tensor
    * @return uint32_t: 0->success other->failed
    */
-  uint32_t SparseToDense(const CpuKernelContext &ctx, SparseTensor &st, Tensor *indices, Tensor *output);
+  uint32_t SparseToDense(const CpuKernelContext &ctx, SparseTensor &st, const Tensor *indices, Tensor *output);
 
   /*
    * valid sparse to dense param

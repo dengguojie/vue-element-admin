@@ -37,7 +37,7 @@ namespace aicpu {
 uint32_t DynamicStitchKernel::GetInputAndCheck(const CpuKernelContext &ctx,
                                                int *first_dim_size,
                                                int *data_elements_size) {
-  n_ = ctx.GetInputsSize() / 2;
+  n_ = static_cast<int>(ctx.GetInputsSize()) / 2;
 
   int32_t max_index = -1;
   if (data_elements_size) {

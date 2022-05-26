@@ -30,7 +30,7 @@
 #include "status.h"
 
 namespace {
-const char *TOPKV2D = "TopKV2D";
+const char *const TOPKV2D = "TopKV2D";
 }  // namespace
 
 namespace aicpu {
