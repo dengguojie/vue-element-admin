@@ -14,28 +14,12 @@ if(NOT ENABLE_TEST)
 
   file(MAKE_DIRECTORY "${DVPP_JSON_OUT_PATH}")
 
-  add_custom_command(OUTPUT "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json"
-    COMMAND "${HI_PYTHON}" "${INI_PARSER}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/dvpp_ops_info_ascend310p.ini"
-    "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json"
-    "${CUSTOM_FLAG}" 1>/dev/null
-    COMMENT "Parsing dvpp_ops_info_ascend310p.ini file"
-  )
-
   add_custom_command(OUTPUT "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend310p.json"
     COMMAND "${HI_PYTHON}" "${INI_PARSER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/dvpp_ops_info_ascend310p.ini"
     "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend310p.json"
     "${CUSTOM_FLAG}" 1>/dev/null
     COMMENT "Parsing dvpp_ops_info_ascend310p.ini file"
-  )
-
-  add_custom_command(OUTPUT "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend920.json"
-    COMMAND "${HI_PYTHON}" "${INI_PARSER}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/dvpp_ops_info_ascend910b.ini"
-    "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend920.json"
-    "${CUSTOM_FLAG}" 1>/dev/null
-    COMMENT "Parsing dvpp_ops_info_ascend910b.ini file"
   )
 
   add_custom_command(OUTPUT "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend910b.json"
@@ -46,9 +30,7 @@ if(NOT ENABLE_TEST)
     COMMENT "Parsing dvpp_ops_info_ascend910b.ini file"
   )
 
-  list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json")
   list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend310p.json")
-  list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend920.json")
   list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend910b.json")
   set(DVPP_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in")
 
@@ -58,17 +40,7 @@ if(NOT ENABLE_TEST)
   if(BUILD_OPEN_PROJECT)
     cann_install(
       TARGET      dvpp_ops_json_info
-      FILES       "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json"
-      DESTINATION "${DVPP_OP_PATH}/dvpp/dvpp_kernel/config"
-    )
-    cann_install(
-      TARGET      dvpp_ops_json_info
       FILES       "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend310p.json"
-      DESTINATION "${DVPP_OP_PATH}/dvpp/dvpp_kernel/config"
-    )
-    cann_install(
-      TARGET      dvpp_ops_json_info
-      FILES       "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend920.json"
       DESTINATION "${DVPP_OP_PATH}/dvpp/dvpp_kernel/config"
     )
     cann_install(
