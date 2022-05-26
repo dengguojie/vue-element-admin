@@ -38,6 +38,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
+#include "graph_optimizer/fusion_common/graph_pass_util.h"
 
 namespace fe {
 static const string ATTR_DATA_TYPE = "T";
@@ -556,6 +557,7 @@ void ExtremumGradFusionPass::SetExtemDataDumpAttr(const std::map<string, ge::Nod
     }
   }
   SetDataDumpAttr(originalNodes, fusionNodes);
+  GraphPassUtil::RecordPassnameAndOriginalNames(originalNodes, fusionNodes, GetName());
 }
 ge::NodePtr ExtremumGradFusionPass::FindNodeInRecordMap(const map<string, ge::NodePtr>& recordMap, string key) {
   ge::NodePtr node = nullptr;
