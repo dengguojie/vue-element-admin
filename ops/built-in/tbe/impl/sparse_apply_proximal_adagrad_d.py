@@ -286,5 +286,5 @@ def sparse_apply_proximal_adagrad_d(var,
     sparse_apply_proximal_adagrad.reserve_ub("lr2_ub", var_dtype)
     sparse_apply_proximal_adagrad.reserve_ub("prox_var_ub", var_dtype)
     sparse_apply_proximal_adagrad.reserve_ub("oct_float_ub", var_dtype, align_name="oct_float_ub")
-    sparse_apply_proximal_adagrad.set_var_rows(var_shape[0])
+    sparse_apply_proximal_adagrad.set_var_shape(var_shape)
     sparse_apply_proximal_adagrad.sparse_apply_operator()

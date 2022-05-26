@@ -268,5 +268,5 @@ def sparse_apply_adadelta_d(var,
     sparse_apply_adadelta.reserve_ub("rho_ub", var_dtype, is_scalar=True)
     sparse_apply_adadelta.reserve_ub("tmp1_ub", var_dtype)
     sparse_apply_adadelta.reserve_ub("tmp2_ub", var_dtype)
-    sparse_apply_adadelta.set_var_rows(var_shape[0])
+    sparse_apply_adadelta.set_var_shape(var_shape)
     sparse_apply_adadelta.sparse_apply_operator()

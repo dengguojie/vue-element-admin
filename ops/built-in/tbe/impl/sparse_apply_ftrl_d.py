@@ -252,5 +252,5 @@ def sparse_apply_ftrl_d(var,
     apply_ftrl.reserve_ub("linear_ub", "float32", "linear_align_ub")
     apply_ftrl.reserve_ub("tmp_ub", "float32")
     apply_ftrl.reserve_ub("tmp2_ub", "float32")
-    apply_ftrl.set_var_rows(var_shape[0])
+    apply_ftrl.set_var_shape(var_shape)
     apply_ftrl.sparse_apply_operator()

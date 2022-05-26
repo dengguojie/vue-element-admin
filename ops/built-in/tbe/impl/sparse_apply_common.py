@@ -115,6 +115,7 @@ class SparseApply():
         self.reg_core_last_rows = self.tik_instance.Scalar(self.indices_dtype)
         self.reg_row_start_core = self.tik_instance.Scalar(self.indices_dtype)
         self.var_rows = None
+        self.var_cols = None
         self.var_ub_shape = None
         self.indices_ub_shape = None
         self.cols_per_part = None
@@ -165,7 +166,7 @@ class SparseApply():
                 "grad must be the same shape as indices in first dimension, grad's shape is %s" % self.grad_shape,
                 'indices', self.indices_shape)
 
-    def set_var_rows(self, num):
+    def set_var_shape(self, shape):
         """
         set var rows, called by external
 
@@ -177,8 +178,11 @@ class SparseApply():
         -------
         None
         """
-        self.var_rows = num
-        self.reg_row_start.set_as(num + 1)
+        self.var_rows = shape[0]
+        self.reg_row_start.set_as(shape[0] + 1)
+        self.var_cols = 1
+        for i in range(1, len(shape)):
+            self.var_cols *= shape[i]
 
     def add_input(self, name, dtype, shape):
         """
@@ -312,6 +316,10 @@ class SparseApply():
         remain_ub_mem = self.ub_size_bytes - indices_cnt * self.indices_dtype_bytes_size
         update_num_per_ub = remain_ub_mem // self.grad_dtype_bytes_size // ub_block_num
         update_num_per_ub = math.ceil(update_num_per_ub / self.grad_each_block) * self.grad_each_block
+
+        if self.var_cols > update_num_per_ub and self.var_cols % update_num_per_ub < 8:
+            # last part of a rows must process at leat one block
+            update_num_per_ub -= (self.var_cols % update_num_per_ub)
 
         self.var_ub_shape = (update_num_per_ub, )
         self.indices_ub_shape = (indices_cnt, )

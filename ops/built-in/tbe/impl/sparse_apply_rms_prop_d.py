@@ -246,5 +246,5 @@ def sparse_apply_rms_prop_d(var,
     sparse_apply_rms_prop.reserve_ub("mom_ub", var_dtype, "mom_align_ub")
     sparse_apply_rms_prop.reserve_ub("lr_ub", var_dtype, is_scalar=True)
     sparse_apply_rms_prop.reserve_ub("tmp_ub", var_dtype)
-    sparse_apply_rms_prop.set_var_rows(var_shape[0])
+    sparse_apply_rms_prop.set_var_shape(var_shape)
     sparse_apply_rms_prop.sparse_apply_operator()

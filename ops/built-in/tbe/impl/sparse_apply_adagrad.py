@@ -176,5 +176,5 @@ def sparse_apply_adagrad(var,
     apply_adagrad.reserve_ub("accum_ub", "float32", "accum_align_ub")
     apply_adagrad.reserve_ub("tmp_ub", "float32")
     apply_adagrad.reserve_ub("lr_ub", var_dtype, is_scalar=True)
-    apply_adagrad.set_var_rows(var_shape[0])
+    apply_adagrad.set_var_shape(var_shape)
     apply_adagrad.sparse_apply_operator()

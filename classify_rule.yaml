@@ -1395,6 +1395,15 @@ vector_B:
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
+      - ops/built-in/tbe/impl/sparse_apply_common.py
+      - ops/built-in/tbe/impl/sparse_apply_adadelta_d.py
+      - ops/built-in/tbe/impl/sparse_apply_adagrad.py
+      - ops/built-in/tbe/impl/sparse_apply_adagrad_d.py
+      - ops/built-in/tbe/impl/sparse_apply_adagrad_v2_d.py
+      - ops/built-in/tbe/impl/sparse_apply_ftrl_d.py
+      - ops/built-in/tbe/impl/sparse_apply_ftrl_v2_d.py
+      - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
+      - ops/built-in/tbe/impl/sparse_apply_rms_prop_d.py
     unrelease:
       - ops/built-in/op_proto/runtime/moving_sum_with_sigmoid.cc
       - ops/built-in/op_proto/runtime/reduce_infer.cc
@@ -2580,7 +2589,6 @@ unkown:
       - ops/built-in/tbe/impl/zn_2_hwcn.py
       - ops/built-in/tbe/impl/ncdhw_2_fractal_z_3d.py
       - ops/built-in/tbe/impl/rsqrt.py
-      - ops/built-in/tbe/impl/sparse_apply_common.py
       - ops/built-in/tbe/impl/batch_to_space_d.py
       - ops/built-in/tbe/impl/reduce_all_d.py
       - ops/built-in/tbe/impl/decode_wheels_target.py
@@ -2593,7 +2601,6 @@ unkown:
       - ops/built-in/tbe/impl/pack.py
       - ops/built-in/tbe/impl/threshold_v2_d.py
       - ops/built-in/tbe/impl/fused_mul_apply_momentum.py
-      - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2_unify.py
       - ops/built-in/tbe/impl/nd_2_nz.py
       - ops/built-in/tbe/impl/square.py
@@ -2700,7 +2707,6 @@ unkown:
       - ops/built-in/tbe/impl/basic_lstm_cell_weight_grad.py
       - ops/built-in/tbe/impl/decode_bbox.py
       - ops/built-in/tbe/impl/max_pool_with_argmaxv2.py
-      - ops/built-in/tbe/impl/sparse_apply_ftrl_v2_d.py
       - ops/built-in/tbe/impl/slice_d_v2.py
       - ops/built-in/tbe/impl/gn_training_update.py
       - ops/built-in/tbe/impl/nc1hwc0_2_nz.py
@@ -2716,7 +2722,6 @@ unkown:
       - ops/built-in/tbe/impl/cum_computer.py
       - ops/built-in/tbe/impl/matmul_vector.py
       - ops/built-in/tbe/impl/bessel_i1e.py
-      - ops/built-in/tbe/impl/sparse_apply_adadelta_d.py
       - ops/built-in/tbe/impl/check_valid.py
       - ops/built-in/tbe/impl/div.py
       - ops/built-in/tbe/impl/update_tensor_desc.py
@@ -2725,7 +2730,6 @@ unkown:
       - ops/built-in/tbe/impl/resize_bilinear_tik.py
       - ops/built-in/tbe/impl/ceil.py
       - ops/built-in/tbe/impl/reduce_sum_d.py
-      - ops/built-in/tbe/impl/sparse_apply_adagrad_v2_d.py
       - ops/built-in/tbe/impl/atan2.py
       - ops/built-in/tbe/impl/extract_image_patches.py
       - ops/built-in/tbe/impl/n_p_u_get_float_status.py
@@ -2769,7 +2773,6 @@ unkown:
       - ops/built-in/tbe/impl/reciprocal.py
       - ops/built-in/tbe/impl/prod_force_se_a.py
       - ops/built-in/tbe/impl/mul_no_nan.py
-      - ops/built-in/tbe/impl/sparse_apply_ftrl_d.py
       - ops/built-in/tbe/impl/arg_max_with_value.py
       - ops/built-in/tbe/impl/resize_bilinear_v2_grad.py
       - ops/built-in/tbe/impl/nd_2_zn_int8.py
@@ -2809,8 +2812,6 @@ unkown:
       - ops/built-in/tbe/impl/square_sum_v2.py
       - ops/built-in/tbe/impl/swap_ci.py
       - ops/built-in/tbe/impl/common_util.py
-      - ops/built-in/tbe/impl/sparse_apply_adagrad_d.py
-      - ops/built-in/tbe/impl/sparse_apply_adagrad.py
       - ops/built-in/tbe/impl/write_select.py
       - ops/built-in/tbe/impl/arg_max_grad_d.py
       - ops/built-in/tbe/impl/ascend_requant.py
@@ -2941,7 +2942,6 @@ unkown:
       - ops/built-in/tbe/impl/bias.py
       - ops/built-in/tbe/impl/gn_training_reduce.py
       - ops/built-in/tbe/impl/dynamic_rnn.py
-      - ops/built-in/tbe/impl/sparse_apply_rms_prop_d.py
       - ops/built-in/tbe/impl/erfc.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop.py
       - ops/built-in/tbe/impl/cosh.py
