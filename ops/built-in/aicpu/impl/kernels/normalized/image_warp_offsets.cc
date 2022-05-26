@@ -29,11 +29,11 @@
 using namespace std;
 
 namespace {
-const char *kImageWarpOffsets = "IMGWarpOffsets";
+const char *const kImageWarpOffsets = "IMGWarpOffsets";
 constexpr size_t kInputShapeRank = 4;
 constexpr size_t kOutputShapeRank = 5;
-const char *kInputStr = "input";
-const char *kOutputStr = "output";
+const char *const kInputStr = "input";
+const char *const kOutputStr = "output";
 constexpr int64_t kPointsNum = 4;
 constexpr int64_t kImageChannels = 3;
 }  // namespace
@@ -120,7 +120,7 @@ uint32_t ImageWarpOffsetsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ImageWarpOffsetsCpuKernel::CheckParam(CpuKernelContext &ctx,
+uint32_t ImageWarpOffsetsCpuKernel::CheckParam(const CpuKernelContext &ctx,
                                                const string &in_or_out,
                                                uint32_t index, size_t rank) {
   Tensor *param = nullptr;
@@ -162,7 +162,7 @@ uint32_t ImageWarpOffsetsCpuKernel::CheckParam(CpuKernelContext &ctx,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ImageWarpOffsetsCpuKernel::CheckShapes(CpuKernelContext &ctx) {
+uint32_t ImageWarpOffsetsCpuKernel::CheckShapes(const CpuKernelContext &ctx) {
   auto input0_shape =
       ctx.Input(kFirstInputIndex)->GetTensorShape()->GetDimSizes();
   if (input0_shape.back() != kImageChannels) {

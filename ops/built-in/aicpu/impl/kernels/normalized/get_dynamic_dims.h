@@ -30,7 +30,7 @@ class GetDynamicDimsCpuKernel : public CpuKernel {
   uint32_t DoCompute(CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t FillOutput(CpuKernelContext &ctx, std::vector<T> &dims);
+  uint32_t FillOutput(const CpuKernelContext &ctx, std::vector<T> &dims);
 
   /**
    * @brief get inputs' configured shape from attr shape_info
@@ -47,7 +47,7 @@ class GetDynamicDimsCpuKernel : public CpuKernel {
    * @return status code
    */
   template <typename T>
-  uint32_t GetInputShapes(CpuKernelContext &ctx,
+  uint32_t GetInputShapes(const CpuKernelContext &ctx,
       std::vector<std::vector<T>> &input_shapes) const;
 };
 } // namespace aicpu

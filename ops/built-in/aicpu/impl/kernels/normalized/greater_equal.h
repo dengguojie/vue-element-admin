@@ -25,21 +25,20 @@ class GreaterEqualCpuKernel : public CpuKernel {
   GreaterEqualCpuKernel() = default;
   ~GreaterEqualCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t GreaterEqualParamCheck(CpuKernelContext &ctx);
+  uint32_t GreaterEqualParamCheck(CpuKernelContext &ctx) const;
 
   template <typename T>
   void SpecialCompute(BcastShapeType type, int64_t start, int64_t end,
                       const T *input1, const T *input2, bool *output);
 
   template <typename T>
-  uint32_t NoBcastCompute(CpuKernelContext &ctx);
+  uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
+  uint32_t BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
   uint32_t GreaterEqualCompute(CpuKernelContext &ctx);

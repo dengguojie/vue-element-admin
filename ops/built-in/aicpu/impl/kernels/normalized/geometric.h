@@ -25,16 +25,15 @@ class GeometricCpuKernel : public CpuKernel {
  public:
   GeometricCpuKernel() = default;
   ~GeometricCpuKernel() override = default;
-
-  protected:
+  
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
 
-  uint32_t ExtraParamCheck(CpuKernelContext &ctx);
-  int32_t attr_seed_ = 0;
+  uint32_t ExtraParamCheck(const CpuKernelContext &ctx);
+  int64_t attr_seed_ = 0;
   float p_ = 0.5;
 };
 }  // namespace aicpu

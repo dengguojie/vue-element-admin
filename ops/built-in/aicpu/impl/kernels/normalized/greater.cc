@@ -35,7 +35,7 @@ namespace aicpu {
 template <typename T, int32_t RANK>
 uint32_t GreaterCpuKernel::BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y,
                                             TensorMap<bool> &out,
-                                            Bcast &bcast) {
+                                            const Bcast &bcast) {
   Eigen::DSizes<Eigen::DenseIndex, RANK> x_reshape;
   Eigen::DSizes<Eigen::DenseIndex, RANK> y_reshape;
   Eigen::DSizes<Eigen::DenseIndex, RANK> result_shape;

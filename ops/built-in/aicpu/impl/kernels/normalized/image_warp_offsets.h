@@ -38,12 +38,11 @@ class ImageWarpOffsetsCpuKernel : public CpuKernel {
 
   uint32_t CheckParams(CpuKernelContext &ctx);
 
-  uint32_t CheckParam(CpuKernelContext &ctx, const std::string &in_or_out,
+  uint32_t CheckParam(const CpuKernelContext &ctx, const std::string &in_or_out,
                       uint32_t index, size_t rank);
 
-  uint32_t CheckShapes(CpuKernelContext &ctx);
+  uint32_t CheckShapes(const CpuKernelContext &ctx);
 
- private:
   using KernelFunction = uint32_t (*)(CpuKernelContext &ctx);
   static const std::map<std::string, KernelFunction> kernels_;
   static const std::vector<std::string> kernels_name_;

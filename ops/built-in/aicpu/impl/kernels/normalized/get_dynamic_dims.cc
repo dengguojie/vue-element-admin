@@ -105,7 +105,7 @@ uint32_t GetDynamicDimsCpuKernel::DoCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t GetDynamicDimsCpuKernel::FillOutput(CpuKernelContext &ctx,
+uint32_t GetDynamicDimsCpuKernel::FillOutput(const CpuKernelContext &ctx,
                                              std::vector<T> &dims) {
   KERNEL_LOG_INFO("[%s] unknown dims: [%s].", kGetDynamicDims,
                   VectorToString(dims).c_str());
@@ -143,7 +143,7 @@ std::vector<std::vector<int64_t>> GetDynamicDimsCpuKernel::GetShapeInfos(
 
 template <typename T>
 uint32_t GetDynamicDimsCpuKernel::GetInputShapes(
-    CpuKernelContext &ctx, std::vector<std::vector<T>> &input_shapes) const {
+    const CpuKernelContext &ctx, std::vector<std::vector<T>> &input_shapes) const {
   for (uint32_t i = 0; i < ctx.GetInputsSize(); ++i) {
     Tensor *input_tensor = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_INNER_ERROR,

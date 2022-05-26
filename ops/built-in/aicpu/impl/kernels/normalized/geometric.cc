@@ -29,7 +29,7 @@ const double PATTRDEFAULT = 0.5;
 
 namespace aicpu {
 template <typename T>
-uint32_t GeometricCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t GeometricCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input_tensor = ctx.Input(0);
   auto input_tensor_shape = input_tensor->GetTensorShape();
   auto output_tensor = ctx.Output(0);
@@ -84,7 +84,7 @@ uint32_t GeometricCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t GeometricCpuKernel::ExtraParamCheck(CpuKernelContext &ctx) {
+uint32_t GeometricCpuKernel::ExtraParamCheck(const CpuKernelContext &ctx) {
   DataType x_type = ctx.Input(0)->GetDataType();
   KERNEL_CHECK_FALSE((x_type == DT_FLOAT || x_type == DT_FLOAT16),
                      KERNEL_STATUS_PARAM_INVALID,

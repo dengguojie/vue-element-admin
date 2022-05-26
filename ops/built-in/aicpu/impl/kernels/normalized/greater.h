@@ -39,7 +39,7 @@ class GreaterCpuKernel : public CpuKernel {
 
   template <typename T, int32_t RANK>
   uint32_t BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y,
-                            TensorMap<bool> &out, Bcast &bcast);
+                            TensorMap<bool> &out, const Bcast &bcast);
 };
 }  // namespace aicpu
 #endif

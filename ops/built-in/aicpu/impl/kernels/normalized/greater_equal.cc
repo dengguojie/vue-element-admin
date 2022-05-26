@@ -64,7 +64,7 @@ uint32_t GreaterEqualCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t GreaterEqualCpuKernel::GreaterEqualParamCheck(CpuKernelContext &ctx) {
+uint32_t GreaterEqualCpuKernel::GreaterEqualParamCheck(CpuKernelContext &ctx) const {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "GreaterEqual check input and output number failed.");
   Tensor *input_0 = ctx.Input(0);
@@ -121,7 +121,7 @@ void GreaterEqualCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
 }
 
 template <typename T>
-uint32_t GreaterEqualCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
+uint32_t GreaterEqualCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) {
   auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
@@ -155,8 +155,8 @@ uint32_t GreaterEqualCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t GreaterEqualCpuKernel::BcastCompute(CpuKernelContext &ctx,
-                                             Bcast &bcast) {
+uint32_t GreaterEqualCpuKernel::BcastCompute(const CpuKernelContext &ctx,
+                                             const Bcast &bcast) {
   auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
@@ -210,8 +210,6 @@ uint32_t GreaterEqualCpuKernel::GreaterEqualCompute(CpuKernelContext &ctx) {
   } else {
     return NoBcastCompute<T>(ctx);
   }
-
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kGreaterEqual, GreaterEqualCpuKernel);

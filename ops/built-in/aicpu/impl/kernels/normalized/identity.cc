@@ -25,7 +25,7 @@
 namespace {
 constexpr uint32_t kIdentityInputNum = 1;
 constexpr uint32_t kIdentityOutputNum = 1;
-const char *kIdentity = "Identity";
+const char *const kIdentity = "Identity";
 }
 
 namespace aicpu {
@@ -41,8 +41,8 @@ uint32_t IdentityCpuKernel::Compute(CpuKernelContext &ctx) {
   void *output_data = ctx.Output(0)->GetData();
   KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get output_data[0] failed.", kIdentity);
-  int64_t input_size = ctx.Input(0)->GetDataSize();
-  int64_t output_size = ctx.Output(0)->GetDataSize();
+  uint64_t input_size = ctx.Input(0)->GetDataSize();
+  uint64_t output_size = ctx.Output(0)->GetDataSize();
   if (output_size < input_size) {
     KERNEL_LOG_WARN("[%s] output size [%ld] less than input size [%ld].",
                     kIdentity, output_size, input_size);
