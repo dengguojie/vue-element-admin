@@ -28,7 +28,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-const char *kFloor = "Floor";
+const char *const kFloor = "Floor";
 }  // namespace
 
 namespace aicpu {
@@ -59,7 +59,7 @@ uint32_t FloorCpuKernel::Compute(CpuKernelContext &ctx) {
   return ret;
 }
 
-uint32_t FloorCpuKernel::FloorCheck(CpuKernelContext &ctx) {
+uint32_t FloorCpuKernel::FloorCheck(const CpuKernelContext &ctx) const {
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input data failed.")
   KERNEL_CHECK_NULLPTR(ctx.Output(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,

@@ -25,24 +25,23 @@ class FloorDivCpuKernel : public CpuKernel {
   FloorDivCpuKernel() = default;
   ~FloorDivCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t FloorDivParamCheck(CpuKernelContext &ctx);
+  uint32_t FloorDivParamCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
   uint32_t SpecialCompute(BcastShapeType type, int64_t start, int64_t end,
                           const T *input1, const T *input2, T *output);
 
   template <typename T>
-  uint32_t NoBcastCompute(CpuKernelContext &ctx);
+  uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
   uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
 
   template <typename T>
-  uint32_t BcastParallelCompute(CpuKernelContext &ctx, Bcast &bcast);
+  uint32_t BcastParallelCompute(const CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
   uint32_t FloorDivCompute(CpuKernelContext &ctx);

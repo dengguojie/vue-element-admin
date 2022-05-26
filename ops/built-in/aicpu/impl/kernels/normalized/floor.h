@@ -24,11 +24,10 @@ class FloorCpuKernel : public CpuKernel {
   FloorCpuKernel() = default;
   ~FloorCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t FloorCheck(CpuKernelContext &ctx);
+  uint32_t FloorCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
   uint32_t FloorCompute(CpuKernelContext &ctx);

@@ -20,11 +20,10 @@
 #include "cpu_types.h"
 #include "log.h"
 #include "securec.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kGatherV2 = "GatherV2";
+const char *const kGatherV2 = "GatherV2";
 const uint32_t kInputNum = 3;
 const uint32_t kOutputNum = 1;
 const uint32_t kIndexTwo = 2;
@@ -32,7 +31,7 @@ const uint32_t kIndexTwo = 2;
 
 namespace aicpu {
 template <typename T, typename Index>
-uint32_t DoGatherV2Compute(CpuKernelContext &ctx) {
+uint32_t DoGatherV2Compute(const CpuKernelContext &ctx) {
   Tensor* params = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID, "Get params failed.");
   Tensor* indices = ctx.Input(1);
@@ -61,10 +60,10 @@ uint32_t DoGatherV2Compute(CpuKernelContext &ctx) {
   int64_t inner_size = 1;
 
   for (int64_t i = 0; i < axis; ++i) {
-    outer_size *= params->GetTensorShape()->GetDimSize(i);
+    outer_size *= params->GetTensorShape()->GetDimSize(static_cast<int32_t>(i));
   }
   for (int64_t i = axis + 1; i < params->GetTensorShape()->GetDims(); ++i) {
-    inner_size *= params->GetTensorShape()->GetDimSize(i);
+    inner_size *= params->GetTensorShape()->GetDimSize(static_cast<int32_t>(i));
   }
 
   int64_t slice_size = inner_size * sizeof(T);
@@ -106,7 +105,7 @@ uint32_t IndicesCompute(CpuKernelContext &ctx) {
   return calls[params_type](ctx);
 }
 
-uint32_t GatherV2CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t GatherV2CpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   Tensor* params = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID,
                        "Get params failed.");
@@ -139,16 +138,13 @@ uint32_t GatherV2CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
 }
 
 uint32_t GatherV2CpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("GatherV2CpuKernel start.");
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "Check GatherV2 params failed.");
 
   auto ret = GetInputAndCheck(ctx);
-  KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), ret,
-                     "GetInputAndCheck failed");
+  KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), ret, "GetInputAndCheck failed");
   Tensor *indices = ctx.Input(1);
-  KERNEL_CHECK_NULLPTR(indices, KERNEL_STATUS_PARAM_INVALID,
-                       "Get indices failed.");
+  KERNEL_CHECK_NULLPTR(indices, KERNEL_STATUS_PARAM_INVALID, "Get indices failed.");
   DataType indices_type = indices->GetDataType();
   if (indices_type == DT_INT32) {
     ret = IndicesCompute<int32_t>(ctx);

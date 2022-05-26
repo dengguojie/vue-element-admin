@@ -51,8 +51,8 @@ uint32_t ExpandDimsCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
                        "Get tensor shape failed")
 
-  size_t data_dim_size = shape->GetDims();
-  KERNEL_LOG_INFO("ExpandDims op[%s] output tensor dim size is [%zu]",
+  int32_t data_dim_size = shape->GetDims();
+  KERNEL_LOG_INFO("ExpandDims op[%s] output tensor dim size is [%d]",
                   ctx.GetOpType().c_str(), data_dim_size);
 
   Tensor *input = ctx.Input(0);

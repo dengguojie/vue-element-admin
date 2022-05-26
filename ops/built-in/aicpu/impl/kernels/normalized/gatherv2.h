@@ -13,7 +13,7 @@ class GatherV2CpuKernel : public CpuKernel {
     ~GatherV2CpuKernel() = default;
     uint32_t Compute(CpuKernelContext &ctx) override;
   private:
-    uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+    uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
 };
 } // namespace aicpu
 #endif

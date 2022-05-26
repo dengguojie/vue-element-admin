@@ -67,7 +67,7 @@ uint32_t FloorDivCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t FloorDivCpuKernel::FloorDivParamCheck(CpuKernelContext &ctx) {
+uint32_t FloorDivCpuKernel::FloorDivParamCheck(const CpuKernelContext &ctx) const {
   // the non null of input_0, input_1, output has been verified in NormalCheck
   Tensor *input_0 = ctx.Input(0);
   Tensor *input_1 = ctx.Input(1);
@@ -134,7 +134,7 @@ uint32_t FloorDivCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
 }
 
 template <typename T>
-uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
+uint32_t FloorDivCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
@@ -149,11 +149,11 @@ uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
-    uint32_t max_core_num = std::max(
+    int64_t max_core_num = std::max(
         min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
-      max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
+      max_core_num = std::min(max_core_num, static_cast<int64_t>(4));  // up to 4 cpu cores
     }
 
     if (max_core_num > data_num) {
@@ -179,19 +179,19 @@ uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t FloorDivCpuKernel::BcastParallelCompute(CpuKernelContext &ctx,
-                                                 Bcast &bcast) {
+uint32_t FloorDivCpuKernel::BcastParallelCompute(const CpuKernelContext &ctx,
+                                                 const Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
 
   uint32_t min_core_num = 1;
-  uint32_t max_core_num = std::max(
+  int64_t max_core_num = std::max(
       min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
   int64_t data_num = ctx.Output(0)->NumElements();
   if (data_num <= kParallelDataNumMid) {
-    max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
+    max_core_num = std::min(max_core_num, static_cast<int64_t>(4));  // up to 4 cpu cores
   }
 
   if (max_core_num > data_num) {
@@ -262,8 +262,6 @@ uint32_t FloorDivCpuKernel::FloorDivCompute(CpuKernelContext &ctx) {
 
     return BcastCompute<T>(ctx, bcast);
   }
-
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kFloorDiv, FloorDivCpuKernel);

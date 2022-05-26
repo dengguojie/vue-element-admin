@@ -80,7 +80,7 @@ uint32_t ExponentialCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t ExponentialCpuKernel::ExponentialCompute(CpuKernelContext &ctx) {
+uint32_t ExponentialCpuKernel::ExponentialCompute(const CpuKernelContext &ctx) {
   auto input_x = ctx.Input(0);
   auto output_tensor = ctx.Output(0);
 

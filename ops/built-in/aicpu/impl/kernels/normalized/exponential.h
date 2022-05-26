@@ -26,12 +26,11 @@ class ExponentialCpuKernel : public CpuKernel {
   ExponentialCpuKernel() = default;
   ~ExponentialCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
   template <typename T>
-  uint32_t ExponentialCompute(CpuKernelContext &ctx);
+  uint32_t ExponentialCompute(const CpuKernelContext &ctx);
   int32_t seed_ = 0;
   float lambda_ = 1.0;
 };
