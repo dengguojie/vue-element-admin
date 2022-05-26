@@ -1203,7 +1203,8 @@ class CubeParaProcess:
 
         if none_range_flag:
             if not self.fusion_flag:
-                return 1
+                # After the binary HW support range is equivalent to the dynamic shape, change it to 1.
+                return 0
             elif ori_format == "NCHW":
                 return 2
         return 0
