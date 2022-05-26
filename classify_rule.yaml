@@ -672,6 +672,8 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/threshold_plugin.cc
       - ops/built-in/framework/caffe_plugin/upsample_plugin.cc
       - ops/built-in/framework/caffe_plugin/yolo_plugin.cc
+      - ops/built-in/framework/tf_plugin/ascend_quant_plugin.cc
+      - ops/built-in/framework/tf_plugin/ascend_dequant_plugin.cc
       - ops/built-in/framework/tf_plugin/dilation2d_plugin.cc
       - ops/built-in/framework/caffe_plugin/caffe_batch_matmul_plugin.cc
       - ops/built-in/framework/caffe_plugin/caffe_deconv_plugin.cc
@@ -785,6 +787,8 @@ vector_A:
       - ops/built-in/op_tiling/tabulate_fusion.cc
       - ops/built-in/tbe/impl/ascend_quant.py
       - ops/built-in/tbe/impl/ascend_quant_util.py
+      - ops/built-in/tbe/impl/ascend_dequant.py
+      - ops/built-in/tbe/impl/ascend_requant.py
       - ops/built-in/tbe/impl/basic_lstm_cell.py
       - ops/built-in/tbe/impl/bnll.py
       - ops/built-in/tbe/impl/cumprod_d.py
@@ -2569,7 +2573,6 @@ unkown:
       - ops/built-in/tbe/impl/spp_pooling.py
       - ops/built-in/tbe/impl/acos.py
       - ops/built-in/tbe/impl/normalize_bbox.py
-      - ops/built-in/tbe/impl/ascend_dequant.py
       - ops/built-in/tbe/impl/bn3d_training_update.py
       - ops/built-in/tbe/impl/normalize_scale.py
       - ops/built-in/tbe/impl/apply_adagrad_da_d.py
@@ -2812,7 +2815,6 @@ unkown:
       - ops/built-in/tbe/impl/common_util.py
       - ops/built-in/tbe/impl/write_select.py
       - ops/built-in/tbe/impl/arg_max_grad_d.py
-      - ops/built-in/tbe/impl/ascend_requant.py
       - ops/built-in/tbe/impl/apply_ftrl_d.py
       - ops/built-in/tbe/impl/bias_add_grad.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h_v2.py
@@ -3210,7 +3212,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/one_hot_plugin.cc
       - ops/built-in/framework/tf_plugin/concat_plugin.cc
       - ops/built-in/framework/tf_plugin/strided_slice_grad_plugin.cc
-      - ops/built-in/framework/tf_plugin/ascend_dequant_plugin.cc
       - ops/built-in/framework/tf_plugin/roll_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_receive_plugin.cc
       - ops/built-in/framework/tf_plugin/list_plugin.cc
@@ -3315,7 +3316,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/apply_power_sign_plugin.cc
       - ops/built-in/framework/tf_plugin/arg_min_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_adam_plugin.cc
-      - ops/built-in/framework/tf_plugin/ascend_quant_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_apply_rms_prop.cc
       - ops/built-in/framework/tf_plugin/tensor_scatter_update_plugin.cc
       - ops/built-in/framework/tf_plugin/zeros_like_plugin.cc

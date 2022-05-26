@@ -27,20 +27,6 @@ from impl import ascend_quant_util as util
 
 
 # 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
-def is_support_a100():
-    """
-    Check if a100 version.
-
-    Returns
-    -------
-    True: a100 version.
-    False: other version.
-    """
-    if tbe_platform.api_check_support("tik.vgatherb"):
-        return True
-    return False
-
-
 # 'pylint: disable=too-many-branches,too-many-statements
 @fusion_manager.register("ascend_requant")
 def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant"):
@@ -62,10 +48,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     x_shape = x.shape
     x_shape_list = shape_util.shape_to_list(x_shape)
 
-    conv_flag = 0
-    if (len(x.op.input_tensors) > 0) and ('mad1' in x.op.input_tensors[0].name or \
-            'convolution_c_col_bias' in x.op.input_tensors[0].name):
-        conv_flag = 1
+    conv_flag = util.get_conv_flag(x)
 
     if conv_flag:
         x_input_shape_list = shape_util.shape_to_list(x.op.input_tensors[0].shape)
@@ -91,21 +74,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
         c1_index = len(x_shape) - 4
 
     if x.op.tag == "depthwise_conv2d":
-        tensor_dict = {}
-        tensor_dict["mad_ubuf"] = x.op.input_tensors[0]
-        if x.op.attrs['bias_flag'].value == 1:
-            tensor_dict["mad_after_bias"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-            tensor_dict["mad"] = tensor_dict["mad_after_bias"].op.input_tensors[1]
-        else:
-            tensor_dict["mad"] = tensor_dict["mad_ubuf"].op.input_tensors[0]
-        tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
-        tensor_dict["im2col_row_major"] = tensor_dict["im2col_fractal"].op.input_tensors[0]
-
-        tensor_dict["temp"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
-        if tensor_dict["temp"].op.input_tensors:
-            tensor_dict["fmap"] = tensor_dict["temp"].op.input_tensors[0]
-        else:
-            tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+        tensor_dict = util.get_depthwise_conv2d_tensor_info(x)
         x_ori_shape = tensor_dict["fmap"].op.attrs["ori_shape"]
         x_ori_format = tensor_dict["fmap"].op.attrs["ori_format"]
         x_ori_shape_list = shape_util.shape_to_list(x_ori_shape)
@@ -153,9 +122,9 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     res_ub_reform = _format_transfer(align_shape, res_ub, c1_index)
     res_shape = shape_util.shape_to_list(res_ub_reform.shape)
 
-    res_shape[-2] = x.shape[-2]
+    res_shape[-2] = x.op.attrs["conv_shape"][-2] if util.is_conv3d_fuse(x) else x.shape[-2]
     if conv_flag:
-        if not is_support_a100() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+        if not util.is_support_a100() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
             res_shape[-2] = res_shape[-2]//2
             res_ub_reform = tvm.compute(res_shape,
                                         lambda batch, cout1, howo, cout0:
@@ -200,13 +169,10 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
         true_cout1 = x.op.attrs["conv_shape"][1] # output shape of conv, conv_shape = [batch, true_cout1, ho*wo, c0]
 
         def lambda_func(batch, cout1, howo, cout0):
-            new_indice = [0] * 5
-            if tensor_flag:
-                new_indice[4] = cout0
-                new_indice[1] = cout1
+            new_indice = util.get_scale_indices(req_scale, tensor_flag, cout0, cout1)
 
             if tensor_flag:
-                if is_support_a100():
+                if util.is_support_a100():
                     return tvm.vdeq_cast(
                         x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                               batch,
@@ -222,7 +188,7 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
                         req_scale(*new_indice), "int8", do_relu=relu_flag),
                     tvm.const(0, dtype="int8"))
 
-            if is_support_a100():
+            if util.is_support_a100():
                 return tvm.deq_cast(
                     x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                           batch,
@@ -242,11 +208,8 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
         x_shape_list = shape_util.shape_to_list(x.shape)
 
         def lambda_func(*indice):
-            new_indice = [0] * 5
-            if tensor_flag:
-                new_indice[4] = indice[c0_index]
-                new_indice[1] = indice[c1_index]
-            if is_support_a100() and tensor_flag:
+            new_indice = util.get_scale_indices(req_scale, tensor_flag, indice[c0_index], indice[c1_index])
+            if util.is_support_a100() and tensor_flag:
                 return tvm.vdeq_cast(x(*indice), req_scale(*new_indice), "int8", do_relu=relu_flag)
             if tensor_flag:
                 return tvm.select(indice[c1_index] < x_shape_list[c1_index],
@@ -321,24 +284,29 @@ def _check_params(x, req_scale, y, relu_flag, kernel_name):
     dtype_req = req_scale.get("dtype")
 
     check_list = [("int32",), ("uint64",)]
-    format_list = ["NC1HWC0", "FRACTAL_NZ"]
+    format_list = ["NC1HWC0", "FRACTAL_NZ", "NDC1HWC0"]
     para_check.check_dtype(dtype_x, check_list[0], param_name="x")
     para_check.check_dtype(dtype_req, check_list[1], param_name="req_scale")
     para_check.check_format(format_x, format_list, param_name="x")
 
     if format_x == "NC1HWC0":
         para_check.check_shape(shape_x, min_rank=5, max_rank=5, param_name="x")
-
     if format_x == "FRACTAL_NZ":
         para_check.check_shape(shape_x, min_rank=4, param_name="x")
+    if format_x == "NDC1HWC0":
+        para_check.check_shape(shape_x, min_rank=6, max_rank=6, param_name="x")
 
-    para_check.check_shape(shape_req, min_rank=5, max_rank=5, param_name="req_scale")
-
-    para_check.check_format(format_req, ("NC1HWC0",), param_name="req_scale")
-
-    if shape_req[0] != 1 or shape_req[2] != 1 or shape_req[3] != 1:
-        detail = "req_scale shape must be 1 in n,h,w"
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
+    para_check.check_format(format_req, ["NC1HWC0", "NDC1HWC0"], param_name="req_scale")
+    if format_req == "NC1HWC0":
+        para_check.check_shape(shape_req, min_rank=5, max_rank=5, param_name="req_scale")
+        if shape_req[0] != 1 or shape_req[2] != 1 or shape_req[3] != 1:
+            detail = "req_scale shape must be 1 in n,h,w"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
+    else:
+        para_check.check_shape(shape_req, min_rank=6, max_rank=6, param_name="req_scale")
+        if shape_req[0] != 1 or shape_req[1] != 1 or shape_req[3] != 1 or shape_req[4] != 1:
+            detail = "req_scale shape must be 1 in n,d,h,w"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
 
 
 def get_op_support_info(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant"):
@@ -376,6 +344,9 @@ def ascend_requant(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant
     if format_x == "NC1HWC0":
         # n, C1, H*W, C0
         shape_x = [shape_x[0], shape_x[1], shape_x[2] * shape_x[3], shape_x[4]]
+    elif format_x == "NDC1HWC0":
+        # change to N*D,C1,H*W,C0
+        shape_x = (shape_x[0] * shape_x[1], shape_x[2], shape_x[3] * shape_x[4], shape_x[5])
 
     ori_shape_req = req_scale.get("ori_shape")
     attr = {"ori_shape": ori_shape_req}

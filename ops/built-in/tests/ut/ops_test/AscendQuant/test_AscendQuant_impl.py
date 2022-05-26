@@ -56,7 +56,13 @@ case7 = {"params": [{"shape": (10,21,40,40,16), "dtype": "float16", "format": "N
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
+case8 = {"params": [{"shape": (2,1,1,1,1,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (2,1,1,1,1,16),"ori_format": "NDC1HWC0"},
+                    {"shape": (2,1,1,1,1,32), "dtype": "int8", "format": "NDC1HWC0", "ori_shape": (2,1,1,1,1,32),"ori_format": "NDC1HWC0"},
+                    2.0, 0.0, False, "Round"],
+         "case_name": "ascend_quant_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 def test_ascend_quant_a100(test_arg):
     from te import platform as cce_conf
     from impl.ascend_quant import ascend_quant
@@ -73,6 +79,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend710"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
 
 #precision cases
 def nhwc_data4Dto5D(inputData, channel0=16):
@@ -132,24 +139,24 @@ def calc_expect_func(x, y, scale, offset, sqrt_mode, round_mode):
         out_data = out_data.astype("int8")
     return out_data
 
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
-                                              {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
-                                              1.0, 0.0, False, "Floor"],
-                                   "calc_expect_func": calc_expect_func,
-                                   "case_name": "ascend_quant_static_precision_case_001",
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
-                                              {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
-                                              1.0, 0.0, False, "Trunc"],
-                                   "calc_expect_func": calc_expect_func,
-                                   "case_name": "ascend_quant_static_precision_case_002",
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
-ut_case.add_precision_case("all", {"params": [{"shape": (2,1,1,16,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,1,1,16,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
-                                              {"shape": (2,1,1,16,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (2,1,1,16,32),"ori_format": "NC1HWC0", "param_type": "output"},
-                                              1.0, 0.0, False, "Round"],
-                                   "calc_expect_func": calc_expect_func,
-                                   "case_name": "ascend_quant_static_precision_case_003",
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
+# ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
+#                                               {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
+#                                               1.0, 0.0, False, "Floor"],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "case_name": "ascend_quant_static_precision_case_001",
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
+#                                               {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
+#                                               1.0, 0.0, False, "Trunc"],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "case_name": "ascend_quant_static_precision_case_002",
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("all", {"params": [{"shape": (2,1,1,16,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,1,1,16,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
+#                                               {"shape": (2,1,1,16,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (2,1,1,16,32),"ori_format": "NC1HWC0", "param_type": "output"},
+#                                               1.0, 0.0, False, "Round"],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "case_name": "ascend_quant_static_precision_case_003",
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })

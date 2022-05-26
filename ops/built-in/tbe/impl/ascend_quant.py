@@ -26,32 +26,7 @@ from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
 
 
-def _is_lhisi_version():
-    """
-    check is Lhisi version
-    """
-    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        return True
-    return False
-
-
 # 'pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
-def is_support_a100():
-    """
-    Check if a100 version.
-
-    Returns
-    -------
-    True: a100 version.
-    False: other version.
-    """
-    if tbe_platform.api_check_support("tik.vgatherb") and not platform_info.intrinsic_check_support(
-        "Intrinsic_fix_pipe_unit_list", "post_eltwise"):
-        return True
-    return False
-
-
 def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr
@@ -59,16 +34,16 @@ def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_n
     shape = x.get("shape")
     x_format = x.get("format")
     dtype = x.get("dtype").lower()
-    format_list = ["NC1HWC0", "FRACTAL_NZ"]
+    format_list = ["NC1HWC0", "FRACTAL_NZ", "NDC1HWC0"]
     para_check.check_format(x_format, format_list, param_name="x")
+    if x_format == "NDC1HWC0":
+        para_check.check_shape(shape, min_rank=6, max_rank=6, param_name="x")
     if x_format == "NC1HWC0":
         para_check.check_shape(shape, min_rank=5, max_rank=5, param_name="x")
     if x_format == "FRACTAL_NZ":
         para_check.check_shape(shape, min_rank=4, param_name="x")
 
-    para_check.check_shape(shape, param_name="x")
-
-    if _is_lhisi_version():
+    if util.is_lhisi_version():
         check_list = ["float16"]
     else:
         check_list = ["float16", "float32"]
@@ -330,7 +305,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     -------
     None
     """
-    if is_support_a100() and x.op.name == "res_conv2d":
+    if util.is_support_a100(is_quant=True) and x.op.name == "res_conv2d":
         scale_exp = tvm.const(scale, "float32")
         offset_exp = tvm.const(offset, "float32")
 
@@ -451,6 +426,9 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_t
     if input_format == "NC1HWC0":
         # change to N,C1,H*W,C0
         input_shape = (shape[0], shape[1], shape[2] * shape[3], shape[4])
+    elif input_format == "NDC1HWC0":
+        # change to N*D,C1,H*W,C0
+        input_shape = (shape[0] * shape[1], shape[2], shape[3] * shape[4], shape[5])
     else:
         batch = 1
         if len(shape) > 4:

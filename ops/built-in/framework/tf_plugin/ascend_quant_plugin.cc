@@ -30,7 +30,10 @@ using domi::tensorflow::NodeDef;
 
 namespace domi {
 Status AutoMappingFnQuant(const google::protobuf::Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "auto mapping failed.");
+    return FAILED;
+  }
   const NodeDef* node_def = reinterpret_cast<const NodeDef*>(op_src);
   if (node_def == nullptr) {
      OP_LOGE(TbeGetName(op).c_str(), "node_def is nullptr.");
@@ -44,7 +47,8 @@ Status AutoMappingFnQuant(const google::protobuf::Message* op_src, ge::Operator&
       dst_type = ge::DT_INT4;
     }
   }
-  op.SetAttr("dst_type", dst_type);
+  (void)op.SetAttr("dst_type", dst_type);
+  (void)op.SetAttr("tf_tag", "tf");
   return SUCCESS;
 }
 REGISTER_CUSTOM_OP("AscendQuant")

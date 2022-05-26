@@ -4,20 +4,23 @@
     "input_desc": [
       {
         "shape": [
-          1,
+          -1,
           32,
           4,
           4
         ],
         "format": "NCHW",
         "ori_shape": [
-          1,
+          -1,
           32,
           4,
           4
         ],
         "ori_format": "NCHW",
         "name": "x",
+        "typical_shape": [1, 32, 4, 4],
+        "shape_range": [[1, 1]],
+        "value_range": [[1, 1]],
         "type": "float"
       },
       {
@@ -66,6 +69,6 @@
         "value": false
       }
     ],
-    "case_name": "test_AscendRequant_000"
+    "case_name": "test_AscendRequant_dynamic_000"
   }
 ]

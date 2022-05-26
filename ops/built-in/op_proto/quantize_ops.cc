@@ -31,6 +31,9 @@
 #include "util/util.h"
 
 namespace ge {
+const int64_t QUANT_3D_ORI_DIM = 5;
+const int64_t DUAL_INPUT = 2;
+
 // ----------------Dequantize Op------------------------------------------------
 IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
   std::string mode;
@@ -96,7 +99,41 @@ COMMON_INFER_FUNC_REG(Quantize, QuantizeInferShape);
 
 // ----------------Dequantize End----------------------------------------------
 
+static void SetQuant3DFormat(ge::Operator& op, int64_t input_size) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  auto x_desc = op_desc->MutableInputDesc(0);
+  vector<int64_t> shape_x = x_desc->MutableShape().GetDims();
+
+  if (shape_x.size() == QUANT_3D_ORI_DIM) {
+    string tf_tag = "";
+    Format format_3d;
+    op.GetAttr("tf_tag", tf_tag);
+
+    if (tf_tag == "") {
+      OP_LOGD(TbeGetName(op).c_str(), "this op is not tf");
+      format_3d = ge::FORMAT_NCDHW;
+    } else {
+      OP_LOGD(TbeGetName(op).c_str(), "this op is tf");
+      format_3d = ge::FORMAT_NDHWC;
+    }
+
+    x_desc->SetOriginFormat(format_3d);
+    x_desc->SetFormat(format_3d);
+    y_desc->SetOriginFormat(format_3d);
+    y_desc->SetFormat(format_3d);
+
+    if (input_size == DUAL_INPUT) {
+      auto scale_desc = op_desc->MutableInputDesc(1);
+      scale_desc->SetOriginFormat(format_3d);
+      scale_desc->SetFormat(format_3d);
+    }
+  }
+}
+
 IMPLEMT_COMMON_INFERFUNC(AscendQuantInferShape) {
+  SetQuant3DFormat(op, 1);
+
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
     auto output_desc = op_info->MutableOutputDesc(0);
@@ -121,6 +158,8 @@ IMPLEMT_COMMON_INFERFUNC(AscendDequantInferShape) {
   auto tensordesc_input = op_desc->MutableInputDesc("deq_scale");
   tensordesc_input->SetOriginFormat(FORMAT_NCHW);
   tensordesc_input->SetFormat(FORMAT_NCHW);
+
+  SetQuant3DFormat(op, DUAL_INPUT);
 
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     int type;
@@ -163,6 +202,8 @@ IMPLEMT_COMMON_INFERFUNC(AscendDequantS16InferShape) {
 COMMON_INFER_FUNC_REG(AscendDequantS16, AscendDequantS16InferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendRequantInferShape) {
+  SetQuant3DFormat(op, DUAL_INPUT);
+
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
     auto output_desc = op_info->MutableOutputDesc(0);

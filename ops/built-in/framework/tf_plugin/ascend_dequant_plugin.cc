@@ -19,11 +19,23 @@
  * \brief
  */
 #include "register/register.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/operator.h"
+#include "op_log.h"
 
 namespace domi {
+Status AutoMappingFnDequant(const google::protobuf::Message* op_src, ge::Operator& op) {
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "auto mapping failed.");
+    return FAILED;
+  }
+  (void)op.SetAttr("tf_tag", "tf");
+  return SUCCESS;
+}
+
 REGISTER_CUSTOM_OP("AscendDequant")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("AscendDequant")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnDequant)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
