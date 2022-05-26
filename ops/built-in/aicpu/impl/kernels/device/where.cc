@@ -99,7 +99,7 @@ uint32_t WhereCpuKernel::WhereCompute(CpuKernelContext &ctx) {
   Tensor *output = ctx.Output(0);
   typename TTypes<T>::ConstFlat flat_input(reinterpret_cast<const T*>(
           input->GetData()), input->NumElements());
-  int64_t num_true = std::accumulate(flat_input.data(), flat_input.data() + flat_input.size(), 0UL, 
+  int64_t num_true = std::accumulate(flat_input.data(), flat_input.data() + flat_input.size(), 0UL,
                                      [](int64_t accum, const T &val) {
                                        return accum + static_cast<int64_t>(val != T(0));
                                      });

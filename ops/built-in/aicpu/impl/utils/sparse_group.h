@@ -82,7 +82,7 @@ class GroupIterable {
 
   template <typename TIX>
   inline bool GroupMatches(const TIX &ix, int64_t loc_a, int64_t loc_b) const {
-    for (int d : group_dims_) {
+    for (int64_t d : group_dims_) {
       if (ix(loc_a, d) != ix(loc_b, d)) {
         return false;
       }
