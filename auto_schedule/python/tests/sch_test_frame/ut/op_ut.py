@@ -1027,7 +1027,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         # there is a bug in te, we can't import te before tensorflow, so can't import te outside
         from te.platform import te_set_version  # pylint: disable=import-outside-toplevel
         # template handle
-        if run_soc_version == "Ascend920A":
+        if run_soc_version == "Ascend910B2":
             te_set_version(run_soc_version, "VectorCore")
         else:
             te_set_version(run_soc_version)

@@ -26,7 +26,7 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from tbe.common.utils.errormgr import get_error_message
 
 # define the quantize tensor name
@@ -304,7 +304,7 @@ def _set_round_emit_insn(round_mode):
     instruction
     """
     soc_ver = get_soc_spec(SOC_VERSION)
-    if soc_ver in (ASCEND_310, ASCEND_910, ASCEND_920A):
+    if soc_ver in (ASCEND_310, ASCEND_910, ASCEND_910B):
         # mini/cloud
         emit_insn_str = "vector_conv"
     else:

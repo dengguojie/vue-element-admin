@@ -54,7 +54,7 @@ def test_op_select_format(_):
     params = case_0.get("params")
     op_select_format(*params)
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
-    te_set_version("Ascend920A", "VectorCore")
+    te_set_version("Ascend910B2", "VectorCore")
     case_2 = add_case((32, 3277584, 4), 1808412, 16, "float16", 2)
     case_3 = add_case((2, 1808432, 4), 1808412, 16, "float16", 3)
     case_4 = add_case((1, 1808432, 4), 1808412, 16, "float16", 4)
@@ -76,5 +76,5 @@ ut_case.add_cust_test_func("Ascend910A", test_op_select_format)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend920A"])
+    ut_case.run(["Ascend910A", "Ascend910B2"])
     exit(0)

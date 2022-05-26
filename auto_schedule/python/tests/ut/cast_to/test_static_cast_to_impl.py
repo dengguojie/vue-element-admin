@@ -78,9 +78,9 @@ case3 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "bfloat16", "format": "
          }
 
 compile_case_list = {
-    # "1": [case1, "Ascend920A"],
-    # "2": [case2, "Ascend920A"],
-    # "3": [case3, "Ascend920A"],
+    # "1": [case1, "Ascend910B2"],
+    # "2": [case2, "Ascend910B2"],
+    # "3": [case3, "Ascend910B2"],
 }
 for _, item in compile_case_list.items():
     ut_case.add_case(case=item[0], support_soc=item[1])

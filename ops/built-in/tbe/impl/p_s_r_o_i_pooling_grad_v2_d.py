@@ -200,7 +200,7 @@ class PSROIPoolingGradV2DClass(object):
                                   error_info.get('param_name2'), error_info.get('param_name3')))
 
         if self.dtype == FP16 and (tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in
-                                   (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A)):
+                                   (tbe_platform.ASCEND_910, "Ascend910B")):
             error_info = {'errCode': 'E80018',
                           'param_name1': self.dtype,
                           'param_name2': tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION),
@@ -422,7 +422,7 @@ class PSROIPoolingGradV2DClass(object):
         -------
         None
         """
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, "Ascend910B",
                                                                    tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                    STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
@@ -487,7 +487,7 @@ class PSROIPoolingGradV2DClass(object):
             bin_i_offset_c1 = output_dim_index // C0
             bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
             if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
-                    (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+                    (tbe_platform.ASCEND_910, "Ascend910B",
                      tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
                 self.tik_instance.set_atomic_add(1)
                 # add diff_val
@@ -542,7 +542,7 @@ class PSROIPoolingGradV2DClass(object):
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
             with self.tik_instance.for_range(params["h_start"], params["h_end"]) as height:
                 if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
-                        (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+                        (tbe_platform.ASCEND_910, "Ascend910B",
                          tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
                     self.tik_instance.set_atomic_add(1)
                     # add diff_val

@@ -191,8 +191,8 @@ TEST_F(topk_fusion_test, diag_fusion_test_4) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.ai_core_spec.cube_vector_split = true;
-    opti_compilation_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_compilation_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
@@ -236,8 +236,8 @@ TEST_F(topk_fusion_test, diag_fusion_test_5) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.ai_core_spec.cube_vector_split = true;
-    opti_compilation_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_compilation_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
@@ -281,8 +281,8 @@ TEST_F(topk_fusion_test, diag_fusion_test_6) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.ai_core_spec.cube_vector_split = true;
-    opti_compilation_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_compilation_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);

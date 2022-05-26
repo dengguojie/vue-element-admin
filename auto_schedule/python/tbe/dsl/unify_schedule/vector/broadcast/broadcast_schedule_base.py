@@ -27,6 +27,7 @@ from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
 from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_910B
 from tbe.common.platform.platform_info import get_soc_spec
 
 from ... import util
@@ -53,7 +54,6 @@ VECTOR_BROADCAST = "vector_broadcast"
 UNKNOWN_BROADCAST = "unknown_broadcast"
 DMA_COPY = "dma_copy"
 PHONY_INSN = "phony_insn"
-ASCEND_920 = "Ascend920"
 
 
 # 'pylint: disable=R0902, R0903
@@ -1059,7 +1059,7 @@ class BaseBroadcastSchedule:
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
         # adjust storage bound by tiling handle one dim (128 align)
-        if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN and get_soc_spec(SOC_VERSION) != ASCEND_920:
+        if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN and get_soc_spec(SOC_VERSION) != ASCEND_910B:
             self._tensor_space = self._tensor_space // ONE_DIM_ALIGN * ONE_DIM_ALIGN
 
         tensors = self._pure_middle_tensors \

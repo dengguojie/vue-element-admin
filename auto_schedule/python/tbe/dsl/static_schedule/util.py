@@ -30,7 +30,7 @@ from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import SOC_VERSION
 
 
@@ -86,7 +86,7 @@ DTYPE_WIDTH_MAP = {"float16": 1,
 
 REDUCE_ATOMIC_SUPPORT = {ASCEND_910: {"tag": "reduce_sum",
                                          "dtype": "float32"},
-                        ASCEND_920A: {"tag": "reduce_sum",
+                        ASCEND_910B: {"tag": "reduce_sum",
                                          "dtype": "float32"}}
 
 DEFAULT_INDEX = -1

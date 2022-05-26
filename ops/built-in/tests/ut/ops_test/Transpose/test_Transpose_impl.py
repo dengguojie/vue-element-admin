@@ -23,5 +23,5 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported_for_fe)
 
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
-    ut_case.run(["Ascend910A", "Ascend920A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A", "Ascend910B2"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 

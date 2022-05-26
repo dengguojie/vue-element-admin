@@ -67,7 +67,7 @@ def test_op_select_format(_):
     params_1 = case_1.get("params")
     op_select_format(*params_1)
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
-    te_set_version("Ascend920A", "VectorCore")
+    te_set_version("Ascend910B2", "VectorCore")
     params_920_0 = SegmentSortParams(12288 * 5, 12288 * 5, "float16", "int32", 48, 32, 12288, 4, 32, 4)
     case_2 = add_case(params_920_0, 2)
     params_2 = case_2.get("params")
@@ -79,5 +79,5 @@ def test_op_select_format(_):
 ut_case.add_cust_test_func(["Ascend910A"], test_op_select_format)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend920A"])
+    ut_case.run(["Ascend910A", "Ascend910B2"])
     exit(0)

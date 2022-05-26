@@ -27,7 +27,7 @@ from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
 from tbe.common.platform import ASCEND_710
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from .cce_schedule_declarations import OpFlags
 from .util import _check_pattern_matched
 from .util import get_reduce_axes
@@ -409,7 +409,7 @@ class OpPatternRules:
         output_dim_val = 1
 
         # atomic add does't support fp16 now.
-        check_dtype = ((get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_920A)) and
+        check_dtype = ((get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_910B)) and
                        output_tensors[0].dtype == input_tensors[0].dtype and
                        input_tensors[0].dtype == "float32")
         check_shape = (len(output_tensors) == output_len and
@@ -449,7 +449,7 @@ class OpSubPatternRules:  # 'pylint: disable=R0903
         flags.copy()  # Use it once to avoid static checks
         result = False
         soc_ver = get_soc_spec(SOC_VERSION)
-        is_support_atomic = soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710)
+        is_support_atomic = soc_ver in (ASCEND_910, ASCEND_910B, ASCEND_610, ASCEND_615, ASCEND_710)
 
         if is_support_atomic:
             # Use atomic only when there is more than one reduce output tensors
@@ -935,7 +935,7 @@ class OpSpecialRules:
                         reduce_axes.append(reduce_axis.var.name)
                     if len(reduce_axes) == 1 and \
                             reduce_axes[0] == str(reduce_tensor_body[0].source[0].args[-2]) and \
-                            (get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A)):
+                            (get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_910B)):
                         return True
                     break
         return False

@@ -320,7 +320,7 @@ def check_soc_version_support(soc_version):
     soc_support_fp32 = ("Ascend310", "Ascend320",
                         "Ascend610", "Ascend615",
                         "Ascend710", "Ascend910",
-                        platform.ASCEND_920A)
+                        "Ascend910B")
     for version_support in soc_support_fp32:
         if soc_version == version_support:
             return True

@@ -28,7 +28,7 @@ from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
 from tbe.common.platform import ASCEND_710
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from tbe.common.utils.errormgr import get_error_message
 
 from . import util
@@ -131,7 +131,7 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         self._soc_support_atomic = {
             ASCEND_910: ["float32"],
-            ASCEND_920A: ["float32"],
+            ASCEND_910B: ["float32"],
             ASCEND_610: ["float32"],
             ASCEND_615: ["float32"],
             ASCEND_710: ["float32", "float16"]

@@ -90,8 +90,8 @@ case3 = {
 }
 
 
-ut_case.add_case(["Ascend920A", "Ascend910A", "Ascend710"], case1)
-ut_case.add_case(["Ascend920A", "Ascend910A", "Ascend710"], case2)
+ut_case.add_case(["Ascend910B2", "Ascend910A", "Ascend710"], case1)
+ut_case.add_case(["Ascend910B2", "Ascend910A", "Ascend710"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 
 

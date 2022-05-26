@@ -100,6 +100,6 @@ if __name__ == '__main__':
     ut_case.add_cust_test_func(test_func=test_op_mask_generalization_1)
     ut_case.run("Ascend910A")
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
-    te_set_version("Ascend920A", "VectorCore")
+    te_set_version("Ascend910B2", "VectorCore")
     test_op_mask_1981_test_2()
     te_set_version(soc_version)

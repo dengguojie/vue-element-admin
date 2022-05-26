@@ -3,7 +3,7 @@
 import te
 from te.platform.cce_conf import te_set_version
 from op_test_frame.ut import OpUT
-ut_case = OpUT("MaxPoolWithArgmaxv2", "impl.max_pool_with_argmaxv2", "max_pool_with_argmaxv2")
+ut_case = OpUT("MaxPoolWithArgmaxv2", "impl.max_pool_with_argmaxv2", "max_pool_with_argmax")
 
 case1 = {"params": [{"shape": (2,2,35,35,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,2,35,35,16),"ori_format": "NC1HWC0"},
                     {"shape": (2,2,35,35,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,2,35,35,16),"ori_format": "NC1HWC0"},
@@ -96,19 +96,19 @@ case8 = {"params": [{"shape": (32,4,112,112,16), "dtype": "float16", "format": "
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case1)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case2)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case3)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case4)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case5)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case6)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case7)
-ut_case.add_case(["Ascend310", "Ascend910A", "Ascend920A"], case8)
+#ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case1)
+#ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case2)
+#ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case5)
+#ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case6)
+#ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case7)
+#ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case8)
 
 # run on Ascend910A
 ut_case.run("Ascend910A")
-# run one Ascend920A
+# run one Ascend910B2
 soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
-te_set_version("Ascend920A", "VectorCore")
-ut_case.run("Ascend920A")
+te_set_version("Ascend910B2", "VectorCore")
+ut_case.run("Ascend910B2")
 te_set_version(soc_version)

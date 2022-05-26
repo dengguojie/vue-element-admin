@@ -78,6 +78,6 @@ case1 = {"params": [tensor_dict([-2], "ND", "float32"),
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend920A", "Ascend310"], case1)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case1)
 
-ut_case.run(['Ascend920A', 'Ascend310'])
+ut_case.run(['Ascend910B2', 'Ascend310'])

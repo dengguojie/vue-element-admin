@@ -36,7 +36,7 @@ def op_select_format(input_proposal, output_proposal, output_index, k_num,
     select format dynamically
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
-    if check_soc_version_support(soc_version, (platform.ASCEND_920A,)):
+    if check_soc_version_support(soc_version, ("Ascend910B",)):
         input0 = util_select_op_base.gen_param(classify="input0", name="input_proposal",
                                                datatype="float16,float",
                                                format="ND,ND")
@@ -166,7 +166,7 @@ def multi_merge(input_proposal, output_proposal, output_index, k_num, include_in
     None
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
-    if check_soc_version_support(soc_version, (platform.ASCEND_920A,)):
+    if check_soc_version_support(soc_version, ("Ascend910B",)):
         multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
     elif include_index:
         single_merge(input_proposal, output_proposal, output_index, k_num, kernel_name)

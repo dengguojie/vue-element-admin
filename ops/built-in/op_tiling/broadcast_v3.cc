@@ -44,7 +44,7 @@ const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN {
 };
 
 const std::string ALL_UNKNOWN_PATTERN = "999";
-const std::string MILAN = "Ascend920";
+const std::string MILAN = "Ascend910B";
 
 constexpr std::int32_t DTYPE_UINT1 = 100;
 constexpr std::int32_t ELEMENT_IN_BLOCK_DEFAULT = 16;

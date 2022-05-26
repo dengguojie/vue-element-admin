@@ -41,7 +41,7 @@ from tbe.common.platform import ASCEND_910
 from tbe.common.platform import HI3796CV300CS
 from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from ...constants import DTYPE_BYTE_MAPPING
@@ -63,7 +63,7 @@ REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC = {
     "Default": ("float16", "float32", "int32"),
     ASCEND_310: ("float16",),
     ASCEND_910: ("float16",),
-    ASCEND_920A: ("float16", "float32", "int32"),
+    ASCEND_910B: ("float16", "float32", "int32"),
     ASCEND_710: ("float16",),
     ASCEND_610: ("float16",),
     ASCEND_615: ("float16",),

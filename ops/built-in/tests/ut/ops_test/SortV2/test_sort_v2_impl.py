@@ -5,7 +5,7 @@ from op_test_frame.common import precision_info
 
 ut_case = OpUT("SortV2")
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 10), "shape": (2, 10),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 10), "shape": (2, 10),
@@ -16,7 +16,7 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40), "shape": (2, 40),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40), "shape": (2, 40),
@@ -27,7 +27,7 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 400), "shape": (2, 400),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 400), "shape": (2, 400),
@@ -38,7 +38,7 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 4000), "shape": (2, 4000),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 4000), "shape": (2, 4000),
@@ -49,7 +49,7 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40000), "shape": (2, 40000),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40000), "shape": (2, 40000),
@@ -60,7 +60,7 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 250000), "shape": (1, 250000),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 250000), "shape": (1, 250000),
@@ -71,7 +71,7 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
-ut_case.add_case(["Ascend910A","Ascend920A"], {
+ut_case.add_case(["Ascend910A","Ascend910B2"], {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 500000), "shape": (1, 500000),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 500000), "shape": (1, 500000),
@@ -83,5 +83,5 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "support_expect": False})
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend920A"])
+    ut_case.run(["Ascend910A", "Ascend910B2"])
     exit(0)

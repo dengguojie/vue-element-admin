@@ -34,7 +34,7 @@ from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
 from tbe.common.platform import ASCEND_710
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from .pure_broadcast_intrin import last_axis_broadcast
 from .pure_broadcast_intrin import mid_axis_broadcast
 from .pure_broadcast_intrin import full_aligned_broadcast_selection
@@ -405,7 +405,7 @@ class PureBroadcastSchedule:  # 'pylint: disable=R0902
                     block_split_axis = axis
                     break
                 soc_ver = get_soc_spec(SOC_VERSION)
-                hdw_tsch = soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710)
+                hdw_tsch = soc_ver in (ASCEND_910, ASCEND_910B, ASCEND_610, ASCEND_615, ASCEND_710)
                 if not hdw_tsch:
                     if core_num >= self.device_core_num:
                         break

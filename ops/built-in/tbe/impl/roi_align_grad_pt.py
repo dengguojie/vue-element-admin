@@ -548,7 +548,7 @@ def _calc_max_c1_num(pool_w, c1_shape):
     c1_num
     """
     soc_version = get_soc()
-    if soc_version == tbe_platform.ASCEND_920A:
+    if soc_version == "Ascend910B":
         available_res = 110 * 1024
     else:
         available_res = 160 * 1024

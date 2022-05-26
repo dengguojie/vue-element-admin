@@ -30,7 +30,7 @@ from typing import Union
 
 from tbe import tvm
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import op_tiling
@@ -737,7 +737,7 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     """
     # Common Regulation
     version = get_soc_spec(SOC_VERSION)
-    if version not in [ASCEND_920A, ASCEND_910]:
+    if version not in [ASCEND_910B, ASCEND_910]:
         return False
 
     reduce_tensor: Tensor = reduce_info.reduce_tensor

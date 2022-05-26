@@ -1039,7 +1039,7 @@ def basic_lstm_cell(x, h, c, w, b, mask, ct, ht, it, jt, ft, ot, tanhct,
         is_cloud = True
     elif tbe_product in ("Ascend710", "Ascend610"):
         is_cloud = True
-    elif tbe_product == "Ascend920":
+    elif tbe_product == "Ascend910B":
         is_cloud = True
     elif tbe_product == "Ascend310":
         is_mini = True

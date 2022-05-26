@@ -123,6 +123,6 @@ def test_op_mask_1981_test_2():
 
 
 soc_version = cce_conf.get_soc_spec("SOC_VERSION")
-cce_conf.te_set_version("Ascend920A")
+cce_conf.te_set_version("Ascend910B2")
 test_op_mask_1981_test_2()
 cce_conf.te_set_version(soc_version)

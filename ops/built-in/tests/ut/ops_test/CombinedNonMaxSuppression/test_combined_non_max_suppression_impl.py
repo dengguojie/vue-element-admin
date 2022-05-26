@@ -122,15 +122,15 @@ case9 = {"params": get_impl_list(51, 2, 150, 150, 0.5, 0.5, 100, 100, False, Fal
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend920A", "Ascend310"], case1)
-ut_case.add_case(["Ascend920A", "Ascend310"], case2)
-ut_case.add_case(["Ascend920A", "Ascend310"], case3)
-ut_case.add_case(["Ascend920A", "Ascend310"], case4)
-ut_case.add_case(["Ascend920A", "Ascend310"], case5)
-ut_case.add_case(["Ascend920A", "Ascend310"], case6)
-ut_case.add_case(["Ascend920A", "Ascend310"], case7)
-ut_case.add_case(["Ascend920A", "Ascend310"], case8)
-ut_case.add_case(["Ascend920A", "Ascend310"], case9)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case1)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case2)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case3)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case4)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case5)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case6)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case7)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case8)
+ut_case.add_case(["Ascend910B2", "Ascend310"], case9)
 
 from impl.combined_non_max_suppression import check_supported
 
@@ -161,4 +161,4 @@ def test_check_support(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_check_support)
 
-ut_case.run(['Ascend920A', 'Ascend310'])
+ut_case.run(['Ascend910B2', 'Ascend310'])

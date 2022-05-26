@@ -52,7 +52,7 @@ def reload_check_support():
     reload_check_support to improve cov
     """
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
-    te_set_version("Ascend920A", "VectorCore")
+    te_set_version("Ascend910B2", "VectorCore")
     params_920_0 = SegmentSortParams(12288 * 5, 12288 * 5, "float16", "int32", 48, 32, 12288, 4, 32, 4)
     case_2 = add_case(params_920_0)
     op_select_format(*case_2)

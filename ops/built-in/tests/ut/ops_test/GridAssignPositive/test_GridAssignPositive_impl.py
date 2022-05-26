@@ -52,10 +52,10 @@ case2 = {
     "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A", "Ascend920A"], case1)
-ut_case.add_case(["Ascend910A", "Ascend920A"], case2)
+ut_case.add_case(["Ascend910A", "Ascend910B2"], case1)
+ut_case.add_case(["Ascend910A", "Ascend910B2"], case2)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend920A"])
+    ut_case.run(["Ascend910A", "Ascend910B2"])
     exit(0)

@@ -19,6 +19,6 @@ def test_fill_d_001():
 
 if __name__ == '__main__':
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
-    te_set_version("Ascend920A", "VectorCore")
+    te_set_version("Ascend910B2", "VectorCore")
     test_fill_d_001()
     te_set_version(soc_version)

@@ -134,12 +134,11 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
       OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: Input data size(<= 7936) and k_num(<= 4096) not support."),
       return false);
 
-  if (optional_info.soc_version.find("Ascend310") != string::npos ||
-      optional_info.soc_version.find("Ascend710") != string::npos ||
-      optional_info.soc_version.find("Ascend910") != string::npos) {
-    calcParams.ai_core_num = platform_info.soc_info.ai_core_cnt;
-  } else if (optional_info.soc_version.find("Ascend920") != string::npos) {
-    calcParams.soc_version = "Ascend920";
+   if (optional_info.soc_version.find("Ascend910B1") != string::npos ||
+       optional_info.soc_version.find("Ascend910B2") != string::npos ||
+       optional_info.soc_version.find("Ascend910B3") != string::npos ||
+       optional_info.soc_version.find("Ascend910B4") != string::npos ) {
+    calcParams.soc_version = "Ascend910B";
     // 32: proposal num processed for each repeat
     calcParams.core_align_num = 32;
     calcParams.pro_repeat_num = 32;
@@ -154,6 +153,10 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
       return false;
     }
     calcParams.ai_core_num = platform_info.soc_info.vector_core_cnt;
+  } else if (optional_info.soc_version.find("Ascend310") != string::npos ||
+             optional_info.soc_version.find("Ascend710") != string::npos ||
+             optional_info.soc_version.find("Ascend910") != string::npos) {
+    calcParams.ai_core_num = platform_info.soc_info.ai_core_cnt;
   } else {
     OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: SocVersion not support.");
     return false;
@@ -357,7 +360,7 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
   constexpr int64_t kAssistLen{2048};
   GeTensorPtr assit_ptr{nullptr};
   vector<int64_t> assist_dim_info = {kAssistLen};
-  if (calcParams.soc_version == "Ascend920") {
+  if (calcParams.soc_version == "Ascend910B") {
     unique_ptr<int32_t[]> inputAssit(new (nothrow) int32_t[kAssistLen]());
     FUSION_PASS_CHECK(inputAssit.get() == nullptr,
                       VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: InputAssit is NULL"),
@@ -639,7 +642,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
       // 2048 indicates the length of index in assist matrix.
       constexpr int64_t kAssistLen{2048};
       assist_dim_info.push_back(kAssistLen);
-      if (optional_info.soc_version.find("Ascend920") != string::npos) {
+      if (optional_info.soc_version.find("Ascend910B1") != string::npos ||
+          optional_info.soc_version.find("Ascend910B2") != string::npos ||
+          optional_info.soc_version.find("Ascend910B3") != string::npos ||
+          optional_info.soc_version.find("Ascend910B4") != string::npos) {
         unique_ptr<int32_t[]> inputAssit(new (nothrow) int32_t[kAssistLen]());
         FUSION_PASS_CHECK(inputAssit.get() == nullptr,
                           VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "InputAssit is NULL"),

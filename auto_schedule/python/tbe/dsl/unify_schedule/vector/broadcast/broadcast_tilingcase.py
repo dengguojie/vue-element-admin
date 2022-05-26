@@ -24,6 +24,7 @@ from typing import Optional
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
 from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_910B
 from tbe.common.platform.platform_info import get_soc_spec
 
 from ... import util
@@ -44,7 +45,6 @@ CONST = "const"
 EMPTY = "empty"
 STATIC = "static"
 ORIGINAL = "original"
-ASCEND920 = "Ascend920"
 DB_KEY = 10000
 EMPTY_KEY = 2 ** 31 - 1
 BLOCK_SIZE_BYTE = 32
@@ -396,7 +396,7 @@ class BroadcastTilingCase:
         self._tiling_key = tiling_key
         self._block_split_axis = 0
         self._ub_split_axis = 0
-        if self._soc != ASCEND920:
+        if self._soc != ASCEND_910B:
             self._ub_factor_bound = ub_factor_bound
         self._enable_db = enable_db
         self._is_one_dim = is_one_dim

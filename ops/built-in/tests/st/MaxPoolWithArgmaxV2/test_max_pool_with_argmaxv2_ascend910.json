@@ -57,7 +57,7 @@
     },
     {
       "op": "MaxPoolWithArgmaxV2",
-      "case_name" : "test_max_pool_001",
+      "case_name" : "test_max_pool_002",
        "input_desc": [
          {
            "format": "NC1HWC0",

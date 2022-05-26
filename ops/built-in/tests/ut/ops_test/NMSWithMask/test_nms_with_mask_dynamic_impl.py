@@ -144,7 +144,7 @@ def test_op_mask_1981_test_1(test_arg):
     iou_thr = 0.7
     with OpContext("dynamic") as opc:
         from tbe.common.platform.platform_info import set_current_compile_soc_info
-        set_current_compile_soc_info("Ascend920A")
+        set_current_compile_soc_info("Ascend910B2")
         nms_with_mask_single_core(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr,
                                   "test_op_mask_1981_test_1")
         set_current_compile_soc_info(test_arg)
@@ -187,7 +187,7 @@ def test_op_mask_1981_test_2(test_arg):
     iou_thr = 0.7
     with OpContext("dynamic") as opc:
         from tbe.common.platform.platform_info import set_current_compile_soc_info
-        set_current_compile_soc_info("Ascend920A")
+        set_current_compile_soc_info("Ascend910B2")
         nms_with_mask_single_core(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr,
                                   "test_op_mask_1981_test_2")
         set_current_compile_soc_info(test_arg)

@@ -36,10 +36,10 @@ case4 = {"params": [{"shape": (15, 32), "dtype": "float32", "format": "ND", "ori
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend920A"], case1)
-ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend920A"], case2)
-ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend920A"], case3)
-ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend920A"], case4)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend910B2"], case1)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend910B2"], case2)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend910B2"], case3)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend910B2"], case4)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend920A"])
+    ut_case.run(["Ascend910A","Ascend610","Ascend615","Ascend710","Ascend910B2"])

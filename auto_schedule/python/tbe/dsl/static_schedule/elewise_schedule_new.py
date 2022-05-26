@@ -31,7 +31,7 @@ from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
 from tbe.common.platform import ASCEND_710
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 
 from . import util
 from .vector_schedule import VectorSchedule
@@ -1845,7 +1845,7 @@ class ElewiseSchedule(VectorSchedule):
         True or False
         """
         soc_ver = get_soc_spec(SOC_VERSION)
-        if soc_ver not in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710):
+        if soc_ver not in (ASCEND_910, ASCEND_910B, ASCEND_610, ASCEND_615, ASCEND_710):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -1998,7 +1998,7 @@ class ElewiseSchedule(VectorSchedule):
                                     block_split_inner_size):
         def __check_support_version():
             soc_ver = get_soc_spec(SOC_VERSION)
-            if soc_ver not in (ASCEND_910, ASCEND_920A):
+            if soc_ver not in (ASCEND_910, ASCEND_910B):
                 if soc_ver == ASCEND_310:
                     if self._op_type == OpSpecTypes.NORMALIZE_SCALE:
                         return True
@@ -2019,7 +2019,7 @@ class ElewiseSchedule(VectorSchedule):
 
     def _is_less_32_core_middle_broadcast_out_scene(self, block_split_axis,
                                                     block_split_inner_size):
-        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_910B):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2077,7 +2077,7 @@ class ElewiseSchedule(VectorSchedule):
         return is_out
 
     def _is_mix_broadcast_out_scene(self, block_split_axis, block_split_inner_size):
-        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_910B):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2187,7 +2187,7 @@ class ElewiseSchedule(VectorSchedule):
     def _is_non_32align_broadcast_out_scene(self, block_split_axis,
                                             block_split_inner_size,
                                             shape, max_ub_count):
-        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_910B):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2294,7 +2294,7 @@ class ElewiseSchedule(VectorSchedule):
         return True
 
     def _is_32align_broadcast_out_scene(self, block_split_axis, block_split_inner_size):
-        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_910B):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2375,7 +2375,7 @@ class ElewiseSchedule(VectorSchedule):
         """
         Get the specail broadcast pattern optimize threshold value
         """
-        if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_920A):
+        if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_910B):
             return 64
         return 32
 

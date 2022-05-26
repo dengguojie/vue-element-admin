@@ -59,7 +59,7 @@ def get_op_select_format(soc, select_format, tensor_num, attrs):
     """
     get_op_select_format, do op_select_format to get ops info
     """
-    soc = "Ascend920A" if soc == "Ascend920" else soc
+    soc = "Ascend910B" if soc == "Ascend910B" else soc
     set_current_compile_soc_info(soc)
     sys.path.append(PATH.IMPL_PATH)
 
@@ -940,7 +940,7 @@ def binary_cfg(op_type, soc_version):
     # 获取需要生成json的平台
     if soc_version == "all":
         soc_version = ["Ascend310", "Ascend320", "Ascend610", "Ascend615", "Ascend710",
-                       "Ascend910", "Ascend920", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
+                       "Ascend910", "Ascend910B", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     else:
         soc_version = soc_version.strip(',').split(',')
 

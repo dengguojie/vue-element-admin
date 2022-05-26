@@ -157,7 +157,7 @@ def test_op_nms_1981_test_1(test_arg):
     from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
     with OpContext("dynamic") as _:
         from tbe.common.platform.platform_info import set_current_compile_soc_info
-        set_current_compile_soc_info("Ascend920A")
+        set_current_compile_soc_info("Ascend910B2")
         lis = get_impl_list_920(-1, -1, -1, -1, 0, 0.7, 100, 100, False, False, False)
         obj = BMCNMS(*lis, "test_op_nms_1981_test_1")
         obj.bmcnms_compute()
@@ -168,7 +168,7 @@ def test_op_nms_1981_test_2(test_arg):
     from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
     with OpContext("dynamic") as _:
         from tbe.common.platform.platform_info import set_current_compile_soc_info
-        set_current_compile_soc_info("Ascend920A")
+        set_current_compile_soc_info("Ascend910B2")
         lis = get_impl_list_920(-1, -1, -1, -1, 0.1, 0.7, 1000, 1000, False, False, False)
         obj = BMCNMS(*lis, "test_op_nms_1981_test_2")
         obj.bmcnms_compute()

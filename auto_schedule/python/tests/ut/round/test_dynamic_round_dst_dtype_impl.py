@@ -134,6 +134,6 @@ compile_case_list = [
     #case4
 ]
 for item in compile_case_list:
-    ut_case.add_case(case=item, support_soc="Ascend920A")
+    ut_case.add_case(case=item, support_soc="Ascend910B2")
 
 

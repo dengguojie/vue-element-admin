@@ -164,7 +164,7 @@ def aipp_compute(input_data, input_dync_param, output_data,
     aipp_map["load_start_pos_w"] = load_start_pos_w
     aipp_map["crop_size_h"] = load_image_h
     aipp_map["crop_size_w"] = load_image_w
-    if cur_cce_product in ["Ascend920", "Ascend320"]:
+    if cur_cce_product in ["Ascend910B", "Ascend320"]:
         aipp_map["is_first_layer"] = True
 
     aipp_res = tvm.compute(
@@ -896,7 +896,7 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     para_check.check_format(input_format, input_format_list, param_name="input")
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if output_format == "NC1HWC0" and cur_cce_product in ('Ascend920', 'Ascend320'):
+    if output_format == "NC1HWC0" and cur_cce_product in ('Ascend910B', 'Ascend320'):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config, cur_cce_product, kernel_name)
         return
 

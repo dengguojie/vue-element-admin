@@ -26,7 +26,7 @@ from functools import reduce
 
 # Platform Information
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform.platform_info import ASCEND_920A
+from tbe.common.platform.platform_info import ASCEND_910B
 from tbe.common.platform.platform_info import ASCEND_910
 from tbe.common.platform.platform_info import ASCEND_710
 from tbe.common.platform.platform_info import ASCEND_320
@@ -59,7 +59,7 @@ def product(lst): return reduce(lambda x, y: x * y, lst)
 
 
 def check_atomic_add_support(version, dtype):
-    if version not in [ASCEND_920A, ASCEND_910, ASCEND_710, ASCEND_320]:
+    if version not in [ASCEND_910B, ASCEND_910, ASCEND_710, ASCEND_320]:
         return False
     if dtype != "float32":
         return False

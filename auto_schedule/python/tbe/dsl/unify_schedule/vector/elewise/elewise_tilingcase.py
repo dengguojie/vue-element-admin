@@ -191,7 +191,7 @@ def _pre_build(schedules_list):
         operation.add_build_arg("double_buffer_non_reuse", True)
         # close double calculation switch
         operation.add_build_arg("enable_vector_2x", False)
-        # ascend 920 eletwise schedule use mask counter mode
+        # v220 eletwise schedule use mask counter mode
         if util.is_v220():
             operation.add_build_arg("enable_mask_counter_mode", "default_counter")
 

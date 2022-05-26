@@ -29,8 +29,8 @@ TEST_F(randomdsa_fusion_test, randomdsa_fusion_test_1) {
     ge::Graph graph("randomdsa_fusion_test_1");
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_info;
-    opti_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_info);
     // DropOutGenMask 
     auto xData = op::Data("xData");
@@ -71,8 +71,8 @@ TEST_F(randomdsa_fusion_test, randomdsa_fusion_test_2) {
     ge::Graph graph("randomdsa_fusion_test_1");
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_info;
-    opti_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_info);
 
     // DropOutGenMask
@@ -122,8 +122,8 @@ TEST_F(randomdsa_fusion_test, randomdsa_fusion_test_3) {
     ge::Graph graph("randomdsa_fusion_test_3");
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_info;
-    opti_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_info);
     setenv("DSA_ENABLE","True",1);
 
@@ -158,8 +158,8 @@ TEST_F(randomdsa_fusion_test, randomdsa_fusion_test_4) {
     ge::Graph graph("randomdsa_fusion_test_4");
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_info;
-    opti_info.soc_version = "Ascend920A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+    opti_info.soc_version = "Ascend910B2";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_info);
     setenv("DSA_ENABLE","True",1);
 

@@ -19,6 +19,7 @@ broadcast schedule for milan
 """
 from tbe import tvm
 from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform import ASCEND_910B
 
 from ... import util
 from ...constants import BroadcastPattern
@@ -34,7 +35,6 @@ from .broadcast_tilingcase import TilingStrategy
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
 
-ASCEND920 = "Ascend920"
 VECTOR_REDUCE = "vector_reduce"
 
 # vcmpsel constant
@@ -56,7 +56,7 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
 
     @classmethod
     def get_supported_soc(cls):
-        return [ASCEND920]
+        return [ASCEND_910B]
 
     @classmethod
     def get_supported_pattern(cls):

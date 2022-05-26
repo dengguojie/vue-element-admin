@@ -785,6 +785,8 @@ vector_A:
       - ops/built-in/op_tiling/dynamic_gru_v2.cc
       - ops/built-in/op_tiling/softmax_tiling.cc
       - ops/built-in/op_tiling/tabulate_fusion.cc
+      - ops/built-in/tbe/impl/aipp.py
+      - ops/built-in/tbe/impl/aipp_comm.py
       - ops/built-in/tbe/impl/ascend_quant.py
       - ops/built-in/tbe/impl/ascend_quant_util.py
       - ops/built-in/tbe/impl/ascend_dequant.py
@@ -1356,6 +1358,7 @@ vector_B:
       - ops/built-in/tbe/impl/in_training_update_grad_gamma_beta.py
       - ops/built-in/tbe/impl/instance_norm.py
       - ops/built-in/tbe/impl/l2_loss.py
+      - ops/built-in/tbe/impl/masked_fill_range.py
       - ops/built-in/tbe/impl/matrix_diag_part_d.py
       - ops/built-in/tbe/impl/minimum_grad.py
       - ops/built-in/tbe/impl/not_equal.py
@@ -2678,7 +2681,6 @@ unkown:
       - ops/built-in/tbe/impl/asin.py
       - ops/built-in/tbe/impl/avg_pool3d_d.py
       - ops/built-in/tbe/impl/internal_data_move.py
-      - ops/built-in/tbe/impl/aipp_comm.py
       - ops/built-in/tbe/impl/smooth_l1_loss_grad_v2.py
       - ops/built-in/tbe/impl/muls.py
       - ops/built-in/tbe/impl/apply_ada_max_d.py
@@ -2838,7 +2840,6 @@ unkown:
       - ops/built-in/tbe/impl/batch_norm_grad_ext2.py
       - ops/built-in/tbe/impl/dropout_v2.py
       - ops/built-in/tbe/impl/drop_out_do_mask.py
-      - ops/built-in/tbe/impl/aipp.py
       - ops/built-in/tbe/impl/maximum_grad.py
       - ops/built-in/tbe/impl/pooling.py
       - ops/built-in/tbe/impl/gelu.py
@@ -2896,7 +2897,6 @@ unkown:
       - ops/built-in/tbe/impl/gru_v2_hidden_grad.py
       - ops/built-in/tbe/impl/cross.py
       - ops/built-in/tbe/impl/hard_sigmoid.py
-      - ops/built-in/tbe/impl/roi_align.py
       - ops/built-in/tbe/impl/apply_add_sign_d.py
       - ops/built-in/tbe/impl/batch_norm3d.py
       - ops/built-in/tbe/impl/in_training_update_v2.py

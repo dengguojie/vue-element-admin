@@ -25,7 +25,7 @@ from tbe.dsl.instrinsic.cce_util import get_align_factor
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import ASCEND_910B
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn_inverted
 from tbe.dsl.instrinsic.cce_intrin_md import apply_for_new_alloc
@@ -142,7 +142,7 @@ def is_falat_supported(broadcast_factor, broadcast_src, dtype_byte_size,
 def is_mg_supported(broadcast_src, broadcast_factor, dtype_byte_size, align_factor, is_lfa):
     """Check MG broadcast algorithm requirement"""
     if broadcast_factor * dtype_byte_size >= align_factor and not is_lfa:
-        if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_920A):
+        if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_910B):
             return True
         else:
             if [broadcast_src, broadcast_factor] in ME_LIMITS_LIST:

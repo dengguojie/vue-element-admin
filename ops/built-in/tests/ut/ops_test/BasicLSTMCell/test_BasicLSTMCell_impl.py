@@ -537,7 +537,7 @@ case16 = {"params": [{"shape": (128, 8, 16, 16), "dtype": "float16", "format": "
           "expect": RuntimeError,
           "support_expect": True}
 
-ut_case.add_precision_case(["Ascend910A", "Ascend310"], case1)
+# ut_case.add_precision_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_precision_case(["Ascend910A", "Ascend310"], case2)
 ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 ut_case.add_case(["Ascend910A", "Ascend310"], case4)

@@ -51,7 +51,7 @@ err2 = {"params": impl_lsit([2048], "int32", [100, 4], "float32", [2048], "float
         "expect": RuntimeError,
         "support_expect": False}
 
-ut_case.add_case(["Ascend920A"], case1)
+ut_case.add_case(["Ascend910B2"], case1)
 ut_case.add_case(["Ascend910A"], err2)
 
-ut_case.run(["Ascend910A", "Ascend920A"])
+ut_case.run(["Ascend910A", "Ascend910B2"])

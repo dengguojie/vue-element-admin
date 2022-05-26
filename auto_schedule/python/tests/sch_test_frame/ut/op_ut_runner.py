@@ -172,7 +172,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
 
         # template handle
 
-        if run_arg.soc_version in ["Ascend920A", "Ascend710"]:
+        if run_arg.soc_version in ["Ascend910B2", "Ascend710"]:
             case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
                                CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT]
         else:

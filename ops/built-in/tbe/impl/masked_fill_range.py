@@ -119,7 +119,7 @@ class MaskedFillRange():
             raise RuntimeError(error_info, "In op[%s], the axis [%d] is out of range input dim[%d] "
                                % (error_info['op_name'], error_info['param_value1'], error_info['param_value2']))
 
-        if self.soc_version not in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A):
+        if self.soc_version not in (tbe_platform.ASCEND_910, "Ascend910B"):
             error_info = {'errCode': 'E60002',
                           'param_value1': self.soc_version,
                           'op_name': 'MaskedFillRange'}

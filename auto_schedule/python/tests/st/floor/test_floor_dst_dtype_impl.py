@@ -55,7 +55,7 @@ test_func_list = [
     test_shape_value_less_then_zero,
 ]
 for item in test_func_list:
-    ut_case.add_cust_test_func(support_soc=["Ascend920A"], test_func=item)
+    ut_case.add_cust_test_func(support_soc=["Ascend910B2"], test_func=item)
 
 case1 = {"params": [{"shape": (2, 282, 282, 128), "dtype": "float32", "format": "ND"},
                     {"shape": (2, 282, 282, 128), "dtype": "bfloat16", "format": "ND"},
@@ -104,7 +104,7 @@ compile_case_list = [
 
 ]
 for item in compile_case_list:
-    ut_case.add_case(case=item, support_soc="Ascend920A")
+    ut_case.add_case(case=item, support_soc="Ascend910B2")
 
 if __name__ == '__main__':
     import os
@@ -113,4 +113,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend920A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910B2"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

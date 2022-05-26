@@ -166,7 +166,7 @@ class RoiAlign(object):
         :return: 
         """
         soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        if soc_version == tbe_platform.ASCEND_920A:
+        if soc_version == "Ascend910B":
             return 0
         else:
             return 1

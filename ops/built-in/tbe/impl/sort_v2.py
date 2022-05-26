@@ -39,8 +39,8 @@ class Constant:
 def op_select_format(x, y, axis=-1, descending=False, kernel_name="sort_v2"):
     cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
 
-    op_dtype = "float16" if cce_product != tbe_platform.ASCEND_920A else "float16,float32"
-    op_format = "ND" if cce_product != tbe_platform.ASCEND_920A else "ND,ND"
+    op_dtype = "float16" if cce_product != "Ascend910B" else "float16,float32"
+    op_format = "ND" if cce_product != "Ascend910B" else "ND,ND"
 
     input0 = gen_param(classify="input0", name="x", datatype=op_dtype, format=op_format)
     output0 = gen_param(classify="output0", name="y", datatype=op_dtype, format=op_format)
@@ -54,7 +54,7 @@ def op_select_format(x, y, axis=-1, descending=False, kernel_name="sort_v2"):
 class SortV2(object):
     def __init__(self, x, y, axis, descending, kernel_name):
         cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        self.is_clould = True if cce_product != tbe_platform.ASCEND_920A else False
+        self.is_clould = True if cce_product != "Ascend910B" else False
         shape, self.dtype, self.num_per_task = self.check(x, y, axis, kernel_name)
         allnum = functools.reduce(lambda x, y: x * y, shape)
         self.kernel_name = kernel_name

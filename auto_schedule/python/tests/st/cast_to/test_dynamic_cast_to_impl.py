@@ -335,9 +335,9 @@ ut_case.add_case(["Ascend910A", "Ascend710"], case11)
 
 ut_case.add_case(["Ascend910A", "Ascend710"], case12)
 
-# ut_case.add_case(case=case13, support_soc="Ascend920A")
-# ut_case.add_case(case=case14, support_soc="Ascend920A")
-# ut_case.add_case(case=case15, support_soc="Ascend920A")
+# ut_case.add_case(case=case13, support_soc="Ascend910B2")
+# ut_case.add_case(case=case14, support_soc="Ascend910B2")
+# ut_case.add_case(case=case15, support_soc="Ascend910B2")
 
 
 def calc_expect_func(x, y, dst_dtype):
