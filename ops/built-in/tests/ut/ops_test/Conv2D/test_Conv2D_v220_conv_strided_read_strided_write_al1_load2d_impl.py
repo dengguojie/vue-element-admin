@@ -157,7 +157,7 @@ def test_v220_conv_strided_rw_ut(test_arg):
         # strided read +conv+ strided write
         ("conv_sread_swrite", "float16", (2, 24, 28, 28), (64, 24, 3, 3), (1, 1, 1, 1), (1, 1), 1, False),
     ]
-    cceconf.te_set_version('Ascend920A')
+    cceconf.te_set_version('Ascend910B2')
     with op_context.OpContext():
         run_testcase(v220_strided_conv_case)
 
@@ -170,19 +170,19 @@ def test_v220_conv_al1_load2d_ut(test_arg):
         ("conv2d", "float16", (2, 24, 28, 28), (64, 24, 1, 1), (0, 0, 0, 0), (1, 1), 3, False),  # group != 1
     ]
 
-    cceconf.te_set_version('Ascend920A')
+    cceconf.te_set_version('Ascend910B2')
     with op_context.OpContext():
         run_testcase(v220_al1_load2d_case)
 
 
 print("====> adding Conv2D v220 conv strided_RW ut testcases start")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_v220_conv_strided_rw_ut)
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_v220_conv_strided_rw_ut)
 print("====> adding Conv2D v220 conv strided_RW ut testcases end")
 
 
 print("====> adding Conv2D v220 conv al1_load2d ut testcases start")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_v220_conv_al1_load2d_ut)
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_v220_conv_al1_load2d_ut)
 print("====> adding Conv2D v220 conv al1_load2d ut testcases end")
 
 if __name__ == '__main__':
-    ut_case.run("Ascend920A")
+    ut_case.run("Ascend910B2")

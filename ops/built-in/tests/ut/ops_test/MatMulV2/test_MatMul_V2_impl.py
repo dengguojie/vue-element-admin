@@ -645,7 +645,7 @@ ut_case.add_cust_test_func(test_func=test_check_support_vector_k_dim_not_equal)
 ut_case.add_cust_test_func(test_func=test_check_support_cube_k_dim_not_equal)
 
 ut_case.add_case(["Ascend310"], not_align_bias_case1)
-ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+ut_case.add_case(["Ascend310", "Ascend910B2"], not_align_bias_case2)
 
 def test_nbuffer_case1(test_arg):
     tiling_params = {
@@ -966,5 +966,5 @@ if __name__ == '__main__':
         print(case)
         ut_case.add_case(["Ascend310"], case)
 
-    ut_case.run(["Ascend310", "Ascend920A"], simulator_mode="pv",
+    ut_case.run(["Ascend310", "Ascend910B2"], simulator_mode="pv",
                 simulator_lib_path="../../Ascend/toolkit/tools/simulator")

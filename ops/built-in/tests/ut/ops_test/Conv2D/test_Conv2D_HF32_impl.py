@@ -55,5 +55,5 @@ def test_conv2d_hf32(test_arg):
 
 
 print("test Conv2D HF32 mode running")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_hf32)
-ut_case.run(['Ascend920A'])
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_conv2d_hf32)
+ut_case.run(['Ascend910B2'])

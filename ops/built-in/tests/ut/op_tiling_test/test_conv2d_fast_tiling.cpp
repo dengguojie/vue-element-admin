@@ -51,7 +51,7 @@ protected:
         hardwareInfo.ubToL2Rate = 64;
         hardwareInfo.ubToDdrRate = 64;
         hardwareInfo.ubToL1Rate = 128;
-        hardwareInfo.socVersion = "Ascend920A";
+        hardwareInfo.socVersion = "Ascend910B2";
         std::cout << "SetUp" << std::endl;
     }
 

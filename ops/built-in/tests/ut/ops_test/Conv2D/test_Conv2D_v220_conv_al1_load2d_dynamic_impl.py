@@ -181,15 +181,15 @@ def test_conv2d_v220_conv_al1_load2d_dynamic_ut(test_arg):
         ("conv2d", "float16", (-1, 24, 28, 28), (64, 24, 1, 1),
             [(1, 2), (24, 24), (28, 28), (28, 28)], (0, 0, 0, 0), (1, 1), 3, False),  # group != 1
     ]
-    cceconf.te_set_version('Ascend920A')
+    cceconf.te_set_version('Ascend910B2')
     with op_context.OpContext():
         run_testcase(v220_al1_load2d_case)
 
 
 print("====> adding Conv2D v220 conv al1_load2d dynamic ut testcases start")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_v220_conv_al1_load2d_dynamic_ut)
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_conv2d_v220_conv_al1_load2d_dynamic_ut)
 print("====> adding Conv2D v220 conv al1_load2d dynamic ut testcases end")
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend920A")
+    ut_case.run("Ascend910B2")

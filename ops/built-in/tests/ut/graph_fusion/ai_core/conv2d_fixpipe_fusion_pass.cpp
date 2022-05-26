@@ -26,9 +26,9 @@ class ConvFixpipe : public testing::Test {
 TEST_F(ConvFixpipe, ConvFixpipe_1) {
   fe::PlatformInfo platform_info;
   fe::OptionalInfo opti_info;
-  opti_info.soc_version = "Ascend920A";
+  opti_info.soc_version = "Ascend910B2";
   platform_info.ai_core_spec.cube_vector_split = 1;
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend920A"] = platform_info;
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_info);
   OpDescPtr cast = std::make_shared<OpDesc>("cast", "Cast");
 

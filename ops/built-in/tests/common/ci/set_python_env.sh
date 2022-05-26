@@ -19,14 +19,14 @@ TOOLCHAIN_HOME="bin/toolchain/x86/ubuntu/ccec_libs/ccec_x86_ubuntu_16_04_adk"
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910
-mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend920
+mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Ascend910B
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend310
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend710
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend610
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300ES
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend910/built-in
-mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend920/built-in
+mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Ascend910B/built-in
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend310/built-in
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend710/built-in
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend610/built-in
@@ -186,7 +186,7 @@ cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/ou
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/built-in/cost_model_Hi3796CV300CS_conv2d_bp_filter.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/built-in/cost_model_Hi3796CV300CS_depthwise_bp_input.bin
 cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Hi3796CV300CS/built-in/cost_model_Hi3796CV300CS_depthwise_bp_filter.bin
-cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/ascend920/built-in/cost_model_ascend920A_matmul.bin
+cp $cur_dir/llt/tensor_engine/ut/testcase/auto_tiling/cost_model.bin $cur_dir/out/${product}/llt/$test_type/obj/data/tiling/Ascend910B/built-in/cost_model_Ascend910B2_matmul.bin
 cp $cur_dir/tensor_engine/tiling_config $cur_dir/out/${product}/llt/$test_type/obj/
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/lib/simulator/common/data
 cp $cur_dir/bin/cmodel/data/* $cur_dir/out/${product}/llt/$test_type/obj/lib/simulator/common/data/.

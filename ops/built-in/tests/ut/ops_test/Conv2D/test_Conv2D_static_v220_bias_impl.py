@@ -65,5 +65,5 @@ def test_static_v220_conv2d_bias(test_arg):
 
 
 print("test_Conv2D_static_v220_bias_impl running")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_static_v220_conv2d_bias)
-ut_case.run(['Ascend920A'])
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_static_v220_conv2d_bias)
+ut_case.run(['Ascend910B2'])

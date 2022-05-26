@@ -798,7 +798,7 @@ def test_conv2d_v220(test_arg):
         util_conv2d.v220_gen_param(inputs, weights, shape_fm, c0_optim_flag)
 
 
-    cceconf.te_set_version('Ascend920A')
+    cceconf.te_set_version('Ascend910B2')
     with op_context.OpContext():
         run_testcase(v220_case)
         run_testcase(v220_single_op_case)
@@ -825,7 +825,7 @@ def _test_5hd_trans_nhwc_format_err2(test_arg):
 
 
 print("adding Conv2D v220 ut testcases")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_v220)
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_conv2d_v220)
 ut_case.add_cust_test_func("Ascend910A", test_func=_test_5hd_trans_nhwc_format_err1)
 ut_case.add_cust_test_func("Ascend910A", test_func=_test_5hd_trans_nhwc_format_err2)
-ut_case.run(['Ascend920A'])
+ut_case.run(['Ascend910B2'])

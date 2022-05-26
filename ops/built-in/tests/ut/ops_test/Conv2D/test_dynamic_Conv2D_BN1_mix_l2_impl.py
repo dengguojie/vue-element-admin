@@ -72,5 +72,5 @@ def test_dynamic_conv2d_bn1_mix_l2(test_arg):
 
 
 print("test_dynamic_conv2d_bn1_mix_l2 running")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_dynamic_conv2d_bn1_mix_l2)
-ut_case.run(["Ascend920A"])
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_dynamic_conv2d_bn1_mix_l2)
+ut_case.run(["Ascend910B2"])

@@ -242,7 +242,7 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case("Ascend920A", case9)
+ut_case.add_case("Ascend910B2", case9)
 ut_case.add_case(["Ascend910A"], case12)
 ut_case.add_case(["Ascend910A"], case13)
 ut_case.add_case(["Ascend910A"], case14)
@@ -541,7 +541,7 @@ case15 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": 
          "case_name": "BatchMatmul_v2_15",
          "expect": "success",
          "support_expect": True}
-ut_case.add_case(["Ascend920A"], case15)
+ut_case.add_case(["Ascend910B2"], case15)
 
 
 def test_matmul_api(test_arg):

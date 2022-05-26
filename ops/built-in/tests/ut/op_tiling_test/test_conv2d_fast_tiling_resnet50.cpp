@@ -218,7 +218,7 @@ protected:
         std::cout << "Conv2DFastTilingTest TearDown" << std::endl;
     }
 
-    void setHardwareInfoAscend920A() {
+    void setHardwareInfoAscend910B2() {
         hardwareInfo.aicoreNum = 48;
         hardwareInfo.l2Size = 33554432;
         hardwareInfo.l1Size = 524288;
@@ -239,11 +239,11 @@ protected:
         hardwareInfo.ubToL2Rate = 64;
         hardwareInfo.ubToDdrRate = 64;
         hardwareInfo.ubToL1Rate = 128;
-        hardwareInfo.socVersion = "Ascend920A";
+        hardwareInfo.socVersion = "Ascend910B2";
     }
 
     virtual void SetUp() {
-        setHardwareInfoAscend920A();
+        setHardwareInfoAscend910B2();
         std::cout << "SetUp" << std::endl;
     }
 

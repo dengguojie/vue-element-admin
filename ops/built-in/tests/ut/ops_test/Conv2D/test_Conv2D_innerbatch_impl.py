@@ -67,5 +67,5 @@ def test_conv2d_innerbatch(test_arg):
         compile_conv2d_innerbatch(*value, key)
 
 print("test Conv2D innerbatch mode running")
-ut_case.add_cust_test_func("Ascend920A", test_func=test_conv2d_innerbatch)
-ut_case.run(['Ascend920A'])
+ut_case.add_cust_test_func("Ascend910B2", test_func=test_conv2d_innerbatch)
+ut_case.run(['Ascend910B2'])

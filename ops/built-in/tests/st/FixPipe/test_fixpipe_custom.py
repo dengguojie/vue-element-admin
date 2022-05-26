@@ -25,7 +25,7 @@ vals = {
     ("L0C_SIZE", ): 131072,
     ("Compiler_arch",): "dav-c220-cube",
     ("AICORE_TYPE",): "AiCore",
-    ("SOC_VERSION",): "Ascend920A",
+    ("SOC_VERSION",): "Ascend910B2",
     ("Intrinsic_fix_pipe_unit_list",): True,
     ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True,
     ("Intrinsic_fix_pipe_l0c2ub",) : True,
