@@ -50,9 +50,9 @@ ge::graphStatus LayerNormInferShape(gert::InferShapeContext* context) {
   const int64_t* begin_norm_axis = attrs->GetAttrPointer<int64_t>(LAYERNORM_ATTR_IDX_BEGIN_NORM_AXIS);
   OPS_CHECK_NULL_WITH_CONTEXT(context, begin_norm_axis);
 
-  OP_CHECK(!is_dim_valid(real_dim_num, *begin_norm_axis),
+  OP_CHECK(!IsDimValid(real_dim_num, *begin_norm_axis),
            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(),
-                                               gen_invalid_dim_msg("begin_norm_axis", real_dim_num, *begin_norm_axis)),
+                                               GenInvalidDimMsg("begin_norm_axis", real_dim_num, *begin_norm_axis)),
            return ge::GRAPH_FAILED);
 
   int64_t new_begin_norm_axis =

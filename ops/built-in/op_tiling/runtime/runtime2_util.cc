@@ -19,6 +19,8 @@
  * \brief
  */
 #include "../error_log.h"
+#include "../fusion_pass/common/fp16_t.hpp"
+#include "op_util.h"
 #include "runtime2_util.h"
 
 namespace optiling {
@@ -62,5 +64,50 @@ int64_t GetRemainder(int64_t u_value, int64_t d_value) {
   res_value = u_value % d_value;
 
   return res_value;
+}
+
+static bool CalcReducMeanCof(const gert::Shape& input_shape, const std::vector<int32_t>& reduce_axis,
+                             float& reduce_mean_cof) {
+  const size_t dim_len = input_shape.GetDimNum();
+  const size_t ori_reduce_axis_len = reduce_axis.size();
+  // init reduce_mean_cof is 1.0
+  reduce_mean_cof = 1.0;
+  for (size_t i = 0; i < ori_reduce_axis_len; i++) {
+    OP_TILING_CHECK(
+        !ops::IsDimValid(dim_len, reduce_axis[i]),
+        VECTOR_INNER_ERR_REPORT_TILIING("CalcReducMeanCof", "%s",
+                                        ops::GenInvalidDimMsg("reduce_axis", i, dim_len, reduce_axis[i]).c_str()),
+        return false);
+
+    // convert reduce axis (like: -1 -> (dim_len - 1))
+    int32_t single_reduce_axis = reduce_axis[i] < 0 ? reduce_axis[i] + dim_len : reduce_axis[i];
+
+    int64_t reduce_dim = input_shape.GetDim(single_reduce_axis);
+    OP_TILING_CHECK(reduce_dim == 0, OP_LOGI("CalcReducMeanCof", "the reduce dim is 0, will not use reduce_mean_cof"),
+                    return true);
+    reduce_mean_cof = reduce_mean_cof / reduce_dim;
+  }
+  OP_LOGD("CalcReducMeanCof", "CalcReducMeanCof cof is %1f", reduce_mean_cof);
+
+  return true;
+}
+
+bool AddReducMeanCof(const gert::Shape& input_shape, const ge::DataType input_dtype,
+                     const std::vector<int32_t>& reduce_axis, gert::TilingData* tiling_data) {
+  float reduce_mean_cof = 1.0;
+  bool calcu_flag = CalcReducMeanCof(input_shape, reduce_axis, reduce_mean_cof);
+  OP_LOGD("AddReducMeanCof", "AddReducMeanCof dtype is %s", ops::ToString(input_dtype).c_str());
+  switch (input_dtype) {
+    case ge::DT_FLOAT:
+      tiling_data->Append((float)reduce_mean_cof);
+      return calcu_flag;
+    case ge::DT_FLOAT16:
+      tiling_data->Append((fe::fp16_t)reduce_mean_cof);
+      tiling_data->Append((uint16_t)0);
+      return calcu_flag;
+    default:
+      OP_LOGW("AddReducMeanCof", "AddReducMeanCof of dtype[%s] has not implement.", ops::ToString(input_dtype).c_str());
+      return false;
+  }
 }
 }  // namespace optiling

@@ -40,9 +40,9 @@ static bool TransposeInferCommon(const gert::InferShapeContext* context, const g
   size_t input_dim_size = x_shape->GetDimNum();
   y_shape->SetDimNum(input_dim_size);
   for (size_t i = 0; i < input_dim_size; ++i) {
-    OP_CHECK(!is_dim_valid(input_dim_size, perm_value[i]),
+    OP_CHECK(!IsDimValid(input_dim_size, perm_value[i]),
              VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(),
-                                                 gen_invalid_dim_msg("perm", i, input_dim_size, perm_value[i])),
+                                                 GenInvalidDimMsg("perm", i, input_dim_size, perm_value[i])),
              return false);
     T perm_v = perm_value[i] < 0 ? perm_value[i] + input_dim_size : perm_value[i];
     y_shape->SetDim(i, x_shape->GetDim(perm_v));
@@ -76,7 +76,7 @@ ge::graphStatus TransposeInferShape(gert::InferShapeContext* context) {
     default:
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
           context->GetNodeName(),
-          GetInputDtypeNotSupportErrMsg("perm", "[int32, int64]", to_string(perm_dtype).c_str()));
+          GetInputDtypeNotSupportErrMsg("perm", "[int32, int64]", ToString(perm_dtype).c_str()));
       return ge::GRAPH_FAILED;
   }
 

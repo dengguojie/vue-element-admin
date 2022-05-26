@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <utility>
+#include "runtime/shape.h"
 #include "error_util.h"
 
 namespace ops {
@@ -39,7 +40,7 @@ inline std::shared_ptr<_T> make_shared_nothrow(_Args&&... __args) noexcept(
 }
 
 template <typename T1, typename T2>
-bool is_dim_valid(const T1 shape_size, const T2 dim_value) {
+bool IsDimValid(const T1 shape_size, const T2 dim_value) {
   int64_t minimum_num = static_cast<int64_t>(shape_size) * (-1);
   int64_t maximum_num = static_cast<int64_t>(shape_size) - 1;
 
@@ -47,7 +48,7 @@ bool is_dim_valid(const T1 shape_size, const T2 dim_value) {
 }
 
 template <typename T1, typename T2>
-std::string gen_invalid_dim_msg(const std::string dim_name, const T1 shape_size, const T2 dim_value) {
+std::string GenInvalidDimMsg(const std::string dim_name, const T1 shape_size, const T2 dim_value) {
   std::string wrong_val = ge::ConcatString(static_cast<int64_t>(dim_value));
   // will be "[-rank, rank)"
   std::string neg_rank = ge::ConcatString(static_cast<int64_t>(shape_size) * (-1));
@@ -58,11 +59,11 @@ std::string gen_invalid_dim_msg(const std::string dim_name, const T1 shape_size,
 }
 
 template <typename T1, typename T2>
-std::string gen_invalid_dim_msg(const std::string dim_name, const size_t dim_idx, const T1 shape_size,
-                                const T2 dim_value) {
+std::string GenInvalidDimMsg(const std::string dim_name, const size_t dim_idx, const T1 shape_size,
+                             const T2 dim_value) {
   std::string invalid_dim_name = ge::ConcatString(dim_name, "[", ge::ConcatString(dim_idx), "]");
 
-  return gen_invalid_dim_msg(invalid_dim_name, shape_size, dim_value);
+  return GenInvalidDimMsg(invalid_dim_name, shape_size, dim_value);
 }
 
 template <typename T>
@@ -75,13 +76,27 @@ T CeilDiv(T x, T y) {
  * @param [in] type: enum datatype
  * @return string: datatype string
  */
-std::string to_string(const ge::DataType& type);
+std::string ToString(const ge::DataType& type);
 
 /*
  * @brief: get format string from enum
  * @param [in] format: enum format
  * @return string: format string
  */
-std::string to_string(const ge::Format& format);
+std::string ToString(const ge::Format& format);
+
+/*
+ * @brief: get shape string from gert::Shape, for debug
+ * @param [in] format: enum format
+ * @return string: shape string
+ */
+std::string ToString(const gert::Shape& shape);
+
+/*
+ * @brief: trans the gert::Shape to vector<int64_t>
+ * @param [in] format: gert::Shape
+ * @return vector<int64_t>: the vector shape
+ */
+std::vector<int64_t> ToVector(const gert::Shape& shape);
 }  // namespace ops
 #endif  // CANN_OPS_BUILT_IN_OP_UTIL_H_

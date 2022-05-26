@@ -41,8 +41,8 @@ ge::graphStatus ConcatInferShapeCommon(gert::InferShapeContext* context, const i
 
   size_t output_dim = out_shape->GetDimNum();
   OP_CHECK(
-      !is_dim_valid(output_dim, axis),
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), gen_invalid_dim_msg("concat_dim", output_dim, axis)),
+      !IsDimValid(output_dim, axis),
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), GenInvalidDimMsg("concat_dim", output_dim, axis)),
       return ge::GRAPH_FAILED);
   if (axis < 0) {
     axis += output_dim;

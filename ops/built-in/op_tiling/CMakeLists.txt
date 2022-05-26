@@ -31,6 +31,7 @@ set(_optiling_files
   ../utils/block_store.cc
   ../utils/block_pool.cc
   ../../common/src/error_util.cc
+  ../../common/src/op_util.cc
   ../fusion_pass/common/fp16_t.cc
   transdata_dsl.cc
   transdata_dsl_general.cc
