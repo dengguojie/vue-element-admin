@@ -1,0 +1,195 @@
+[
+    {"compile_flag": 1},
+    {
+        "case_name": "Test_ThresholdV2_001",
+        "op": "ThresholdV2",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "int32",
+                "shape": [3, 8, 24, 16]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "int32",
+                "shape": [1]
+            },
+            {
+                "name": "value",
+                "format": "ND",
+                "type": "int32",
+                "shape": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "int32",
+                "shape": [3, 8, 24, 16]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_002",
+        "op": "ThresholdV2",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [3, 16]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [1]
+            },
+            {
+                "name": "value",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [3, 16]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_003",
+        "op": "ThresholdV2",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "int8",
+                "shape": [3, 16, 16]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "int8",
+                "shape": [1]
+            },
+            {
+                "name": "value",
+                "format": "ND",
+                "type": "int8",
+                "shape": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "int8",
+                "shape": [3, 16, 16]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_004",
+        "op": "ThresholdV2",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [3, 16]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [1]
+            },
+            {
+                "name": "value",
+                "format": "ND",
+                "type": "float16",
+                "shape": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [3, 16]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_005",
+        "op": "ThresholdV2",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float32",
+                "shape": [3, 16]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float32",
+                "shape": [1]
+            },
+            {
+                "name": "value",
+                "format": "ND",
+                "type": "float32",
+                "shape": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float32",
+                "shape": [3, 16]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_006",
+        "op": "ThresholdV2",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [3, 16]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [1]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [3, 16]
+            }
+        ],
+        "attr": []
+    }
+]

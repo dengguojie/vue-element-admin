@@ -53,6 +53,12 @@ ut_case.add_case("all", {
     "expect": RuntimeError
 })
 
+# 'pylint: disable=unused-argument
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
 ut_case.add_case("Ascend910A", gen_use_value_case((-1,), "float32", ((1, None),)))
 ut_case.add_case("Ascend910A", gen_use_value_case((-1, -1, -1), "float32", ((1, None), (1, None), (1, None))))
 ut_case.add_case("all", gen_use_value_case((-1,), "float16", ((1, None),)))
@@ -66,6 +72,7 @@ ut_case.add_case("all", gen_no_value_case((-1,), "float16", ((1, None),)))
 ut_case.add_case("all", gen_no_value_case((-1,), "int32", ((1, None),)))
 ut_case.add_case("all", gen_no_value_case((-1,), "uint8", ((1, None),)))
 ut_case.add_case("all", gen_no_value_case((-1,), "int8", ((1, None),)))
+ut_case.add_cust_test_func(test_func=test_import_lib)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

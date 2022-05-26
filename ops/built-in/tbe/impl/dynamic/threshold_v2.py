@@ -109,13 +109,11 @@ def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
     dtype_x = x.get("dtype").lower()
     check_list = ("float16", "float32", "int8", "int32", "uint8")
     para_check.check_dtype(dtype_x, check_list)
-    para_check.check_shape(threshold.get("shape"), max_dim=1, max_rank=1, param_name="threshold")
 
-    data_threshold = tvm.placeholder(threshold.get("shape"), dtype=dtype_x, name="data_threshold")
+    data_threshold = tvm.placeholder((1,), dtype=dtype_x, name="data_threshold")
     data_value = None
     if value is not None:
-        para_check.check_shape(value.get("shape"), max_dim=1, max_rank=1, param_name="value")
-        data_value = tvm.placeholder(threshold.get("shape"), dtype=dtype_x, name="data_value")
+        data_value = tvm.placeholder((1,), dtype=dtype_x, name="data_value")
 
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
@@ -124,11 +122,10 @@ def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
             shape_x = shape_util.variable_shape([_x])[0]
             data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)
             res = threshold_v2_compute(data_x, data_threshold, data_value, kernel_name)
-            tensors.append(data_x)
-            tensors.append(data_threshold)
             if value is not None:
-                tensors.append(data_value)
-            tensors.append(res)
+                tensors.append([data_x, data_threshold, data_value, res])
+            else:
+                tensors.append([data_x, data_threshold, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
