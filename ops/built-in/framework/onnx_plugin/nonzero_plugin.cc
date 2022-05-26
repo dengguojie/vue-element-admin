@@ -41,7 +41,9 @@ REGISTER_CUSTOM_OP("NonZero")
                    "ai.onnx::10::NonZero",
                    "ai.onnx::11::NonZero",
                    "ai.onnx::12::NonZero",
-                   "ai.onnx::13::NonZero"})
+                   "ai.onnx::13::NonZero",
+                   "ai.onnx::14::NonZero",
+                   "ai.onnx::15::NonZero"})
     .ParseParamsFn(ParseParamsNonZero)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

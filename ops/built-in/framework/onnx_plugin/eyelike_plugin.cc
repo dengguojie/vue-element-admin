@@ -41,6 +41,7 @@ Status ParseParamsEyeLike(const Message *op_src, ge::Operator &op_dest) {
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("dtype", dtype);
   op_dest.SetAttr("k", k);
   op_dest.SetAttr("original_type", "ai.onnx::11::EyeLike");
@@ -51,8 +52,14 @@ Status ParseParamsEyeLike(const Message *op_src, ge::Operator &op_dest) {
 }
 
 Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
-  //TODO(ONNX PLUGIN) This is a Interim plan, The review did not take complexity into account.
-  //Follow will add new optype eyelike to adapte 
+  // TODO(ONNX PLUGIN) This is a Interim plan, The review did not take complexity into account.
+  // Follow will add new optype eyelike to adapte 
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int dtype = 1;
   op.GetAttr("dtype", dtype);
   auto om_type = GetOmDtypeFromOnnxDtype(dtype);
@@ -77,30 +84,30 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
   int32_t split_dim = 0;
   ge::Tensor split_dim_tensor = Scalar2Tensor(split_dim, dims, ge::DT_INT32);
   
-  auto data0 = op::Data("data").set_attr_index(0);
-  auto const_op = op::Const("const").set_attr_value(k_tensor);
+  auto data0 = op::Data(ori_name + "data").set_attr_index(0);
+  auto const_op = op::Const(ori_name + "const").set_attr_value(k_tensor);
   
-  auto shape_op = op::Shape("shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);
-  auto const_op_split = op::Const("const3").set_attr_value(split_dim_tensor);
-  auto split_op = op::Split("split").create_dynamic_output_y(2)
-                                    .set_input_x(shape_op)
-                                    .set_input_split_dim(const_op_split)
-                                    .set_attr_num_split(2);
+  auto shape_op = op::Shape(ori_name + "shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);
+  auto const_op_split = op::Const(ori_name + "const3").set_attr_value(split_dim_tensor);
+  auto split_op = op::Split(ori_name + "split").create_dynamic_output_y(2)
+                                               .set_input_x(shape_op)
+                                               .set_input_split_dim(const_op_split)
+                                               .set_attr_num_split(2);
  
-  auto add_op = op::Adds("add").set_input_x(split_op, 0).set_attr_value(k);
-  auto const_op2 = op::Const("const2").set_attr_value(fill_tensor);
-  auto fill_op = op::Fill("fill").set_input_dims(add_op).set_input_value(const_op2);
-  auto cast_op = op::Cast("cast").set_input_x(fill_op).set_attr_dst_type(om_type);
+  auto add_op = op::Adds(ori_name + "add").set_input_x(split_op, 0).set_attr_value(k);
+  auto const_op2 = op::Const(ori_name + "const2").set_attr_value(fill_tensor);
+  auto fill_op = op::Fill(ori_name + "fill").set_input_dims(add_op).set_input_value(const_op2);
+  auto cast_op = op::Cast(ori_name + "cast").set_input_x(fill_op).set_attr_dst_type(om_type);
 
-  auto squeeze_op = op::Squeeze("squeeze").set_input_x(split_op, 0).set_attr_axis(0);
-  auto squeeze_op1 = op::Squeeze("squeeze1").set_input_x(split_op, 1).set_attr_axis(0);
+  auto squeeze_op = op::Squeeze(ori_name + "squeeze").set_input_x(split_op, 0).set_attr_axis(0);
+  auto squeeze_op1 = op::Squeeze(ori_name + "squeeze1").set_input_x(split_op, 1).set_attr_axis(0);
   
-  auto const_op1 = op::Const("const1").set_attr_value(pad_tensor);
-  auto maxtrix_op = op::MatrixDiagV2("matrix_diagv2").set_input_diagonal(cast_op)
-                                                     .set_input_k(const_op)
-                                                     .set_input_num_rows(squeeze_op)
-                                                     .set_input_num_cols(squeeze_op1)
-                                                     .set_input_padding_value(const_op1);
+  auto const_op1 = op::Const(ori_name + "const1").set_attr_value(pad_tensor);
+  auto maxtrix_op = op::MatrixDiagV2(ori_name + "matrix_diagv2").set_input_diagonal(cast_op)
+                                                                .set_input_k(const_op)
+                                                                .set_input_num_rows(squeeze_op)
+                                                                .set_input_num_cols(squeeze_op1)
+                                                                .set_input_padding_value(const_op1);
 
   auto input_desc1 = maxtrix_op.GetInputDesc(2);
   input_desc1.SetShape(ge::Shape(dims));
@@ -119,7 +126,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::EyeLike",
                  "ai.onnx::11::EyeLike",
                  "ai.onnx::12::EyeLike",
-                 "ai.onnx::13::EyeLike"})
+                 "ai.onnx::13::EyeLike",
+                 "ai.onnx::14::EyeLike",
+                 "ai.onnx::15::EyeLike"})
   .ParseParamsFn(ParseParamsEyeLike)
   .ParseOpToGraphFn(ParseOpToGraphEyeLike)
   .ImplyType(ImplyType::TVM);

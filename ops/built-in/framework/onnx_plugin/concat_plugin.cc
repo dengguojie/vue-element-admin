@@ -53,6 +53,7 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
     return PARAM_INVALID;
   }
   op_dest.SetAttr("concat_dim", concat_dim);
+  op_dest.SetAttr("name", node->name());
 
   int n = node->input_size();
   op_dest.SetAttr("N", n);
@@ -71,6 +72,12 @@ Status ParseParamsConcatCall(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int input_size = 0;
   op.GetAttr("N", input_size);
   std::vector<ge::Operator> inputs;
@@ -80,15 +87,15 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "input_size must ge 1");
     return FAILED;
   } else if (input_size == 1) {
-    auto data_op = op::Data("data").set_attr_index(0);
-    auto identity_op = op::Identity("identity").set_input_x(data_op);
+    auto data_op = op::Data(ori_name + "data").set_attr_index(0);
+    auto identity_op = op::Identity(ori_name + "identity").set_input_x(data_op);
     inputs.push_back(data_op);
     output_indexs.emplace_back(identity_op, std::vector<size_t>{0});
   } else {
     int concat_dim = DEFAULT_CONCAT_DIM;
     op.GetAttr("concat_dim", concat_dim);
 
-    auto concat_op = op::ConcatD("ConcatD")
+    auto concat_op = op::ConcatD(ori_name + "ConcatD")
                          .create_dynamic_input_x(input_size)
                          .set_attr_concat_dim(concat_dim)
                          .set_attr_N(input_size);
@@ -96,7 +103,7 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
     std::string input_name = "";
     for (int i = 0; i < input_size; ++i) {
       input_name = "data_concat_" + to_string(i);
-      auto data_op = op::Data(input_name).set_attr_index(i);
+      auto data_op = op::Data(ori_name + input_name).set_attr_index(i);
       concat_op.set_dynamic_input_x(i, data_op);
       inputs.push_back(data_op);
     }
@@ -113,7 +120,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::Concat",
                    "ai.onnx::11::Concat",
                    "ai.onnx::12::Concat",
-                   "ai.onnx::13::Concat"})
+                   "ai.onnx::13::Concat",
+                   "ai.onnx::14::Concat",
+                   "ai.onnx::15::Concat"})
     .ParseParamsFn(ParseParamsConcatCall)
     .ParseOpToGraphFn(ParseOpToGraphConcat)
     .ImplyType(ImplyType::TVM);

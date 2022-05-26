@@ -123,19 +123,26 @@ Status ParseParamsConstantOfShape(const Message *op_src, ge::Operator &op_dest)
   }
   const ge::Tensor valueTensor(tensorDesc, data, size);
   op_dest.SetAttr("value", valueTensor);
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
 static Status ParseOpToGraphConstantOfShape(const Operator &op, Graph &graph)
 {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
   ge::Tensor value;
   if (op.GetAttr("value", value) != SUCCESS) {
     ONNX_PLUGIN_LOGE("ConstantOfShape", "get value from op failed");
     return FAILED;
   }
-  auto data1 = op::Const("data1").set_attr_value(value);
-  auto fill = op::Fill().set_input_dims(data0).set_input_value(data1);
+  auto data1 = op::Const(ori_name + "data1").set_attr_value(value);
+  auto fill = op::Fill(ori_name + "Fill").set_input_dims(data0).set_input_value(data1);
 
   std::vector<Operator> inputs { data0 };
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
@@ -151,7 +158,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::ConstantOfShape",
                  "ai.onnx::11::ConstantOfShape",
                  "ai.onnx::12::ConstantOfShape",
-                 "ai.onnx::13::ConstantOfShape"})
+                 "ai.onnx::13::ConstantOfShape",
+                 "ai.onnx::14::ConstantOfShape",
+                 "ai.onnx::15::ConstantOfShape"})
   .ParseParamsFn(ParseParamsConstantOfShape)
   .ParseOpToGraphFn(ParseOpToGraphConstantOfShape)
   .ImplyType(ImplyType::TVM);

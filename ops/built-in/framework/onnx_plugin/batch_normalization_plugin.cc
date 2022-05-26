@@ -56,7 +56,9 @@ REGISTER_CUSTOM_OP("BatchNorm")
                    "ai.onnx::10::BatchNormalization",
                    "ai.onnx::11::BatchNormalization",
                    "ai.onnx::12::BatchNormalization",
-                   "ai.onnx::13::BatchNormalization"})
+                   "ai.onnx::13::BatchNormalization",
+                   "ai.onnx::14::BatchNormalization",
+                   "ai.onnx::15::BatchNormalization"})
     .ParseParamsFn(ParseParamsBatchNorm)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

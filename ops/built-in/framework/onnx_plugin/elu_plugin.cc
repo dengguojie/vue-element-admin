@@ -39,7 +39,9 @@ REGISTER_CUSTOM_OP("Elu")
                  "ai.onnx::10::Elu",
                  "ai.onnx::11::Elu",
                  "ai.onnx::12::Elu",
-                 "ai.onnx::13::Elu"})
+                 "ai.onnx::13::Elu",
+                 "ai.onnx::14::Elu",
+                 "ai.onnx::15::Elu"})
   .ParseParamsFn(ParseParamsElu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

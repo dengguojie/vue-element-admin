@@ -53,12 +53,19 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
   }
   std::vector<int64_t> value_dims = {};
   ge::Tensor tensor = Scalar2Tensor(axis, value_dims, ge::DT_INT32);
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("dimension", tensor);
   op_dest.SetAttr("keep_dims", keep_dims);
   return SUCCESS;
 }
 
 static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int keep_dims = 1;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get keep_dims from op failed");
@@ -70,19 +77,21 @@ static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  auto data0 = op::Data("data0").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   
-  auto const_op = op::Const("const_data").set_attr_value(axis);
-  auto argMin = op::ArgMin().set_input_x(data0).set_input_dimension(const_op).set_attr_dtype(ge::DT_INT32);
+  auto const_op = op::Const(ori_name + "const_data").set_attr_value(axis);
+  auto argMin = op::ArgMin(ori_name + "ArgMin").set_input_x(data0)
+                                               .set_input_dimension(const_op)
+                                               .set_attr_dtype(ge::DT_INT32);
 
   if (keep_dims == 1) {
     std::vector<int64_t> dims = {1};
     ge::Tensor tensor1 = Scalar2Tensor(keep_dims, dims, ge::DT_INT32);
-    auto data1 = op::Const("data1").set_attr_value(tensor1);
+    auto data1 = op::Const(ori_name + "data1").set_attr_value(tensor1);
 
-    auto expandDims = op::ExpandDims().set_input_x(argMin).set_input_axis(data1);
+    auto expandDims = op::ExpandDims(ori_name + "ExpandDims").set_input_x(argMin).set_input_axis(data1);
     outputs.emplace_back(expandDims, vector<std::size_t>{0});
   } else {
     outputs.emplace_back(argMin, vector<std::size_t>{0});
@@ -101,7 +110,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::ArgMin",
                    "ai.onnx::11::ArgMin",
                    "ai.onnx::12::ArgMin",
-                   "ai.onnx::13::ArgMin"})
+                   "ai.onnx::13::ArgMin",
+                   "ai.onnx::14::ArgMin",
+                   "ai.onnx::15::ArgMin"})
     .ParseParamsFn(ParseParamsArgMin)
     .ParseOpToGraphFn(ParseOpToGraphArgMin)
     .ImplyType(ImplyType::TVM);

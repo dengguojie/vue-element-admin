@@ -49,6 +49,7 @@ Status ParseParamsOnehotCall(const Message* op_src, ge::Operator& op_dest) {
   }
 
   op_dest.SetAttr("axis", axis);
+  op_dest.SetAttr("name", node->name());
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "op_desc is null");
@@ -61,33 +62,39 @@ Status ParseParamsOnehotCall(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphOnehot(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int axis = -1;
   op.GetAttr("axis", axis);
 
-  auto data1 = op::Data("indicate").set_attr_index(0);
-  auto data2 = op::Data("depth").set_attr_index(1);
-  auto data3 = op::Data("values").set_attr_index(2);
+  auto data1 = op::Data(ori_name + "indicate").set_attr_index(0);
+  auto data2 = op::Data(ori_name + "depth").set_attr_index(1);
+  auto data3 = op::Data(ori_name + "values").set_attr_index(2);
   
   int32_t split_dim = 0;
   std::vector<int64_t> dims;
   ge::Tensor split_dim_tensor =Scalar2Tensor(split_dim, dims, ge::DT_INT32);
-  auto split_const_op = op::Const("split_dim").set_attr_value(split_dim_tensor);
+  auto split_const_op = op::Const(ori_name + "split_dim").set_attr_value(split_dim_tensor);
   //In order to solve the problem that the input is negative insert add and mod, becase tbe onehot not support but onnx support
-  auto split_d_op = op::Split("Split").create_dynamic_output_y(2)
-                                      .set_input_x(data3)
-                                      .set_input_split_dim(split_const_op)
-                                      .set_attr_num_split(2);
+  auto split_d_op = op::Split(ori_name + "Split").create_dynamic_output_y(2)
+                                                 .set_input_x(data3)
+                                                 .set_input_split_dim(split_const_op)
+                                                 .set_attr_num_split(2);
 
-  auto cast_op = op::Cast("Cast").set_input_x(data1).set_attr_dst_type(3);
-  auto cast_op1 = op::Cast("Cast1").set_input_x(data2).set_attr_dst_type(3);
-  auto add_op = op::Add("Add").set_input_x1(cast_op, 0).set_input_x2(cast_op1, 0);
-  auto mod_op = op::Mod("Mod").set_input_x1(add_op, 0).set_input_x2(cast_op1, 0);
+  auto cast_op = op::Cast(ori_name + "Cast").set_input_x(data1).set_attr_dst_type(3);
+  auto cast_op1 = op::Cast(ori_name + "Cast1").set_input_x(data2).set_attr_dst_type(3);
+  auto add_op = op::Add(ori_name + "Add").set_input_x1(cast_op, 0).set_input_x2(cast_op1, 0);
+  auto mod_op = op::Mod(ori_name + "Mod").set_input_x1(add_op, 0).set_input_x2(cast_op1, 0);
 
-  auto onehot_op = op::OneHot("OneHot").set_input_x(mod_op, 0)
-                                       .set_input_depth(cast_op1, 0)
-                                       .set_input_on_value(split_d_op, 1)
-                                       .set_input_off_value(split_d_op, 0)
-                                       .set_attr_axis(axis);
+  auto onehot_op = op::OneHot(ori_name + "OneHot").set_input_x(mod_op, 0)
+                                                  .set_input_depth(cast_op1, 0)
+                                                  .set_input_on_value(split_d_op, 1)
+                                                  .set_input_off_value(split_d_op, 0)
+                                                  .set_attr_axis(axis);
   std::vector<ge::Operator> inputs{data1, data2, data3};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   output_indexs.emplace_back(onehot_op, std::vector<size_t>{0});
@@ -101,7 +108,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::OneHot",
                  "ai.onnx::11::OneHot",
                  "ai.onnx::12::OneHot",
-                 "ai.onnx::13::OneHot"})
+                 "ai.onnx::13::OneHot",
+                 "ai.onnx::14::OneHot",
+                 "ai.onnx::15::OneHot"})
   .ParseParamsFn(ParseParamsOnehotCall)
   .ParseOpToGraphFn(ParseOpToGraphOnehot)
   .ImplyType(ImplyType::TVM);

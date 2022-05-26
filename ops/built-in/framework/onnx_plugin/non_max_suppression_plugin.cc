@@ -57,6 +57,7 @@ Status ParseParamsNonMaxSuppression(const Message* op_src, ge::Operator& op_dest
 
   int input_size = node->input_size();
   op_dest.SetAttr("input_size", input_size);
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("original_type", "ai.onnx::11::NonMaxSuppression");
   NMSOpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
@@ -70,11 +71,17 @@ Status ParseParamsNonMaxSuppression(const Message* op_src, ge::Operator& op_dest
 
 Status ParseOpToGraphNonMaxSuppression(const ge::Operator& op, Graph& graph)
 {
-  auto boxes = op::Data("boxes").set_attr_index(boxes_index);
-  auto scores = op::Data("scores").set_attr_index(socre_index);
-  auto max_output_boxes = op::Data("max_output_boxes").set_attr_index(max_output_boxes_index);
-  auto iou_threshold = op::Data("iou_threshold").set_attr_index(iou_threshold_index);
-  auto score_threshold = op::Data("score_threshold").set_attr_index(score_threshold_index);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto boxes = op::Data(ori_name + "boxes").set_attr_index(boxes_index);
+  auto scores = op::Data(ori_name + "scores").set_attr_index(socre_index);
+  auto max_output_boxes = op::Data(ori_name + "max_output_boxes").set_attr_index(max_output_boxes_index);
+  auto iou_threshold = op::Data(ori_name + "iou_threshold").set_attr_index(iou_threshold_index);
+  auto score_threshold = op::Data(ori_name + "score_threshold").set_attr_index(score_threshold_index);
 
   int input_size = 0;
   if (op.GetAttr("input_size", input_size) != SUCCESS) {
@@ -87,7 +94,7 @@ Status ParseOpToGraphNonMaxSuppression(const ge::Operator& op, Graph& graph)
     return FAILED;
   }
 
-  auto non_max_suppression = op::NonMaxSuppressionV6();
+  auto non_max_suppression = op::NonMaxSuppressionV6(ori_name + "NonMaxSuppressionV6");
   std::vector<Operator> inputs{boxes, scores};
   std::vector<std::pair<Operator, std::vector<size_t>>> output_indexs;
   if (input_size == (socre_index + 1)) {
@@ -123,7 +130,7 @@ Status ParseOpToGraphNonMaxSuppression(const ge::Operator& op, Graph& graph)
     return FAILED;
   }
 
-  auto output_int64 = op::Cast("cast").set_input_x(non_max_suppression).set_attr_dst_type(DT_INT64);
+  auto output_int64 = op::Cast(ori_name + "Cast").set_input_x(non_max_suppression).set_attr_dst_type(DT_INT64);
   output_indexs.emplace_back(output_int64, std::vector<size_t>{0});
   graph.SetInputs(inputs).SetOutputs(output_indexs);
   return SUCCESS;
@@ -134,7 +141,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
   .OriginOpType({"ai.onnx::10::NonMaxSuppression",
                  "ai.onnx::11::NonMaxSuppression",
                  "ai.onnx::12::NonMaxSuppression",
-                 "ai.onnx::13::NonMaxSuppression"})
+                 "ai.onnx::13::NonMaxSuppression",
+                 "ai.onnx::14::NonMaxSuppression",
+                 "ai.onnx::15::NonMaxSuppression"})
   .ParseParamsFn(ParseParamsNonMaxSuppression)
   .ParseOpToGraphFn(ParseOpToGraphNonMaxSuppression)
   .ImplyType(ImplyType::TVM);

@@ -42,7 +42,7 @@ Status ParseParamsEinsum(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("Einsum")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Einsum", "ai.onnx::9::Einsum", "ai.onnx::10::Einsum", "ai.onnx::11::Einsum",
-                   "ai.onnx::12::Einsum", "ai.onnx::13::Einsum"})
+                   "ai.onnx::12::Einsum", "ai.onnx::13::Einsum", "ai.onnx::14::Einsum", "ai.onnx::15::Einsum"})
     .ParseParamsFn(ParseParamsEinsum)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

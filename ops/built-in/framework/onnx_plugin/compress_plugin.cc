@@ -52,12 +52,19 @@ Status parseParamsCompress(const Message* op_src, ge::Operator& op_dest) {
 
   op_dest.SetAttr("need_flatten", need_flatten);
   op_dest.SetAttr("axis_value", tensor1);
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
 static Status ParseOpToGraphCompress(const ge::Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "data1").set_attr_index(1);
 
   int need_flatten = 0;
   if (op.GetAttr("need_flatten", need_flatten) != SUCCESS) {
@@ -71,16 +78,16 @@ static Status ParseOpToGraphCompress(const ge::Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  auto const_op = op::Const("axis_data").set_attr_value(const_value);
+  auto const_op = op::Const(ori_name + "axis_data").set_attr_value(const_value);
 
   ge::Operator compress;
-  auto where = op::Where("compress_condition").set_input_x(data1);
+  auto where = op::Where(ori_name + "compress_condition").set_input_x(data1);
   if (need_flatten) {
-    auto flatten = op::Flatten("compress_flatten").set_input_x(data0).set_attr_axis(0);
-    auto squeeze = op::Squeeze("squeeze").set_input_x(flatten).set_attr_axis(0);
-    compress = op::GatherV2("compress").set_input_x(squeeze).set_input_indices(where).set_input_axis(const_op);
+    auto flatten = op::Flatten(ori_name + "compress_flatten").set_input_x(data0).set_attr_axis(0);
+    auto squeeze = op::Squeeze(ori_name + "squeeze").set_input_x(flatten).set_attr_axis(0);
+    compress = op::GatherV2(ori_name + "compress").set_input_x(squeeze).set_input_indices(where).set_input_axis(const_op);
   } else {
-    compress = op::GatherV2("compress").set_input_x(data0).set_input_indices(where).set_input_axis(const_op);
+    compress = op::GatherV2(ori_name + "compress").set_input_x(data0).set_input_indices(where).set_input_axis(const_op);
   }
 
   std::vector<ge::Operator> inputs = {data0, data1, const_op};
@@ -93,7 +100,7 @@ static Status ParseOpToGraphCompress(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::Compress", "ai.onnx::10::Compress", "ai.onnx::11::Compress", "ai.onnx::12::Compress",
-                   "ai.onnx::13::Compress"})
+                   "ai.onnx::13::Compress", "ai.onnx::14::Compress", "ai.onnx::15::Compress"})
     .ParseParamsFn(parseParamsCompress)
     .ParseOpToGraphFn(ParseOpToGraphCompress)
     .ImplyType(ImplyType::TVM);

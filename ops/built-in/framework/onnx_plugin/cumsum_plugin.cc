@@ -47,7 +47,9 @@ REGISTER_CUSTOM_OP("Cumsum")
                  "ai.onnx::10::CumSum",
                  "ai.onnx::11::CumSum",
                  "ai.onnx::12::CumSum",
-                 "ai.onnx::13::CumSum"})
+                 "ai.onnx::13::CumSum",
+                 "ai.onnx::14::CumSum",
+                 "ai.onnx::15::CumSum"})
   .ParseParamsFn(ParseParamsCumSum)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

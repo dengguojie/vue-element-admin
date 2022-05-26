@@ -47,13 +47,20 @@ Status ParseParamsBitShift(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("direction", direction);
   return SUCCESS;
 }
 
 static Status ParseOpToGraphBitShift(const Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "data1").set_attr_index(1);
   std::string direction = "RIGHT";
   if (op.GetAttr("direction", direction) != SUCCESS) {
       ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value from op failed");
@@ -63,10 +70,10 @@ static Status ParseOpToGraphBitShift(const Operator& op, Graph& graph) {
   std::vector<Operator> inputs{data0, data1};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
   if (direction == "RIGHT") {
-    auto bitshift_r = op::RightShift().set_input_x(data0).set_input_y(data1);
+    auto bitshift_r = op::RightShift(ori_name + "RightShift").set_input_x(data0).set_input_y(data1);
     output_indexs.emplace_back(bitshift_r, vector<std::size_t>{0});
   } else if (direction == "LEFT") {
-    auto bitshift_l = op::LeftShift().set_input_x(data0).set_input_y(data1);
+    auto bitshift_l = op::LeftShift(ori_name + "LeftShift").set_input_x(data0).set_input_y(data1);
     output_indexs.emplace_back(bitshift_l, vector<std::size_t>{0});
   } else {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "attr direction is error");
@@ -83,7 +90,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::11::BitShift",
                  "ai.onnx::12::BitShift",
-                 "ai.onnx::13::BitShift"})
+                 "ai.onnx::13::BitShift",
+                 "ai.onnx::14::BitShift",
+                 "ai.onnx::15::BitShift"})
   .ParseParamsFn(ParseParamsBitShift)
   .ParseOpToGraphFn(ParseOpToGraphBitShift)
   .ImplyType(ImplyType::TVM);

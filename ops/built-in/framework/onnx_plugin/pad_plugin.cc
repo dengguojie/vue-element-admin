@@ -45,6 +45,7 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  op_dest.SetAttr("name", node->name());
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   // 1.add dynamic input and out
   opDesc->AddDynamicInputDesc("x", 1);
@@ -92,7 +93,13 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
 }
 
 static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
   ge::Tensor value1;
   if (op.GetAttr("paddings", value1) != SUCCESS) {
     return FAILED;
@@ -104,12 +111,12 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
 
   std::string mode = "constant";
   op.GetAttr("mode", mode);
-  auto data1 = op::Const("data1").set_attr_value(value1);
-  auto data2 = op::Const("data2").set_attr_value(value2);
-  auto pad_v3 = op::PadV3().set_input_x(data0)
-                           .set_input_paddings(data1)
-                           .set_input_constant_values(data2)
-                           .set_attr_mode(mode);
+  auto data1 = op::Const(ori_name + "data1").set_attr_value(value1);
+  auto data2 = op::Const(ori_name + "data2").set_attr_value(value2);
+  auto pad_v3 = op::PadV3(ori_name + "PadV3").set_input_x(data0)
+                                             .set_input_paddings(data1)
+                                             .set_input_constant_values(data2)
+                                             .set_attr_mode(mode);
 
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
@@ -131,7 +138,9 @@ REGISTER_CUSTOM_OP("PadV3")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::11::Pad",
                    "ai.onnx::12::Pad",
-                   "ai.onnx::13::Pad"})
+                   "ai.onnx::13::Pad",
+                   "ai.onnx::14::Pad",
+                   "ai.onnx::15::Pad"})
     .ParseParamsFn(parse_params_pad_v11)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

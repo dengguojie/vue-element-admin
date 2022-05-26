@@ -140,7 +140,8 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
 REGISTER_CUSTOM_OP("DeformableConv2D")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::DeformableConv2D", "ai.onnx::10::DeformableConv2D", "ai.onnx::11::DeformableConv2D",
-                   "ai.onnx::12::DeformableConv2D", "ai.onnx::13::DeformableConv2D"})
+                   "ai.onnx::12::DeformableConv2D", "ai.onnx::13::DeformableConv2D",
+                   "ai.onnx::14::DeformableConv2D", "ai.onnx::15::DeformableConv2D"})
     .ParseParamsFn(ParseParamsDeformableConv2D)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

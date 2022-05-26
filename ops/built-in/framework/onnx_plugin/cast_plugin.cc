@@ -104,7 +104,9 @@ REGISTER_CUSTOM_OP("Cast")
                  "ai.onnx::10::Cast",
                  "ai.onnx::11::Cast",
                  "ai.onnx::12::Cast",
-                 "ai.onnx::13::Cast"})
+                 "ai.onnx::13::Cast",
+                 "ai.onnx::14::Cast",
+                 "ai.onnx::15::Cast"})
   .ParseParamsFn(ParseParamsCast)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

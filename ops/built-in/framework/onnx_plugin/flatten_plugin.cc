@@ -46,7 +46,9 @@ REGISTER_CUSTOM_OP("Flatten")
                  "ai.onnx::10::Flatten",
                  "ai.onnx::11::Flatten",
                  "ai.onnx::12::Flatten",
-                 "ai.onnx::13::Flatten"})
+                 "ai.onnx::13::Flatten",
+                 "ai.onnx::14::Flatten",
+                 "ai.onnx::15::Flatten"})
   .ParseParamsFn(ParseParamsFlatten)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -58,7 +58,8 @@ REGISTER_CUSTOM_OP("AdaptiveAvgPool2d")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::AdaptiveAvgPool2d", "ai.onnx::9::AdaptiveAvgPool2d", "ai.onnx::10::AdaptiveAvgPool2d",
                    "ai.onnx::11::AdaptiveAvgPool2d", "ai.onnx::12::AdaptiveAvgPool2d",
-                   "ai.onnx::13::AdaptiveAvgPool2d"})
+                   "ai.onnx::13::AdaptiveAvgPool2d", "ai.onnx::14::AdaptiveAvgPool2d",
+                   "ai.onnx::15::AdaptiveAvgPool2d"})
     .ParseParamsFn(ParseParamsAdaptiveAvgPool2d)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

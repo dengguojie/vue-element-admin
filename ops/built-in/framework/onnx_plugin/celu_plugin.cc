@@ -40,7 +40,9 @@ REGISTER_CUSTOM_OP("Celu")
                  "ai.onnx::10::Celu",
                  "ai.onnx::11::Celu",
                  "ai.onnx::12::Celu",
-                 "ai.onnx::13::Celu"})
+                 "ai.onnx::13::Celu",
+                 "ai.onnx::14::Celu",
+                 "ai.onnx::15::Celu"})
   .ParseParamsFn(ParseParamsCelu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

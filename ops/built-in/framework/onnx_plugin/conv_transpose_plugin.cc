@@ -204,6 +204,7 @@ Status ParseParamsConvTranspose(const Message* op_src, ge::Operator& op) {
 
   int n = node->input_size();
   op.SetAttr("input_num", n);
+  op.SetAttr("name", node->name());
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   op_desc->AddDynamicInputDesc("args", n);
   op_desc->AddDynamicOutputDesc("output", 1);
@@ -320,14 +321,20 @@ Status GetConvTransposeAttr(const ge::Operator& op, ConvTransposeAttr& convTrans
 }
 
 static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   ConvTransposeAttr tbeAttr;
   if (GetConvTransposeAttr(op, tbeAttr) != SUCCESS) {
     CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get attr value failed.");
     return FAILED;
   }
 
-  ge::Operator dataX = op::Data("dataX").set_attr_index(0);
-  ge::Operator dataW = op::Data("dataW").set_attr_index(1);
+  ge::Operator dataX = op::Data(ori_name + "dataX").set_attr_index(0);
+  ge::Operator dataW = op::Data(ori_name + "dataW").set_attr_index(1);
   std::vector<Operator> inputs{dataX, dataW};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   ge::Operator convTranspose;
@@ -335,17 +342,17 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
 
   std::vector<int64_t> dims = {(int)tbeAttr.input_size.size()};
   auto input_size_tensor = Vec2Tensor(tbeAttr.input_size, dims, ge::DT_INT64);
-  auto const_input_size = op::Const().set_attr_value(input_size_tensor);
+  auto const_input_size = op::Const(ori_name + "Const").set_attr_value(input_size_tensor);
 
   if (tbeAttr.dim_size == INPUT_4D) {
     if (tbeAttr.trans_2d) {
       ge::Operator::OpListInt axes = {2};
-      dataX = op::Unsqueeze("UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
-      dataW = op::Unsqueeze("UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
+      dataX = op::Unsqueeze(ori_name + "UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
+      dataW = op::Unsqueeze(ori_name + "UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
     }
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        convTranspose = op::Conv2DTranspose()
+        convTranspose = op::Conv2DTranspose(ori_name + "Conv2DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_input_size(const_input_size)
@@ -357,9 +364,9 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
                             .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data("dataB").set_attr_index(2);
+        dataB = op::Data(ori_name + "dataB").set_attr_index(INPUT_NUM_3 - 1);
         inputs.push_back(dataB);
-        convTranspose = op::Conv2DTranspose()
+        convTranspose = op::Conv2DTranspose(ori_name + "Conv2DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_input_size(const_input_size)
@@ -381,12 +388,12 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
     }
     if (tbeAttr.trans_2d) {
       ge::Operator::OpListInt axis = {2};
-      convTranspose = op::Squeeze("SqueezeY").set_input_x(convTranspose).set_attr_axis(axis);
+      convTranspose = op::Squeeze(ori_name + "SqueezeY").set_input_x(convTranspose).set_attr_axis(axis);
     }
   } else if (tbeAttr.dim_size == INPUT_5D) {
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        convTranspose = op::Conv3DTranspose()
+        convTranspose = op::Conv3DTranspose(ori_name + "Conv3DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_input_size(const_input_size)
@@ -398,9 +405,9 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
                             .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data("dataB").set_attr_index(2);
+        dataB = op::Data(ori_name + "dataB").set_attr_index(INPUT_NUM_3 - 1);
         inputs.push_back(dataB);
-        convTranspose = op::Conv3DTranspose()
+        convTranspose = op::Conv3DTranspose(ori_name + "Conv3DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_bias(dataB)
@@ -444,7 +451,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    ge::AscendString("ai.onnx::10::ConvTranspose"),
                    ge::AscendString("ai.onnx::11::ConvTranspose"),
                    ge::AscendString("ai.onnx::12::ConvTranspose"),
-                   ge::AscendString("ai.onnx::13::ConvTranspose")})
+                   ge::AscendString("ai.onnx::13::ConvTranspose"),
+                   ge::AscendString("ai.onnx::14::ConvTranspose"),
+                   ge::AscendString("ai.onnx::15::ConvTranspose")})
     .ParseParamsFn(ParseParamsConvTranspose)
     .ParseOpToGraphFn(ParseOpToGraphConvTranspose)
     .ImplyType(ImplyType::TVM);
