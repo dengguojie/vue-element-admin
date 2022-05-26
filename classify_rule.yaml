@@ -2415,7 +2415,6 @@ unkown:
       - ops/built-in/tbe/impl/to_absolute_bbox.py
       - ops/built-in/tbe/impl/fast_gelu_grad.py
       - ops/built-in/tbe/impl/nms_with_mask.py
-      - ops/built-in/tbe/impl/yolo_pre_detection.py
       - ops/built-in/tbe/impl/assign.py
       - ops/built-in/tbe/impl/selu.py
       - ops/built-in/tbe/impl/bn3d_training_reduce.py
@@ -2670,7 +2669,6 @@ unkown:
       - ops/built-in/tbe/impl/n_p_u_clear_float_status_v2.py
       - ops/built-in/tbe/impl/reciprocal_grad.py
       - ops/built-in/tbe/impl/inv_grad.py
-      - ops/built-in/tbe/impl/yolo_v5_cls_prob.py
       - ops/built-in/tbe/impl/tik_op_base.py
       - ops/built-in/tbe/impl/expand_d.py
       - ops/built-in/tbe/impl/asin.py
@@ -2746,7 +2744,6 @@ unkown:
       - ops/built-in/tbe/impl/log_sigmoid.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/asinh_grad.py
-      - ops/built-in/tbe/impl/yolo_v5_detection_output_d.py
       - ops/built-in/tbe/impl/topk.py
       - ops/built-in/tbe/impl/floor.py
       - ops/built-in/tbe/impl/centralization.py
@@ -2878,7 +2875,6 @@ unkown:
       - ops/built-in/tbe/impl/axpy_with_softmax_and_drop_out_do_mask.py
       - ops/built-in/tbe/impl/square_sum_all.py
       - ops/built-in/tbe/impl/dynamic_rnn_v3.py
-      - ops/built-in/tbe/impl/yolo_v5_correct_region_box.py
       - ops/built-in/tbe/impl/max_pool_grad_grad.py
       - ops/built-in/tbe/impl/n_p_u_alloc_float_status.py
       - ops/built-in/tbe/impl/max_pool3d_grad.py
@@ -4047,6 +4043,8 @@ pytorch:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_loss_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_sigmoid_mul_add_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_sigmoid_mul_add_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v5_detection_output_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v5_detection_output_fusion_pass.h
       - ops/built-in/op_proto/inc/encoding_ops.h
       - ops/built-in/op_proto/encoding_ops.cc
       - ops/built-in/tbe/impl/lp_norm.py
@@ -4097,6 +4095,10 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/elu_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression.py
       - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression_norm_class.py
+      - ops/built-in/tbe/impl/yolo_pre_detection.py
+      - ops/built-in/tbe/impl/yolo_v5_cls_prob.py
+      - ops/built-in/tbe/impl/yolo_v5_correct_region_box.py
+      - ops/built-in/tbe/impl/yolo_v5_detection_output_d.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

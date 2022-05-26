@@ -14,6 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 YoloV5DetectionOutputD ut case
 """
 from op_test_frame.ut import OpUT
+from impl.yolo_v5_detection_output_d import get_op_support_info
 
 ut_case = OpUT("YoloV5DetectionOutputD", "impl.yolo_v5_detection_output_d", "yolo_v5_detection_output_d")
 
@@ -54,7 +55,8 @@ def common_cce(batch, box_info, dtype, boxes, classes, relative, obj_threshold,
                         "ori_shape": (), "ori_format": "NCHW"}
 
     x = coord_data + obj_data + classes_data + [img_info_dict] + windex + hindex
-
+    split_info = get_op_support_info(x, box_out_dict, box_out_num_dict, biases)
+    
     return {"params": [x, box_out_dict, box_out_num_dict, biases],
             "case_name": case_name,
             "expect": expect,
