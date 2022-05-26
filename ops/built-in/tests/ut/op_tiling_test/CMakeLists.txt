@@ -46,6 +46,7 @@ target_compile_options(ops_cpp_op_tiling_utest PUBLIC
 target_link_libraries(ops_cpp_op_tiling_utest PRIVATE
         -Wl,--whole-archive
         optiling_llt
+        exe_graph
         -Wl,--no-whole-archive
         )
 add_dependencies(ops_cpp_op_tiling_utest external_protobuf)

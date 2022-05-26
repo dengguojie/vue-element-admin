@@ -38,6 +38,8 @@
 
 namespace optiling {
 struct BatchmatmulCompileParas {
+  bool format_a_nd = false;
+  bool format_b_nd = false;
   bool binary_mode_flag = false;
   bool bias_flag = false;
   bool nd_flag = false;
@@ -50,8 +52,6 @@ struct BatchmatmulCompileParas {
   float bub_double_num = 0;
   int32_t l2_size = (1024 * 1024);
   int32_t core_num = 32;
-  std::string format_a;
-  std::string format_b;
 };
 
 struct BatchmatmulRunParas {

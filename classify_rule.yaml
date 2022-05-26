@@ -263,6 +263,8 @@ cube:
       - ops/built-in/op_tiling/cube_tiling.h
       - ops/built-in/op_tiling/cube_tiling.cc
       - ops/built-in/op_tiling/cube_tiling_new.cc
+      - ops/built-in/op_tiling/cube_tiling_runtime.cc
+      - ops/built-in/op_tiling/cube_tiling_runtime.h
       - ops/built-in/op_tiling/conv2d_backprop_filter.cc
       - ops/built-in/op_tiling/conv2d_backprop_input.cc
       - ops/built-in/op_tiling/conv2d_bp_input_cache_tiling.cc
@@ -283,6 +285,7 @@ cube:
       - ops/built-in/op_tiling/avg_pool_grad.cc
       - ops/built-in/op_tiling/gemm.cc
       - ops/built-in/op_proto/inc/nn_calculation_ops.h
+      - ops/built-in/op_proto/runtime/matmul_infer_fns.cc
       - ops/built-in/op_proto/nn_calculation_ops.cc
       - ops/built-in/op_proto/nn_pooling_ops.cc
       - ops/built-in/op_proto/inc/nn_pooling_ops.h

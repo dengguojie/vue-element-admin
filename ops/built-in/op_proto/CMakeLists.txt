@@ -90,6 +90,7 @@ set(_op_proto_srcs
   map_ops.cc
   math_ops.cc
   matrix_calculation_ops.cc
+  runtime/matmul_infer_fns.cc
   nn_batch_norm_ops.cc
   nn_calculation_ops.cc
   nn_detect_ops.cc

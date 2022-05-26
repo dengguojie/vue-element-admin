@@ -35,7 +35,7 @@ namespace optiling {
 struct GemmCompileInfo {
   uint32_t workspace_num = 0;
   uint32_t ub_size = 0;
-  BatchmatmulParas params;
+  BatchmatmulCompileParas params;
   string dynamic_mode;
   bool trans_a;
   bool trans_b;

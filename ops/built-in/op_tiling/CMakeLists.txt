@@ -82,6 +82,7 @@ set(_optiling_files
   conv3d_backprop_filter.cc
   cube_tiling.cc
   cube_tiling_new.cc
+  cube_tiling_runtime.cc
   dynamic_lstm_grad_cell.cc
   dynamic_gru_cell_grad.cc
   deconvolution.cc

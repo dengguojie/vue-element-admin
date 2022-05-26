@@ -130,6 +130,20 @@ std::string ConcatString(T arg, Ts... arg_left) {
   return oss.str();
 }
 
+template <typename T>
+std::string Shape2String(const T& shape) {
+  std::ostringstream oss;
+  oss << "[";
+  if (shape.GetDimNum() > 0) {
+    for (size_t i = 0; i < shape.GetDimNum() - 1; ++i) {
+      oss << shape.GetDim(i) << ", ";
+    }
+    oss << shape.GetDim(shape.GetDimNum() - 1);
+  }
+  oss << "]";
+  return oss.str();
+}
+
 std::string GetViewErrorCodeStr(ge::ViewErrorCode errCode);
 
 std::string GetShapeErrMsg(uint32_t index, const std::string& wrong_shape, const std::string& correct_shape);

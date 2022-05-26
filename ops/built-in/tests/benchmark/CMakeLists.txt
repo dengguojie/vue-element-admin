@@ -1,6 +1,7 @@
 project(ops_benchmark)
 
-file(GLOB_RECURSE BENCHMARK_SRCS CONFIGURE_DEPENDS "*.cc")
+file(GLOB_RECURSE BENCHMARK_SRCS CONFIGURE_DEPENDS "*.cc"
+    ${OPS_DIR}/built-in/tests/common/utils/kernel_run_context_faker.cc)
 
 add_executable(ops_benchmark ${BENCHMARK_SRCS})
 
@@ -16,11 +17,14 @@ target_include_directories(ops_benchmark PRIVATE
     ${METADEF_INCLUDE}
     ${METADEF_INCLUDE}/external
     ${METADEF_INCLUDE}/external/graph
+    ${METADEF_INCLUDE}/graph
+    ${METADEF_INCLUDE}/exe_graph
     ${GRAPHENGINE_INCLUDE}
     ${GRAPHENGINE_INCLUDE}/external
     ${JSON_INCLUDE}
     ${Protobuf_INCLUDE}
     ${CANN_ROOT}/build/cann/third_party/src/secure_c/include
+    ${OPS_DIR}/built-in/tests/common/utils
 )
 
 target_link_libraries(ops_benchmark PUBLIC
@@ -28,6 +32,7 @@ target_link_libraries(ops_benchmark PUBLIC
     benchmark_main
     ascend_protobuf
     graph
+    exe_graph
     register
     optiling
     opsproto
