@@ -1432,6 +1432,7 @@ vector_B:
       - ops/built-in/op_tiling/runtime/trans_data_positive_source_tc_1011.cc
       - ops/built-in/op_proto/runtime/runtime_util.h
       - ops/built-in/op_proto/runtime/runtime_util.cc
+      - ops/built-in/op_proto/runtime/reshape_op_impl.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.h
       - ops/built-in/op_tiling/runtime/flatten.cc

@@ -55,6 +55,7 @@ set(_op_proto_srcs
   runtime/dyn_seq_outer.cc
   runtime/expand.cc
   runtime/trans_data.cc
+  runtime/reshape_op_impl.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc

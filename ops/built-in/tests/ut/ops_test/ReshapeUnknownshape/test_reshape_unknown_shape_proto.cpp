@@ -27,6 +27,12 @@
 #include "array_ops.h"
 #include "graph/ge_tensor.h"
 #include "graph/utils/graph_utils.h"
+#include "register/op_impl_registry.h"
+#include "tests/depends/faker/kernel_run_context_facker.h"
+#include "runtime/storage_shape.h"
+#include "runtime/infer_shape_context.h"
+#include "runtime/tensor.h"
+#include "runtime/tensor_data.h"
 
 using std::make_pair;
 static const int64_t UNKNOWN_DIM = -1;
@@ -463,4 +469,45 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, EmptyTensorProcess_x_1_4_0_8_64_and_shape_neg_1
   ge::TensorDesc out_desc_y = op.GetOutputDescByName("y");
   auto dims = out_desc_y.GetShape().GetDims();
   EXPECT_EQ(dims, expected_output_shape);
+}
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, InferShapeOk) {
+  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("Reshape"), nullptr);
+  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("Reshape")->infer_shape;
+
+  gert::StorageShape input_shape = {{8, 3, 224, 224}, {8, 3, 224, 224}};
+  auto input_tensor_holder = std::unique_ptr<uint8_t[]>(new uint8_t[sizeof(gert::Tensor) + sizeof(int64_t) * 2]);
+  auto input_tensor = reinterpret_cast<gert::Tensor *>(input_tensor_holder.get());
+  *input_tensor = {
+      {{2}, {2}},                          // storage shape
+      {ge::FORMAT_ND, ge::FORMAT_ND, {}},  // storage format
+      gert::kFollowing,                    // placement
+      ge::DT_INT64,                        // data type
+      0,                                   // address
+  };
+  auto tensor_data = reinterpret_cast<int64_t *>(input_tensor + 1);
+  input_tensor->SetData(gert::TensorData{tensor_data, nullptr});
+  tensor_data[0] = 24;
+  tensor_data[1] = -1;
+
+  gert::StorageShape output_shape = {{}, {}};
+
+  auto holder = gert::InferShapeContextFaker()
+                    .NodeIoNum(2, 1)
+                    .IrInputNum(2)
+                    .InputShapes({&input_shape, input_tensor})
+                    .OutputShapes({&output_shape})
+                    .Build();
+
+  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+
+  EXPECT_EQ(output_shape.GetOriginShape().GetDimNum(), 2);
+  EXPECT_EQ(output_shape.GetOriginShape().GetDim(0), 24);
+  EXPECT_EQ(output_shape.GetOriginShape().GetDim(1), 50176);
+}
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, DataDependentOk) {
+  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("Reshape"), nullptr);
+  EXPECT_FALSE(gert::OpImplRegistry::GetInstance().GetOpImpl("Reshape")->IsInputDataDependency(0));
+  EXPECT_TRUE(gert::OpImplRegistry::GetInstance().GetOpImpl("Reshape")->IsInputDataDependency(1));
 }
