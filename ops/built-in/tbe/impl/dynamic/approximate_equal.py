@@ -27,9 +27,19 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
 
 NUM_ONE = 1.0
 NUM_ZERO = 0.0
+
+
+class ApproximateEqualAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_TOLERANCE = OpAttr(0, "tolerance", "Float", 1e-5)
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -63,7 +73,8 @@ def approximate_equal_compute(input_x, input_y, output_z, tolerance,
     res_vabs = tbe.vabs(res_vsub)
 
     res_vabs = tbe.cast_to(res_vabs, input_x.dtype)
-    tol_tensor = tbe.broadcast(tvm.const(tolerance, input_x.dtype), input_x.shape)
+    tolerance = get_attr_by_cls(tolerance, ApproximateEqualAttrInfo.ATTR_TOLERANCE, input_x.dtype)
+    tol_tensor = tbe.broadcast(tolerance, input_x.shape)
 
     zero_rb_tensor = tbe.broadcast(tvm.const(NUM_ZERO, "float32"), input_x.shape)
     one_rb_tensor = tbe.broadcast(tvm.const(NUM_ONE, "float32"), input_x.shape)
@@ -132,7 +143,7 @@ def approximate_equal(input_x, input_y, output_z, tolerance=1e-5,
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"name": kernel_name,
-              "tensor_list": [input_x, input_y, res],
+              "tensor_list": tensors,
               "bool_storage_as_1bit": False}
     tbe.build(schedules, config)
     
