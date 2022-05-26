@@ -47,7 +47,8 @@ vector<BufferFusionPattern *> TbeMatmulRequantFusionPass::DefinePatterns() {
 
   string pass_name = "TbeMatmulRequantFusion";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(kFusedOpType.c_str(), "Unable to create fusion pattern."),
+                    return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules Matmul-->AcendReQuant
   pattern

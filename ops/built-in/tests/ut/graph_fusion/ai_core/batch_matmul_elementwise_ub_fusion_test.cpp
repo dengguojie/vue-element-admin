@@ -489,3 +489,48 @@ TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_elem_elem) {
                           {CreateOutputSplitInfo(0, {1})})});
   EXPECT_EQ(real_split_info_str, expect_split_inf_str);
 }
+
+TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_fused_ones_like) {
+  ge::Graph graph(this->test_info_->name());
+
+  // step1: Construct Graph
+  auto data_a = CreateData("data_a", ge::Shape({4, 16, 2, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_b = CreateData("data_b", ge::Shape({4, 16, 1, 2, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+
+  auto batch_matmul_op = op::BatchMatMulV2("BatchMatMulV2")
+                             .set_input_x1(data_a)
+                             .set_input_x2(data_b)
+                             .set_attr_adj_x1(false)
+                             .set_attr_adj_x2(false);
+  batch_matmul_op.update_output_desc_y(
+      ge::TensorDesc(ge::Shape({4, 16, 1, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+
+  auto fused_ones_like_op =
+      op::OnesLike("OnesLike").set_input_x(batch_matmul_op);
+
+  fused_ones_like_op.update_output_desc_y(
+      ge::TensorDesc(ge::Shape({4, 16, 1, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+
+  std::vector<Operator> inputs{data_a, data_b};
+  std::vector<Operator> outputs{fused_ones_like_op};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  // step2: Set op slice of single op
+  vector<AxisSplitMap> asm_fused_ones_like{CreateAxisSplitMap(
+      {CreateInputSplitInfo(0, {0}), CreateInputSplitInfo(2, {0})}, {CreateOutputSplitInfo(0, {0})})};
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_fused_ones_like, {"OnesLike"}));
+  vector<AxisSplitMap> asm_mm{CreateAxisSplitMap({CreateInputSplitInfo(0, {0}), CreateInputSplitInfo(1, {0})},
+                                                 {CreateOutputSplitInfo(0, {0})})};
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_mm, {"BatchMatMulV2"}));
+
+  // step3: Construct BufferFusionMapping
+  auto mapping = ConstructFusionMappingOfElemwise(compute_graph_ptr);
+
+  // step4: Run BufferFusion
+  Status res = fe::FusionPassTestUtils::RunBufferFusionPass(ptr_buffer_fusion_pass_func.get(), patterns,
+                                                            compute_graph_ptr, mapping);
+  EXPECT_EQ(res, fe::FAILED);
+}

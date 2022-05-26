@@ -67,7 +67,7 @@ vector<FusionPattern*> ConvAddFusionPass::DefinePatterns() {
   string pass_name = "TBEConvAddFusion";
   FusionPattern *pattern = new (std::nothrow) FusionPattern(pass_name);
   FUSION_PASS_CHECK(pattern == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "TBEConvAddFusion new an object failed."),
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "TBEConvAddFusion new an object failed."),
                     return patterns);
 
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
@@ -100,37 +100,33 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
     auto non_const_input_format = non_const_input_desc.GetFormat();
     int64_t non_const_input_channel;
 
-    if (non_const_dims.size() != 4) {
-      OP_LOGW(fused_op_type_.c_str(), "Invalid input size, should be 4.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(non_const_dims.size() != 4, OP_LOGD(fused_op_type_.c_str(), "Invalid input size, should be 4."),
+                      return NOT_CHANGED);
 
     if (non_const_input_format == FORMAT_NCHW) {
       non_const_input_channel = non_const_dims.at(1);
     } else if (non_const_input_format == FORMAT_NHWC) {
       non_const_input_channel = non_const_dims.at(3);
     } else {
-      OP_LOGW(fused_op_type_.c_str(), "Invalid input format, should be NCHW or NHWC.");
+      OP_LOGD(fused_op_type_.c_str(), "Invalid input format, should be NCHW or NHWC.");
       return NOT_CHANGED;
     }
-    if (PatternFusionUtil::IsUnknownShape(non_const_input_channel)) {
-      OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(non_const_input_channel),
+                      OP_LOGD(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape."),
+                      return NOT_CHANGED);
     if (const_dims.size() == 0) {
       /* for scalar */
       channel_for_scalar = non_const_input_channel;
     } else if (const_dims.size() == 1) {
-      if (PatternFusionUtil::IsUnknownShape(const_dims.at(0))) {
-        OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
-        return NOT_CHANGED;
-      }
+      FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(const_dims.at(0)),
+                        OP_LOGD(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape."),
+                        return NOT_CHANGED);
       if (const_dims.at(0) == 1) {
         /* for scalar */
         channel_for_scalar = non_const_input_channel;
       } else if (non_const_input_channel != const_dims.at(0)) {
         /* for vector */
-        OP_LOGW(fused_op_type_.c_str(), "Invalid Channel number, %d, %d.", non_const_input_channel, const_dims.at(0));
+        OP_LOGD(fused_op_type_.c_str(), "Invalid Channel number, %d, %d.", non_const_input_channel, const_dims.at(0));
         return NOT_CHANGED;
       }
     } else if (const_dims.size() == 4) {
@@ -140,23 +136,22 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
           PatternFusionUtil::IsUnknownShape(const_dims.at(2)) or
           PatternFusionUtil::IsUnknownShape(const_dims.at(3)) or
           PatternFusionUtil::IsUnknownShape(non_const_input_channel)) {
-        OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
+        OP_LOGD(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
       if ((const_dims.at(0) != 1 or const_dims.at(1) != 1 or
         const_dims.at(2) != 1 or non_const_input_channel != const_dims.at(3)) and
         (non_const_input_format == FORMAT_NHWC)) {
-        OP_LOGW(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise");
+        OP_LOGD(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise");
         return NOT_CHANGED;
       }
 
       // NCHW, channel wise exemple: add input [1,256,1,1] and conv input [x,256,x,x]
-      if ((const_dims.at(0) != 1 or const_dims.at(1) != non_const_input_channel or
-        const_dims.at(2) != 1 or const_dims.at(3) != 1) and
-        (non_const_input_format == FORMAT_NCHW)) {
-        OP_LOGW(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise");
-        return NOT_CHANGED;
-      }
+      FUSION_PASS_CHECK((const_dims.at(0) != 1 or const_dims.at(1) != non_const_input_channel or
+                         const_dims.at(2) != 1 or const_dims.at(3) != 1) and
+                            (non_const_input_format == FORMAT_NCHW),
+                        OP_LOGD(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise"),
+                        return NOT_CHANGED);
     }
   } else if (conv_node_desc->GetType() == "Conv3D") {
     return CheckConv3DShapeInfo(non_const_dims, const_dims);
@@ -174,28 +169,25 @@ Status ConvAddFusionPass::ShapeInfoCheck(OpDescPtr add_node_desc, OpDescPtr conv
 Status ConvAddFusionPass::CheckConv3DShapeInfo(const std::vector<int64_t> &non_const_dims,
                                                const std::vector<int64_t> &const_dims) {
   if (const_dims.size() == 1) {
-    if (PatternFusionUtil::IsUnknownShape(const_dims.at(0)) ||
-        PatternFusionUtil::IsUnknownShape(non_const_dims.at(4))) {
-      OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(
+        PatternFusionUtil::IsUnknownShape(const_dims.at(0)) || PatternFusionUtil::IsUnknownShape(non_const_dims.at(4)),
+        OP_LOGD(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape."), return NOT_CHANGED);
     if (non_const_dims.at(4) != const_dims.at(0)) {
       return NOT_CHANGED;
     }
   } else if (const_dims.size() == 5) {
     // NDHWC, channel wise  exemple: add input [1,1,1,1,256] and conv input [x,x,x,x,256]
-    if (PatternFusionUtil::IsUnknownShape(const_dims.at(0)) || PatternFusionUtil::IsUnknownShape(const_dims.at(1)) ||
-        PatternFusionUtil::IsUnknownShape(const_dims.at(2)) || PatternFusionUtil::IsUnknownShape(const_dims.at(3)) ||
-        PatternFusionUtil::IsUnknownShape(const_dims.at(4)) ||
-        PatternFusionUtil::IsUnknownShape(non_const_dims.at(4))) {
-      OP_LOGW(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
-    }
-    if (const_dims.at(0) != 1 or const_dims.at(1) != 1 or const_dims.at(2) != 1 or const_dims.at(3) != 1 or
-        non_const_dims.at(4) != const_dims.at(4)) {
-      OP_LOGW(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(
+        PatternFusionUtil::IsUnknownShape(const_dims.at(0)) || PatternFusionUtil::IsUnknownShape(const_dims.at(1)) ||
+            PatternFusionUtil::IsUnknownShape(const_dims.at(2)) ||
+            PatternFusionUtil::IsUnknownShape(const_dims.at(3)) ||
+            PatternFusionUtil::IsUnknownShape(const_dims.at(4)) ||
+            PatternFusionUtil::IsUnknownShape(non_const_dims.at(4)),
+        OP_LOGD(fused_op_type_.c_str(), "ConvAddFusionPass cannot be applied for unknown shape."), return NOT_CHANGED);
+
+    FUSION_PASS_CHECK(const_dims.at(0) != 1 or const_dims.at(1) != 1 or const_dims.at(2) != 1 or
+                          const_dims.at(3) != 1 or non_const_dims.at(4) != const_dims.at(4),
+                      OP_LOGD(fused_op_type_.c_str(), "Match failed! tensor is not ChannelWise"), return NOT_CHANGED);
   }
 
   return SUCCESS;
@@ -210,19 +202,19 @@ Status ConvAddFusionPass::CheckConv3DShapeInfo(const std::vector<int64_t> &non_c
 Status ConvAddFusionPass::ConnectConvToOutput(NodePtr conv_node, NodePtr add_node) {
   auto conv_node_anchor = conv_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(conv_node_anchor == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "conv node anchor is null"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "conv node anchor is null"), return FAILED);
   auto add_node_anchor = add_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(add_node_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "add node anchor is null"),
-                    return FAILED);
+  FUSION_PASS_CHECK(add_node_anchor == nullptr,
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add node anchor is null"), return FAILED);
 
   OutDataAnchor::Vistor<InDataAnchorPtr> output_in_anchors = add_node_anchor->GetPeerInDataAnchors();
   add_node_anchor->UnlinkAll();
 
   for (auto in_anchor : output_in_anchors) {
-    FUSION_PASS_CHECK(in_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "output node anchor is null"),
+    FUSION_PASS_CHECK(in_anchor == nullptr, CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "output node anchor is null"),
                       return FAILED);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(conv_node_anchor, in_anchor) != GRAPH_SUCCESS,
-                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv to output failed"),
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add edge from conv to output failed"),
                       return FAILED);
   }
 
@@ -303,14 +295,14 @@ Status ConvAddFusionPass::BroadcastScalar(int64_t channel_for_scalar, int64_t& n
  * @return bool: fusion status ok or not.
  */
 Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
-  OP_LOGI(fused_op_type_.c_str(), "Enter ConvAddFusionPass");
+  OP_LOGD(fused_op_type_.c_str(), "Enter ConvAddFusionPass");
   ge::NodePtr conv_node = GetNodeFromMapping(kPatternConv, mapping);
   ge::NodePtr add_node = GetNodeFromMapping(kPatternAdd, mapping);
   FUSION_PASS_CHECK(conv_node == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "Conv Node is null, fusion failed."),
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "Conv Node is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(add_node == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "Node Add is null, fusion failed."),
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "Node Add is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (conv_node->GetOutDataNodes().size() > 1) {
@@ -320,7 +312,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   ge::OpDescPtr conv_node_desc = conv_node->GetOpDesc();
   FUSION_PASS_CHECK(conv_node_desc == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "Node's OpDesc is null, fusion failed."),
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "Node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   if ((conv_node_desc->GetType() == "Conv3D") && (add_node->GetOutDataNodes().size() > 1)) {
@@ -330,15 +322,16 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   // get conv's weights & bias
   int64_t in_edges_size = conv_node->GetInDataNodes().size();
-  OP_LOGI(fused_op_type_.c_str(), "op [%s]: Conv2d has %d input nodes.", conv_node->GetName().c_str(), in_edges_size);
+  OP_LOGD(fused_op_type_.c_str(), "op [%s]: Conv2d has %d input nodes.", conv_node->GetName().c_str(), in_edges_size);
   bool has_bias = !(in_edges_size <= kBiasIndex);
 
   OutDataAnchorPtr filter_anchor = conv_node->GetInDataAnchor(1)->GetPeerOutAnchor();
   FUSION_PASS_CHECK(filter_anchor == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "filter output anchor is null"), return PARAM_INVALID);
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "filter output anchor is null"),
+                    return PARAM_INVALID);
   NodePtr filter_node = filter_anchor->GetOwnerNode();
   FUSION_PASS_CHECK(filter_node == nullptr,
-                    CommonRuntimeErrLog(fused_op_type_.c_str(), "ConvAddFusionPass: filter_node is not exist."),
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "ConvAddFusionPass: filter_node is not exist."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(kNewAddIn.find(filter_node->GetOpDesc()->GetType()) == kNewAddIn.end(),
                     OP_LOGW(fused_op_type_.c_str(), "middle layer's of filter_node is not const type"), return false);
@@ -347,10 +340,10 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   NodePtr bias_node = nullptr;
   if (has_bias) {
     bias_anchor = conv_node->GetInDataAnchor(kBiasIndex)->GetPeerOutAnchor();
-    FUSION_PASS_CHECK(bias_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias anchor is null"),
+    FUSION_PASS_CHECK(bias_anchor == nullptr, CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "bias anchor is null"),
                       return PARAM_INVALID);
     bias_node = bias_anchor->GetOwnerNode();
-    FUSION_PASS_CHECK(bias_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "bias_node is not exist."),
+    FUSION_PASS_CHECK(bias_node == nullptr, CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "bias_node is not exist."),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(kNewAddIn.find(bias_node->GetOpDesc()->GetType()) == kNewAddIn.end(),
                       OP_LOGW(fused_op_type_.c_str(), "middle layer's of bias_node is not const type"), return false);
@@ -365,11 +358,11 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                       add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() == nullptr;
 
     FUSION_PASS_CHECK(checkNull,
-                      OP_LOGI(fused_op_type_.c_str(), "The input of add %s is null!", add_node->GetName().c_str()),
+                      OP_LOGD(fused_op_type_.c_str(), "The input of add %s is null!", add_node->GetName().c_str()),
                       return NOT_CHANGED);
     auto node_in_front_of_add = add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
     FUSION_PASS_CHECK((conv_node->GetType() == kConvolution2D || node_in_front_of_add->GetType() == "Reshape"),
-                       OP_LOGI(fused_op_type_.c_str(), "add other input is %s , not changed.",
+                       OP_LOGD(fused_op_type_.c_str(), "add other input is %s , not changed.",
                                node_in_front_of_add->GetName().c_str()),
                        return NOT_CHANGED);
     if (node_in_front_of_add->GetType() == "Reshape") {
@@ -395,7 +388,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::OpDescPtr add_node_desc = add_node->GetOpDesc();
   FUSION_PASS_CHECK(
       add_node_desc == nullptr,
-      CommonRuntimeErrLog(fused_op_type_.c_str(), "Node's OpDesc is null, fusion failed."),
+      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "Node's OpDesc is null, fusion failed."),
       return PARAM_INVALID);
 
   size_t non_const_add_input_index = 0;
@@ -414,9 +407,9 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     // unlink bias to conv
     InDataAnchorPtr conv_bias_in_anchor = conv_node->GetInDataAnchor(kBiasIndex);
     FUSION_PASS_CHECK(conv_bias_in_anchor == nullptr,
-                      CommonRuntimeErrLog(fused_op_type_.c_str(), "conv_node bias anchor is null"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "conv_node bias anchor is null"), return FAILED);
     FUSION_PASS_CHECK(GraphUtils::RemoveEdge(bias_anchor, conv_bias_in_anchor) != GRAPH_SUCCESS,
-                      CommonRuntimeErrLog(fused_op_type_.c_str(), "remove edge from input to conv2d failed"),
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "remove edge from input to conv2d failed"),
                       return FAILED);
 
     // get add_const_node
@@ -447,17 +440,17 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     conv_bias_const_tensor.SetOriginShape(conv_bias_const_tensor.GetShape());
     conv_bias_const_tensor.SetOriginDataType(conv_bias_const_tensor.GetDataType());
     conv_bias_const_tensor.SetOriginFormat(conv_bias_const_tensor.GetOriginFormat());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's bias_node input datatype is %d.", conv_bias_const_tensor.GetDataType());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's bias_node origin datatype is %d.",
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's bias_node input datatype is %d.", conv_bias_const_tensor.GetDataType());
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's bias_node origin datatype is %d.",
             conv_bias_const_tensor.GetOriginDataType());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's bias_node input format is %d.", conv_bias_const_tensor.GetFormat());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's bias_node input origin format is %d.",
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's bias_node input format is %d.", conv_bias_const_tensor.GetFormat());
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's bias_node input origin format is %d.",
             conv_bias_const_tensor.GetOriginFormat());
     conv_bias_tensor = conv_node_desc->GetInputDesc(kBiasIndex);
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's 3nd input datatype is %d.", conv_bias_tensor.GetDataType());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's 3nd origin datatype is %d.", conv_bias_tensor.GetOriginDataType());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's 3nd input format is %d.", conv_bias_tensor.GetFormat());
-    OP_LOGI(fused_op_type_.c_str(), "Conv2D's 3nd input origin format is %d.", conv_bias_tensor.GetOriginFormat());
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's 3nd input datatype is %d.", conv_bias_tensor.GetDataType());
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's 3nd origin datatype is %d.", conv_bias_tensor.GetOriginDataType());
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's 3nd input format is %d.", conv_bias_tensor.GetFormat());
+    OP_LOGD(fused_op_type_.c_str(), "Conv2D's 3nd input origin format is %d.", conv_bias_tensor.GetOriginFormat());
     conv_bias_tensor.SetOriginShape(conv_bias_tensor.GetShape());
     conv_bias_tensor.SetOriginDataType(conv_bias_tensor.GetDataType());
     conv_bias_tensor.SetOriginFormat(conv_bias_tensor.GetOriginFormat());
@@ -474,7 +467,7 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     // add edge for bias->biasMul
     ge::NodePtr bias_mul_op_node = graph.AddNode(bias_add_node_desc);
     FUSION_PASS_CHECK(bias_mul_op_node == nullptr,
-                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add bnias mul op node failed"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add bias_mul op node failed"), return FAILED);
     new_nodes.push_back(bias_mul_op_node);
     InDataAnchorPtr bias_mul0_anchor = bias_mul_op_node->GetInDataAnchor(non_const_add_input_index);
     FUSION_PASS_CHECK(bias_mul0_anchor == nullptr,

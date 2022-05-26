@@ -41,7 +41,7 @@ void FusePreTransdata(std::vector<ge::NodePtr>& cube_nodes, std::vector<ge::Node
   OptionalInfo optional_info;
   FUSION_PASS_CHECK(
           PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, optional_info) != SUCCESS,
-          OP_LOGW(kFusedPreTrans.c_str(), "Get platform info failed."), return);
+          OP_LOGW(kFusedPreTrans.c_str(), "Unable to get platform info."), return);
   map<string, vector<string>> intrinsic_map = platform_info.ai_core_intrinsic_dtype_map;
   bool support_l0c2out = (intrinsic_map.find("Intrinsic_fix_pipe_l0c2out") != intrinsic_map.end());
   FUSION_PASS_CHECK(!support_l0c2out,
