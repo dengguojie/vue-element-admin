@@ -166,6 +166,23 @@ case20 = {"params": [{"shape": (32, 10), "dtype": "float32", "format": "NHWC", "
           "expect": "success",
           "format_expect": [],
           "support_expect": True}
+case21 = {"params": [{"shape": (32, 17777), "dtype": "float32", "format": "NHWC", "ori_shape": (32, 17777),"ori_format": "NHWC"},
+                     {"shape": (32, 17777), "dtype": "float32", "format": "NHWC", "ori_shape": (32, 17777),"ori_format": "NHWC"},
+                     {"shape": (32,), "dtype": "float32", "format": "NHWC", "ori_shape": (32,),"ori_format": "NHWC"},
+                     {"shape": (32, 17777), "dtype": "float32", "format": "NHWC", "ori_shape": (32, 17777),"ori_format": "NHWC"}],
+          "addition_params": {"impl_mode": "high_precision"},
+          "case_name": "softmax_cross_entropy_with_logits_21",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+case22 = {"params": [{"shape": (32, 17777), "dtype": "float32", "format": "NHWC", "ori_shape": (32, 17777),"ori_format": "NHWC"},
+                     {"shape": (32, 17777), "dtype": "float32", "format": "NHWC", "ori_shape": (32, 17777),"ori_format": "NHWC"},
+                     {"shape": (32,), "dtype": "float32", "format": "NHWC", "ori_shape": (32,),"ori_format": "NHWC"},
+                     {"shape": (32, 17777), "dtype": "float32", "format": "NHWC", "ori_shape": (32, 17777),"ori_format": "NHWC"}],
+          "case_name": "softmax_cross_entropy_with_logits_22",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
 def test_get_op_support_info(test_arg):
     from impl.softmax_cross_entropy_with_logits import get_op_support_info
     get_op_support_info({"shape": (16, 16, 256, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 256, 16), "ori_format": "NCHW"},
@@ -208,6 +225,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case17)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case18)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case19)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case20)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case21)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case22)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 def calc_expect_func(x1, x2, y1, y2):
@@ -232,3 +251,5 @@ def calc_expect_func(x1, x2, y1, y2):
     else:
         outputArr1 = np.sum(data_mul, axis=-1, keepdims=False).astype("float16")
         outputArr2 = np.subtract(data_softmax, inputArr2).astype("float16")
+
+ut_case.run("Ascend910")

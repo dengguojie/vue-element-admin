@@ -2119,6 +2119,7 @@ vector_D:
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/test_Dynamic_MaxPoolGrad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGradWithArgmax/test_MaxPoolGradWithArgmax_impl.py
+      - ops/built-in/tests/ut/ops_test/SoftmaxCrossEntropyWithLogits/test_SoftmaxCrossEntropyWithLogits_impl.py
   llt:
     ut_check: true
     st_check: true

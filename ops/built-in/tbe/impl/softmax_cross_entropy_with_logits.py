@@ -33,6 +33,11 @@ SCALAR_MINUS_ONE = -1
 MAX_SHAPE_NUM = 10000000
 
 
+def is_support_high_precision_mode(dtype, impl_mode):
+    return dtype in ("float", "float32") and not intrinsic_check_support("Intrinsic_vcmax", "float32") and \
+            impl_mode == "high_precision" and intrinsic_check_support("Intrinsic_vmax", "float32")
+
+
 # 'pylint: disable=unused-argument
 def get_op_support_info(input_features,
                         input_labels,
@@ -239,8 +244,7 @@ def softmax_cross_entropy_with_logits_compute(
         input_labels = tbe.cast_to(input_labels, "float32")
         has_improve_precision = True
 
-    if intrinsic_check_support("Intrinsic_vmax", "float32") and \
-            dtype in ("float", "float32") and impl_mode == "high_precision":
+    if is_support_high_precision_mode(dtype, impl_mode):
         input_features_reduce_max_axis = tvm.reduce_axis((0, shape_features[-1]), "input_features_reduce_max_axis")
         data_max = tvm.compute((shape_features[0], 1),
                                lambda i0, i1:
@@ -286,6 +290,7 @@ def softmax_cross_entropy_with_logits_compute_no_reduce(input_features, input_la
     return res
 
 
+# 'pylint: disable=too-many-lines
 def softmax_cross_entropy_with_logits_compute_ex(input_features,
                                                  input_labels,
                                                  impl_mode):
@@ -337,8 +342,10 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
         input_features = tbe.cast_to(input_features, "float32")
         input_labels = tbe.cast_to(input_labels, "float32")
 
-    impl_mode = impl_mode if intrinsic_check_support("Intrinsic_vmax", "float32") else "high_performance"
-    compute_max_tag = "reduce_max" if impl_mode == "high_precision" else "last_axis_reduce_max"
+    if is_support_high_precision_mode(dtype, impl_mode):
+        compute_max_tag = "reduce_max"
+    else:
+        compute_max_tag = "last_axis_reduce_max"
     with tvm.tag_scope(compute_max_tag):
         reduce_axis = tvm.reduce_axis((0, shape_broadcast[1]), name="rax0")
         data_max = tvm.compute((shape_broadcast[0], 1),
