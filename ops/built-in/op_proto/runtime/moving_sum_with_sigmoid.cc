@@ -26,19 +26,15 @@ ge::graphStatus InferShapeForMovingSumWithSigmoid(gert::InferShapeContext *conte
   auto out_shape = context->GetOutputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
 
-  auto offset_size = static_cast<int32_t>(offset_tensor->GetShapeSize());
-  if (offset_size < 1) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "offset_size is invalic!");
-    return ge::GRAPH_FAILED;
-  }
   if (offset_tensor->GetDataType() != ge::DT_INT32) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "offset_tensor datatype must be int32!");
     return ge::GRAPH_FAILED;
   }
-  int64_t batch_size = offset_size / TWICE;
+  const int32_t* offset_data = offset_tensor->GetData<int32_t>();
+  OPS_CHECK_NULL_WITH_CONTEXT(context, offset_data);
   int64_t beam_sum = 0;
   int64_t frame_sum = 0;
-  const int32_t* offset_data = offset_tensor->GetData<int32_t>();
+  int64_t batch_size = offset_tensor->GetShapeSize() / TWICE;
   for (int64_t i = 0; i < batch_size; i++) {
     beam_sum += offset_data[i];
     frame_sum += offset_data[i + batch_size];

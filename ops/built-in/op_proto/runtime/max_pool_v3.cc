@@ -36,19 +36,17 @@ static int64_t SameUpdateDim(const int64_t ksize, const int64_t strides, int64_t
   return (dim_size - ksize + strides) / strides;
 }
 
-static void CalculateUpdateDim(const int64_t ksize, const int64_t strides, const bool ceil_mode,
-                               const int64_t pad_a, const int64_t pad_b, int64_t& dim_size) {
+static void CalculateUpdateDim(const int64_t ksize, const int64_t strides, const bool ceil_mode, int64_t& dim_size) {
   CHECK_DIVISOR_ZERO(strides);
   if (ceil_mode) {
-    dim_size = (dim_size + pad_a + pad_b - ksize + strides + strides - 1) / strides;
+    dim_size = (dim_size - ksize + strides + strides - 1) / strides;
   } else {
-    dim_size = (dim_size + pad_a + pad_b - ksize + strides) / strides;
+    dim_size = (dim_size - ksize + strides) / strides;
   }
 }
 
-ge::graphStatus SameUpdateHWDim(gert::InferShapeContext *context, size_t h_dim,
-                                size_t w_dim, const int64_t *strides_data,
-                                const gert::Shape *in_shape, gert::Shape *out_shape) {
+ge::graphStatus SameUpdateHWDim(size_t h_dim, size_t w_dim, const int64_t* strides_data, const gert::Shape* in_shape,
+                                gert::Shape* out_shape) {
   int64_t dim_size = in_shape->GetDim(h_dim);
   out_shape->SetDim(h_dim, SameUpdateDim(1, strides_data[h_dim], dim_size));
   dim_size = in_shape->GetDim(w_dim);
@@ -56,15 +54,16 @@ ge::graphStatus SameUpdateHWDim(gert::InferShapeContext *context, size_t h_dim,
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus CalculateUpdateHWDim(gert::InferShapeContext *context, size_t h_dim, size_t w_dim,
-                                     const gert::RuntimeAttrs *attrs, const int64_t *strides_data,
-                                     const gert::Shape *in_shape, gert::Shape *out_shape) {
+ge::graphStatus CalculateUpdateHWDim(gert::InferShapeContext* context, size_t h_dim, size_t w_dim,
+                                     const gert::Shape* in_shape, gert::Shape* out_shape) {
+  const gert::RuntimeAttrs* attrs = context->GetAttrs();
+  OPS_CHECK_NULL_WITH_CONTEXT(context, attrs);
   auto ksize = attrs->GetAttrPointer<gert::ContinuousVector>(INDEX_KSIZE);
   OPS_CHECK_NULL_WITH_CONTEXT(context, ksize);
   OP_CHECK(ksize->GetSize() != SHAPE_NHWC_SIZE,
            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "Length of ksize must be 4!"),
            return GRAPH_FAILED);
-  auto ksize_data = reinterpret_cast<const int64_t *>(ksize->GetData());
+  auto ksize_data = reinterpret_cast<const int64_t*>(ksize->GetData());
   auto pads = attrs->GetAttrPointer<gert::ContinuousVector>(INDEX_PADS);
   OPS_CHECK_NULL_WITH_CONTEXT(context, pads);
   OP_CHECK(pads->GetSize() != PAD_SIZE,
@@ -72,23 +71,32 @@ ge::graphStatus CalculateUpdateHWDim(gert::InferShapeContext *context, size_t h_
            return GRAPH_FAILED);
   auto ceil_mode = attrs->GetAttrPointer<bool>(INDEX_CEIL_MODE);
   OPS_CHECK_NULL_WITH_CONTEXT(context, ceil_mode);
-  auto pads_data = reinterpret_cast<const int64_t *>(pads->GetData());
+  auto strides = attrs->GetAttrPointer<gert::ContinuousVector>(INDEX_STRIDES);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, strides);
+  OP_CHECK(strides->GetSize() != SHAPE_NHWC_SIZE,
+           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "Length of strides must be 4!"),
+           return GRAPH_FAILED);
+  auto strides_data = reinterpret_cast<const int64_t*>(strides->GetData());
+  OP_CHECK(strides_data[h_dim] <= 0 || strides_data[w_dim] <= 0,
+           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "strides h and w must be greater than 0."),
+           return GRAPH_FAILED);
+  auto pads_data = reinterpret_cast<const int64_t*>(pads->GetData());
   int64_t dim_size = in_shape->GetDim(h_dim);
-  CalculateUpdateDim(ksize_data[h_dim], strides_data[h_dim], *ceil_mode,
-                     pads_data[PAD_TOP], pads_data[PAD_BOTTOM], dim_size);
-  out_shape->SetDim(h_dim,dim_size);
+  dim_size += pads_data[PAD_TOP] + pads_data[PAD_BOTTOM];
+  CalculateUpdateDim(ksize_data[h_dim], strides_data[h_dim], *ceil_mode, dim_size);
+  out_shape->SetDim(h_dim, dim_size);
   dim_size = in_shape->GetDim(w_dim);
-  CalculateUpdateDim(ksize_data[w_dim], strides_data[w_dim], *ceil_mode,
-                     pads_data[PAD_LEFT], pads_data[PAD_RIGHT], dim_size);
+  dim_size += pads_data[PAD_LEFT] + pads_data[PAD_RIGHT];
+  CalculateUpdateDim(ksize_data[w_dim], strides_data[w_dim], *ceil_mode, dim_size);
   out_shape->SetDim(w_dim, dim_size);
 
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus InferShapeForMaxPoolV3(gert::InferShapeContext *context) {
+ge::graphStatus InferShapeForMaxPoolV3(gert::InferShapeContext* context) {
   auto in_shape = context->GetInputShape(0);
-  auto out_shape = context->GetOutputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape);
+  auto out_shape = context->GetOutputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
 
   *out_shape = *in_shape;
@@ -101,35 +109,34 @@ ge::graphStatus InferShapeForMaxPoolV3(gert::InferShapeContext *context) {
 
   auto attrs = context->GetAttrs();
   OPS_CHECK_NULL_WITH_CONTEXT(context, attrs);
-  const bool *global_pooling = attrs->GetAttrPointer<bool>(INDEX_GLOBAL_POOLING);
+  const bool* global_pooling = attrs->GetAttrPointer<bool>(INDEX_GLOBAL_POOLING);
   OPS_CHECK_NULL_WITH_CONTEXT(context, global_pooling);
   if (*global_pooling) {
     out_shape->SetDim(h_dim, 1);
     out_shape->SetDim(w_dim, 1);
   } else {
-    auto strides = attrs->GetAttrPointer<gert::ContinuousVector>(INDEX_STRIDES);
-    OPS_CHECK_NULL_WITH_CONTEXT(context, strides);
-    OP_CHECK(strides->GetSize() != SHAPE_NHWC_SIZE,
-             VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "Length of strides must be 4!"),
-             return GRAPH_FAILED);
-    auto strides_data = reinterpret_cast<const int64_t *>(strides->GetData());
-    OP_CHECK(strides_data[h_dim] <= 0 || strides_data[w_dim] <= 0,
-             VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "strides h and w must be greater than 0."),
-             return GRAPH_FAILED);
     auto padding_mode = attrs->GetAttrPointer<char>(INDEX_PADDING_MODE);
     OPS_CHECK_NULL_WITH_CONTEXT(context, padding_mode);
     if (strcmp(padding_mode, "CALCULATED") == 0) {
       // when padding_mode is "CALCULATED"
-      return CalculateUpdateHWDim(context, h_dim, w_dim, attrs, strides_data, in_shape, out_shape);
+      return CalculateUpdateHWDim(context, h_dim, w_dim, in_shape, out_shape);
     } else {
       // when padding_mode in ("SAME", "VALID")
-      return SameUpdateHWDim(context, h_dim, w_dim, strides_data, in_shape, out_shape);
+      auto strides = attrs->GetAttrPointer<gert::ContinuousVector>(INDEX_STRIDES);
+      OPS_CHECK_NULL_WITH_CONTEXT(context, strides);
+      OP_CHECK(strides->GetSize() != SHAPE_NHWC_SIZE,
+               VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "Length of strides must be 4!"),
+               return GRAPH_FAILED);
+      auto strides_data = reinterpret_cast<const int64_t*>(strides->GetData());
+      OP_CHECK(strides_data[h_dim] <= 0 || strides_data[w_dim] <= 0,
+               VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "strides h and w must be greater than 0."),
+               return GRAPH_FAILED);
+      return SameUpdateHWDim(h_dim, w_dim, strides_data, in_shape, out_shape);
     }
   }
 
   return ge::GRAPH_SUCCESS;
 }
 
-IMPL_OP(MaxPoolV3)
-    .InferShape(InferShapeForMaxPoolV3);
+IMPL_OP(MaxPoolV3).InferShape(InferShapeForMaxPoolV3);
 }  // namespace ops

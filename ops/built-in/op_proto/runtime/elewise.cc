@@ -23,4 +23,10 @@ IMPL_OP(Tanh)
     .InferShape(InferShapeForOneInOneOut);
 IMPL_OP(ZerosLike)
     .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(Gelu)
+    .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(Neg)
+    .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(LogSoftmaxV2)
+    .InferShape(InferShapeForOneInOneOut);
 }  // namespace ops

@@ -21,6 +21,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "elewise_calculation_ops.h"
+#include "common/utils/ut_op_common.h"
 
 class clip_by_value : public testing::Test {
  protected:
@@ -149,14 +150,19 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_6) {
   auto output_desc = op.GetOutputDesc("y");
   std::vector<int64_t> expected_output_shape = {3, 1, 5};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+
+  std::vector<std::string> attrs = {};
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
+  HOLDER_DO_INFER_SHAPE(holder, "ClipByValue", ge::GRAPH_SUCCESS);
+  VERIFY_OUTPUT_SHAPE(holder, 0, expected_output_shape);
 }
 
 TEST_F(clip_by_value, clip_by_value_infershape_diff_test_7) {
   ge::op::ClipByValue op;
   op.UpdateInputDesc("x",
-                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+                     create_desc_shape_range({1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
   op.UpdateInputDesc("clip_value_min",
-                     create_desc_shape_range({1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
   op.UpdateInputDesc("clip_value_max",
                      create_desc_shape_range({5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
 
@@ -165,6 +171,11 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_7) {
   auto output_desc = op.GetOutputDesc("y");
   std::vector<int64_t> expected_output_shape = {3, 1, 5};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+
+  std::vector<std::string> attrs = {};
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
+  HOLDER_DO_INFER_SHAPE(holder, "ClipByValue", ge::GRAPH_SUCCESS);
+  VERIFY_OUTPUT_SHAPE(holder, 0, expected_output_shape);
 }
 
 TEST_F(clip_by_value, clip_by_value_infershape_diff_test_8) {
@@ -178,6 +189,10 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_8) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  std::vector<std::string> attrs = {};
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
+  HOLDER_DO_INFER_SHAPE(holder, "ClipByValue", ge::GRAPH_FAILED);
 }
 
 TEST_F(clip_by_value, clip_by_value_infershape_diff_test_9) {
@@ -226,4 +241,32 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_11) {
   auto output_desc = op.GetOutputDesc("y");
   std::vector<int64_t> expected_output_shape = {3, 0, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_12) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1, 0}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  std::vector<std::string> attrs = {};
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
+  HOLDER_DO_INFER_SHAPE(holder, "ClipByValue", ge::GRAPH_FAILED);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_13) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 0}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  std::vector<std::string> attrs = {};
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
+  HOLDER_DO_INFER_SHAPE(holder, "ClipByValue", ge::GRAPH_FAILED);
 }

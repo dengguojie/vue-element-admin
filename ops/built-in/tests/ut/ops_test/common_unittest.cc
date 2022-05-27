@@ -17,6 +17,9 @@
 
 static std::map<std::string, std::vector<std::vector<std::string>>> operator_info_map = {
     {"Add", {{"x1", "x2"}, {"y"}, {}}},
+    {"Flatten", {{"x"}, {"y"}, {"axis"}}},
+    {"Neg", {{"x"}, {"y"}, {}}},
+    {"MovingSumWithSigmoid", {{"alpha", "energy", "offset"}, {"y"}, {"ksize"}}},
     {"DynSeqOuter", {{"x1", "x2", "seq_len1", "seq_len2"}, {"y"}, {}}},
     {"Expand", {{"x", "shape"}, {"y"}, {}}},
     {"LayerNorm",
@@ -37,7 +40,7 @@ static std::map<std::string, std::vector<std::vector<std::string>>> operator_inf
 
 void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vector<string> attrs,
                                vector<vector<int64_t>> expect_shapes) {
-  ATTACH_OPERATOR_TO_HOLDER2(holder, op, input_const, attrs);
+  ATTACH_OPERATOR_TO_HOLDER_WITH_CONST(holder, op, input_const, attrs);
 
   std::string optype = op.GetOpType();
   HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_SUCCESS);
@@ -50,7 +53,7 @@ void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vecto
 
 void CommonInferShapeOperator2Fail(ge::Operator& op, vector<bool> input_const,
                                    vector<string> attrs) {
-  ATTACH_OPERATOR_TO_HOLDER2(holder, op, input_const, attrs);
+  ATTACH_OPERATOR_TO_HOLDER_WITH_CONST(holder, op, input_const, attrs);
 
   std::string optype = op.GetOpType();
   HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_FAILED);

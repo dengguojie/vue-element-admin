@@ -25,5 +25,5 @@ ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext *context) {
 
   *out_shape = *in_shape;
   return ge::GRAPH_SUCCESS;
-  }
+}
 }  // namespace ops

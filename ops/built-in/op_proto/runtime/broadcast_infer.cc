@@ -14,37 +14,82 @@
  * limitations under the License.
  */
 #include "runtime_util.h"
+#include "op_util.h"
 
 using namespace ge;
 namespace ops {
-bool InferBroadcastshapeForStatic(const gert::Shape *shape_x, const gert::Shape *shape_y, gert::Shape *shape_output) {
-  auto shape_x_len = shape_x->GetDimNum();
-  auto shape_y_len = shape_y->GetDimNum();
-  if (shape_x_len >= shape_y_len) {
-    // when inputx len >= inputy len
-    // input_x = [128, 128, 128] Vs input_y = [128]
-    auto len_sub = shape_x_len - shape_y_len;
-    *shape_output = *shape_x;
-    for (size_t i = 0; i < shape_y_len; i++) {
-      int64_t dim_size = std::max(shape_x->GetDim(len_sub + i), shape_y->GetDim(i));
-      // if one dim is 0, the output dim is 0
-      dim_size = (shape_x->GetDim(len_sub + i) == 0 || shape_y->GetDim(i) == 0) ? 0 : dim_size;
-      shape_output->SetDim(len_sub + i, dim_size);
+constexpr size_t INPUT_NUM_THREE = 3;
+
+static std::string ShapeCannotBroadcastMsg(const gert::Shape* shape1, const gert::Shape* shape2) {
+  std::string res = "shape ";
+  res += ToString(*shape1);
+  res += " and ";
+  res += ToString(*shape2);
+  res += " cannot broadcast!";
+  return res;
+}
+
+static bool BroadcastDim(int64_t& dim1, const int64_t dim2) {
+  if (dim1 == dim2) return true;
+  /* column is dim1, row is dim2, matrix value is broadcast(dim1, dim2)
+  dim   0     1    d2
+  0     0     0    E
+  1     0     1    d2
+  d1    E     d1   E
+  */
+  if ((dim1 != 1) && (dim2 != 1)) {
+    string msg = ConcatString(dim1, " and ", dim2, " cannot broadcast!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT("BroadcastDim", msg);
+    return false;
+  }
+  dim1 = (dim1 == 1) ? dim2 : dim1;
+
+  return true;
+}
+
+/*
+ * @brief: broadcast new shape to output shape
+ * @param [in] shape: const gert::Shape*, new shape to broadcast
+ * @param [in/out] shape_output: gert::Shape*, output shape
+ * @return succeed or not
+ */
+static bool BroadcastShapeToOutShape(const gert::Shape* shape, gert::Shape* shape_output) {
+  OP_LOGD("BroadcastShapeToOutShape",
+          "start broadcast %s and %s!", ToString(*shape).c_str(), ToString(*shape_output).c_str());
+  size_t shape_len = shape->GetDimNum();
+  size_t shape_y_len = shape_output->GetDimNum();
+  if (shape_len > shape_y_len) {
+    shape_output->SetDimNum(shape_len);
+    size_t len_sub = shape_len - shape_y_len;
+    for (size_t i = shape_y_len; i > 0; i--) {
+      int64_t dim1 = shape->GetDim(len_sub + i - 1);
+      int64_t dim2 = shape_output->GetDim(i - 1);
+      if (!BroadcastDim(dim1, dim2)) {
+        string msg = ConcatString(dim1, " and ", dim2, " cannot broadcast!");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("BroadcastShapeToOutShape", msg);
+        return false;
+      }
+      shape_output->SetDim(len_sub + i - 1, dim1);
+    }
+    for (size_t i = 0; i < len_sub; i++) {
+      shape_output->SetDim(i, shape->GetDim(i));
     }
   } else {
-    // when inputx len < inputy len
-    // input_x = [128] Vs input_y = [128, 128, 128]
-    auto len_sub = shape_y_len - shape_x_len;
-    *shape_output = *shape_y;
-    for (size_t i = 0; i < shape_x_len; i++) {
-      int64_t dim_size = std::max(shape_y->GetDim(len_sub + i), shape_x->GetDim(i));
-      // if one dim is 0, the output dim is 0
-      dim_size = (shape_y->GetDim(len_sub + i) == 0 || shape_x->GetDim(i) == 0) ? 0 : dim_size;
-      shape_output->SetDim(len_sub + i, dim_size);
+    auto len_sub = shape_y_len - shape_len;
+    for (size_t i = 0; i < shape_len; i++) {
+      int64_t dim1 = shape_output->GetDim(len_sub + i);
+      int64_t dim2 = shape->GetDim(i);
+      if (!BroadcastDim(dim1, dim2)) {
+        string msg = ConcatString(dim1, " and ", dim2, " cannot broadcast!");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("BroadcastShapeToOutShape", msg);
+        return false;
+      }
+      shape_output->SetDim(len_sub + i, dim1);
     }
   }
   return true;
 }
+
 ge::graphStatus InferShapeForTwoInOneOut(gert::InferShapeContext *context) {
   auto in_shape1 = context->GetInputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape1);
@@ -52,16 +97,45 @@ ge::graphStatus InferShapeForTwoInOneOut(gert::InferShapeContext *context) {
   OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape2);
   auto out_shape = context->GetOutputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
+  *out_shape = *in_shape1;
 
-  OP_CHECK(!InferBroadcastshapeForStatic(in_shape1, in_shape2, out_shape),
-           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "broadcast shape error!"),
+  OP_CHECK(!BroadcastShapeToOutShape(in_shape2, out_shape),
+           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(),
+                                               ShapeCannotBroadcastMsg(in_shape2, in_shape1)),
            return ge::GRAPH_FAILED);
 
   return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus InferShapeForMultiInput(gert::InferShapeContext *context, const size_t num) {
+  auto in_shape1 = context->GetInputShape(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape1);
+  auto out_shape = context->GetOutputShape(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
+  *out_shape = *in_shape1;
+
+  for (size_t i = 1; i < num; i++) {
+    auto in_shape2 = context->GetInputShape(i);
+    OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape2);
+    OP_CHECK(!BroadcastShapeToOutShape(in_shape2, out_shape),
+             VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(),
+                                                 ShapeCannotBroadcastMsg(in_shape2, out_shape)),
+             return ge::GRAPH_FAILED);
+  }
+
+  return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus InferShapeForThreeInOneOut(gert::InferShapeContext *context) {
+  return InferShapeForMultiInput(context, INPUT_NUM_THREE);
 }
 
 IMPL_OP(Add)
     .InferShape(InferShapeForTwoInOneOut);
 IMPL_OP(Mul)
     .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(ReadDiv)
+    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(ClipByValue)
+    .InferShape(InferShapeForThreeInOneOut);
 }  // namespace ops

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "runtime_util.h"
+#include "op_util.h"
 
 using namespace ge;
 namespace ops {
@@ -35,12 +36,10 @@ ge::graphStatus InferShapeForFlatten(gert::InferShapeContext *context) {
 
   const int64_t *p_axis = attrs->GetAttrPointer<int64_t>(0);
   const int64_t x_dim = in_shape->GetDimNum();
-  if (*p_axis < -x_dim || *p_axis > x_dim) {
-    string err_msg1 = ConcatString("axis ", *p_axis, " out of range: [-", x_dim, ", ", x_dim, "]");
-    std::string err_msg = OtherErrMsg(err_msg1);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), err_msg);
-    return GRAPH_FAILED;
-  }
+  OP_CHECK(
+      !IsDimValid(x_dim, *p_axis),
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), GenInvalidDimMsg("axis", x_dim, *p_axis)),
+      return ge::GRAPH_FAILED);
   int64_t axis = (*p_axis >= 0) ? *p_axis : (x_dim + *p_axis);
 
   out_shape->AppendDim(GetPartSize(in_shape, 0, axis));
