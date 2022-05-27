@@ -680,6 +680,9 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/caffe_batch_matmul_plugin.cc
       - ops/built-in/framework/caffe_plugin/caffe_deconv_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_rnnv2_tf_plugin.cc
+      - ops/built-in/framework/tf_plugin/atan_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/leaky_relu_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/log_softmax_v2_plugin.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_mean_mul_gatherv2_fusion_pass.cc
@@ -779,6 +782,8 @@ vector_A:
       - ops/built-in/op_proto/roipooling_ops.cc
       - ops/built-in/op_proto/ssddetectionoutput_ops.cc
       - ops/built-in/op_proto/target_crop_and_resize.cc
+      - ops/built-in/op_proto/deep_md.cc
+      - ops/built-in/op_proto/reduce_ops.cc
       - ops/built-in/op_tiling/aipp.cc
       - ops/built-in/op_tiling/ascend_anti_quant.cc
       - ops/built-in/op_tiling/ascend_quant.cc
@@ -2315,11 +2320,9 @@ unkown:
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/stateful_random_ops.cc
       - ops/built-in/op_proto/spectral_ops.cc
-      - ops/built-in/op_proto/deep_md.cc
       - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
-      - ops/built-in/op_proto/reduce_ops.cc
       - ops/built-in/op_proto/list_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/ctc_ops.cc
@@ -3282,9 +3285,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/bn_training_update_plugin.cc
       - ops/built-in/framework/tf_plugin/add_n_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_reduce_plugin.cc
-      - ops/built-in/framework/tf_plugin/leaky_relu_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/strided_slice_plugin.cc
-      - ops/built-in/framework/tf_plugin/atan_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/expand_dims_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_centered_rms_prop_plugin.cc
       - ops/built-in/framework/tf_plugin/lrn_grad_plugin.cc
@@ -3497,7 +3498,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/dynamic_gruv2_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/fused_layer_norm_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/segment_max_plugin.cc
-      - ops/built-in/framework/tf_plugin/log_softmax_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/multinomial_plugin.cc
       - ops/built-in/framework/tf_plugin/atan_plugin.cc
       - ops/built-in/framework/tf_plugin/lin_space_plugin.cc

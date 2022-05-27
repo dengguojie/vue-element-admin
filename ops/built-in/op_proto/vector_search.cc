@@ -229,7 +229,7 @@ const int64_t ADC_TABLE_SHAPE = 256;
 const int64_t GROUP_SIZE_BASE = 64;
 const int64_t EXTREME_MODE_NUM = 2;
 
-graphStatus ScanPQCodesVerifyAttrs(op::ScanPQCodes op){
+graphStatus ScanPQCodesVerifyAttrs(op::ScanPQCodes op) {
   int32_t totalLimit = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("total_limit", totalLimit),
         OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr total_limit failed."),

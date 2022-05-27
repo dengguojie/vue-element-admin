@@ -913,7 +913,7 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
   int64_t c0 = 0;
 
   auto imagesDimNum = images_desc.GetShape().GetDimNum();
-  if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
+  if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < kNum4)
       || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < kNum5)) {
     OP_LOGE(TbeGetName(op).c_str(), "The input shape of images is invalid");
     return GRAPH_FAILED;

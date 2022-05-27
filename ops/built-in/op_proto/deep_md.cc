@@ -637,7 +637,8 @@ IMPLEMT_VERIFIER(ProdEnvMatACalcDescrpt, ProdEnvMatACalcDescrptVerify) {
 
   GeTensorDescPtr distanceDesc = opDesc->MutableInputDesc("distance");
   std::vector<int64_t> distanceShape = distanceDesc->MutableShape().GetDims();
-  CHECK(distanceShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of distanceShape should be 2"), return GRAPH_FAILED);
+  CHECK(distanceShape.size() != 2,
+        OP_LOGE(opName.GetString(), "Dim of distanceShape should be 2"), return GRAPH_FAILED);
   int64_t nsamples = distanceShape[0];
 
   GeTensorDescPtr rijXDesc = opDesc->MutableInputDesc("rij_x");
@@ -785,7 +786,8 @@ IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
   GeTensorDescPtr descriptorDesc = opDesc->MutableInputDesc("descriptor");
   CHECK(descriptorDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get descriptor desc"), return GRAPH_FAILED);
   std::vector<int64_t> descriptorShape = descriptorDesc->MutableShape().GetDims();
-  CHECK(descriptorShape.size() != 3, OP_LOGE(opName.GetString(), "Dim of descriptor should be 3"), return GRAPH_FAILED);
+  CHECK(descriptorShape.size() != 3,
+        OP_LOGE(opName.GetString(), "Dim of descriptor should be 3"), return GRAPH_FAILED);
 
   return GRAPH_SUCCESS;
 }
@@ -834,7 +836,7 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionGradInferShape) {
   if (splitCount == 1) {
     dyDemXDesc->SetShape(ge::GeShape(emXDims));
     dyDemDesc->SetShape(ge::GeShape(emDims));
-  } else if (splitCount == 2){
+  } else if (splitCount == 2) {
     int64_t nloc = emDims[0];
     int64_t splitValue = (nloc + splitCount - 1) / splitCount;
     

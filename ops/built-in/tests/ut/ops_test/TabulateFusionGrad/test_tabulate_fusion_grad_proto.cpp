@@ -150,3 +150,27 @@ TEST_F(TabulateFusionGradProtoTest, TabulateFusionGradInferShapeTest_2) {
     EXPECT_EQ(output_shape_range, expected_output_shape_range);
   }
 }
+
+TEST_F(TabulateFusionGradProtoTest, TabulateFusionGradVerifyTest_3) {
+  int32_t nloc = 12288;
+  int32_t nnei = 138;
+  int32_t lastLayerSize = 128;
+  int32_t split_count = 2;
+  int32_t split_index = 0;
+
+  int32_t tableDim0 = 1024;
+  int32_t descriptorDim0 = 1024;
+  int32_t descriptorDim1 = 1024;
+
+  ge::op::TabulateFusionGrad op;
+  op.UpdateInputDesc("table", create_desc({tableDim0, lastLayerSize * 6}, ge::DT_FLOAT));
+  op.UpdateInputDesc("table_info", create_desc({6,}, ge::DT_FLOAT));
+  op.UpdateInputDesc("em_x", create_desc({nloc, nnei}, ge::DT_FLOAT));
+  op.UpdateInputDesc("em", create_desc({nloc, nnei, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("dy", create_desc({nloc, 4, lastLayerSize}, ge::DT_FLOAT));
+  op.UpdateInputDesc("descriptor", create_desc({descriptorDim0, descriptorDim1, lastLayerSize}, ge::DT_FLOAT));
+  op.SetAttr("split_count", split_count);
+  op.SetAttr("split_index", split_index);
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}
