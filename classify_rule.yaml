@@ -930,7 +930,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/transformationusedbatchnorm3d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnormgrad_fusion_pass.h
@@ -948,7 +948,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_part_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/maxpoolwithargmax_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_add_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/nll_loss_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/transformationnll_loss_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/nll_loss_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/one_hot_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pow_2_square_fusion_pass.cc
@@ -2119,12 +2119,11 @@ vector_B:
 
 vector_D:
   commiter:
-    "Tanshengshun"
+    "xxx"
   team: "vector_D"
   src:
     release:
       - auto_schedule/python/tbe/dsl/static_schedule/softmax_cross_entropy_with_logits_schedule.py
-      - ops/built-in/op_proto/nn_norm_ops.cc
       - ops/built-in/tbe/impl/max_pool_grad.py
       - ops/built-in/tbe/impl/max_pool_v3_grad.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
@@ -2219,6 +2218,9 @@ ops_pub:
       - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/selection_ops.cc
+      - ops/built-in/op_proto/inc/transformation_ops.h
+      - ops/built-in/op_proto/inc/nn_norm_ops.h
+      - ops/built-in/op_proto/nn_norm_ops.cc
     unrelease:
 
 
@@ -2358,7 +2360,6 @@ unkown:
       - ops/built-in/op_proto/inc/ctc_ops.h
       - ops/built-in/op_proto/inc/sdca_ops.h
       - ops/built-in/op_proto/inc/deep_md.h
-      - ops/built-in/op_proto/inc/transformation_ops.h
       - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/inc/hvd_ops.h
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
@@ -2371,7 +2372,6 @@ unkown:
       - ops/built-in/op_proto/inc/string_ops.h
       - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/inc/internal_ops.h
-      - ops/built-in/op_proto/inc/nn_norm_ops.h
       - ops/built-in/op_proto/inc/stateful_random_ops.h
       - ops/built-in/op_proto/inc/quantize_ops.h
       - ops/built-in/op_proto/inc/data_flow_ops.h
