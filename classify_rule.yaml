@@ -1018,7 +1018,6 @@ vector_B:
       - ops/built-in/op_tiling/bias_add_grad.cc
       - ops/built-in/op_tiling/binary_cross_entropy.cc
       - ops/built-in/op_tiling/binary_cross_entropy_grad.cc
-      - ops/built-in/op_tiling/bitwise.cc
       - ops/built-in/op_tiling/bn_reduce_grad.cc
       - ops/built-in/op_tiling/bninference_d.cc
       - ops/built-in/op_tiling/bounding_box_decode.cc

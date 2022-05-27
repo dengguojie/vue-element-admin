@@ -72,10 +72,26 @@ case4 = {"params": [{"shape": (8, 375), "dtype": "int32",
          "expect": "success",
          "support_expect": True}
 
+case5 = {"params": [{"shape": (8, 375), "dtype": "int16",
+                     "format": "ND", "ori_shape": (8, 375),
+                     "ori_format": "ND", "range": [(8, 8), (375, 375)]},
+                    {"shape": (-1, 8, 375), "dtype": "int32",
+                     "format": "ND", "ori_shape": (16, 8, 375),
+                     "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]}, #x
+                    {"shape": (-1, 8, 375), "dtype": "int32",
+                     "format": "ND", "ori_shape": (16, 8, 375),
+                     "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
+                    ],
+         "case_name": "BitwiseXor_5",
+         "expect": RuntimeError,
+         "support_expect": True}
+ut_case.add_case(["Ascend910A"], case5)
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
+
 
 
 if __name__ == "__main__":

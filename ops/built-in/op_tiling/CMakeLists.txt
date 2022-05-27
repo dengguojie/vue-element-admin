@@ -39,7 +39,6 @@ set(_optiling_files
   scatter_non_aliasing_add.cc
   binary_cross_entropy.cc
   binary_cross_entropy_grad.cc
-  bitwise.cc
   broadcast_to.cc
   assign.cc
   auto_tiling.cc

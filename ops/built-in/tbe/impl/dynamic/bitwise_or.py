@@ -59,55 +59,6 @@ def bitwise_or_compute(x1, x2, y, kernel_name="bitwise_or"):
     return res
 
 
-def _pre_broadcast(x1, x2, y, kernel_name):
-    """
-    check the input parameters
-    make len of shape and range same
-    add dims in shape and range
-    return x1, x2 after pre broadcast and dtype
-    """
-    shape_x = list(x1.get("shape"))
-    shape_y = list(x2.get("shape"))
-    range_x = list(x1.get("range"))
-    range_y = list(x2.get("range"))
-    dtype_x = x1.get("dtype").lower()
-    dtype_y = x2.get("dtype").lower()
-    dtype_z = y.get("dtype").lower()
-
-    x1["shape"] = shape_x
-    x2["shape"] = shape_y
-    x1["range"] = range_x
-    x2["range"] = range_y
-
-    check_tuple = ("int16", "uint16", "int32")
-    para_check.check_dtype(dtype_x, check_tuple, param_name="x1")
-    para_check.check_dtype(dtype_y, check_tuple, param_name="x2")
-    para_check.check_dtype(dtype_z, check_tuple, param_name="y")
-    if dtype_x != dtype_y:
-        error_detail = "dtype of x1 and x2 should be same"
-        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
-
-    if len(shape_y) > len(shape_x):
-        x1["range"] = [(1, 1)] * (len(shape_y) - len(shape_x)) + range_x
-        x1["shape"] = [1] * (len(shape_y) - len(shape_x)) + shape_x
-    elif len(shape_x) > len(shape_y):
-        x2["range"] = [(1, 1)] * (len(shape_x) - len(shape_y)) + range_y
-        x2["shape"] = [1] * (len(shape_x) - len(shape_y)) + shape_y
-    else:
-        pass
-
-    if dtype_x == "int32":
-        dtype_x = "int16"
-        x1["dtype"] = "int16"
-        x2["dtype"] = "int16"
-        x1["range"].append((2, 2))
-        x2["range"].append((2, 2))
-        x1["shape"] = x1["shape"] + [2]
-        x2["shape"] = x2["shape"] + [2]
-
-    return x1, x2, dtype_x
-
-
 # 'pylint: disable=too-many-locals
 @register_operator("BitwiseOr")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -132,14 +83,19 @@ def bitwise_or(x1, x2, y, kernel_name="bitwise_or"):
     -------
     None
     """
-    input_x, input_y, dtype = _pre_broadcast(x1, x2, y, kernel_name)
+    dtype_x = x1.get("dtype").lower()
+    dtype_y = x2.get("dtype").lower()
+    if dtype_x != dtype_y:
+        error_detail = "dtype of x1 and x2 should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
+
     schedules, tensors = [], []
-    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     for (_x, _y) in ins:
         with tbe.compute():
             x_shape, y_shape = shape_util.variable_shape([_x, _y])
-            data_x = tvm.placeholder(x_shape, name="data_x", dtype=dtype)
-            data_y = tvm.placeholder(y_shape, name="data_y", dtype=dtype)
+            data_x = tvm.placeholder(x_shape, name="data_x", dtype=dtype_x)
+            data_y = tvm.placeholder(y_shape, name="data_y", dtype=dtype_x)
             res = bitwise_or_compute(data_x, data_y, y, kernel_name)
             tensors.append([data_x, data_y, res])
 
