@@ -68,7 +68,7 @@ uint32_t SearchSortedKernel::CheckShape() {
 }
 
 template <typename S>
-uint32_t CheckParam(CpuKernelContext &ctx, Tensor *sequence_t, const Tensor *values_t,
+uint32_t CheckParam(const CpuKernelContext &ctx, const Tensor *sequence_t, const Tensor *values_t,
                     const Tensor *output_t, std::vector<int64_t> sequence_shape) {
   size_t search_len = sequence_shape.size();
   if (output_t->NumElements() != values_t->NumElements()) {
@@ -105,7 +105,7 @@ uint32_t CheckParam(CpuKernelContext &ctx, Tensor *sequence_t, const Tensor *val
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SearchSortedKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t SearchSortedKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   AttrValue *right = ctx.GetAttr("right");
   KERNEL_CHECK_NULLPTR(right, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr:[right] failed.");
@@ -149,8 +149,8 @@ uint32_t SearchSortedKernel::GetInputAndCheck(CpuKernelContext &ctx) {
 }
 
 template <typename S, typename T>
-uint32_t CalSearchSorted(bool right, Tensor *sequence_t, Tensor *values_t,
-                         Tensor *output_t, std::vector<int64_t> sequence_shape,
+uint32_t CalSearchSorted(bool right, Tensor *sequence_t, const Tensor *values_t,
+                         const Tensor *output_t, std::vector<int64_t> sequence_shape,
                          std::vector<int64_t> values_shape,
                          CpuKernelContext &ctx) {
   auto res = CheckParam<S>(ctx, sequence_t, values_t, output_t, sequence_shape);

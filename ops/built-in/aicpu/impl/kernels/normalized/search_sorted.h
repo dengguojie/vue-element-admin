@@ -27,7 +27,7 @@ class SearchSortedKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
   uint32_t CheckShape();
 
   bool right_ = false;

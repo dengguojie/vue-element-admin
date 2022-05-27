@@ -67,7 +67,7 @@ uint32_t SigmoidCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SigmoidCpuKernel::SigmoidCheck(CpuKernelContext &ctx) {
+uint32_t SigmoidCpuKernel::SigmoidCheck(const CpuKernelContext &ctx) const {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -80,7 +80,7 @@ uint32_t SigmoidCpuKernel::SigmoidCheck(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t SigmoidCpuKernel::SigmoidCompute(CpuKernelContext &ctx) {
+uint32_t SigmoidCpuKernel::SigmoidCompute(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
@@ -112,13 +112,11 @@ uint32_t SigmoidCpuKernel::SigmoidCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
+uint32_t SigmoidCpuKernel::SigmoidComputeComplex(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
-  typedef Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>   ArrayxXd;
-  ArrayxXd array_x(1, data_num);
 
   if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {

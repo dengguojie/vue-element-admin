@@ -67,7 +67,7 @@ uint32_t RightShiftCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t RightShiftCpuKernel::RightShiftParamCheck(CpuKernelContext &ctx) {
+uint32_t RightShiftCpuKernel::RightShiftParamCheck(const CpuKernelContext &ctx) {
   Tensor *input_0 = ctx.Input(0);
   Tensor *input_1 = ctx.Input(1);
   Tensor *output = ctx.Output(0);
@@ -124,7 +124,7 @@ void RightShiftCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
 }
 
 template <typename T>
-uint32_t RightShiftCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
+uint32_t RightShiftCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
@@ -178,7 +178,7 @@ uint32_t RightShiftCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 
 
 template <typename T>
-uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
+uint32_t RightShiftCpuKernel::BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
@@ -232,7 +232,7 @@ uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) 
 }
 
 template <typename T>
-uint32_t RightShiftCpuKernel::RightShiftCompute(CpuKernelContext &ctx) {
+uint32_t RightShiftCpuKernel::RightShiftCompute(const CpuKernelContext &ctx) {
   Tensor *input0_tensor = ctx.Input(0);
   auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
   int64_t input0_elements_nums = input0_tensor->NumElements();

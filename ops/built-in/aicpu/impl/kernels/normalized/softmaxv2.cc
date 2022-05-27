@@ -46,8 +46,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
     axes = ctx.GetAttr("axes")->GetListInt();
   }
   std::int64_t total = ctx.Input(0)->NumElements();
-  std::vector<std::int64_t> dims =
-      ctx.Input(0)->GetTensorShape()->GetDimSizes();
+  std::vector<std::int64_t> dims = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   uint32_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx);
   if (cores < 1) {
     return KERNEL_STATUS_INNER_ERROR;
@@ -55,11 +54,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
   int64_t dim_size = static_cast<int64_t>(dims.size());
   // pivot is the axes value
   std::int64_t pivot, inner_size{1}, outer_size{1}, length{1};
-  if (axes[0] >= 0) {
-    pivot = axes[0];
-  } else {
-    pivot = dim_size + axes[0];
-  }
+  pivot = (axes[0] >= 0 ? axes[0] : dim_size + axes[0]);
   for (int64_t index = 0; index < dim_size; index++) {
     if (index > pivot) {
       inner_size *= static_cast<std::int64_t>(dims[index]);
@@ -79,16 +74,12 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
   // Note: the shape of Eigen::Tensor logits and softmax is reverse of input
   // Tensor
   if (!parallel_flag) {
-    Eigen::TensorMap<Eigen::Tensor<T, 3>, Eigen::Aligned> logits(
-        input, inner_size, (int)dims[pivot], outer_size);
-    Eigen::TensorMap<Eigen::Tensor<T, 1>, Eigen::Aligned> dims_sum(dims_exp_sum,
-                                                                   length);
-    Eigen::TensorMap<Eigen::Tensor<T, 2>, Eigen::Aligned> dims_max(
-        dims_maximum, inner_size, outer_size);
+    Eigen::TensorMap<Eigen::Tensor<T, 3>, Eigen::Aligned> logits(input, inner_size, (int)dims[pivot], outer_size);
+    Eigen::TensorMap<Eigen::Tensor<T, 1>, Eigen::Aligned> dims_sum(dims_exp_sum, length);
+    Eigen::TensorMap<Eigen::Tensor<T, 2>, Eigen::Aligned> dims_max(dims_maximum, inner_size, outer_size);
     Eigen::array<int, 1> softmax_axes{{1}};
     dims_max = logits.maximum(softmax_axes);
-    for (int64_t index = 0, index_dst = 0, index_batch = 0, count_step = 0;
-         index < total; index++) {
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, count_step = 0; index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         count_step++;
         if (count_step == static_cast<int64_t>(dims[pivot])) {
@@ -97,8 +88,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
         }
         index_dst = index_batch;
       }
-      *(output + index) =
-          Eigen::numext::exp(*(input + index) - dims_maximum[index_dst]);
+      *(output + index) = Eigen::numext::exp(*(input + index) - dims_maximum[index_dst]);
       dims_exp_sum[index_dst] += (*(output + index));
       index_dst++;
     }
@@ -117,18 +107,14 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
       index_dst++;
     }
   } else {
-    std::int64_t per_unit_size{length /
-                               std::min(std::max(1L, cores - 2L), length)};
+    std::int64_t per_unit_size{length / std::min(std::max(1L, cores - 2L), length)};
     const T constant_one(1.0);
-    aicpu::CpuKernelUtils::ParallelFor(
+    KERNEL_HANDLE_ERROR(aicpu::CpuKernelUtils::ParallelFor(
         ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
           int64_t tmp = static_cast<int64_t>(dims[pivot]);
-          for (int64_t index = begin, dim_length = tmp, outer_index,
-                      index_base;
-               index < end; ++index) {
+          for (int64_t index = begin, dim_length = tmp, outer_index, index_base; index < end; ++index) {
             outer_index = index / inner_size;
-            index_base =
-                outer_index * dim_length * inner_size + index % inner_size;
+            index_base = outer_index * dim_length * inner_size + index % inner_size;
             dims_maximum[index] = *(input + index_base);
             for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
@@ -139,20 +125,18 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
             }
             for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
-              *(output + index_dst) = Eigen::numext::exp(*(input + index_dst) -
-                                                         dims_maximum[index]);
+              *(output + index_dst) = Eigen::numext::exp(*(input + index_dst) - dims_maximum[index]);
               dims_exp_sum[index] += (*(output + index_dst));
               index_dst += inner_size;
             }
             dims_exp_sum[index] = constant_one / dims_exp_sum[index];
             for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
-              *(output + index_dst) =
-                  *(output + index_dst) * dims_exp_sum[index];
+              *(output + index_dst) = *(output + index_dst) * dims_exp_sum[index];
               index_dst += inner_size;
             }
           }
-        });
+        }), "CpuKernelUtils::ParallelFor failed.");
   }
   return KERNEL_STATUS_OK;
 }
@@ -223,7 +207,7 @@ inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-std::uint32_t SoftmaxV2Check(CpuKernelContext &ctx, uint32_t inputs_num) {
+std::uint32_t SoftmaxV2Check(CpuKernelContext &ctx) {
   return NormalCheck(ctx, kSoftmaxV2InputNum, kSoftmaxV2OutputNum)
              ? KERNEL_STATUS_PARAM_INVALID
              : SoftmaxV2ExtraCheck(ctx);
@@ -247,7 +231,7 @@ std::uint32_t SoftmaxV2Compute(const CpuKernelContext &ctx) {
 }  // namespace detail
 
 std::uint32_t SoftmaxV2CpuKernel::Compute(CpuKernelContext &ctx) {
-  return detail::SoftmaxV2Check(ctx, kSoftmaxV2InputNum)
+  return detail::SoftmaxV2Check(ctx)
              ? KERNEL_STATUS_PARAM_INVALID
              : detail::SoftmaxV2Compute(ctx);
 }

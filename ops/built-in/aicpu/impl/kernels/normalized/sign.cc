@@ -70,7 +70,7 @@ uint32_t SignCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SignCpuKernel::SignCheck(CpuKernelContext &ctx) {
+uint32_t SignCpuKernel::SignCheck(const CpuKernelContext &ctx) const {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -83,7 +83,7 @@ uint32_t SignCpuKernel::SignCheck(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
+uint32_t SignCpuKernel::SignCompute(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
@@ -123,7 +123,7 @@ uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t SignCpuKernel::SignComputeComplex(CpuKernelContext &ctx) {
+uint32_t SignCpuKernel::SignComputeComplex(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();

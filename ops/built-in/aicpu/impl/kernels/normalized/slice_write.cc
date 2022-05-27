@@ -66,7 +66,7 @@ void RangeSliceWrite(int64_t start, int64_t end, const aicpu::Tensor *x,
 
 namespace aicpu {
 bool SliceWriteCpuKernel::CheckValueSupported(const DataType input_x_type,
-                                              const DataType input_value_type) {
+                                              const DataType input_value_type) const {
   switch (input_x_type) {
     case DT_FLOAT16:
     case DT_FLOAT:

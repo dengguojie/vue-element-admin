@@ -24,17 +24,16 @@ class SignCpuKernel : public CpuKernel {
   SignCpuKernel() = default;
   ~SignCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t SignCheck(CpuKernelContext &ctx);
+  uint32_t SignCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t SignCompute(CpuKernelContext &ctx);
+  uint32_t SignCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t SignComputeComplex(CpuKernelContext &ctx);
+  uint32_t SignComputeComplex(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

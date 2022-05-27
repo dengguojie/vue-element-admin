@@ -25,17 +25,16 @@ class SigmoidCpuKernel : public CpuKernel {
   SigmoidCpuKernel() = default;
   ~SigmoidCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t SigmoidCheck(CpuKernelContext &ctx);
+  uint32_t SigmoidCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t SigmoidCompute(CpuKernelContext &ctx);
+  uint32_t SigmoidCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t SigmoidComputeComplex(CpuKernelContext &ctx);
+  uint32_t SigmoidComputeComplex(const CpuKernelContext &ctx);
 
 };
 }  // namespace aicpu

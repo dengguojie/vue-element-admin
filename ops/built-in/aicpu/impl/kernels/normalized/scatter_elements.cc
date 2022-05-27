@@ -73,32 +73,24 @@ uint32_t ScatterElementsCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T, typename TI>
-uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t ScatterElementsCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   // check parameters basic attribution are valid
   auto input_x1 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
-  KERNEL_CHECK_NULLPTR(input_x1, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input original value failed");
+  KERNEL_CHECK_NULLPTR(input_x1, KERNEL_STATUS_PARAM_INVALID, "Get input original value failed");
   auto input_x2 = reinterpret_cast<TI *>(ctx.Input(1)->GetData());
-  KERNEL_CHECK_NULLPTR(input_x2, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input indices value failed");
+  KERNEL_CHECK_NULLPTR(input_x2, KERNEL_STATUS_PARAM_INVALID, "Get input indices value failed");
   auto input_x3 = reinterpret_cast<T *>(ctx.Input(2)->GetData());
-  KERNEL_CHECK_NULLPTR(input_x3, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input updates value failed");
+  KERNEL_CHECK_NULLPTR(input_x3, KERNEL_STATUS_PARAM_INVALID, "Get input updates value failed");
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output failed");
+  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID, "Get output failed");
   auto shape_x1 = ctx.Input(0)->GetTensorShape();
-  KERNEL_CHECK_NULLPTR(shape_x1, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input original shape failed");
+  KERNEL_CHECK_NULLPTR(shape_x1, KERNEL_STATUS_PARAM_INVALID, "Get input original shape failed");
   auto shape_x2 = ctx.Input(1)->GetTensorShape();
-  KERNEL_CHECK_NULLPTR(shape_x2, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input indices shape failed");
+  KERNEL_CHECK_NULLPTR(shape_x2, KERNEL_STATUS_PARAM_INVALID, "Get input indices shape failed");
   auto shape_x3 = ctx.Input(2)->GetTensorShape();
-  KERNEL_CHECK_NULLPTR(shape_x3, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input updates shape failed");
+  KERNEL_CHECK_NULLPTR(shape_x3, KERNEL_STATUS_PARAM_INVALID, "Get input updates shape failed");
   auto shape_y = ctx.Output(0)->GetTensorShape();
-  KERNEL_CHECK_NULLPTR(shape_y, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output shape failed");
+  KERNEL_CHECK_NULLPTR(shape_y, KERNEL_STATUS_PARAM_INVALID, "Get output shape failed");
   AttrValue *axis = ctx.GetAttr("axis");
   int64_t axis_value = (axis == nullptr) ? 0 : axis->GetInt();
   // Get and check 3 input dim info
@@ -108,14 +100,10 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   std::vector<int64_t> value_dim_x1 = shape_x1->GetDimSizes();
   std::vector<int64_t> value_dim_x2 = shape_x2->GetDimSizes();
   std::vector<int64_t> value_dim_x3 = shape_x3->GetDimSizes();
-  KERNEL_CHECK_FALSE(
-      (value_dim_num_x1 == value_dim_num_x2 &&
-       value_dim_num_x2 == value_dim_num_x3),
-      KERNEL_STATUS_PARAM_INVALID,
-      "3 inputs dim values are different; data:%lld,indices:%lld,update:%lld",
+  KERNEL_CHECK_FALSE((value_dim_num_x1 == value_dim_num_x2 && value_dim_num_x2 == value_dim_num_x3),
+      KERNEL_STATUS_PARAM_INVALID, "3 inputs dim values are different; data:%lld,indices:%lld,update:%lld",
       value_dim_num_x1, value_dim_num_x2, value_dim_num_x3);
-  KERNEL_CHECK_FALSE(
-      (axis_value >= value_dim_num_x1 * -1 && axis_value < value_dim_num_x1),
+  KERNEL_CHECK_FALSE((axis_value >= value_dim_num_x1 * -1 && axis_value < value_dim_num_x1),
       KERNEL_STATUS_PARAM_INVALID, "Axis_value %lld is out of range %lld",
       axis_value, value_dim_num_x1);
   std::vector<int64_t> data_dim_vec;
@@ -123,10 +111,8 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   int64_t sub_data_fix = 1;
   int64_t sub_index_fix = 1;
   for (int64_t i = value_dim_num_x2 - 1; i >= 0; --i) {
-    KERNEL_CHECK_FALSE((value_dim_x1[i] >= value_dim_x2[i] &&
-                        value_dim_x2[i] == value_dim_x3[i] &&
-                        value_dim_x3[i] > 0),
-                       KERNEL_STATUS_PARAM_INVALID,
+    KERNEL_CHECK_FALSE((value_dim_x1[i] >= value_dim_x2[i] && value_dim_x2[i] == value_dim_x3[i] &&
+                       value_dim_x3[i] > 0), KERNEL_STATUS_PARAM_INVALID,
                        "The %d dimension verfication failed:input0[%d],input1[%d],input2[%d]",
                        i, value_dim_x1[i], value_dim_x2[i], value_dim_x3[i]);
     if (i > 0) {
@@ -141,24 +127,21 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   int64_t update_value_num = ctx.Input(1)->NumElements();
   int64_t total_value_num = ctx.Input(0)->NumElements();
   // using input to initial output
-  std::atomic<int32_t> work_ret(KERNEL_STATUS_OK);
+  std::atomic<uint32_t> work_ret(KERNEL_STATUS_OK);
   int64_t initial_size = total_value_num * static_cast<int64_t>(sizeof(T));
   int64_t max_thread_num = initial_size / KSplitSize;
   if (max_thread_num > total_value_num || max_thread_num == 0) {
     max_thread_num = total_value_num;
   }
   int64_t per_core_size = (total_value_num / max_thread_num) * static_cast<int64_t>(sizeof(T));
-  int64_t last_core_size = (total_value_num % max_thread_num) * static_cast<int64_t>(sizeof(T)) +
-                           per_core_size;
+  int64_t last_core_size = (total_value_num % max_thread_num) * static_cast<int64_t>(sizeof(T)) + per_core_size;
   auto shard_copy = [&](int64_t start, int64_t end) {
     for (int64_t i = start; i < end; ++i) {
-      int64_t core_size = (i == max_thread_num - 1) ?
-                          last_core_size : per_core_size;
+      int64_t core_size = (i == max_thread_num - 1) ? last_core_size : per_core_size;
       int64_t ptr_offset = i * (total_value_num / max_thread_num);
       if (ptr_offset >= total_value_num) {
         work_ret = KERNEL_STATUS_PARAM_INVALID;
-        KERNEL_LOG_ERROR("Pointer offset %lld more than %lld which is overflow",
-                         ptr_offset, total_value_num);
+        KERNEL_LOG_ERROR("Pointer offset %lld more than %lld which is overflow", ptr_offset, total_value_num);
         return;
       }
       auto out = output_y + ptr_offset;
@@ -172,8 +155,7 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
       }
     }
   };
-  KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, max_thread_num, 1, shard_copy),
-                      "Initial output data failed!")
+  KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, max_thread_num, 1, shard_copy), "Initial output data failed!");
   if (work_ret != KERNEL_STATUS_OK) {
     return work_ret;
   }
@@ -182,22 +164,17 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
     int64_t remain_index = i;
     int64_t index_value = 0;
     int64_t counter = 0;
-    KERNEL_CHECK_FALSE(
-        (input_x2[i] >= axis_dim_value * -1 && input_x2[i] < axis_dim_value),
-        KERNEL_STATUS_PARAM_INVALID, "Indices value %lld is out of bound %lld",
-        input_x2[i], axis_dim_value);
-    int64_t input_x2_value = input_x2[i] < 0 ?
-                             input_x2[i] + axis_dim_value : input_x2[i];
+    KERNEL_CHECK_FALSE((input_x2[i] >= axis_dim_value * -1 && input_x2[i] < axis_dim_value),
+        KERNEL_STATUS_PARAM_INVALID, "Indices value %lld is out of bound %lld", input_x2[i], axis_dim_value);
+    int64_t input_x2_value = (input_x2[i] < 0 ? (input_x2[i] + axis_dim_value) : input_x2[i]);
     for (int64_t j = static_cast<int64_t>(index_dim_vec.size()) - 1; j >= 0; --j) {
-      index_value += ((counter == axis_value ? input_x2_value:
-                      remain_index / index_dim_vec[j]) * data_dim_vec[j]);
+      index_value += ((counter == axis_value ? input_x2_value: remain_index / index_dim_vec[j]) * data_dim_vec[j]);
       remain_index %= index_dim_vec[j];
       ++counter;
     }
     index_value += (counter == axis_value ? input_x2_value : remain_index);
-    KERNEL_CHECK_FALSE(index_value < total_value_num,
-                       KERNEL_STATUS_PARAM_INVALID, "Update index %lld greater than %lld which is overflow",
-                       index_value, total_value_num);
+    KERNEL_CHECK_FALSE(index_value < total_value_num, KERNEL_STATUS_PARAM_INVALID,
+                       "Update index %lld greater than %lld which is overflow", index_value, total_value_num);
     output_y[index_value] = input_x3[i];
   }
   return KERNEL_STATUS_OK;

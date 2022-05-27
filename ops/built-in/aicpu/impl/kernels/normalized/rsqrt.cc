@@ -83,8 +83,8 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, const Tensor *y, int64_t data_num,
-                                      CpuKernelContext &ctx) const {
+uint32_t RsqrtCpuKernel::RsqrtCompute(const Tensor *x, const Tensor *y, int64_t data_num,
+                                      const CpuKernelContext &ctx) const {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
   auto output_y = reinterpret_cast<T *>(y->GetData());
@@ -143,9 +143,9 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, const Tensor *y, int64_t data_n
 }
 
 template <typename T>
-uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, const Tensor *y,
+uint32_t RsqrtCpuKernel::RsqrtComputeComplex(const Tensor *x, const Tensor *y,
                                              int64_t data_num,
-                                             CpuKernelContext &ctx) const {
+                                             const CpuKernelContext &ctx) const {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID,
                        "Get input data failed")
