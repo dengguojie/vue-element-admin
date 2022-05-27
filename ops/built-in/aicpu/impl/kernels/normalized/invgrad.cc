@@ -71,7 +71,7 @@ uint32_t InvGradCpuKernel::Compute(CpuKernelContext &ctx) {
   return result;
 }
 
-uint32_t InvGradCpuKernel::InvGradParamCheck(CpuKernelContext &ctx) const {
+uint32_t InvGradCpuKernel::InvGradParamCheck(const CpuKernelContext &ctx) const {
   // the non null of input_0, input_1, output has been verified in NormalCheck
   Tensor *input_0 = ctx.Input(0);
   Tensor *input_1 = ctx.Input(1);
@@ -107,7 +107,7 @@ void InvGradCpuKernel::SpecialCompute(int64_t start, int64_t end, const T *input
 }
 
 template <typename T>
-uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) const {
+uint32_t InvGradCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) const {
   auto in0 = static_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = static_cast<T *>(ctx.Input(1)->GetData());
   auto out = static_cast<T *>(ctx.Output(0)->GetData());
@@ -148,7 +148,6 @@ uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) const {
   int64_t input0_elements_nums = input0_tensor->NumElements();
 
   Tensor *input1_tensor = ctx.Input(1);
-  auto input1_shape = input1_tensor->GetTensorShape()->GetDimSizes();
   int64_t input1_elements_nums = input1_tensor->NumElements();
   // elements numbers check
   if (input0_elements_nums != input1_elements_nums) {

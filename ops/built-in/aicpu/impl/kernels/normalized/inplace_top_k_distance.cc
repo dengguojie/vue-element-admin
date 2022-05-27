@@ -20,7 +20,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kInplaceTopKDistance = "InplaceTopKDistance";
+const char *const kInplaceTopKDistance = "InplaceTopKDistance";
 }
 
 namespace aicpu {
@@ -47,7 +47,6 @@ uint32_t InplaceTopKDistanceCpuKernel::Compute(CpuKernelContext &ctx) {
           "InplaceTopKDistance input topk_pq_distance only support type[DT_FLOAT16, DT_FLOAT], but got type[%s]",
           DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
-      break;
   }
   if (res != KERNEL_STATUS_OK) {
     KERNEL_LOG_DEBUG("InplaceTopKDistance kernel compute failed, KernelStatus is [%d]", res);
@@ -55,7 +54,7 @@ uint32_t InplaceTopKDistanceCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   return KERNEL_STATUS_OK;
 }
-uint32_t InplaceTopKDistanceCpuKernel::GetInputAndCheck(CpuKernelContext& ctx, Inputs& inputs) const {
+uint32_t InplaceTopKDistanceCpuKernel::GetInputAndCheck(const CpuKernelContext& ctx, Inputs& inputs) const {
   KERNEL_LOG_DEBUG("InplaceTopKDistance getInputAndCheck begin");
   inputs.topk_pq_distance = ctx.Input(0);
   inputs.topk_pq_index = ctx.Input(1);
@@ -110,12 +109,11 @@ uint32_t InplaceTopKDistanceCpuKernel::DoCompute(CpuKernelContext& ctx, Inputs& 
   }
 
   sort(items.begin(), items.end(), [](const Item<T>& a, const Item<T>& b) { return a.value < b.value; });
-  return ModifyInput(items, inputs, ctx);
+  return ModifyInput(items, inputs);
 }
 
 template <typename T>
-uint32_t InplaceTopKDistanceCpuKernel::ModifyInput(std::vector<Item<T>> items_vec, Inputs& inputs,
-                                                   CpuKernelContext& ctx) {
+uint32_t InplaceTopKDistanceCpuKernel::ModifyInput(std::vector<Item<T>> items_vec, const Inputs& inputs) {
   int64_t topk_elements_num = inputs.topk_pq_distance->NumElements();
   T *topk_value_ptr = static_cast<T *>(inputs.topk_pq_distance->GetData());
   int32_t *topk_index_ptr = static_cast<int32_t *>(inputs.topk_pq_index->GetData());

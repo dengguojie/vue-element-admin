@@ -195,8 +195,8 @@ uint32_t EditDistanceMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
                        "Get attr:[normalize] failed.");
   normalize_ = normalize->GetBool();
   // get input Tensors
-  const int kNumInput = 6;
-  for (int i = 0; i < kNumInput; ++i) {
+  const uint32_t kNumInput = 6;
+  for (uint32_t i = 0; i < kNumInput; ++i) {
     Tensor *tensor = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "EditDistance Get input "
@@ -210,8 +210,8 @@ uint32_t EditDistanceMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     inputs_.push_back(tensor);
   }
   // get output Tensors
-  const int kNumOutput = 1;
-  for (int i = 0; i < kNumOutput; ++i) {
+  const uint32_t kNumOutput = 1;
+  for (uint32_t i = 0; i < kNumOutput; ++i) {
     Tensor *tensor = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "GetInputAndCheck: Get "

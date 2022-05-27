@@ -48,13 +48,13 @@ class InplaceTopKDistanceCpuKernel : public CpuKernel {
     int32_t ivf;
   };
 
-  uint32_t GetInputAndCheck(CpuKernelContext& ctx, Inputs& inputs) const;
+  uint32_t GetInputAndCheck(const CpuKernelContext& ctx, Inputs& inputs) const;
 
   template <typename T>
   uint32_t DoCompute(CpuKernelContext& ctx, Inputs& inputs);
 
   template <typename T>
-  uint32_t ModifyInput(std::vector<Item<T>> items, Inputs& inputs, CpuKernelContext& ctx);
+  uint32_t ModifyInput(std::vector<Item<T>> items, const Inputs& inputs);
 };
 }  // namespace aicpu
 #endif

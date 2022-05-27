@@ -30,7 +30,6 @@ class EditDistanceMsCpuKernel : public CpuKernel {
 
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
 
- private:
   bool normalize_ = true;
   std::vector<Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
@@ -50,8 +49,8 @@ class EditDistanceMsCpuKernel : public CpuKernel {
 template <typename T, typename Cmp>
 int64_t LevenshteinDistance(const std::vector<T> &s,
                                    const std::vector<T> &t, const Cmp &cmp) {
-  const int64_t kSSize = s.size();
-  const int64_t kTSize = t.size();
+  const std::vector<int64_t>::size_type kSSize = s.size();
+  const std::vector<int64_t>::size_type kTSize = t.size();
 
   if (kTSize > kSSize) {
     return LevenshteinDistance(t, s, cmp);
@@ -71,26 +70,26 @@ int64_t LevenshteinDistance(const std::vector<T> &s,
 
   // Special case for i = 0: Distance between empty string and string
   // of length j is just j.
-  for (int64_t j = 1; j < kTSize; ++j) {
+  for (uint64_t j = 1; j < kTSize; ++j) {
     scratch[j - 1] = j;
   }
 
-  for (int64_t i = 1; i <= kSSize; ++i) {
+  for (std::vector<int64_t>::size_type i = 1; i <= kSSize; ++i) {
     // Invariant: scratch[j - 1] equals cost(i - 1, j).
-    int substitution_base_cost = i - 1;
-    int insertion_cost = i + 1;
-    for (int64_t j = 1; j <= kTSize; ++j) {
+    int64_t substitution_base_cost = i - 1;
+    int64_t insertion_cost = i + 1;
+    for (std::vector<int64_t>::size_type j = 1; j <= kTSize; ++j) {
       // Invariants:
       //  scratch[k - 1] = cost(i, k)  for 0 < k < j.
       //  scratch[k - 1] = cost(i - 1, k)  for j <= k <= kTSize.
       //  substitution_base_cost = cost(i - 1, j - 1)
       //  insertion_cost = cost(i, j - 1)
-      const int kReplacementCost = cmp(s_data[i - 1], t_data[j - 1]) ? 0 : 1;
-      const int kSubstitutionCost = substitution_base_cost + kReplacementCost;
-      const int kDeletionCost = scratch[j - 1] + 1;
+      const int64_t kReplacementCost = cmp(s_data[i - 1], t_data[j - 1]) ? 0 : 1;
+      const int64_t kSubstitutionCost = substitution_base_cost + kReplacementCost;
+      const int64_t kDeletionCost = scratch[j - 1] + 1;
 
       // Select the cheapest edit.
-      const int kCheapest =  // = cost(i, j)
+      const int64_t kCheapest =  // = cost(i, j)
           std::min(kDeletionCost, std::min(insertion_cost, kSubstitutionCost));
 
       // Restore invariant for the next iteration of the loop.
