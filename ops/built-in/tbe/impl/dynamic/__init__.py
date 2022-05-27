@@ -419,3 +419,5 @@ from .ndtri import ndtri
 from .celu_v2 import celu_v2
 from .non_max_suppression_bucketize import non_max_suppression_bucketize
 from .elu_grad_v2 import elu_grad_v2
+from .cdist import cdist
+from .cdist_grad import cdist_grad

@@ -3,9 +3,10 @@
 		"case_name":"Test_Cdist_001",
 		"st_mode":"",
 		"op":"Cdist",
-		"calc_expect_func_file":"",
+		"calc_expect_func_file":"test_cdist_golden.py:calc_expect_func",
 		"input_desc":[
 			{
+				"name":"x1",
 				"format":[
 					"ND"
 				],
@@ -29,6 +30,7 @@
 				]
 			},
 			{
+				"name":"x2",
 				"format":[
 					"ND"
 				],
@@ -54,6 +56,7 @@
 		],
 		"output_desc":[
 			{
+				"name":"y",
 				"format":[
 					"ND"
 				],
@@ -65,6 +68,91 @@
 					3,
 					4
 				]
+			}
+		],
+		"attr":[
+			{
+				"name":"p",
+				"value":2.0,
+				"type":"float"
+			}
+		]
+	},
+	{
+		"case_name":"Test_Cdist_002",
+		"st_mode":"",
+		"op":"Cdist",
+		"calc_expect_func_file":"test_cdist_golden.py:calc_expect_func",
+		"input_desc":[
+			{
+				"name":"x1",
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					-1,
+					3,
+					4,
+					5
+				],
+				"shape_range": [[1, 3]],
+				"typical_shape": [1, 3, 4, 5],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			},
+			{
+				"name":"x2",
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					-1,
+					3,
+					4,
+					5
+				],
+				"shape_range": [[1, 3]],
+				"typical_shape": [1, 3, 4, 5],
+				"value_range":[
+					[
+						0.1,
+						1.0
+					]
+				],
+				"data_distribute":[
+					"uniform"
+				]
+			}
+		],
+		"output_desc":[
+			{
+				"name":"y",
+				"format":[
+					"ND"
+				],
+				"type":[
+					"float16"
+				],
+				"shape":[
+					-1,
+					3,
+					4
+				],
+				"shape_range": [[1, 3]],
+				"typical_shape": [1, 3, 4]
 			}
 		],
 		"attr":[
