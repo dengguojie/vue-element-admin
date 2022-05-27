@@ -45,6 +45,7 @@ aicpu:
       - ops/built-in/op_proto/inc/math_ops.h
       - ops/built-in/op_proto/math_ops.cc
       - ops/built-in/framework/tf_plugin/banded_triangular_solve_plugin.cc
+      - ops/built-in/op_proto/inc/image_ops.h
       - ops/built-in/framework/tf_plugin/empty_tensor_map_plugin.cc
       - ops/built-in/framework/tf_plugin/ragged_bincount_plugin.cc
       - ops/built-in/framework/tf_plugin/tensor_map_erase_plugin.cc
@@ -2390,7 +2391,6 @@ unkown:
       - ops/built-in/op_proto/inc/get_data_ops.h
       - ops/built-in/op_proto/inc/outfeed_ops.h
       - ops/built-in/op_proto/inc/batch_ops.h
-      - ops/built-in/op_proto/inc/image_ops.h
       - ops/built-in/op_proto/inc/random_ops.h
       - ops/built-in/op_proto/inc/pad_ops.h
       - ops/built-in/op_proto/inc/split_combination_ops.h
