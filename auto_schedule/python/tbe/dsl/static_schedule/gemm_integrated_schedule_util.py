@@ -61,10 +61,9 @@ class GemmScheduleStatusController:
     def __init__(self):
         self.gm_ub = None
         self.have_batch_a, self.have_batch_b, self.have_batch = False, False, False
-        self.have_bias, self.have_c = False, False
         self.need_init_bias = False
         self.a_l1_inline_flag, self.b_l1_inline_flag = False, False
-        self.dequant_flag, self.quant_fusion, self.quantify_fusion = False, False, False
+        self.quant_fusion, self.quantify_fusion = False, False
         self.requant_fusion, self.dequant_fusion = False, False
         self.reduce_fusion = False
         self.only_use_gevm_gemv_flow = False

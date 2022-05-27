@@ -965,6 +965,5 @@ if __name__ == '__main__':
     for case in cases:
         print(case)
         ut_case.add_case(["Ascend310"], case)
-
     ut_case.run(["Ascend310", "Ascend910B2"], simulator_mode="pv",
                 simulator_lib_path="../../Ascend/toolkit/tools/simulator")

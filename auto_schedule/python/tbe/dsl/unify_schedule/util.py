@@ -486,11 +486,14 @@ def get_fusion_matmul_tensor(tensor_map, all_tensor, leaf_tensor):
         multi_output_list = [output_tensor for output_tensor in res.op.input_tensors]
         tensor_map["multi_output_list"] = multi_output_list
         res = multi_output_list[-1]
-    if res.op.tag != "gemm":
+    if res.op.tag not in ("gemm", "matmul_gemv", "matmul_gevm", "matmul"):
+        tensor_map["tensor_c_gm"] = all_tensor.get("tensor_c_gm")
         if res.op.tag not in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
             get_ub_tensor(all_tensor, leaf_tensor, tensor_map)
         else:
             get_fixpipe_tensor(res, tensor_map)
+    else:
+        tensor_map["tensor_c_gm"] = res
 
 
 def get_fixpipe_tensor(res, tensor_map):
