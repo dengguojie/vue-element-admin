@@ -207,16 +207,16 @@ def bn_infer(x, scale, offset, mean, variance, y,
         error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
     _check_dtype(dtype_x, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
 
-    ins = classify([x, scale], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x, scale, offset, mean, variance], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (_x, _scale) in ins:
+    for (_x, _scale, _offset, _mean, _variance) in ins:
         with tbe.compute():
-            shape_list = shape_util.variable_shape([_x, _scale])
+            shape_list = shape_util.variable_shape([_x, _scale, _offset, _mean, _variance])
             x_input = tvm.placeholder(shape_list[0], name="x_input", dtype=dtype_x.lower())
             scale_input = tvm.placeholder(shape_list[1], name="scale_input", dtype=dtype_scale.lower())
-            offset_input = tvm.placeholder(shape_list[1], name="offset_input", dtype=dtype_offset.lower())
-            mean_input = tvm.placeholder(shape_list[1], name="mean_input", dtype=dtype_mean.lower())
-            variance_input = tvm.placeholder(shape_list[1], name="variance_input", dtype=dtype_variance.lower())
+            offset_input = tvm.placeholder(shape_list[2], name="offset_input", dtype=dtype_offset.lower())
+            mean_input = tvm.placeholder(shape_list[3], name="mean_input", dtype=dtype_mean.lower())
+            variance_input = tvm.placeholder(shape_list[4], name="variance_input", dtype=dtype_variance.lower())
             res = bn_infer_compute(x_input, scale_input, offset_input, mean_input, variance_input,
                                    y, epsilon, kernel_name=kernel_name)
             tensors.append([x_input, scale_input, offset_input, mean_input, variance_input, res])
