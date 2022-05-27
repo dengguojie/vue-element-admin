@@ -192,7 +192,15 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
                                                               i[list_axis[1]] > pad_c - 1), 0)
     data_expsum = tbe.reduce_sum(data_exp, list_axis, keepdims=True)
 
-    if (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
+    if is_use_value and input_format in ("FRACTAL_NZ",) and tbe_product in ("Ascend910",):
+        if check_is_axes_with_last(shape, axis):
+            tmp_shape = list(data_expsum.shape[:-1]) + [shape[-1]]
+            data_expsum = tbe.broadcast(data_expsum, tmp_shape)
+            data_expsum = tbe.broadcast(data_expsum, shape)
+        else:
+            data_expsum = tbe.broadcast(data_expsum, shape)
+        output = tbe.vdiv(data_exp, data_expsum)
+    elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
             tbe_platform.api_check_support("tik.vgatherb")
        ) and output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         if _is_special_cases(ori_shape):
@@ -220,6 +228,9 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
 
     if has_improve_precision and dtype == "float16":
         output = tbe.cast_to(output, "float16")
+
+    if is_use_value and input_format in ("FRACTAL_NZ",):
+        output = tbe.set_value(output, lambda *i: i[-2] > ori_shape[-2] - 1, 0)
 
     return output
 
