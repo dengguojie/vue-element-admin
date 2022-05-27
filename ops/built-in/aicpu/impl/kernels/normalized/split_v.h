@@ -50,7 +50,7 @@ class SplitVCpuKernel : public CpuKernel {
    * @param ctx cpu kernel context
    * @return status if success
    */
-  uint32_t CheckAndInitParams(CpuKernelContext &ctx);
+  uint32_t CheckAndInitParams(const CpuKernelContext &ctx);
   
   /**
    * @brief get size of each split
@@ -68,7 +68,7 @@ class SplitVCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <typename T>
-  uint32_t SplitVWithOneOutput(T *input_data_ptr,
+  uint32_t SplitVWithOneOutput(const T *input_data_ptr,
                                std::vector<T *> output_data_vec);
 
   /**
@@ -92,9 +92,8 @@ class SplitVCpuKernel : public CpuKernel {
                          std::vector<T *> output_data_vec);
 
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
 
- private:
   DataType data_type_;
   int32_t split_dim_;
   int64_t num_split_;

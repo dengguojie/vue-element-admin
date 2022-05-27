@@ -23,18 +23,16 @@ class Log1pCpuKernel : public CpuKernel {
  public:
   Log1pCpuKernel() = default;
   ~Log1pCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t Log1pCheck(CpuKernelContext &ctx);
+  uint32_t Log1pCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t Log1pCompute(CpuKernelContext &ctx);
+  uint32_t Log1pCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t Log1pComputeComplex(CpuKernelContext &ctx);
+  uint32_t Log1pComputeComplex(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

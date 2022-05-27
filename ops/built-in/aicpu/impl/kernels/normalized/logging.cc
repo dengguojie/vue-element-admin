@@ -26,7 +26,7 @@
 using namespace std;
 
 namespace {
-const char *kAssert = "Assert";
+const char *const kAssert = "Assert";
 
 template <typename T>
 string PrintOneElement(const T &elt) {
@@ -59,7 +59,7 @@ uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   auto sum_attr = ctx.GetAttr("summarize");
   KERNEL_CHECK_NULLPTR(sum_attr, KERNEL_STATUS_PARAM_INVALID,
                        "Get summarize attr failed.")
-  uint32_t sum = sum_attr->GetInt();
+  int64_t sum = sum_attr->GetInt();
   // assert fail info, the value printed depends on the attribute summarize
   string msg = "assertion failed: ";
   for (uint32_t i = 1; i < ctx.GetInputsSize(); ++i) {
@@ -79,7 +79,7 @@ string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries, const boo
   if (max_entries < 0) {
     max_entries = num_elts;
   }
-  size_t limit = std::min(max_entries, num_elts);
+  int64_t limit = std::min(max_entries, num_elts);
   if ((limit > 0) && (t.GetData() == nullptr)) {
     string ret = "uninitialized Tensor of ";
     ret.append(to_string(num_elts));
@@ -120,7 +120,7 @@ string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries, const boo
     default: {
       // All irregular cases
       string ret;
-      for (size_t i = 0; i < limit; ++i) {
+      for (int64_t i = 0; i < limit; ++i) {
         ret.append(" ?");
       }
       if (max_entries < num_elts) {
@@ -133,7 +133,7 @@ string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries, const boo
 
 // Print from left dim to right dim recursively.
 template <typename T>
-void AssertCpuKernel::PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
+void AssertCpuKernel::PrintOneDim(int dim_index, const std::shared_ptr<TensorShape> shape,
                                   int64_t limit, int shape_size, const T *data,
                                   int64_t *data_index, string &result) {
   if (*data_index >= limit) {
@@ -176,7 +176,7 @@ void AssertCpuKernel::PrintOneDim(int dim_index, std::shared_ptr<TensorShape> sh
 
 template <typename T>
 string AssertCpuKernel::SummarizeArray(const int64_t limit, const int64_t num_elts,
-                                       Tensor &t, const bool print_v2) {
+                                       const Tensor &t, const bool print_v2) {
   string ret;
   const T *array = reinterpret_cast<const T *>(t.GetData());
   std::shared_ptr<TensorShape> shape = t.GetTensorShape();

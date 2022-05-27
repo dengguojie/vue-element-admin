@@ -21,7 +21,7 @@
 #include "cpu_kernel_utils.h"
 
 namespace {
-const char *kMul = "Mul";
+const char *const kMul = "Mul";
 }
 
 namespace aicpu {
@@ -69,7 +69,7 @@ uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
+uint32_t MulCpuKernel::MulCompute(const CpuKernelContext &ctx) {
   BCalcInfo calcInfo;
   calcInfo.input_0 = ctx.Input(kFirstInputIndex);
   calcInfo.input_1 = ctx.Input(kSecondInputIndex);
@@ -93,7 +93,7 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("[%s] Generate broadcast info failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  (void)bcast.GetBcastVec(calcInfo);
+  bcast.GetBcastVec(calcInfo);
   int32_t rank = static_cast<int32_t>(calcInfo.shape_out.size());
   switch (rank) {
     case 0:
@@ -135,7 +135,7 @@ uint32_t MulCpuKernel::MulCalculateWithAlignedCheck(const CpuKernelContext &ctx,
   return MulCalculate<RANK, T, Eigen::Unaligned>(ctx, calcInfo);
 }
 
-bool MulCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) {
+bool MulCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) const {
   return AddrAlignedCheck(calcInfo.input_0->GetData()) &&
          AddrAlignedCheck(calcInfo.input_1->GetData()) &&
          AddrAlignedCheck(calcInfo.output->GetData());
@@ -173,11 +173,11 @@ uint32_t MulCpuKernel::MulCalculate(const CpuKernelContext &ctx, BCalcInfo &calc
   Eigen::array<Eigen::DenseIndex, RANK> bcast_1;
 
   for (int32_t i = 0; i < RANK; i++) {
-    reshape_0[RANK - i - 1] = calcInfo.reshape_0[i];
-    reshape_1[RANK - i - 1] = calcInfo.reshape_1[i];
-    shape_out[RANK - i - 1] = calcInfo.shape_out[i];
-    bcast_0[RANK - i - 1] = calcInfo.bcast_0[i];
-    bcast_1[RANK - i - 1] = calcInfo.bcast_1[i];
+    reshape_0[(RANK - i) - 1] = calcInfo.reshape_0[i];
+    reshape_1[(RANK - i) - 1] = calcInfo.reshape_1[i];
+    shape_out[(RANK - i) - 1] = calcInfo.shape_out[i];
+    bcast_0[(RANK - i) - 1] = calcInfo.bcast_0[i];
+    bcast_1[(RANK - i) - 1] = calcInfo.bcast_1[i];
   }
   output.reshape(shape_out) =
       input0.reshape(reshape_0).broadcast(bcast_0) * input1.reshape(reshape_1).broadcast(bcast_1);

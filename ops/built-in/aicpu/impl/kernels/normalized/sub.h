@@ -36,11 +36,11 @@ class SubCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
 
   template <typename T, int32_t RANK>
   uint32_t BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y, TensorMap<T> &out,
-                            Bcast &bcast);
+                            const Bcast &bcast);
 };
 }  // namespace aicpu
 #endif

@@ -39,7 +39,7 @@ const std::int64_t ComplexParallelNums[kParallelLevel] = {24000, 96000, 192000};
 constexpr int64_t kMinCoreNum = 1;
 constexpr int64_t kUseCpuNumlevel1 = 6;
 constexpr int64_t kUseCpuNumlevel2 = 8;
-const char *kSquare{"Square"};
+const char *const kSquare{"Square"};
 }  // namespace
 
 namespace aicpu {
@@ -155,8 +155,7 @@ inline std::uint32_t SquareExtraCheck(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-std::uint32_t SquareCheck(CpuKernelContext &ctx, uint32_t inputs_num,
-                          uint32_t outputs_num) {
+std::uint32_t SquareCheck(CpuKernelContext &ctx) {
   return NormalCheck(ctx, kSquareInputNum, kSquareOutputNum)
              ? KERNEL_STATUS_PARAM_INVALID
              : SquareExtraCheck(ctx);
@@ -190,9 +189,8 @@ std::uint32_t SquareCompute(const CpuKernelContext &ctx) {
 }  // namespace detail
 
 std::uint32_t SquareCpuKernel::Compute(CpuKernelContext &ctx) {
-  return detail::SquareCheck(ctx, kSquareInputNum, kSquareOutputNum)
-             ? KERNEL_STATUS_PARAM_INVALID
-             : detail::SquareCompute(ctx);
+  return detail::SquareCheck(ctx) ? KERNEL_STATUS_PARAM_INVALID
+                                  : detail::SquareCompute(ctx);
 }
 
 REGISTER_CPU_KERNEL(kSquare, SquareCpuKernel);

@@ -24,7 +24,7 @@
 #include "status.h"
 
 namespace {
-const char *kIsInf = "IsInf";
+const char *const kIsInf = "IsInf";
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
 constexpr int64_t kParallelDataNumsFloat16 = 128 * 1024;
@@ -61,7 +61,7 @@ uint32_t IsInfCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t IsInfCpuKernel::IsInfCheck(CpuKernelContext &ctx) {
+uint32_t IsInfCpuKernel::IsInfCheck(const CpuKernelContext &ctx) const {
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input data failed.")
   KERNEL_CHECK_NULLPTR(ctx.Output(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -70,13 +70,13 @@ uint32_t IsInfCpuKernel::IsInfCheck(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t IsInfCpuKernel::IsInfCompute(CpuKernelContext &ctx) {
+uint32_t IsInfCpuKernel::IsInfCompute(const CpuKernelContext &ctx) {
   auto input = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
 
   auto data_type = ctx.Input(0)->GetDataType();
   int64_t data_num = ctx.Output(0)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
 
   if ((data_type == DT_FLOAT16 && data_size <= kParallelDataNumsFloat16) ||
       (data_type == DT_FLOAT && data_size <= kParallelDataNumsFloat) ||

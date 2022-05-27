@@ -156,7 +156,7 @@ class StridedSliceCpuKernel : public CpuKernel {
 
   uint32_t ParseIndexInput(CpuKernelContext &ctx, uint32_t index,
                            std::vector<int64_t> &vec);
-  uint32_t GetMaskAttr(CpuKernelContext &ctx, std::string attr, int64_t &mask);
+  uint32_t GetMaskAttr(const CpuKernelContext &ctx, const std::string attr, int64_t &mask) const;
 
   /**
    * @brief convert negative idx to positive
@@ -228,7 +228,6 @@ class StridedSliceCpuKernel : public CpuKernel {
     return false;
   }
 
- private:
   std::vector<int64_t> begin_;
   std::vector<int64_t> end_;
   std::vector<int64_t> strides_;

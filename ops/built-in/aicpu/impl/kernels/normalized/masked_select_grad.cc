@@ -26,7 +26,7 @@
 namespace {
 constexpr uint32_t kMaskedSelectGradInputNum = 3;
 constexpr uint32_t kMaskedSelectGradOutputNum = 1;
-const char *kMaskedSelectGrad = "MaskedSelectGrad";
+const char *const kMaskedSelectGrad = "MaskedSelectGrad";
 }
 
 namespace aicpu {
@@ -85,7 +85,7 @@ uint32_t MaskedSelectGradCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t MaskedSelectGradCpuKernel::MaskedSelectGradCompute(CpuKernelContext &ctx) {
+uint32_t MaskedSelectGradCpuKernel::MaskedSelectGradCompute(const CpuKernelContext &ctx) {
   bool *mask = reinterpret_cast<bool *>(ctx.Input(1)->GetData());
   KERNEL_CHECK_NULLPTR(mask, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get input_data[1] failed.", kMaskedSelectGrad);

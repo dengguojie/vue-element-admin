@@ -95,7 +95,7 @@ uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawParamCheck(
 
 template <typename T>
 uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawCompute(
-    CpuKernelContext &ctx) {
+    const CpuKernelContext &ctx) {
   int data_num = ctx.Input(0)->NumElements();
   auto q_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto j_x = reinterpret_cast<int64_t *>(ctx.Input(1)->GetData());

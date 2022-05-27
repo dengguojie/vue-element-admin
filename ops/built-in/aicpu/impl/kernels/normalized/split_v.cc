@@ -17,11 +17,11 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kSplitV = "SplitV";
+const char *const kSplitV = "SplitV";
 }
 
 namespace aicpu {
-uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
+uint32_t SplitVCpuKernel::CheckAndInitParams(const CpuKernelContext &ctx) {
   // get Attr num_split
   AttrValue *num_split_ptr = ctx.GetAttr("num_split");
   KERNEL_CHECK_NULLPTR(num_split_ptr, KERNEL_STATUS_PARAM_INVALID,
@@ -96,9 +96,9 @@ uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
                        KERNEL_STATUS_PARAM_INVALID, "GetSizeSplits failed.");
   }
   // get output data
-  output_ptr_vec_.resize(num_split_);
+  output_ptr_vec_.resize(static_cast<std::size_t>(num_split_));
   for (int64_t i = 0; i < num_split_; i++) {
-    Tensor *output_ptr = ctx.Output(i);
+    Tensor *output_ptr = ctx.Output(static_cast<uint32_t>(i));
     KERNEL_CHECK_NULLPTR(output_ptr, KERNEL_STATUS_PARAM_INVALID,
                          "Get output [%d] failed.", i);
     auto output_data_ptr = output_ptr->GetData();
@@ -111,7 +111,7 @@ uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t SplitVCpuKernel::GetSizeSplits(void *size_splits_data_ptr, int64_t real_dim) {
-  size_splits_.resize(num_split_);
+  size_splits_.resize(static_cast<std::size_t>(num_split_));
   T *size_splits_data = reinterpret_cast<T *>(size_splits_data_ptr);
   int64_t unique_one_dim = -1;
   T total_dim = 0;
@@ -140,9 +140,9 @@ uint32_t SplitVCpuKernel::GetSizeSplits(void *size_splits_data_ptr, int64_t real
 }
 
 template <typename T>
-uint32_t SplitVCpuKernel::SplitVWithOneOutput(T *input_data_ptr,
+uint32_t SplitVCpuKernel::SplitVWithOneOutput(const T *input_data_ptr,
                                               std::vector<T *> output_data_vec) {
-  int64_t copy_size = value_num_ * sizeof(T);
+  int64_t copy_size = value_num_ * static_cast<int64_t>(sizeof(T));
   auto mem_ret = memcpy_s(output_data_vec[0], copy_size, input_data_ptr, copy_size);
   KERNEL_CHECK_FALSE((mem_ret == EOK), KERNEL_STATUS_PARAM_INVALID,
                      "Memcpy size[%zu] from input value to output[0] failed.",
@@ -155,9 +155,9 @@ uint32_t SplitVCpuKernel::SplitVWithDimZero(T *input_data_ptr,
                                             std::vector<T *> output_data_vec) {
   int64_t copy_num = value_num_ / value_shape_vec_[0];
   T *input_copy_ptr = input_data_ptr;
-  for (int32_t i = 0; i < num_split_; i++) {
+  for (int64_t i = 0; i < num_split_; i++) {
     int64_t copy_size_per = size_splits_[i] * copy_num;
-    int64_t copy_size = copy_size_per * sizeof(T);
+    int64_t copy_size = copy_size_per * static_cast<int64_t>(sizeof(T));
     auto mem_ret = memcpy_s(output_data_vec[i], copy_size, input_copy_ptr, copy_size);
     KERNEL_CHECK_FALSE((mem_ret == EOK), KERNEL_STATUS_PARAM_INVALID,
                        "Memcpy size[%zu] from input value to output[%d] failed.",
@@ -176,7 +176,8 @@ uint32_t SplitVCpuKernel::SplitVCompute(T *input_data_ptr,
   }
   int64_t midfix = value_shape_vec_[split_dim_];
   int64_t subfix = 1;
-  for (size_t i = split_dim_ + 1; i < value_shape_vec_.size(); i++) {
+  int32_t value_shape_vec_size = static_cast<int32_t>(value_shape_vec_.size());
+  for (int32_t i = split_dim_ + 1; i < value_shape_vec_size; i++) {
     subfix *= value_shape_vec_[i];
   }
   int64_t offset = 0;
@@ -199,10 +200,10 @@ uint32_t SplitVCpuKernel::SplitVCompute(T *input_data_ptr,
 }
 
 template <typename T>
-uint32_t SplitVCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t SplitVCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   T *input_data_ptr = reinterpret_cast<T *>(value_data_ptr_);
   std::vector<T *> output_data_vec;
-  output_data_vec.resize(num_split_);
+  output_data_vec.resize(static_cast<std::size_t>(num_split_));
   for (int64_t i = 0; i < num_split_; i++) {
     output_data_vec[i] = reinterpret_cast<T *>(output_ptr_vec_[i]);
   }

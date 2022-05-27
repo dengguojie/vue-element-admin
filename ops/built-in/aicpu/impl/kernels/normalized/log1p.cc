@@ -22,7 +22,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-const char *kLog1p = "Log1p";
+const char *const kLog1p = "Log1p";
 constexpr int64_t kParallelDataNums = 16 * 1024;
 
 #define LOG1P_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
@@ -66,7 +66,7 @@ uint32_t Log1pCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t Log1pCpuKernel::Log1pCheck(CpuKernelContext &ctx) {
+uint32_t Log1pCpuKernel::Log1pCheck(const CpuKernelContext &ctx) const {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -79,11 +79,11 @@ uint32_t Log1pCpuKernel::Log1pCheck(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t Log1pCpuKernel::Log1pCompute(CpuKernelContext &ctx) {
+uint32_t Log1pCpuKernel::Log1pCompute(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Input(0)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
       KERNEL_CHECK_FALSE(*(input_x + i) >= static_cast<T>(-1), KERNEL_STATUS_PARAM_INVALID,
@@ -112,12 +112,12 @@ uint32_t Log1pCpuKernel::Log1pCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t Log1pCpuKernel::Log1pComputeComplex(CpuKernelContext &ctx) {
+uint32_t Log1pCpuKernel::Log1pComputeComplex(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   auto data_type = ctx.Input(0)->GetDataType();
   int64_t data_num = ctx.Input(0)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   typedef Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic> ArrayxXd;
   ArrayxXd array_x(1, data_num);
   if (data_size <= kParallelDataNums) {

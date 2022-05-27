@@ -23,15 +23,13 @@ class LogSoftmaxV2CpuKernel : public CpuKernel {
  public:
   LogSoftmaxV2CpuKernel() = default;
   ~LogSoftmaxV2CpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext& ctx) override;
 
  private:
-  uint32_t LogSoftmaxV2Check(CpuKernelContext& ctx);
+  uint32_t LogSoftmaxV2Check(const CpuKernelContext& ctx);
 
   template <typename T>
-  uint32_t LogSoftmaxV2Compute(CpuKernelContext& ctx);
+  uint32_t LogSoftmaxV2Compute(const CpuKernelContext& ctx);
 };
 
 }  // namespace aicpu

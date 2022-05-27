@@ -25,7 +25,7 @@
 namespace {
 const uint32_t kOutputNum = 2;
 const uint32_t kInputNum = 1;
-const char *kMultinomialAliasSetup = "MultinomialAliasSetup";
+const char *const kMultinomialAliasSetup = "MultinomialAliasSetup";
 const double ZERO = 0.;
 
 #define MULTINOMIAL_ALIAS_SETUP_COMPUTE_CASE(DTYPE, TYPE, CTX)              \
@@ -57,7 +57,7 @@ uint32_t MultinomialAliasSetupCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(CpuKernelContext &ctx) {
+uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(const CpuKernelContext &ctx) {
   // the non null of input, output has been verified in NormalCheck
   Tensor *probs = ctx.Input(0);
   auto probs_shape = probs->GetTensorShape();
@@ -86,16 +86,16 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupParamCheck(CpuKern
 }
 
 template <typename T>
-void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(CpuKernelContext &ctx,
+void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(const CpuKernelContext &ctx,
                                                               std::vector<T> &accept,
                                                               std::vector<int64_t> &alias,
                                                               double &max) {
   int64_t data_num = ctx.Input(0)->NumElements();
   std::vector<T> area_ratio;
-  std::stack<int> large;
-  std::stack<int> small;
-  size_t large_idx = -1;
-  size_t small_idx = -1;
+  std::stack<int64_t> large;
+  std::stack<int64_t> small;
+  int64_t large_idx = -1;
+  int64_t small_idx = -1;
 
   auto probs_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   for (int64_t i = 0; i < data_num; i++) {
@@ -150,7 +150,7 @@ uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(CpuKernelC
   if (max>1) {
     for (int64_t i = 0; i < data_num; i++) {
       if (accept[i] < 1) {
-        accept[i] /= max;
+        accept[i] /= static_cast<T>(max);
       }
       *(out_j + i) = alias[i];
       *(out_q + i) = accept[i];

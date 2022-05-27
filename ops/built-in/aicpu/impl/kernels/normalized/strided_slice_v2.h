@@ -63,7 +63,7 @@ class StridedSliceV2CpuKernel : public CpuKernel {
                               std::vector<int64_t> &end_vec,
                               std::vector<int64_t> &strides_vec);
 
-  uint32_t DoStridedSliceV2(CpuKernelContext &ctx,
+  uint32_t DoStridedSliceV2(const CpuKernelContext &ctx,
                             const std::vector<int64_t> &begin_vec,
                             const std::vector<int64_t> &end_vec,
                             const std::vector<int64_t> &strides_vec);

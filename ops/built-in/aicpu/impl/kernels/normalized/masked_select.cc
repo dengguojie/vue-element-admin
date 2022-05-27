@@ -26,7 +26,7 @@
 namespace {
 constexpr uint32_t kMaskedSelectInputNum = 2;
 constexpr uint32_t kMaskedSelectOutputNum = 1;
-const char *kMaskedSelect = "MaskedSelect";
+const char *const kMaskedSelect = "MaskedSelect";
 }
 
 namespace aicpu {
@@ -85,7 +85,7 @@ uint32_t MaskedSelectCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t MaskedSelectCpuKernel::MaskedSelectCompute(CpuKernelContext &ctx) {
+uint32_t MaskedSelectCpuKernel::MaskedSelectCompute(const CpuKernelContext &ctx) {
   T *x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   KERNEL_CHECK_NULLPTR(x, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get input_data[0] failed.", kMaskedSelect);

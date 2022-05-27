@@ -36,7 +36,7 @@ class TanhGradCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <typename T>
-  uint32_t TanhGradCompute(CpuKernelContext &ctx);
+  uint32_t TanhGradCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_TANHGRAD_H_

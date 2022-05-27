@@ -12,12 +12,12 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kLinSpace = "LinSpace";
+const char *const kLinSpace = "LinSpace";
 const uint32_t kInputNum = 3;
 const uint32_t kOutputNum = 1;
 }
 namespace aicpu {
-uint32_t LinSpaceParaCheck(CpuKernelContext &ctx, int64_t &num_value) {
+uint32_t LinSpaceParaCheck(const CpuKernelContext &ctx, int64_t &num_value) {
   Tensor *tensor_start = ctx.Input(kFirstInputIndex);
   Tensor *tensor_stop = ctx.Input(kSecondInputIndex);
   Tensor *tensor_num = ctx.Input(kThirdInputIndex);
@@ -66,7 +66,7 @@ uint32_t LinSpaceParaCheck(CpuKernelContext &ctx, int64_t &num_value) {
 }
 
 template <typename T>
-uint32_t LinSpaceCompute(CpuKernelContext &ctx, int64_t num_value) {
+uint32_t LinSpaceCompute(const CpuKernelContext &ctx, int64_t num_value) {
   T *start_value = reinterpret_cast<T *>(ctx.Input(kFirstInputIndex)->GetData());
   T *stop_value = reinterpret_cast<T *>(ctx.Input(kSecondInputIndex)->GetData());
   T *output_value = reinterpret_cast<T *>(ctx.Output(kFirstInputIndex)->GetData());
@@ -98,8 +98,6 @@ uint32_t LinSpaceCpuKernel::Compute(CpuKernelContext &ctx) {
       KERNEL_LOG_ERROR("LinSpace dtype[%d] is invalid.", data_type);
       return KERNEL_STATUS_PARAM_INVALID;
   }
-
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kLinSpace, LinSpaceCpuKernel);

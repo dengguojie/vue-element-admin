@@ -31,7 +31,7 @@ class AssertCpuKernel : public CpuKernel {
                              const bool print_v2 = false);
   template <typename T>
   std::string SummarizeArray(const int64_t limit, const int64_t num_elts,
-                             Tensor &t, const bool print_v2);
+                             const Tensor &t, const bool print_v2);
   template <typename T>
   void PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
                    int64_t limit, int shape_size, const T *data,

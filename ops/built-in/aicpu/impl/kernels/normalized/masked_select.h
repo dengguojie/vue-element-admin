@@ -31,7 +31,7 @@ class MaskedSelectCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <typename T>
-  uint32_t MaskedSelectCompute(CpuKernelContext &ctx);
+  uint32_t MaskedSelectCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

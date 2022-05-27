@@ -22,7 +22,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
-const char *kSquaredDifference = "SquaredDifference";
+const char *const kSquaredDifference = "SquaredDifference";
 // when input data size is more than kParallelDataNum, use Parallel func
 const int64_t kParallelDataNum = 2 * 1024;
 const int64_t kParallelDataNumMid = 32 * 1024;
@@ -63,7 +63,7 @@ uint32_t SquaredDifferenceCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCheck(CpuKernelContext &ctx) {
+uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCheck(const CpuKernelContext &ctx) const {
   // the non null of input_0, input_1, output has been verified in NormalCheck
   Tensor *input_0 = ctx.Input(0);
   Tensor *input_1 = ctx.Input(1);
@@ -96,8 +96,8 @@ uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCheck(CpuKernelContext &ct
 // 4. the shapes of input1 and input2 are different
 template <typename T>
 void SquaredDifferenceCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
-                                                int64_t end, T *input1,
-                                                T *input2, T *output) {
+                                                int64_t end, const T *input1,
+                                                const T *input2, T *output) {
   switch (type) {
     case BcastShapeType::SAME_SHAPE:
       for (int64_t i = start; i < end; ++i) {
@@ -126,7 +126,7 @@ void SquaredDifferenceCpuKernel::SpecialCompute(BcastShapeType type, int64_t sta
 }
 
 template <typename T>
-uint32_t SquaredDifferenceCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
+uint32_t SquaredDifferenceCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
@@ -140,11 +140,11 @@ uint32_t SquaredDifferenceCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
-    uint32_t max_core_num = std::max(
+    int64_t max_core_num = std::max(
         min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
-      max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
+      max_core_num = std::min(max_core_num, static_cast<int64_t>(4));   // up to 4 cpu cores
     }
 
     if (max_core_num > data_num) {
@@ -167,18 +167,18 @@ uint32_t SquaredDifferenceCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t SquaredDifferenceCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
+uint32_t SquaredDifferenceCpuKernel::BcastCompute(const CpuKernelContext &ctx, Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Output(0)->NumElements();
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
-    uint32_t max_core_num =
+    int64_t max_core_num =
         std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumMid) {
-      max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
+      max_core_num = std::min(max_core_num, static_cast<int64_t>(4));   // up to 4 cpu cores
     }
 
     if (max_core_num > data_num) {
@@ -229,8 +229,6 @@ uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCompute(CpuKernelContext &
 
     return BcastCompute<T>(ctx, bcast);
   }
-
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kSquaredDifference, SquaredDifferenceCpuKernel);

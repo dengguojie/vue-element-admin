@@ -34,10 +34,10 @@ class MultinomialAliasSetupCpuKernel : public CpuKernel {
   template <typename T>
   uint32_t MultinomialAliasSetupCompute(CpuKernelContext &ctx);
 
-  uint32_t MultinomialAliasSetupParamCheck(CpuKernelContext &ctx);
+  uint32_t MultinomialAliasSetupParamCheck(const CpuKernelContext &ctx);
 
   template <typename T>
-  void MultinomialAliasSetupCal(CpuKernelContext &ctx,
+  void MultinomialAliasSetupCal(const CpuKernelContext &ctx,
                                     std::vector<T> &accept,
                                     std::vector<int64_t> &alias,
                                     double &max);

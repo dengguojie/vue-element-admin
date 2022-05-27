@@ -75,10 +75,8 @@ static uint32_t ProcessEllipsisMask(
 }
 
 inline void ProcessBeginMask(const std::vector<int64_t> &strides,
-                             const std::vector<int64_t> &x_shape,
                              int64_t begin_mask, int64_t shrink_axis_mask,
-                             size_t i, size_t j, int64_t bit_mask,
-                             int64_t &begin_j) {
+                             size_t j, int64_t bit_mask, int64_t &begin_j) {
   if ((begin_mask & bit_mask) && (!(shrink_axis_mask & bit_mask))) {
     begin_j = (strides[j] > 0) ? 0 : -1;
   }
@@ -95,7 +93,7 @@ inline void ProcessEndMask(const std::vector<int64_t> &strides,
 }
 
 inline bool ProcessNewAxisMask(int64_t new_axis_mask,
-                               size_t &i, int64_t &bit_mask) {
+                               size_t &i, const int64_t &bit_mask) {
   if (new_axis_mask & bit_mask) {
     i--;
     return true;
@@ -141,8 +139,8 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
         KERNEL_STATUS_INNER_ERROR) {
       return KERNEL_STATUS_INNER_ERROR;
     }
-    ProcessBeginMask(strides, x_shape, begin_mask, shrink_axis_mask,
-                     i, j, bit_mask, begin_j);
+    ProcessBeginMask(strides, begin_mask, shrink_axis_mask, j, bit_mask,
+                     begin_j);
     ProcessEndMask(strides, x_shape, end_mask, shrink_axis_mask,
                    i, j, bit_mask, end_j);
     if (ProcessNewAxisMask(new_axis_mask, i, bit_mask)) {
@@ -199,9 +197,9 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
       end_iter = end_res.erase(end_iter);
       strides_iter = strides_res.erase(strides_iter);
     } else {
-      begin_iter++;
-      end_iter++;
-      strides_iter++;
+      ++begin_iter;
+      ++end_iter;
+      ++strides_iter;
     }
   }
 
@@ -334,9 +332,9 @@ uint32_t StridedSliceCpuKernel::ParseIndexInput(CpuKernelContext &ctx,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t StridedSliceCpuKernel::GetMaskAttr(CpuKernelContext &ctx,
-                                            std::string attr,
-                                            int64_t &mask) {
+uint32_t StridedSliceCpuKernel::GetMaskAttr(const CpuKernelContext &ctx,
+                                            const std::string attr,
+                                            int64_t &mask) const {
   AttrValue *mask_attr = ctx.GetAttr(attr);
   if (mask_attr != nullptr) {
     mask = mask_attr->GetInt();

@@ -24,22 +24,20 @@ class SquaredDifferenceCpuKernel : public CpuKernel {
  public:
   SquaredDifferenceCpuKernel() = default;
   ~SquaredDifferenceCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t SquaredDifferenceCheck(CpuKernelContext &ctx);
+  uint32_t SquaredDifferenceCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
   void SpecialCompute(BcastShapeType type, int64_t start, int64_t end,
-                      T *input1, T *input2, T *output);
+                      const T *input1, const T *input2, T *output);
 
   template <typename T>
-  uint32_t NoBcastCompute(CpuKernelContext &ctx);
+  uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
+  uint32_t BcastCompute(const CpuKernelContext &ctx, Bcast &bcast);
 
   template <typename T>
   uint32_t SquaredDifferenceCompute(CpuKernelContext &ctx);

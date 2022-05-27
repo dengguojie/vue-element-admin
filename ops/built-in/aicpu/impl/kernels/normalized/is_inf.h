@@ -28,10 +28,10 @@ class IsInfCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t IsInfCheck(CpuKernelContext &ctx);
+  uint32_t IsInfCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t IsInfCompute(CpuKernelContext &ctx);
+  uint32_t IsInfCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

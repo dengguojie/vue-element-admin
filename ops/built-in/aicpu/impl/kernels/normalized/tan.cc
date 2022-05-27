@@ -28,7 +28,7 @@ namespace {
 const std::uint32_t kTanInputNum{1};
 const std::uint32_t kTanOutputNum{1};
 const std::int64_t ParallelNum{1024};
-const char *kTan{"Tan"};
+const char *const kTan{"Tan"};
 }  // namespace
 
 namespace aicpu {

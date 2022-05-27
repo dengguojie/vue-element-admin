@@ -24,15 +24,13 @@ class IsNanCpuKernel : public CpuKernel {
  public:
   IsNanCpuKernel() = default;
   ~IsNanCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t IsNanCheck(CpuKernelContext &ctx);
+  uint32_t IsNanCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t IsNanCompute(CpuKernelContext &ctx);
+  uint32_t IsNanCompute(CpuKernelContext &ctx) const;
 };
 }  // namespace aicpu
 #endif

@@ -37,14 +37,14 @@ class MulCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <typename T>
-  uint32_t MulCompute(CpuKernelContext &ctx);
+  uint32_t MulCompute(const CpuKernelContext &ctx);
 
   /**
    * @brief Check if input&output addr is aligned
    * @param calcInfo data used to calculate
    * @return true: aligned, false: not aligned
    */
-  bool AlignedCheck(const BCalcInfo &calcInfo);
+  bool AlignedCheck(const BCalcInfo &calcInfo) const;
 
   template <int32_t RANK, typename T>
   uint32_t MulCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calcInfo);

@@ -27,7 +27,7 @@ const uint32_t dimType1 = 1;
 const uint32_t dimType2 = 2;
 const uint32_t dimType3 = 3;
 const int64_t paralled_data_size = 4 * 1024;
-const char* kLogSoftmaxV2 = "LogSoftmaxV2";
+const char *const kLogSoftmaxV2 = "LogSoftmaxV2";
 #define LOGSOFTMAXV2_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                              \
     uint32_t result = LogSoftmaxV2Compute<TYPE>(CTX);          \
@@ -61,7 +61,7 @@ uint32_t LogSoftmaxV2CpuKernel::Compute(CpuKernelContext& ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Check(CpuKernelContext& ctx) {
+uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Check(const CpuKernelContext& ctx) {
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "get input failed.");
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetTensorShape(),
@@ -94,7 +94,7 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Check(CpuKernelContext& ctx) {
   return KERNEL_STATUS_OK;
 }
 template <typename T>
-uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
+uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(const CpuKernelContext& ctx) {
   const auto ParallelFor{aicpu::CpuKernelUtils::ParallelFor};
   auto input = static_cast<T*>(ctx.Input(0)->GetData());
   auto output = static_cast<T*>(ctx.Output(0)->GetData());
@@ -113,9 +113,9 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
   if (axes[0] >= 0) {
     pivot = axes[0];
   } else {
-    pivot = dims.size() + axes[0];
+    pivot = static_cast<int64_t>(dims.size()) + axes[0];
   }
-  int64_t size = dims.size();
+  int64_t size = static_cast<int64_t>(dims.size());
   for (int64_t index = 0; index < size; index++) {
     if (index > pivot) {
       inner_size *= dims[index];

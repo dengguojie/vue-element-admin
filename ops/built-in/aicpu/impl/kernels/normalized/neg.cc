@@ -25,12 +25,12 @@
 using namespace std;
 
 namespace {
-const char *kNeg = "Neg";
+const char *const kNeg = "Neg";
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
 
 template <typename T>
-void RangeNeg(int64_t start, int64_t end, T *input, T *out) {
+void RangeNeg(int64_t start, int64_t end, const T *input, T *out) {
   for (int64_t i = start; i < end; ++i) {
     out[i] = -input[i];
   }
@@ -39,7 +39,7 @@ void RangeNeg(int64_t start, int64_t end, T *input, T *out) {
 
 namespace aicpu {
 template <typename T>
-uint32_t NegCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t NegCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input_tensor = ctx.Input(0);
   auto output_tensor = ctx.Output(0);
   DataType input_type = input_tensor->GetDataType();

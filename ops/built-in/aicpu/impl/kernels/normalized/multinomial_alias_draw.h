@@ -29,7 +29,7 @@ class MultinomialAliasDrawCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t MultinomialAliasDrawCompute(CpuKernelContext &ctx);
+  uint32_t MultinomialAliasDrawCompute(const CpuKernelContext &ctx);
 
   uint32_t MultinomialAliasDrawParamCheck(CpuKernelContext &ctx);
 };

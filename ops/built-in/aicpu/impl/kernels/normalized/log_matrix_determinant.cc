@@ -23,7 +23,7 @@ namespace {
 const uint32_t kOutputNum = 2;
 const uint32_t kInputNum = 1;
 const uint32_t kIndexTwo = 2;
-const char *kLogMatrixDeterminant = "LogMatrixDeterminant";
+const char *const kLogMatrixDeterminant = "LogMatrixDeterminant";
 constexpr int64_t kParallelDataNums = 8 * 1024;
 
 #define LOG_MATRIX_DETERMINANT_COMPUTE_CASE(DTYPE, TYPE, CTX)          \
@@ -61,7 +61,7 @@ uint32_t LogMatrixDeterminantCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCheck(
-    CpuKernelContext &ctx) {
+    const CpuKernelContext &ctx) {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   auto output_1 = ctx.Output(1);
@@ -111,7 +111,7 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCheck(
 
 template <typename T>
 uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
-    CpuKernelContext &ctx) {
+    const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_sign = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(1)->GetData());
@@ -125,7 +125,7 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
   using RealT = typename Eigen::NumTraits<T>::Real;
   if (size_mm > 0) {
     int64_t martix_num = ctx.Input(0)->NumElements() / size_mm;
-    int64_t data_size = ctx.Input(0)->NumElements() * sizeof(T);
+    int64_t data_size = ctx.Input(0)->NumElements() * static_cast<int64_t>(sizeof(T));
     if (data_size <= kParallelDataNums) {
       for (int64_t i = 0; i < martix_num; i++) {
         RealT log_abs_det = 0;

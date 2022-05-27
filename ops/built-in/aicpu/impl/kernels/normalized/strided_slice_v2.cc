@@ -25,14 +25,14 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kStridedSliceV2 = "StridedSliceV2";
-const char *kAxes = "axes";
-const char *kStrides = "strides";
-const char *kBeginMask = "begin_mask";
-const char *kEndMask = "end_mask";
-const char *kEllipsisMask = "ellipsis_mask";
-const char *kNewAxisMask = "new_axis_mask";
-const char *kShrinkAxisMask = "shrink_axis_mask";
+const char *const kStridedSliceV2 = "StridedSliceV2";
+const char *const kAxes = "axes";
+const char *const kStrides = "strides";
+const char *const kBeginMask = "begin_mask";
+const char *const kEndMask = "end_mask";
+const char *const kEllipsisMask = "ellipsis_mask";
+const char *const kNewAxisMask = "new_axis_mask";
+const char *const kShrinkAxisMask = "shrink_axis_mask";
 }  // namespace
 
 namespace aicpu {
@@ -221,7 +221,7 @@ uint32_t StridedSliceV2CpuKernel::BuildParam(
   end_vec.resize(axes_ret.size());
   strides_vec.resize(axes_ret.size());
   for (size_t i = 0; i < axes_ret.size(); ++i) {
-    T axes_value = axes_ret[i];
+    T axes_value = static_cast<T>(axes_ret[i]);
     begin_vec[axes_value] = begin_ret[i];
     end_vec[axes_value] = end_ret[i];
     strides_vec[axes_value] = strides_ret[i];
@@ -245,7 +245,7 @@ uint32_t StridedSliceV2CpuKernel::CheckAndBuildParam(
 }
 
 uint32_t StridedSliceV2CpuKernel::DoStridedSliceV2(
-    CpuKernelContext &ctx, const std::vector<int64_t> &begin_vec,
+    const CpuKernelContext &ctx, const std::vector<int64_t> &begin_vec,
     const std::vector<int64_t> &end_vec,
     const std::vector<int64_t> &strides_vec) {
   uint32_t ret = KERNEL_STATUS_OK;

@@ -26,10 +26,10 @@ class LogMatrixDeterminantCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t LogMatrixDeterminantCheck(CpuKernelContext &ctx);
+  uint32_t LogMatrixDeterminantCheck(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t LogMatrixDeterminantCompute(CpuKernelContext &ctx);
+  uint32_t LogMatrixDeterminantCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

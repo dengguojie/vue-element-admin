@@ -21,7 +21,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kTanhGrad = "TanhGrad";
+const char *const kTanhGrad = "TanhGrad";
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
 const int64_t DataFloat16ParallelNum = 4096;
@@ -84,7 +84,7 @@ uint32_t TanhGradCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t TanhGradCpuKernel::TanhGradCompute(CpuKernelContext &ctx) {
+uint32_t TanhGradCpuKernel::TanhGradCompute(const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO(
       "[%s] Input[0] data size is [%llu], input[1] data size is [%llu], output "
       "data size is [%llu].",

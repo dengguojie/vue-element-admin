@@ -20,6 +20,7 @@
 
 namespace aicpu {
 class TanCpuKernel final : public CpuKernel {
+ public:
   std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu

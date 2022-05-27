@@ -26,14 +26,14 @@
 using namespace std;
 
 namespace {
-const char *kSub = "Sub";
+const char *const kSub = "Sub";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 1;
 }  // namespace
 namespace aicpu {
 template <typename T, int32_t RANK>
 uint32_t SubCpuKernel::BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y,
-                                        TensorMap<T> &out, Bcast &bcast) {
+                                        TensorMap<T> &out, const Bcast &bcast) {
   Eigen::DSizes<Eigen::DenseIndex, RANK> x_reshape;
   Eigen::DSizes<Eigen::DenseIndex, RANK> y_reshape;
   Eigen::DSizes<Eigen::DenseIndex, RANK> result_shape;
@@ -52,7 +52,7 @@ uint32_t SubCpuKernel::BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y,
   return KERNEL_STATUS_OK;
 }
 template <typename T>
-uint32_t SubCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t SubCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input0_tensor = ctx.Input(0);
   auto input1_tensor = ctx.Input(1);
   DataType input0_dt = input0_tensor->GetDataType();
