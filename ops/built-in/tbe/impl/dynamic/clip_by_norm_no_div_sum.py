@@ -34,7 +34,6 @@ def clip_by_norm_no_div_sum_compute(data_input_x,
                                     data_select_ones,
                                     data_maximum_ones,
                                     y,
-                                    dtype,
                                     kernel_name="clip_by_norm_no_div_sum"):
     """
     calculating data
@@ -47,6 +46,7 @@ def clip_by_norm_no_div_sum_compute(data_input_x,
     -------
     output tensor
     """
+    dtype = data_input_x.dtype
     if dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
         data_input_x = tbe.cast_to(data_input_x, "float16")
         data_greater_zeros = tbe.cast_to(data_greater_zeros, "float16")
@@ -109,7 +109,7 @@ def clip_by_norm_no_div_sum(x, greater_zeros, select_ones, maximum_ones, y,
             data_greater = tvm.placeholder(shape_greater, dtype=dtype_x, name="data_greater")
             data_zeros = tvm.placeholder(shape_zeros, dtype=dtype_x, name="data_zeros")
             data_maximum = tvm.placeholder(shape_maximum, dtype=dtype_x, name="data_maximum")
-            res = clip_by_norm_no_div_sum_compute(data_x, data_greater, data_zeros, data_maximum, y, dtype_x,
+            res = clip_by_norm_no_div_sum_compute(data_x, data_greater, data_zeros, data_maximum, y,
                                                   kernel_name)
             tensors.append([data_x, data_greater, data_zeros, data_maximum, res])
 

@@ -91,7 +91,7 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
 
     # check shape for 5HD
     shape_x = list(input_x.get("shape"))
-    shape_range_x = input_x.get("range")
+    shape_range_x = list(input_x.get("range"))
     shape_x_len = len(shape_x)
 
     input_format = input_x.get("format")

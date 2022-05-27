@@ -30,6 +30,23 @@ ut_case.add_case("all",
                                       "float32", "ND", (-1,), (-1,),
                                       "dynamic_div_fp32_ND", "success"))
 
+case1 = {"params": [{"shape": (2, 7), "dtype": "float32",
+                     "format": "ND",
+                     "ori_shape": (2, 7), "ori_format": "ND"},
+                    {"shape": (2, 7), "dtype": "float32",
+                     "format": "ND",
+                     "ori_shape": (2, 7), "ori_format": "ND"},
+                    {"shape": (2, 7), "dtype": "float32",
+                     "format": "ND",
+                     "ori_shape": (2, 7), "ori_format": "ND"}],
+            "case_name": "dynamic_static_case_01",
+            "expect": "success",
+            "op_imply_type": "static",
+            "format_expect": [],
+            "support_expect": True}
+
+ut_case.add_case("Ascend910A", case1)
+
 def test_op_select_format(test_arg):
     """
     test_op_select_format

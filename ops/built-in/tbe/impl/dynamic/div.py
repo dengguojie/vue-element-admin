@@ -16,6 +16,7 @@
 dynamic div
 """
 # 'pylint: disable=too-many-locals,unused-argument
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -27,6 +28,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 from impl.div import op_select_format as static_op_select_format
+from impl.div import _check_format
+from impl.div import _infer_shape
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
@@ -433,6 +436,16 @@ def div(input_x, input_y, output_z, kernel_name="div"):
     """
 
     # check dtype
+    if not util_common.is_unknown([input_x, input_y]):
+        format_pattern = _check_format(input_x, input_y)
+        shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
+        range_x = util_common.gen_range(shape_x)
+        range_y = util_common.gen_range(shape_y)
+        input_x["shape"] = shape_x
+        input_x["range"] = range_x
+        input_y["shape"] = shape_y
+        input_y["range"] = range_y
+
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
     check_list = ("float16", "float32", "int8", "uint8", "int32")

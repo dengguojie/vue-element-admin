@@ -16,6 +16,7 @@
 fused_mul_add
 """
 from impl import constant_util
+from impl.util import util_common
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -30,6 +31,154 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_common import update_shape_for_other_format
+
+
+# 'pylint: disable=arguments-out-of-order
+def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
+    """
+    shape_input0 : FRACTAL_NZ, [N,...,A,B,16,16]
+    last_two_dims : [B*16, A*16]
+    """
+    if format_pattern == 2:
+        shape_input0, shape_input1 = shape_input1, shape_input0
+    if format_pattern == 3:
+        shape_input0, shape_input2 = shape_input2, shape_input0
+
+    last_two_dims = [shape_input0[-2]*shape_input0[-3],
+                     shape_input0[-4]*shape_input0[-1]]
+    condition2 = (len(shape_input1) == 1 and shape_input1[0] == 1)
+    if not condition2:
+        if len(shape_input1) == 1:
+            shape_input1.insert(0, 1)
+        condition0 = (shape_input1[-1] == last_two_dims[-1])
+        condition1 = (shape_input1[-2] == last_two_dims[-2])
+
+    condition5 = (len(shape_input2) == 1 and shape_input2[0] == 1)
+    if not condition5:
+        if len(shape_input2) == 1:
+            shape_input2.insert(0, 1)
+        condition3 = (shape_input2[-1] == last_two_dims[-1])
+        condition4 = (shape_input2[-2] == last_two_dims[-2])
+
+    if condition2:
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1,
+                                        param_name_input1="input0",
+                                        param_name_input2="input1")
+    elif condition0 and not condition1:
+        shape_input1.append(1)
+        shape_input1.append(1)
+        shape_input1[-4] = shape_input0[-4]
+        shape_input1[-1] = shape_input0[-1]
+        shape_input1[-2] = 1
+        shape_input1[-3] = 1
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1,
+                                        param_name_input1="input0",
+                                        param_name_input2="input1")
+    elif not condition0 and condition1:
+        shape_input1.append(1)
+        shape_input1.append(1)
+        shape_input1[-2] = shape_input0[-2]
+        shape_input1[-3] = shape_input0[-3]
+        shape_input1[-4] = 1
+        shape_input1[-1] = 1
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1,
+                                        param_name_input1="input0",
+                                        param_name_input2="input1")
+    else:
+        error_detail = 'shape of input1 or input0 is illegal'
+        error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
+
+    if condition5:
+        shape_input2, shape_max_mul, shape_max_add0 = \
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul,
+                                        param_name_input1="input2",
+                                        param_name_input2="shape_max_mul")
+    elif condition3 and not condition4:
+        shape_input2.append(1)
+        shape_input2.append(1)
+        shape_input2[-4] = shape_input0[-4]
+        shape_input2[-1] = shape_input0[-1]
+        shape_input2[-2] = 1
+        shape_input2[-3] = 1
+        shape_input2, shape_max_mul, shape_max_add0 = \
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul,
+                                        param_name_input1="input2",
+                                        param_name_input2="shape_max_mul")
+    elif not condition3 and condition4:
+        shape_input2.append(1)
+        shape_input2.append(1)
+        shape_input2[-2] = shape_input0[-2]
+        shape_input2[-3] = shape_input0[-3]
+        shape_input2[-4] = 1
+        shape_input2[-1] = 1
+        shape_input2, shape_max_mul, shape_max_add0 = \
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul,
+                                        param_name_input1="input2",
+                                        param_name_input2="shape_max_mul")
+    else:
+        error_detail = 'shape of input2 or input0 is illegal'
+        error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
+
+    if format_pattern == 2:
+        shape_input0, shape_input1 = shape_input1, shape_input0
+    if format_pattern == 3:
+        shape_input0, shape_input2 = shape_input2, shape_input0
+
+    return shape_input0, shape_input1, shape_input2
+
+
+def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
+    """
+    shape_input0 : FRACTAL_NZ, [N,...,A,B,16,16]
+    last_two_dims : [B*16, A*16]
+    """
+    # support format_pattern == 4 or 5
+    # Nz ND Nz || ND NZ NZ
+    last_two_dims = [shape_input0[-2]*shape_input0[-3],
+                     shape_input0[-4]*shape_input0[-1]]
+
+    condition2 = (len(shape_input1) == 1 and shape_input1[0] == 1)
+    if not condition2:
+        if len(shape_input1) == 1:
+            shape_input1.insert(0, 1)
+        condition0 = (shape_input1[-1] == last_two_dims[-1])
+        condition1 = (shape_input1[-2] == last_two_dims[-2])
+
+    if condition2:
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                                        param_name_input2="input1")
+    elif condition0 and not condition1:
+        shape_input1.append(1)
+        shape_input1.append(1)
+        shape_input1[-4] = shape_input0[-4]
+        shape_input1[-1] = shape_input0[-1]
+        shape_input1[-2] = 1
+        shape_input1[-3] = 1
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                                        param_name_input2="input1")
+    elif not condition0 and condition1:
+        shape_input1.append(1)
+        shape_input1.append(1)
+        shape_input1[-2] = shape_input0[-2]
+        shape_input1[-3] = shape_input0[-3]
+        shape_input1[-4] = 1
+        shape_input1[-1] = 1
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                                        param_name_input2="input1")
+    else:
+        raise RuntimeError("shape of input1 or input0 is illegal")
+
+    shape_input2, shape_max_mul, shape_max_add0 = \
+        shape_util.broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
+                                    param_name_input2="shape_max_mul")
+
+    return shape_input0, shape_input1, shape_input2
 
 
 def _division_sixteen(shape):
@@ -387,6 +536,29 @@ def _check_format(format_input0, format_input1, format_input2):
     return format_pattern
 
 
+def _infer_shape(shape_input0, shape_input1, shape_input2, format_pattern):
+    if format_pattern in [1, 2, 3]:
+        shape_input0, shape_input1, shape_input2 = \
+            _infer_shape_one(shape_input0, shape_input1,
+                             shape_input2, format_pattern)
+    elif format_pattern == 4:
+        shape_input0, shape_input1, shape_input2 = \
+            _infer_shape_two(shape_input0, shape_input1,
+                             shape_input2, format_pattern)
+    elif format_pattern == 5:
+        shape_input1, shape_input0, shape_input2 = \
+            _infer_shape_two(shape_input1, shape_input0,
+                             shape_input2, format_pattern)
+    else:
+        shape_input0, shape_input1, shape_max_mul = \
+            shape_util.broadcast_shapes(shape_input0, shape_input1, param_name_input1="input0",
+                                        param_name_input2="input1")
+        shape_input2, shape_max_mul, shape_max_add0 = \
+            shape_util.broadcast_shapes(shape_input2, shape_max_mul, param_name_input1="input2",
+                                        param_name_input2="shape_max_mul")
+    return [shape_input0, shape_input1, shape_input2]
+
+
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("FusedMulAdd", op_mode="dynamic", support_fusion=True)
 def fused_mul_add_compute(data_input0, data_input1, data_input2,
@@ -461,7 +633,23 @@ def fused_mul_add(input0, input1, input2,
     format_input0 = input0.get("format").upper()
     format_input1 = input1.get("format").upper()
     format_input2 = input2.get("format").upper()
-    _check_format(format_input0, format_input1, format_input2)
+    format_pattern = _check_format(format_input0, format_input1, format_input2)
+    if not util_common.is_unknown([input0, input1, input2]):
+        shape_input0 = list(shape_util.scalar2tensor_one(input0.get("shape")))
+        shape_input1 = list(shape_util.scalar2tensor_one(input1.get("shape")))
+        shape_input2 = list(shape_util.scalar2tensor_one(input2.get("shape")))
+        
+        shape0, shape1, shape2 = _infer_shape(shape_input0, shape_input1,
+                                               shape_input2, format_pattern)
+        range0 = util_common.gen_range(shape0)
+        range1 = util_common.gen_range(shape1)
+        range2 = util_common.gen_range(shape2)
+        input0["shape"] = shape0
+        input0["range"] = range0
+        input1["shape"] = shape1
+        input1["range"] = range1
+        input2["shape"] = shape2
+        input2["range"] = range2
 
     # classify
     ins = classify([input0, input1, input2], OpPatternMode.ELEWISE_WITH_BROADCAST)

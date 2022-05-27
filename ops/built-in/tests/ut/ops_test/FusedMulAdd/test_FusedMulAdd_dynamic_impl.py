@@ -47,7 +47,218 @@ case1 = {
     "support_expect": True
 }
 
+case2 = {
+    "params": [
+        {
+            "shape": (2, ),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (2, ),
+            "ori_format": "ND",
+            "range": [(1, 3), ]
+        },
+        {
+            "shape": (2, 2),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (2, ),
+            "ori_format": "ND",
+            "range": [(2, 2), (2, 2)]
+        },
+        {
+            "shape": (2, ),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (2, ),
+            "ori_format": "ND",
+            "range": [(1, 3), ]
+        },
+        {
+            "shape": (2, ),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (2, ),
+            "ori_format": "ND",
+            "range": [(1, 3), ]
+        }
+    ],
+    "case_name": "FusedMulAdd_2",
+    "expect": "success",
+    "op_imply_type": "static",
+    "support_expect": True
+}
+
+case3 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_3",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+
+case4 = {"params": [{"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_1",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+
+case5 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_2",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case6 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_3",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_4",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_11",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+
+case9 = {"params": [{"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_12",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_13",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case11 = {"params": [{"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_14",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case12 = {"params": [{"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_22",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case13 = {"params": [{"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_23",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case14 = {"params": [{"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (16, 1), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_24",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+
+case15 = {"params": [{"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_32",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case16 = {"params": [{"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_33",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
+case17 = {"params": [{"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_pattern_34",
+         "expect": "success",
+         "op_imply_type": "static",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
+ut_case.add_case(["Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case8)
+ut_case.add_case(["Ascend910A"], case9)
+ut_case.add_case(["Ascend910A"], case10)
+ut_case.add_case(["Ascend910A"], case11)
+ut_case.add_case(["Ascend910A"], case12)
+ut_case.add_case(["Ascend910A"], case13)
+ut_case.add_case(["Ascend910A"], case14)
+ut_case.add_case(["Ascend910A"], case15)
+ut_case.add_case(["Ascend910A"], case16)
+ut_case.add_case(["Ascend910A"], case17)
 
 
 def test_op_select_format(test_arg):
