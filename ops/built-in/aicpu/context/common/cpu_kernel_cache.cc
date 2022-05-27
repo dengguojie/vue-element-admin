@@ -52,7 +52,7 @@ uint32_t CpuKernelCache::UpdateFWKOutputShape(ExtInfoMsg &ext_info_msg,
                                               const CpuKernelContext &ctx) const {
   if (ext_info_msg.unknown_shape) {
     for (size_t i = 0; i < ctx.GetOutputsSize(); ++i) {
-      Tensor *output = ctx.Output(i);
+      Tensor *output = ctx.Output(static_cast<uint32_t>(i));
       KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                            "Get output[%zu] failed.", i)
       auto shape = output->GetTensorShape();
@@ -142,7 +142,7 @@ uint32_t CpuKernelCache::UpdateTensor(
 
   size_t addr_index = 0;
   for (size_t i = 0; i < ctx.GetInputsSize(); ++i, ++addr_index) {
-    Tensor *input = ctx.Input(i);
+    Tensor *input = ctx.Input(static_cast<uint32_t>(i));
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
                          "Get input[%zu] failed.", i)
     auto iter = ext_info_msg.unknown_shape_input_index_addr.find(static_cast<uint32_t>(i));
@@ -191,7 +191,7 @@ uint32_t CpuKernelCache::UpdateTensor(
   bool no_tiling = ext_info_msg.unknown_shape_output_index_addr.empty();
 
   for (size_t i = 0; i < ctx.GetOutputsSize(); i++, addr_index++) {
-    Tensor *output = ctx.Output(i);
+    Tensor *output = ctx.Output(static_cast<uint32_t>(i));
     KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                          "Get output[%zu] failed.", i)
     auto iter = ext_info_msg.unknown_shape_output_index_addr.find(static_cast<uint32_t>(i));
@@ -317,7 +317,7 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  uint64_t bit_map_info = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
+  uint64_t bit_map_info = static_cast<uint64_t>(*(reinterpret_cast<const int64_t *>(ext_info->infoMsg)));
   unknown_shape = (!GetBitStatus(bit_map_info, 0));
   KERNEL_LOG_INFO("Unknown_shape is [%d].", unknown_shape);
   return KERNEL_STATUS_OK;
@@ -455,7 +455,7 @@ uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head,
       return KERNEL_STATUS_PARAM_INVALID;
     }
 
-    uint32_t addr_len = param_head->ioAddrNum * sizeof(uint64_t);
+    uint32_t addr_len = static_cast<uint32_t>(param_head->ioAddrNum * sizeof(uint64_t));
     if (extend_param_len < addr_len) {
       KERNEL_LOG_ERROR(
           "Extend param is not enough for io addr, ioAddrNum[%u], "
@@ -568,7 +568,8 @@ int32_t CpuKernelCache::RunKernel(void *param) {
 
   std::shared_ptr<NodeDef> nodedef_proto = nullptr;
   auto ctx = GetCpuKernelContext(ext_info_msg, nodedef, nodedef_len, nodedef_proto);
-  KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR, "Get cpu kernel context from buff failed.")
+  KERNEL_CHECK_NULLPTR(ctx, static_cast<int32_t>(KERNEL_STATUS_INNER_ERROR),
+                       "Get cpu kernel context from buff failed.")
 
   ret = UpdateTensor(io_addrs, *ext_info_msg, *ctx);
   if (ret != KERNEL_STATUS_OK) {
@@ -589,7 +590,7 @@ int32_t CpuKernelCache::RunKernel(void *param) {
     ret = UpdateFWKOutputShape(*ext_info_msg, *ctx);
   }
   if (ret == KERNEL_STATUS_END_OF_SEQUENCE) {
-    return ret;
+    return static_cast<int32_t>(ret);
   }
   if (ret != KERNEL_STATUS_OK) {
     return -1;
@@ -625,7 +626,8 @@ int32_t CpuKernelCache::RunCpuKernelWithBlock(void *param, struct BlkDimInfo *bl
   std::shared_ptr<NodeDef> nodedef_proto = nullptr;
   auto ctx = GetCpuKernelContextWithBlock(ext_info_msg, nodedef,
                                           nodedef_len, nodedef_proto, blkdim_info);
-  KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR, "Get cpu kernel context from buff failed.")
+  KERNEL_CHECK_NULLPTR(ctx, static_cast<int32_t>(KERNEL_STATUS_INNER_ERROR),
+                       "Get cpu kernel context from buff failed.")
 
   ret = UpdateTensor(io_addrs, *ext_info_msg, *ctx);
   if (ret != KERNEL_STATUS_OK) {

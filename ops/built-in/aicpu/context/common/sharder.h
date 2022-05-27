@@ -48,7 +48,6 @@ class Sharder {
   Sharder &operator=(const Sharder &) = delete;
   Sharder &operator=(Sharder &&) = delete;
 
- private:
   DeviceType device_;  // device type, HOST/DEVICE
 };
 }  // namespace aicpu

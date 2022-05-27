@@ -51,7 +51,6 @@ class SharderNonBlock {
   bool Enqueue(const Closure &closure);
   inline int64_t CeilMultiple(int64_t x, int64_t base);
 
- private:
   RunnerBool schedule_;
   ClosureBool doTask_;
   uint32_t cpuCoreNum_;

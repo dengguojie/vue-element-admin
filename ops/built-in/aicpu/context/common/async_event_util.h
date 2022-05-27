@@ -47,7 +47,6 @@ class AsyncEventUtil {
   AsyncEventUtil();
   ~AsyncEventUtil();
   void InitEventUtil();
- private:
   void *sharder_;
   NotifyWaitFunc notify_wait_func_;
   RegEventCbFunc reg_event_cb_func_;

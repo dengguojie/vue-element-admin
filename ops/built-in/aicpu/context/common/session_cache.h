@@ -130,7 +130,6 @@ class SessionCache {
     return 0;
   }
 
- private:
   std::mutex stream_mutex_;
   std::map<uint64_t, std::shared_ptr<KernelCache<C>>>
       stream_kernel_cache_;  // key is stream id

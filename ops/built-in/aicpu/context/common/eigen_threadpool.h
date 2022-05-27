@@ -50,7 +50,6 @@ class EigenThreadPool {
   EigenThreadPool &operator=(const EigenThreadPool &) = delete;
   EigenThreadPool &operator=(EigenThreadPool &&) = delete;
 
- private:
   static std::mutex mutex_;  // protect init_flag_
   static bool init_flag_;    // true means initialized
   static int32_t

@@ -49,7 +49,6 @@ class DeviceSharder : public Sharder {
   DeviceSharder &operator=(const DeviceSharder &) = delete;
   DeviceSharder &operator=(DeviceSharder &&) = delete;
 
- private:
   void *sharder_;
   ParallelForFunc parallel_for_;
   GetCPUNumFunc get_cpu_num_;

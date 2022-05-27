@@ -46,7 +46,7 @@ void NodeDefBuilder::BuildNodeFromInputOutputNode(const InputOutputNode& node, b
 	if (node.data == nullptr) {
 		dataSize = 0;
 	}
-	tensor->SetDataSize(dataSize);
+	tensor->SetDataSize(static_cast<uint64_t>(dataSize));
 	tensor->SetData(node.data);
 }
 
@@ -83,7 +83,7 @@ NodeDefBuilder& NodeDefBuilder::Attr(std::string name, float value) {
 
 NodeDefBuilder& NodeDefBuilder::Attr(std::string name, double value) {
 	auto attr = CpuKernelUtils::CreateAttrValue();
-	attr->SetFloat(value);
+	attr->SetFloat(static_cast<float>(value));
 	nodeDef_->AddAttrs(name, attr.get());
 	return *this;
 }

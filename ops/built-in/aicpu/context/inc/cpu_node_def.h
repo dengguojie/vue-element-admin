@@ -111,7 +111,6 @@ class AICPU_VISIBILITY NodeDef {
  private:
   explicit NodeDef(NodeDefImpl *impl);
 
- private:
   std::shared_ptr<NodeDefImpl> impl_{nullptr};
 };
 }  // namespace aicpu

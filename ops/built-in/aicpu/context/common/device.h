@@ -50,7 +50,6 @@ class Device {
    */
   Sharder *InitSharder(DeviceType device_type) const;
 
- private:
   DeviceType device_;  // type of device
   Sharder *sharder_;
 };
