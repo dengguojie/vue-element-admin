@@ -32,7 +32,6 @@ from tbe.tvm.cce_build_module import build_fatbin
 from tbe.tvm.build_module import build_config
 
 
-
 class Constant:
     """
     The class for constant.
@@ -40,6 +39,8 @@ class Constant:
 
     # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
     MIN_RIGHT_DIM = 8
+    MULTI_COEXISTING_QUANTITIES = 2
+    MAX_NUM_INT = 2147483647
 
 
 @unique
@@ -52,6 +53,7 @@ class TilingStrategy(Enum):
     BIG_SHAPE = 2
     LESS_32B = 3
     LAST_DIM_SMALL = 4
+    SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES = 5
 
 
 class CompileVar:
@@ -81,6 +83,12 @@ class CompileVar:
         get self.bound
         """
         return self.bound
+
+
+def _correct_num_value(value):
+    if (value and value > Constant.MAX_NUM_INT):
+        value = Constant.MAX_NUM_INT
+    return value
 
 
 # 'pylint: disable=too-many-instance-attributes,too-few-public-methods
@@ -194,6 +202,9 @@ class Unpack:
                 right_upper = None
                 break
             right_upper *= x_range[idx][1]
+
+        left_upper = _correct_num_value(left_upper)
+        right_upper = _correct_num_value(right_upper)
 
         left_dim_upper = (1, left_upper)
         right_dim_upper = (1, right_upper)
@@ -318,7 +329,8 @@ class Unpack:
                 self._multi_output_common_compute()
 
     # 'pylint: disable=too-many-locals,too-many-branches
-    def _multi_output_schedule(self, left_dim_out, right_dim_in, ub_tiling_axis, split_factor):
+    def _multi_output_schedule(self, left_dim_out, right_dim_in, ub_tiling_axis, split_factor, case_key,
+                               coexisting_quantities):
         """
         unpack schedule function for multi_output
         Parameters
@@ -331,6 +343,10 @@ class Unpack:
             identify spilt axis for ub_tiling
         split_factor: tvm.var
             the var identify spilt_factor
+        case_key: int
+            the tiling key
+        coexisting_quantities: int
+            coexisting quantities
         Returns
         ---------
         sch: tvm.schedule
@@ -343,7 +359,9 @@ class Unpack:
             build_list.append(res_tensor)
 
         sch = tvm.create_schedule(self.virtual_node.op)
-        sch.sequential_malloc(tbe_platform.scope_ubuf)
+        is_use_dma_copy_new_attr = (case_key == TilingStrategy.SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES)
+        if not is_use_dma_copy_new_attr:
+            sch.sequential_malloc(tbe_platform.scope_ubuf)
 
         if self.special_tiling:
             sch[self.gm2ub_tensor].set_scope(tbe_platform.scope_ubuf)
@@ -393,17 +411,27 @@ class Unpack:
 
         for i in range(self.output_num):
             if is_need_align:
-                sch[self.ub_tensor_list[i]].set_buffer_size(self.bound_upper)
+                sch[self.ub_tensor_list[i]].set_buffer_size(self.bound_upper // coexisting_quantities)
                 sch[self.ub_tensor_list[i]].storage_align(self.ub_tensor_list[i].op.axis[0], self.ele_per_block, 0)
             sch[self.ub_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
             sch[self.res_tensor_list[i]].compute_at(sch[self.virtual_node], axis_outer)
             sch[self.ub_tensor_list[i]].emit_insn(self.ub_tensor_list[i].op.axis[ub_tiling_axis], ub_tensor_emit)
-            sch[self.res_tensor_list[i]].emit_insn(self.res_tensor_list[i].op.axis[ub_tiling_axis],
-                                                   tbe_platform.DMA_COPY)
+            sch = self._multi_output_schedule_dma_copy(sch, self.res_tensor_list[i], is_use_dma_copy_new_attr,
+                                                       ub_tiling_axis)
 
         sch[self.virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
 
         return sch, build_list
+
+    def _multi_output_schedule_dma_copy(self, sch, tensor, is_use_dma_copy_new_attr, ub_tiling_axis):
+        if is_use_dma_copy_new_attr:
+            sch[tensor].set_buffer_size(self.bound_upper // Constant.MULTI_COEXISTING_QUANTITIES)
+            sch[tensor].emit_insn(tensor.op.axis[ub_tiling_axis], tbe_platform.DMA_COPY,
+                                  {"no_overlap": "process_unaliged_stride_with_malloc_buf",
+                                   "no_overlap_malloc_buf_for_tail": 0})
+        else:
+            sch[tensor].emit_insn(tensor.op.axis[ub_tiling_axis], tbe_platform.DMA_COPY)
+        return sch
 
     def _single_output_schedule(self, right_dim_in, split_factor):
         """
@@ -442,7 +470,7 @@ class Unpack:
 
         return sch, build_list
 
-    def _unpack_schedule(self, right_dim_in, ub_tiling_axis, split_factor, left_dim_out):
+    def _unpack_schedule(self, right_dim_in, ub_tiling_axis, split_factor, left_dim_out, case_key):
         """
         unpack schedule function
         Parameters
@@ -453,6 +481,8 @@ class Unpack:
             identify spilt axis for ub_tiling
         split_factor: tvm.var
             the var identify spilt_factor
+        case_key: int
+            the tiling key
         Returns
         ---------
         sch: tvm.schedule
@@ -463,7 +493,11 @@ class Unpack:
         if self.output_num == 1:
             sch, build_list = self._single_output_schedule(right_dim_in, split_factor)
         else:
-            sch, build_list = self._multi_output_schedule(left_dim_out, right_dim_in, ub_tiling_axis, split_factor)
+            coexisting_quantities = 1
+            if case_key == TilingStrategy.SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES:
+                coexisting_quantities = Constant.MULTI_COEXISTING_QUANTITIES
+            sch, build_list = self._multi_output_schedule(left_dim_out, right_dim_in, ub_tiling_axis, split_factor,
+                                                          case_key, coexisting_quantities)
 
         return sch, build_list
 
@@ -475,7 +509,7 @@ class Unpack:
         ub_ele_num = self.ub_size // self.dtype_size
         tiling_strategy = [
             TilingStrategy.SINGLE_OUTPUT, TilingStrategy.SMALL_SHAPE, TilingStrategy.BIG_SHAPE, TilingStrategy.LESS_32B,
-            TilingStrategy.LAST_DIM_SMALL
+            TilingStrategy.LAST_DIM_SMALL, TilingStrategy.SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES
         ]
         ub_factor_bound = (1, ub_ele_num)
         for _, key in enumerate(tiling_strategy):
@@ -490,7 +524,7 @@ class Unpack:
             tiling_cases.append({"key": key, "ub_tiling_axis": ub_tiling_axis, "ub_factor_bound": ub_factor_bound})
         return tiling_cases
 
-   # 'pylint: disable=no-use-copy
+    # 'pylint: disable=no-use-copy
     def _build_unpack_cce(self):
         """
         Build cce
@@ -512,7 +546,8 @@ class Unpack:
 
             var_list = [var.get_tvm_var() for var in tvm_vars]
             sch, tensor_list = self._unpack_schedule(right_dim_in.get_tvm_var(), case.get("ub_tiling_axis"),
-                                                     split_factor.get_tvm_var(), left_dim_out.get_tvm_var())
+                                                     split_factor.get_tvm_var(), left_dim_out.get_tvm_var(),
+                                                     case.get("key"))
 
             # set var bound
             for var in tvm_vars:
@@ -545,7 +580,8 @@ class Unpack:
                 "ub_size": self.ub_size,
                 "output_num": self.output_num,
                 "axis": self.axis,
-                "is_special_tiling": self.special_tiling
+                "is_special_tiling": self.special_tiling,
+                "multi_coexisting_quantities": Constant.MULTI_COEXISTING_QUANTITIES
             })
         tbe_context.get_context().add_compile_info("vars", self.compile_vars)
 

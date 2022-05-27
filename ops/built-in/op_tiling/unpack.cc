@@ -34,7 +34,8 @@ constexpr int32_t kBlockSize{32};
 constexpr int32_t kRegBufSize{192};
 constexpr int32_t kCalcMemSize{1024};
 constexpr int32_t RightIndex{2};
-enum TilingStrategy { SINGLE_OUTPUT = 0, SMALL_SHAPE, BIG_SHAPE, LESS_32B, LAST_DIM_SMALL };
+enum TilingStrategy { SINGLE_OUTPUT = 0, SMALL_SHAPE, BIG_SHAPE, LESS_32B, LAST_DIM_SMALL,
+                      SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES };
 
 // compile info
 struct CompileInfo {
@@ -44,6 +45,7 @@ struct CompileInfo {
   int32_t core_num;
   int32_t dtype_size;
   bool is_special_tiling;
+  int32_t multi_coexisting_quantities;
 };
 
 struct opInfo {
@@ -52,6 +54,7 @@ struct opInfo {
   int32_t output_num;
   int32_t core_num;
   bool is_special_tiling;
+  int32_t multi_coexisting_quantities;
   std::map<std::string, std::vector<std::string>> vars;
 };
 
@@ -71,6 +74,10 @@ bool UnpackParseFunc(const std::string& op_type, const nlohmann::json& compile_i
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UnpackParseFunc get core_num error"), return false);
   OP_TILING_CHECK(!GetCompileValue(compile_vars, "is_special_tiling", compile_value.is_special_tiling),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UnpackParseFunc get is_special_tiling error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_vars, "multi_coexisting_quantities", 
+                                   compile_value.multi_coexisting_quantities),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UnpackParseFunc get multi_coexisting_quantities error"),
                   return false);
   OP_TILING_CHECK(!GetCompileValue(compile_info, "vars", compile_value.vars),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UnpackParseFunc get vars error"), return false);
@@ -118,6 +125,7 @@ void GetCompileParams(const opInfo& op_info, CompileInfo& compile_info) {
   compile_info.output_num = op_info.output_num;
   compile_info.core_num = op_info.core_num;
   compile_info.is_special_tiling = op_info.is_special_tiling;
+  compile_info.multi_coexisting_quantities = op_info.multi_coexisting_quantities;
 }
 
 void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
@@ -207,6 +215,16 @@ void GetLeftDimOutForRightDimLess32B(int32_t left_dim, int32_t right_dim, int32_
   return;
 }
 
+void VerifySmallShapeMultiCoexistingQuantities(std::vector<int64_t>& new_shape,
+                                               const int32_t ub_limit, int32_t& split_factor, int32_t& split_axis,
+                                               const CompileInfo& compile_info, TilingStrategy& key){
+  int32_t old_split_factor = split_factor;
+  int32_t new_ub_limit = ub_limit / compile_info.multi_coexisting_quantities;
+  GetUbTiling(new_shape, new_ub_limit, compile_info.dtype_size, split_axis, split_factor);
+  key = (split_axis == 0) ? SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES : SMALL_SHAPE;
+  split_factor = (key == SMALL_SHAPE) ? old_split_factor : split_factor;
+}
+
 void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
                                 int32_t& actual_block_num, TilingStrategy& key,
                                 std::unordered_map<std::string, int32_t>& var_names) {
@@ -247,17 +265,32 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
   }
 
   GetUbTiling(new_shape, ub_limit, compile_info.dtype_size, split_axis, split_factor);
-  if (split_axis == 0 && right_dim_in * split_factor * compile_info.dtype_size < kBlockSize) {
+  bool is_less_32b_case = (split_axis == 0 && right_dim_in * split_factor * compile_info.dtype_size < kBlockSize);
+  if (is_less_32b_case) {
     var_names["left_dim_out"] = 1;
     var_names["right_dim_in"] = right_dim_in;
     var_names["split_factor"] = split_factor;
     key = compile_info.is_special_tiling ? LAST_DIM_SMALL : LESS_32B;
     return;
   }
-  key = (split_axis == 0) ? SMALL_SHAPE : BIG_SHAPE;
+  
   if (compile_info.is_special_tiling) {
+    var_names["right_dim_in"] = right_dim_in;
+    var_names["left_dim_out"] = left_dim_out;
+    var_names["split_factor"] = split_factor;
     key = LAST_DIM_SMALL;
+    return;
   }
+
+  key = (split_axis == 0) ? SMALL_SHAPE : BIG_SHAPE;
+  // verify whether is SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES case
+  bool is_verify_flag = (key == SMALL_SHAPE) && (right_dim_in >= ele_per_block) && (split_factor >= ele_per_block) &&
+   (right_dim_in % ele_per_block) > 0;
+  if (is_verify_flag){
+    VerifySmallShapeMultiCoexistingQuantities(new_shape, ub_limit, split_factor, split_axis,
+                                              compile_info, key);
+  }
+  
   var_names["right_dim_in"] = right_dim_in;
   var_names["left_dim_out"] = left_dim_out;
   var_names["split_factor"] = split_factor;
