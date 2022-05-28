@@ -4106,6 +4106,8 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/cdist.py
       - ops/built-in/tbe/impl/dynamic/cdist_grad.py
       - ops/built-in/op_proto/runtime/strided_slice_v3.cc
+      - ops/built-in/tbe/impl/mix_filter.py
+      - ops/built-in/tbe/impl/step_interpolate.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
