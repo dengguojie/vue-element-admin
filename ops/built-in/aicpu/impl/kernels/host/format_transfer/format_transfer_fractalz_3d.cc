@@ -53,7 +53,15 @@ uint32_t TransShapeToFz3DWithGroups(int64_t n, int64_t c, int64_t d, int64_t h,
     return KERNEL_STATUS_PARAM_INVALID;
   }
   int64_t cin_ori = c;
+  // For this place , groups is not equal to 0, which had been checked in [Transdata] entrance.
   int64_t cout_ori = n / groups;
+  if (cin_ori == 0 || cout_ori == 0) {
+    KERNEL_LOG_ERROR(
+        "Check param Failed, cin_ori, cout_ori must not be equal 0, "
+        "and current cin_ori, cout_ori, groups are [%ld] [%ld] [%ld]",
+        cin_ori, cout_ori, groups);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
   int64_t cube_k = GetCubeSizeByDataType(data_type);
   int64_t e_mult =
       std::min(Lcm(Lcm(cin_ori, cube_k) / (cin_ori),
