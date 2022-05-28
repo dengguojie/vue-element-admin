@@ -2129,6 +2129,7 @@ vector_D:
   src:
     release:
       - auto_schedule/python/tbe/dsl/static_schedule/softmax_cross_entropy_with_logits_schedule.py
+      - ops/built-in/framework/tf_plugin/softmax_cross_entropy_with_logits_plugin.cc
       - ops/built-in/tbe/impl/max_pool_grad.py
       - ops/built-in/tbe/impl/max_pool_v3_grad.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
@@ -3534,7 +3535,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/asin_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_softmax_cross_entropy_with_logits_plugin.cc
       - ops/built-in/framework/tf_plugin/slice_plugin.cc
-      - ops/built-in/framework/tf_plugin/softmax_cross_entropy_with_logits_plugin.cc
       - ops/built-in/framework/tf_plugin/gather_point_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/gather_point_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_grad_plugin.cc

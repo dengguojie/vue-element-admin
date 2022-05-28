@@ -23,7 +23,9 @@
 
 namespace domi {
 Status ParseParamsSoftmaxCrossEntropyWithLogitsMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(0);
   ge::GeTensorDesc orgTensorW1 = op_dsc->GetInputDesc(1);
