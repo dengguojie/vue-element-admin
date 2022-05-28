@@ -21,7 +21,6 @@
 #include "cpu_types.h"
 #include "utils/kernel_util.h"
 #include "cpu_kernel_utils.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 #include "status.h"
 #include "log.h"
 #include "securec.h"
@@ -77,7 +76,7 @@ namespace aicpu {
   }
 
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx) {
+  uint32_t DoCompute(const CpuKernelContext &ctx) {
     Tensor *x = ctx.Input(0);
     // input
     auto xdata = reinterpret_cast<T *>(x->GetData());

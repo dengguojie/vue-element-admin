@@ -17,10 +17,10 @@ class TileWithAxisCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t TileParaCheck(CpuKernelContext &ctx) const;
+  uint32_t TileParaCheck(const CpuKernelContext &ctx) const;
 
   template <typename T, int32_t OPTION, int32_t DIMS>
-  uint32_t TileComputeByAxis(CpuKernelContext &ctx);
+  uint32_t TileComputeByAxis(const CpuKernelContext &ctx);
 
   template <typename T, int32_t OPTION>
   uint32_t TileComputeInDims(CpuKernelContext &ctx);

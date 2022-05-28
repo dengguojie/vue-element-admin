@@ -28,7 +28,7 @@ class RealDivKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t ComputeRealdiv(Tensor *x, Tensor *y, Tensor *z,
+  uint32_t ComputeRealdiv(const Tensor *x, Tensor *y, Tensor *z,
                           CpuKernelContext &ctx);
 
   uint32_t ComputeDiffType(Tensor *x, Tensor *y, Tensor *z, DataType data_type,
@@ -45,7 +45,7 @@ class RealDivKernel : public CpuKernel {
   uint32_t DoCompute(T *x_addr, T *y_addr, T *z_addr,
                      std::vector<int64_t> &x_dim_size,
                      std::vector<int64_t> &y_dim_size,
-                     std::vector<int64_t> &z_dim_size, CpuKernelContext &ctx);
+                     std::vector<int64_t> &z_dim_size, const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

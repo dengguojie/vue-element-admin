@@ -29,7 +29,7 @@
 #include "status.h"
 
 namespace {
-const char *K_REALDIV = "RealDiv";           // op name
+const char *const K_REALDIV = "RealDiv";           // op name
 const size_t K_REALDIV_OUTPUT_DESC_NUM = 1;  // output size
 const size_t K_REALDIV_INPUT_NUM = 2;        // input size
 }  // namespace
@@ -69,42 +69,32 @@ uint32_t RealDivKernel::ComputeDiffType(Tensor *x, Tensor *y, Tensor *z,
   switch (data_type) {
     case DT_FLOAT16:
       return ComputeRealdiv<Eigen::half>(x, y, z, ctx);
-      break;
     case DT_FLOAT:
       return ComputeRealdiv<float>(x, y, z, ctx);
-      break;
     case DT_DOUBLE:
       return ComputeRealdiv<double>(x, y, z, ctx);
-      break;
     case DT_UINT8:
       return ComputeRealdiv<uint8_t>(x, y, z, ctx);
-      break;
     case DT_INT8:
       return ComputeRealdiv<int8_t>(x, y, z, ctx);
-      break;
     case DT_UINT16:
       return ComputeRealdiv<uint16_t>(x, y, z, ctx);
-      break;
     case DT_INT16:
       return ComputeRealdiv<int16_t>(x, y, z, ctx);
-      break;
     case DT_INT32:
       return ComputeRealdiv<int32_t>(x, y, z, ctx);
-      break;
     case DT_INT64:
       return ComputeRealdiv<int64_t>(x, y, z, ctx);
-      break;
     default:
       KERNEL_LOG_ERROR("RealDiv invalid input type[%s]",
                        DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
-      break;
   }
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t RealDivKernel::ComputeRealdiv(Tensor *x, Tensor *y, Tensor *z,
+uint32_t RealDivKernel::ComputeRealdiv(const Tensor *x, Tensor *y, Tensor *z,
                                        CpuKernelContext &ctx) {
   auto x_addr = x->GetData();
   auto y_addr = y->GetData();
@@ -198,7 +188,7 @@ uint32_t RealDivKernel::DoCompute(T *x_addr, T *y_addr, T *z_addr,
                                   std::vector<int64_t> &x_dim_size,
                                   std::vector<int64_t> &y_dim_size,
                                   std::vector<int64_t> &z_dim_size,
-                                  CpuKernelContext &ctx) {
+                                  const CpuKernelContext &ctx) {
   int64_t x_data_size = 1;
   for (int j = 0; j < int(x_dim_size.size()); j++) {
     x_data_size *= x_dim_size[j];

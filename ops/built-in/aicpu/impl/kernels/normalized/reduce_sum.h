@@ -25,7 +25,6 @@ class ReduceSumCpuKernel : public CpuKernel {
   ReduceSumCpuKernel() = default;
   ~ReduceSumCpuKernel() override = default;
 
-  protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
   private:
@@ -51,7 +50,7 @@ class ReduceSumCpuKernel : public CpuKernel {
 
   uint32_t ReduceSumParseAxes(std::vector<int64_t> &input_shape,
                               std::vector<int64_t> &axes, uint32_t &axes_idx,
-                              size_t &inner, size_t &outer, size_t &depth);
+                              int64_t &inner, int64_t &outer, int64_t &depth);
 };
 }  // namespace aicpu
 #endif

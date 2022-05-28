@@ -12,11 +12,11 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kTileWithAxis = "TileWithAxis";
+const char *const kTileWithAxis = "TileWithAxis";
 }
 namespace aicpu {
 template <typename T, int32_t OPTION, int32_t DIMS>
-uint32_t TileWithAxisCpuKernel::TileComputeByAxis(CpuKernelContext &ctx) {
+uint32_t TileWithAxisCpuKernel::TileComputeByAxis(const CpuKernelContext &ctx) {
   Tensor *input = ctx.Input(kFirstInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
 
@@ -45,9 +45,9 @@ uint32_t TileWithAxisCpuKernel::TileComputeByAxis(CpuKernelContext &ctx) {
   Eigen::DSizes<Eigen::DenseIndex, DIMS> out_reshape;
   Eigen::array<Eigen::DenseIndex, DIMS> bcast;
   for (int32_t i = 0; i < DIMS; i++) {
-    in_reshape[DIMS - i - 1] = input_shape[i];
-    out_reshape[DIMS - i - 1] = output_shape[i];
-    bcast[i] = (i == (DIMS - axis - 1)) ? tiles : 1;
+    in_reshape[(DIMS - i) - 1] = input_shape[i];
+    out_reshape[(DIMS - i) - 1] = output_shape[i];
+    bcast[i] = (i == ((DIMS - axis) - 1)) ? tiles : 1;
   }
 
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input0(
@@ -108,10 +108,10 @@ uint32_t TileWithAxisCpuKernel::TileCompute(CpuKernelContext &ctx) {
   }
 }
 
-uint32_t TileWithAxisCpuKernel::TileParaCheck(CpuKernelContext &ctx) const {
+uint32_t TileWithAxisCpuKernel::TileParaCheck(const CpuKernelContext &ctx) const {
   Tensor *input = ctx.Input(kFirstInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
-  int32_t axis = 1;
+  int64_t axis = 1;
 
   // 判断axis是不是在input的轴范围内，可选参数
   AttrValue *axis_attr = ctx.GetAttr("axis");

@@ -22,7 +22,7 @@
 namespace {
 constexpr uint32_t kOutputNum = 1;
 constexpr uint32_t kInputNum = 2;
-const char *kNotEqual = "NotEqual";
+const char *const kNotEqual = "NotEqual";
 const bool kFlag = false;
 
 #define EQUAL_COMPUTE_CASE(DTYPE, TYPE, CTX, Flag)                                \

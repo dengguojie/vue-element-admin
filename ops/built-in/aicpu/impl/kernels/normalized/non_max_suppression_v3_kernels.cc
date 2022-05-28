@@ -27,7 +27,7 @@
 #include "utils/allocator_utils.h"
 
 namespace {
-const char *kNonMaxSuppressionV3 = "NonMaxSuppressionV3";
+const char *const kNonMaxSuppressionV3 = "NonMaxSuppressionV3";
 constexpr uint32_t kFirstInputIndex = 0;
 constexpr uint32_t kSecondInputIndex = 1;
 constexpr uint32_t kThirdInputIndex = 2;
@@ -37,7 +37,7 @@ constexpr uint32_t kFirstOutputIndex = 0;
 }
 
 namespace aicpu {
-uint32_t NonMaxSuppressionV3CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t NonMaxSuppressionV3CpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("GetInputAndCheck start!! ");
   // get input tensors
   // get boxes with size [num_boxes, 4]

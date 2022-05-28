@@ -22,7 +22,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kNonZeroWithValueShape = "NonZeroWithValueShape";
+const char *const kNonZeroWithValueShape = "NonZeroWithValueShape";
 const uint32_t INPUTS_NUM = 3;
 const uint32_t OUTPUTS_NUM = 2;
 

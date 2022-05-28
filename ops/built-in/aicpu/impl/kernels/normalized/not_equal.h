@@ -25,7 +25,6 @@ class NotEqualCpuKernel : public CpuKernel {
   NotEqualCpuKernel() = default;
   ~NotEqualCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu

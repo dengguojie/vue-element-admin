@@ -117,7 +117,7 @@ uint32_t IsCloseCpuKernel::IsCloseCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t IsCloseCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
+uint32_t IsCloseCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) {
   auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
@@ -157,7 +157,7 @@ uint32_t IsCloseCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t IsCloseCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
+uint32_t IsCloseCpuKernel::BcastCompute(CpuKernelContext &ctx, const Bcast &bcast) {
   auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());

@@ -26,7 +26,7 @@ class NonMaxSuppressionV3CpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
   template <typename T>
   static inline T IOUSimilarity(const T *box_1, const T *box_2);
   template <typename T, typename T_threshold>
@@ -37,8 +37,8 @@ class NonMaxSuppressionV3CpuKernel : public CpuKernel {
   Tensor *iou_threshold_tensor_ = nullptr;
   Tensor *score_threshold_tensor_ = nullptr;
   Tensor *output_indices_ = nullptr;
-  int32_t num_boxes_ = 0;
-  int32_t max_output_size_ = 0;
+  int64_t num_boxes_ = 0;
+  int64_t max_output_size_ = 0;
   DataType threshold_dtype_ = DT_UINT32;
   DataType boxes_scores_dtype_ = DT_UINT32;
 };

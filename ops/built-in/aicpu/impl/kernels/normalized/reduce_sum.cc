@@ -120,26 +120,26 @@ uint32_t ReduceSumCpuKernel::ReduceSumOneAxes(const T *input_data, std::vector<i
                                               T *output_data, int64_t output_num,
                                               std::vector<int64_t> &axes, uint32_t &axes_idx) {
   if (axes_idx >= axes.size()) {
-    for (int32_t i = 0; i < output_num; i++) {
+    for (int64_t i = 0; i < output_num; i++) {
       output_data[i] = input_data[i];
     }
     return KERNEL_STATUS_OK;
   }
-  size_t inner = 1, outer = 1, depth = 1;
+  int64_t inner = 1, outer = 1, depth = 1;
   KERNEL_HANDLE_ERROR(ReduceSumParseAxes(input_shape, axes, axes_idx, inner, outer, depth),
                       "parse axes failed.");
   auto output_data_temp = new (std::nothrow) T[inner * outer];
   KERNEL_CHECK_NULLPTR(output_data_temp, KERNEL_STATUS_INNER_ERROR, "apply memory failed.");
-  for (size_t outer_index = 0; outer_index < outer; ++outer_index) {
-    for (size_t inner_index = 0; inner_index < inner; inner_index++) {
+  for (int64_t outer_index = 0; outer_index < outer; ++outer_index) {
+    for (int64_t inner_index = 0; inner_index < inner; inner_index++) {
       auto accumulator = static_cast<T>(0);
-      for (size_t depth_index = 0; depth_index < depth; depth_index++) {
-        size_t index = outer_index;
+      for (int64_t depth_index = 0; depth_index < depth; depth_index++) {
+        int64_t index = outer_index;
         index += depth_index * outer;
         index += inner_index * depth * outer;
         accumulator += input_data[index];
       }
-      int32_t output_index = outer_index;
+      int64_t output_index = outer_index;
       output_index += inner_index * outer;
       output_data_temp[output_index] = accumulator;
     }
@@ -194,7 +194,7 @@ uint32_t ReduceSumCpuKernel::ReduceSumOneAxes2(const T *input_data, int64_t inpu
     }
     return KERNEL_STATUS_OK;
   }
-  size_t inner = 1, outer = 1, depth = 1;
+  int64_t inner = 1, outer = 1, depth = 1;
   KERNEL_HANDLE_ERROR(ReduceSumParseAxes(input_shape, axes, axes_idx, inner, outer, depth),
                       "parse axes failed.");
   std::vector<T2> input_data_real(input_num);
@@ -206,18 +206,18 @@ uint32_t ReduceSumCpuKernel::ReduceSumOneAxes2(const T *input_data, int64_t inpu
   int64_t output_num_temp = inner * outer;
   auto *output_data_temp = new (std::nothrow) T[output_num_temp];
   KERNEL_CHECK_NULLPTR(output_data_temp, KERNEL_STATUS_INNER_ERROR, "apply memory failed.");
-  for (size_t outer_index = 0; outer_index < outer; outer_index++) {
-    for (size_t inner_index = 0; inner_index < inner; inner_index++) {
+  for (int64_t outer_index = 0; outer_index < outer; outer_index++) {
+    for (int64_t inner_index = 0; inner_index < inner; inner_index++) {
       auto accumulator_real = static_cast<T2>(0);
       auto accumulator_imag = static_cast<T2>(0);
-      for (size_t depth_index = 0; depth_index < depth; depth_index++) {
-        size_t index = outer_index;
+      for (int64_t depth_index = 0; depth_index < depth; depth_index++) {
+        int64_t index = outer_index;
         index += inner_index * depth * outer;
         index += depth_index * outer;
         accumulator_real += input_data_real[index];
         accumulator_imag += input_data_imag[index];
       }
-      int32_t output_index = outer_index;
+      int64_t output_index = outer_index;
       output_index += inner_index * outer;
       output_data_temp[output_index] = std::complex<T2>(accumulator_real, accumulator_imag);
     }
@@ -256,11 +256,11 @@ uint32_t ReduceSumCpuKernel::ReduceSumDedupAxes(CpuKernelContext &ctx, std::vect
 }
 uint32_t ReduceSumCpuKernel::ReduceSumParseAxes(std::vector<int64_t> &input_shape,
                                                 std::vector<int64_t> &axes, uint32_t &axes_idx,
-                                                size_t &inner, size_t &outer, size_t &depth) {
-  int32_t axis = axes[axes_idx];
+                                                int64_t &inner, int64_t &outer, int64_t &depth) {
+  int64_t axis = axes[axes_idx];
   axes_idx++;
-  int32_t rank = input_shape.size();
-  for (int32_t i = 0; i < rank; i++) {
+  int64_t rank = input_shape.size();
+  for (int64_t i = 0; i < rank; i++) {
     if (i < axis) {
       inner *= input_shape[i];
     } else if (i > axis) {

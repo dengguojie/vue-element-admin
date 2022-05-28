@@ -25,7 +25,6 @@ class IsCloseCpuKernel : public CpuKernel {
   IsCloseCpuKernel() = default;
   ~IsCloseCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
@@ -36,10 +35,10 @@ class IsCloseCpuKernel : public CpuKernel {
                       const T *input1, const T *input2, bool *output);
 
   template <typename T>
-  uint32_t NoBcastCompute(CpuKernelContext &ctx);
+  uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
+  uint32_t BcastCompute(CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
   uint32_t IsCloseCompute(CpuKernelContext &ctx);

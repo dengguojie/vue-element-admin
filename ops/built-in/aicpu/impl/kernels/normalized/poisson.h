@@ -26,7 +26,6 @@ class PoissonCpuKernel : public CpuKernel {
   PoissonCpuKernel() = default;
   ~PoissonCpuKernel() override = default;
 
-  protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
