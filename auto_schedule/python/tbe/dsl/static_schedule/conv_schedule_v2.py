@@ -1196,12 +1196,17 @@ class Conv2dSchedule:
             default_tiling["BL0_matrix"] = [tiling_kb, tiling_n, 16, self._in_c0, 1, 1]
             default_tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16, 1, group_cl0]
             default_tiling["CUB_matrix"] = default_tiling.get("CL0_matrix")
-            default_tiling["AUB_shape"] = [1, 1, 1, 1]
 
             kal1 = max(1, ceil_div(tiling_ka, self._kernel_h * self._kernel_w)) *\
                    self._kernel_h * self._kernel_w * self._in_c0
             default_tiling["AL1_shape"] = [kal1, 1, 1, 1]
             default_tiling["BL1_shape"] = None
+
+            _fused_coeff = info_dict.get("fused_coefficient")
+            if _fused_coeff[0] > 0:
+                default_tiling["AUB_shape"] = default_tiling["AL1_shape"]
+            else:
+                default_tiling["AUB_shape"] = None
 
             if self._sparse_4to2_flag:
                 kbl1 = self._kernel_h * self._kernel_w * self._in_c0
@@ -2701,6 +2706,7 @@ class Conv2dSchedule:
         if aub_tiling:
             k_aub, m_aub, *_ = aub_tiling
             k1_aub = k_aub // (((kernel_h - 1)*dilate_h + 1)*((kernel_w - 1)*dilate_w + 1)*block_k0)
+            k1_aub = 1 if k1_aub == 0 else k1_aub
             if al1_tiling:
                 aub_nparts = [k1_al1 // k1_aub, multi_m_al1 // m_aub]
             else:  # al1 full load

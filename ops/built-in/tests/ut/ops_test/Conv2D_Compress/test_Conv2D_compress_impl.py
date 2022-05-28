@@ -374,6 +374,7 @@ def run_v300_conv2d_compress(test_arg):
 
         Ci0 = Ci0_dict[conv_type]
         Ci1 = (Ci + Ci0 - 1) // Ci0
+
         shape_in_5HD = (Ni, Ci1, Hi, Wi, Ci0)
         shape_w_fracz = [Ci1*Hk*Wk, (Cout + 15) // 16, 16, 32]
 

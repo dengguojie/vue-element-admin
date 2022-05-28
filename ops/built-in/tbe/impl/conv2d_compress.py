@@ -424,6 +424,7 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
 
     tbe.cce_build_code(sch, config)
 
+
 def get_op_support_info(inputs, weight_compress, compress_index, bias, offset_w, outputs, strides, pads, dilations,
                         groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2dcompress"):
     """

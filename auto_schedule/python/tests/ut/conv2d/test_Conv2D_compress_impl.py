@@ -130,7 +130,6 @@ def run_v300_conv2d_compress():
 
 ut_case.add_cust_test_func(test_func=run_v300_conv2d_compress)
 
-
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=run_v300_conv2d_compress)
     ut_case.run("Ascend320")

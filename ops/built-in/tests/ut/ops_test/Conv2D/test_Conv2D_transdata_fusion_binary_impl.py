@@ -51,6 +51,7 @@ def test_conv2d_dynamic_transdata_fusion(test_arg):
             bias = tvm.placeholder((Co0*Co1,), name='bias', dtype=in_dtype, attrs={'ori_shape': [-1], 'ori_format': "ND", 'format': "ND"}) if bias_flag else None
 
             conv_in = trans_data_fusion_compute(data, None, "NCHW", "NC1HWC0")
+
             conv_out = conv2d_fusion_compute(conv_in, weight, bias, None, outputs, strides,
                                              pads, dilations, groups, "NCHW", 0, kernel_name,
                                              options={"invalid_data_rm": True})
@@ -67,7 +68,7 @@ def test_conv2d_dynamic_transdata_fusion(test_arg):
             config = {"name": kernel_name,
                       "tensor_list": tensor_list,
                       "build_args": {"constant_realize_extent_in_infer_bound": False}}
-        build(sch, config)
+        # build(sch, config)
 
 
 print("test Conv2D dynamic transdata fusion running")
