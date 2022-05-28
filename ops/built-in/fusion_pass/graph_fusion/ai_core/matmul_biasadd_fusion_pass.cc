@@ -167,9 +167,9 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       return NOT_CHANGED);
 
   // check nodeMatMul must have range
-  FUSION_PASS_CHECK(IsNorange(matmul_opdesc),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "MatMul node should have norange."),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(
+      IsNorange(matmul_opdesc) && node_bias->GetOpDesc()->MutableOutputDesc(0)->GetDataType() == DT_FLOAT16,
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "MatMul node should have range when bias is fp16."), return NOT_CHANGED);
 
   // check node_matmul must have only one output to node_biasadd
   FUSION_PASS_CHECK(node_matmul->GetOutDataNodes().size() != 1,
