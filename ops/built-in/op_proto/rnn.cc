@@ -635,7 +635,7 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
     inputSize = inputXShape.GetDims().at(1);
     hiddenSize = inputHShape.GetDims().at(1);
   } else {
-    std::string err_msg = OtherErrMsg(ConcatString("dim_num_x:",dim_num_x, "&&", "dim_num_h:",dim_num_h,
+    std::string err_msg = OtherErrMsg(ConcatString("dim_num_x:", dim_num_x, "&&", "dim_num_h:", dim_num_h,
                                                    "The input shape of X and H should be 2"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -1362,6 +1362,11 @@ bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
   OP_LOGI("RnnGenMaskV2", "the attr hidden_size is %d", hidden_size);
   ge::Shape length_shape = tensordesc_input.GetShape();
   std::vector<int64_t> dim_length = length_shape.GetDims();
+
+  // If blocklstm parameter seq_length is a scalar, set the initial shape for it
+  if (dim_length.empty()) {
+    dim_length = {1};
+  }
 
   if (dim_length.size() != 1) {
     OP_LOGE("RnnGenMaskV2", "Unexcepeted Input Shape.");
