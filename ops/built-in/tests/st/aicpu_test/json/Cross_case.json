@@ -1,0 +1,444 @@
+[
+    {
+      "case_name": "Test_Cross_001",
+      "op": "Cross",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int16"],
+          "shape": [8,4,3,5],
+          "data_distribute": ["uniform"],
+          "value_range": [[-128,127]]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int16"],
+          "shape": [8,4,3,5],
+          "data_distribute": ["uniform"],
+          "value_range": [[-128,127]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int16"],
+          "shape": [8,4,3,5]
+        }
+      ],
+      "attr":[
+        {
+          "name":"dim",
+          "type":"int",
+          "value":2
+        }
+      ]
+    },
+    {
+      "case_name": "Test_Cross_002",
+      "op": "Cross",
+      "input_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [16,4,3,5],
+          "data_distribute": ["uniform"],
+          "value_range": [[-128,127]]
+        },
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [16,4,3,5],
+          "data_distribute": ["uniform"],
+          "value_range": [[-128,127]]
+        }
+      ],
+      "output_desc": [
+        {
+          "format": ["ND"],
+          "type": ["int64"],
+          "shape": [16,4,3,5]
+        }
+      ],
+      "attr":[
+        {
+          "name":"dim",
+          "type":"int",
+          "value":2
+        }
+      ]
+    },
+    {
+        "case_name": "Test_Cross_003",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["int8"],
+            "shape": [64,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-128,127]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["int8"],
+            "shape": [64,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-128,127]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["int8"],
+            "shape": [64,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_004",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["int32"],
+            "shape": [8,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-128,127]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["int32"],
+            "shape": [8,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-128,127]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["int32"],
+            "shape": [8,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_005",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint8"],
+            "shape": [128,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,255]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["uint8"],
+            "shape": [128,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,255]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint8"],
+            "shape": [128,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_006",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint16"],
+            "shape": [16,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,1024]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["uint16"],
+            "shape": [16,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,1024]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint16"],
+            "shape": [16,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_007",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint32"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,1024]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["uint32"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,1024]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint32"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_008",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint64"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,1024]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["uint64"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,1024]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["uint64"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_009",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["float"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-32,32]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["float"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-32,32]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["float"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_010",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["double"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-32,32]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["double"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-32,32]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["double"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_011",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["float16"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-32,32]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["float16"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[-32,32]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["float16"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_012",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["complex64"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,200]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["complex64"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,200]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["complex64"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    },
+    {
+        "case_name": "Test_Cross_013",
+        "op": "Cross",
+        "input_desc": [
+          {
+            "format": ["ND"],
+            "type": ["complex128"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,200]]
+          },
+          {
+            "format": ["ND"],
+            "type": ["complex128"],
+            "shape": [2,4,3,5],
+            "data_distribute": ["uniform"],
+            "value_range": [[0,200]]
+          }
+        ],
+        "output_desc": [
+          {
+            "format": ["ND"],
+            "type": ["complex128"],
+            "shape": [2,4,3,5]
+          }
+        ],
+        "attr":[
+          {
+            "name":"dim",
+            "type":"int",
+            "value":2
+          }
+        ]
+    }
+]

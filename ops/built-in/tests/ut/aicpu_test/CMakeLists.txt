@@ -103,6 +103,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cosh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/cross.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reduce_sum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/abs.cc
@@ -336,6 +337,7 @@ set(_cpu_kernels_ut_files
   testcase/cos/src/cos_utest.cpp
   testcase/cosh/src/cosh_utest.cpp
   testcase/crop_and_resize/src/crop_and_resize_kernel_utest.cpp
+  testcase/cross/src/cross_utest.cpp
   testcase/reduce_sum/src/reduce_sum_utest.cpp
   testcase/cumsum/src/cumsum_utest.cpp
   testcase/diag/src/diag_utest.cpp

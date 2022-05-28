@@ -134,6 +134,7 @@ set(_tf_plugins
   crop_and_resize_grad_boxes_plugin.cc
   crop_and_resize_grad_image_plugin.cc
   crop_and_resize_plugin.cc
+  cross_plugin.cc
   cumprod_plugin.cc
   cumsum_plugin.cc
   cumulative_logsumexp_plugin.cc
