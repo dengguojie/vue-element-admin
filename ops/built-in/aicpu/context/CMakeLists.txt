@@ -171,24 +171,11 @@ add_library(cpu_kernels_context SHARED
 )
 add_dependencies(cpu_kernels_context aicpu_proto)
 
-if (${PRODUCT_SIDE} STREQUAL device)
-if ("x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend920" OR "x${PRODUCT}" STREQUAL "xascend920esl" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310p"
-    OR "x${PRODUCT}" STREQUAL "xascend910B" OR "x${PRODUCT}" STREQUAL "xascend910C")
-add_library(cpu_kernels_context_static STATIC
-    ${local_context_src_files}
-)
-else()
 add_library(cpu_kernels_context_static STATIC
     ${local_context_src_files}
     ${local_context_stub_files}
 )
-endif()
-else()
-add_library(cpu_kernels_context_static STATIC
-    ${local_context_src_files}
-    ${local_context_stub_files}
-)
-endif()
+
 add_dependencies(cpu_kernels_context_static aicpu_proto)
 
 target_link_libraries(cpu_kernels_context PRIVATE
