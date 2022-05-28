@@ -448,7 +448,7 @@ static void Update3DNotSameRange(ge::Operator& op, const int64_t& strides, const
     dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
   }
 }
-//--------- Dilation2D ---------------
+// --------- Dilation2D ---------------
 IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
   auto x_shape = op.GetInputDescByName("x").GetShape();
   Format input_format = op.GetInputDescByName("x").GetFormat();
@@ -676,7 +676,7 @@ IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
 VERIFY_FUNC_REG(Dilation2D, Dilation2DVerify);
 INFER_FUNC_REG(Dilation2D, Dilation2DInfer);
 
-//--------- Dilation2DBackpropFilter ---------------
+// --------- Dilation2DBackpropFilter ---------------
 IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
   auto x_shape = op.GetInputDescByName("x").GetShape();
   Format input_format = op.GetInputDescByName("x").GetFormat();
@@ -881,7 +881,7 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer) {
 VERIFY_FUNC_REG(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify);
 INFER_FUNC_REG(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer);
 
-//--------- Dilation2DBackpropInput ---------------
+// --------- Dilation2DBackpropInput ---------------
 IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
   auto x_shape = op.GetInputDescByName("x").GetShape();
   Format input_format = op.GetInputDescByName("x").GetFormat();
@@ -2501,12 +2501,12 @@ void AvgPool3DCalOutputRange(int32_t ksize, int32_t stride, const string& paddin
   fmap_range.second = fmap_range.second == -1 ? kDynamicRangeUpperBound : fmap_range.second;
   if (padding == "SAME") {
     output_range.first = std::max((fmap_range.first + stride - 1) / stride, kDynamicRangeLowerBound);
-    output_range.second = std::min(std::max(int64_t(1), (fmap_range.second + stride - 1) / stride),
-                                   kDynamicRangeUpperBound);
+    output_range.second =
+        std::min(std::max(int64_t(1), (fmap_range.second + stride - 1) / stride), kDynamicRangeUpperBound);
   } else {
     output_range.first = std::max((fmap_range.first - ksize) / stride + 1, kDynamicRangeLowerBound);
-    output_range.second = std::min(std::max(int64_t(1), (fmap_range.second - ksize) / stride + 1),
-                                   kDynamicRangeUpperBound);
+    output_range.second =
+        std::min(std::max(int64_t(1), (fmap_range.second - ksize) / stride + 1), kDynamicRangeUpperBound);
   }
 }
 
@@ -3114,7 +3114,6 @@ static bool GetAttrsAvgPool3DGrad(ge::Operator& op, const string& data_format, i
   strd = stride_list[data_format.find("D")];
   strh = stride_list[data_format.find("H")];
   strw = stride_list[data_format.find("W")];
-
   if (strd <= 0 || strh <= 0 || strw <= 0) {
     OP_LOGE(op_name.GetString(), "strides should be positive.");
     map<std::string, std::string> err_map;
@@ -4383,7 +4382,7 @@ INFER_FUNC_REG(MaxPool3D, MaxPool3DInferShape);
 VERIFY_FUNC_REG(MaxPool3D, MaxPool3DVerify);
 // ----------------MaxPool3D-------------------
 
-//-------------------MaxPool3DWithArgmax---------------------
+// -------------------MaxPool3DWithArgmax---------------------
 IMPLEMT_INFERFUNC(MaxPool3DWithArgmax, MaxPool3DWithArgmaxInferShape) {
   TensorDesc inputDesc = op.GetInputDescByName("x");
   auto inputShape = inputDesc.GetShape().GetDims();
@@ -8455,7 +8454,7 @@ IMPLEMT_COMMON_INFERFUNC(GlobalLpPoolInfer) {
 COMMON_INFER_FUNC_REG(GlobalLpPool, GlobalLpPoolInfer);
 // ----------------GlobalLpPool end------------------
 
-//-----------------GlobalAveragePool start----------------
+// -----------------GlobalAveragePool start----------------
 IMPLEMT_INFERFUNC(GlobalAveragePool, GlobalAveragePoolInferShape) {
   TensorDesc input_desc = op.GetInputDescByName("x");
   TensorDesc output_desc = op.GetOutputDescByName("y");
@@ -8503,5 +8502,5 @@ IMPLEMT_VERIFIER(GlobalAveragePool, GlobalAveragePoolVerify) {
 
 INFER_FUNC_REG(GlobalAveragePool, GlobalAveragePoolInferShape);
 VERIFY_FUNC_REG(GlobalAveragePool, GlobalAveragePoolVerify);
-//-----------------GlobalAveragePool end----------------
+// -----------------GlobalAveragePool end----------------
 }  // namespace ge
