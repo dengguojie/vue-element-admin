@@ -61,7 +61,9 @@ REGISTER_CUSTOM_OP("ROIPooling")
                    "ai.onnx::10::MaxRoiPool",
                    "ai.onnx::11::MaxRoiPool",
                    "ai.onnx::12::MaxRoiPool",
-                   "ai.onnx::13::MaxRoiPool"})
+                   "ai.onnx::13::MaxRoiPool",
+                   "ai.onnx::14::MaxRoiPool",
+                   "ai.onnx::15::MaxRoiPool"})
     .ParseParamsFn(ParseParamsMaxRoiPool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

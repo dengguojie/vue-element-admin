@@ -60,7 +60,9 @@ REGISTER_CUSTOM_OP("Squeeze")
   
 REGISTER_CUSTOM_OP("SqueezeV3")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::13::Squeeze"})
+    .OriginOpType({"ai.onnx::13::Squeeze",
+                   "ai.onnx::14::Squeeze",
+                   "ai.onnx::15::Squeeze"})
     .ParseParamsFn(ParseParamsSqueezeV3)
     .ImplyType(ImplyType::GELOCAL);
 }  // namespace domi

@@ -54,7 +54,9 @@ REGISTER_CUSTOM_OP("AvgPool")
                    "ai.onnx::10::GlobalAveragePool",
                    "ai.onnx::11::GlobalAveragePool",
                    "ai.onnx::12::GlobalAveragePool",
-                   "ai.onnx::13::GlobalAveragePool"})
+                   "ai.onnx::13::GlobalAveragePool",
+                   "ai.onnx::14::GlobalAveragePool",
+                   "ai.onnx::15::GlobalAveragePool"})
     .ParseParamsFn(ParseParamsGlobalAveragePool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -40,7 +40,9 @@ REGISTER_CUSTOM_OP("AccumulateNV2")
                  "ai.onnx::10::Sum",
                  "ai.onnx::11::Sum",
                  "ai.onnx::12::Sum",
-                 "ai.onnx::13::Sum"})
+                 "ai.onnx::13::Sum",
+                 "ai.onnx::14::Sum",
+                 "ai.onnx::15::Sum"})
   .ParseParamsFn(ParseParamsSum)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

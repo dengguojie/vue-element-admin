@@ -49,7 +49,9 @@ REGISTER_CUSTOM_OP("SpaceToDepth")
                  "ai.onnx::10::SpaceToDepth",
                  "ai.onnx::11::SpaceToDepth",
                  "ai.onnx::12::SpaceToDepth",
-                 "ai.onnx::13::SpaceToDepth"})
+                 "ai.onnx::13::SpaceToDepth",
+                 "ai.onnx::14::SpaceToDepth",
+                 "ai.onnx::15::SpaceToDepth"})
   .ParseParamsFn(ParseParamsSpaceToDepth)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

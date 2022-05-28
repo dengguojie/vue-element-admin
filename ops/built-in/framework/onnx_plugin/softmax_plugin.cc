@@ -73,7 +73,9 @@ REGISTER_CUSTOM_OP("SoftmaxV2")
 
 REGISTER_CUSTOM_OP("SoftmaxV2")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::13::Softmax")
+  .OriginOpType({"ai.onnx::13::Softmax",
+                 "ai.onnx::14::Softmax",
+                 "ai.onnx::15::Softmax"})
   .ParseParamsFn(ParseParamsSoftmaxV13)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

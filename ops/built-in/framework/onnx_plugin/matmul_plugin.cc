@@ -53,7 +53,9 @@ REGISTER_CUSTOM_OP("BatchMatMulV2")
                    ge::AscendString("ai.onnx::10::MatMul"),
                    ge::AscendString("ai.onnx::11::MatMul"),
                    ge::AscendString("ai.onnx::12::MatMul"),
-                   ge::AscendString("ai.onnx::13::MatMul")})
+                   ge::AscendString("ai.onnx::13::MatMul"),
+                   ge::AscendString("ai.onnx::14::MatMul"),
+                   ge::AscendString("ai.onnx::15::MatMul")})
     .ParseParamsFn(ParseParamsMatMul)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

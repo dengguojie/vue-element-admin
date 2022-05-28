@@ -42,6 +42,7 @@ Status ParseParamsReduceMax(const Message* op_src, ge::Operator& op_dest) {
   }
   ge::Tensor tensor = Vec2Tensor(axes, dims, ge::DT_INT32, ge::FORMAT_NCHW);
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("axes", tensor);
   op_dest.SetAttr("keep_dims", keep_dims);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -57,15 +58,21 @@ Status ParseParamsReduceMax(const Message* op_src, ge::Operator& op_dest) {
 }
 
 static Status ParseOpToGraphReduceMax(const ge::Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
 
   ge::Tensor axes;
   if (op.GetAttr("axes", axes) != SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get axes from op failed");
     return FAILED;
   }
-  auto data1 = op::Const("data1").set_attr_value(axes);
-  auto reducemax = op::ReduceMax().set_input_x(data0).set_input_axes(data1);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(axes);
+  auto reducemax = op::ReduceMax(ori_name + "_ReduceMax").set_input_x(data0).set_input_axes(data1);
 
   bool keep_dims = false;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
@@ -90,7 +97,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::ReduceMax",
                    "ai.onnx::11::ReduceMax",
                    "ai.onnx::12::ReduceMax",
-                   "ai.onnx::13::ReduceMax"})
+                   "ai.onnx::13::ReduceMax",
+                   "ai.onnx::14::ReduceMax",
+                   "ai.onnx::15::ReduceMax"})
     .ParseParamsFn(ParseParamsReduceMax)
     .ParseOpToGraphFn(ParseOpToGraphReduceMax)
     .ImplyType(ImplyType::TVM);

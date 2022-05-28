@@ -59,7 +59,9 @@ REGISTER_CUSTOM_OP("SquareSumV1")
                  "ai.onnx::10::ReduceSumSquare",
                  "ai.onnx::11::ReduceSumSquare",
                  "ai.onnx::12::ReduceSumSquare",
-                 "ai.onnx::13::ReduceSumSquare"})
+                 "ai.onnx::13::ReduceSumSquare",
+                 "ai.onnx::14::ReduceSumSquare",
+                 "ai.onnx::15::ReduceSumSquare"})
   .ParseParamsFn(parse_params_reduce_sum_square)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -69,7 +69,9 @@ REGISTER_CUSTOM_OP("LRN")
                  "ai.onnx::10::LRN",
                  "ai.onnx::11::LRN",
                  "ai.onnx::12::LRN",
-                 "ai.onnx::13::LRN"})
+                 "ai.onnx::13::LRN",
+                 "ai.onnx::14::LRN",
+                 "ai.onnx::15::LRN"})
   .ParseParamsFn(ParseParamsLRN)
   .ImplyType(ImplyType::TVM);
 }  //  namespace domi

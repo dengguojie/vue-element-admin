@@ -41,9 +41,9 @@ REGISTER_CUSTOM_OP("HardMax")
                    "ai.onnx::10::Hardmax",
                    "ai.onnx::11::Hardmax",
                    "ai.onnx::12::Hardmax",
-                   "ai.onnx::13::Hardmax"})
+                   "ai.onnx::13::Hardmax",
+                   "ai.onnx::14::Hardmax",
+                   "ai.onnx::15::Hardmax"})
     .ParseParamsFn(parse_params_hard_max)
     .ImplyType(ImplyType::TVM);
 }
-
-

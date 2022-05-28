@@ -52,7 +52,9 @@ REGISTER_CUSTOM_OP("CommonGRU")
                    "ai.onnx::10::GRU",
                    "ai.onnx::11::GRU",
                    "ai.onnx::12::GRU",
-                   "ai.onnx::13::GRU"})
+                   "ai.onnx::13::GRU",
+                   "ai.onnx::14::GRU",
+                   "ai.onnx::15::GRU"})
     .ParseParamsFn(ParseParamsCommonGRU)
     .ImplyType(ImplyType::TVM);
 

@@ -77,19 +77,19 @@ static Status ParseOpToGraphClipV9(const Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
     return FAILED;
   }
-  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   ge::Tensor value1;
   op.GetAttr("max", value1);
   ge::Tensor value2;
   op.GetAttr("min", value2);
 
-  auto data1 = op::Const(ori_name + "data1").set_attr_value(value1);
-  auto data2 = op::Const(ori_name + "data2").set_attr_value(value2);
-  auto cast_op = op::Cast(ori_name + "cast").set_input_x(data0).set_attr_dst_type(DT_FLOAT);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(value1);
+  auto data2 = op::Const(ori_name + "_data2").set_attr_value(value2);
+  auto cast_op = op::Cast(ori_name + "_cast").set_input_x(data0).set_attr_dst_type(DT_FLOAT);
   auto clip_by_value =
-      op::ClipByValue(ori_name + "ClipByValue").set_input_x(cast_op)
-                                               .set_input_clip_value_min(data2)
-                                               .set_input_clip_value_max(data1);
+      op::ClipByValue(ori_name + "_ClipByValue").set_input_x(cast_op)
+                                                .set_input_clip_value_min(data2)
+                                                .set_input_clip_value_max(data1);
 
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
@@ -142,7 +142,7 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
     return FAILED;
   }
-  auto data0 = op::Data(ori_name + "x").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "_x").set_attr_index(0);
   bool no_max = true;
   op.GetAttr("no_max", no_max);
   bool no_min = true;
@@ -154,9 +154,9 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     float min = -3.402823e+38;
     std::vector<int64_t> dims = {1};
     ge::Tensor min_tensor = Scalar2Tensor(min, dims, ge::DT_FLOAT);
-    min_op = op::Const(ori_name + "min").set_attr_value(min_tensor);
+    min_op = op::Const(ori_name + "_min").set_attr_value(min_tensor);
   } else {
-    min_op = op::Data(ori_name + "min").set_attr_index(index);
+    min_op = op::Data(ori_name + "_min").set_attr_index(index);
   }
   index++;
 
@@ -165,25 +165,25 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     float max = 3.402823e+38;
     std::vector<int64_t> dims = {1};
     ge::Tensor max_tensor = Scalar2Tensor(max, dims, ge::DT_FLOAT);
-    max_op = op::Const(ori_name + "max").set_attr_value(max_tensor);
+    max_op = op::Const(ori_name + "_max").set_attr_value(max_tensor);
   } else {
-    max_op = op::Data(ori_name + "max").set_attr_index(index);
+    max_op = op::Data(ori_name + "_max").set_attr_index(index);
   }
   index++;
 
   Operator input_op1 = data0;
   Operator input_op2 = min_op;
   Operator input_op3 = max_op;
-  auto clip_by_value = op::ClipByValue(ori_name + "ClipByValue");
+  auto clip_by_value = op::ClipByValue(ori_name + "_ClipByValue");
   if (no_max || no_min) {
-    input_op1 = op::Cast(ori_name + "cast").set_input_x(data0).set_attr_dst_type(DT_FLOAT);
+    input_op1 = op::Cast(ori_name + "_cast").set_input_x(data0).set_attr_dst_type(DT_FLOAT);
 
     if (!no_max) {
-      input_op3 = op::Cast(ori_name + "cast1").set_input_x(max_op).set_attr_dst_type(DT_FLOAT);
+      input_op3 = op::Cast(ori_name + "_cast1").set_input_x(max_op).set_attr_dst_type(DT_FLOAT);
     }
 
     if (!no_min) {
-      input_op2 = op::Cast(ori_name + "cast2").set_input_x(min_op).set_attr_dst_type(DT_FLOAT);
+      input_op2 = op::Cast(ori_name + "_cast2").set_input_x(min_op).set_attr_dst_type(DT_FLOAT);
     }
   }
   clip_by_value.set_input_x(input_op1).set_input_clip_value_min(input_op2).set_input_clip_value_max(input_op3);

@@ -45,7 +45,9 @@ REGISTER_CUSTOM_OP("IsInf")
   .OriginOpType({"ai.onnx::10::IsInf",
                  "ai.onnx::11::IsInf",
                  "ai.onnx::12::IsInf",
-                 "ai.onnx::13::IsInf"})
+                 "ai.onnx::13::IsInf",
+                 "ai.onnx::14::IsInf",
+                 "ai.onnx::15::IsInf"})
   .ParseParamsFn(ParseParamsIsinf)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

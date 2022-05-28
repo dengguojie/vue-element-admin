@@ -58,7 +58,9 @@ REGISTER_CUSTOM_OP("If")
                  "ai.onnx::10::If",
                  "ai.onnx::11::If",
                  "ai.onnx::12::If",
-                 "ai.onnx::13::If"})
+                 "ai.onnx::13::If",
+                 "ai.onnx::14::If",
+                 "ai.onnx::15::If"})
   .ParseParamsFn(ParseParamsIf)
   .ParseSubgraphPostFn(ParseSubgraphPostFnIf)
   .ImplyType(ImplyType::GELOCAL);

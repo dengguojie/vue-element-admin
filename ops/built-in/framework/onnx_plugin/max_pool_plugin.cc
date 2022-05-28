@@ -152,6 +152,7 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("dims", dims);
   op_dest.SetAttr("ceil_mode", node_attr.ceil_mode);
   op_dest.SetAttr("trans_2d", node_attr.trans_2d);
@@ -206,11 +207,11 @@ Status UpdateTbeAttrFromOp(const Operator& op, TbeAttr& tbe_attr, int dims) {
 }
 
 void GenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t> strides, std::vector<int64_t> pads,
-                std::string padding_mode, Operator& input) {
+                std::string padding_mode, Operator& input, std::string ori_name) {
   // aicpu only supports format=NHWC, so add permute operator to adjust the input
   std::vector<int64_t> ksize_transpose = {ksize[0], ksize[2], ksize[3], ksize[1]};
   std::vector<int64_t> strides_transpose = {strides[0], strides[2], strides[3], strides[1]};
-  auto transposeIn = op::TransposeD("permuteIn").set_input_x(input).set_attr_perm({0, 2, 3, 1});
+  auto transposeIn = op::TransposeD(ori_name + "_permuteIn").set_input_x(input).set_attr_perm({0, 2, 3, 1});
 
   std::vector<int32_t> pads_vector(8, 0);
   bool use_pad = false;
@@ -224,24 +225,27 @@ void GenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t> s
     int64_t len = pads_vector.size();
     std::vector<int64_t> dims_pad = {len};
     ge::Tensor pads_tensor = Vec2Tensor(pads_vector, dims_pad, ge::DT_INT32, ge::FORMAT_NHWC);
-    auto paddings = op::Const("paddings").set_attr_value(pads_tensor);
+    auto paddings = op::Const(ori_name + "_paddings").set_attr_value(pads_tensor);
 
     float tmp_const = -65504.0f;
     std::vector<int64_t> dims = {1};
     ge::Tensor values_tensor = Scalar2Tensor(tmp_const, dims, ge::DT_FLOAT, ge::FORMAT_NHWC);
-    auto constant_values = op::Const("constant_values").set_attr_value(values_tensor);
+    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(values_tensor);
 
     auto padV2 =
-        op::PadV2().set_input_x(transposeIn).set_input_paddings(paddings).set_input_constant_values(constant_values);
+        op::PadV2(ori_name + "_PadV2")
+             .set_input_x(transposeIn)
+             .set_input_paddings(paddings)
+             .set_input_constant_values(constant_values);
 
-    op = op::MaxPool()
+    op = op::MaxPool(ori_name + "_MaxPool")
              .set_input_x(padV2)
              .set_attr_ksize(ksize_transpose)
              .set_attr_strides(strides_transpose)
              .set_attr_padding(padding_mode)
              .set_attr_data_format("NHWC");
   } else {
-    op = op::MaxPool()
+    op = op::MaxPool(ori_name + "_MaxPool")
              .set_input_x(transposeIn)
              .set_attr_ksize(ksize_transpose)
              .set_attr_strides(strides_transpose)
@@ -277,6 +281,12 @@ Status UpdateFormat(Operator& op, Format format) {
 }
 
 static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int dims = 0;
   if (op.GetAttr("dims", dims) != SUCCESS) {
     ONNX_PLUGIN_LOGE("MaxPool", "get dims from op failed");
@@ -287,27 +297,28 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  ge::Operator data0 = op::Data("data0").set_attr_index(0);
+  ge::Operator data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
 
   if (dims == 2) {
     if (tbe_attr.trans_2d) {
       ge::Operator::OpListInt axes = {3};
-      data0 = op::Unsqueeze("UnsqueezeX").set_input_x(data0).set_attr_axes(axes);
+      data0 = op::Unsqueeze(ori_name + "_UnsqueezeX").set_input_x(data0).set_attr_axes(axes);
     }
     // because of the limitation of tbe operator, use aicpu instead
     if (tbe_attr.ksize[2] * tbe_attr.ksize[3] > 255 || (tbe_attr.strides[2] > 63 || tbe_attr.strides[3] > 63)) {
       Operator aicpu_op;
-      GenAicpuOp(aicpu_op, tbe_attr.ksize, tbe_attr.strides, tbe_attr.pads, "VALID", data0);
+      GenAicpuOp(aicpu_op, tbe_attr.ksize, tbe_attr.strides, tbe_attr.pads, "VALID", data0, ori_name);
 
       if (UpdateFormat(aicpu_op, ge::FORMAT_NHWC) != SUCCESS) {
         return FAILED;
       }
-      ge::Operator transposeOut = op::TransposeD("permuteOut").set_input_x(aicpu_op).set_attr_perm({0, 3, 1, 2});
+      ge::Operator transposeOut = op::TransposeD(ori_name + "_permuteOut").set_input_x(aicpu_op)
+                                                                          .set_attr_perm({0, 3, 1, 2});
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
-        transposeOut = op::Squeeze("SqueezeTranspose").set_input_x(transposeOut).set_attr_axis(axis);
+        transposeOut = op::Squeeze(ori_name + "_SqueezeTranspose").set_input_x(transposeOut).set_attr_axis(axis);
       }
       // update output format
       auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(transposeOut);
@@ -323,7 +334,7 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
               op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {
-      ge::Operator maxpoolv3 = op::MaxPoolV3()
+      ge::Operator maxpoolv3 = op::MaxPoolV3(ori_name + "_MaxPoolV3")
                                    .set_input_x(data0)
                                    .set_attr_ksize(tbe_attr.ksize)
                                    .set_attr_strides(tbe_attr.strides)
@@ -333,7 +344,7 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
                                    .set_attr_data_format("NCHW");
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
-        maxpoolv3 = op::Squeeze("SqueezeMaxpoolv3").set_input_x(maxpoolv3).set_attr_axis(axis);
+        maxpoolv3 = op::Squeeze(ori_name + "_SqueezeMaxpoolv3").set_input_x(maxpoolv3).set_attr_axis(axis);
         if (UpdateFormat(maxpoolv3, ge::FORMAT_NCHW) != SUCCESS) {
           return FAILED;
         }
@@ -341,7 +352,7 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
       outputs.emplace_back(maxpoolv3, std::vector<std::size_t>{0});
     }
   } else {
-    auto maxpool3d = op::MaxPool3D()
+    auto maxpool3d = op::MaxPool3D(ori_name + "_MaxPool3D")
                          .set_input_x(data0)
                          .set_attr_ksize(tbe_attr.ksize)
                          .set_attr_strides(tbe_attr.strides)
@@ -368,7 +379,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::MaxPool",
                    "ai.onnx::11::MaxPool",
                    "ai.onnx::12::MaxPool",
-                   "ai.onnx::13::MaxPool"})
+                   "ai.onnx::13::MaxPool",
+                   "ai.onnx::14::MaxPool",
+                   "ai.onnx::15::MaxPool"})
     .ParseParamsFn(ParseParamsMaxPool)
     .ParseOpToGraphFn(ParseOpToGraphMaxPool)
     .ImplyType(ImplyType::TVM);

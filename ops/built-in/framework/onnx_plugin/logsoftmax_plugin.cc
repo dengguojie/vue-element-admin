@@ -41,7 +41,9 @@ REGISTER_CUSTOM_OP("LogSoftmaxV2")
                  "ai.onnx::10::LogSoftmax",
                  "ai.onnx::11::LogSoftmax",
                  "ai.onnx::12::LogSoftmax",
-                 "ai.onnx::13::LogSoftmax"})
+                 "ai.onnx::13::LogSoftmax",
+                 "ai.onnx::14::LogSoftmax",
+                 "ai.onnx::15::LogSoftmax"})
   .ParseParamsFn(ParseParamsLogSoftmax)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

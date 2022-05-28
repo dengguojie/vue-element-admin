@@ -71,30 +71,30 @@ Status ParseOpToGraphOnehot(const ge::Operator& op, Graph& graph) {
   int axis = -1;
   op.GetAttr("axis", axis);
 
-  auto data1 = op::Data(ori_name + "indicate").set_attr_index(0);
-  auto data2 = op::Data(ori_name + "depth").set_attr_index(1);
-  auto data3 = op::Data(ori_name + "values").set_attr_index(2);
+  auto data1 = op::Data(ori_name + "_indicate").set_attr_index(0);
+  auto data2 = op::Data(ori_name + "_depth").set_attr_index(1);
+  auto data3 = op::Data(ori_name + "_values").set_attr_index(2);
   
   int32_t split_dim = 0;
   std::vector<int64_t> dims;
   ge::Tensor split_dim_tensor =Scalar2Tensor(split_dim, dims, ge::DT_INT32);
-  auto split_const_op = op::Const(ori_name + "split_dim").set_attr_value(split_dim_tensor);
+  auto split_const_op = op::Const(ori_name + "_split_dim").set_attr_value(split_dim_tensor);
   //In order to solve the problem that the input is negative insert add and mod, becase tbe onehot not support but onnx support
-  auto split_d_op = op::Split(ori_name + "Split").create_dynamic_output_y(2)
-                                                 .set_input_x(data3)
-                                                 .set_input_split_dim(split_const_op)
-                                                 .set_attr_num_split(2);
+  auto split_d_op = op::Split(ori_name + "_Split").create_dynamic_output_y(2)
+                                                  .set_input_x(data3)
+                                                  .set_input_split_dim(split_const_op)
+                                                  .set_attr_num_split(2);
 
-  auto cast_op = op::Cast(ori_name + "Cast").set_input_x(data1).set_attr_dst_type(3);
-  auto cast_op1 = op::Cast(ori_name + "Cast1").set_input_x(data2).set_attr_dst_type(3);
-  auto add_op = op::Add(ori_name + "Add").set_input_x1(cast_op, 0).set_input_x2(cast_op1, 0);
-  auto mod_op = op::Mod(ori_name + "Mod").set_input_x1(add_op, 0).set_input_x2(cast_op1, 0);
+  auto cast_op = op::Cast(ori_name + "_Cast").set_input_x(data1).set_attr_dst_type(3);
+  auto cast_op1 = op::Cast(ori_name + "_Cast1").set_input_x(data2).set_attr_dst_type(3);
+  auto add_op = op::Add(ori_name + "_Add").set_input_x1(cast_op, 0).set_input_x2(cast_op1, 0);
+  auto mod_op = op::Mod(ori_name + "_Mod").set_input_x1(add_op, 0).set_input_x2(cast_op1, 0);
 
-  auto onehot_op = op::OneHot(ori_name + "OneHot").set_input_x(mod_op, 0)
-                                                  .set_input_depth(cast_op1, 0)
-                                                  .set_input_on_value(split_d_op, 1)
-                                                  .set_input_off_value(split_d_op, 0)
-                                                  .set_attr_axis(axis);
+  auto onehot_op = op::OneHot(ori_name + "_OneHot").set_input_x(mod_op, 0)
+                                                   .set_input_depth(cast_op1, 0)
+                                                   .set_input_on_value(split_d_op, 1)
+                                                   .set_input_off_value(split_d_op, 0)
+                                                   .set_attr_axis(axis);
   std::vector<ge::Operator> inputs{data1, data2, data3};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   output_indexs.emplace_back(onehot_op, std::vector<size_t>{0});

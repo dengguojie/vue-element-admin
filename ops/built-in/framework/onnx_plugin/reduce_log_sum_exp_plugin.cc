@@ -66,13 +66,20 @@ Status ParseParamsReduceLogSumExp(const Message* op_src, ge::Operator& op_dest) 
   ge::Tensor tensor1 = Vec2Tensor(v_axes, dims, DT_INT32, ge::FORMAT_ND);
   op_dest.SetAttr("axes", tensor1);
   op_dest.SetAttr("keep_dims", keep_dims);
+  op_dest.SetAttr("name", node->name());
 
   return SUCCESS;
 }
 
 static Status ParseOpToGraphReduceLogSumExp(const Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto exp = op::Exp().set_input_x(data0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto exp = op::Exp(ori_name + "_Exp").set_input_x(data0);
 
   bool flag = false;
   ge::Tensor const_value;
@@ -85,11 +92,11 @@ static Status ParseOpToGraphReduceLogSumExp(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  auto const_op = op::Const("const_data").set_attr_value(const_value);
-  auto reducesum = op::ReduceSum().set_input_x(exp)
+  auto const_op = op::Const(ori_name + "_const_data").set_attr_value(const_value);
+  auto reducesum = op::ReduceSum(ori_name + "_ReduceSum").set_input_x(exp)
                                   .set_input_axes(const_op)
 				  .set_attr_keep_dims(flag);
-  auto log = op::Log().set_input_x(reducesum);
+  auto log = op::Log(ori_name + "_Log").set_input_x(reducesum);
 
   std::vector<Operator> inputs{data0, const_op};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
@@ -106,7 +113,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::ReduceLogSumExp",
                    "ai.onnx::11::ReduceLogSumExp",
                    "ai.onnx::12::ReduceLogSumExp",
-                   "ai.onnx::13::ReduceLogSumExp"})
+                   "ai.onnx::13::ReduceLogSumExp",
+                   "ai.onnx::14::ReduceLogSumExp",
+                   "ai.onnx::15::ReduceLogSumExp"})
     .ParseParamsFn(ParseParamsReduceLogSumExp)
     .ParseOpToGraphFn(ParseOpToGraphReduceLogSumExp)
     .ImplyType(ImplyType::TVM);

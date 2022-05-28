@@ -33,7 +33,9 @@ REGISTER_CUSTOM_OP("Size")
                  "ai.onnx::10::Size",
                  "ai.onnx::11::Size",
                  "ai.onnx::12::Size",
-                 "ai.onnx::13::Size"})
+                 "ai.onnx::13::Size",
+                 "ai.onnx::14::Size",
+                 "ai.onnx::15::Size"})
   .ParseParamsFn(ParseParamsSize)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

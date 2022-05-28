@@ -187,7 +187,7 @@ void AvgGenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t
   // aicpu only supports format=NHWC, so add permute operator to adjust the input
   std::vector<int64_t> ksize_transpose = {ksize[0], ksize[2], ksize[3], ksize[1]};
   std::vector<int64_t> strides_transpose = {strides[0], strides[2], strides[3], strides[1]};
-  auto transposeIn = op::TransposeD(ori_name + "permuteIn").set_input_x(input).set_attr_perm({0, 2, 3, 1});
+  auto transposeIn = op::TransposeD(ori_name + "_permuteIn").set_input_x(input).set_attr_perm({0, 2, 3, 1});
 
   std::vector<int32_t> pads_vector(8, 0);
   bool use_pad = false;
@@ -201,26 +201,26 @@ void AvgGenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t
     int64_t len = pads_vector.size();
     std::vector<int64_t> dims_pad = {len};
     ge::Tensor pads_tensor = Vec2Tensor(pads_vector, dims_pad, ge::DT_INT32, ge::FORMAT_NHWC);
-    auto paddings = op::Const(ori_name + "paddings").set_attr_value(pads_tensor);
+    auto paddings = op::Const(ori_name + "_paddings").set_attr_value(pads_tensor);
 
     float tmp_const = 0.0f;
     std::vector<int64_t> dims = {1};
     ge::Tensor values_tensor = Scalar2Tensor(tmp_const, dims, ge::DT_FLOAT, ge::FORMAT_NHWC);
-    auto constant_values = op::Const(ori_name + "constant_values").set_attr_value(values_tensor);
+    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(values_tensor);
 
     auto padV2 =
-        op::PadV2(ori_name + "PadV2").set_input_x(transposeIn)
-                                     .set_input_paddings(paddings)
-                                     .set_input_constant_values(constant_values);
+        op::PadV2(ori_name + "_PadV2").set_input_x(transposeIn)
+                                      .set_input_paddings(paddings)
+                                      .set_input_constant_values(constant_values);
 
-    op = op::AvgPool(ori_name + "AvgPool")
+    op = op::AvgPool(ori_name + "_AvgPool")
              .set_input_x(padV2)
              .set_attr_ksize(ksize_transpose)
              .set_attr_strides(strides_transpose)
              .set_attr_padding(padding_mode)
              .set_attr_data_format("NHWC");
   } else {
-    op = op::AvgPool(ori_name + "AvgPool")
+    op = op::AvgPool(ori_name + "_AvgPool")
              .set_input_x(transposeIn)
              .set_attr_ksize(ksize_transpose)
              .set_attr_strides(strides_transpose)
@@ -273,14 +273,14 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  ge::Operator data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  ge::Operator data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
 
   if (dims == 2) {
     if (tbe_attr.trans_2d) {
       ge::Operator::OpListInt axes = {3};
-      data0 = op::Unsqueeze(ori_name + "UnsqueezeX").set_input_x(data0).set_attr_axes(axes);
+      data0 = op::Unsqueeze(ori_name + "_UnsqueezeX").set_input_x(data0).set_attr_axes(axes);
     }
     if (tbe_attr.ksize[2] * tbe_attr.ksize[3] > 255 || (tbe_attr.strides[2] > 63 || tbe_attr.strides[3] > 63)) {
       ge::Operator aicpu_op;
@@ -289,11 +289,11 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
       if (AvgUpdateFormat(aicpu_op, ge::FORMAT_NHWC) != SUCCESS) {
         return FAILED;
       }
-      ge::Operator transposeOut = op::TransposeD(ori_name + "permuteOut").set_input_x(aicpu_op)
-                                                                         .set_attr_perm({0, 3, 1, 2});
+      ge::Operator transposeOut = op::TransposeD(ori_name + "_permuteOut").set_input_x(aicpu_op)
+                                                                          .set_attr_perm({0, 3, 1, 2});
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
-        transposeOut = op::Squeeze(ori_name + "SqueezeTranspose").set_input_x(transposeOut).set_attr_axis(axis);
+        transposeOut = op::Squeeze(ori_name + "_SqueezeTranspose").set_input_x(transposeOut).set_attr_axis(axis);
       }
       // update output format
       auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(transposeOut);
@@ -309,7 +309,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
               op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {
-      ge::Operator avgpoolv2 = op::AvgPoolV2(ori_name + "AvgPoolV2")
+      ge::Operator avgpoolv2 = op::AvgPoolV2(ori_name + "_AvgPoolV2")
                                    .set_input_x(data0)
                                    .set_attr_ksize(tbe_attr.ksize)
                                    .set_attr_strides(tbe_attr.strides)
@@ -320,7 +320,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
                                    .set_attr_data_format("NCHW");
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
-        avgpoolv2 = op::Squeeze(ori_name + "SqueezeAvgpoolv2").set_input_x(avgpoolv2).set_attr_axis(axis);
+        avgpoolv2 = op::Squeeze(ori_name + "_SqueezeAvgpoolv2").set_input_x(avgpoolv2).set_attr_axis(axis);
         if (AvgUpdateFormat(avgpoolv2, ge::FORMAT_NCHW) != SUCCESS) {
           return FAILED;
         }
@@ -328,7 +328,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
       outputs.emplace_back(avgpoolv2, std::vector<std::size_t>{0});
     }
   } else {
-    auto avgpool3d = op::AvgPool3D(ori_name + "AvgPool3D")
+    auto avgpool3d = op::AvgPool3D(ori_name + "_AvgPool3D")
                          .set_input_x(data0)
                          .set_attr_ksize(tbe_attr.ksize)
                          .set_attr_strides(tbe_attr.strides)

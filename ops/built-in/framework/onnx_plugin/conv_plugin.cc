@@ -271,8 +271,8 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  ge::Operator dataX = op::Data(ori_name + "dataX").set_attr_index(0);
-  ge::Operator dataW = op::Data(ori_name + "dataW").set_attr_index(1);
+  ge::Operator dataX = op::Data(ori_name + "_dataX").set_attr_index(0);
+  ge::Operator dataW = op::Data(ori_name + "_dataW").set_attr_index(1);
   std::vector<Operator> inputs{dataX, dataW};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   ge::Operator conv;
@@ -280,12 +280,12 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
   if (tbeAttr.dim_size == INPUT_4D) {
     if (tbeAttr.trans_2d) {
       ge::Operator::OpListInt axes = {2};
-      dataX = op::Unsqueeze(ori_name + "UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
-      dataW = op::Unsqueeze(ori_name + "UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
+      dataX = op::Unsqueeze(ori_name + "_UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
+      dataW = op::Unsqueeze(ori_name + "_UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
     }
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        conv = op::Conv2D(ori_name + "Conv2D")
+        conv = op::Conv2D(ori_name + "_Conv2D")
                    .set_input_x(dataX)
                    .set_input_filter(dataW)
                    .set_attr_strides(tbeAttr.strides)
@@ -295,9 +295,9 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
                    .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data(ori_name + "dataB").set_attr_index(INPUT_NUM_3 - 1);
+        dataB = op::Data(ori_name + "_dataB").set_attr_index(INPUT_NUM_3 - 1);
         inputs.push_back(dataB);
-        conv = op::Conv2D(ori_name + "Conv2D")
+        conv = op::Conv2D(ori_name + "_Conv2D")
                    .set_input_x(dataX)
                    .set_input_filter(dataW)
                    .set_input_bias(dataB)
@@ -317,12 +317,12 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
     }
     if (tbeAttr.trans_2d) {
       ge::Operator::OpListInt axis = {2};
-      conv = op::Squeeze(ori_name + "SqueezeY").set_input_x(conv).set_attr_axis(axis);
+      conv = op::Squeeze(ori_name + "_SqueezeY").set_input_x(conv).set_attr_axis(axis);
     }
   } else if (tbeAttr.dim_size == INPUT_5D) {
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        conv = op::Conv3D(ori_name + "Conv3D")
+        conv = op::Conv3D(ori_name + "_Conv3D")
                    .set_input_x(dataX)
                    .set_input_filter(dataW)
                    .set_attr_strides(tbeAttr.strides)
@@ -332,9 +332,9 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
                    .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data(ori_name + "dataB").set_attr_index(INPUT_NUM_3 - 1);
+        dataB = op::Data(ori_name + "_dataB").set_attr_index(INPUT_NUM_3 - 1);
         inputs.push_back(dataB);
-        conv = op::Conv3D(ori_name + "Conv3D")
+        conv = op::Conv3D(ori_name + "_Conv3D")
                    .set_input_x(dataX)
                    .set_input_filter(dataW)
                    .set_input_bias(dataB)

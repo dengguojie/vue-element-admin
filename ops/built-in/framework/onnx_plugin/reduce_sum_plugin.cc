@@ -67,21 +67,28 @@ Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
   ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(v_axes.data()), v_axes.size() * sizeof(int));
   op_dest.SetAttr("axes", tensor);
   op_dest.SetAttr("keep_dims", keep_dims_attr);
+  op_dest.SetAttr("name", node->name());
 
   return SUCCESS;
 }
 
 static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
 {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   ge::Tensor value;
   if (op.GetAttr("axes", value) != SUCCESS) {
       ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value from op failed");
       return FAILED;
   }
 
-  auto data1 = op::Const("data1").set_attr_value(value);
-  auto reducesum = op::ReduceSum().set_input_x(data0).set_input_axes(data1);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(value);
+  auto reducesum = op::ReduceSum(ori_name + "_ReduceSum").set_input_x(data0).set_input_axes(data1);
 
   bool flag = false;
   if (op.GetAttr("keep_dims", flag) != SUCCESS) {
@@ -118,6 +125,7 @@ Status ParseParamsReduceSum13(const Message* op_src, ge::Operator& op_dest)
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("input_size", input_size);
   op_dest.SetAttr("keep_dims", keep_dims);
   op_dest.SetAttr("noop_with_empty_axes", noop_with_empty_axes);
@@ -126,7 +134,13 @@ Status ParseParamsReduceSum13(const Message* op_src, ge::Operator& op_dest)
 
 static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
 {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr){
     ONNX_PLUGIN_LOGE("Resize", "Get op desc failed.");
@@ -155,18 +169,18 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
     tensorDesc.SetShape(shape);
     tensorDesc.SetDataType(DT_INT64);
     ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(v_axes.data()), v_axes.size() * sizeof(int));
-    auto axes = op::Const("axes").set_attr_value(tensor);
+    auto axes = op::Const(ori_name + "_axes").set_attr_value(tensor);
     std::vector<Operator> inputs{data0};
     std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
-    auto reducesum = op::ReduceSum()
+    auto reducesum = op::ReduceSum(ori_name + "_ReduceSum")
                       .set_input_x(data0)
                       .set_input_axes(axes)
                       .set_attr_keep_dims(flag);
     output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(output_indexs);
   } else if (input_num == 2 && empty_axes != 0) {
-    auto data1 = op::Data("data1").set_attr_index(1);
-    auto reducesum13 = op::ReduceSum()
+    auto data1 = op::Data(ori_name + "_data1").set_attr_index(1);
+    auto reducesum13 = op::ReduceSum(ori_name + "_ReduceSum")
                         .set_input_x(data0)
                         .set_input_axes(data1)
                         .set_attr_keep_dims(flag);
@@ -195,7 +209,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
 
 REGISTER_CUSTOM_OP("ReduceSum")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::13::ReduceSum")
+  .OriginOpType({"ai.onnx::13::ReduceSum",
+                 "ai.onnx::14::ReduceSum",
+                 "ai.onnx::15::ReduceSum"})
   .ParseParamsFn(ParseParamsReduceSum13)
   .ParseOpToGraphFn(ParseOpToGraphReduceSum13)
   .ImplyType(ImplyType::TVM);

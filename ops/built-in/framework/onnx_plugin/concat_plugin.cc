@@ -87,15 +87,15 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "input_size must ge 1");
     return FAILED;
   } else if (input_size == 1) {
-    auto data_op = op::Data(ori_name + "data").set_attr_index(0);
-    auto identity_op = op::Identity(ori_name + "identity").set_input_x(data_op);
+    auto data_op = op::Data(ori_name + "_data").set_attr_index(0);
+    auto identity_op = op::Identity(ori_name + "_identity").set_input_x(data_op);
     inputs.push_back(data_op);
     output_indexs.emplace_back(identity_op, std::vector<size_t>{0});
   } else {
     int concat_dim = DEFAULT_CONCAT_DIM;
     op.GetAttr("concat_dim", concat_dim);
 
-    auto concat_op = op::ConcatD(ori_name + "ConcatD")
+    auto concat_op = op::ConcatD(ori_name + "_ConcatD")
                          .create_dynamic_input_x(input_size)
                          .set_attr_concat_dim(concat_dim)
                          .set_attr_N(input_size);

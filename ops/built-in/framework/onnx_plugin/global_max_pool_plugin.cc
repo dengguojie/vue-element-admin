@@ -54,7 +54,9 @@ REGISTER_CUSTOM_OP("MaxPool")
                    "ai.onnx::10::GlobalMaxPool",
                    "ai.onnx::11::GlobalMaxPool",
                    "ai.onnx::12::GlobalMaxPool",
-                   "ai.onnx::13::GlobalMaxPool"})
+                   "ai.onnx::13::GlobalMaxPool",
+                   "ai.onnx::14::GlobalMaxPool",
+                   "ai.onnx::15::GlobalMaxPool"})
     .ParseParamsFn(ParseParamsGlobalMaxPool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

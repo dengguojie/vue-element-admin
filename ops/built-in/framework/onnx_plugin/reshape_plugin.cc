@@ -49,7 +49,9 @@ REGISTER_CUSTOM_OP("Reshape")
                    "ai.onnx::10::Reshape",
                    "ai.onnx::11::Reshape",
                    "ai.onnx::12::Reshape",
-                   "ai.onnx::13::Reshape"})
+                   "ai.onnx::13::Reshape",
+                   "ai.onnx::14::Reshape",
+                   "ai.onnx::15::Reshape"})
     .ParseParamsFn(ParseParamsReshape)
     .ImplyType(ImplyType::GELOCAL);
 }  // namespace domi

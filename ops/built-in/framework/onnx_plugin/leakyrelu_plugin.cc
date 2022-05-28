@@ -40,7 +40,9 @@ REGISTER_CUSTOM_OP("LeakyRelu")
                  "ai.onnx::10::LeakyRelu",
                  "ai.onnx::11::LeakyRelu",
                  "ai.onnx::12::LeakyRelu",
-                 "ai.onnx::13::LeakyRelu"})
+                 "ai.onnx::13::LeakyRelu",
+                 "ai.onnx::14::LeakyRelu",
+                 "ai.onnx::15::LeakyRelu"})
   .ParseParamsFn(ParseParamsLeakyRelu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

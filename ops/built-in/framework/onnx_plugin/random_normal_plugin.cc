@@ -62,6 +62,7 @@ Status ParseParamsRandomNormal(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("mean", mean);
   op_dest.SetAttr("scale", scale);
   op_dest.SetAttr("seed", seed);
@@ -71,6 +72,12 @@ Status ParseParamsRandomNormal(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphRandomNormal(const ge::Operator& op, ge::Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   float mean = 0.0f;
   op.GetAttr("mean", mean);
 
@@ -107,15 +114,15 @@ Status ParseOpToGraphRandomNormal(const ge::Operator& op, ge::Graph& graph) {
 
   ge::Tensor tensor_shape(tensorDescInput, reinterpret_cast<uint8_t*>(shape.data()), shapeLen * sizeof(int));
 
-  auto shape_op = op::Const("input_shape").set_attr_value(tensor_shape);
-  auto random_op = op::RandomStandardNormal("randomNormal")
+  auto shape_op = op::Const(ori_name + "_input_shape").set_attr_value(tensor_shape);
+  auto random_op = op::RandomStandardNormal(ori_name + "_randomNormal")
                        .set_input_shape(shape_op)
                        .set_attr_dtype(kvlist[dtype])
                        .set_attr_seed(seed)
                        .set_attr_seed2(seed);
 
-  auto mul_op = op::Muls("mul").set_input_x(random_op).set_attr_value(scale);
-  auto add_op = op::Adds("add").set_input_x(mul_op).set_attr_value(mean);
+  auto mul_op = op::Muls(ori_name + "_mul").set_input_x(random_op).set_attr_value(scale);
+  auto add_op = op::Adds(ori_name + "_add").set_input_x(mul_op).set_attr_value(mean);
   std::vector<ge::Operator> inputs{shape_op};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> outputs;
   outputs.emplace_back(add_op, std::vector<std::size_t>{0});
@@ -126,8 +133,14 @@ Status ParseOpToGraphRandomNormal(const ge::Operator& op, ge::Graph& graph) {
 // register Addcmul op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::RandomNormal", "ai.onnx::9::RandomNormal", "ai.onnx::10::RandomNormal",
-                   "ai.onnx::11::RandomNormal", "ai.onnx::12::RandomNormal", "ai.onnx::13::RandomNormal"})
+    .OriginOpType({"ai.onnx::8::RandomNormal",
+                   "ai.onnx::9::RandomNormal",
+                   "ai.onnx::10::RandomNormal",
+                   "ai.onnx::11::RandomNormal",
+                   "ai.onnx::12::RandomNormal",
+                   "ai.onnx::13::RandomNormal",
+                   "ai.onnx::14::RandomNormal",
+                   "ai.onnx::15::RandomNormal"})
     .ParseParamsFn(ParseParamsRandomNormal)
     .ParseOpToGraphFn(ParseOpToGraphRandomNormal)
     .ImplyType(ImplyType::TVM);

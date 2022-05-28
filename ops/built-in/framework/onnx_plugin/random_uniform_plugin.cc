@@ -62,6 +62,7 @@ Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
   std::vector<int64_t> dims = {num};
   ge::Tensor tensor = Vec2Tensor(op_shape, dims, ge::DT_INT32);
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("shape", tensor);
   op_dest.SetAttr("max", high);
   op_dest.SetAttr("min", low);
@@ -71,12 +72,18 @@ Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   ge::Tensor shape;
   if (op.GetAttr("shape", shape) != SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get shape from op failed");
     return FAILED;
   }
-  auto data0 = op::Const("data0").set_attr_value(shape);
+  auto data0 = op::Const(ori_name + "_data0").set_attr_value(shape);
 
   float max_f = 0.0;
   if (op.GetAttr("max", max_f) != SUCCESS) {
@@ -114,13 +121,13 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
     int32_t max = max_f;
     std::vector<int64_t> dims = {};
     ge::Tensor max_tensor = Scalar2Tensor(max, dims, temp_type);
-    auto data1 = op::Const("data1").set_attr_value(max_tensor);
+    auto data1 = op::Const(ori_name + "_data1").set_attr_value(max_tensor);
 
     int32_t min = min_f;
     ge::Tensor min_tensor = Scalar2Tensor(min, dims, temp_type);
-    auto data2 = op::Const("data2").set_attr_value(min_tensor);
+    auto data2 = op::Const(ori_name + "_data2").set_attr_value(min_tensor);
 
-    auto random_int = op::RandomUniformInt()
+    auto random_int = op::RandomUniformInt(ori_name + "_RandomUniformInt")
                         .set_input_shape(data0)
                         .set_input_min(data2)
                         .set_input_max(data1)
@@ -130,14 +137,14 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
     outputs.emplace_back(random_int, std::vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(outputs);
   } else {
-    auto random = op::RandomUniform()
+    auto random = op::RandomUniform(ori_name + "_RandomUniform")
                     .set_input_shape(data0)
                     .set_attr_dtype(temp_type)
                     .set_attr_seed(seed)
                     .set_attr_seed2(seed);
     float mul_num = max_f - min_f;
-    auto random_mul = op::Muls().set_input_x(random).set_attr_value(mul_num);
-    auto random_float = op::Adds().set_input_x(random_mul).set_attr_value(min_f);
+    auto random_mul = op::Muls(ori_name + "_Muls").set_input_x(random).set_attr_value(mul_num);
+    auto random_float = op::Adds(ori_name + "_Adds").set_input_x(random_mul).set_attr_value(min_f);
     std::vector<ge::Operator> inputs{data0};
     outputs.emplace_back(random_float, std::vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(outputs);
@@ -154,7 +161,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::RandomUniform",
                    "ai.onnx::11::RandomUniform",
                    "ai.onnx::12::RandomUniform",
-                   "ai.onnx::13::RandomUniform"})
+                   "ai.onnx::13::RandomUniform",
+                   "ai.onnx::14::RandomUniform",
+                   "ai.onnx::15::RandomUniform"})
     .ParseParamsFn(ParseParamsRandomuniform)
     .ParseOpToGraphFn(ParseOpToGraphRandomuniform)
     .ImplyType(ImplyType::TVM);

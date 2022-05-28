@@ -76,21 +76,21 @@ static Status ParseOpToGraphArgMax(const Operator& op, Graph& graph) {
     return FAILED;
   }
   
-  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   
-  auto const_op = op::Const(ori_name + "const_data").set_attr_value(axis);
-  auto ArgMaxV2 = op::ArgMaxV2(ori_name + "ArgMaxV2").set_input_x(data0)
-                                                     .set_input_dimension(const_op)
-                                                     .set_attr_dtype(DT_INT64);
+  auto const_op = op::Const(ori_name + "_const_data").set_attr_value(axis);
+  auto ArgMaxV2 = op::ArgMaxV2(ori_name + "_ArgMaxV2").set_input_x(data0)
+                                                      .set_input_dimension(const_op)
+                                                      .set_attr_dtype(DT_INT64);
 
   if (keep_dims == 1) {
     std::vector<int64_t> dims = {1};
     ge::Tensor tensor1 = Scalar2Tensor(keep_dims, dims, ge::DT_INT32);
-    auto data1 = op::Const(ori_name + "data1").set_attr_value(tensor1);
+    auto data1 = op::Const(ori_name + "_data1").set_attr_value(tensor1);
 
-    auto expandDims = op::ExpandDims(ori_name + "ExpandDims").set_input_x(ArgMaxV2).set_input_axis(data1);
+    auto expandDims = op::ExpandDims(ori_name + "_ExpandDims").set_input_x(ArgMaxV2).set_input_axis(data1);
     outputs.emplace_back(expandDims, vector<std::size_t>{0});
   } else {
     outputs.emplace_back(ArgMaxV2, vector<std::size_t>{0});

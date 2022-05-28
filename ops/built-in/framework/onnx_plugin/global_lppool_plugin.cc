@@ -43,7 +43,9 @@ REGISTER_CUSTOM_OP("GlobalLpPool")
                    "ai.onnx::10::GlobalLpPool",
                    "ai.onnx::11::GlobalLpPool",
                    "ai.onnx::12::GlobalLpPool",
-                   "ai.onnx::13::GlobalLpPool"})
+                   "ai.onnx::13::GlobalLpPool",
+                   "ai.onnx::14::GlobalLpPool",
+                   "ai.onnx::15::GlobalLpPool"})
     .ParseParamsFn(ParseParamsGlobalLpPool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

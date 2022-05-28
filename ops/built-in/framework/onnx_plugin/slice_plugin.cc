@@ -66,6 +66,7 @@ Status ParseParamSliceCall(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("end", ends);
   op_dest.SetAttr("begin", starts);
   op_dest.SetAttr("is_have_axes", is_have_axes);
@@ -86,11 +87,20 @@ ge::Operator MakeConstOp(const ge::Operator& op, const std::string& attr_name) {
 }
 
 Status ParseOpToGraphSlice(const ge::Operator& op, Graph& graph) {
-  auto data_op = op::Data("input1").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data_op = op::Data(ori_name + "_input1").set_attr_index(0);
   auto const_op = MakeConstOp(op, "begin");
   auto const_op1 = MakeConstOp(op, "end");
   auto slice_op =
-      op::StridedSliceV2("StridedSliceV2").set_input_x(data_op).set_input_begin(const_op).set_input_end(const_op1);
+      op::StridedSliceV2(ori_name + "_StridedSliceV2")
+          .set_input_x(data_op)
+          .set_input_begin(const_op)
+          .set_input_end(const_op1);
 
   bool is_have_axes = false;
   op.GetAttr("is_have_axes", is_have_axes);
@@ -115,7 +125,12 @@ REGISTER_CUSTOM_OP("PartitionedCall")
 
 REGISTER_CUSTOM_OP("StridedSliceV2")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::11::Slice", "ai.onnx::10::Slice", "ai.onnx::12::Slice", "ai.onnx::13::Slice"})
+    .OriginOpType({"ai.onnx::11::Slice",
+                   "ai.onnx::10::Slice",
+                   "ai.onnx::12::Slice",
+                   "ai.onnx::13::Slice",
+                   "ai.onnx::14::Slice",
+                   "ai.onnx::15::Slice"})
     .ParseParamsFn(ParseParamSlice)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

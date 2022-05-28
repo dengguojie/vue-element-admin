@@ -50,7 +50,9 @@ REGISTER_CUSTOM_OP("ReverseSequence")
   .OriginOpType({"ai.onnx::10::ReverseSequence",
                  "ai.onnx::11::ReverseSequence",
                  "ai.onnx::12::ReverseSequence",
-                 "ai.onnx::13::ReverseSequence"})
+                 "ai.onnx::13::ReverseSequence",
+                 "ai.onnx::14::ReverseSequence",
+                 "ai.onnx::15::ReverseSequence"})
   .ParseParamsFn(ParseParamsReverseSequence)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

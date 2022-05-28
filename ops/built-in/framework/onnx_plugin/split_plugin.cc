@@ -51,6 +51,7 @@ Status ParseParamsSplitNew(const Message *op_src, ge::Operator &op_dest) {
   op_dest.SetAttr("input_size", input_size);
   op_dest.SetAttr("num_split", output_size);
 
+  op_dest.SetAttr("name", node->name());
   std::shared_ptr<ge::OpDesc> opDesc =
       ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
@@ -64,7 +65,13 @@ Status ParseParamsSplitNew(const Message *op_src, ge::Operator &op_dest) {
 }
 
 Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
-  auto input_x_0 = op::Data("x").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto input_x_0 = op::Data(ori_name + "_x").set_attr_index(0);
   int32_t split_dim = 0;
   if (op.GetAttr("split_dim", split_dim) != SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(),  "get attr split_dim from op failed!.");
@@ -87,7 +94,7 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
 
   std::vector<int64_t> split_dim_dims = {};
   ge::Tensor split_dim_tensor = Scalar2Tensor(split_dim, split_dim_dims, ge::DT_INT32);
-  auto const_split_dim_2 = op::Const("split_dim").set_attr_value(split_dim_tensor);
+  auto const_split_dim_2 = op::Const(ori_name + "_split_dim").set_attr_value(split_dim_tensor);
 
   if (input_size == 1) {
     std::vector<int64_t> size_splits;
@@ -97,20 +104,20 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
     }
     ge::Operator split_op;
     if (size_splits.empty()) {
-      split_op = op::Split().create_dynamic_output_y(num_split)
-                            .set_input_x(input_x_0)
-                            .set_input_split_dim(const_split_dim_2)
-                            .set_attr_num_split(num_split);
+      split_op = op::Split(ori_name + "_Split").create_dynamic_output_y(num_split)
+                                               .set_input_x(input_x_0)
+                                               .set_input_split_dim(const_split_dim_2)
+                                               .set_attr_num_split(num_split);
     } else {
       std::vector<int64_t> dims = {(int64_t)size_splits.size()};
       ge::Tensor size_splits_tensor = Vec2Tensor(size_splits, dims, ge::DT_INT64);
-      auto const_size_splits = op::Const("size_splits").set_attr_value(size_splits_tensor);
+      auto const_size_splits = op::Const(ori_name + "_size_splits").set_attr_value(size_splits_tensor);
 
-      split_op = op::SplitV().create_dynamic_output_y(num_split)
-                                  .set_input_x(input_x_0)
-                                  .set_input_size_splits(const_size_splits)
-                                  .set_input_split_dim(const_split_dim_2)
-                                  .set_attr_num_split(num_split);
+      split_op = op::SplitV(ori_name + "_SplitV").create_dynamic_output_y(num_split)
+                                                 .set_input_x(input_x_0)
+                                                 .set_input_size_splits(const_size_splits)
+                                                 .set_input_split_dim(const_split_dim_2)
+                                                 .set_attr_num_split(num_split);
     }
    
     
@@ -119,14 +126,14 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
     output_indexs.emplace_back(split_op, idx);
     graph.SetInputs(inputs).SetOutputs(output_indexs);
   } else {
-    auto input_size_splits_1 = op::Data("size_splits").set_attr_index(1);
+    auto input_size_splits_1 = op::Data(ori_name + "_size_splits").set_attr_index(1);
     ge::TensorDesc splitDimTensorDesc;
 
-    auto split_v = op::SplitV().create_dynamic_output_y(num_split)
-                               .set_input_x(input_x_0)
-                               .set_input_size_splits(input_size_splits_1)
-                               .set_input_split_dim(const_split_dim_2)
-                               .set_attr_num_split(num_split);
+    auto split_v = op::SplitV(ori_name + "_SplitV").create_dynamic_output_y(num_split)
+                                                   .set_input_x(input_x_0)
+                                                   .set_input_size_splits(input_size_splits_1)
+                                                   .set_input_split_dim(const_split_dim_2)
+                                                   .set_attr_num_split(num_split);
    
     std::vector<ge::Operator> inputs { input_x_0, input_size_splits_1 };
     std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
@@ -144,7 +151,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::Split",
                  "ai.onnx::11::Split",
                  "ai.onnx::12::Split",
-                 "ai.onnx::13::Split"})
+                 "ai.onnx::13::Split",
+                 "ai.onnx::14::Split",
+                 "ai.onnx::15::Split"})
   .ParseParamsFn(ParseParamsSplitNew)
   .ParseOpToGraphFn(ParseOpToGraphSplitNew)
   .ImplyType(ImplyType::TVM);

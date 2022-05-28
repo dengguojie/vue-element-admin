@@ -333,8 +333,8 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
     return FAILED;
   }
 
-  ge::Operator dataX = op::Data(ori_name + "dataX").set_attr_index(0);
-  ge::Operator dataW = op::Data(ori_name + "dataW").set_attr_index(1);
+  ge::Operator dataX = op::Data(ori_name + "_dataX").set_attr_index(0);
+  ge::Operator dataW = op::Data(ori_name + "_dataW").set_attr_index(1);
   std::vector<Operator> inputs{dataX, dataW};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   ge::Operator convTranspose;
@@ -342,17 +342,17 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
 
   std::vector<int64_t> dims = {(int)tbeAttr.input_size.size()};
   auto input_size_tensor = Vec2Tensor(tbeAttr.input_size, dims, ge::DT_INT64);
-  auto const_input_size = op::Const(ori_name + "Const").set_attr_value(input_size_tensor);
+  auto const_input_size = op::Const(ori_name + "_Const").set_attr_value(input_size_tensor);
 
   if (tbeAttr.dim_size == INPUT_4D) {
     if (tbeAttr.trans_2d) {
       ge::Operator::OpListInt axes = {2};
-      dataX = op::Unsqueeze(ori_name + "UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
-      dataW = op::Unsqueeze(ori_name + "UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
+      dataX = op::Unsqueeze(ori_name + "_UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
+      dataW = op::Unsqueeze(ori_name + "_UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
     }
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        convTranspose = op::Conv2DTranspose(ori_name + "Conv2DTranspose")
+        convTranspose = op::Conv2DTranspose(ori_name + "_Conv2DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_input_size(const_input_size)
@@ -364,9 +364,9 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
                             .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data(ori_name + "dataB").set_attr_index(INPUT_NUM_3 - 1);
+        dataB = op::Data(ori_name + "_dataB").set_attr_index(INPUT_NUM_3 - 1);
         inputs.push_back(dataB);
-        convTranspose = op::Conv2DTranspose(ori_name + "Conv2DTranspose")
+        convTranspose = op::Conv2DTranspose(ori_name + "_Conv2DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_input_size(const_input_size)
@@ -388,12 +388,12 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
     }
     if (tbeAttr.trans_2d) {
       ge::Operator::OpListInt axis = {2};
-      convTranspose = op::Squeeze(ori_name + "SqueezeY").set_input_x(convTranspose).set_attr_axis(axis);
+      convTranspose = op::Squeeze(ori_name + "_SqueezeY").set_input_x(convTranspose).set_attr_axis(axis);
     }
   } else if (tbeAttr.dim_size == INPUT_5D) {
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        convTranspose = op::Conv3DTranspose(ori_name + "Conv3DTranspose")
+        convTranspose = op::Conv3DTranspose(ori_name + "_Conv3DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_input_size(const_input_size)
@@ -405,9 +405,9 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
                             .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data(ori_name + "dataB").set_attr_index(INPUT_NUM_3 - 1);
+        dataB = op::Data(ori_name + "_dataB").set_attr_index(INPUT_NUM_3 - 1);
         inputs.push_back(dataB);
-        convTranspose = op::Conv3DTranspose(ori_name + "Conv3DTranspose")
+        convTranspose = op::Conv3DTranspose(ori_name + "_Conv3DTranspose")
                             .set_input_x(dataX)
                             .set_input_filter(dataW)
                             .set_input_bias(dataB)

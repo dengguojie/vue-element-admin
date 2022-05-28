@@ -68,7 +68,9 @@ REGISTER_CUSTOM_OP("MatMulV2")
                    ge::AscendString("ai.onnx::10::Gemm"),
                    ge::AscendString("ai.onnx::11::Gemm"),
                    ge::AscendString("ai.onnx::12::Gemm"),
-                   ge::AscendString("ai.onnx::13::Gemm")})
+                   ge::AscendString("ai.onnx::13::Gemm"),
+                   ge::AscendString("ai.onnx::14::Gemm"),
+                   ge::AscendString("ai.onnx::15::Gemm")})
     .ParseParamsFn(ParseParamsGemm)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

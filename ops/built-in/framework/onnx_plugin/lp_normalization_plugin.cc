@@ -53,14 +53,21 @@ Status parse_params_lp_normalization(const Message* op_src, ge::Operator& op_des
   }
   op_dest.SetAttr("p", p);
   op_dest.SetAttr("axis", axis);
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
 Status parse_op_to_graph_lp_normalization(const Operator& op, Graph& graph) {
-  auto data0_op = op::Data("data0").set_attr_index(0);
-  auto identity_op = op::Identity().set_input_x(data0_op);
-  auto lp_norm_op = op::LpNorm().set_input_x(identity_op);
-  auto div_op = op::Div().set_input_x1(identity_op).set_input_x2(lp_norm_op);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0_op = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto identity_op = op::Identity(ori_name + "_Identity").set_input_x(data0_op);
+  auto lp_norm_op = op::LpNorm(ori_name + "_LpNorm").set_input_x(identity_op);
+  auto div_op = op::Div(ori_name + "_Div").set_input_x1(identity_op).set_input_x2(lp_norm_op);
 
   int p_num = 2;
   int axis = -1;
@@ -93,7 +100,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::LpNormalization",
                  "ai.onnx::11::LpNormalization",
                  "ai.onnx::12::LpNormalization",
-                 "ai.onnx::13::LpNormalization"})
+                 "ai.onnx::13::LpNormalization",
+                 "ai.onnx::14::LpNormalization",
+                 "ai.onnx::15::LpNormalization"})
   .ParseParamsFn(parse_params_lp_normalization)
   .ParseOpToGraphFn(parse_op_to_graph_lp_normalization)
   .ImplyType(ImplyType::TVM);

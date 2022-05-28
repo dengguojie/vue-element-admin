@@ -135,14 +135,14 @@ static Status ParseOpToGraphConstantOfShape(const Operator &op, Graph &graph)
     return FAILED;
   }
 
-  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   ge::Tensor value;
   if (op.GetAttr("value", value) != SUCCESS) {
     ONNX_PLUGIN_LOGE("ConstantOfShape", "get value from op failed");
     return FAILED;
   }
-  auto data1 = op::Const(ori_name + "data1").set_attr_value(value);
-  auto fill = op::Fill(ori_name + "Fill").set_input_dims(data0).set_input_value(data1);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(value);
+  auto fill = op::Fill(ori_name + "_Fill").set_input_dims(data0).set_input_value(data1);
 
   std::vector<Operator> inputs { data0 };
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;

@@ -51,6 +51,7 @@ Status ParseParamsRoiAlign(const Message *op_src, ge::Operator &op_dest) {
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("pooled_height", output_height_value);
   op_dest.SetAttr("pooled_width", output_width_value);
   op_dest.SetAttr("sample_num", sampling_ratio_value);
@@ -63,6 +64,12 @@ Status ParseParamsRoiAlign(const Message *op_src, ge::Operator &op_dest) {
 }
 
 Status ParseOpToGraphRoiAlign(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int pooled_height = 1;
   op.GetAttr("pooled_height", pooled_height);
   int pooled_width = 1;
@@ -74,32 +81,32 @@ Status ParseOpToGraphRoiAlign(const ge::Operator& op, Graph& graph) {
   int roi_end_mode = 0;
   op.GetAttr("roi_end_mode", roi_end_mode);
 
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
-  auto data2 = op::Data("data2").set_attr_index(2);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "_data1").set_attr_index(1);
+  auto data2 = op::Data(ori_name + "_data2").set_attr_index(2);
 
   int32_t concat_dim = 1;
   std::vector<int64_t> dims;
   ge::Tensor dim_tensor = Scalar2Tensor(concat_dim, dims, ge::DT_INT32);
-  auto dim_const_op = op::Const("concat_dim").set_attr_value(dim_tensor);
+  auto dim_const_op = op::Const(ori_name + "_concat_dim").set_attr_value(dim_tensor);
 
   std::vector<int64_t> axes = {-1};
-  auto unsqueeze_op = op::Unsqueeze("unsqueeze").set_input_x(data2).set_attr_axes(axes);
-  auto cast_op = op::Cast("cast").set_input_x(unsqueeze_op).set_attr_dst_type(DT_FLOAT);
-  auto cast1_op = op::Cast("cast1").set_input_x(data1).set_attr_dst_type(DT_FLOAT);
-  auto concat_op = op::Concat("concat").create_dynamic_input_x(2)
-                                         .set_dynamic_input_x(0, cast_op)
-                                         .set_dynamic_input_x(1, cast1_op)
-                                         .set_input_concat_dim(dim_const_op)
-                                         .set_attr_N(2);
+  auto unsqueeze_op = op::Unsqueeze(ori_name + "_unsqueeze").set_input_x(data2).set_attr_axes(axes);
+  auto cast_op = op::Cast(ori_name + "_cast").set_input_x(unsqueeze_op).set_attr_dst_type(DT_FLOAT);
+  auto cast1_op = op::Cast(ori_name + "_cast1").set_input_x(data1).set_attr_dst_type(DT_FLOAT);
+  auto concat_op = op::Concat(ori_name + "_concat").create_dynamic_input_x(2)
+                                                   .set_dynamic_input_x(0, cast_op)
+                                                   .set_dynamic_input_x(1, cast1_op)
+                                                   .set_input_concat_dim(dim_const_op)
+                                                   .set_attr_N(2);
   
-  auto roli_op = op::ROIAlign("roialign").set_input_features(data0)
-                                         .set_input_rois(concat_op)
-                                         .set_attr_spatial_scale(spatial_scale)
-                                         .set_attr_pooled_height(pooled_height)
-                                         .set_attr_pooled_width(pooled_width)
-                                         .set_attr_sample_num(sample_num)
-                                         .set_attr_roi_end_mode(roi_end_mode);
+  auto roli_op = op::ROIAlign(ori_name + "_roialign").set_input_features(data0)
+                                                     .set_input_rois(concat_op)
+                                                     .set_attr_spatial_scale(spatial_scale)
+                                                     .set_attr_pooled_height(pooled_height)
+                                                     .set_attr_pooled_width(pooled_width)
+                                                     .set_attr_sample_num(sample_num)
+                                                     .set_attr_roi_end_mode(roi_end_mode);
   std::vector<ge::Operator> inputs = {data0, data1, data2};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   output_indexs.emplace_back(roli_op, std::vector<size_t>{0});
@@ -114,7 +121,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::RoiAlign",
                  "ai.onnx::11::RoiAlign",
                  "ai.onnx::12::RoiAlign",
-                 "ai.onnx::13::RoiAlign"})
+                 "ai.onnx::13::RoiAlign",
+                 "ai.onnx::14::RoiAlign",
+                 "ai.onnx::15::RoiAlign"})
   .ParseParamsFn(ParseParamsRoiAlign)
   .ParseOpToGraphFn(ParseOpToGraphRoiAlign)
   .ImplyType(ImplyType::TVM);

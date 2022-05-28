@@ -33,6 +33,7 @@ Status ParseParamsMean(const Message* op_src, ge::Operator& op_dest) {
   }
   int n_num = node->input_size();
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("N", n_num);
   opDesc->AddDynamicInputDesc("x", n_num);
   opDesc->AddDynamicOutputDesc("y", 1);
@@ -41,6 +42,12 @@ Status ParseParamsMean(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int n_num = 0;
   if (op.GetAttr("N", n_num) != SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get attribute N failed");
@@ -52,17 +59,17 @@ Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE("ParseOpToGraphMean", "input size must greater than 1");
     return FAILED;
   } else {
-    auto acc = op::AccumulateNV2("AccumulateNV2").create_dynamic_input_x(n_num).set_attr_N(n_num);
+    auto acc = op::AccumulateNV2(ori_name + "_AccumulateNV2").create_dynamic_input_x(n_num).set_attr_N(n_num);
     std::string input_name = "";
     for (int i = 0; i < n_num; ++i) {
       input_name = "data_mean_" + to_string(i);
-      auto data_op = op::Data(input_name).set_attr_index(i);
+      auto data_op = op::Data(ori_name + input_name).set_attr_index(i);
       acc.set_dynamic_input_x(i, data_op);
       inputs.push_back(data_op);
     }
 
     float num = 1.0 / n_num;
-    auto div_op = op::Muls().set_input_x(acc).set_attr_value(num);
+    auto div_op = op::Muls(ori_name + "_Muls").set_input_x(acc).set_attr_value(num);
     output_indexs.emplace_back(div_op, std::vector<size_t>{0});
   }
   graph.SetInputs(inputs).SetOutputs(output_indexs);
@@ -76,7 +83,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::Mean",
                  "ai.onnx::11::Mean",
                  "ai.onnx::12::Mean",
-                 "ai.onnx::13::Mean"})
+                 "ai.onnx::13::Mean",
+                 "ai.onnx::14::Mean",
+                 "ai.onnx::15::Mean"})
   .ParseParamsFn(ParseParamsMean)
   .ParseOpToGraphFn(ParseOpToGraphMean)
   .ImplyType(ImplyType::TVM);

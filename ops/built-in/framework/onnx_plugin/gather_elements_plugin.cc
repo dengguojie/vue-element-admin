@@ -47,7 +47,9 @@ REGISTER_CUSTOM_OP("GatherElements")
                    "ai.onnx::10::GatherElements",
                    "ai.onnx::11::GatherElements",
                    "ai.onnx::12::GatherElements",
-                   "ai.onnx::13::GatherElements"})
+                   "ai.onnx::13::GatherElements",
+                   "ai.onnx::14::GatherElements",
+                   "ai.onnx::15::GatherElements"})
     .ParseParamsFn(ParseParamsGatherElements)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

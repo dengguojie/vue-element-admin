@@ -49,11 +49,18 @@ Status ParseParamsMultinomialCall(const Message* op_src, ge::Operator& op_dest) 
   ge::AttrUtils::SetInt(op_desc, "dtype", data_type);
   ge::AttrUtils::SetInt(op_desc, "sample_size", sample_size);
   ge::AttrUtils::SetFloat(op_desc, "seed", seed);
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("original_type", "ai.onnx::11::Multinomial");
   return SUCCESS;
 }
 
 Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "op_desc is null");
@@ -73,9 +80,9 @@ Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
   int int_seed = static_cast<int>(seed);
   std::vector<int64_t> dims = {};
   ge::Tensor tensor = Scalar2Tensor(sample_size, dims, ge::DT_INT32);
-  auto data_op = op::Data("input1").set_attr_index(0);
-  auto const_op = op::Const("data1").set_attr_value(tensor);
-  auto muti_op = op::Multinomial("Muti")
+  auto data_op = op::Data(ori_name + "_input1").set_attr_index(0);
+  auto const_op = op::Const(ori_name + "_data1").set_attr_value(tensor);
+  auto muti_op = op::Multinomial(ori_name + "_Muti")
                  .set_input_logits(data_op)
                  .set_input_num_samples(const_op)
                  .set_attr_dtype(dtype_om)
@@ -94,7 +101,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::Multinomial",
                  "ai.onnx::11::Multinomial",
                  "ai.onnx::12::Multinomial",
-                 "ai.onnx::13::Multinomial"})
+                 "ai.onnx::13::Multinomial",
+                 "ai.onnx::14::Multinomial",
+                 "ai.onnx::15::Multinomial"})
   .ParseParamsFn(ParseParamsMultinomialCall)
   .ParseOpToGraphFn(ParseOpToGraphMultinomial)
   .ImplyType(ImplyType::TVM);

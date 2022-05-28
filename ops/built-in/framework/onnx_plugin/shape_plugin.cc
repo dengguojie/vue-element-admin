@@ -42,7 +42,9 @@ REGISTER_CUSTOM_OP("Shape")
                    "ai.onnx::10::Shape",
                    "ai.onnx::11::Shape",
                    "ai.onnx::12::Shape",
-                   "ai.onnx::13::Shape"})
+                   "ai.onnx::13::Shape",
+                   "ai.onnx::14::Shape",
+                   "ai.onnx::15::Shape"})
     .ParseParamsFn(ParseParamsShape)
     .ImplyType(ImplyType::GELOCAL);
 }  // namespace domi

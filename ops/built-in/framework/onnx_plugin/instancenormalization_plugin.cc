@@ -44,7 +44,9 @@ REGISTER_CUSTOM_OP("InstanceNorm")
                    "ai.onnx::10::InstanceNormalization",
                    "ai.onnx::11::InstanceNormalization",
                    "ai.onnx::12::InstanceNormalization",
-                   "ai.onnx::13::InstanceNormalization"})
+                   "ai.onnx::13::InstanceNormalization",
+                   "ai.onnx::14::InstanceNormalization",
+                   "ai.onnx::15::InstanceNormalization"})
     .ParseParamsFn(ParseParamsInstanceNormalization)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

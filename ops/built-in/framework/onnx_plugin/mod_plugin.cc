@@ -43,7 +43,9 @@ REGISTER_CUSTOM_OP("Mod")
     .OriginOpType({"ai.onnx::10::Mod",
                    "ai.onnx::11::Mod",
                    "ai.onnx::12::Mod",
-                   "ai.onnx::13::Mod"})
+                   "ai.onnx::13::Mod",
+                   "ai.onnx::14::Mod",
+                   "ai.onnx::15::Mod"})
     .ParseParamsFn(ParseParamsMod)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

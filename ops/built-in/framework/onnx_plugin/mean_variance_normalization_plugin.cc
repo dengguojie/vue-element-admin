@@ -82,7 +82,9 @@ REGISTER_CUSTOM_OP("MVNV2")
                    "ai.onnx::10::MeanVarianceNormalization",
                    "ai.onnx::11::MeanVarianceNormalization",
                    "ai.onnx::12::MeanVarianceNormalization",
-                   "ai.onnx::13::MeanVarianceNormalization"})
+                   "ai.onnx::13::MeanVarianceNormalization",
+                   "ai.onnx::14::MeanVarianceNormalization",
+                   "ai.onnx::15::MeanVarianceNormalization"})
     .ParseParamsFn(ParseParamsMeanVarianceNormalization)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

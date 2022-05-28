@@ -622,8 +622,6 @@ cube-tiling:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_fusion_pass_base.cc
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
-      - ops/built-in/framework/onnx_plugin/conv2d_plugin.cc
-      - ops/built-in/framework/onnx_plugin/split_plugin.cc
       - ops/built-in/tbe/impl/dynamic/avg_pool.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
       - ops/built-in/tbe/impl/dynamic/fix_pipe.py
@@ -2183,7 +2181,6 @@ cube-conv2d:
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
-      - ops/built-in/framework/onnx_plugin/conv2d_plugin.cc
       - ops/built-in/framework/caffe_plugin/caffe_conv2d_plugin.cc
       - ops/built-in/op_tiling/conv2d.cc
       - ops/built-in/op_tiling/conv2d.h

@@ -99,7 +99,7 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  auto data0 = op::Data(ori_name + "data0").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   ge::Tensor value1;
   if (op.GetAttr("paddings", value1) != SUCCESS) {
     return FAILED;
@@ -111,12 +111,12 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
 
   std::string mode = "constant";
   op.GetAttr("mode", mode);
-  auto data1 = op::Const(ori_name + "data1").set_attr_value(value1);
-  auto data2 = op::Const(ori_name + "data2").set_attr_value(value2);
-  auto pad_v3 = op::PadV3(ori_name + "PadV3").set_input_x(data0)
-                                             .set_input_paddings(data1)
-                                             .set_input_constant_values(data2)
-                                             .set_attr_mode(mode);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(value1);
+  auto data2 = op::Const(ori_name + "_data2").set_attr_value(value2);
+  auto pad_v3 = op::PadV3(ori_name + "_PadV3").set_input_x(data0)
+                                              .set_input_paddings(data1)
+                                              .set_input_constant_values(data2)
+                                              .set_attr_mode(mode);
 
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;

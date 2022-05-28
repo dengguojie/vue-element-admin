@@ -45,6 +45,8 @@ REGISTER_CUSTOM_OP("ScatterElements")
     .OriginOpType({"ai.onnx::11::ScatterElements",
                    "ai.onnx::12::ScatterElements",
                    "ai.onnx::13::ScatterElements",
+                   "ai.onnx::14::ScatterElements",
+                   "ai.onnx::15::ScatterElements",
                    "ai.onnx::9::Scatter",
                    "ai.onnx::10::Scatter",
                    "ai.onnx::11::Scatter"})

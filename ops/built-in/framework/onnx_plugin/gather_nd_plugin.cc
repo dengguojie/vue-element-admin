@@ -43,8 +43,14 @@ Status ParseParamsGatherNd(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("GatherNd")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::GatherND", "ai.onnx::9::GatherND", "ai.onnx::10::GatherND", "ai.onnx::11::GatherND", "ai.onnx::12::GatherND",
-                   "ai.onnx::13::GatherND"})
+    .OriginOpType({"ai.onnx::8::GatherND",
+                   "ai.onnx::9::GatherND",
+                   "ai.onnx::10::GatherND",
+                   "ai.onnx::11::GatherND",
+                   "ai.onnx::12::GatherND",
+                   "ai.onnx::13::GatherND",
+                   "ai.onnx::14::GatherND",
+                   "ai.onnx::15::GatherND"})
     .ParseParamsFn(ParseParamsGatherNd)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -49,7 +49,9 @@ REGISTER_CUSTOM_OP("Shrink")
                    "ai.onnx::10::Shrink",
                    "ai.onnx::11::Shrink",
                    "ai.onnx::12::Shrink",
-                   "ai.onnx::13::Shrink"})
+                   "ai.onnx::13::Shrink",
+                   "ai.onnx::14::Shrink",
+                   "ai.onnx::15::Shrink"})
     .ParseParamsFn(ParseParamsShrink)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

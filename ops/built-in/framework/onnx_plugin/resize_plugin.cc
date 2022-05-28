@@ -40,6 +40,8 @@ Status ParseParamsResize(const Message *op_src, Operator &op_dst) {
       mode_value = attr.s();
     }
   }
+
+  op_dst.SetAttr("name", node->name());
   int input_size = node->input_size();
   op_dst.SetAttr("input_size", input_size);
   op_dst.SetAttr("coordinate_transformation_mode", coordinate_transformation_mode_value);
@@ -57,14 +59,20 @@ Status ParseParamsResize(const Message *op_src, Operator &op_dst) {
 }
 
 static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
-  auto data2 = op::Data("data2").set_attr_index(2);
-  auto data3 = op::Data("data3").set_attr_index(3);
-  auto resize_x = op::Identity().set_input_x(data0);
-  auto resize_roi = op::Identity().set_input_x(data1);
-  auto resize_scales = op::Identity().set_input_x(data2);
-  auto resize_sizes = op::Identity().set_input_x(data3);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "_data1").set_attr_index(1);
+  auto data2 = op::Data(ori_name + "_data2").set_attr_index(2);
+  auto data3 = op::Data(ori_name + "_data3").set_attr_index(3);
+  auto resize_x = op::Identity(ori_name + "_x").set_input_x(data0);
+  auto resize_roi = op::Identity(ori_name + "_roi").set_input_x(data1);
+  auto resize_scales = op::Identity(ori_name + "_scales").set_input_x(data2);
+  auto resize_sizes = op::Identity(ori_name + "_sizes").set_input_x(data3);
 
   std::string coordinate_transformation_mode_value = "pytorch_half_pixel";
   if (op.GetAttr("coordinate_transformation_mode",coordinate_transformation_mode_value) != GRAPH_SUCCESS) {
@@ -88,14 +96,14 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     return FAILED;
   }
   if (input_size == INPUT_SIZES_IS_FOUR) {
-    sizes = op::Cast().set_input_x(resize_sizes).set_attr_dst_type(ge::DT_INT32);
+    sizes = op::Cast(ori_name + "_Cast0").set_input_x(resize_sizes).set_attr_dst_type(ge::DT_INT32);
   } else if (input_size == INPUT_SIZES_IS_THREE) {
     int dtype = 0;
     int sizes_type = 3;
-    auto resize = op::Shape().set_input_x(resize_x);
-    auto resize_cast = op::Cast().set_input_x(resize).set_attr_dst_type(dtype);
-    auto mul_sizes = op::Mul().set_input_x1(resize_cast).set_input_x2(resize_scales);
-    sizes = op::Cast().set_input_x(mul_sizes).set_attr_dst_type(sizes_type);
+    auto resize = op::Shape(ori_name + "_Shape").set_input_x(resize_x);
+    auto resize_cast = op::Cast(ori_name + "_Cast0").set_input_x(resize).set_attr_dst_type(dtype);
+    auto mul_sizes = op::Mul(ori_name + "_Mul").set_input_x1(resize_cast).set_input_x2(resize_scales);
+    sizes = op::Cast(ori_name + "_Cast1").set_input_x(mul_sizes).set_attr_dst_type(sizes_type);
   } else {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "The input_size is error.");
     return FAILED;
@@ -106,10 +114,13 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
   std::vector<int64_t> dims = {1};
   ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
   ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
-  auto data_offsets = op::Const("data_offsets").set_attr_value(tensor_offsets);
-  auto data_size = op::Const("data_size").set_attr_value(tensor_size);
+  auto data_offsets = op::Const(ori_name + "_data_offsets").set_attr_value(tensor_offsets);
+  auto data_size = op::Const(ori_name + "_data_size").set_attr_value(tensor_size);
 
-  auto size = op::Slice().set_input_x(sizes).set_input_offsets(data_offsets).set_input_size(data_size);
+  auto size = op::Slice(ori_name + "_Slice")
+                  .set_input_x(sizes)
+                  .set_input_offsets(data_offsets)
+                  .set_input_size(data_size);
   inputs.push_back(size);
   auto ret_resize_x = ChangeFormatFromOnnx(resize_x, 0, ge::FORMAT_NCHW, false);
   if (ret_resize_x != ge::GRAPH_SUCCESS) {
@@ -121,10 +132,11 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     return FAILED;
   }
   if (mode_value == "nearest") {
-    auto resizeout_1 = op::ResizeNearestNeighborV2().set_input_x(resize_x)
-                                                    .set_input_size(size)
-                                                    .set_attr_align_corners(align_corners)
-                                                    .set_attr_half_pixel_centers(half_pixel_centers);
+    auto resizeout_1 = op::ResizeNearestNeighborV2(ori_name + "_ResizeNearestNeighborV2")
+                           .set_input_x(resize_x)
+                           .set_input_size(size)
+                           .set_attr_align_corners(align_corners)
+                           .set_attr_half_pixel_centers(half_pixel_centers);
     resizeout_1.AddControlInput(resize_roi);
     if (input_size == INPUT_SIZES_IS_FOUR) {
       resizeout_1.AddControlInput(resize_scales);
@@ -133,10 +145,11 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, true);
     output_indexs.emplace_back(resizeout_1, vector<std::size_t>{0});
   } else if (mode_value == "linear") {
-    auto resizeout_2 = op::ResizeBilinearV2().set_input_x(resize_x)
-                                             .set_input_size(size)
-                                             .set_attr_align_corners(align_corners)
-                                             .set_attr_half_pixel_centers(half_pixel_centers);
+    auto resizeout_2 = op::ResizeBilinearV2(ori_name + "_ResizeBilinearV2")
+                           .set_input_x(resize_x)
+                           .set_input_size(size)
+                           .set_attr_align_corners(align_corners)
+                           .set_attr_half_pixel_centers(half_pixel_centers);
     resizeout_2.AddControlInput(resize_roi);
     if (input_size == INPUT_SIZES_IS_FOUR) {
       resizeout_2.AddControlInput(resize_scales);
@@ -166,7 +179,7 @@ Status ParseParamsResizeV10(const Message *op_src, Operator &op_dst) {
     }
   }
   op_dst.SetAttr("mode", mode_value);
-  
+  op_dst.SetAttr("name", node->name());
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dst);
   if (op_desc == nullptr) {
     ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Get op desc failed.");
@@ -179,26 +192,35 @@ Status ParseParamsResizeV10(const Message *op_src, Operator &op_dst) {
 }
 
 static Status ParseOpToGraphResizeV10(const Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
-  auto resize_x = op::Identity().set_input_x(data0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "_data1").set_attr_index(1);
+  auto resize_x = op::Identity(ori_name + "_Identity").set_input_x(data0);
   
   int dtype = 0;
   int sizes_type = 3;
-  auto resize = op::Shape().set_input_x(resize_x);
-  auto resize_cast = op::Cast().set_input_x(resize).set_attr_dst_type(dtype);
-  auto mul_sizes = op::Mul().set_input_x1(resize_cast).set_input_x2(data1);
-  auto sizes = op::Cast().set_input_x(mul_sizes).set_attr_dst_type(sizes_type);
+  auto resize = op::Shape(ori_name + "_Shape").set_input_x(resize_x);
+  auto resize_cast = op::Cast(ori_name + "_Cast0").set_input_x(resize).set_attr_dst_type(dtype);
+  auto mul_sizes = op::Mul(ori_name + "_Mul").set_input_x1(resize_cast).set_input_x2(data1);
+  auto sizes = op::Cast(ori_name + "_Cast1").set_input_x(mul_sizes).set_attr_dst_type(sizes_type);
  
   int32_t offsets = 2;
   int32_t size_num = 2;
   std::vector<int64_t> dims = {1};
   ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
   ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
-  auto data_offsets = op::Const("data_offsets").set_attr_value(tensor_offsets);
-  auto data_size = op::Const("data_size").set_attr_value(tensor_size);
+  auto data_offsets = op::Const(ori_name + "_data_offsets").set_attr_value(tensor_offsets);
+  auto data_size = op::Const(ori_name + "_data_size").set_attr_value(tensor_size);
 
-  auto size = op::Slice().set_input_x(sizes).set_input_offsets(data_offsets).set_input_size(data_size);
+  auto size = op::Slice(ori_name + "_Slice")
+                  .set_input_x(sizes)
+                  .set_input_offsets(data_offsets)
+                  .set_input_size(data_size);
   auto ret_resize_x = ChangeFormatFromOnnx(resize_x, 0, ge::FORMAT_NCHW, false);
   if (ret_resize_x != ge::GRAPH_SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update resize_x format failed.");
@@ -215,18 +237,20 @@ static Status ParseOpToGraphResizeV10(const Operator& op, Graph& graph) {
   bool half_pixel_centers = false;
   bool align_corners = false;
   if (mode_value == "nearest") {
-    auto resizeout_1 = op::ResizeNearestNeighborV2().set_input_x(resize_x)
-                                                    .set_input_size(size)
-                                                    .set_attr_align_corners(align_corners)
-                                                    .set_attr_half_pixel_centers(half_pixel_centers);
+    auto resizeout_1 = op::ResizeNearestNeighborV2(ori_name + "_ResizeNearestNeighborV2")
+                           .set_input_x(resize_x)
+                           .set_input_size(size)
+                           .set_attr_align_corners(align_corners)
+                           .set_attr_half_pixel_centers(half_pixel_centers);
     ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, false);
     ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, true);
     output_indexs.emplace_back(resizeout_1, vector<std::size_t>{0});
   } else if (mode_value == "linear") {
-    auto resizeout_2 = op::ResizeBilinearV2().set_input_x(resize_x)
-                                            .set_input_size(size)
-                                            .set_attr_align_corners(align_corners)
-                                            .set_attr_half_pixel_centers(half_pixel_centers);
+    auto resizeout_2 = op::ResizeBilinearV2(ori_name + "_ResizeBilinearV2")
+                           .set_input_x(resize_x)
+                           .set_input_size(size)
+                           .set_attr_align_corners(align_corners)
+                           .set_attr_half_pixel_centers(half_pixel_centers);
     ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, false);
     ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, true);
     output_indexs.emplace_back(resizeout_2, vector<std::size_t>{0});
@@ -243,7 +267,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::11::Resize",
                  "ai.onnx::12::Resize",
-                 "ai.onnx::13::Resize"})
+                 "ai.onnx::13::Resize",
+                 "ai.onnx::14::Resize",
+                 "ai.onnx::15::Resize"})
   .ParseParamsFn(ParseParamsResize)
   .ParseOpToGraphFn(ParseOpToGraphResize)
   .ImplyType(ImplyType::TVM);

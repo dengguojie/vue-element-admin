@@ -38,7 +38,9 @@ Status ParseParamsSoftmaxCrossEntropyLoss(const Message *op_src, ge::Operator &o
 REGISTER_CUSTOM_OP("SoftmaxCrossEntropyLoss")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::12::SoftmaxCrossEntropyLoss",
-                 "ai.onnx::13::SoftmaxCrossEntropyLoss"})
+                 "ai.onnx::13::SoftmaxCrossEntropyLoss",
+                 "ai.onnx::14::SoftmaxCrossEntropyLoss",
+                 "ai.onnx::15::SoftmaxCrossEntropyLoss"})
   .ParseParamsFn(ParseParamsSoftmaxCrossEntropyLoss)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

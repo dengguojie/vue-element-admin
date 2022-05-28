@@ -57,7 +57,9 @@ REGISTER_CUSTOM_OP("LpNorm")
                    "ai.onnx::10::ReduceL2",
                    "ai.onnx::11::ReduceL2",
                    "ai.onnx::12::ReduceL2",
-                   "ai.onnx::13::ReduceL2"})
+                   "ai.onnx::13::ReduceL2",
+                   "ai.onnx::14::ReduceL2",
+                   "ai.onnx::15::ReduceL2"})
     .ParseParamsFn(ParseParamsReduceL2)
     .ImplyType(ImplyType::TVM);
 }

@@ -57,7 +57,9 @@ REGISTER_CUSTOM_OP("CommonLSTM")
                    "ai.onnx::10::LSTM",
                    "ai.onnx::11::LSTM",
                    "ai.onnx::12::LSTM",
-                   "ai.onnx::13::LSTM"})
+                   "ai.onnx::13::LSTM",
+                   "ai.onnx::14::LSTM",
+                   "ai.onnx::15::LSTM"})
     .ParseParamsFn(ParseParamsCommonLSTM)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

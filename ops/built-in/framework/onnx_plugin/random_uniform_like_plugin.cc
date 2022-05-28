@@ -53,6 +53,7 @@ Status ParseParamsRandomUniformLike(const Message* op_src, ge::Operator& op_dest
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("high", high);
   op_dest.SetAttr("low", low);
   op_dest.SetAttr("seed", seed);
@@ -61,6 +62,12 @@ Status ParseParamsRandomUniformLike(const Message* op_src, ge::Operator& op_dest
 }
 
 Status ParseOpToGraphRandomUniformLike(const ge::Operator &op, ge::Graph &graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   float low = 0.0f;
   op.GetAttr("low", low);
 
@@ -85,19 +92,19 @@ Status ParseOpToGraphRandomUniformLike(const ge::Operator &op, ge::Graph &graph)
   ge::Tensor tensor_mean = Scalar2Tensor(low, dims, ge::DT_FLOAT);
   ge::Tensor tensor_scale = Scalar2Tensor(delta, dims, ge::DT_FLOAT);
   
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto shape_op = op::Shape("shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);
-  auto random_op = op::RandomUniform("random_uniform").set_input_shape(shape_op)
-                                                                     .set_attr_dtype(kvlist[dtype])
-                                                                     .set_attr_seed(seed)
-                                                                     .set_attr_seed2(seed);
-  auto const_scale = op::Const("const_scale").set_attr_value(tensor_scale);
-  auto const_mean = op::Const("const_mean").set_attr_value(tensor_mean);
-  auto cast_mean = op::Cast("cast_mean").set_input_x(const_mean).set_attr_dst_type(kvlist[dtype]);
-  auto cast_scale = op::Cast("cast_scale").set_input_x(const_scale).set_attr_dst_type(kvlist[dtype]);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto shape_op = op::Shape(ori_name + "_shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);
+  auto random_op = op::RandomUniform(ori_name + "_random_uniform").set_input_shape(shape_op)
+                                                                  .set_attr_dtype(kvlist[dtype])
+                                                                  .set_attr_seed(seed)
+                                                                  .set_attr_seed2(seed);
+  auto const_scale = op::Const(ori_name + "_const_scale").set_attr_value(tensor_scale);
+  auto const_mean = op::Const(ori_name + "_const_mean").set_attr_value(tensor_mean);
+  auto cast_mean = op::Cast(ori_name + "_cast_mean").set_input_x(const_mean).set_attr_dst_type(kvlist[dtype]);
+  auto cast_scale = op::Cast(ori_name + "_cast_scale").set_input_x(const_scale).set_attr_dst_type(kvlist[dtype]);
 
-  auto mul_op = op::Mul("mul").set_input_x1(random_op).set_input_x2(cast_scale);
-  auto add_op = op::Add("add").set_input_x1(mul_op).set_input_x2(cast_mean);
+  auto mul_op = op::Mul(ori_name + "_mul").set_input_x1(random_op).set_input_x2(cast_scale);
+  auto add_op = op::Add(ori_name + "_add").set_input_x1(mul_op).set_input_x2(cast_mean);
   std::vector<ge::Operator> inputs{data0};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> outputs;
   outputs.emplace_back(add_op, std::vector<std::size_t>{0});
@@ -113,7 +120,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::RandomUniformLike",
                    "ai.onnx::11::RandomUniformLike",
                    "ai.onnx::12::RandomUniformLike",
-                   "ai.onnx::13::RandomUniformLike"})
+                   "ai.onnx::13::RandomUniformLike",
+                   "ai.onnx::14::RandomUniformLike",
+                   "ai.onnx::15::RandomUniformLike"})
     .ParseParamsFn(ParseParamsRandomUniformLike)
     .ParseOpToGraphFn(ParseOpToGraphRandomUniformLike)
     .ImplyType(ImplyType::TVM);
