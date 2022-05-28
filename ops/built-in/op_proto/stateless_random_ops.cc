@@ -994,5 +994,298 @@ IMPLEMT_INFERFUNC(StatelessRandomPoisson, StatelessRandomPoissonInfer) {
 INFER_FUNC_REG(StatelessRandomPoisson, StatelessRandomPoissonInfer);
 // ----------------StatelessRandomPoissonInferShape End-------------------
 
-}  // namespace ge
+// ----------------StatelessRandomGetAlg Begin----------------------------
+IMPLEMT_INFERFUNC(StatelessRandomGetAlg, StatelessRandomGetAlgInfer) {
+  TensorDesc alg_desc = op.GetOutputDescByName("alg");
+  std::vector<int64_t> alg_dim = {};
+  Shape alg_shape(alg_dim);
+  alg_desc.SetShape(alg_shape);
+  alg_desc.SetDataType(DT_INT32);
+  op.UpdateOutputDesc("alg", alg_desc);
 
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StatelessRandomGetAlg, StatelessRandomGetAlgInfer);
+// ----------------StatelessRandomGetAlg End------------------------------
+
+// ----------------StatelessRandomGetKeyCounter Begin---------------------
+static constexpr int RNG_KEY_SIZE = 1;
+static constexpr int RNG_MAX_COUNTER_SIZE = 2;
+
+IMPLEMT_INFERFUNC(StatelessRandomGetKeyCounter,
+                  StatelessRandomGetKeyCounterInfer) {
+  TensorDesc outputDesc = op.GetOutputDescByName("key");
+  outputDesc.SetShape(Shape({RNG_KEY_SIZE}));
+  outputDesc.SetDataType(DT_UINT64);
+  (void)op.UpdateOutputDesc("key", outputDesc);
+
+  TensorDesc outputDesc2 = op.GetOutputDescByName("counter");
+  outputDesc2.SetShape(Shape({RNG_MAX_COUNTER_SIZE}));
+  outputDesc2.SetDataType(DT_UINT64);
+  (void)op.UpdateOutputDesc("counter", outputDesc2);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StatelessRandomGetKeyCounter, StatelessRandomGetKeyCounterInfer);
+
+IMPLEMT_VERIFIER(StatelessRandomGetKeyCounter,
+                 StatelessRandomGetKeyCounterVerify) {
+  std::string error_msg;
+  TensorDesc seed_desc = op.GetInputDescByName("seed");
+  const std::vector<DataType> seedSupportList = {DT_INT32, DT_INT64};
+  if (!CheckInputDataType(op, "seed", seedSupportList)) {
+    return GRAPH_FAILED;
+  }
+  Shape seed;
+  if (WithRank(seed_desc, 1, seed, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+                             "the rank of input[seed] must be 1, but get ",
+                             seed_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  if (seed.GetDim(0) != 2) {
+    error_msg = ConcatString("the value of dim[0] for input[seed] must be 2, ",
+                             "but the real value is ", seed.GetDim(0), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+VERIFY_FUNC_REG(StatelessRandomGetKeyCounter,
+                StatelessRandomGetKeyCounterVerify);
+// ----------------StatelessRandomGetKeyCounter End--------------------------
+
+// ----------------StatelessRandomGetKeyCounterAlg Begin---------------------
+IMPLEMT_INFERFUNC(StatelessRandomGetKeyCounterAlg,
+                  StatelessRandomGetKeyCounterAlgInfer) {
+  const std::vector<DataType> seedSupportList = {DT_INT32, DT_INT64};
+  if (!CheckInputDataType(op, "seed", seedSupportList)) {
+    return GRAPH_FAILED;
+  }
+
+  std::string error_msg;
+  Shape seed_shape;
+  TensorDesc seed_desc = op.GetInputDescByName("seed");
+  if (WithRank(seed_desc, 1, seed_shape, TbeGetName(op).c_str()) !=
+      GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+                             "the rank of input[seed] must be 1, but get ",
+                             seed_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (seed_shape.GetDim(0) != 2) {
+    error_msg =
+        ConcatString("the value of dim[0] for input[seed] must be 2, ",
+                     "but the real value is ", seed_shape.GetDim(0), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc key_desc = op.GetOutputDescByName("key");
+  std::vector<int64_t> key_dim = {1};
+  Shape key_shape(key_dim);
+  key_desc.SetShape(key_shape);
+  key_desc.SetDataType(DT_UINT64);
+  op.UpdateOutputDesc("key", key_desc);
+
+  TensorDesc counter_desc = op.GetOutputDescByName("counter");
+  std::vector<int64_t> counter_dim = {2};
+  Shape counter_shape(counter_dim);
+  counter_desc.SetShape(counter_shape);
+  counter_desc.SetDataType(DT_UINT64);
+  op.UpdateOutputDesc("counter", counter_desc);
+
+  TensorDesc alg_desc = op.GetOutputDescByName("alg");
+  std::vector<int64_t> alg_dim = {};
+  Shape alg_shape(alg_dim);
+  alg_desc.SetShape(alg_shape);
+  alg_desc.SetDataType(DT_INT32);
+  op.UpdateOutputDesc("alg", alg_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StatelessRandomGetKeyCounterAlg,
+               StatelessRandomGetKeyCounterAlgInfer);
+// ----------------StatelessRandomGetKeyCounterAlg End-----------------------
+
+// ----------------StatelessRandomNormalV2 Begin--------------------------
+IMPLEMT_INFERFUNC(StatelessRandomNormalV2, StatelessRandomNormalV2Infer) {
+  std::string error_msg;
+  DataType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    dtype = DT_FLOAT;
+  }
+  if ((dtype != DT_FLOAT16) && (dtype != DT_FLOAT) && (dtype != DT_DOUBLE)) {
+    error_msg = ConcatString(
+        "attr[dtype] data type should be DT_FLOAT16,  DT_FLOAT or DT_DOUBLE, "
+        "got[",
+        DTypeStr(dtype), "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape shape;
+  Tensor shape_tensor;
+  if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
+    error_msg = "failed to get input[shape] const data.";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) !=
+      GRAPH_SUCCESS) {
+    error_msg =
+        ConcatString("failed to call MakeShapeFromShapeTensor function,",
+                     " make shape for output[y] failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc y_desc = op.GetOutputDescByName("y");
+  y_desc.SetDataType(dtype);
+  y_desc.SetShape(shape);
+  return op.UpdateOutputDesc("y", y_desc);
+}
+
+INFER_FUNC_REG(StatelessRandomNormalV2, StatelessRandomNormalV2Infer);
+
+IMPLEMT_VERIFIER(StatelessRandomNormalV2, StatelessRandomNormalV2Verify) {
+  const std::vector<DataType> keySupportList = {DT_UINT64};
+  if (!CheckInputDataType(op, "key", keySupportList)) {
+    return GRAPH_FAILED;
+  }
+
+  const std::vector<DataType> counterSupportList = {DT_UINT64};
+  if (!CheckInputDataType(op, "counter", counterSupportList)) {
+    return GRAPH_FAILED;
+  }
+
+  const std::vector<DataType> algSupportList = {DT_INT32};
+  if (!CheckInputDataType(op, "alg", algSupportList)) {
+    return GRAPH_FAILED;
+  }
+
+  std::string error_msg;
+  Shape key_shape = op.GetInputDescByName("key").GetShape();
+  if (key_shape.GetDims().size() != 1) {
+    error_msg = ConcatString("The number of dim for input[key]",
+                             "must be 1, but the real value is ",
+                             key_shape.GetDims().size(), ".");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape counter_shape = op.GetInputDescByName("counter").GetShape();
+  if (counter_shape.GetDims().size() != 1) {
+    error_msg = ConcatString("The number of dim for input[counter]",
+                             "must be 1, but the real value is ",
+                             counter_shape.GetDims().size(), ".");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape alg_shape = op.GetInputDescByName("alg").GetShape();
+  if (alg_shape.GetDims().size() != 0) {
+    error_msg = ConcatString("The number of dim for input[alg]",
+                             "must be 0, but the real value is ",
+                             alg_shape.GetDims().size(), ".");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+VERIFY_FUNC_REG(StatelessRandomNormalV2, StatelessRandomNormalV2Verify);
+// ----------------StatelessRandomNormalV2 End--------------------------
+
+// ----------------StatelessRandomUniformV2 Begin--------------------------
+IMPLEMT_INFERFUNC(StatelessRandomUniformV2, StatelessRandomUniformV2Infer) {
+  std::string error_msg;
+  // alg-start
+  Shape alg;
+  Tensor alg_tensor;
+  if (op.GetInputConstData("alg", alg_tensor) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("failed to get input[alg] const data."));
+    return GRAPH_FAILED;
+  }
+  int32_t* const_data_ptr = reinterpret_cast<int32_t*>(alg_tensor.GetData());
+  int32_t alg_value = *(const_data_ptr);
+
+  TensorDesc alg_desc = op.GetInputDescByName("alg");
+  if (WithRank(alg_desc, 0, alg, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("the rank of alg must be 0, but get ", alg_desc.GetShape().GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  // alg-end
+
+  // counter-start
+  Shape counter;
+  TensorDesc counter_desc = op.GetInputDescByName("counter");
+  if (WithRank(counter_desc, 1, counter, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("the rank of counter must be 1, but get ", counter_desc.GetShape().GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  if (alg_value == 2 && counter.GetDim(0) != 1) {
+    error_msg = ConcatString("the input counter dim[0] must be 1, real value is ", counter.GetDim(0));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  if (alg_value == 1 && counter.GetDim(0) != 2) {
+    error_msg = ConcatString("the input counter dim[0] must be 2, real value is ", counter.GetDim(0));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  // counter-end
+
+  Shape shape;
+  Tensor shape_tensor;
+  if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("failed to get input[shape] const data."));
+    return GRAPH_FAILED;
+  }
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("failed to call MakeShapeFromShapeTensor func."));
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
+  DataType output_type = DT_FLOAT;
+  op.GetAttr("dtype", output_type);
+ 
+  outputDesc.SetDataType(output_type);
+  outputDesc.SetShape(shape);
+  return op.UpdateOutputDesc("y", outputDesc);
+}
+IMPLEMT_VERIFIER(StatelessRandomUniformV2, StatelessRandomUniformV2Verify) {
+  std::string error_msg;
+  // key-start
+  Shape key;
+  TensorDesc key_desc = op.GetInputDescByName("key");
+  if (WithRank(key_desc, 1, key, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ", "the rank of input[key] must be 1, but get ",
+                             key_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  if (key.GetDim(0) != 1) {
+    error_msg =
+        ConcatString("the value of dim[0] for input[key] must be 1, ", "but the real value is ", key.GetDim(0), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  // key-end
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StatelessRandomUniformV2, StatelessRandomUniformV2Infer);
+VERIFY_FUNC_REG(StatelessRandomUniformV2, StatelessRandomUniformV2Verify);
+// ----------------StatelessRandomUniformV2 End--------------------------
+
+}  // namespace ge

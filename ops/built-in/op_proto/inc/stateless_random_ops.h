@@ -358,6 +358,117 @@ REG_OP(StatelessRandomPoisson)
     .REQUIRED_ATTR(dtype, Type)
     .OP_END_FACTORY_REG(StatelessRandomPoisson)
 
-}  // namespace ge
+/**
+* @brief Get the counter of the RNG algorithm. \n
 
+* @par Outputs:
+* @li alg: The RNG algorithm. \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomGetAlg operator.
+*/
+REG_OP(StatelessRandomGetAlg)
+    .OUTPUT(alg, TensorType({DT_INT32}))
+    .OP_END_FACTORY_REG(StatelessRandomGetAlg)
+
+/**
+* @brief This op picks the best counter-based RNG algorithm based on device, and
+* scrambles a shape-[2] seed into a key and a counter, both needed by the
+* counter-based algorithm. \n
+
+* @par Inputs:
+* @li seed: 2 seeds (shape [2]). \n
+
+* @par Outputs:
+* @li key: Key for the counter-based RNG algorithm.
+* @li counter: Initial counter for the counter-based RNG algorithm. \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomGetKeyCounter operator.
+*/
+REG_OP(StatelessRandomGetKeyCounter)
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(key, TensorType({DT_UINT64}))
+    .OUTPUT(counter, TensorType({DT_UINT64}))
+    .OP_END_FACTORY_REG(StatelessRandomGetKeyCounter)
+
+/**
+* @brief This op picks the best counter-based RNG algorithm based on device, and
+* scrambles a shape-[2] seed into a key and a counter, both needed by the
+* counter-based algorithm. \n
+
+* @par Inputs:
+* @li seed: 2 seeds (shape [2]). \n
+
+* @par Outputs:
+* @li key: Key for the counter-based RNG algorithm.
+* @li counter: Initial counter for the counter-based RNG algorithm.
+* @li alg: The RNG algorithm. \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomGetKeyCounterAlg operator.
+*/
+REG_OP(StatelessRandomGetKeyCounterAlg)
+    .INPUT(seed, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(key, TensorType({DT_UINT64}))
+    .OUTPUT(counter, TensorType({DT_UINT64}))
+    .OUTPUT(alg, TensorType({DT_INT32}))
+    .OP_END_FACTORY_REG(StatelessRandomGetKeyCounterAlg)
+
+/**
+* @brief Outputs deterministic pseudorandom values from a normal distribution. \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li key: Key for the counter-based RNG algorithm.
+* @li counter: Initial counter for the counter-based RNG algorithm.
+* @li alg: The RNG algorithm. \n
+
+* @par Attributes:
+* @li dtype: Output data type . \n
+
+* @par Outputs:
+* @li y: Returns Random values with specified shape . \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomNormalV2 operator.
+*/
+REG_OP(StatelessRandomNormalV2)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(key, TensorType({DT_UINT64}))
+    .INPUT(counter, TensorType({DT_UINT64}))
+    .INPUT(alg, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .ATTR(dtype, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(StatelessRandomNormalV2)
+
+/**
+* @brief Outputs deterministic pseudorandom random integers from a uniform distribution . \n
+
+* @par Inputs:
+* @li shape: The shape of the output tensor.
+* @li key: Key for the counter-based RNG algorithm.
+* @li counter: Initial counter for the counter-based RNG algorithm.
+* @li alg: 0-D. The RNG algorithm. \n
+
+* @par Attributes:
+* dtype:Output data type . \n
+
+* @par Outputs:
+* y: Returns Random values with specified shape . \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow StatelessRandomUniformV2 operator.
+*/
+
+REG_OP(StatelessRandomUniformV2)
+    .INPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(key, TensorType({DT_UINT64}))
+    .INPUT(counter, TensorType({DT_UINT64}))
+    .INPUT(alg, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE}))
+    .ATTR(dtype, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(StatelessRandomUniformV2)
+
+}  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_STATELESS_RANDOM_OPS_H_

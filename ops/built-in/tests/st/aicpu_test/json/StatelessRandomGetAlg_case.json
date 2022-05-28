@@ -1,0 +1,15 @@
+[
+    {
+        "case_name": "Test_StatelessRandomGetAlg",
+        "op": "StatelessRandomGetAlg",
+        "input_desc": [],
+        "output_desc": [
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND"
+            }
+        ]
+    }
+]

@@ -1649,4 +1649,11 @@ REGISTER_CUSTOM_OP("IsotonicRegression")
     .OriginOpType("IsotonicRegression")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register StatelessRandomUniformV2 op to GE
+REGISTER_CUSTOM_OP("StatelessRandomUniformV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StatelessRandomUniformV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

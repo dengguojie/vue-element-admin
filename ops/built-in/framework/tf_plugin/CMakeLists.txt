@@ -428,6 +428,10 @@ set(_tf_plugins
   stack_plugin.cc
   stack_pop_plugin.cc
   stack_push_plugin.cc
+  stateless_random_get_alg_plugin.cc
+  stateless_random_get_key_counter_plugin.cc
+  stateless_random_get_key_counter_alg_plugin.cc
+  stateless_random_normal_v2_plugin.cc
   strided_slice_assign_plugin.cc
   strided_slice_grad_plugin.cc
   strided_slice_plugin.cc

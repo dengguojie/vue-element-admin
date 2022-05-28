@@ -1,0 +1,1028 @@
+[
+    {
+        "case_name": "Test_StatelessRandomNormalV2_001",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [3],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [3, 4, 5],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [3, 4, 5],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomNormalV2_002",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [3],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [3, 4, 5],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [3, 4, 5],
+                "type": ["float16"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "float16"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomNormalV2_003",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [3],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [3, 4, 5],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [3, 4, 5],
+                "type": ["float"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "float"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomNormalV2_004",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [3],
+                "type": ["int64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [3, 4, 5],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [3, 4, 5],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomNormalV2_005",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [3],
+                "type": ["int64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [3, 4, 5],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [3, 4, 5],
+                "type": ["float16"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "float16"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomNormalV2_006",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [3],
+                "type": ["int64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [3, 4, 5],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [3, 4, 5],
+                "type": ["float"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "float"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_512",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [8, 8],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [8, 8],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_1K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [8, 16],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [8, 16],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_4K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [16, 32],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [16, 32],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_8K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [32, 32],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [32, 32],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_16K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [32, 64],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [32, 64],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_32K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [64, 64],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [64, 64],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_64K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [64, 128],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [64, 128],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_128K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [128, 128],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [128, 128],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_256K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [128, 256],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [128, 256],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_512K",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [256, 256],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [256, 256],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomNormalV2_Double_1M",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [256, 512],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [256, 512],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+        {
+        "case_name": "StatelessRandomNormalV2_Double_4M",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [512, 1024],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [512, 1024],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    },
+        {
+        "case_name": "StatelessRandomNormalV2_Double_8M",
+        "op": "StatelessRandomNormalV2",
+        "input_desc": [
+            {
+                "name": "shape",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value": [1024, 1024],
+                "is_const": true,
+                "value_range": [1, 256]
+            },
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["normal"],
+                "value_range": [1, 2048]
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]              
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 1]
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [1024, 1024],
+                "type": ["double"],
+                "format": "ND"
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "data_type",
+                "value": "double"
+            }
+        ]
+    }
+]

@@ -1,0 +1,88 @@
+[
+  {
+    "case_name": "Test_StatelessRandomGetKeyCounter_DT_INT32",
+    "op": "StatelessRandomGetKeyCounter",
+    "input_desc": [
+      {
+        "name": "seed",
+        "shape": [2],
+        "type": ["int32"],
+        "format": "ND",
+        "data_distribute": ["uniform"],
+        "value_range": [1, 2048]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "key",
+        "shape": [1],
+        "type": ["uint64"],
+        "format": "ND"
+      },
+      {
+        "name": "counter",
+        "shape": [2],
+        "type": ["uint64"],
+        "format": "ND"
+      }
+    ]
+  },
+  {
+    "case_name": "Test_StatelessRandomGetKeyCounter_DT_INT64",
+    "op": "StatelessRandomGetKeyCounter",
+    "input_desc": [
+      {
+        "name": "seed",
+        "shape": [2],
+        "type": ["int64"],
+        "format": "ND",
+        "data_distribute": ["uniform"],
+        "value_range": [1, 2048]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "key",
+        "shape": [1],
+        "type": ["uint64"],
+        "format": "ND"
+      },
+      {
+        "name": "counter",
+        "shape": [2],
+        "type": ["uint64"],
+        "format": "ND"
+      }
+    ]
+  },
+  {
+    "case_name": "Test_StatelessRandomGetKeyCounter_Perform",
+    "op": "StatelessRandomGetKeyCounter",
+    "input_desc": [
+      {
+        "name": "seed",
+        "shape": [2],
+        "type": ["int64"],
+        "format": "ND",
+        "data_distribute": ["uniform"],
+        "value_range": [1, 2048]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "key",
+        "shape": [1],
+        "type": ["uint64"],
+        "format": "ND"
+      },
+      {
+        "name": "counter",
+        "shape": [2],
+        "type": ["uint64"],
+        "format": "ND"
+      }
+    ]
+  }
+
+
+]

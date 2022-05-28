@@ -1,0 +1,104 @@
+[
+    {
+        "case_name": "Test_StatelessRandomGetKeyCounterAlg_001",
+        "op": "StatelessRandomGetKeyCounterAlg",
+        "input_desc": [
+            {
+                "name": "seed",
+                "shape": [2],
+                "type": ["int32"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND"
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND"
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_StatelessRandomGetKeyCounterAlg_002",
+        "op": "StatelessRandomGetKeyCounterAlg",
+        "input_desc": [
+            {
+                "name": "seed",
+                "shape": [2],
+                "type": ["int64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND"
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND"
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND"
+            }
+        ]
+    },
+    {
+        "case_name": "StatelessRandomGetKeyCounterAlg_Perform_Test",
+        "op": "StatelessRandomGetKeyCounterAlg",
+        "input_desc": [
+            {
+                "name": "seed",
+                "shape": [2],
+                "type": ["int64"],
+                "format": "ND",
+                "data_distribute": ["uniform"],
+                "value_range": [1, 2048]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "key",
+                "shape": [1],
+                "type": ["uint64"],
+                "format": "ND"
+            },
+            {
+                "name": "counter",
+                "shape": [2],
+                "type": ["uint64"],
+                "format": "ND"
+            },
+            {
+                "name": "alg",
+                "shape": [],
+                "type": ["int32"],
+                "format": "ND"
+            }
+        ]
+    }
+]
