@@ -56,6 +56,7 @@ set(_op_proto_srcs
   runtime/expand.cc
   runtime/trans_data.cc
   runtime/reshape_op_impl.cc
+  runtime/strided_slice_v3.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc

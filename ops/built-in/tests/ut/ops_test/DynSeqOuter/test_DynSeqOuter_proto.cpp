@@ -73,7 +73,7 @@ TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_2) {
     ge::op::DynSeqOuter op;
 
     ge::TensorDesc alpha_desc;
-    ge::Shape xShape({41, 512});
+    ge::Shape xShape({8, 512});
     alpha_desc.SetDataType(ge::DT_FLOAT);
     alpha_desc.SetShape(xShape);
     alpha_desc.SetOriginShape(xShape);
@@ -101,7 +101,7 @@ TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_2) {
     op.UpdateInputDesc("seq_len2", offset_desc);
 
     vector<bool> input_const = {false, false, true, true};
-    std::vector<vector<int64_t>> expect_shapes_vector = {{8}};
+    std::vector<vector<int64_t>> expect_shapes_vector = {{8, 512}};
 
     CommonInferShapeOperator2(op, input_const, {}, expect_shapes_vector);
 }

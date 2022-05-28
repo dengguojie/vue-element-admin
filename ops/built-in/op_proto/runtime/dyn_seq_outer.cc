@@ -26,12 +26,17 @@
 using namespace ge;
 namespace ops {
 ge::graphStatus DynSeqOuterInferShapeFunc(gert::InferShapeContext *context) {
-  auto output_shape = context->GetOutputShape(0);
-  auto seq_len1_tensor = context->GetInputTensor(2);
-  auto seq_len2_tensor = context->GetInputTensor(3);
+  const int X1_INDEX = 0;
+  const int Y_INDEX = 0;
+  const int LEN1_INDEX = 2;
+  const int LEN2_INDEX = 3;
+  const gert::Shape* x1_shape = context->GetInputShape(X1_INDEX);
+  auto output_shape = context->GetOutputShape(Y_INDEX);
+  auto seq_len1_tensor = context->GetInputTensor(LEN1_INDEX);
+  auto seq_len2_tensor = context->GetInputTensor(LEN2_INDEX);
+  *output_shape = *x1_shape;
 
   int64_t batch_size = seq_len1_tensor->GetShapeSize();  
-
   if (seq_len1_tensor->GetDataType() != ge::DT_INT32 || seq_len2_tensor->GetDataType() != ge::DT_INT32) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "offset_tensor dtype must be int32!");
     return ge::GRAPH_FAILED;
@@ -45,7 +50,7 @@ ge::graphStatus DynSeqOuterInferShapeFunc(gert::InferShapeContext *context) {
     bst += seq_len1[i] * seq_len2[i];
   }
 
-  output_shape->AppendDim(bst);
+  output_shape->SetDim(0, bst);
   return ge::GRAPH_SUCCESS;
 }
 
