@@ -19,11 +19,11 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kLogUniformCandidateSampler = "LogUniformCandidateSampler";
-const char *kUniformCandidateSampler = "UniformCandidateSampler";
+const char *const kLogUniformCandidateSampler = "LogUniformCandidateSampler";
+const char *const kUniformCandidateSampler = "UniformCandidateSampler";
 }  // namespace
 namespace aicpu {
-uint32_t CandidateSamplerMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t CandidateSamplerMsCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   AttrValue *num_true = ctx.GetAttr("num_true");
   KERNEL_CHECK_NULLPTR(num_true, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr:[num_true] failed.");
@@ -66,7 +66,7 @@ uint32_t CandidateSamplerMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  batch_size_ = x_shape->GetDimSize(0);
+  batch_size_ = static_cast<int>(x_shape->GetDimSize(0));
   if (x_dtype_ != DT_INT64) {
     KERNEL_LOG_ERROR("Invalid type of input[0]: [%s], should be [%s].",
                      DTypeStr(x_dtype_).c_str(), DTypeStr(DT_INT64).c_str());
@@ -127,9 +127,9 @@ uint32_t CandidateSamplerMsCpuKernel::DoComputeForEachType() {
   KERNEL_CHECK_FALSE((sample_ret == KERNEL_STATUS_OK), sample_ret,
                      "Sampler failed!");
 
-  int true_count_size = kBatchSize * num_true_ * sizeof(float);
+  size_t true_count_size = kBatchSize * num_true_ * sizeof(float);
   int ret = memcpy_s(reinterpret_cast<void *>(ioAddrs_[1]),
-                     num_sampled_ * sizeof(int64_t),
+                     static_cast<size_t>(num_sampled_ * sizeof(int64_t)),
                      reinterpret_cast<void *>(&sampled_candidate.front()),
                      sampled_candidate.size() * sizeof(int64_t));
   KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,
@@ -141,7 +141,7 @@ uint32_t CandidateSamplerMsCpuKernel::DoComputeForEachType() {
   KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,
                      "Memcpy failed, result = [%d].", ret);
   ret = memcpy_s(reinterpret_cast<void *>(ioAddrs_[3]),
-                 num_sampled_ * sizeof(float),
+                 static_cast<size_t>(num_sampled_ * sizeof(float)),
                  reinterpret_cast<void *>(&sampled_expected_count.front()),
                  sampled_expected_count.size() * sizeof(float));
   KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,
@@ -154,9 +154,8 @@ uint32_t LogUniformCandidateSamplerMsCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
                      "GetInputAndCheck failed.");
 
-  LogUniformCandidateSamplerMsCpuKernel::DoComputeForEachType<
+  return LogUniformCandidateSamplerMsCpuKernel::DoComputeForEachType<
       aicpu::cpu::LogUniformSampler>();
-  return KERNEL_STATUS_OK;
 }
 
 uint32_t UniformCandidateSamplerMsCpuKernel::Compute(CpuKernelContext &ctx) {
@@ -164,9 +163,8 @@ uint32_t UniformCandidateSamplerMsCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
                      "GetInputAndCheck failed.");
 
-  UniformCandidateSamplerMsCpuKernel::DoComputeForEachType<
+  return UniformCandidateSamplerMsCpuKernel::DoComputeForEachType<
       aicpu::cpu::UniformSampler>();
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kLogUniformCandidateSampler,

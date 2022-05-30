@@ -36,12 +36,12 @@ const std::int64_t kAtan2ParallelNum{64 * 1024};
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline T ScalarAtan2(T y, T x) {
+inline T ScalarAtan2(const T y, const T x) {
   return std::atan2(y, x);
 }
 
 template <>
-inline Eigen::half ScalarAtan2(Eigen::half y, Eigen::half x) {
+inline Eigen::half ScalarAtan2(const Eigen::half y, const Eigen::half x) {
   const Eigen::half val{static_cast<Eigen::half>(
       std::atan2(static_cast<std::float_t>(y), static_cast<std::float_t>(x)))};
   return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
@@ -117,7 +117,7 @@ inline std::uint32_t ExtraCheckAtan2(const CpuKernelContext &ctx) {
 
 inline std::uint32_t CheckAtan2(CpuKernelContext &ctx, std::uint32_t inputs_num,
                                 std::uint32_t outputs_num) {
-  return NormalCheck(ctx, kAtan2InputNum, kAtan2OutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckAtan2(ctx);
 }

@@ -22,7 +22,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kCoordinates1DTo2D = "Coordinates1DTo2D";
+const char *const kCoordinates1DTo2D = "Coordinates1DTo2D";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 3;
 

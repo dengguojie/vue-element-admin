@@ -27,19 +27,19 @@
 namespace {
 const std::uint32_t kAcoshInputNum{1};
 const std::uint32_t kAcoshOutputNum{1};
-const char *kAcosh{"Acosh"};
+const char *const kAcosh{"Acosh"};
 const std::int64_t kAcoshParallelNum{64 * 1024};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline T ScalarAcosh(T x) {
+inline T ScalarAcosh(const T x) {
   return std::acosh(x);
 }
 
 template <>
-inline Eigen::half ScalarAcosh(Eigen::half x) {
+inline Eigen::half ScalarAcosh(const Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::acosh(static_cast<std::float_t>(x)))};
   return val;
@@ -104,7 +104,7 @@ inline std::uint32_t ExtraCheckAcosh(const CpuKernelContext &ctx) {
 
 inline std::uint32_t CheckAcosh(CpuKernelContext &ctx, std::uint32_t inputs_num,
                                 std::uint32_t outputs_num) {
-  return NormalCheck(ctx, kAcoshInputNum, kAcoshOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckAcosh(ctx);
 }

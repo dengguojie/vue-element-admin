@@ -23,7 +23,7 @@ namespace {
 const uint32_t kCumsumInputNum = 2;
 const uint32_t kCumsumOutputNum = 1;
 const int64_t paralled_data_size = 512 * 1024;
-const char *kCumsum = "Cumsum";
+const char *const kCumsum = "Cumsum";
 constexpr int64_t kFirstInputIndex = 0;
 #define CUMSUM_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                        \
@@ -74,7 +74,7 @@ uint32_t CumsumCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   return KERNEL_STATUS_OK;
 }
-uint32_t CumsumCpuKernel::CumsumCheck(CpuKernelContext &ctx) {
+uint32_t CumsumCpuKernel::CumsumCheck(const CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(ctx.Input(kFirstInputIndex)->GetData(),
                        KERNEL_STATUS_PARAM_INVALID, "get input failed.");
   KERNEL_CHECK_NULLPTR(ctx.Input(kFirstInputIndex)->GetTensorShape(),
@@ -114,7 +114,7 @@ uint32_t CumsumCpuKernel::CumsumCheck(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-void CumsumCpuKernel::CumsumGetAttr(CpuKernelContext &ctx, bool &exclusive, bool &reverse) {
+void CumsumCpuKernel::CumsumGetAttr(const CpuKernelContext &ctx, bool &exclusive, bool &reverse) const {
   exclusive = false;
   AttrValue *exclusive_attr = ctx.GetAttr("exclusive");
   if (exclusive_attr != nullptr) {
@@ -147,9 +147,9 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
   if (axis < 0) {
     axis += shape->GetDims();
   }
-  size_t inner = 1;
-  size_t outer = 1;
-  size_t depth = 1;
+  int64_t inner = 1;
+  int64_t outer = 1;
+  int64_t depth = 1;
   for (int32_t i = 0; i < rank; ++i) {
     if (i < axis) {
       inner *= shape->GetDimSize(i);
@@ -162,29 +162,29 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
   int64_t data_num = ctx.Input(kFirstInputIndex)->NumElements();
   int64_t data_size = data_num * sizeof(T);
   if (data_size <= paralled_data_size) {
-    for (size_t outer_index = 0; outer_index < outer; ++outer_index) {
-      size_t outer_index_adj;
+    for (int64_t outer_index = 0; outer_index < outer; ++outer_index) {
+      int64_t outer_index_adj;
       if (reverse) {
         outer_index_adj = (outer - 1) - outer_index;
       } else {
         outer_index_adj = outer_index;
       }
-      for (size_t inner_index = 0; inner_index < inner; inner_index++) {
+      for (int64_t inner_index = 0; inner_index < inner; inner_index++) {
         auto accumulator = static_cast<T>(0);
-        size_t inner_index_adj;
+        int64_t inner_index_adj;
         if (reverse) {
           inner_index_adj = (inner - 1) - inner_index;
         } else {
           inner_index_adj = inner_index;
         }
-        for (size_t depth_index = 0; depth_index < depth; depth_index++) {
-          size_t depth_index_adj;
+        for (int64_t depth_index = 0; depth_index < depth; depth_index++) {
+          int64_t depth_index_adj;
           if (reverse) {
             depth_index_adj = (depth - 1) - depth_index;
           } else {
             depth_index_adj = depth_index;
           }
-          size_t index = outer_index_adj;
+          int64_t index = outer_index_adj;
           index += inner_index_adj * depth * outer;
           index += depth_index_adj * outer;
           if (exclusive) {
@@ -198,30 +198,30 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
       }
     }
   } else {
-    auto shard_cumsum = [&](size_t start, size_t end) {
-      for (size_t outer_index = start; outer_index < end; ++outer_index) {
-        size_t outer_index_adj;
+    auto shard_cumsum = [&](int64_t start, int64_t end) {
+      for (int64_t outer_index = start; outer_index < end; ++outer_index) {
+        int64_t outer_index_adj;
         if (reverse) {
           outer_index_adj = (outer - 1) - outer_index;
         } else {
           outer_index_adj = outer_index;
         }
-        for (size_t inner_index = 0; inner_index < inner; inner_index++) {
+        for (int64_t inner_index = 0; inner_index < inner; inner_index++) {
           auto accumulator = static_cast<T>(0);
-          size_t inner_index_adj;
+          int64_t inner_index_adj;
           if (reverse) {
             inner_index_adj = (inner - 1) - inner_index;
           } else {
             inner_index_adj = inner_index;
           }
-          for (size_t depth_index = 0; depth_index < depth; depth_index++) {
-            size_t depth_index_adj;
+          for (int64_t depth_index = 0; depth_index < depth; depth_index++) {
+            int64_t depth_index_adj;
             if (reverse) {
               depth_index_adj = (depth - 1) - depth_index;
             } else {
               depth_index_adj = depth_index;
             }
-            size_t index = outer_index_adj;
+            int64_t index = outer_index_adj;
             index += inner_index_adj * depth * outer;
             index += depth_index_adj * outer;
             if (exclusive) {
@@ -236,7 +236,7 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
       }
     };
     uint32_t min_core_num = 1;
-    size_t max_core_num = std::max(
+    int64_t max_core_num = std::max(
         min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > outer) {
       max_core_num = outer;
@@ -265,9 +265,9 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
   if (axis < 0) {
     axis += shape->GetDims();
   }
-  size_t inner = 1;
-  size_t outer = 1;
-  size_t depth = 1;
+  int64_t inner = 1;
+  int64_t outer = 1;
+  int64_t depth = 1;
   for (int32_t i = 0; i < rank; ++i) {
     if (i < axis) {
       inner *= shape->GetDimSize(i);
@@ -286,30 +286,30 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
   }
   int64_t data_size = data_num * sizeof(T);
   if (data_size <= paralled_data_size) {
-    for (size_t outer_index = 0; outer_index < outer; ++outer_index) {
-      size_t outer_index_adj;
+    for (int64_t outer_index = 0; outer_index < outer; ++outer_index) {
+      int64_t outer_index_adj;
       if (reverse) {
         outer_index_adj = (outer - 1) - outer_index;
       } else {
         outer_index_adj = outer_index;
       }
-      for (size_t inner_index = 0; inner_index < inner; inner_index++) {
+      for (int64_t inner_index = 0; inner_index < inner; inner_index++) {
         auto accumulator_real = static_cast<T2>(0);
         auto accumulator_imag = static_cast<T2>(0);
-        size_t inner_index_adj;
+        int64_t inner_index_adj;
         if (reverse) {
           inner_index_adj = (inner - 1) - inner_index;
         } else {
           inner_index_adj = inner_index;
         }
-        for (size_t depth_index = 0; depth_index < depth; depth_index++) {
-          size_t depth_index_adj;
+        for (int64_t depth_index = 0; depth_index < depth; depth_index++) {
+          int64_t depth_index_adj;
           if (reverse) {
             depth_index_adj = (depth - 1) - depth_index;
           } else {
             depth_index_adj = depth_index;
           }
-          size_t index = outer_index_adj;
+          int64_t index = outer_index_adj;
           index += inner_index_adj * depth * outer;
           index += depth_index_adj * outer;
           if (exclusive) {
@@ -327,31 +327,31 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
       }
     }
   } else {
-    auto shard_cumsum = [&](size_t start, size_t end) {
-      for (size_t outer_index = start; outer_index < end; ++outer_index) {
-        size_t outer_index_adj;
+    auto shard_cumsum = [&](int64_t start, int64_t end) {
+      for (int64_t outer_index = start; outer_index < end; ++outer_index) {
+        int64_t outer_index_adj;
         if (reverse) {
           outer_index_adj = (outer - 1) - outer_index;
         } else {
           outer_index_adj = outer_index;
         }
-        for (size_t inner_index = 0; inner_index < inner; inner_index++) {
+        for (int64_t inner_index = 0; inner_index < inner; inner_index++) {
           auto accumulator_real = static_cast<T2>(0);
           auto accumulator_imag = static_cast<T2>(0);
-          size_t inner_index_adj;
+          int64_t inner_index_adj;
           if (reverse) {
             inner_index_adj = (inner - 1) - inner_index;
           } else {
             inner_index_adj = inner_index;
           }
-          for (size_t depth_index = 0; depth_index < depth; depth_index++) {
-            size_t depth_index_adj;
+          for (int64_t depth_index = 0; depth_index < depth; depth_index++) {
+            int64_t depth_index_adj;
             if (reverse) {
               depth_index_adj = (depth - 1) - depth_index;
             } else {
               depth_index_adj = depth_index;
             }
-            size_t index = outer_index_adj;
+            int64_t index = outer_index_adj;
             index += inner_index_adj * depth * outer;
             index += depth_index_adj * outer;
             if (exclusive) {
@@ -370,7 +370,7 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
       }
     };
     uint32_t min_core_num = 1;
-    size_t max_core_num = std::max(
+    int64_t max_core_num = std::max(
         min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > outer) {
       max_core_num = outer;

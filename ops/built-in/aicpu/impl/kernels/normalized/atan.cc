@@ -28,18 +28,18 @@
 namespace {
 const std::uint32_t kAtanInputNum{1};
 const std::uint32_t kAtanOutputNum{1};
-const char *kAtan{"Atan"};
+const char *const kAtan{"Atan"};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline T ScalarAtan(T x) {
+inline T ScalarAtan(const T x) {
   return std::atan(x);
 }
 
 template <>
-inline Eigen::half ScalarAtan(Eigen::half x) {
+inline Eigen::half ScalarAtan(const Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::atan(static_cast<std::float_t>(x)))};
   return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
@@ -105,7 +105,7 @@ inline std::uint32_t ExtraCheckAtan(const CpuKernelContext &ctx) {
 
 inline std::uint32_t CheckAtan(CpuKernelContext &ctx, std::uint32_t inputs_num,
                                std::uint32_t outputs_num) {
-  return NormalCheck(ctx, kAtanInputNum, kAtanOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckAtan(ctx);
 }

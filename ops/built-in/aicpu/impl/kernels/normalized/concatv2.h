@@ -56,13 +56,13 @@ class ConcatV2CpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t CheckAndInitParams(CpuKernelContext &ctx);
+  uint32_t CheckAndInitParams(const CpuKernelContext &ctx);
 
   template <typename T>
   uint32_t PrepareInput(
-      CpuKernelContext &ctx,
+      const CpuKernelContext &ctx,
       std::vector<std::shared_ptr<typename TTypes<T>::ConstMatrix>> &inputs) {
-    inputs.reserve(n_);
+    inputs.reserve(static_cast<size_t>(n_));
     output_concat_dim_ = 0;
     auto input0_shape_ptr = ctx.Input(0)->GetTensorShape();
     for (uint32_t i = 0; i < n_; ++i) {
@@ -148,7 +148,7 @@ class ConcatV2CpuKernel : public CpuKernel {
 
   template <typename T>
   uint32_t ConcatV2Compute(
-      CpuKernelContext &ctx,
+      const CpuKernelContext &ctx,
       const std::vector<std::shared_ptr<typename TTypes<T>::ConstMatrix>>
           &inputs,
       std::shared_ptr<typename TTypes<T>::Matrix> &output) {
@@ -213,7 +213,7 @@ class ConcatV2CpuKernel : public CpuKernel {
       }
       const int64_t dim0 = output->dimension(0);
       for (int64_t i = skipped_rows; i < dim0; ++i) {
-        for (int64_t j = 0; j < static_cast<int64_t>(num_inputs); ++j) {
+        for (size_t j = 0; j < num_inputs; ++j) {
           ptrdiff_t size = std::min(sizes[j], out_end - out);
           size_t copy_size = size * sizeof(T);
           auto mem_ret = memcpy_s(out, copy_size, inp[j], copy_size);
@@ -230,14 +230,13 @@ class ConcatV2CpuKernel : public CpuKernel {
         }
       }
     };
-    CpuKernelUtils::ParallelFor(ctx, output->size(), sizeof(T), work);
+    uint32_t result = CpuKernelUtils::ParallelFor(ctx, output->size(), sizeof(T), work);
     KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), KERNEL_STATUS_INNER_ERROR,
                        "ConcatV2CpuKernel failed.");
     KERNEL_LOG_INFO("ConcatV2CpuKernel success.");
-    return KERNEL_STATUS_OK;
+    return result;
   }
 
- private:
   DataType data_type_;
   int32_t input_dims_;
   int64_t n_;

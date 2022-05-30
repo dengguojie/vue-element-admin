@@ -97,7 +97,7 @@ uint32_t CombinationsCpuKernel::CombinationsParamCheck(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t CombinationsCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t CombinationsCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto input_tensor = ctx.Input(0);
   auto inputShape = input_tensor->GetTensorShape();

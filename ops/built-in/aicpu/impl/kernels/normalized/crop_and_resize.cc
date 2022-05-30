@@ -16,7 +16,7 @@
 #include "crop_and_resize.h"
 
 namespace {
-const char *kCropAndResize = "CropAndResize";
+const char *const kCropAndResize = "CropAndResize";
 const std::string kMethodBiliner = "bilinear";
 const std::string kMethodBilinerV2 = "bilinear_v2";
 const std::string kMethodNearest = "nearest";
@@ -29,7 +29,7 @@ const int kPerUintSize = 1;
 }  // namespace
 
 namespace aicpu {
-uint32_t CropAndResizeMsCpuKernel::GetMethodAndAttr(CpuKernelContext &ctx) {
+uint32_t CropAndResizeMsCpuKernel::GetMethodAndAttr(const CpuKernelContext &ctx) {
   AttrValue *method = ctx.GetAttr("method");
   KERNEL_CHECK_NULLPTR(method, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr:[method] failed.");
@@ -47,7 +47,7 @@ uint32_t CropAndResizeMsCpuKernel::GetMethodAndAttr(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CropAndResizeMsCpuKernel::GetInputIndexX(CpuKernelContext &ctx) {
+uint32_t CropAndResizeMsCpuKernel::GetInputIndexX(const CpuKernelContext &ctx) {
   // input_0: x
   Tensor *xTensor = ctx.Input(kInputIndexX);
   KERNEL_CHECK_NULLPTR(xTensor, KERNEL_STATUS_PARAM_INVALID,
@@ -69,7 +69,7 @@ uint32_t CropAndResizeMsCpuKernel::GetInputIndexX(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CropAndResizeMsCpuKernel::GetInputBox(CpuKernelContext &ctx) {
+uint32_t CropAndResizeMsCpuKernel::GetInputBox(const CpuKernelContext &ctx) {
   // input_1: boxes
   Tensor *boxesTensor = ctx.Input(kInputIndexBoxes);
   KERNEL_CHECK_NULLPTR(boxesTensor, KERNEL_STATUS_PARAM_INVALID,
@@ -101,7 +101,7 @@ uint32_t CropAndResizeMsCpuKernel::GetInputBox(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CropAndResizeMsCpuKernel::GetInputCropSize(CpuKernelContext &ctx) {
+uint32_t CropAndResizeMsCpuKernel::GetInputCropSize(const CpuKernelContext &ctx) {
   // input_3: crop_size
   Tensor *cropSizeTensor = ctx.Input(kInputIndexCropSize);
   KERNEL_CHECK_NULLPTR(cropSizeTensor, KERNEL_STATUS_PARAM_INVALID,
@@ -143,8 +143,8 @@ uint32_t CropAndResizeMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   }
 
   // get output Tensors
-  const int kNumOutput = 1;
-  for (int i = 0; i < kNumOutput; ++i) {
+  const uint32_t kNumOutput = 1;
+  for (uint32_t i = 0; i < kNumOutput; ++i) {
     Tensor *tensor = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get output tensor[%d] failed", i)
@@ -163,8 +163,7 @@ uint32_t CropAndResizeMsCpuKernel::Compute(CpuKernelContext &ctx) {
                std::vector<Tensor *> &, std::vector<Tensor *> &,
                const std::vector<int64_t> &x_shape,
                const std::vector<int64_t> &boxes_shape,
-               const std::vector<int64_t> &box_index_shape,
-               const std::vector<int64_t> &crop_size_shape, std::string &method,
+               std::string &method,
                float extrapolation_value, CpuKernelContext &ctx)>>
       calls;
 
@@ -179,8 +178,7 @@ uint32_t CropAndResizeMsCpuKernel::Compute(CpuKernelContext &ctx) {
   calls[DT_UINT16] = CalCropAndResize<uint16_t>;
 
   return calls[x_dtype_](inputs_, outputs_, x_shape_, boxes_shape_,
-                         box_index_shape_, crop_size_shape_, method_,
-                         extrapolation_value_, ctx);
+                         method_, extrapolation_value_, ctx);
 }
 
 REGISTER_CPU_KERNEL(kCropAndResize, CropAndResizeMsCpuKernel);

@@ -30,7 +30,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kCast = "Cast";
+const char *const kCast = "Cast";
 }
 
 namespace aicpu {
@@ -39,8 +39,8 @@ CastCpuKernel::CastCpuKernel() : calls_({}), x_tensor_(nullptr), y_tensor_(nullp
                                  x_data_size_(0), y_data_size_(0) {}
 
 template <typename T, typename S>
-uint32_t CastTask(Tensor *&x_tensor, Tensor *&y_tensor, int64_t &start,
-                  int64_t &end) {
+uint32_t CastTask(Tensor *&x_tensor, Tensor *&y_tensor, const int64_t &start,
+                  const int64_t &end) {
   T *inptr = static_cast<T *>(x_tensor->GetData());
   S *outptr = static_cast<S *>(y_tensor->GetData());
   Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor>> input_map(
@@ -265,9 +265,9 @@ uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
     max_core_num = x_data_size_;
   }
   SetMap();
-  aicpu::CpuKernelUtils::ParallelFor(
+  uint32_t result = aicpu::CpuKernelUtils::ParallelFor(
       ctx, x_data_size_, x_data_size_ / max_core_num,
-      [&](int64_t start, int64_t end) {
+      [this](int64_t start, int64_t end) {
         uint32_t result = TransferType(start, end);
         if (result == KERNEL_STATUS_PARAM_INVALID) {
           KERNEL_LOG_ERROR("Cast TransferType failed");
@@ -278,7 +278,7 @@ uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
   calls_.clear();
   y_data_size_ = y_tensor_->GetDataSize();
   KERNEL_LOG_INFO("Cast output size: [%llu].", y_data_size_);
-  return KERNEL_STATUS_OK;
+  return result;
 }
 REGISTER_CPU_KERNEL(kCast, CastCpuKernel);
 }  // namespace aicpu

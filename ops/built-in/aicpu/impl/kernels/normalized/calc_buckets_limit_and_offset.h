@@ -36,11 +36,10 @@ class CalcBucketsLimitAndOffsetCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t InitParams(CpuKernelContext &ctx);
+  uint32_t InitParams(const CpuKernelContext &ctx);
   template <typename T>
   uint32_t DoCompute();
 
- private:
   int64_t input_num_elements_[kInputNum]{0};
   void *datas_[kInputNum + kOutputNum]{nullptr};
   int64_t total_limit_{0};

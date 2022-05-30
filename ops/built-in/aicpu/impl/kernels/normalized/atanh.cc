@@ -28,19 +28,19 @@
 namespace {
 const std::uint32_t kAtanhInputNum{1};
 const std::uint32_t kAtanhOutputNum{1};
-const char *kAtanh{"Atanh"};
+const char *const kAtanh{"Atanh"};
 const std::int64_t kAtanhParallelNum{64 * 1024};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline T ScalarAtanh(T x) {
+inline T ScalarAtanh(const T x) {
   return std::atanh(x);
 }
 
 template <>
-inline Eigen::half ScalarAtanh(Eigen::half x) {
+inline Eigen::half ScalarAtanh(const Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::atanh(static_cast<std::float_t>(x)))};
   return val;
@@ -105,7 +105,7 @@ inline std::uint32_t ExtraCheckAtanh(const CpuKernelContext &ctx) {
 
 inline std::uint32_t CheckAtanh(CpuKernelContext &ctx, std::uint32_t inputs_num,
                                 std::uint32_t outputs_num) {
-  return NormalCheck(ctx, kAtanhInputNum, kAtanhOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckAtanh(ctx);
 }

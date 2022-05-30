@@ -28,19 +28,19 @@
 namespace {
 const std::uint32_t kAsinhInputNum{1};
 const std::uint32_t kAsinhOutputNum{1};
-const char *kAsinh{"Asinh"};
+const char *const kAsinh{"Asinh"};
 const std::int64_t kAsinhParallelNum{64 * 1024};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline T ScalarAsinh(T x) {
+inline T ScalarAsinh(const T x) {
   return std::asinh(x);
 }
 
 template <>
-inline Eigen::half ScalarAsinh(Eigen::half x) {
+inline Eigen::half ScalarAsinh(const Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::asinh(static_cast<std::float_t>(x)))};
   return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
@@ -105,7 +105,7 @@ inline std::uint32_t ExtraCheckAsinh(const CpuKernelContext &ctx) {
 
 inline std::uint32_t CheckAsinh(CpuKernelContext &ctx, std::uint32_t inputs_num,
                                 std::uint32_t outputs_num) {
-  return NormalCheck(ctx, kAsinhInputNum, kAsinhOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckAsinh(ctx);
 }

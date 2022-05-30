@@ -29,18 +29,18 @@
 namespace {
 const std::uint32_t kCheckNumericsInputNum{1};
 const std::uint32_t kCheckNumericsOutputNum{1};
-const char *kCheckNumerics{"CheckNumerics"};
+const char *const kCheckNumerics{"CheckNumerics"};
 const std::int64_t kCheckNumericsParallelNum{64 * 1024};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline bool ScalarCheckNumerics(T x) {
+inline bool ScalarCheckNumerics(const T x) {
   return !std::isfinite(x);
 }
 template <>
-inline bool ScalarCheckNumerics(Eigen::half x) {
+inline bool ScalarCheckNumerics(const Eigen::half x) {
   return !Eigen::half_impl::isfinite(x);
 }
 inline std::uint32_t ParallelForCheckNumerics(
@@ -65,8 +65,8 @@ inline std::uint32_t ComputeCheckNumericsKernel(const CpuKernelContext &ctx) {
         flag = flag || std::any_of(input0 + begin, input0 + end,
                                    ScalarCheckNumerics<T>);
         if (!flag) {
-          auto ret = memcpy_s(output + begin, (end - begin) * sizeof(T),
-                              input0 + begin, (end - begin) * sizeof(T));
+          auto ret = memcpy_s(output + begin, static_cast<size_t>((end - begin) * sizeof(T)),
+                              input0 + begin, static_cast<size_t>((end - begin) * sizeof(T)));
           if (ret != EOK) {
             KERNEL_LOG_ERROR("memcpy_s error");
           }
@@ -109,9 +109,7 @@ inline std::uint32_t ExtraCheckCheckNumerics(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-inline std::uint32_t CheckCheckNumerics(CpuKernelContext &ctx,
-                                        std::uint32_t inputs_num,
-                                        std::uint32_t outputs_num) {
+inline std::uint32_t CheckCheckNumerics(CpuKernelContext &ctx) {
   return NormalCheck(ctx, kCheckNumericsInputNum, kCheckNumericsOutputNum)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckCheckNumerics(ctx);
@@ -135,8 +133,7 @@ inline std::uint32_t ComputeCheckNumerics(const CpuKernelContext &ctx) {
 }  // namespace detail
 
 std::uint32_t CheckNumericsCpuKernel::Compute(CpuKernelContext &ctx) {
-  return detail::CheckCheckNumerics(ctx, kCheckNumericsInputNum,
-                                    kCheckNumericsOutputNum)
+  return detail::CheckCheckNumerics(ctx)
              ? KERNEL_STATUS_PARAM_INVALID
              : detail::ComputeCheckNumerics(ctx);
 }

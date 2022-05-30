@@ -53,18 +53,26 @@ inline int EndIndex(int offset, int out_size, int in_size) {
 
 namespace aicpu {
 template <typename SCALAR_T, typename INDICES_T>
-void AdaptiveMaxPool2dSingleOutFrame(CpuKernelContext& ctx, AdaptiveCalcArgs<SCALAR_T, INDICES_T> args) {
-  CpuKernelUtils::ParallelFor(ctx, args.in_size_d, 1, [&](int64_t start, int64_t end) {
+void AdaptiveMaxPool2dSingleOutFrame(const CpuKernelContext& ctx, AdaptiveCalcArgs<SCALAR_T, INDICES_T> args) {
+  (void)CpuKernelUtils::ParallelFor(ctx, args.in_size_d, 1, [&](int64_t start, int64_t end) {
     for (auto d = start; d < end; d++) {
       // loop over output
       for (int64_t offset_h = 0; offset_h < args.out_size_h; offset_h++) {
-        int64_t in_start_h = StartIndex(offset_h, args.out_size_h, args.in_size_h);
-        int64_t in_end_h = EndIndex(offset_h, args.out_size_h, args.in_size_h);
+        int64_t in_start_h = StartIndex(static_cast<int>(offset_h),
+                                        static_cast<int>(args.out_size_h),
+                                        static_cast<int>(args.in_size_h));
+        int64_t in_end_h = EndIndex(static_cast<int>(offset_h),
+                                    static_cast<int>(args.out_size_h),
+                                    static_cast<int>(args.in_size_h));
         int64_t step_h = in_end_h - in_start_h;
 
         for (int64_t offset_w = 0; offset_w < args.out_size_w; offset_w++) {
-          int64_t in_start_w = StartIndex(offset_w, args.out_size_w, args.in_size_w);
-          int64_t in_end_w = EndIndex(offset_w, args.out_size_w, args.in_size_w);
+          int64_t in_start_w = StartIndex(static_cast<int>(offset_w),
+                                          static_cast<int>(args.out_size_w),
+                                          static_cast<int>(args.in_size_w));
+          int64_t in_end_w = EndIndex(static_cast<int>(offset_w),
+                                      static_cast<int>(args.out_size_w),
+                                      static_cast<int>(args.in_size_w));
           int64_t step_w = in_end_w - in_start_w;
 
           // local pointers
@@ -161,7 +169,7 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
   }
 
   // These multiplications do not overflow
-  int64_t output_data_num = args.out_size_h * args.out_size_w;
+  uint64_t output_data_num = args.out_size_h * args.out_size_w;
   uint64_t output0_data_size = output_data_num * sizeof(SCALAR_T);
   if (output0_data_size > ctx.Output(kFirstOutputIndex)->GetDataSize()) {
     KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 0 size must big then [%llu], now size is [%llu].", output0_data_size,
@@ -297,8 +305,6 @@ uint32_t AdaptiveMaxPool2d::Compute(CpuKernelContext& ctx) {
       KERNEL_LOG_ERROR("AdptetiveMaxPool2d kernel data type [%s] not support.", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kAdaptiveMaxPool2d, AdaptiveMaxPool2d);

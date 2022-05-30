@@ -17,7 +17,7 @@
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace {
-const char *kComputeAccidentalHits = "ComputeAccidentalHits";
+const char *const kComputeAccidentalHits = "ComputeAccidentalHits";
 }
 
 namespace aicpu {
@@ -66,8 +66,8 @@ uint32_t ComputeAccidentalHitsMsCpuKernel::GetInputAndCheck(
   inputs_.push_back(x_tensor);
   inputs_.push_back(sampled_candidates_tensor);
   // get output Tensors
-  const int kNumOutput = 3;
-  for (int i = 0; i < kNumOutput; ++i) {
+  const uint32_t kNumOutput = 3;
+  for (uint32_t i = 0; i < kNumOutput; ++i) {
     Tensor *tensor = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get output tensor[%d] failed", i)

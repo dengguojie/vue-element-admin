@@ -16,10 +16,10 @@ class CompareAndBitpackCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t ParaCheck(CpuKernelContext &ctx) const;
+  uint32_t ParaCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t CompareAndBitpackCompute(CpuKernelContext &ctx);
+  uint32_t CompareAndBitpackCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_DEVICE_COMPARE_AND_BITPACK_H

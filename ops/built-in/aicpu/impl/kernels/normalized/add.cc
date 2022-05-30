@@ -68,7 +68,7 @@ uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
+uint32_t AddCpuKernel::AddCompute(const CpuKernelContext &ctx) {
   BCalcInfo calcInfo;
   calcInfo.input_0 = ctx.Input(kFirstInputIndex);
   calcInfo.input_1 = ctx.Input(kSecondInputIndex);
@@ -94,7 +94,7 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("[%s] Generate broadcast info failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  (void)bcast.GetBcastVec(calcInfo);
+  bcast.GetBcastVec(calcInfo);
   int32_t rank = static_cast<int32_t>(calcInfo.shape_out.size());
   switch (rank) {
     case 0:
@@ -131,19 +131,19 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
 template <int32_t RANK, typename T>
 uint32_t AddCpuKernel::AddCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calcInfo) {
   if (AlignedCheck(calcInfo)) {
-    return AddCalculate<RANK, T, Eigen::Aligned>(ctx, calcInfo);
+    return AddCalculate<RANK, T, Eigen::Aligned>(calcInfo);
   }
-  return AddCalculate<RANK, T, Eigen::Unaligned>(ctx, calcInfo);
+  return AddCalculate<RANK, T, Eigen::Unaligned>(calcInfo);
 }
 
-bool AddCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) {
+bool AddCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) const {
   return AddrAlignedCheck(calcInfo.input_0->GetData()) &&
          AddrAlignedCheck(calcInfo.input_1->GetData()) &&
          AddrAlignedCheck(calcInfo.output->GetData());
 }
 
 template <int32_t RANK, typename T, int32_t OPTION>
-uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calcInfo) {
+uint32_t AddCpuKernel::AddCalculate(BCalcInfo &calcInfo) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input0(
       static_cast<T *>(calcInfo.input_0->GetData()),
       calcInfo.input_0->GetTensorShape()->NumElements());
@@ -174,11 +174,11 @@ uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc
   Eigen::array<Eigen::DenseIndex, RANK> bcast1;
 
   for (int32_t i = 0; i < RANK; i++) {
-    reshape0[RANK - i - 1] = calcInfo.reshape_0[i];
-    reshape1[RANK - i - 1] = calcInfo.reshape_1[i];
-    shape_out[RANK - i - 1] = calcInfo.shape_out[i];
-    bcast0[RANK - i - 1] = calcInfo.bcast_0[i];
-    bcast1[RANK - i - 1] = calcInfo.bcast_1[i];
+    reshape0[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.reshape_0[i]);
+    reshape1[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.reshape_1[i]);
+    shape_out[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.shape_out[i]);
+    bcast0[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.bcast_0[i]);
+    bcast1[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.bcast_1[i]);
   }
   output.reshape(shape_out) =
       input0.reshape(reshape0).broadcast(bcast0) + input1.reshape(reshape1).broadcast(bcast1);

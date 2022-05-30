@@ -27,17 +27,17 @@
 namespace {
 const std::uint32_t kAsinInputNum{1};
 const std::uint32_t kAsinOutputNum{1};
-const char *kAsin{"Asin"};
+const char *const kAsin{"Asin"};
 }  // namespace
 
 namespace internal {
 template <typename T>
-inline T ScalarAsin(T x) {
+inline T ScalarAsin(const T x) {
   return std::asin(x);
 }
 
 template <>
-inline Eigen::half ScalarAsin(Eigen::half x) {
+inline Eigen::half ScalarAsin(const Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::asin(static_cast<std::float_t>(x)))};
   return val;
@@ -98,7 +98,7 @@ inline std::uint32_t ExtraCheck(const CpuKernelContext &ctx) {
 
 std::uint32_t Check(CpuKernelContext &ctx, uint32_t inputs_num,
                     uint32_t outputs_num) {
-  return NormalCheck(ctx, kAsinInputNum, kAsinOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheck(ctx);
 }

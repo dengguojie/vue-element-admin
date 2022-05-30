@@ -24,7 +24,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-const char *kConj = "Conj";
+const char *const kConj = "Conj";
 constexpr int64_t kParallelDataNums = 512 * 1024;
 
 #define CONJ_COMPUTE_CASE(DTYPE, TYPE, CTX)             \
@@ -56,7 +56,7 @@ uint32_t ConjCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ConjCpuKernel::ConjCheck(CpuKernelContext &ctx) const {
+uint32_t ConjCpuKernel::ConjCheck(const CpuKernelContext &ctx) const {
   auto input = ctx.Input(0);
   auto output = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -67,7 +67,7 @@ uint32_t ConjCpuKernel::ConjCheck(CpuKernelContext &ctx) const {
 }
 
 template <typename T>
-uint32_t ConjCpuKernel::ConjCompute(CpuKernelContext &ctx) const {
+uint32_t ConjCpuKernel::ConjCompute(const CpuKernelContext &ctx) const {
   auto inputX = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto outputY = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t dataNum = ctx.Input(0)->NumElements();

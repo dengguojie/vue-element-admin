@@ -22,7 +22,7 @@
 #include "utils/kernel_util.h"
 
 namespace aicpu {
-uint32_t CalcBucketsLimitAndOffsetCpuKernel::InitParams(CpuKernelContext &ctx) {
+uint32_t CalcBucketsLimitAndOffsetCpuKernel::InitParams(const CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE(
       (ctx.GetInputsSize() == kInputNum), KERNEL_STATUS_PARAM_INVALID,
       "%s op need has %u inputs, but got %u inputs", kCalcBucketsLimitAndOffset,

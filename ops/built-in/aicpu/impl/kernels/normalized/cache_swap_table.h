@@ -29,7 +29,7 @@ class CacheSwapTableMsCpuKernel : public CpuKernel {
  private:
   uint32_t DoCompute();
 
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
 
   int64_t batch_size_ = 1;
   int64_t one_line_col_ = 1;

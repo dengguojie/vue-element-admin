@@ -36,10 +36,10 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t GetMethodAndAttr(CpuKernelContext &ctx);
-  uint32_t GetInputIndexX(CpuKernelContext &ctx);
-  uint32_t GetInputBox(CpuKernelContext &ctx);
-  uint32_t GetInputCropSize(CpuKernelContext &ctx);
+  uint32_t GetMethodAndAttr(const CpuKernelContext &ctx);
+  uint32_t GetInputIndexX(const CpuKernelContext &ctx);
+  uint32_t GetInputBox(const CpuKernelContext &ctx);
+  uint32_t GetInputCropSize(const CpuKernelContext &ctx);
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
   std::vector<Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
@@ -55,148 +55,6 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
 
   template <typename T>
   struct CropAndResize {
-#define CropAndResizePerBoxDefine                                              \
-  auto CropAndResizePerBox = [&](int start_box, int limit_box) {               \
-    for (int b = start_box; b < limit_box; ++b) {                              \
-      if (method_name == "bilinear_v2") {                                      \
-        int y1 = static_cast<int>(boxes(b, 0) * imageHeight);                 \
-        int x1 = static_cast<int>(boxes(b, 1) * imageWidth);                  \
-        int y2 = static_cast<int>(boxes(b, 2) * imageHeight);                 \
-        int x2 = static_cast<int>(boxes(b, 3) * imageWidth);                  \
-        int w = 1;                                                             \
-        int h = 1;                                                             \
-        if ((x2 - x1 + 1) > 1) {                                               \
-          w = x2 - x1 + 1;                                                     \
-        };                                                                     \
-        if ((y2 - y1 + 1) > 1) {                                               \
-          h = y2 - y1 + 1;                                                     \
-        };                                                                     \
-                                                                               \
-        const int32_t b_in = box_index(b);                                     \
-                                                                               \
-        for (int y = 0; y < cropHeight; ++y) {                                \
-          float y_point =                                                      \
-              (y + 0.5) * (h / static_cast<float>(cropHeight)) - 0.5;         \
-          int y_base = std::floor(y_point);                                    \
-          y_base = std::max(0, y_base);                                        \
-          y_base = std::min(y_base, h - 1);                                    \
-          int y_top = std::ceil(y_point);                                      \
-          y_top = std::max(0, y_top);                                          \
-          y_top = std::min(y_top, h - 1);                                      \
-          float y_shift = y_point - y_base;                                    \
-          for (int x = 0; x < cropWidth; ++x) {                               \
-            float x_point =                                                    \
-                (x + 0.5) * (w / static_cast<float>(cropWidth)) - 0.5;        \
-            int x_base = std::floor(x_point);                                  \
-            x_base = std::max(0, x_base);                                      \
-            x_base = std::min(x_base, w - 1);                                  \
-            int x_top = std::ceil(x_point);                                    \
-            x_top = std::max(0, x_top);                                        \
-            x_top = std::min(x_top, w - 1);                                    \
-            float x_shift = x_point - x_base;                                  \
-            for (int d = 0; d < depth; ++d) {                                  \
-              const float top_left(static_cast<float>(                         \
-                  image(b_in, y1 + y_base, x1 + x_base, d)));                  \
-              const float top_right(static_cast<float>(                        \
-                  image(b_in, y1 + y_base, x1 + x_top, d)));                   \
-              const float bottom_left(static_cast<float>(                      \
-                  image(b_in, y1 + y_top, x1 + x_base, d)));                   \
-              const float bottom_right(                                        \
-                  static_cast<float>(image(b_in, y1 + y_top, x1 + x_top, d))); \
-              float ret = top_left * (1 - y_shift) * (1 - x_shift) +           \
-                          bottom_right * y_shift * x_shift +                   \
-                          top_right * (1 - y_shift) * x_shift +                \
-                          bottom_left * y_shift * (1 - x_shift);               \
-              crops(b, y, x, d) = ret;                                         \
-            }                                                                  \
-          }                                                                    \
-        }                                                                      \
-      } else {                                                                 \
-        const float y1 = boxes(b, 0);                                          \
-        const float x1 = boxes(b, 1);                                          \
-        const float y2 = boxes(b, 2);                                          \
-        const float x2 = boxes(b, 3);                                          \
-                                                                               \
-        const int32_t b_in = box_index(b);                                     \
-                                                                               \
-        const float height_scale =                                             \
-            (cropHeight > 1)                                                  \
-                ? (y2 - y1) * (imageHeight - 1) / (cropHeight - 1)           \
-                : 0;                                                           \
-        const float width_scale =                                              \
-            (cropWidth > 1)                                                   \
-                ? (x2 - x1) * (imageWidth - 1) / (cropWidth - 1)             \
-                : 0;                                                           \
-                                                                               \
-        for (int y = 0; y < cropHeight; ++y) {                                \
-          const float in_y = (cropHeight > 1)                                 \
-                                 ? y1 * (imageHeight - 1) + y * height_scale  \
-                                 : 0.5 * (y1 + y2) * (imageHeight - 1);       \
-          if (in_y < 0 || in_y > imageHeight - 1) {                           \
-            for (int x = 0; x < cropWidth; ++x) {                             \
-              for (int d = 0; d < depth; ++d) {                                \
-                crops(b, y, x, d) = extrapolation_value;                       \
-              }                                                                \
-            }                                                                  \
-            continue;                                                          \
-          }                                                                    \
-          if (method_name == "bilinear") {                                     \
-            const int top_y_index = floorf(in_y);                              \
-            const int bottom_y_index = ceilf(in_y);                            \
-            const float y_lerp = in_y - top_y_index;                           \
-                                                                               \
-            for (int x = 0; x < cropWidth; ++x) {                             \
-              const float in_x =                                               \
-                  (cropWidth > 1) ? x1 * (imageWidth - 1) + x * width_scale  \
-                                   : 0.5 * (x1 + x2) * (imageWidth - 1);      \
-              if (in_x < 0 || in_x > imageWidth - 1) {                        \
-                for (int d = 0; d < depth; ++d) {                              \
-                  crops(b, y, x, d) = extrapolation_value;                     \
-                }                                                              \
-                continue;                                                      \
-              }                                                                \
-              const int left_x_index = floorf(in_x);                           \
-              const int right_x_index = ceilf(in_x);                           \
-              const float x_lerp = in_x - left_x_index;                        \
-                                                                               \
-              for (int d = 0; d < depth; ++d) {                                \
-                const float top_left(static_cast<float>(                       \
-                    image(b_in, top_y_index, left_x_index, d)));               \
-                const float top_right(static_cast<float>(                      \
-                    image(b_in, top_y_index, right_x_index, d)));              \
-                const float bottom_left(static_cast<float>(                    \
-                    image(b_in, bottom_y_index, left_x_index, d)));            \
-                const float bottom_right(static_cast<float>(                   \
-                    image(b_in, bottom_y_index, right_x_index, d)));           \
-                const float top = top_left + (top_right - top_left) * x_lerp;  \
-                const float bottom =                                           \
-                    bottom_left + (bottom_right - bottom_left) * x_lerp;       \
-                crops(b, y, x, d) = top + (bottom - top) * y_lerp;             \
-              }                                                                \
-            }                                                                  \
-          } else {                                                             \
-            for (int x = 0; x < cropWidth; ++x) {                             \
-              const float in_x =                                               \
-                  (cropWidth > 1) ? x1 * (imageWidth - 1) + x * width_scale  \
-                                   : 0.5 * (x1 + x2) * (imageWidth - 1);      \
-              if (in_x < 0 || in_x > imageWidth - 1) {                        \
-                for (int d = 0; d < depth; ++d) {                              \
-                  crops(b, y, x, d) = extrapolation_value;                     \
-                }                                                              \
-                continue;                                                      \
-              }                                                                \
-              const int closest_x_index = roundf(in_x);                        \
-              const int closest_y_index = roundf(in_y);                        \
-              for (int d = 0; d < depth; ++d) {                                \
-                crops(b, y, x, d) = static_cast<float>(                        \
-                    image(b_in, closest_y_index, closest_x_index, d));         \
-              }                                                                \
-            }                                                                  \
-          }                                                                    \
-        }                                                                      \
-      }                                                                        \
-    }                                                                          \
-  };
 
     // We assume that the tensor sizes are correct.
     bool operator()(typename TTypes<T, 4>::Tensor image,
@@ -205,16 +63,150 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
                     const std::string &method_name, float extrapolation_value,
                     typename TTypes<float, 4>::Tensor crops,
                     const CpuKernelContext &ctx) {
-      const int imageHeight = image.dimension(1);
-      const int imageWidth = image.dimension(2);
+      const int64_t imageHeight = image.dimension(1);
+      const int64_t imageWidth = image.dimension(2);
 
-      const int numBoxes = crops.dimension(0);
-      const int cropHeight = crops.dimension(1);
-      const int cropWidth = crops.dimension(2);
-      const int depth = crops.dimension(3);
+      const int64_t numBoxes = crops.dimension(0);
+      const int64_t cropHeight = crops.dimension(1);
+      const int64_t cropWidth = crops.dimension(2);
+      const int64_t depth = crops.dimension(3);
 
+      auto CropAndResizePerBox = [&](int64_t start_box, int64_t limit_box) {
+        for (int64_t b = start_box; b < limit_box; ++b) {
+          if (method_name == "bilinear_v2") {
+            int64_t y1 = boxes(b, 0) * imageHeight;
+            int64_t x1 = boxes(b, 1) * imageWidth;
+            int64_t y2 =boxes(b, 2) * imageHeight;
+            int64_t x2 = boxes(b, 3) * imageWidth;
+            int64_t w = 1;
+            int64_t h = 1;
+            if ((x2 - x1 + 1) > 1) {
+              w = x2 - x1 + 1;
+            };
+            if ((y2 - y1 + 1) > 1) {
+              h = y2 - y1 + 1;
+            };
+            const int32_t b_in = box_index(b);
+            for (int64_t y = 0; y < cropHeight; ++y) {
+              float y_point =
+                  (y + 0.5) * (h / static_cast<float>(cropHeight)) - 0.5;
+              int64_t y_base = std::floor(y_point);
+              y_base = std::max(static_cast<int64_t>(0), y_base);
+              y_base = std::min(y_base, h - 1);
+              int64_t y_top = std::ceil(y_point);
+              y_top = std::max(static_cast<int64_t>(0), y_top);
+              y_top = std::min(y_top, h - 1);
+              float y_shift = y_point - y_base;
+              for (int64_t x = static_cast<int64_t>(0); x < cropWidth; ++x) {
+                float x_point =
+                    (x + 0.5) * (w / static_cast<float>(cropWidth)) - 0.5;
+                int64_t x_base = std::floor(x_point);
+                x_base = std::max(static_cast<int64_t>(0), x_base);
+                x_base = std::min(x_base, w - 1);
+                int64_t x_top = std::ceil(x_point);
+                x_top = std::max(static_cast<int64_t>(0), x_top);
+                x_top = std::min(x_top, w - 1);
+                float x_shift = x_point - x_base;
+                for (int64_t d = 0; d < depth; ++d) {
+                  const float top_left(static_cast<float>(
+                      image(b_in, y1 + y_base, x1 + x_base, d)));
+                  const float top_right(static_cast<float>(
+                      image(b_in, y1 + y_base, x1 + x_top, d)));
+                  const float bottom_left(static_cast<float>(
+                      image(b_in, y1 + y_top, x1 + x_base, d)));
+                  const float bottom_right(
+                      static_cast<float>(image(b_in, y1 + y_top, x1 + x_top, d)));
+                  float ret = top_left * (1 - y_shift) * (1 - x_shift) +
+                              bottom_right * y_shift * x_shift +
+                              top_right * (1 - y_shift) * x_shift +
+                              bottom_left * y_shift * (1 - x_shift);
+                  crops(b, y, x, d) = ret;
+                }
+              }
+            }
+          } else {
+            const float y1 = boxes(b, 0);
+            const float x1 = boxes(b, 1);
+            const float y2 = boxes(b, 2);
+            const float x2 = boxes(b, 3);
+            const int32_t b_in = box_index(b);
+            const float height_scale =
+                (cropHeight > 1)
+                    ? (y2 - y1) * (imageHeight - 1) / (cropHeight - 1)
+                    : 0;
+            const float width_scale =
+                (cropWidth > 1)
+                    ? (x2 - x1) * (imageWidth - 1) / (cropWidth - 1)
+                    : 0;
+            for (int64_t y = 0; y < cropHeight; ++y) {
+              const float in_y = (cropHeight > 1)
+                                    ? y1 * (imageHeight - 1) + y * height_scale
+                                    : 0.5 * (y1 + y2) * (imageHeight - 1);
+              if (in_y < 0 || in_y > imageHeight - 1) {
+                for (int64_t x = 0; x < cropWidth; ++x) {
+                  for (int64_t d = 0; d < depth; ++d) {
+                    crops(b, y, x, d) = extrapolation_value;
+                  }
+                }
+                continue;
+              }
+              if (method_name == "bilinear") {
+                const int64_t top_y_index = floorf(in_y);
+                const int64_t bottom_y_index = ceilf(in_y);
+                const float y_lerp = in_y - top_y_index;
+                for (int64_t x = 0; x < cropWidth; ++x) {
+                  const float in_x =
+                      (cropWidth > 1) ? x1 * (imageWidth - 1) + x * width_scale
+                                      : 0.5 * (x1 + x2) * (imageWidth - 1);
+                  if (in_x < 0 || in_x > imageWidth - 1) {
+                    for (int64_t d = 0; d < depth; ++d) {
+                      crops(b, y, x, d) = extrapolation_value;
+                    }
+                    continue;
+                  }
+                  const int64_t left_x_index = floorf(in_x);
+                  const int64_t right_x_index = ceilf(in_x);
+                  const float x_lerp = in_x - left_x_index; 
+                  for (int64_t d = 0; d < depth; ++d) {
+                    const float top_left(static_cast<float>(
+                        image(b_in, top_y_index, left_x_index, d)));
+                    const float top_right(static_cast<float>(
+                        image(b_in, top_y_index, right_x_index, d)));
+                    const float bottom_left(static_cast<float>(
+                        image(b_in, bottom_y_index, left_x_index, d)));
+                    const float bottom_right(static_cast<float>(
+                        image(b_in, bottom_y_index, right_x_index, d)));
+                    const float top = top_left + (top_right - top_left) * x_lerp;
+                    const float bottom =
+                        bottom_left + (bottom_right - bottom_left) * x_lerp;
+                    crops(b, y, x, d) = top + (bottom - top) * y_lerp;
+                  }
+                }
+              } else {
+                for (int64_t x = 0; x < cropWidth; ++x) {
+                  const float in_x =
+                      (cropWidth > 1) ? x1 * (imageWidth - 1) + x * width_scale
+                                      : 0.5 * (x1 + x2) * (imageWidth - 1);
+                  if (in_x < 0 || in_x > imageWidth - 1) {
+                    for (int64_t d = 0; d < depth; ++d) {
+                      crops(b, y, x, d) = extrapolation_value;
+                    }
+                    continue;
+                  }
+                  const int64_t closest_x_index = roundf(in_x);
+                  const int64_t closest_y_index = roundf(in_y);
+                  for (int64_t d = 0; d < depth; ++d) {
+                    crops(b, y, x, d) = static_cast<float>(
+                        image(b_in, closest_y_index, closest_x_index, d));
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
       // Sharding across boxes.
-      CropAndResizePerBoxDefine CpuKernelUtils::ParallelFor(
+      (void)CpuKernelUtils::ParallelFor(
           ctx, numBoxes, 1, CropAndResizePerBox);
       return true;
     }
@@ -225,8 +217,6 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
                                    std::vector<Tensor *> &outputs,
                                    const std::vector<int64_t> &x_shape,
                                    const std::vector<int64_t> &boxes_shape,
-                                   const std::vector<int64_t> &box_index_shape,
-                                   const std::vector<int64_t> &crop_size_shape,
                                    const std::string &method,
                                    float extrapolation_value,
                                    const CpuKernelContext &ctx) {

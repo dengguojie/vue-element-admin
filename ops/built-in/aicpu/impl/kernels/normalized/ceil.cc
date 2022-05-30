@@ -27,7 +27,7 @@
 #include "status.h"
 
 namespace {
-const char *CEIL = "Ceil";                // op name
+const char *const CEIL = "Ceil";                // op name
 const size_t K_CEIL_OUTPUT_DESC_NUM = 1;  // output size
 const size_t K_CEIL_INPUT_NUM = 1;        // input size
 }  // namespace
@@ -75,7 +75,7 @@ uint32_t CeilCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t CeilCpuKernel::ComputeCeil(Tensor *x, Tensor *y, uint64_t data_size,
-                                    CpuKernelContext &ctx) {
+                                    const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("CeilCpuKernel::ComputeCeil start");
   auto x_addr = x->GetData();
   auto y_addr = y->GetData();

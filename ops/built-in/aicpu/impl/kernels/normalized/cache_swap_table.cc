@@ -44,14 +44,14 @@ uint32_t CacheSwapTableTask(std::vector<Tensor *> &inputs,
 
   char *old_value = reinterpret_cast<char *>(outputs[0]->GetData());
 
-  errno_t ret = memset_s(old_value, output_size * type_size, 0x00,
-                         output_size * type_size);
+  errno_t ret = memset_s(old_value, static_cast<size_t>(output_size * type_size), 0x00,
+                         static_cast<size_t>(output_size * type_size));
   if (ret != EOK) {
     KERNEL_LOG_ERROR("Memset failed, result[%d]", ret);
     return KERNEL_STATUS_INNER_ERROR;
   }
 
-  int64_t single_copy_size = type_size * one_line_col;
+  uint64_t single_copy_size = static_cast<uint64_t>(type_size * one_line_col);
 
   if (swap_cache_idx_size < static_cast<uint64_t>(batch_size)) {
     KERNEL_LOG_ERROR(
@@ -108,19 +108,19 @@ uint32_t CacheSwapTableMsCpuKernel::DoCompute() {
                               one_line_col_, type_size);
 }
 
-uint32_t CacheSwapTableMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t CacheSwapTableMsCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("GetInputAndCheck start!");
   // get input Tensors
-  const int kNumInput = 3;
-  for (int i = 0; i < kNumInput; ++i) {
+  const uint32_t kNumInput = 3;
+  for (uint32_t i = 0; i < kNumInput; ++i) {
     Tensor *tensor = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get input tensor[%d] failed", i)
     inputs_.push_back(tensor);
   }
   // get output Tensors
-  const int kNumOutput = 1;
-  for (int i = 0; i < kNumOutput; ++i) {
+  const uint32_t kNumOutput = 1;
+  for (uint32_t i = 0; i < kNumOutput; ++i) {
     Tensor *tensor = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get output tensor[%d] failed", i)

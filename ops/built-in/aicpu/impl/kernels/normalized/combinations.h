@@ -26,14 +26,13 @@ class CombinationsCpuKernel : public CpuKernel {
   CombinationsCpuKernel() = default;
   ~CombinationsCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
   uint32_t CombinationsParamCheck(CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_COMBINATIONS_H_

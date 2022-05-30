@@ -19,11 +19,11 @@
 using namespace std;
 
 namespace {
-const char *ConcatV2 = "ConcatV2";
+const char *const ConcatV2 = "ConcatV2";
 }
 
 namespace aicpu {
-uint32_t ConcatV2CpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
+uint32_t ConcatV2CpuKernel::CheckAndInitParams(const CpuKernelContext &ctx) {
   AttrValue *n_ptr = ctx.GetAttr("N");
   KERNEL_CHECK_NULLPTR(n_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr N failed.");
@@ -41,7 +41,7 @@ uint32_t ConcatV2CpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
                      "but got input num[%u]",
                      n_, input_num);
 
-  Tensor *concat_dim_ptr = ctx.Input(n_);
+  Tensor *concat_dim_ptr = ctx.Input(static_cast<int64_t>(n_));
   KERNEL_CHECK_NULLPTR(concat_dim_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get input concat_dim failed.");
   auto concat_dim_shape_ptr = concat_dim_ptr->GetTensorShape();
@@ -87,7 +87,7 @@ uint32_t ConcatV2CpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
                      "range[%d, %d), but got %lld.",
                      -input_dims_, input_dims_, concat_dim);
   inputs_flat_dim0_ = 1;
-  for (uint32_t d = 0; d < axis_; ++d) {
+  for (int32_t d = 0; d < axis_; ++d) {
     inputs_flat_dim0_ *= input0_shape_ptr->GetDimSize(d);
   }
   return KERNEL_STATUS_OK;

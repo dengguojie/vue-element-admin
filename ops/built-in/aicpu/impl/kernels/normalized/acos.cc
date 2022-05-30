@@ -27,19 +27,19 @@
 namespace {
 const std::uint32_t kAcosInputNum{1u};
 const std::uint32_t kAcosOutputNum{1u};
-const char *kAcos{"Acos"};
+const char *const kAcos{"Acos"};
 const std::int64_t kAcosParallelNum{64 * 1024};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline T ScalarAcos(T x) {
+inline T ScalarAcos(const T x) {
   return std::acos(x);
 }
 
 template <>
-inline Eigen::half ScalarAcos(Eigen::half x) {
+inline Eigen::half ScalarAcos(const Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::acos(static_cast<std::float_t>(x)))};
   return val;
@@ -106,7 +106,7 @@ inline std::uint32_t ExtraCheckAcos(const CpuKernelContext &ctx) {
 
 inline std::uint32_t CheckAcos(CpuKernelContext &ctx, std::uint32_t inputs_num,
                                std::uint32_t outputs_num) {
-  return NormalCheck(ctx, kAcosInputNum, kAcosOutputNum)
+  return NormalCheck(ctx, inputs_num, outputs_num)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckAcos(ctx);
 }

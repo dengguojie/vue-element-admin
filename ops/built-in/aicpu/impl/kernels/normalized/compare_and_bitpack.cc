@@ -12,7 +12,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *CompareAndBitpack = "CompareAndBitpack";
+const char *const CompareAndBitpack = "CompareAndBitpack";
 constexpr int64_t kParallelDataNums = 8 * 1024;
 }
 namespace aicpu {
@@ -55,7 +55,7 @@ uint32_t CompareAndBitpackCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CompareAndBitpackCpuKernel::ParaCheck(CpuKernelContext &ctx) const {
+uint32_t CompareAndBitpackCpuKernel::ParaCheck(const CpuKernelContext &ctx) const {
   Tensor *input0 = ctx.Input(kFirstInputIndex);
   Tensor *input1 = ctx.Input(kSecondInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
@@ -74,7 +74,7 @@ uint32_t CompareAndBitpackCpuKernel::ParaCheck(CpuKernelContext &ctx) const {
 }
 
 template <typename T>
-uint32_t CompareAndBitpackCpuKernel::CompareAndBitpackCompute(CpuKernelContext &ctx) {
+uint32_t CompareAndBitpackCpuKernel::CompareAndBitpackCompute(const CpuKernelContext &ctx) {
   T *input0 = reinterpret_cast<T *>(ctx.Input(kFirstInputIndex)->GetData());
   T *input1 = reinterpret_cast<T *>(ctx.Input(kSecondInputIndex)->GetData());
   uint8_t *output = reinterpret_cast<uint8_t *>(ctx.Output(kFirstOutputIndex)->GetData());

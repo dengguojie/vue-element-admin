@@ -31,12 +31,12 @@ class CandidateSamplerMsCpuKernel : public CpuKernel {
  protected:
   template <class RangeSamplerType>
   uint32_t DoComputeForEachType();
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
   std::vector<void *> ioAddrs_;
 
  private:
-  int num_true_ = 0;
-  int num_sampled_ = 0;
+  int64_t num_true_ = 0;
+  int64_t num_sampled_ = 0;
   bool unique_ = true;
   int64_t range_max_ = 0;
   std::unique_ptr<aicpu::cpu::RangeSampler> sampler_;
@@ -71,7 +71,6 @@ class UniformCandidateSamplerMsCpuKernel : public CandidateSamplerMsCpuKernel {
       : CandidateSamplerMsCpuKernel(){};
   ~UniformCandidateSamplerMsCpuKernel() = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 };
 

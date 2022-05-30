@@ -89,8 +89,8 @@ uint32_t BetaincCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t SwitchParallel(const std::function<void(int64_t, int64_t)> &func,
-                        size_t end_num, CpuKernelContext &ctx,
-                        int32_t max_core_num, int data_num) {
+                        int64_t end_num, CpuKernelContext &ctx,
+                        int64_t max_core_num, int64_t data_num) {
   if (data_num <= kParallelDataNums) {
     func(0, end_num);
   } else {
@@ -105,12 +105,12 @@ template <typename T>
 uint32_t RunParallel(CpuKernelContext &ctx, std::vector<T *> data_pointers,
                      int data_num) {
   uint32_t min_core_num = 1;
-  int32_t max_core_num = std::max(
+  int64_t max_core_num = std::max(
       min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
   if (max_core_num > data_num) {
     max_core_num = data_num;
   }
-  auto shard_betainc = [&](size_t start, size_t end) {
+  auto shard_betainc = [&](int64_t start, int64_t end) {
     Eigen::TensorMap<Eigen::Tensor<T, 1>> input_0(data_pointers[0] + start,
                                                   end - start);
     Eigen::TensorMap<Eigen::Tensor<T, 1>> input_1(data_pointers[1] + start,
@@ -135,9 +135,8 @@ uint32_t BetaincCpuKernel::BetaincCompute(CpuKernelContext &ctx) {
   auto a_shape = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   auto b_shape = ctx.Input(1)->GetTensorShape()->GetDimSizes();
   auto x_shape = ctx.Input(2)->GetTensorShape()->GetDimSizes();
-  auto z_shape = ctx.Output(0)->GetTensorShape()->GetDimSizes();
 
-  int bcast_size = 1;
+  int64_t bcast_size = 1;
 
   T *a_data = nullptr;
   T *b_data = nullptr;
@@ -178,7 +177,7 @@ uint32_t BetaincCpuKernel::BetaincCompute(CpuKernelContext &ctx) {
     bcast_size = ctx.Input(0)->NumElements();
   }
 
-  RunParallel<T>(ctx, data_pointers, bcast_size);
+  uint32_t result = RunParallel<T>(ctx, data_pointers, static_cast<int>(bcast_size));
 
   if (a_data != nullptr) {
     delete[] a_data;
@@ -190,7 +189,7 @@ uint32_t BetaincCpuKernel::BetaincCompute(CpuKernelContext &ctx) {
     delete[] b_data;
   }
 
-  return KERNEL_STATUS_OK;
+  return result;
 }
 
 REGISTER_CPU_KERNEL(kBetainc, BetaincCpuKernel);

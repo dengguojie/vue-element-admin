@@ -29,7 +29,7 @@ class CeilCpuKernel : public CpuKernel {
  private:
   template <typename T>
   uint32_t ComputeCeil(Tensor *x, Tensor *y, uint64_t dataSize,
-                       CpuKernelContext &ctx);
+                       const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

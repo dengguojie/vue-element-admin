@@ -24,13 +24,12 @@ class CumsumCpuKernel : public CpuKernel {
   CumsumCpuKernel() = default;
   ~CumsumCpuKernel() override = default;
 
- protected:
   uint32_t Compute(CpuKernelContext& ctx) override;
 
  private:
-  uint32_t CumsumCheck(CpuKernelContext& ctx);
+  uint32_t CumsumCheck(const CpuKernelContext& ctx);
   
-  void CumsumGetAttr(CpuKernelContext &ctx, bool &exclusive, bool &reverse);
+  void CumsumGetAttr(const CpuKernelContext &ctx, bool &exclusive, bool &reverse) const;
 
   template <typename T>
   uint32_t CumsumCompute(CpuKernelContext& ctx);

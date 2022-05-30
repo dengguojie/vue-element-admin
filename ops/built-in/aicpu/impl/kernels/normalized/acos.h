@@ -22,6 +22,7 @@
 
 namespace aicpu {
 class AcosCpuKernel final : public CpuKernel {
+  public:
   std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu
