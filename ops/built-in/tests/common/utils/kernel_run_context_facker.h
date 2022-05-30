@@ -141,8 +141,8 @@ class TilingContextFaker {
     base_faker_.NodeAttrs(std::move(keys_to_value));
     return *this;
   }
-  TilingContextFaker &InputShapes(std::vector<gert::StorageShape *> input_shapes);
-  TilingContextFaker &OutputShapes(std::vector<gert::StorageShape *> output_shapes);
+  TilingContextFaker &InputShapes(std::vector<void *> input_shapes);
+  TilingContextFaker &OutputShapes(std::vector<void *> output_shapes);
   TilingContextFaker &CompileInfo(void *compile_info);
   TilingContextFaker &TilingData(void *tiling_data);
   TilingContextFaker &Workspace(ContinuousVector *workspace);
@@ -156,8 +156,8 @@ class TilingContextFaker {
   enum InputsAppend { kInputsCompileInfo, kInputsTilingFunc, kInputsAppendEnd };
 
   KernelRunContextFaker base_faker_;
-  std::vector<gert::StorageShape *> input_shapes_;
-  std::vector<gert::StorageShape *> output_shapes_;
+  std::vector<void *> input_shapes_;
+  std::vector<void *> output_shapes_;
   std::vector<void *> outputs_ {TilingContext::kOutputNum};
 
   void *compile_info_;

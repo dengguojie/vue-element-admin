@@ -92,7 +92,7 @@ void CommonTilingOperator(ge::Operator& op, std::string& compile_info, void *inf
     faker = faker.CompileInfo(info_base);
   }
   std::vector<gert::StorageShape> input_shapes(input_size);
-  std::vector<gert::StorageShape *> input_shapes_ref(input_size);
+  std::vector<void *> input_shapes_ref(input_size);
   if (input_size > 0) {
     for (size_t i = 0; i < input_size; ++i) {
       auto input_desc = operator_info->MutableInputDesc(i);
@@ -115,7 +115,7 @@ void CommonTilingOperator(ge::Operator& op, std::string& compile_info, void *inf
     faker = faker.IrInstanceNum(irnum);
   }
   std::vector<gert::StorageShape> output_shapes(output_size);
-  std::vector<gert::StorageShape *> output_shapes_ref(output_size);
+  std::vector<void *> output_shapes_ref(output_size);
   if (output_size > 0) {
     for (size_t i = 0; i < output_size; ++i) {
       auto output_desc = operator_info->MutableOutputDesc(i);
