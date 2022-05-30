@@ -40,6 +40,7 @@ from .util import dtype_check_decorator
 from .util import in_dynamic_and_static_unify
 from .util import judge_var
 from .util import shape_to_list
+from .util import disable_broadcast_optimization
 
 NAME_INDEX = [0]
 
@@ -334,13 +335,13 @@ def clip(data, max_value, min_value):
 @dtype_check_decorator
 def broadcast(var, shape, output_dtype=None):
     """
-    broadcast scalar to tensor, only support float16
+    broadcast scalar or tensor to tensor, only support float16
 
     Parameters
     ----------
-    var : can be python instance of int and float, or tvm.const
+    var : can be tensor, tvm_const, python_const and tvm_const
 
-    shape : tensor shape
+    shape : target tensor shape
 
     output_dtype : tensor dtype , default : var.dtype
 
@@ -357,7 +358,11 @@ def broadcast(var, shape, output_dtype=None):
 
     if isinstance(var, tvm.tensor.Tensor):
         return _tensor_broadcast(var, shape)
+    else:
+        return _scalar_broadcast(var, shape, output_dtype)
 
+
+def _scalar_broadcast(var, shape, output_dtype):
     var_type = judge_var(var)
     tmp_args = var
     if var_type == "python_const":
@@ -385,16 +390,6 @@ def broadcast(var, shape, output_dtype=None):
 def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
     """
     broadcast tensor to tensor
-
-    Parameters
-    ----------
-    var : can be tvm.tensor.Tensor
-
-    shape : tensor shape
-
-    Returns
-    -------
-    wrapped_tensor : broadcast tensor
     """
     tensor = var
     orig_shape = shape_to_list(tensor.shape)
@@ -409,10 +404,10 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
 
     valid_types = (tvm.expr.ConstExpr, tvm.expr.Var, tvm.expr.Max, tvm.expr.Mul)
     difference = len(shape) - len(orig_shape)
-    orig_shape = difference * [1] + orig_shape
+    align_shape = difference * [1] + orig_shape
     check_equal = 0
     is_unknown_broadcast = False
-    for src_shape, dst_shape in zip(orig_shape, shape):
+    for src_shape, dst_shape in zip(align_shape, shape):
         if equal(src_shape, dst_shape):
             check_equal += 1
             continue
@@ -427,7 +422,7 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
         dict_args["detailed_cause"] = "For tensor broadcasting, shape must " \
                                       "be the same or corresponding shape of" \
                                       " src tensor is 1 while src shape is %s," \
-                                      " and dst shape is %s" % (str(orig_shape), str(shape))
+                                      " and dst shape is %s" % (str(align_shape), str(shape))
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if check_equal == len(shape):
         return tensor
@@ -435,26 +430,40 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
     name = "broadcast_tensor_" + str(NAME_INDEX[0])
     NAME_INDEX[0] += 1
 
-    if in_dynamic_and_static_unify():
-        if is_unknown_broadcast:
-            _op = 'unknown_broadcast'
-        else:
-            _op = 'unified_broadcast'
-    else:
-        _op = 'broadcast_for_tensor'
+    def _get_op_tag():
+        op = "broadcast_for_tensor"
+        if in_dynamic_and_static_unify():
+            if orig_shape == [1] and not disable_broadcast_optimization():
+                op = "one_shape_broadcast"
+            elif len(orig_shape) == 1 and not disable_broadcast_optimization():
+                op = "one_rank_broadcast"
+            elif is_unknown_broadcast:
+                op = "unknown_broadcast"
+            else:
+                op = "unified_broadcast"
+
+        return op
+
+    _op = _get_op_tag()
 
     def lambda_func(*indices):
-        if _op == 'unknown_broadcast':
+        if _op == 'one_rank_broadcast':
+            index = [tvm.select(orig_shape[0] == 1, 0, indices[0])]
+            return tensor(*(index[difference:]))
+        elif _op == "one_shape_broadcast":
+            return tensor(0)
+        elif _op == "unknown_broadcast":
             index = []
-            for i in range(len(orig_shape)):
-                if orig_shape[i] == 1:
+            for i, align_shape_i in enumerate(align_shape):
+                if align_shape_i == 1:
                     index.append(0)
-                elif equal(orig_shape[i], shape[i]):
+                elif equal(align_shape_i, shape[i]):
                     index.append(indices[i])
                 else:
-                    index.append(tvm.select(orig_shape[i] == 1, 0, indices[i]))
+                    index.append(tvm.select(align_shape_i == 1, 0, indices[i]))
             return tensor(*(index[difference:]))
-        return tensor(*([0 if orig_shape[i] == 1 else indices[i] for i in range(len(orig_shape))][difference:]))
+        else:
+            return tensor(*([0 if align_shape[i] == 1 else indices[i] for i in range(len(align_shape))][difference:]))
 
     with tvm.tag_scope(_op):
         out = tvm.compute(shape, lambda_func, name=name)

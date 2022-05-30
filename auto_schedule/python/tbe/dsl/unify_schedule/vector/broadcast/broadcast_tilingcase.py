@@ -300,6 +300,8 @@ def _pre_build():
 
         compute_patterns.add(compute.get_pattern())
 
+    operation.add_compile_info_inner(CompileInfo.CLASSIFY_INPUTS_NUM,
+                                     operation.get_context().get("_classify_inputs_num"))
     operation.add_compile_info_inner(CompileInfo.CONTAINS_ELEWISE_SCH, False)
     if {Pattern.ELEMWISE, Pattern.BROADCAST} == compute_patterns:
         operation.add_compile_info_inner(CompileInfo.CONTAINS_ELEWISE_SCH, True)

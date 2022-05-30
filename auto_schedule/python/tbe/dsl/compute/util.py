@@ -39,6 +39,7 @@ from tbe.dsl.base import operation
 
 ASCEND_SHISI = "smallhisi"
 COMPLEX_INSTRUCTIONS = ["s322s64", "s642s32"]
+ORIGINAL = "original"
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
 # and set the dtype to None.
@@ -769,7 +770,7 @@ DSL_CHECK_SUPPORT_MAP = {
         "AllSoc": ("s82f16", "s82u8", "u82f16", "u82s8",
                    "f162f32", "f162s8", "f162u8", "f162s32",
                    "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_310: ("s82f16","s82u8", "u82f16", "u82s8",
+        ASCEND_310: ("s82f16", "s82u8", "u82f16", "u82s8",
                      "f162f32", "f162s8", "f162u8", "f162s32",
                      "f322f16", "f322s8", "f322u8", "f322s32",
                      "s322f16", "s322s8", "s322u8", "s322f32"),
@@ -1331,3 +1332,14 @@ def get_value(shape_object):
     get the value of shape_object when having attr "value"
     """
     return shape_object.value if hasattr(shape_object, "value") else shape_object
+
+
+def disable_broadcast_optimization():
+    """
+    judge whether dynamic broadcast op only use original classify pattern
+    """
+    if operation.get_context().get_current_compute() is not None:
+        mode = operation.get_context().get_current_compute().get("_mode")
+        if mode is None or mode == ORIGINAL:
+            return True
+    return False

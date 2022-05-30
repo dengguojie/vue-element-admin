@@ -34,6 +34,7 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
     :param support_broadcast:
     :return:
     """
+    operation.get_context().add("_classify_inputs_num", len(ins))
     if support_broadcast:
         classifer = BroadcastElewiseClassifier(ins, extra_params)
         classifer.check_update_unknown_rank()

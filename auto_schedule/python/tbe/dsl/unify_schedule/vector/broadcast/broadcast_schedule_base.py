@@ -488,14 +488,15 @@ class BaseBroadcastSchedule:
 
             only_const_tiling = True
             is_const_shapes = False
-            support_broadcast = support_broadcast = operation.get_context().get("_support_broadcast")
+            support_broadcast = operation.get_context().get("_support_broadcast")
             use_special_pattern = False
             const_compile_info = {
                 CompileInfo.FLAG_INFO: [only_const_tiling, is_const_shapes, support_broadcast, use_special_pattern],
                 CompileInfo.BASE_INFO: base_info,
                 CompileInfo.SOC_VERSION: get_soc_spec(SOC_VERSION),
                 CompileInfo.BROADCAST_AXIS: broadcast_axis,
-                CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align
+                CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align,
+                CompileInfo.CLASSIFY_INPUTS_NUM: operation.get_context().get("_classify_inputs_num")
             }
             const_compile_info.update(get_compile_info())
 

@@ -1231,7 +1231,7 @@ bool Broadcast::GetType() {
     return GetOutputType();
 }
 
-bool Broadcast::CheckInputs(bool& is_pure_elementwise) {
+bool Broadcast::CheckInputs() {
   for (size_t i = 0; i < dim_len; i++) {
     int64_t max_output = input_shapes[0][i];
     for (size_t j = 1; j < input_num; j++) {
@@ -1242,9 +1242,6 @@ bool Broadcast::CheckInputs(bool& is_pure_elementwise) {
                                                         std::to_string(input_shapes[j][i]).c_str(), std::to_string(
                                                           max_output).c_str()),
                         return false);
-      if (input_shapes[j][i] != max_output) {
-        is_pure_elementwise = false;
-      }
       if (input_shapes[j][i] > max_output) {
         max_output = input_shapes[j][i];
       }
@@ -1337,7 +1334,24 @@ bool Broadcast::WriteConstTiling() {
   return broadcast_compile_info.varAttrWrap.WriteVarAttrs(static_cast<uint64_t>(key), op_type, op_paras, run_info);
 }
 
+void BroadcastCompileInfo::ParseElewiseInfos(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_classify_inputs_num")) {
+    pure_elewise_compile_info.classify_inputs_num = outer_compile_info.at("_classify_inputs_num").get<uint32_t>();
+  }
+  bool maybe_elewise_scene = base_info_compile.second.count("100") || base_info_compile.second.count("200") ||
+                             base_info_compile.second.count("230") || base_info_compile.second.count("320") ||
+                             flag_info_compile.size() == 1;
+  if (maybe_elewise_scene) {
+    pure_elewise_compile_info = ElewiseCompileInfo(op_type, outer_compile_info);
+  }
+  if (outer_compile_info.contains("_contains_elewise_sch")) {
+    contains_elewise_sch = outer_compile_info.at("_contains_elewise_sch").get<bool>();
+  }
+  contains_elewise_sch = contains_elewise_sch || outer_compile_info.at("_pattern").get<std::string>() == "ElemWise";
+}
+
 BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  // pure broadcast compile info parser
   if (outer_compile_info.contains("_base_info")) {
     base_info_compile.first = true;
     base_info_compile.second =
@@ -1352,11 +1366,6 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   if (!outer_compile_info.contains("_ub_factor_align")) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _ub_factor_align of compile_info error");
     return ;
-  }
-  // pure_elewise cases: only_const_tiling && pure_elewise shape, or base_info contains key 100 && pure_elewise shape
-  if (base_info_compile.second.count("100") || flag_info_compile.size() == 1) {
-    pure_elewise_compile_info = ElewiseCompileInfo(op_type, outer_compile_info);
-    pure_elewise_compile_info.SetBroadcastPattern(true);
   }
   ub_factor_align = outer_compile_info.at("_ub_factor_align").get<int64_t>();
   if (outer_compile_info.contains("_elewise_vars")) {
@@ -1392,11 +1401,8 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   if (!varAttrWrap.ParseVarAttr(outer_compile_info)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _attr_vars of compile_info error");
   }
-
-  if (outer_compile_info.contains("_contains_elewise_sch")) {
-    contains_elewise_sch = outer_compile_info.at("_contains_elewise_sch").get<bool>();
-  }
-  contains_elewise_sch = contains_elewise_sch || outer_compile_info.at("_pattern").get<std::string>() == "ElemWise";
+  // pure elewise compile info parser
+  ParseElewiseInfos(op_type, outer_compile_info);
 }
 
 bool Broadcast::BroadcastTiling() {
@@ -1405,8 +1411,7 @@ bool Broadcast::BroadcastTiling() {
   is_multi_output = op_paras.GetOutputsSize() > 1;
   ret = ret && CompletedShapes();
   bool is_empty_tensor = IsEmptyTensor();
-  bool is_pure_elementwise = true;
-  ret = ret && CheckInputs(is_pure_elementwise);
+  ret = ret && CheckInputs();
   if (!ret) {
       return ret;
   }
@@ -1419,6 +1424,23 @@ bool Broadcast::BroadcastTiling() {
     is_support_broadcast = broadcast_compile_info.flag_info_compile[IS_SUPPORT_BROADCAST_INDEX];
     use_special_pattern = broadcast_compile_info.flag_info_compile[USE_SPECIAL_PATTERN_INDEX];
   }
+  // elewise dispatch judgement
+  bool is_elewise_dispatch = false;
+  ElewisePattern pattern = ElewisePattern::UNKNOWN;
+  std::vector<std::vector<int64_t>> elewise_shapes(input_num, std::vector<int64_t>(dim_len));
+  if (broadcast_compile_info.contains_elewise_sch && use_special_pattern) {
+    for (size_t i = 0; i < input_num; i++) {
+      for (size_t j = 0; j < dim_len; j++) {
+        elewise_shapes[i][j] = input_shapes[i][j];
+      }
+    }
+    pattern = v3::GetDispatchPattern(elewise_shapes,
+                                     broadcast_compile_info.pure_elewise_compile_info.classify_inputs_num);
+    if (pattern != ElewisePattern::UNKNOWN) {
+      is_elewise_dispatch = true;
+    }
+  }
+  // tiling dispatch
   if (is_const) {
     ret = CalcConstKey(is_support_broadcast);
     ret = ret && WriteConstTiling();
@@ -1426,17 +1448,11 @@ bool Broadcast::BroadcastTiling() {
     key = INT32_MAX;
     block_dims = 1;
     ret = WriteConstTiling();
-  } else if (is_support_broadcast && broadcast_compile_info.contains_elewise_sch && is_pure_elementwise &&
-       !(is_support_broadcast && !use_special_pattern)) {
+  } else if (is_elewise_dispatch) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
-    std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
-    for (size_t i = 0; i < input_num; i++) {
-      for (size_t j = 0; j < dim_len; j++) {
-        elewise_input_shapes[i][j] = input_shapes[i][j];
-      }
-    }
-    OpInfo custom_op_info(elewise_input_shapes, in_type);
+    OpInfo custom_op_info(elewise_shapes, in_type);
     v3::Elewise elewise(op_type, op_paras, broadcast_compile_info.pure_elewise_compile_info, run_info);
+    elewise.SetBroadcastPattern(pattern);
     return ret && elewise.DoTiling(custom_op_info);
   } else {
     ret = ret && DoTiling();
@@ -1452,8 +1468,7 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
   is_multi_output = op_paras.GetOutputsSize() > 1;
   ret = ret&& CompletedShapes(op_info.GetInputShape());
   bool is_empty_tensor = IsEmptyTensor();
-  bool is_pure_elementwise = true;
-  ret = ret && CheckInputs(is_pure_elementwise);
+  ret = ret && CheckInputs();
   if (!ret) {
     return ret;
   }
@@ -1467,6 +1482,23 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
     is_support_broadcast = broadcast_compile_info.flag_info_compile[IS_SUPPORT_BROADCAST_INDEX];
     use_special_pattern = broadcast_compile_info.flag_info_compile[USE_SPECIAL_PATTERN_INDEX];
   }
+  // elewise dispatch judgement
+  bool is_elewise_dispatch = false;
+  ElewisePattern pattern = ElewisePattern::UNKNOWN;
+  std::vector<std::vector<int64_t>> elewise_shapes(input_num, std::vector<int64_t>(dim_len));
+  if (broadcast_compile_info.contains_elewise_sch && use_special_pattern) {
+    for (size_t i = 0; i < input_num; i++) {
+      for (size_t j = 0; j < dim_len; j++) {
+        elewise_shapes[i][j] = input_shapes[i][j];
+      }
+    }
+    pattern = v3::GetDispatchPattern(elewise_shapes,
+                                     broadcast_compile_info.pure_elewise_compile_info.classify_inputs_num);
+    if (pattern != ElewisePattern::UNKNOWN) {
+      is_elewise_dispatch = true;
+    }
+  }
+  // tiling dispatch
   if (is_const) {
     ret = CalcConstKey(is_support_broadcast);
     ret = ret && WriteConstTiling();
@@ -1474,17 +1506,11 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
     key = INT32_MAX;
     block_dims = 1;
     ret = WriteConstTiling();
-  } else if (is_support_broadcast && broadcast_compile_info.contains_elewise_sch && is_pure_elementwise &&
-       !(is_support_broadcast && !use_special_pattern)) {
-    OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
-    std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
-    for (size_t i = 0; i < input_num; i++) {
-      for (size_t j = 0; j < dim_len; j++) {
-        elewise_input_shapes[i][j] = input_shapes[i][j];
-      }
-    }
-    OpInfo custom_op_info(elewise_input_shapes, in_type);
-    v3::Elewise elewise(op_type, op_paras,  broadcast_compile_info.pure_elewise_compile_info, run_info);
+  } else if (is_elewise_dispatch) {
+    OP_LOGD(op_type.c_str(), "broadcast custom turn to elewise_tiling");
+    OpInfo custom_op_info(elewise_shapes, in_type);
+    v3::Elewise elewise(op_type, op_paras, broadcast_compile_info.pure_elewise_compile_info, run_info);
+    elewise.SetBroadcastPattern(pattern);
     return ret && elewise.DoTiling(custom_op_info);
   } else {
     ret = ret && DoTiling();

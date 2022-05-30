@@ -100,88 +100,83 @@ static bool CompareMap(const std::unordered_map<T1, T2>& map1, const std::unorde
   return true;
 }
 
-
-static bool CompareCompileInfo1(const ElewiseCompileInfo& expect_compile_info,
+static bool CompareRequiredInfo(const ElewiseCompileInfo& expect_compile_info,
                                 const ElewiseCompileInfo& real_compile_info) {
-  // flag_info_size parser
-  if (expect_compile_info.flag_info_size != real_compile_info.flag_info_size) {
-    std::cout << "The flag_info_size is wrong" << std::endl;
+  if (expect_compile_info.classify_inputs_num != real_compile_info.classify_inputs_num) {
+    std::cout << "The classify_inputs_num is wrong!" << std::endl;
     return false;
   }
-  // ub_factor_align parser
-  if (expect_compile_info.ub_factor_align != real_compile_info.ub_factor_align) {
-    std::cout << "The ub_factor_align is wrong" << std::endl;
+  if (expect_compile_info.flag_info_size != real_compile_info.flag_info_size) {
+    std::cout << "The flag_info_size is wrong!" << std::endl;
     return false;
   }
   if (expect_compile_info.only_const_tiling != real_compile_info.only_const_tiling) {
-    std::cout << "The only_const_tiling is wrong" << std::endl;
+    std::cout << "The only_const_tiling is wrong!" << std::endl;
     return false;
   }
-  if (expect_compile_info.is_const_shapes != real_compile_info.is_const_shapes) {
-    std::cout << "The is_const_shapes is wrong" << std::endl;
-    return false;
-  }
-  if (expect_compile_info.use_special_pattern != real_compile_info.use_special_pattern) {
-    std::cout << "The use_special_pattern is wrong" << std::endl;
+  if (expect_compile_info.ub_factor_align != real_compile_info.ub_factor_align) {
+    std::cout << "The ub_factor_align is wrong!" << std::endl;
     return false;
   }
   return true;
 }
 
-static bool CompareCompileInfo2(const ElewiseCompileInfo& expect_compile_info,
+static bool CompareOptionalInfo(const ElewiseCompileInfo& expect_compile_info,
                                 const ElewiseCompileInfo& real_compile_info) {
-  // base_info
-  if (expect_compile_info.pattern_key != real_compile_info.pattern_key) {
-    std::cout << "The pattern_key is wrong" << std::endl;
+  if (expect_compile_info.classify_const_mode != real_compile_info.classify_const_mode) {
+    std::cout << "The classify_const_mode is wrong" << std::endl;
     return false;
   }
-  if (expect_compile_info.core_num != real_compile_info.core_num) {
-    std::cout << "The core_num is wrong" << std::endl;
+  if (expect_compile_info.support_broadcast != real_compile_info.support_broadcast) {
+    std::cout << "The support_broadcast is wrong" << std::endl;
     return false;
   }
-  if (expect_compile_info.max_dtype != real_compile_info.max_dtype) {
-    std::cout << "The max_dtype is wrong" << std::endl;
+  if (expect_compile_info.absorbable_broadcast != real_compile_info.absorbable_broadcast) {
+    std::cout << "The absorbable_broadcast is wrong" << std::endl;
     return false;
   }
-  if (expect_compile_info.max_available_ub != real_compile_info.max_available_ub) {
-    std::cout << "The max_available_ub is wrong" << std::endl;
+  if (expect_compile_info.const_block_dims.first != real_compile_info.const_block_dims.first) {
+    std::cout << "The const_block_dims.first is wrong" << std::endl;
     return false;
   }
-  if (expect_compile_info.max_available_ub_db != real_compile_info.max_available_ub_db) {
-    std::cout << "The max_available_ub_db is wrong" << std::endl;
+  if (expect_compile_info.const_block_dims.second != real_compile_info.const_block_dims.second) {
+    std::cout << "The const_block_dims.second vector is wrong" << std::endl;
     return false;
   }
-  // const_block_dims
-  if (expect_compile_info.const_block_dims != real_compile_info.const_block_dims) {
-    std::cout << "The const block dims is not match" << std::endl;
+  if (expect_compile_info.base_info.first != real_compile_info.base_info.first) {
+    std::cout << "The base_info.first is wrong" << std::endl;
     return false;
   }
-  // elewise_vars_size
-  if (expect_compile_info.elewise_vars_size != real_compile_info.elewise_vars_size) {
-    std::cout << "The elewise_vars_size is not match" << std::endl;
+  if (expect_compile_info.base_info.first == real_compile_info.base_info.first) {
+    if (!CompareMap(expect_compile_info.base_info.second, real_compile_info.base_info.second)) {
+      return false;
+    }
+  }
+  if (expect_compile_info.elewise_vars.first != real_compile_info.elewise_vars.first) {
+    std::cout << "The elewise_vars.first is wrong" << std::endl;
     return false;
   }
-  // broadcast_pattern
-  if (expect_compile_info.broadcast_pattern != real_compile_info.broadcast_pattern) {
-    std::cout << "The broadcast_pattern is not match" << std::endl;
-    return false;
+  if (expect_compile_info.elewise_vars.first == real_compile_info.elewise_vars.first) {
+    if (!CompareMap(expect_compile_info.elewise_vars.second, real_compile_info.elewise_vars.second)) {
+      return false;
+    }
   }
   return true;
 }
 
-static bool CompareElewiseCompieInfo(const ElewiseCompileInfo& expect_compile_info,
-                                     const ElewiseCompileInfo& real_compile_info) {
+static bool CompareElewiseCompileInfo(const ElewiseCompileInfo& expect_compile_info,
+                                      const ElewiseCompileInfo& real_compile_info) {
   bool ret = true;
-  ret = ret && CompareCompileInfo1(expect_compile_info, real_compile_info);
-  ret = ret && CompareCompileInfo2(expect_compile_info, real_compile_info);
+  ret = ret && CompareRequiredInfo(expect_compile_info, real_compile_info);
+  ret = ret && CompareOptionalInfo(expect_compile_info, real_compile_info);
   return ret;
 }
 
 // Test CreateElewiseTilingHandler
-TEST_F(ElewiseTilingV3, elewise_handler1) {
-  std::string compile_info_in = R"({ "_ub_factor_align": 128,
+TEST_F(ElewiseTilingV3, parse_compile_info_test) {
+  std::string compile_info_in = R"({ "_classify_inputs_num": 1,
+                                     "_ub_factor_align": 128,
                                      "_pattern": "ElemWise",
-                                     "push_status": 0,
                                      "_flag_info": [false, false, false, true, false, false],
                                      "_base_info": {"100": [32, 4, 16384, 8192]},
                                      "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ],
@@ -194,8 +189,9 @@ TEST_F(ElewiseTilingV3, elewise_handler1) {
   ASSERT_TRUE(parsed_ptr);
 }
 
-TEST_F(ElewiseTilingV3, ConstructTest1) {
-  std::string compile_info_in = R"({ "_ub_factor_align": 128,
+TEST_F(ElewiseTilingV3, running_tiling_info_compare) {
+  std::string compile_info_in = R"({ "_classify_inputs_num": 1,
+                                     "_ub_factor_align": 128,
                                      "_pattern": "ElemWise",
                                      "_flag_info": [false, false, false, true, false, false],
                                      "_base_info": {"100": [32, 4, 16384, 8192]},
@@ -206,47 +202,50 @@ TEST_F(ElewiseTilingV3, ConstructTest1) {
   nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
   ElewiseCompileInfo actual_compile_info("ElemWise", op_info);
   ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
   expect_compile_info.flag_info_size = 6;
   expect_compile_info.only_const_tiling = false;
-  expect_compile_info.is_const_shapes = false;
-  expect_compile_info.use_special_pattern = true;
-  expect_compile_info.pattern_key = 1;
-  expect_compile_info.core_num = 32;
-  expect_compile_info.max_dtype = 4;
-  expect_compile_info.max_available_ub = 16384;
-  expect_compile_info.max_available_ub_db = 8192;
-  expect_compile_info.const_block_dims = -1;
-  expect_compile_info.elewise_vars_size = 3;
   expect_compile_info.ub_factor_align = 128;
-  expect_compile_info.broadcast_pattern = false;
-  ASSERT_TRUE(CompareElewiseCompieInfo(expect_compile_info, actual_compile_info));
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 16384, 8192}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }}};
+  ASSERT_TRUE(CompareElewiseCompileInfo(expect_compile_info, actual_compile_info));
 }
 
-TEST_F(ElewiseTilingV3, ConstructTest2) {
-  std::string compile_info_in = R"({ "_ub_factor_align": 128,
+TEST_F(ElewiseTilingV3, compile_tiling_info_compare) {
+  std::string compile_info_in = R"({ "_classify_inputs_num": 1,
+                                     "_ub_factor_align": 128,
                                      "_flag_info": [true],
                                      "_base_info": {"000": [32, 2, 43680, 21840]},
                                      "_pattern": "ElemWise"})";
   nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
   ElewiseCompileInfo actual_compile_info("ElemWise", op_info);
   ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
   expect_compile_info.flag_info_size = 1;
   expect_compile_info.only_const_tiling = true;
-  expect_compile_info.is_const_shapes = false;
-  expect_compile_info.use_special_pattern = true;
-  expect_compile_info.pattern_key = 0;
-  expect_compile_info.core_num = 32;
-  expect_compile_info.max_dtype = 2;
-  expect_compile_info.max_available_ub = 43680;
-  expect_compile_info.max_available_ub_db = 21840;
-  expect_compile_info.const_block_dims = -1;
-  expect_compile_info.elewise_vars_size = 0;
   expect_compile_info.ub_factor_align = 128;
-  expect_compile_info.broadcast_pattern = false;
-  ASSERT_TRUE(CompareElewiseCompieInfo(expect_compile_info, actual_compile_info));
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 2, 43680, 21840}}};
+  expect_compile_info.elewise_vars.first = false;
+  ASSERT_TRUE(CompareElewiseCompileInfo(expect_compile_info, actual_compile_info));
 }
 
-TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
+TEST_F(ElewiseTilingV3, elewise_set_attr_case1) {
   // Construct op_paras
   std::vector<std::vector<int64_t>> in_shapes = {{1, 33, 1089}};
   std::vector<std::vector<int64_t>> out_shapes = {{1, 33, 1089}};
@@ -259,7 +258,8 @@ TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
   op_paras.SetAttr("alpha", 123);
   optiling::utils::OpRunInfo run_info;
 
-  std::string compile_info_in = R"({"_ub_factor_align": 128,
+  std::string compile_info_in = R"({"_classify_inputs_num": 1,
+                                    "_ub_factor_align": 128,
                                     "_pattern": "ElemWise",
                                     "_flag_info": [false, false, false, true, false, false],
                                     "_base_info": {"100": [32, 4, 16384, 8192]},
@@ -267,51 +267,81 @@ TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
                                                       "210010000": [ 10000, 20000, 30000 ]},
                                     "_vars": {"210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
                                               "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ]},
-                                    "_var_attr_mode":1,
+                                    "_var_attr_mode": 1,
                                     "_var_attrs": {"210000000": [{"length":1, "name": "alpha", "index": 0,
                                                                   "type": "int32", "src_type": "int32"}],
                                                    "210010000": [{"length":1, "name": "alpha", "index": 0,
                                                                   "type": "int32", "src_type": "int32"}]}
                                    })";
   std::shared_ptr<AutoTilingHandler> outer_compile_info =
-      CreateElewiseTilingHandler(this->test_info_->name(),
-                                 "autotiling",
-                                 nlohmann::json::parse(compile_info_in));
+    CreateElewiseTilingHandler(this->test_info_->name(), "autotiling", nlohmann::json::parse(compile_info_in));
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, run_info));
 }
 
-TEST_F(ElewiseTilingV3, TilingTest1) {
+TEST_F(ElewiseTilingV3, empty_mode_none_custom_tiling) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{128, 128, 128, 128}};
-  std::vector<std::vector<int64_t>> out_shapes = {{128, 128, 128, 128}};
+  std::vector<std::vector<int64_t>> in_shapes = {{2, 0, 2}};
+  std::vector<std::vector<int64_t>> out_shapes = {{2, 0, 2}};
   std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
   std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
   std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 16384;
-  compile_info.max_available_ub_db = 8192;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 0;
-  compile_info.ub_factor_align = 128;
-  compile_info.broadcast_pattern = false;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
-  EXPECT_EQ(run_info.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "8388608 8192 ");
+  EXPECT_EQ(run_info.GetBlockDim(), 1);
+  EXPECT_EQ(run_info.GetTilingKey(), 2147483647);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
 }
 
-TEST_F(ElewiseTilingV3, TilingTest2) {
+TEST_F(ElewiseTilingV3, empty_mode_custom_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{2, 0, 2}};
+  std::vector<std::vector<int64_t>> out_shapes = {{2, 0, 2}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 1);
+  EXPECT_EQ(run_info.GetTilingKey(), 2147483647);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
+}
+
+TEST_F(ElewiseTilingV3, common_none_custom_tiling_multicore) {
   // Construct op_paras
   std::vector<std::vector<int64_t>> in_shapes = {{128, 128, 128, 128}};
   std::vector<std::vector<int64_t>> out_shapes = {{128, 128, 128, 128}};
@@ -321,627 +351,690 @@ TEST_F(ElewiseTilingV3, TilingTest2) {
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 16384;
-  compile_info.max_available_ub_db = 8192;
-  compile_info.const_block_dims = 0;
-  compile_info.elewise_vars_size = 3;
-  compile_info.ub_factor_align = 128;
-  compile_info.broadcast_pattern = false;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 16384, 8192}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 210010000);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "268435456 8388608 8192 ");
 }
 
-TEST_F(ElewiseTilingV3, TilingTest3) {
+TEST_F(ElewiseTilingV3, common_custom_tiling_multicore) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{1, 33, 1089}};
-  std::vector<std::vector<int64_t>> out_shapes = {{1, 33, 1089}};
+  std::vector<std::vector<int64_t>> in_shapes = {{128, 128, 128, 128}};
+  std::vector<std::vector<int64_t>> out_shapes = {{128, 128, 128, 128}};
   std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
   std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 32768;
-  compile_info.max_available_ub_db = 16384;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling());
-  EXPECT_EQ(run_info.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "35937 1152 1152 ");
-}
-
-TEST_F(ElewiseTilingV3, TilingTest4) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{1, 33, 1089}};
-  std::vector<std::vector<int64_t>> out_shapes = {{1, 33, 1089}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 32768;
-  compile_info.max_available_ub_db = 16384;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 16384, 8192}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling(op_info));
   EXPECT_EQ(run_info.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "35937 1152 1152 ");
+  EXPECT_EQ(run_info.GetTilingKey(), 210010000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "268435456 8388608 8192 ");
 }
 
-TEST_F(ElewiseTilingV3, TilingTest5) {
+TEST_F(ElewiseTilingV3, common_none_custom_tiling_single_core) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{2, 0, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{2, 0, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<std::vector<int64_t>> in_shapes = {{256},{256}};
+  std::vector<std::vector<int64_t>> out_shapes = {{256}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
   std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = true;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}},
+                                          {"230", {32, 4, 21840, 10920}},
+                                          {"320", {32, 4, 21840, 10920}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }},
+                                             {"223000000", {10000, 20000, 30000 }},
+                                             {"223010000", {10000, 20000, 30000 }},
+                                             {"232000000", {10000, 20000, 30000 }},
+                                             {"232010000", {10000, 20000, 30000 }}};
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 1);
+  EXPECT_EQ(run_info.GetTilingKey(), 210000000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "256 256 256 ");
+}
+
+TEST_F(ElewiseTilingV3, common_custom_tiling_single_core) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{256},{256}};
+  std::vector<std::vector<int64_t>> out_shapes = {{256}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = true;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}},
+                                          {"230", {32, 4, 21840, 10920}},
+                                          {"320", {32, 4, 21840, 10920}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }},
+                                             {"223000000", {10000, 20000, 30000 }},
+                                             {"223010000", {10000, 20000, 30000 }},
+                                             {"232000000", {10000, 20000, 30000 }},
+                                             {"232010000", {10000, 20000, 30000 }}};
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 1);
+  EXPECT_EQ(run_info.GetTilingKey(), 210000000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "256 256 256 ");
+}
+
+TEST_F(ElewiseTilingV3, only_const_tiling_none_custom_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1024}, {1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = -1;
-  compile_info.core_num = -1;
-  compile_info.max_dtype = -1;
-  compile_info.max_available_ub = -1;
-  compile_info.max_available_ub_db = -1;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
-  EXPECT_EQ(run_info.GetBlockDim(), 1);
+  EXPECT_EQ(run_info.GetBlockDim(), 8);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1 0 128 0 128 0 ");
+}
+
+TEST_F(ElewiseTilingV3, only_const_tiling_custom_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1024}, {1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.elewise_vars.first = false;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 8);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1 0 128 0 128 0 ");
+}
+
+TEST_F(ElewiseTilingV3, const_pattern_none_custom_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1024}, {1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = true;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = true;
+  expect_compile_info.const_block_dims.second = {8, 8};
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 8);
+  EXPECT_EQ(run_info.GetTilingKey(), 100000001);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
 }
 
-TEST_F(ElewiseTilingV3, TilingTest6) {
+TEST_F(ElewiseTilingV3, const_pattern_custom_tiling) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{2, 0, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{2, 0, 2}};
+  std::vector<std::vector<int64_t>> in_shapes = {{1024}, {1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = true;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = true;
+  expect_compile_info.const_block_dims.second = {8, 8};
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 8);
+  EXPECT_EQ(run_info.GetTilingKey(), 100000001);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
+}
+
+TEST_F(ElewiseTilingV3, common_relu_fp32) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{275614, 11}};
+  std::vector<std::vector<int64_t>> out_shapes = {{275614, 11}};
   std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
   std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
   std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = -1;
-  compile_info.core_num = -1;
-  compile_info.max_dtype = -1;
-  compile_info.max_available_ub = -1;
-  compile_info.max_available_ub_db = -1;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 32760, 16376}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }}};
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 210010000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "3031754 94848 15872 ");
+}
+
+TEST_F(ElewiseTilingV3, broadcast_scalar_custom_tiling_pattern) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{22, 16384, 4}, {1}};
+  std::vector<std::vector<int64_t>> out_shapes = {{22, 16384, 4}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = true;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 2, 43680, 21840}}, {"230", {32, 4, 43680, 21840}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {20000, 30000 }},
+                                             {"210010000", {20000, 30000 }},
+                                             {"223000000", {10000, 20000, 30000 }},
+                                             {"223010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling(op_info));
-  EXPECT_EQ(run_info.GetBlockDim(), 1);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 223010000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1441792 45056 15104 ");
 }
 
-TEST_F(ElewiseTilingV3, TilingTest7) {
+TEST_F(ElewiseTilingV3, scalar_broadcast_none_custom_tiling_pattern) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 1, 1}, {16, 7, 4, 35}};
+  std::vector<std::vector<int64_t>> out_shapes = {{16, 7, 4, 35}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_INT32, ge::DT_INT32};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT32};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = true;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}}, {"320", {32, 4, 21832, 10912}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {20000, 30000 }},
+                                             {"210010000", {20000, 30000 }},
+                                             {"232000000", {10001, 20000, 30000 }},
+                                             {"232010000", {10001, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
-  EXPECT_EQ(run_info.GetBlockDim(), 1);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "6 6 6 ");
+  EXPECT_EQ(run_info.GetBlockDim(), 31);
+  EXPECT_EQ(run_info.GetTilingKey(), 232000000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "15680 512 512 ");
 }
 
-TEST_F(ElewiseTilingV3, TilingTest8) {
+TEST_F(ElewiseTilingV3, broadcast_addcmul_tiling) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
+  std::vector<std::vector<int64_t>> in_shapes = {{275614, 11}, {1, 1}, {275614, 11}, {275614, 11}};
+  std::vector<std::vector<int64_t>> out_shapes = {{275614, 11}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
   std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 4;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"200", {32, 2, 26176, 13088}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"220000000", {10000, 10002, 10003, 20000, 30000}},
+                                             {"220010000", {10000, 10002, 10003, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
-  EXPECT_EQ(run_info.GetBlockDim(), 1);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "6 6 6 ");
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest1) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = -1;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest2) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 0;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest3) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 0;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest4) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = -1;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest5) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = -1;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest6) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = -1;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckCompileInfoTest7) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = -1;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckOpParasTest1) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckOpParasTest2) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  for (uint32_t i = 0; i < 80; i++) {
-    in_shapes.push_back({3, 2});
-  }
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckOpParasTest3) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}};
-  std::vector<std::vector<int64_t>> out_shapes = {};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, CheckOpParasTest4) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{1, 2, 3, 4, 5, 6, 7, 8, 9}};
-  std::vector<std::vector<int64_t>> out_shapes = {{1, 2, 3, 4, 5, 6, 7, 8, 9}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 220010000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "3031754 3031754 3031754 94848 11904 ");
 }
 
-TEST_F(ElewiseTilingV3, CheckOpParasTest5) {
+TEST_F(ElewiseTilingV3, apply_adam_d_tiling) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}, {3, 2, 3}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  std::vector<std::vector<int64_t>> in_shapes = {{1024, 256, 33}, {1024, 256, 33}, {1024, 256, 33}, {1024, 256, 33},
+                                                 {1024, 256, 33}, {1024, 256, 33}, {1024, 256, 33}, {1024, 256, 33},
+                                                 {1024, 256, 33}, {1024, 256, 33}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024, 256, 33}, {1024, 256, 33}, {1024, 256, 33}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16,
+                                         ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16,
+                                         ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND,
+                                        ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 4;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true; 
+  expect_compile_info.base_info.second = {{"100", {32, 2, 16320, 8160}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 210010000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "8650752 270336 8064 ");
 }
 
-TEST_F(ElewiseTilingV3, CheckOpParasTest6) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{3, 2}, {3, 1}};
-  std::vector<std::vector<int64_t>> out_shapes = {{3, 2}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 131008;
-  compile_info.max_available_ub_db = 65504;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling());
-}
-
-TEST_F(ElewiseTilingV3, mask_rccn_fused_mul_add_n_fail_case) {
+TEST_F(ElewiseTilingV3, fuse_mul_add_n_tiling) {
   // Construct op_paras
   std::vector<std::vector<int64_t>> in_shapes = {{1024, 364}, {1024, 364}, {1}};
   std::vector<std::vector<int64_t>> out_shapes = {{1024, 364}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
   std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 1;
-  compile_info.only_const_tiling = true;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 0;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 2;
-  compile_info.max_available_ub = 32768;
-  compile_info.max_available_ub_db = 16384;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 0;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 16384, 8192}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 210000000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "372736 11648 11648 ");
 }
 
-TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_case) {
+TEST_F(ElewiseTilingV3, ub_bound_limit_check) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{16384, 1115}};
+  std::vector<std::vector<int64_t>> out_shapes = {{16384, 1115}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT16};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 2, 16384, 8192}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210000000", {10000, 20000, 30000}}};
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_FALSE(elewise.DoTiling());
+}
+
+TEST_F(ElewiseTilingV3, elewise_var_key_check) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{275614, 11}};
+  std::vector<std::vector<int64_t>> out_shapes = {{275614, 11}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 32760, 16376}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000001", {10000, 20000, 30000}},
+                                             {"210000002", {10000, 20000, 30000}}};
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_FALSE(elewise.DoTiling());
+}
+
+TEST_F(ElewiseTilingV3, low_shape_same_none_custom_check) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 256}, {1, 123}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 256}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 32760, 16376}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}}};
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_FALSE(elewise.DoTiling());
+}
+
+TEST_F(ElewiseTilingV3, low_shape_same_custom_check) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 256}, {1, 123}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 256}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 32760, 16376}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}}};
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_FALSE(elewise.DoTiling(op_info));
+}
+
+TEST_F(ElewiseTilingV3, diff_lens_higher_shape_all_one_none_custom_check) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1024, 256}, {256}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024, 256}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = true;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}},
+                                          {"230", {32, 4, 21840, 10920}},
+                                          {"320", {32, 4, 21840, 10920}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}},
+                                             {"223000000", {10000, 20000, 30000}},
+                                             {"223010000", {10000, 20000, 30000}},
+                                             {"232000000", {10000, 20000, 30000}},
+                                             {"232010000", {10000, 20000, 30000}}};
+  optiling::utils::OpRunInfo run_info;
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_FALSE(elewise.DoTiling());
+}
+
+TEST_F(ElewiseTilingV3, diff_lens_higher_shape_all_one_custom_check) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1024, 256}, {256}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1024, 256}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = true;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}},
+                                          {"230", {32, 4, 21840, 10920}},
+                                          {"320", {32, 4, 21840, 10920}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}},
+                                             {"223000000", {10000, 20000, 30000}},
+                                             {"223010000", {10000, 20000, 30000}},
+                                             {"232000000", {10000, 20000, 30000}},
+                                             {"232010000", {10000, 20000, 30000}}};
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_FALSE(elewise.DoTiling(op_info));
+}
+
+TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_fail_case) {
   // Construct op_paras
   std::vector<std::vector<int64_t>> in_shapes = {{1, 16}, {1, 16}, {1, 16}, {1}, {1, 16}};
   std::vector<std::vector<int64_t>> out_shapes = {{1, 16}, {1, 16}, {1, 16}};
@@ -951,25 +1044,27 @@ TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_case) {
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 7;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 32;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 9360;
-  compile_info.max_available_ub_db = 4680;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = true;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 4;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 10904, 5448}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210000000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 1);
+  EXPECT_EQ(run_info.GetTilingKey(), 210000000);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "16 16 16 ");
 }
 
@@ -983,57 +1078,26 @@ TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_tiling) {
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 8;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 21840;
-  compile_info.max_available_ub_db = 10920;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = true;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = true;
+  expect_compile_info.const_block_dims.second = {8, 8};
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 128 128 ");
-}
-
-TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_custom_tiling) {
-  // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{1, 1024}, {1024}};
-  std::vector<std::vector<int64_t>> out_shapes = {{1, 1024}};
-  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
-  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
-  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                                 out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 8;
-  compile_info.max_dtype = 4;
-  compile_info.max_available_ub = 21840;
-  compile_info.max_available_ub_db = 10920;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 128;
-  optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
-  EXPECT_EQ(run_info.GetBlockDim(), 8);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 128 128 ");
+  EXPECT_EQ(run_info.GetTilingKey(), 100000001);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
 }
 
 TEST_F(ElewiseTilingV3, dynamic_cast_s32_to_s64_tiling) {
@@ -1046,23 +1110,25 @@ TEST_F(ElewiseTilingV3, dynamic_cast_s32_to_s64_tiling) {
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 4;
-  compile_info.max_dtype = 8;
-  compile_info.max_available_ub = 8188;
-  compile_info.max_available_ub_db = 4092;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 256;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 256;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 8, 8188, 4092}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling(op_info));
   EXPECT_EQ(run_info.GetBlockDim(), 4);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 256 256 ");
@@ -1078,24 +1144,60 @@ TEST_F(ElewiseTilingV3, dynamic_cast_s64_to_s32_tiling) {
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
-  ElewiseCompileInfo compile_info;
-  compile_info.flag_info_size = 6;
-  compile_info.only_const_tiling = false;
-  compile_info.is_const_shapes = false;
-  compile_info.use_special_pattern = true;
-  compile_info.pattern_key = 1;
-  compile_info.core_num = 4;
-  compile_info.max_dtype = 8;
-  compile_info.max_available_ub = 8188;
-  compile_info.max_available_ub_db = 4092;
-  compile_info.const_block_dims = -1;
-  compile_info.elewise_vars_size = 3;
-  compile_info.broadcast_pattern = false;
-  compile_info.ub_factor_align = 256;
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 1;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"100", {32, 8, 8188, 4092}}}; 
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
+                                             {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling(op_info));
-  EXPECT_EQ(run_info.GetBlockDim(), 4);
-  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 256 256 ");
+  EXPECT_EQ(run_info.GetBlockDim(), 8);
+  EXPECT_EQ(run_info.GetTilingKey(), 210000000);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 128 128 ");
+}
+
+TEST_F(ElewiseTilingV3, const_vcmp_support_b64_case) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{11323, 128}, {11323, 128}};
+  std::vector<std::vector<int64_t>> out_shapes = {{11323, 128}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_INT64,ge::DT_INT64};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT8};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = true;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = true;
+  expect_compile_info.const_block_dims.second = {32, 32};
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(run_info.GetTilingKey(), 100000001);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
 }

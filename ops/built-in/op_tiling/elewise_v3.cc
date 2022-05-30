@@ -35,10 +35,24 @@ const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS {
   {4, 16383},
   {8, 8191},
 };
+
+const std::unordered_map<ElewisePattern, std::string> PATTERN_KEY {
+  {ElewisePattern::CONST, "000"},
+  {ElewisePattern::COMMON, "100"},
+  {ElewisePattern::BROADCAST, "200"},
+  {ElewisePattern::BROADCAST_SCALAR, "230"},
+  {ElewisePattern::SCALAR_BROADCAST, "320"}
+};
+
+const std::unordered_map<ElewisePattern, uint64_t> TILING_BASE_KEY {
+  {ElewisePattern::CONST, 100000000},
+  {ElewisePattern::COMMON, 210000000},
+  {ElewisePattern::BROADCAST, 220000000},
+  {ElewisePattern::BROADCAST_SCALAR, 223000000},
+  {ElewisePattern::SCALAR_BROADCAST, 232000000}
+};
+
 constexpr int64_t DOUBLE_BUFFER_SIZE = 2;
-constexpr int64_t ELEWISE_MAX_INPUT_NUMS = 70;
-constexpr int64_t KNOWN_PATTERN_KEY = 0;
-constexpr int64_t COMMON_PATTERN_KEY = 1;
 constexpr uint64_t CONST_TILING_KEY = 100000000;
 constexpr uint32_t ELEWISE_FLAG_SIZE = 6;
 constexpr int64_t ELEMENT_IN_BLOCK_DOUBLE = 4;
@@ -46,9 +60,14 @@ constexpr int64_t ELEMENT_IN_BLOCK_FLOAT = 8;
 constexpr int64_t ELEMENT_IN_BLOCK_HALF = 16;
 constexpr int64_t ELEMENT_IN_BLOCK_BOOL = 32;
 constexpr int64_t ELEMENT_IN_BLOCK_BIT = 256;
+constexpr int32_t PATTERN_AXIS_DIV_VALUE = 10;
+constexpr int64_t MIN_DIM_CUT_INDEX = 10000;
+constexpr int64_t MIN_BLOCK_CUT_INDEX = 20000;
+constexpr int64_t MIN_UB_CUT_INDEX = 30000;
+constexpr uint32_t BROADCAST_SCALAR_INPUT_NUM = 2;
 }
 
-const int64_t Elewise::GetElementByType(const ge::DataType& dtype) const {
+const int64_t GetElementByType(const ge::DataType& dtype) {
   // element nums in one block, default, fp16, int16, uin16
   constexpr int64_t one_bit_dtype_value = 100;
   if (dtype == ge::DataType::DT_FLOAT || dtype == ge::DataType::DT_INT32 || dtype == ge::DataType::DT_UINT32) {
@@ -69,97 +88,134 @@ const int64_t Elewise::GetElementByType(const ge::DataType& dtype) const {
   }
 }
 
+ElewisePattern GetDispatchPattern(std::vector<std::vector<int64_t>> elewise_inputs,
+                                  const uint32_t& classify_nums) {
+  // remove same inputs of 2-D vector
+  elewise_inputs.erase(unique(elewise_inputs.begin(), elewise_inputs.end()), elewise_inputs.end());
+  /* elewise contains following four scenes:
+   1. common: classify_nums <= 1 || all shape same
+   2. broadcast: all shape can only contain two diff shapes && classify_nums > 2
+   3. scalar_broadcast: all shape can only contian two diff shapes && left_multi_shape is one
+   4. broadcast_scalar: all shape can only contian two diff shapes && right_multi_shape is one
+  */
+  constexpr uint32_t shape_diff_num = 2;
+  constexpr uint32_t classify_diff_num = 2;
+  if (classify_nums <= 1 || elewise_inputs.size() == 1) {
+    return ElewisePattern::COMMON;
+  } else {
+    if (elewise_inputs.size() == shape_diff_num) {
+      const int64_t left_align_size =
+        std::accumulate(elewise_inputs[0].begin(), elewise_inputs[0].end(), 1LL, std::multiplies<int64_t>());
+      const int64_t right_align_size =
+        std::accumulate(elewise_inputs[1].begin(), elewise_inputs[1].end(), 1LL, std::multiplies<int64_t>());
+      if (left_align_size == 1 || right_align_size == 1) {
+        if (classify_nums > classify_diff_num) {
+          return ElewisePattern::BROADCAST;
+        } else {
+          return left_align_size == 1 ? ElewisePattern::SCALAR_BROADCAST : ElewisePattern::BROADCAST_SCALAR;
+        }
+      } else {
+          return ElewisePattern::UNKNOWN;
+      }
+    } else {
+      return ElewisePattern::UNKNOWN;
+    }
+  }
+}
+
+void Elewise::SetBroadcastPattern(const ElewisePattern& pattern) {
+  OP_LOGD("Set pattern for elewise tiling!");
+  if (pattern != ElewisePattern::UNKNOWN) {
+    broadcast_dispatch = true;
+    classify_pattern = pattern;
+  }
+}
+
 bool Elewise::CheckCompileInfo() {
   // required compile_info check
+  V_CHECK_GT(compile_info.classify_inputs_num, 0,
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise classify_inputs_num must be greater than zero!"),
+             return false);
   V_CHECK_GT(compile_info.flag_info_size, 0,
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise flag_info_size must be greater than zero!"),
              return false);
   V_CHECK_GT(compile_info.ub_factor_align, 0,
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise ub_factor_align must be greater than zero!"),
              return false);
-  if (compile_info.pattern_key == KNOWN_PATTERN_KEY || compile_info.pattern_key == COMMON_PATTERN_KEY) {
-    V_CHECK_GT(compile_info.core_num, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise base_info core_num can not be neg."),
-               return false);
-    V_CHECK_GT(compile_info.max_dtype, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise base_info max_dtype can not be neg."),
-               return false);
-    V_OP_TILING_CHECK((SPLIT_FACTORS.find(compile_info.max_dtype) != SPLIT_FACTORS.end()),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise base_info max_dtype not in SPLIT_FACTORS"),
-                      return false);
-    V_CHECK_GT(compile_info.max_available_ub, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise base_info max_available_ub can not be neg."),
-               return false);
-    V_CHECK_GT(compile_info.max_available_ub_db, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise base_info max_available_ub_db can not be neg."),
-               return false);
+  return true;
+}
+
+void Elewise::GetOutputDtype() {
+  out_dtype = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->GetDataType();
+  int64_t dtype_size = GetElementByType(out_dtype);
+  for (uint32_t i = 1; i < op_paras.GetOutputsSize(); i++) {
+    int64_t cur_dtype_size =
+      GetElementByType(ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType());
+    if (cur_dtype_size > dtype_size) {
+      out_dtype = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType();
+      dtype_size = cur_dtype_size;
+    }
   }
-  return true;
 }
 
-bool Elewise::CheckInOutNum() {
-  const uint32_t input_num = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->GetAllInputsSize();
-  V_CHECK_GT(input_num, 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise input num must be greater than zero"),
-             return false);
-  V_CHECK_LE(input_num, ELEWISE_MAX_INPUT_NUMS,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise is not support more than 70 inputs"),
-             return false);
-  V_CHECK_GT(op_paras.GetOutputsSize(), 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise output num must be greater than zero"),
-             return false);
-  return true;
-}
-
-bool Elewise::CheckInOutNum(const OpInfo& op_info) {
-  V_CHECK_GT(op_info.GetInputShape().size(), 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise custom input num must be greater than zero"),
-             return false);
-  V_CHECK_LE(op_info.GetInputShape().size(), ELEWISE_MAX_INPUT_NUMS,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise is not support more than 70 custom inputs"),
-             return false);
-  V_CHECK_GT(op_paras.GetOutputsSize(), 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise output num must be greater than zero"),
-             return false);
-  return true;
-}
-
-bool Elewise::GetShapeUnderCheck() {
-  const uint32_t input_num = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->GetAllInputsSize();
-  std::vector<uint32_t> input_check;
-  // shape len check and prepare for len inputs shape check
+void Elewise::GetCheckInputs(std::vector<uint32_t>& check_list) {
   for (uint32_t i = 0; i < input_num; i++) {
     const ge::GeShape& input_shape =
       ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape();
     const uint32_t shape_len = input_shape.GetDimNum();
-    if (shape_len == 0 || (shape_len == 1 && input_shape.GetDim(0) == 1)) {
+    // GE interface calc empty shape to zero, but we thought it was one
+    const int64_t current_fuse_shape = (shape_len != 0 ? input_shape.GetShapeSize() : 1);
+    input_fuse_shapes.emplace_back(current_fuse_shape);
+    fuse_diff_shapes.emplace(current_fuse_shape);
+    // scalar and fuse shape equals to one will not be add into check_list
+    if (shape_len == 0 || (shape_len >= 1 && current_fuse_shape == 1)) {
       continue;
     } else {
-      input_check.emplace_back(i);
+      check_list.emplace_back(i);
     }
   }
+}
+
+void Elewise::GetCheckInputs(std::vector<uint32_t>& check_list, const OpInfo& op_info) {
+  for (uint32_t i = 0; i < input_num; i++) {
+    const std::vector<int64_t>& input_shape = op_info.GetInputShape()[i];
+    const uint32_t shape_len = input_shape.size();
+    const int64_t current_fuse_shape =
+      std::accumulate(input_shape.begin(), input_shape.end(), 1LL, std::multiplies<int64_t>());
+    input_fuse_shapes.emplace_back(current_fuse_shape);
+    fuse_diff_shapes.emplace(current_fuse_shape);
+    // scalar and fuse shape equals to one will not be add into check_list
+    if (shape_len == 0 || (shape_len >= 1 && current_fuse_shape == 1)) {
+      continue;
+    } else {
+      check_list.emplace_back(i);
+    }
+  }
+}
+
+bool Elewise::GetShapeUnderCheck(std::vector<uint32_t>& check_list) {
   // check same len inputs shape
-  if (!input_check.empty()) {
+  if (!check_list.empty()) {
+    uint32_t min_len_index = check_list[0];
     uint32_t min_len =
-      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[0])->MutableShape().GetDimNum();
-    uint32_t min_len_index = input_check[0];
-    // Loop all input to get the true min_len and its index
-    for (uint32_t i = 1; i < input_check.size(); i++) {
+      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(min_len_index)->MutableShape().GetDimNum();
+    // loop all input to get the true min_len and its index
+    for (uint32_t i = 1; i < check_list.size(); i++) {
       const ge::GeShape& check_shape =
-        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[i])->MutableShape();
+        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(check_list[i])->MutableShape();
       const uint32_t check_len = check_shape.GetDimNum();
       if (check_len < min_len) {
         min_len = check_len;
-        min_len_index = input_check[i];
+        min_len_index = check_list[i];
       }
     }
     const ge::GeShape& min_shape =
       ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(min_len_index)->MutableShape();
     // input check rules: 1.from right to left, same dim_index with min_shape must be same;
     // 2.index higher must be all 1.
-    for (uint32_t i = 0; i < input_check.size(); i++) {
+    for (uint32_t i = 0; i < check_list.size(); i++) {
       const ge::GeShape& need_check_shape =
-        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[i])->MutableShape();
+        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(check_list[i])->MutableShape();
       const uint32_t need_check_len = need_check_shape.GetDimNum();
       uint32_t len_diff = need_check_len - min_len;
       for (uint32_t j = 0; j < len_diff; j++) {
@@ -178,111 +234,58 @@ bool Elewise::GetShapeUnderCheck() {
   return true;
 }
 
-bool Elewise::GetShapeUnderCheck(const OpInfo& op_info) {
-  const uint32_t custom_input_num = op_info.GetInputShape().size();
-  std::vector<uint32_t> custom_input_check;
-  // shape len check and prepare for inputs shape check
-  for (uint32_t i = 0; i < custom_input_num; i++) {
-    const std::vector<int64_t>& custom_input_shape = op_info.GetInputShape()[i];
-    const uint32_t custom_shape_len = custom_input_shape.size();
-    if (custom_shape_len == 0 || (custom_shape_len == 1 && custom_input_shape[0] == 1)) {
-      continue;
-    } else {
-      custom_input_check.emplace_back(i);
-    }
-  }
+bool Elewise::GetShapeUnderCheck(std::vector<uint32_t>& check_list, const OpInfo& op_info) {
   // check same custom inputs shape
-  if (!custom_input_check.empty()) {
-    V_CHECK_GT(op_info.GetInputShape().size(), custom_input_check.back(),
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise custom input num may be out of index"),
-               return false);
-    uint32_t custom_min_len = op_info.GetInputShape()[custom_input_check[0]].size();
-    uint32_t custom_min_len_index = custom_input_check[0];
-    // Loop all custom input to get the true custom_min_len and its index
-    for (uint32_t i = 1; i < custom_input_check.size(); i++) {
-      const std::vector<int64_t>& custom_check_shape = op_info.GetInputShape()[custom_input_check[i]];
-      const uint32_t custom_check_len = custom_check_shape.size();
-      if (custom_check_len < custom_min_len) {
-        custom_min_len = custom_check_len;
-        custom_min_len_index = custom_input_check[i];
+  if (!check_list.empty()) {
+    uint32_t min_len_index = check_list[0];
+    uint32_t min_len = op_info.GetInputShape()[min_len_index].size();
+    // loop all custom input to get the true min_len and its index
+    for (uint32_t i = 1; i < check_list.size(); i++) {
+      const std::vector<int64_t>& check_shape = op_info.GetInputShape()[check_list[i]];
+      const uint32_t check_len = check_shape.size();
+      if (check_len < min_len) {
+        min_len = check_len;
+        min_len_index = check_list[i];
       }
     }
-    const std::vector<int64_t>& custom_min_shape = op_info.GetInputShape()[custom_min_len_index];
-    // custom input check rules: 1.from right to left, same dim_index with custom_min_shape must be same;
-    // 2.index higher must be all 1.
-    for (uint32_t i = 0; i < custom_input_check.size(); i++) {
-      const std::vector<int64_t>& custom_need_check_shape = op_info.GetInputShape()[custom_input_check[i]];
-      const uint32_t custom_need_check_len = custom_need_check_shape.size();
-      uint32_t custom_len_diff = custom_need_check_len - custom_min_len;
-      for (uint32_t j = 0; j < custom_len_diff; j++) {
-        V_OP_TILING_CHECK((custom_need_check_shape[j] == 1),
-                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele-custom long in_shape need be 1 on higher pos"),
-                          return false);
-      }
-      for (uint32_t k = 0; k < custom_min_len; k++) {
-        V_OP_TILING_CHECK((custom_need_check_shape[k + custom_len_diff] == custom_min_shape[k]),
-                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele-custom input shape must be equal on lower pos"),
-                          return false);
+    const std::vector<int64_t>& min_shape = op_info.GetInputShape()[min_len_index];
+    // broadcast dispatch shapes no need check again
+    if (!broadcast_dispatch) {
+      // custom input check rules: 1.from right to left, same dim_index with custom_min_shape must be same;
+      // 2.index higher must be all 1.
+      for (uint32_t i = 0; i < check_list.size(); i++) {
+        const std::vector<int64_t>& need_check_shape = op_info.GetInputShape()[check_list[i]];
+        const uint32_t need_check_len = need_check_shape.size();
+        uint32_t len_diff = need_check_len - min_len;
+        for (uint32_t j = 0; j < len_diff; j++) {
+          V_OP_TILING_CHECK((need_check_shape[j] == 1),
+                            VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele-custom long in_shape need be 1 on higher pos"),
+                            return false);
+        }
+        for (uint32_t k = 0; k < min_len; k++) {
+          V_OP_TILING_CHECK((need_check_shape[k + len_diff] == min_shape[k]),
+                            VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele-custom input shape must be equal on lower pos"),
+                            return false); 
+        }
       }
     }
-    out_shape =
-      std::accumulate(custom_min_shape.begin(), custom_min_shape.end(), 1LL, std::multiplies<int64_t>());
+    out_shape = std::accumulate(min_shape.begin(), min_shape.end(), 1LL, std::multiplies<int64_t>());
   }
   return true;
 }
 
-void Elewise::GetShapeFromBroadcast(const OpInfo& op_info) {
-  const uint32_t custom_input_num = op_info.GetInputShape().size();
-  for (uint32_t i = 0; i < custom_input_num; i++) {
-      int64_t shape_size = std::accumulate(op_info.GetInputShape()[i].begin(),
-                                           op_info.GetInputShape()[i].end(), 1LL, std::multiplies<int64_t>());
-      if (shape_size > out_shape) {
-        out_shape = shape_size;
-        break;
-      }
-  }
+bool Elewise::GetInOutShapes() {
+  // input shape check and get the output fuse shape
+  std::vector<uint32_t> input_check;
+  GetCheckInputs(input_check);
+  return GetShapeUnderCheck(input_check);
 }
 
-bool Elewise::GetOutShape() {
-  // input and output number has limit
-  bool ret = CheckInOutNum();
-  if (!ret) {
-    OP_LOGE(op_type.c_str(), "elewise input or output num is illegal!");
-    return ret;
-  }
-  // broadcast pattern will be only changed by broadcast tiling distribution
-  if (compile_info.broadcast_pattern) {
-    OP_LOGE(op_type.c_str(), "elewise not custom dotiling only support broadcast_pattern false.");
-    return false;
-  }
-  return GetShapeUnderCheck();
-}
-
-bool Elewise::GetOutShape(const OpInfo& op_info) {
-  bool ret = CheckInOutNum(op_info);
-  if (!ret) {
-    OP_LOGE(op_type.c_str(), "elewise custom input or output num is illegal!");
-    return ret;
-  }
-  if (compile_info.broadcast_pattern) {
-    GetShapeFromBroadcast(op_info);
-    return true;
-  } else {
-    return GetShapeUnderCheck(op_info);
-  }
-}
-
-void Elewise::GetOutputDtype() {
-  out_dtype = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(0)->GetDataType();
-  int64_t dtype_size = GetElementByType(out_dtype);
-  for (uint32_t i = 1; i < op_paras.GetOutputsSize(); i++) {
-    int64_t cur_dtype_size =
-      GetElementByType(ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType());
-    if (cur_dtype_size > dtype_size) {
-      out_dtype = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i)->GetDataType();
-      dtype_size = cur_dtype_size;
-    }
-  }
+bool Elewise::GetInOutShapes(const OpInfo& op_info) {
+  // custom input shape check and get the output fuse shape
+  std::vector<uint32_t> input_check;
+  GetCheckInputs(input_check, op_info);
+  return GetShapeUnderCheck(input_check, op_info);
 }
 
 bool Elewise::WriteKnownData() {
@@ -292,29 +295,94 @@ bool Elewise::WriteKnownData() {
   return compile_info.varAttrWrap.WriteVarAttrs(tiling_key, op_type, op_paras, run_info);
 }
 
-bool Elewise::DoConstTiling() {
-  OP_LOGD(op_type.c_str(), "Enter into elewise const shape tiling.");
-  block_dims = compile_info.const_block_dims;
-  tiling_key = CONST_TILING_KEY;
-  return WriteKnownData();
+bool Elewise::CalcConstKey() {
+  const uint32_t const_shapes_size = compile_info.const_block_dims.second.size();
+  constexpr uint32_t pure_elewise_const_size = 1;
+  constexpr uint32_t broadcast_elewise_const_size = 2;
+  if (const_shapes_size == pure_elewise_const_size) {
+    block_dims = compile_info.const_block_dims.second[0];
+    tiling_key = CONST_TILING_KEY;
+  } else if (const_shapes_size == broadcast_elewise_const_size) {
+    if (fuse_diff_shapes.size() == broadcast_elewise_const_size) {
+      // inputs with diff shapes such as [1] and [4] will firstly add info during compiler time
+      block_dims = compile_info.const_block_dims.second[0];
+      tiling_key = CONST_TILING_KEY;
+    } else {
+      // inputs with diff shapes such as [4] and [4] will secondly add info during compiler time
+      block_dims = compile_info.const_block_dims.second[1];
+      tiling_key = CONST_TILING_KEY + 1;
+    }
+  } else {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The const key calc fail due to error const shapes size!");
+    return false;
+  }
+  return true;
 }
 
-bool Elewise::DoEmptyTiling() {
+bool Elewise::ConstModeTiling() {
+  OP_LOGD(op_type.c_str(), "Enter into elewise const shape tiling.");
+  return CalcConstKey() && WriteKnownData();
+}
+
+bool Elewise::EmptyModeTiling() {
   OP_LOGD(op_type.c_str(), "Enter into elewise empty shape tiling.");
   block_dims = 1;
   tiling_key = INT32_MAX;
   return WriteKnownData();
 }
 
+bool Elewise::CalcPatternKey() {
+  // broadcast dispatch set pattern for elewise, no need calculate again
+  if (broadcast_dispatch) {
+    return true; 
+  }
+  if (compile_info.only_const_tiling) {
+    classify_pattern = ElewisePattern::CONST;
+  } else if (!compile_info.support_broadcast || fuse_diff_shapes.size() == 1) {
+    classify_pattern = ElewisePattern::COMMON;
+  } else if (compile_info.support_broadcast && compile_info.classify_inputs_num > BROADCAST_SCALAR_INPUT_NUM) {
+    classify_pattern = ElewisePattern::BROADCAST;
+  } else if (compile_info.absorbable_broadcast) {
+    classify_pattern = input_fuse_shapes[0] == 1 ? ElewisePattern::SCALAR_BROADCAST : ElewisePattern::BROADCAST_SCALAR;
+  } else {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The pattern key calc failed!");
+    return false;
+  }
+  return true;
+}
+
+bool Elewise::ParseBaseInfo() {
+  try {
+    const auto& current_base_info = compile_info.base_info.second.at(PATTERN_KEY.at(classify_pattern));
+    constexpr uint32_t base_info_size = 4;
+    // broadcast base info size may be greater than 4
+    V_CHECK_GE(current_base_info.size(), base_info_size,
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info size must be no less than four!"),
+               return false);
+    constexpr uint32_t core_index = 0;
+    constexpr uint32_t max_dtype_index = 1;
+    constexpr uint32_t ub_available_index = 2;
+    constexpr uint32_t ub_available_db_index = 3;
+    core_num = current_base_info[core_index];
+    max_dtype = current_base_info[max_dtype_index];
+    max_available_ub = current_base_info[ub_available_index];
+    max_available_ub_db = current_base_info[ub_available_db_index];
+  } catch (const std::exception &e) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
+    return false;
+  }
+  return true;
+}
+
 void Elewise::CalcMultiCore() {
-  const int64_t multi_core_threshold = GetElementByType(out_dtype) * compile_info.core_num * DOUBLE_BUFFER_SIZE;
+  const int64_t multi_core_threshold = GetElementByType(out_dtype) * core_num * DOUBLE_BUFFER_SIZE;
   if (out_shape < multi_core_threshold) {
     need_multi_core = false;
   }
 }
 
 void Elewise::DoBlockTiling() {
-  int64_t cur_core = compile_info.core_num;
+  int64_t cur_core = core_num;
   int64_t block_factor_align_size = compile_info.ub_factor_align;
   block_factor = std::ceil(out_shape * 1.0 / cur_core);
   block_factor = std::ceil(block_factor * 1.0 / block_factor_align_size) * block_factor_align_size;
@@ -323,9 +391,9 @@ void Elewise::DoBlockTiling() {
 
 bool Elewise::DoUbTiling() {
   ub_factor = block_factor;
-  int64_t limit = std::min(compile_info.max_available_ub, SPLIT_FACTORS.at(compile_info.max_dtype));
+  int64_t limit = std::min(max_available_ub, SPLIT_FACTORS.at(max_dtype));
   if (need_double_buffer) {
-    limit = std::min(compile_info.max_available_ub_db, SPLIT_FACTORS.at(compile_info.max_dtype));
+    limit = std::min(max_available_ub_db, SPLIT_FACTORS.at(max_dtype));
   }
   if (limit < ub_factor) {
     int64_t ub_factor_align_size = compile_info.ub_factor_align;
@@ -343,38 +411,15 @@ bool Elewise::DoUbTiling() {
   return true;
 }
 
-void Elewise::CalcCommonKey() {
-  constexpr uint64_t common_tiling_key = 210000000;
+void Elewise::CalcTilingKey() {
   constexpr uint64_t db_tiling_key = 10000;
-  tiling_key = compile_info.use_special_pattern ? common_tiling_key : 0;
+  tiling_key = TILING_BASE_KEY.at(classify_pattern);
   if (need_double_buffer) {
     tiling_key += db_tiling_key;
   }
 }
 
-bool Elewise::DoCommonTiling() {
-  OP_LOGD(op_type.c_str(), "Enter into elewise common shape tiling.");
-  bool ret = true;
-  CalcMultiCore();
-  if (need_multi_core) {
-    DoBlockTiling();
-    if (block_factor > std::min(compile_info.max_available_ub, SPLIT_FACTORS.at(compile_info.max_dtype))) {
-      need_double_buffer = true;
-    }
-    ret = ret && DoUbTiling();
-  } else {
-    block_dims = 1;
-    block_factor = out_shape;
-    ub_factor = out_shape;
-  }
-  if (ret && !compile_info.only_const_tiling) {
-    CalcCommonKey();
-  }
-  ret = WriteCommonData();
-  return ret;
-}
-
-bool Elewise::WriteCommonData() const {
+bool Elewise::WriteTilingData() const {
   OP_LOGD(op_type.c_str(), "elewise tiling key is:%lld, block_dims is:%lld, block_factor is:%lld, ub_factor is:%lld",
           tiling_key, block_dims, block_factor, ub_factor);
 
@@ -391,136 +436,113 @@ bool Elewise::WriteCommonData() const {
     run_info.AddTilingData(double_buffer_num);
     return true;
   }
-  constexpr uint32_t pure_elewise_var_size = 3;
   run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
-  if (compile_info.elewise_vars_size == pure_elewise_var_size) {
-    run_info.AddTilingData(static_cast<int32_t>(out_shape));
+  // Add elewise vars params
+  try {
+    const auto& var_list = compile_info.elewise_vars.second.at(std::to_string(tiling_key));
+    for (const auto& var : var_list) {
+      if (var >= MIN_UB_CUT_INDEX) {
+        run_info.AddTilingData(static_cast<int32_t>(ub_factor));
+      } else if (var >= MIN_BLOCK_CUT_INDEX) {
+        run_info.AddTilingData(static_cast<int32_t>(block_factor));
+      } else {
+        run_info.AddTilingData(static_cast<int32_t>(input_fuse_shapes[var % MIN_DIM_CUT_INDEX]));
+      }
+    }
+  } catch (const std::exception &e) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_elewise_vars] error. Error message: %s", e.what());
+    return false;
   }
-  run_info.AddTilingData(static_cast<int32_t>(block_factor));
-  run_info.AddTilingData(static_cast<int32_t>(ub_factor));
   return compile_info.varAttrWrap.WriteVarAttrs(tiling_key, op_type, op_paras, run_info);
+}
+
+bool Elewise::SpecialModeTiling() {
+  CalcPatternKey();
+  bool ret = ParseBaseInfo();
+  CalcMultiCore();
+  if (need_multi_core) {
+    DoBlockTiling();
+    if (block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(max_dtype))) {
+      need_double_buffer = true;
+    }
+    ret = ret && DoUbTiling();
+  } else {
+    block_dims = 1;
+    block_factor = out_shape;
+    ub_factor = out_shape;
+  }
+  if (ret && !compile_info.only_const_tiling) {
+    CalcTilingKey();
+  }
+  ret = WriteTilingData();
+  return ret;
 }
 
 bool Elewise::DoTiling() {
   bool ret = CheckCompileInfo();
-  ret = ret && GetOutShape();
+  GetOutputDtype();
+  input_num = op_paras.GetInputsSize();
+  ret = ret && GetInOutShapes();
   if (!ret) {
-    OP_LOGE(op_type.c_str(), "elewise tiling input infos check failed.");
+    OP_LOGE(op_type.c_str(), "elewise tiling input infos get failed.");
     return ret;
   }
   GetOutputDtype();
-  // elewise tiling compose of const, empty and common scene
-  if (compile_info.is_const_shapes) {
-    ret = DoConstTiling();
+  // tiling distribute to different classify mode
+  if (compile_info.classify_const_mode) {
+    ret = ConstModeTiling();
   } else if (out_shape == 0) {
-    ret = DoEmptyTiling();
+    ret = EmptyModeTiling();
   } else {
-    ret = DoCommonTiling();
+    ret = SpecialModeTiling();
   }
   return ret;
 }
 
 bool Elewise::DoTiling(const OpInfo& op_info) {
   bool ret = CheckCompileInfo();
-  ret = ret && GetOutShape(op_info);
+  GetOutputDtype();
+  input_num = op_info.GetInputShape().size();
+  ret = ret && GetInOutShapes(op_info);
   if (!ret) {
-    OP_LOGE(op_type.c_str(), "elewise custom tiling input infos check failed.");
+    OP_LOGE(op_type.c_str(), "elewise custom tiling input infos get failed.");
     return ret;
   }
-  GetOutputDtype();
-  // elewise tiling compose of const, empty and common scene
-  if (compile_info.is_const_shapes) {
-    ret = DoConstTiling();
+  // tiling dispatch to different classify mode
+  if (compile_info.classify_const_mode) {
+    ret = ConstModeTiling();
   } else if (out_shape == 0) {
-    ret = DoEmptyTiling();
+    ret = EmptyModeTiling();
   } else {
-    ret = DoCommonTiling();
+    ret = SpecialModeTiling();
   }
   return ret;
 }
 
-void ElewiseCompileInfo::ParseFlagInfoSize(const nlohmann::json& outer_compile_info) {
+void ElewiseCompileInfo::ParseClassifyNum(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_classify_inputs_num")) {
+    classify_inputs_num = outer_compile_info.at("_classify_inputs_num").get<uint32_t>();
+  }
+}
+
+void ElewiseCompileInfo::ParseFlagInfo(const nlohmann::json& outer_compile_info) {
   if (outer_compile_info.contains("_flag_info")) {
     const std::vector<bool>& input_flag_info = outer_compile_info.at("_flag_info").get<std::vector<bool>>();
     flag_info_size = input_flag_info.size();
     if (input_flag_info.size() > 0) {
       only_const_tiling = input_flag_info[0];
-      constexpr uint32_t elewise_flag_size = 6;
       constexpr uint32_t const_shapes_index = 1;
-      constexpr uint32_t special_pattern_index = 3;
+      constexpr uint32_t support_broadcast_index = 2;
+      constexpr uint32_t absorbable_broadcast_index = 4;
+      constexpr uint32_t elewise_flag_size = 6;
       // broadcast scene flag info size is seven
       if (flag_info_size >= elewise_flag_size) {
-        is_const_shapes = input_flag_info[const_shapes_index];
-        use_special_pattern = input_flag_info[special_pattern_index];
+        classify_const_mode = input_flag_info[const_shapes_index];
+        support_broadcast = input_flag_info[support_broadcast_index];
+        absorbable_broadcast = input_flag_info[absorbable_broadcast_index];
       }
     }
   }
-}
-
-void ElewiseCompileInfo::ParseBaseInfo(const nlohmann::json& outer_compile_info) {
-  if (outer_compile_info.contains("_base_info") && !outer_compile_info.at("_base_info").empty()) {
-    constexpr uint32_t base_info_size = 4;
-    constexpr uint32_t max_ub_index = 2;
-    constexpr uint32_t max_ub_db_index = 3;
-    constexpr int64_t elewise_known_key = 0;
-    constexpr int64_t elewise_common_key = 1;
-    const std::string known_str_key = "000";
-    const std::string common_str_key = "100";
-    const std::unordered_map<std::string, std::vector<int64_t>>& input_base_info =
-      outer_compile_info.at("_base_info").get<std::unordered_map<std::string, std::vector<int64_t>>>();
-    if (input_base_info.size() == 1) {
-      if (flag_info_size >= ELEWISE_FLAG_SIZE && input_base_info.count(common_str_key) &&
-          input_base_info.at(common_str_key).size() >= base_info_size) {
-        pattern_key = elewise_common_key;
-        core_num = input_base_info.at(common_str_key)[0];
-        max_dtype = input_base_info.at(common_str_key)[1];
-        max_available_ub = input_base_info.at(common_str_key)[max_ub_index];
-        max_available_ub_db = input_base_info.at(common_str_key)[max_ub_db_index];
-      } else if (input_base_info.count(known_str_key) && input_base_info.at(known_str_key).size() >= base_info_size) {
-        pattern_key = elewise_known_key;
-        core_num = input_base_info.at(known_str_key)[0];
-        max_dtype = input_base_info.at(known_str_key)[1];
-        max_available_ub = input_base_info.at(known_str_key)[max_ub_index];
-        max_available_ub_db = input_base_info.at(known_str_key)[max_ub_db_index];
-      }
-    } else {
-      if (input_base_info.count(common_str_key) && input_base_info.at(common_str_key).size() >= base_info_size) {
-        pattern_key = elewise_common_key;
-        core_num = input_base_info.at(common_str_key)[0];
-        max_dtype = input_base_info.at(common_str_key)[1];
-        max_available_ub = input_base_info.at(common_str_key)[max_ub_index];
-        max_available_ub_db = input_base_info.at(common_str_key)[max_ub_db_index];
-      }
-    }
-  }
-}
-
-void ElewiseCompileInfo::ParseConstDims(const nlohmann::json& outer_compile_info) {
-  if (outer_compile_info.contains("_const_block_dims") && is_const_shapes) {
-    const std::vector<int64_t>& input_const_dims =
-      outer_compile_info.at("_const_block_dims").get<std::vector<int64_t>>();
-    if (!input_const_dims.empty()) {
-      const_block_dims = input_const_dims[0];
-    }
-  }
-}
-
-void ElewiseCompileInfo::ParseElewiseVarSize(const nlohmann::json& outer_compile_info) {
-  if (outer_compile_info.contains("_elewise_vars") && !outer_compile_info.at("_elewise_vars").empty()) {
-    const std::string tiling_key_str = "210000000";
-    const std::string tiling_key_db_str = "210010000";
-    const std::unordered_map<std::string, std::vector<int64_t>>& elewise_vars =
-      outer_compile_info.at("_elewise_vars").get<std::unordered_map<std::string, std::vector<int64_t>>>();
-    if (elewise_vars.count(tiling_key_str)) {
-      elewise_vars_size = elewise_vars.at(tiling_key_str).size();
-    } else if (elewise_vars.count(tiling_key_db_str)) {
-      elewise_vars_size = elewise_vars.at(tiling_key_db_str).size();
-    }
-  }
-}
-
-bool ElewiseCompileInfo::ParseAttrVars(const nlohmann::json& outer_compile_info) {
-  return varAttrWrap.ParseVarAttr(outer_compile_info);
 }
 
 void ElewiseCompileInfo::ParseUbFactorAlign(const nlohmann::json& outer_compile_info) {
@@ -529,23 +551,58 @@ void ElewiseCompileInfo::ParseUbFactorAlign(const nlohmann::json& outer_compile_
   }
 }
 
-void ElewiseCompileInfo::SetBroadcastPattern(const bool& is_broadcast_pattern) {
-  broadcast_pattern = is_broadcast_pattern;
+void ElewiseCompileInfo::ParseRequiredCompileInfo(const nlohmann::json& outer_compile_info) {
+  ParseClassifyNum(outer_compile_info);
+  ParseFlagInfo(outer_compile_info);
+  ParseUbFactorAlign(outer_compile_info);
+}
+
+void ElewiseCompileInfo::ParseBaseInfo(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_base_info")) {
+    base_info.first = true;
+    base_info.second = outer_compile_info.at("_base_info").get<std::unordered_map<std::string, std::vector<int64_t>>>();
+  }
+}
+
+void ElewiseCompileInfo::ParseConstCompileInfo(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_const_block_dims") && classify_const_mode) {
+    const_block_dims.first = true;
+    const_block_dims.second = outer_compile_info.at("_const_block_dims").get<std::vector<int64_t>>();
+  }
+}
+
+void ElewiseCompileInfo::ParseElewiseVar(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_elewise_vars")) {
+    elewise_vars.first = true;
+    elewise_vars.second =
+      outer_compile_info.at("_elewise_vars").get<std::unordered_map<std::string, std::vector<int64_t>>>();
+  }
+}
+
+bool ElewiseCompileInfo::ParseVarsAttr(const nlohmann::json& outer_compile_info) {
+  return varAttrWrap.ParseVarAttr(outer_compile_info);
+}
+
+bool ElewiseCompileInfo::ParseOptionalCompileInfo(const nlohmann::json& outer_compile_info) {
+  if (ParseVarsAttr(outer_compile_info)) {
+    ParseBaseInfo(outer_compile_info);
+    ParseConstCompileInfo(outer_compile_info);
+    ParseElewiseVar(outer_compile_info);
+    return true;
+  } else {
+    return false;
+  }
 }
 
 ElewiseCompileInfo::ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
   OP_LOGD(op_type.c_str(), "elewise compile info parse running");
-  ParseFlagInfoSize(outer_compile_info);
-  ParseBaseInfo(outer_compile_info);
-  ParseConstDims(outer_compile_info);
-  ParseElewiseVarSize(outer_compile_info);
-  ParseAttrVars(outer_compile_info);
-  ParseUbFactorAlign(outer_compile_info);
+  ParseRequiredCompileInfo(outer_compile_info);
+  ParseOptionalCompileInfo(outer_compile_info);
 }
 }  // namespace v3
 
 bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
-  OP_LOGD(op_type.c_str(), "elewise tiling running");
+  OP_LOGD(op_type.c_str(), "elewise tiling enter into elewise non_custom tiling!");
   v3::Elewise elewise(op_type, op_paras, elewise_compile_info, run_info);
   return elewise.DoTiling();
 }
@@ -553,7 +610,7 @@ bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunIn
 bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras,
                                     utils::OpRunInfo& run_info,
                                     const OpInfo& op_info) const {
-  OP_LOGD(op_type.c_str(), "elewise custom tiling running");
+  OP_LOGD(op_type.c_str(), "elewise tiling enter into elewise custom tiling!");
   v3::Elewise elewise(op_type, op_paras, elewise_compile_info, run_info);
   return elewise.DoTiling(op_info);
 }

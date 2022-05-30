@@ -73,11 +73,11 @@ TEST_F(SelectTiling, Select_tiling1) {
 
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[2], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_ub_factor_align": 128, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
+      R"({ "_classify_inputs_num":2, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_ub_factor_align": 128, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 1 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 ");
 }
 
 TEST_F(SelectTiling, Select_tiling2) {
@@ -98,11 +98,11 @@ TEST_F(SelectTiling, Select_tiling2) {
 
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[2], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_ub_factor_align": 128, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
+      R"({ "_classify_inputs_num":2, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_ub_factor_align": 128, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "256 1 256 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "256 256 256 ");
 }
 
 TEST_F(SelectTiling, Select_tiling3) {
@@ -123,7 +123,7 @@ TEST_F(SelectTiling, Select_tiling3) {
 
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[2], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_ub_factor_align": 128, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": [1,1,1]})";
+      R"({ "_classify_inputs_num":2, "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_ub_factor_align": 128, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": [1,1,1]})";
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);

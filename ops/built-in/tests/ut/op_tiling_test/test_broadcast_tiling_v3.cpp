@@ -594,7 +594,7 @@ TEST_F(BroadcastTilingV3, TilingTest13) {
   optiling::utils::OpRunInfo runInfo;
 
 
-  std::string compileInfo = R"({ "_ub_factor_align": 128, "_contains_elewise_sch": true, "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_classify_inputs_num": 2, "_ub_factor_align": 128, "_contains_elewise_sch": true, "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
   std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateBroadcastTilingHandler(this->test_info_->name(),
                               "autotiling",

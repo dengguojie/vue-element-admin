@@ -17,7 +17,6 @@
 """
 elewise schedule
 """
-import copy
 from copy import deepcopy as deep_copy
 from typing import Optional
 
@@ -38,6 +37,7 @@ from ...constants import Pattern
 from ...constants import SUPPORT_SCALAR_INSNS
 from ...constants import DST_SRC_NO_REUSE_SET
 from ...constants import TERNARY_INSNS
+from ...constants import ELEWISE_BROADCAST_INSNS
 from ...schedule import Schedule
 from .elewise_tilingcase import TilingStrategy
 
@@ -97,10 +97,9 @@ class ElewiseSchedule(Schedule):
         self._outs = outs
         self._schedule = None
         self._tiling_case = tiling_case
-        self._tiling_strategy = self._tiling_case.get("tiling_strategy")
-        self._is_db = self._tiling_case.get("is_need_db", False)
-        self._is_one_dim = self._tiling_case.get("is_one_dim", False)
-        self._mode = operation.get_context().get_current_compute().get("_mode")
+        self._tiling_strategy = self._tiling_case.tiling_strategy
+        self._is_db = self._tiling_case.enable_db
+        self._is_one_dim = self._tiling_case.is_one_dim
 
         self._scope = "local.UB"
 
@@ -109,6 +108,9 @@ class ElewiseSchedule(Schedule):
         self._pure_middle_tensors = set()
         self._middle_out_tensors = set()
         self._out_tensors = set()
+        self._elewise_broadcast_tensors = set()
+        self._absorbable_broadcast_tensors = set()
+        self._compute_inline_tensors = set()
 
         self._dtypes = set()
         self._outs_dtypes = set()
@@ -167,7 +169,7 @@ class ElewiseSchedule(Schedule):
         self._construct_compute_graph()
 
         self._schedule = tvm.create_schedule(self._out.op)
-        self._schedule.tiling_key = self._tiling_case.get("key")
+        self._schedule.tiling_key = self._tiling_case.tiling_key
 
         self._calc_cache_read()
         self._do_cache_read()
@@ -178,11 +180,12 @@ class ElewiseSchedule(Schedule):
         self._set_scope()
 
         self._calc_storage_bound()
-
         self._calc_tiling()
-        self._do_tiling()
+        self._calc_compute_inline()
 
+        self._do_tiling()
         self._do_storage_bound()
+        self._do_compute_inline()
 
         self._calc_multi_core()
         self._do_multi_core()
@@ -203,6 +206,19 @@ class ElewiseSchedule(Schedule):
         return self._schedule if self._check_tiling_case() else None
 
     def _construct_compute_graph(self):
+        def _match_scalar_scene(_tensor):
+            # condition:
+            # 1. tensor -> tensor
+            # 2. broadcast tensor is output
+            # 3. next compute support scalar
+            if _tensor.op.input_tensors and util.get_tensor_size(_tensor.op.input_tensors[0]) != 1:
+                return False
+            if _tensor in self._out_tensors:
+                return False
+            if all(util.support_scalar(tensor_i) for tensor_i in self._in_out_map.get(_tensor)):
+                return True
+            return False
+
         def _pre_handle_placeholder(tensors):
             for out in tensors:
                 if util.is_placeholder(out):
@@ -215,10 +231,13 @@ class ElewiseSchedule(Schedule):
         _pre_handle_placeholder(self._out_tensors)
 
         visited_tensors = set()
-        for out in self._out_tensors:
-            self.__dfs_sub_graph(out, visited_tensors)
-            self._dtypes.add(out.dtype)
-            self._outs_dtypes.add(out.dtype)
+        for tensor_i in self._out_tensors:
+            # get the broadcast tensors for compute inline
+            if util.get_dsl_insn(tensor_i) in ELEWISE_BROADCAST_INSNS:
+                self._elewise_broadcast_tensors.add(tensor_i)
+            self.__dfs_sub_graph(tensor_i, visited_tensors)
+            self._dtypes.add(tensor_i.dtype)
+            self._outs_dtypes.add(tensor_i.dtype)
         byte_len = [DTYPE_BYTE_MAPPING.get(dtype) for dtype in self._dtypes]
         self._max_dtype_bytes = max(byte_len)
         # out uint1 dtype needs ub_factor align to 256
@@ -234,6 +253,10 @@ class ElewiseSchedule(Schedule):
             self.__dfs_sub_graph(self._out, visited_tensors)
         else:
             self._out = pure_out_tensors[0]
+
+        for tensor_i in self._elewise_broadcast_tensors:
+            if _match_scalar_scene(tensor_i):
+                self._absorbable_broadcast_tensors.add(tensor_i)
 
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._input_tensors)
@@ -275,13 +298,13 @@ class ElewiseSchedule(Schedule):
     def _calc_tiling_one_cut(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_i = self._tiling_case.get("block_tiling_axis")
-        u_i = self._tiling_case.get("ub_tiling_axis")
+        b_i = self._tiling_case.block_split_axis
+        u_i = self._tiling_case.ub_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
         if self._is_one_dim:
             u_bound = TYPE_DOUNDS.get(self._max_dtype_bytes)
         else:
-            u_bound = self._tiling_case.get("ub_factor_bound")
+            u_bound = self._tiling_case.ub_factor_bound
         if u_bound is None:
             u_bound = (1, util.get_bound(shape[u_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
@@ -290,11 +313,11 @@ class ElewiseSchedule(Schedule):
     def _calc_tiling_static(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_i = self._tiling_case.get("block_tiling_axis")
-        u_i = self._tiling_case.get("ub_tiling_axis")
+        b_i = self._tiling_case.block_split_axis
+        u_i = self._tiling_case.ub_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
-        self._ub_tiling_vars[u_i] = self._tiling_case.get("ub_tiling_factor")
+        self._ub_tiling_vars[u_i] = self._tiling_case.ub_factor_bound
 
     def _calc_tiling_const(self):
         res = self._out
@@ -312,10 +335,6 @@ class ElewiseSchedule(Schedule):
         if len(inputs) == 0:
             inputs = deep_copy(outputs)
 
-        # pure eletwise delete double tmp size
-        if len(output_shape) == 1:
-            self._is_one_dim = True
-
         max_available_ub = ((((self._ub_size - self._tmp_ub_size) // self._coexisting_quantity) // BLOCK_SIZE_BYTE) *
                             BLOCK_SIZE_BYTE) // self._max_dtype_bytes
         max_available_ub_db = ((((self._ub_size - 2 * self._tmp_ub_size) // 2 // self._coexisting_quantity)
@@ -325,7 +344,8 @@ class ElewiseSchedule(Schedule):
         const_compile_info = {
             CompileInfo.FLAG_INFO: [True],
             CompileInfo.BASE_INFO: base_info,
-            CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align
+            CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align,
+            CompileInfo.CLASSIFY_INPUTS_NUM: len(inputs)
         }
         const_compile_info.update(get_compile_info())
 
@@ -349,6 +369,9 @@ class ElewiseSchedule(Schedule):
 
         self._is_db = True if tiling_data.get("is_need_db", 0) == 1 else False
 
+    def _calc_compute_inline(self):
+        self._compute_inline_tensors = self._absorbable_broadcast_tensors.copy()
+
     def _do_tiling(self):
         funcs = {TilingStrategy.ONE_CUT: self._do_tiling_one_cut,
                  TilingStrategy.STATIC: self._do_tiling_static,
@@ -360,8 +383,8 @@ class ElewiseSchedule(Schedule):
         sch = self._schedule
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_idx = self._tiling_case.get("block_tiling_axis")
-        u_idx = self._tiling_case.get("ub_tiling_axis")
+        b_idx = self._tiling_case.block_split_axis
+        u_idx = self._tiling_case.ub_split_axis
         block_axes = []
         ub_axes = []
         inner_axes = []
@@ -434,7 +457,7 @@ class ElewiseSchedule(Schedule):
         for tensor_i in self._input_tensors:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
-        for tensor_i in self._middle_tensors:
+        for tensor_i in self._middle_tensors - self._compute_inline_tensors:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
         for tensor_i in self._cache_read_buffer_tensor_map:
@@ -463,10 +486,10 @@ class ElewiseSchedule(Schedule):
             else:
                 self._emit_insn_map[source] = [source.op.axis[0], "dma_copy"]
 
-        for tensor_i in self._pure_middle_tensors:
+        for tensor_i in self._pure_middle_tensors - self._compute_inline_tensors:
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], get_insn(tensor_i)]
 
-        for source, target in self._cache_write_buffer_tensor_map.items():
+        for source, target in self._cache_write_buffer_tensor_map.items() - self._compute_inline_tensors:
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
 
         if len(self._out_tensors) > 1:
@@ -483,6 +506,10 @@ class ElewiseSchedule(Schedule):
     def _do_emit_insn(self):
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
+            tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING.get(tensor_i.dtype))
+            if param[1] == "unknown_broadcast":
+                attrs = {"storage_bound":[tensor_bound], "dynamic_fuse":False, "dynamic_split":False}
+                sch[tensor_i].emit_insn(param[0], param[1], attrs)
             if len(param) > 2:
                 sch[tensor_i].emit_insn(param[0], param[2])
 
@@ -522,7 +549,7 @@ class ElewiseSchedule(Schedule):
 
         # one of the input of the ternary instruction must be reused with the output, refer to "ternary_reuse_map"
         # consider "vmadd": A=A*A+B, output reuse the second A, input_tensors is 2, which need to be completed to 3
-        for tensor_i in self._out_tensors | self._pure_middle_tensors:
+        for tensor_i in self._out_tensors | self._pure_middle_tensors - self._compute_inline_tensors:
             insn = util.get_dsl_insn(tensor_i)
             args = ""
             if tensor_i.op.tag.find("|") != -1:
@@ -616,6 +643,11 @@ class ElewiseSchedule(Schedule):
             # one of the input of the ternary instruction must be reused with the output
             _current_coexist_node = len(dependent_map)
 
+            for tensor_i in dependent_map:
+                if tensor_i in self._absorbable_broadcast_tensors and tensor_i.op.input_tensors and \
+                    tensor_i.op.input_tensors[0] in dependent_map:
+                    _current_coexist_node -= 1
+
             _refresh_dependent(_tensor)
 
             # check if cast tensor impl by complex instructions
@@ -630,6 +662,10 @@ class ElewiseSchedule(Schedule):
 
             # check if all src be used later
             if _dst_can_not_reuse_src(_tensor):
+                _current_coexist_node += 1
+
+            # one_rank_broadcast needs one more node
+            if util.need_extent_node(_tensor):
                 _current_coexist_node += 1
 
             # correct ub size in broadcast absorb
@@ -665,7 +701,12 @@ class ElewiseSchedule(Schedule):
                     dependent_map.pop(_tensor_i)
 
         def _need_external_space(_tensor):
+            # absorb broadcast needs tmp ub size
+            if any(x in self._absorbable_broadcast_tensors for x in _tensor.op.input_tensors):
+                return True
             op_tag = util.get_dsl_insn(_tensor)
+            if op_tag in ELEWISE_BROADCAST_INSNS:
+                return True
             support_vector_scalar_insns = ("elewise_binary_add", "elewise_binary_mul")
             if op_tag in set(SUPPORT_SCALAR_INSNS) - set(support_vector_scalar_insns):
                 return True
@@ -713,6 +754,11 @@ class ElewiseSchedule(Schedule):
             storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
             sch[tensor_i].set_buffer_size(storage_bound)
 
+    def _do_compute_inline(self):
+        sch = self._schedule
+        for tensor_i in self._compute_inline_tensors:
+            sch[tensor_i].compute_inline()
+
     def _check_tiling_case(self):
         lower_bound = 1
         for item in self._inner_shape[::-1]:
@@ -727,7 +773,8 @@ class ElewiseSchedule(Schedule):
     def _add_compile_info(self):
         cpt_compute = operation.get_context().get_current_compute()
         cpt_schedule = cpt_compute.get_current_schedule()
-        if self._mode == CONST:
+        mode = operation.get_context().get_current_compute().get("_mode")
+        if mode == CONST:
             # const shape: one compute, one schedule
             cpt_compute.add("_const_block_dim", self._block_dims)
         else:
@@ -748,6 +795,8 @@ class ElewiseSchedule(Schedule):
                 self._input_tensors.add(tensor_i)
             else:
                 self._middle_tensors.add(tensor_i)
+                if util.get_dsl_insn(tensor_i) in ELEWISE_BROADCAST_INSNS:
+                    self._elewise_broadcast_tensors.add(tensor_i)
 
             if tensor_i in visited_tensors:
                 continue

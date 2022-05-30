@@ -145,6 +145,7 @@ TEST_F(KLDivTiling, KLDivTiling_test_3)
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = R"({ "_ub_factor_align": 128,
+                                 "_classify_inputs_num": 2,
                                  "_pattern": "ElemWise",
                                  "push_status": 0,
                                  "_flag_info": [false, false, false, true, false, false],

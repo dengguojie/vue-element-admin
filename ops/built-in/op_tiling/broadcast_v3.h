@@ -54,6 +54,9 @@ struct BroadcastCompileInfo {
 
   BroadcastCompileInfo() = default;
   BroadcastCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
+
+ private:
+  void ParseElewiseInfos(const std::string& op_type, const nlohmann::json& outer_compile_info);
 };
 
 enum class Pattern {
@@ -112,7 +115,7 @@ class Broadcast {
     bool CompletedShapes(const std::vector<std::vector<int64_t>>& op_input_shapes);
     bool GetOutputType();
     bool GetType();
-    bool CheckInputs(bool& is_pure_elementwise);
+    bool CheckInputs();
     bool MatchConstShape(const std::vector<int64_t>& const_shapes,size_t& key_index);
     bool CalcConstKey(const bool is_support_broadcast);
     bool IsEmptyTensor();

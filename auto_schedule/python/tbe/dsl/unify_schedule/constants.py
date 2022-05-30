@@ -205,6 +205,7 @@ class CompileInfo:
     SOC_VERSION = "_soc_version"
     CONTAINS_ELEWISE_SCH = "_contains_elewise_sch"
     UB_FACTOR_ALIGN = "_ub_factor_align"
+    CLASSIFY_INPUTS_NUM = "_classify_inputs_num"
 
 
 class VarAttrMode:
@@ -255,6 +256,8 @@ INSN_MAPPING = {
     "reduce_max": "vector_reduce_max",
     "reduce_prod": "vector_reduce_prod",
     "broadcast": "vector_broadcast",
+    "one_shape_broadcast": "vector_broadcast",
+    "one_rank_broadcast": "unknown_broadcast",
     "unified_broadcast": "vector_broadcast",
     "set_value": "vector_dup",
     "elewise_binary_cmpsel_gt": "vector_select_gt",
@@ -354,6 +357,7 @@ NEED_TEMP_SPACE_INSNS = [
 # need a node as temp space
 NEED_EXTENT_NODE_INSNS = [
     "unknown_broadcast",
+    "one_rank_broadcast"
 ]
 
 # need a block save scalar while dtype is s32
@@ -383,7 +387,6 @@ VCMPSEL_INSNS = [
 ]
 
 BROADCAST_INSNS = [
-    "broadcast",
     "unified_broadcast",
     "unknown_broadcast",
 ]
@@ -394,6 +397,12 @@ REDUCE_INSNS = [
     "reduce_min",
     "reduce_max",
     "reduce_prod"
+]
+
+ELEWISE_BROADCAST_INSNS = [
+    "one_shape_broadcast",
+    "one_rank_broadcast",
+    "broadcast"
 ]
 
 DTYPE_BYTE_MAPPING = {
@@ -468,13 +477,14 @@ COMPUTE_TYPE_INSN_MAPPING = {
         "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_le",
         "elewise_binary_vcmpv_eq", "elewise_binary_vcmpv_ne",
         "elewise_binary_addrelu", "elewise_binary_subrelu",
+        "broadcast", "one_shape_broadcast", "one_rank_broadcast"
     },
     ComputeType.CAST: {
         "elewise_single_cast", "elewise_single_ceil", "elewise_single_floor",
         "elewise_single_trunc", "elewise_single_round", "elewise_single_round_d",
     },
     ComputeType.BROADCAST: {
-        "unified_broadcast", "broadcast", "unknown_broadcast"
+        "unified_broadcast", "unknown_broadcast"
     },
     ComputeType.REDUCE: {
         "reduce_min", "reduce_max", "reduce_sum",
