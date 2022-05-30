@@ -281,6 +281,15 @@ def softmax_cross_entropy_with_logits(
     shape_features = input_features.get("shape")
     shape_labels = input_labels.get("shape")
 
+    if len(shape_features) == 1 and len(shape_labels) == 2:
+        shape_features = [1, shape_features[0]]
+        input_features['range'] = [[1, 1], input_features['range'][0]]
+        input_features['shape'] = shape_features
+    if len(shape_features) == 2 and len(shape_labels) == 1:
+        shape_labels = [1, shape_labels[0]]
+        input_labels['range'] = [[1, 1], input_labels['range'][0]]
+        input_labels['shape'] = shape_labels
+
     input_features['range'], input_labels['range'] = _process_range(input_features['range'],
                                                                     input_labels['range'])
 
