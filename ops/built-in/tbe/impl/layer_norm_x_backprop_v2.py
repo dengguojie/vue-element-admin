@@ -91,6 +91,12 @@ def _check_dynamic_format(shape_dy, shape_gamma, c_0):
     """
     if len(shape_dy) < 2 or len(shape_gamma) != 1:
         return True
+
+    # Format of NZ is not supported when the size of reduce axis is large than 4096
+    reduce_axis_threshold = 4096
+    if shape_dy[-1] >= reduce_axis_threshold:
+        return True
+
     if shape_dy[-1] % c_0 != 0 or shape_dy[-2] % c_0 != 0 \
             or shape_gamma[-1] % c_0 != 0:
         return True

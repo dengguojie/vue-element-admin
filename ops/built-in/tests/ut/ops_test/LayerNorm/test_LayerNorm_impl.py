@@ -464,6 +464,23 @@ ut_case.add_case("all", {"params": [
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
+def check_format(support_dtype, support_format, format_json):
+    import json
+    obj = json.loads(format_json)
+
+    def check_param_format(param_name):
+        result_dtype = set(obj.get(param_name).get("dtype").split(","))
+        if result_dtype != support_dtype:
+            raise RuntimeError("dtype of {} expected:{} actual:{}".format(param_name, support_dtype, result_dtype))
+
+        result_format = set(obj.get(param_name).get("format").split(","))
+        if result_format != support_format:
+            raise RuntimeError(
+                "format of {} expected:{} actual:{}".format(param_name, support_format, result_format))
+
+    check_param_format("input0")
+    check_param_format("output0")
+
 def test_op_select_format(test_arg):
     input_x = {"shape": (0,), "dtype": "float32", "format": "NCHW", "ori_shape": (0,),
                "ori_format": "NCHW", "param_type": "input"}
@@ -507,6 +524,26 @@ def test_op_select_format(test_arg):
         assert False
     except RuntimeError as e:
         pass
+
+    input_x = {"shape": (5120, 16384), "dtype": "float32", "format": "NCHW", "ori_shape": (5120, 16384),
+               "ori_format": "NCHW",
+               "param_type": "input"}
+    input_gamma = {"shape": (16384,), "dtype": "float32", "format": "NCHW", "ori_shape": (16384,), "ori_format": "NCHW",
+                   "param_type": "input"}
+    input_beta = {"shape": (16384,), "dtype": "float32", "format": "NCHW", "ori_shape": (16384,), "ori_format": "NCHW",
+                  "param_type": "input"}
+    output_y = {"shape": (5120, 16384), "dtype": "float32", "format": "NCHW", "ori_shape": (5120, 16384),
+                "ori_format": "NCHW",
+                "param_type": "output"}
+    output_mean = {"shape": (5120,), "dtype": "float32", "format": "NCHW", "ori_shape": (5120,), "ori_format": "NCHW",
+                   "param_type": "output"}
+    output_variance = {"shape": (5120,), "dtype": "float32", "format": "NCHW", "ori_shape": (5120,), "ori_format": "NCHW",
+                       "param_type": "output"}
+    res = op_select_format(input_x, input_gamma, input_beta, output_y, output_mean, output_variance,
+                           begin_norm_axis, begin_params_axis)
+    expect_dtype = {'float16', 'float16', 'float16', 'float', 'float', 'float'}
+    expect_format = {"NCHW", "NHWC", "ND", "NCHW", "NHWC", "ND"}
+    check_format(expect_dtype, expect_format, res)
 
 def test_get_op_support_info_000(test_arg):
     """

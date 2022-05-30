@@ -103,6 +103,10 @@ def _division_sixteen(shape, begin_norm_axis):
             error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x",
                                                                error_detail)
         return False
+    # Format of NZ is not supported when the size of reduce axis is large than 4096
+    reduce_axis_threshold = 4096
+    if shape[-1] >= reduce_axis_threshold:
+        return False
 
     if shape[-1] == 0 or shape[-2] == 0:
         error_detail = "value of shape_x is illegal"

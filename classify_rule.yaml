@@ -1379,6 +1379,8 @@ vector_B:
       - ops/built-in/tbe/impl/instance_norm.py
       - ops/built-in/tbe/impl/l2_loss.py
       - ops/built-in/tbe/impl/masked_fill_range.py
+      - ops/built-in/tbe/impl/layer_norm.py
+      - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/matrix_diag_part_d.py
       - ops/built-in/tbe/impl/minimum_grad.py
       - ops/built-in/tbe/impl/not_equal.py
@@ -2532,7 +2534,6 @@ unkown:
       - ops/built-in/tbe/impl/avg_pool_grad_d.py
       - ops/built-in/tbe/impl/l2_normalize_grad.py
       - ops/built-in/tbe/impl/log_space_d.py
-      - ops/built-in/tbe/impl/layer_norm.py
       - ops/built-in/tbe/impl/load_to_l1.py
       - ops/built-in/tbe/impl/batch_norm.py
       - ops/built-in/tbe/impl/pass_through.py
@@ -2764,7 +2765,6 @@ unkown:
       - ops/built-in/tbe/impl/batch_norm_grad.py
       - ops/built-in/tbe/impl/aipp_dynamic.py
       - ops/built-in/tbe/impl/log_sigmoid.py
-      - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/asinh_grad.py
       - ops/built-in/tbe/impl/topk.py
       - ops/built-in/tbe/impl/floor.py
