@@ -20,6 +20,7 @@ export ASCEND_GLOBAL_LOG_LEVEL=3
 OPP_RUN_PATH=$1
 OUTPUT_PATH=$2
 SOC_VERSION=$3
+CCACHE_ARGS=$4
 _CURR_PATH=$(cd $( dirname "$BASE_SOURCE[0]" ) && pwd)
 ROOT_DEFAULT_PATH=/usr/local/Ascend/latest
 USER_DEFAULT_PATH=${HOME}/Ascend/latest
@@ -64,6 +65,20 @@ else
     done
 
 fi
+
+# gen ccec
+gen_ccec(){
+  CCEC_PATH=`which ccec`
+  $(> ccec)
+  echo "#!/bin/bash" >> ccec
+  echo "ccache_args=""\"""${CCACHE_ARGS} ${CCEC_PATH}""\"" >> ccec
+  echo "args=""$""@" >> ccec
+  echo "eval ""\"""$""{ccache_args} ""$""args""\"" >> ccec
+  chmod +x ccec
+}
+
+gen_ccec
+export PATH=${_CURR_PATH}:$PATH
 
 echo "**************Start to Generate Opc Info*****************"
 binary_csv_file="$_CURR_PATH/../binary_config/binary_config.csv"
