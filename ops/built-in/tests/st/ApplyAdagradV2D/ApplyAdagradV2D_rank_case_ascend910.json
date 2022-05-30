@@ -1,0 +1,139 @@
+[
+  {
+    "case_name": "ApplyAdagradV2D_dynamic_shape_rank_apply_adagradv2_d_2_ascend910a",
+    "calc_expect_func_file":"test_apply_adagradv2_d_golden.py:calc_expect_func",
+    "op": "ApplyAdagradV2D",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "name": "var",
+        "type": [
+          "float32"
+        ],
+        "shape": [-2],
+        "data_distribute": [
+          "uniform"
+        ],
+        "typical_shape": [
+          16,
+          16,
+          16,
+          16
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [-2],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "accum",
+        "typical_shape": [
+          16,
+          16,
+          16,
+          16
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "lr"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "grad",
+        "typical_shape": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "name": "out_var",
+        "typical_shape": [
+          16,
+          16,
+          16,
+          16
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "name": "out_accum",
+        "typical_shape": [
+          16,
+          16,
+          16,
+          16
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      },
+      {
+        "name": "update_slots",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  }
+]

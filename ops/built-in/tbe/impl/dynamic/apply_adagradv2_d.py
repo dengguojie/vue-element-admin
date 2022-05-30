@@ -25,6 +25,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class ApplyAdagradV2DAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_EPSILON = OpAttr(0, "epsilon", "Float")
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
@@ -85,7 +94,8 @@ def apply_adagradv2_d_compute(var,
     lr_brc = tbe.broadcast(lr, grad.shape)
     lr_grad = tbe.vmul(grad, lr_brc)
     sqrt_accum = tbe.vsqrt(out_accum)
-    sqrt_accum_epsilon = tbe.vadds(sqrt_accum, tvm.const(epsilon, input_dtype))
+    scalar = get_attr_by_cls(epsilon, ApplyAdagradV2DAttrInfo.ATTR_EPSILON, input_dtype)
+    sqrt_accum_epsilon = tbe.vadds(sqrt_accum, scalar)
     update = tbe.vdiv(lr_grad, sqrt_accum_epsilon)
     out_var = tbe.vsub(var, update)
 
@@ -96,7 +106,7 @@ def apply_adagradv2_d_compute(var,
 @register_operator("ApplyAdagradV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_adagradv2_d(var,
                       accum,
                       lr,
