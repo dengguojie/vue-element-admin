@@ -29,7 +29,7 @@
 using namespace std;
 
 namespace {
-const char *kTransData = "TransData";
+const char *const kTransData = "TransData";
 constexpr int64_t kDimN0 = 16;
 constexpr int64_t kCubeN = 16;
 constexpr int64_t kGroupNum = 1;
@@ -187,8 +187,8 @@ uint32_t TransDataCpuKernel::NewCompute(const CpuKernelContext &ctx) {
       DTypeStr(input_data_type).c_str(), DTypeStr(output_data_type).c_str());
   const formats::TransArgs trans_args {
       input_data,
-      static_cast<Format>(GetPrimaryFormat(input_format)),
-      static_cast<Format>(GetPrimaryFormat(output_format)),
+      static_cast<Format>(GetPrimaryFormat(static_cast<int32_t>(input_format))),
+      static_cast<Format>(GetPrimaryFormat(static_cast<int32_t>(output_format))),
       input_dims,
       output_dims,
       input_data_type,
@@ -254,7 +254,7 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   const int64_t cube_k = dt == DT_INT8 ? 32 : 16;
   auto input_shape = input_tensor->GetTensorShape();
   auto ge_input_format = input_shape->GetFormat();
-  int32_t input_format = GetPrimaryFormat(ge_input_format);
+  int32_t input_format = GetPrimaryFormat(static_cast<int32_t>(ge_input_format));
   std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
   int64_t d_dim = 0;
@@ -391,8 +391,8 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
                        "%s get output_tensor failed", kTransData);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
   if (!IsOriginSupportFormatTransfer(
-          static_cast<Format>(GetPrimaryFormat(input_format)),
-          static_cast<Format>(GetPrimaryFormat(output_format)))) {
+      static_cast<Format>(GetPrimaryFormat(static_cast<int32_t>(input_format))),
+      static_cast<Format>(GetPrimaryFormat(static_cast<int32_t>(output_format))))) {
     return NewCompute(ctx);
   }
   if ((input_format == FORMAT_HWCN) &&
@@ -417,7 +417,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
     }
     return KERNEL_STATUS_OK;
   }
-  int32_t primary_out_put_format = GetPrimaryFormat(output_format);
+  int32_t primary_out_put_format = GetPrimaryFormat(static_cast<int32_t>(output_format));
   if ((primary_out_put_format != FORMAT_FRACTAL_Z) &&
       (primary_out_put_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s unsupport output_format [%d]", kTransData,

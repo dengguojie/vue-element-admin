@@ -307,12 +307,12 @@ uint32_t FormatTransferFractalZ::TransShape(
                                         groups);
   }
   if ((src_format == FORMAT_HWCN) &&
-      (GetPrimaryFormat(dst_format) == FORMAT_FRACTAL_Z)) {
+      (GetPrimaryFormat(static_cast<int32_t>(dst_format)) == FORMAT_FRACTAL_Z)) {
     return TransShapeHwcnToFzWithGroups(src_shape, data_type, dst_shape,
                                         groups);
   }
   if (src_format == FORMAT_NCHW &&
-      GetPrimaryFormat(dst_format) == FORMAT_FRACTAL_Z) {
+      GetPrimaryFormat(static_cast<int32_t>(dst_format)) == FORMAT_FRACTAL_Z) {
     return TransShapeNchwToFzWithGroups(src_shape, data_type, dst_shape,
                                         groups);
   }

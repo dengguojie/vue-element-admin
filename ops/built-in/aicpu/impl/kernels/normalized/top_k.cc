@@ -30,7 +30,7 @@
 #include "status.h"
 
 namespace {
-const char *TOPK = "TopK";
+const char *const TOPK = "TopK";
 
 template <typename T>
 struct ValueIndex {

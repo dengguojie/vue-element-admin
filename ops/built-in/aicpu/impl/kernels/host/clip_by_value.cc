@@ -29,7 +29,7 @@ const std::uint32_t inputIdx0 {0u};
 const std::uint32_t inputIdx1 {1u};
 const std::uint32_t inputIdx2 {2u};
 const std::uint32_t outputIdx0 {0u};
-const char *ClipByValue = "ClipByValue";
+const char *const ClipByValue = "ClipByValue";
 }
 namespace aicpu {
 namespace detail {

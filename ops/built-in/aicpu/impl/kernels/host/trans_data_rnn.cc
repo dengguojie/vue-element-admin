@@ -25,7 +25,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *TRANS_DATA_RNN = "TransDataRNN";
+const char *const TRANS_DATA_RNN = "TransDataRNN";
 constexpr int32_t ALIGN_16 = 16;
 constexpr int32_t SCOPE_16 = 16;
 }

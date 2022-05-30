@@ -25,7 +25,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kGemm = "GEMM";
+const char *const kGemm = "GEMM";
 const uint32_t kInputNum = 5;
 const uint32_t kOutputNum = 1;
 }  // namespace

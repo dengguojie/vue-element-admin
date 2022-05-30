@@ -26,7 +26,7 @@
 using namespace std;
 
 namespace {
-const char *kMatmul = "MatMul";
+const char *const kMatmul = "MatMul";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 1;
 }  // namespace
