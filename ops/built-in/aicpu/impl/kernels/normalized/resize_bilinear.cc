@@ -25,7 +25,7 @@
 namespace {
 constexpr uint32_t kInputNum = 1;
 constexpr uint32_t kOutputNum = 1;
-const char *kResizeBilinear = "ResizeBilinear";
+const char *const kResizeBilinear = "ResizeBilinear";
 }  // namespace
 
 namespace aicpu {
@@ -53,7 +53,7 @@ void ComputeInterpolationWeights(const size_t out_size, const size_t in_size,
   interpolation[out_size].lower = 0;
   interpolation[out_size].upper = 0;
   for (size_t i = 0; i <= out_size - 1; ++i) {
-    const float in = ScaleGrid(i, scale);
+    const float in = static_cast<float>(ScaleGrid(i, scale));
     const float in_f = std::floor(in);
     interpolation[i].lower =
         std::max(static_cast<size_t>(in_f), static_cast<size_t>(0));
@@ -82,26 +82,26 @@ uint32_t ResizeBilinearCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   align_corners_ = pattr_align_corners->GetBool();
   dtype_ = input_tensor->GetDataType();
 
-  size_t in_height = shape_[2];
-  size_t in_width = shape_[3];
-  size_t out_height = size_[2];
-  size_t out_width = size_[3];
+  size_t in_height = static_cast<size_t>(shape_[2]);
+  size_t in_width = static_cast<size_t>(shape_[3]);
+  size_t out_height = static_cast<size_t>(size_[2]);
+  size_t out_width = static_cast<size_t>(size_[3]);
   height_scale_ = Scaling(in_height, out_height, align_corners_);
   width_scale_ = Scaling(in_width, out_width, align_corners_);
   return KERNEL_STATUS_OK;
 }
 
 template <typename T1, typename T2>
-uint32_t ResizeBilinearCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t ResizeBilinearCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input_addr = reinterpret_cast<T1 *>(ctx.Input(0)->GetData());
   auto output_addr = reinterpret_cast<T2 *>(ctx.Output(0)->GetData());
 
-  size_t batch_size = shape_[0];
-  size_t channel = shape_[1];
-  size_t in_height = shape_[2];
-  size_t in_width = shape_[3];
-  size_t out_height = size_[2];
-  size_t out_width = size_[3];
+  size_t batch_size = static_cast<size_t>(shape_[0]);
+  size_t channel = static_cast<size_t>(shape_[1]);
+  size_t in_height = static_cast<size_t>(shape_[2]);
+  size_t in_width = static_cast<size_t>(shape_[3]);
+  size_t out_height = static_cast<size_t>(size_[2]);
+  size_t out_width = static_cast<size_t>(size_[3]);
   size_t out_hw_size = out_height * out_width;
   size_t in_hw_size = in_height * in_width;
   size_t bhwc_size = in_hw_size * channel * batch_size;

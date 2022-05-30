@@ -48,7 +48,7 @@ class ResizeBilinearCpuKernel : public CpuKernel {
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
 
   template <typename T1, typename T2>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
 
   std::vector<int64_t> size_;
   std::vector<int64_t> shape_;

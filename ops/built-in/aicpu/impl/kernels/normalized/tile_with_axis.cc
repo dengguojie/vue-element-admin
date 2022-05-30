@@ -20,7 +20,7 @@ uint32_t TileWithAxisCpuKernel::TileComputeByAxis(const CpuKernelContext &ctx) {
   Tensor *input = ctx.Input(kFirstInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
 
-  int32_t axis = 1;
+  int64_t axis = 1;
   AttrValue *axis_attr = ctx.GetAttr("axis");
   if (axis_attr != nullptr) {
     axis = axis_attr->GetInt();
@@ -131,9 +131,9 @@ uint32_t TileWithAxisCpuKernel::TileParaCheck(const CpuKernelContext &ctx) const
     KERNEL_LOG_ERROR("TileWithAxis tiles is null.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  int32_t tiles = tiles_attr->GetInt();
+  int64_t tiles = tiles_attr->GetInt();
   if (tiles <= 0) {
-    KERNEL_LOG_ERROR("TileWithAxis tiles[%d] is valid.", tiles);
+    KERNEL_LOG_ERROR("TileWithAxis tiles[%ld] is valid.", tiles);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -141,7 +141,7 @@ uint32_t TileWithAxisCpuKernel::TileParaCheck(const CpuKernelContext &ctx) const
   std::vector<int64_t> shape_input = input->GetTensorShape()->GetDimSizes();
   std::vector<int64_t> shape_output = output->GetTensorShape()->GetDimSizes();
   if (shape_output[axis] != shape_input[axis] * tiles) {
-    KERNEL_LOG_ERROR("TileWithAxis output_shape[%d] is valid.", axis);
+    KERNEL_LOG_ERROR("TileWithAxis output_shape[%ld] is valid.", axis);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 

@@ -27,7 +27,7 @@
 namespace {
 constexpr uint32_t kInputNum = 2;
 constexpr uint32_t kOutputNum = 1;
-const char *kResizeBilinearGrad = "ResizeBilinearGrad";
+const char *const kResizeBilinearGrad = "ResizeBilinearGrad";
 constexpr uint32_t kIndex_batch = 0;
 constexpr uint32_t kIndex_channle = 1;
 constexpr uint32_t kIndex_height = 2;
@@ -59,17 +59,17 @@ uint32_t ResizeBilinearGradCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((size_dtype == dtype_), KERNEL_STATUS_PARAM_INVALID,
                      "The type of input[0] and input[1] must be the same");
 
-  size_t in_height = shape_[kIndex_height];
-  size_t in_width = shape_[kIndex_width];
-  size_t out_height = size_[kIndex_height];
-  size_t out_width = size_[kIndex_width];
+  size_t in_height = static_cast<size_t>(shape_[kIndex_height]);
+  size_t in_width = static_cast<size_t>(shape_[kIndex_width]);
+  size_t out_height = static_cast<size_t>(size_[kIndex_height]);
+  size_t out_width = static_cast<size_t>(size_[kIndex_width]);
   height_scale_ = Scaling(out_height, in_height, align_corners_);
   width_scale_ = Scaling(out_width, in_width, align_corners_);
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t ResizeBilinearGradCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t ResizeBilinearGradCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto dloss_addr = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_addr = reinterpret_cast<T *>(ctx.Output(0)->GetData());
 
@@ -78,12 +78,12 @@ uint32_t ResizeBilinearGradCpuKernel::DoCompute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((ret == EOK), ret,
                      "Output buffer memset failed, ret: [%d].", ret);
 
-  size_t batch_size = shape_[kIndex_batch];
-  size_t channel = shape_[kIndex_channle];
-  size_t in_height = shape_[kIndex_height];
-  size_t in_width = shape_[kIndex_width];
-  size_t out_height = size_[kIndex_height];
-  size_t out_width = size_[kIndex_width];
+  size_t batch_size = static_cast<size_t>(shape_[kIndex_batch]);
+  size_t channel = static_cast<size_t>(shape_[kIndex_channle]);
+  size_t in_height = static_cast<size_t>(shape_[kIndex_height]);
+  size_t in_width = static_cast<size_t>(shape_[kIndex_width]);
+  size_t out_height = static_cast<size_t>(size_[kIndex_height]);
+  size_t out_width = static_cast<size_t>(size_[kIndex_width]);
   size_t out_hw_size = out_height * out_width;
   size_t in_hw_size = in_height * in_width;
 

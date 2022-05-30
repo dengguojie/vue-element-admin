@@ -25,7 +25,7 @@
 namespace {
 constexpr uint32_t kReshapeInputNum = 2;
 constexpr uint32_t kReshapeOutputNum = 1;
-const char *kReshape = "Reshape";
+const char *const kReshape = "Reshape";
 }
 
 namespace aicpu {
@@ -41,8 +41,8 @@ uint32_t ReshapeCpuKernel::Compute(CpuKernelContext &ctx) {
   void *output_data = ctx.Output(0)->GetData();
   KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get output_data[0] failed.", kReshape);
-  int64_t input_size = ctx.Input(0)->GetDataSize();
-  int64_t output_size = ctx.Output(0)->GetDataSize();
+  int64_t input_size = static_cast<int64_t>(ctx.Input(0)->GetDataSize());
+  int64_t output_size = static_cast<int64_t>(ctx.Output(0)->GetDataSize());
   KERNEL_CHECK_FALSE((output_size == input_size), KERNEL_STATUS_PARAM_INVALID,
                      "[%s] output size [%ld] not match input size [%ld].",
                      kReshape, output_size, input_size);
