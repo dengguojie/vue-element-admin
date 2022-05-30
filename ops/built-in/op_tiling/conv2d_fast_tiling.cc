@@ -185,15 +185,19 @@ float FastTiling::GetBlockDimCompTime(const Tiling& tiling,
     // compute time per core = datasize / cube_bandwidth + Featuremap prefusion cost + Featuremap postfusion cost
     auto cout = static_cast<uint32_t>(shapeInfo_.wShape5D.at(0));
     auto currentCoreNum = tiling.batchDim * tiling.nDim * tiling.mDim;
-    estComputeTime = blockDimSize.wSize * blockDimSize.oSize / cout / currentCoreNum / hardware_.cubeBandwidth +
+    estComputeTime = static_cast<uint64_t>(blockDimSize.wSize) * static_cast<uint64_t>(blockDimSize.oSize) /
+        cout / currentCoreNum / hardware_.cubeBandwidth +
         dataPerCore.iSize / hardware_.vectorBandwidth * opInfo_.preFusionVectorUtilize +
         dataPerCore.wSize / hardware_.vectorBandwidth * opInfo_.postFusionVectorUtilize;
     // meomry access time(cannot parallel as all memory access among cores share a common bus)
     // the summation of mte1, mte2, mte 3 time
-    float mte2Inputs = dataPerCore.iSize * tiling.nDim / hardware_.l2Rate;
-    float mte2Weights = dataPerCore.wSize * tiling.batchDim * tiling.mDim / hardware_.l2Rate;
+    float mte2Inputs = static_cast<uint64_t>(dataPerCore.iSize) *
+                       tiling.nDim * tiling.batchDim * tiling.mDim * tiling.groupDim / hardware_.l2Rate;
+    float mte2Weights = static_cast<uint64_t>(dataPerCore.wSize) *
+                        tiling.nDim * tiling.batchDim * tiling.mDim * tiling.groupDim / hardware_.l2Rate;
     float mte2 = mte2Inputs + mte2Weights;
-    float mte3 = dataPerCore.oSize / hardware_.ubToL2Rate;
+    float mte3 = dataPerCore.oSize * tiling.nDim * tiling.batchDim * tiling.mDim * tiling.groupDim /
+                 hardware_.ubToL2Rate;
     float mte1 = dataPerCore.iSize / hardware_.l1ToL0aRate + dataPerCore.wSize / hardware_.l1ToL0bRate +
                     dataPerCore.oSize * byteForDtype_.at(opInfo_.madType) / byteForDtype_.at(opInfo_.cType) /
                     hardware_.l0cToUbRate;
@@ -392,7 +396,7 @@ void FastTiling::UpdateL1Data()
     }
     l1Data_.fmCurrent = kAL1 * CUBE_UNIT_16 * al1HixWi * byteForDtype_.at(opInfo_.aType);
     l1Data_.filter_current = kBL1 * getCi0() * opInfo_.kh * opInfo_.kw * nBL1 * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.bType);
-    l1Data_.l1_current = l1Data_.fmCurrent + l1Data_.result_current;
+    l1Data_.l1_current = l1Data_.fmCurrent + l1Data_.filter_current;
 }
 
 uint32_t FastTiling::getCi0()
@@ -482,9 +486,9 @@ bool FastTiling::GetL1Tiling(Tiling &tiling)
     // initialize
     GetL1TilingRange(tiling);
 
-    float nBL1scale = (float)hardware_.l0cToUbRate / (float)hardware_.l2Rate;
-    float mAL1scale = (float)hardware_.l0cToUbRate / (float)hardware_.l2Rate;
-    float kAL1scale = (float)hardware_.l2Rate / (float)hardware_.l0cToUbRate;
+    float nBL1scale = static_cast<float>(hardware_.l0cToUbRate) / static_cast<float>(hardware_.l2Rate);
+    float mAL1scale = static_cast<float>(hardware_.l0cToUbRate) / static_cast<float>(hardware_.l2Rate);
+    float kAL1scale = static_cast<float>(hardware_.l2Rate) / static_cast<float>(hardware_.l0cToUbRate);
     uint32_t pre_mAL1_index = -1;
     uint32_t pre_nBL1_index = -1;
     uint32_t pre_kAL1_index = -1;
@@ -511,9 +515,6 @@ bool FastTiling::GetL1Tiling(Tiling &tiling)
         AddL1Data(nBL1number, mAL1number, kAL1number);
         UpdateL1Data();
     }
-    uint32_t kBL1 = tilingRangeL1_.kAL1.at(l1Data_.kBL1_index);
-    uint32_t nBL1 = tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
-    l1Data_.filter_current = kBL1 * getCi0() * opInfo_.kh * opInfo_.kw * nBL1 * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.bType);
     // assignment
     AssignmentL1(tiling);
     return true;
@@ -522,7 +523,8 @@ bool FastTiling::GetL1Tiling(Tiling &tiling)
 void FastTiling::AssignmentL1(Tiling& tiling) {
     if (tilingRangeL1_.kAL1.at(l1Data_.kBL1_index) == shapeInfo_.iShape5D.at(1) &&
         tilingRangeL1_.nBL1.at(l1Data_.nBL1_index) == shapeInfo_.oShape5D.at(1)) {
-        if (l1Data_.filter_current <= hardware_.l0bSize / TWO && tiling.kAL1 == shapeInfo_.iShape5D.at(1)) {
+        if (l1Data_.filter_current <= hardware_.l0bSize / TWO &&
+            tilingRangeL1_.kAL1.at(l1Data_.kAL1_index)  == shapeInfo_.iShape5D.at(1)) {
         // filter full load to l0B
             tiling.nBL1 = 0;
             tiling.kBL1 = 0;
@@ -571,8 +573,10 @@ void FastTiling::UpdateL0Data()
     uint32_t nL0 = tilingRangeL0_.nL0.at(l0Data_.nL0Index);
 
     // batch and group need to consider in future.
-    l0Data_.l0ACurrent = kL0 * getCi0() * opInfo_.kh * opInfo_.kw * mL0 * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.aType);
-    l0Data_.l0BCurrent = kL0 * getCi0() * opInfo_.kh * opInfo_.kw * nL0 * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.bType);
+    l0Data_.l0ACurrent = kL0 * getCi0() * opInfo_.kh * opInfo_.kw * mL0 *
+                         CUBE_UNIT_16 * byteForDtype_.at(opInfo_.aType);
+    l0Data_.l0BCurrent = kL0 * getCi0() * opInfo_.kh * opInfo_.kw * nL0 *
+                         CUBE_UNIT_16 * byteForDtype_.at(opInfo_.bType);
     l0Data_.l0CCurrent = mL0 * nL0 * CUBE_UNIT_16 * getCi0() *  byteForDtype_.at(opInfo_.cType);
 }
 
