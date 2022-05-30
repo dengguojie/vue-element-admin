@@ -25,24 +25,24 @@ namespace {
 const char* const kRound = "Round";
 template <typename T>
 const T ScalarRound(const T &x) {
-  bool isInt = Eigen::NumTraits<T>::IsInteger;
+  const bool isInt = Eigen::NumTraits<T>::IsInteger;
   if (isInt) {
     return x;
   }
 
-  T round_val = Eigen::numext::floor(x);
-  const T fraction = x - round_val;
+  T roundval = Eigen::numext::floor(x);
+  const T fraction = x - roundval;
   if (fraction > T(.5)) {
-    round_val += T(1.0);
+    roundval += T(1.0);
   } else if (fraction == T(.5)) {
     const T nearest_even_int =
-        round_val - T(2) * Eigen::numext::floor(T(.5) * x);
+        roundval - T(2) * Eigen::numext::floor(T(.5) * x);
     bool is_odd = (nearest_even_int == T(1));
     if (is_odd) {
-      round_val += T(1);
+      roundval += T(1);
     }
   }
-  return round_val;
+  return roundval;
 }
 
 template <typename T>
@@ -54,8 +54,8 @@ void RangeRound(int64_t start, int64_t end, const T *input, T *out) {
 }
 
 namespace aicpu {
-bool RoundCpuKernel::CheckSupported(DataType input_type) const {
-  switch (input_type) {
+bool RoundCpuKernel::CheckSupported(DataType inputtype) const {
+  switch (inputtype) {
     case DT_FLOAT16:
     case DT_FLOAT:
     case DT_DOUBLE:
@@ -63,60 +63,55 @@ bool RoundCpuKernel::CheckSupported(DataType input_type) const {
     case DT_INT64:
       return true;
     default:
-      KERNEL_LOG_ERROR("Unsupported input data type[%d]", input_type);
+      KERNEL_LOG_ERROR("Unsupported input data type[%d]", inputtype);
       return false;
   }
 }
 
 uint32_t RoundCpuKernel::Compute(CpuKernelContext &ctx) {
   Tensor *input_tensor = ctx.Input(0);
-  KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input[0] failed")
+  KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID, "Get input[0] failed")
   Tensor *output_tensor = ctx.Output(0);
-  KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output[0] failed")
-  auto input_data = input_tensor->GetData();
-  KERNEL_CHECK_NULLPTR(input_data, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input[0] data failed")
-  auto output_data = output_tensor->GetData();
-  KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output[0] data failed")
+  KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID, "Get output[0] failed")
+  auto inputdata = input_tensor->GetData();
+  KERNEL_CHECK_NULLPTR(inputdata, KERNEL_STATUS_PARAM_INVALID, "Get input[0] data failed")
+  auto outputdata = output_tensor->GetData();
+  KERNEL_CHECK_NULLPTR(outputdata, KERNEL_STATUS_PARAM_INVALID, "Get output[0] data failed")
 
-  DataType input_type = input_tensor->GetDataType();
-  if (!CheckSupported(input_type)) {
+  DataType inputtype = input_tensor->GetDataType();
+  if (!CheckSupported(inputtype)) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   auto shardCopy = [&](int64_t start, int64_t end) {
-    switch (input_type) {
+    switch (inputtype) {
       case DT_FLOAT16:
-        RangeRound(start, end, static_cast<Eigen::half *>(input_data),
-                   static_cast<Eigen::half *>(output_data));
+        RangeRound(start, end, static_cast<Eigen::half *>(inputdata),
+                   static_cast<Eigen::half *>(outputdata));
         break;
       case DT_FLOAT:
-        RangeRound(start, end, static_cast<float *>(input_data),
-                   static_cast<float *>(output_data));
+        RangeRound(start, end, static_cast<float *>(inputdata),
+                   static_cast<float *>(outputdata));
         break;
       case DT_DOUBLE:
-        RangeRound(start, end, static_cast<double *>(input_data),
-                   static_cast<double *>(output_data));
+        RangeRound(start, end, static_cast<double *>(inputdata),
+                   static_cast<double *>(outputdata));
         break;
       case DT_INT32:
-        RangeRound(start, end, static_cast<int32_t *>(input_data),
-                   static_cast<int32_t *>(output_data));
+        RangeRound(start, end, static_cast<int32_t *>(inputdata),
+                   static_cast<int32_t *>(outputdata));
         break;
       case DT_INT64:
-        RangeRound(start, end, static_cast<int64_t *>(input_data),
-                   static_cast<int64_t *>(output_data));
+        RangeRound(start, end, static_cast<int64_t *>(inputdata),
+                   static_cast<int64_t *>(outputdata));
         break;
       default:
-        KERNEL_LOG_ERROR("Unsupported input data type[%d]", input_type);
+        KERNEL_LOG_ERROR("Unsupported input data type[%d]", inputtype);
         return;
     }
   };
 
-  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, input_tensor->NumElements(),
-                                             1, shardCopy);
+  uint32_t ret = CpuKernelUtils::ParallelFor(ctx, input_tensor->NumElements(), 1, shardCopy);
   if (ret != KERNEL_STATUS_OK) {
     return ret;
   }

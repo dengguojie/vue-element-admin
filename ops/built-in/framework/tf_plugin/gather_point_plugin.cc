@@ -49,11 +49,18 @@ Status ParseParamsGatherPoint(const Message *op_src, ge::Operator &op_dest)  {
   // 2.set original_type
   ge::AttrUtils::SetStr(opDesc, "original_type", "GatherPoint");
   // 3.set attr if needed
+  op_dest.SetAttr("name", node_src->name());
 
   return SUCCESS;
 }
 
 static Status ParseOpToGraphGatherPoint(const ge::Operator &op, ge::Graph &graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get name from op failed");
+    return FAILED;
+  }
+
   ge::Operator data_0 = op::Data("inp").set_attr_index(0);
   ge::Operator data_1 = op::Data("idx").set_attr_index(1);
   int32_t axis_val = 1;
@@ -62,7 +69,7 @@ static Status ParseOpToGraphGatherPoint(const ge::Operator &op, ge::Graph &graph
   ge::Tensor const_value(tensor1_desc, (uint8_t*)&axis_val, sizeof(axis_val));
   auto const_op = op::Const("const_data").set_attr_value(const_value);
   int batch_dims = 1;
-  auto GatherV2 = op::GatherV2().set_input_x(data_0).set_input_indices(data_1)
+  auto GatherV2 = op::GatherV2(ori_name).set_input_x(data_0).set_input_indices(data_1)
                   .set_input_axis(const_op).set_attr_batch_dims(batch_dims);
   std::vector<ge::Operator> inputs{data_0, data_1, const_op};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;

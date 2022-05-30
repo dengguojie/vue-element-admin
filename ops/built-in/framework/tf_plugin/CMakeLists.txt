@@ -207,6 +207,10 @@ set(_tf_plugins
   gather_nd_plugin.cc
   gather_plugin.cc
   gather_v2_plugin.cc
+  gather_point_plugin.cc
+  gather_point_grad_plugin.cc
+  group_point_plugin.cc
+  group_point_grad_plugin.cc
   gelu_grad_plugin.cc
   gelu_plugin.cc
   get_next_from_queue_plugin.cc

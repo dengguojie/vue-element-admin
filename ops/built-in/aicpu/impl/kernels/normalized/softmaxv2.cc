@@ -152,10 +152,8 @@ inline std::uint32_t ComputeSoftmaxV2(const CpuKernelContext &ctx) {
 
 inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
   if (ctx.Input(0)->GetDataType() != ctx.Output(0)->GetDataType()) {
-    KERNEL_LOG_ERROR(
-        "The data type of the input [%s] need be the same as the ouput [%s].",
-        DTypeStr(ctx.Input(0)->GetDataType()).c_str(),
-        DTypeStr(ctx.Output(0)->GetDataType()).c_str());
+    KERNEL_LOG_ERROR("The data type of the input [%s] need be the same as the ouput [%s].",
+        DTypeStr(ctx.Input(0)->GetDataType()).c_str(), DTypeStr(ctx.Output(0)->GetDataType()).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   if (ctx.Input(0)->GetData() == nullptr) {
@@ -166,31 +164,24 @@ inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("Get output data failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  std::vector<int64_t> input_dims =
-      ctx.Input(0)->GetTensorShape()->GetDimSizes();
-  std::vector<int64_t> output_dims =
-      ctx.Output(0)->GetTensorShape()->GetDimSizes();
+  std::vector<int64_t> input_dims = ctx.Input(0)->GetTensorShape()->GetDimSizes();
+  std::vector<int64_t> output_dims = ctx.Output(0)->GetTensorShape()->GetDimSizes();
   if (input_dims.size() != output_dims.size()) {
-    KERNEL_LOG_ERROR(
-        "The data dim of the input size [%llu] need be the same as the output "
-        "size [%llu].",
-        input_dims.size(), output_dims.size());
+    KERNEL_LOG_ERROR("The data dim of the input size [%llu] need be the same as the output "
+        "size [%llu].", input_dims.size(), output_dims.size());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   for (size_t index = 0; index < input_dims.size(); index++) {
     if (input_dims[index] != output_dims[index]) {
-      KERNEL_LOG_ERROR(
-          "The input data dim[%llu]=%lld need be the same as the output "
-          "dim[%llu]=%lld.",
-          index, input_dims[index], index, output_dims[index]);
+      KERNEL_LOG_ERROR("The input data dim[%llu]=%lld need be the same as the output "
+          "dim[%llu]=%lld.", index, input_dims[index], index, output_dims[index]);
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }
   if (ctx.GetAttr("axes") != nullptr) {
     std::vector<std::int64_t> axes = ctx.GetAttr("axes")->GetListInt();
     if (axes.size() != 1) {
-      KERNEL_LOG_ERROR("The Attributes axes size is %lld, but size must be 1.",
-                       axes.size());
+      KERNEL_LOG_ERROR("The Attributes axes size is %lld, but size must be 1.", axes.size());
       return KERNEL_STATUS_PARAM_INVALID;
     }
     auto input = ctx.Input(0)->GetTensorShape()->GetDimSizes();
@@ -198,9 +189,7 @@ inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
     int64_t size = static_cast<int64_t>(input.size());
     dim = (axes[0] > 0) ? axes[0] : axes[0] + size;
     if ((dim < 0 || dim >= size) && axes[0] >= size) {
-      KERNEL_LOG_ERROR(
-          "The Attributes axes[0] dim=%ld is out of range of input size %ld.",
-          axes[0], size);
+      KERNEL_LOG_ERROR("The Attributes axes[0] dim=%ld is out of range of input size %ld.", axes[0], size);
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }
@@ -223,8 +212,7 @@ std::uint32_t SoftmaxV2Compute(const CpuKernelContext &ctx) {
     case DT_DOUBLE:
       return ComputeSoftmaxV2<std::double_t>(ctx);
     default:
-      KERNEL_LOG_ERROR("Unsupported input data type [%s].",
-                       DTypeStr(input_type).c_str());
+      KERNEL_LOG_ERROR("Unsupported input data type [%s].", DTypeStr(input_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 }

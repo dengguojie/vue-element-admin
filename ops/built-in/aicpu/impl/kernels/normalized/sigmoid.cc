@@ -48,10 +48,8 @@ constexpr int64_t kParallelDataNums = 16 * 1024;
 
 namespace aicpu {
 uint32_t SigmoidCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
-                      "[%s] check input and output failed.", kSigmoid);
-  KERNEL_HANDLE_ERROR(SigmoidCheck(ctx),
-                      "[%s] check params failed.", kSigmoid);
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum), "[%s] check input and output failed.", kSigmoid);
+  KERNEL_HANDLE_ERROR(SigmoidCheck(ctx), "[%s] check params failed.", kSigmoid);
   DataType data_type = ctx.Input(0)->GetDataType();
   switch (data_type) {
     SIGMOID_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
@@ -60,8 +58,7 @@ uint32_t SigmoidCpuKernel::Compute(CpuKernelContext &ctx) {
     SIGMOID_COMPUTE_CASE2(DT_COMPLEX64, std::complex<float>, ctx)
     SIGMOID_COMPUTE_CASE2(DT_COMPLEX128, std::complex<double>, ctx)
     default:
-      KERNEL_LOG_ERROR("Sigmoid kernel data type [%s] not support.",
-                       DTypeStr(data_type).c_str());
+      KERNEL_LOG_ERROR("Sigmoid kernel data type [%s] not support.", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
@@ -70,12 +67,9 @@ uint32_t SigmoidCpuKernel::Compute(CpuKernelContext &ctx) {
 uint32_t SigmoidCpuKernel::SigmoidCheck(const CpuKernelContext &ctx) const {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
-  KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get input data failed.")
-  KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get output data failed")
-  KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get input tensor shape failed.")
+  KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input data failed.")
+  KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
+  KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID, "Get input tensor shape failed.")
   return KERNEL_STATUS_OK;
 }
 
@@ -87,9 +81,7 @@ uint32_t SigmoidCpuKernel::SigmoidCompute(const CpuKernelContext &ctx) {
   int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
-      *(output_y + i) = static_cast<T>(1) /
-                        (static_cast<T>(1) + (static_cast<T>(1) /
-                        exp(*(input_x + i))));
+      *(output_y + i) = static_cast<T>(1) / (static_cast<T>(1) + (static_cast<T>(1) / exp(*(input_x + i))));
     }
   } else {
     uint32_t min_core_num = 1;
@@ -100,9 +92,7 @@ uint32_t SigmoidCpuKernel::SigmoidCompute(const CpuKernelContext &ctx) {
     }
     auto shard_sigmoid = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        *(output_y + i) = static_cast<T>(1) /
-                          (static_cast<T>(1) + (static_cast<T>(1) /
-                          exp(*(input_x + i))));
+        *(output_y + i) = static_cast<T>(1) / (static_cast<T>(1) + (static_cast<T>(1) / exp(*(input_x + i))));
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sigmoid),
@@ -120,23 +110,20 @@ uint32_t SigmoidCpuKernel::SigmoidComputeComplex(const CpuKernelContext &ctx) {
 
   if (data_size <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
-      *(output_y + i) = static_cast<T>(1) /
-                        (static_cast<T>(1) + (static_cast<T>(1) /
-                        Eigen::numext::exp(*(input_x + i))));
+      *(output_y + i) = static_cast<T>(1) / (static_cast<T>(1) + (static_cast<T>(1) /
+                                             Eigen::numext::exp(*(input_x + i))));
     }
     return KERNEL_STATUS_OK;
   } else {
     uint32_t min_core_num = 1;
-    int64_t max_core_num =
-            std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+    int64_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
         max_core_num = data_num;
     }
     auto shard_sigmoid = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        *(output_y + i) = static_cast<T>(1) /
-                          (static_cast<T>(1) + (static_cast<T>(1) /
-                          Eigen::numext::exp(*(input_x + i))));
+        *(output_y + i) = static_cast<T>(1) / (static_cast<T>(1) + (static_cast<T>(1) /
+                                               Eigen::numext::exp(*(input_x + i))));
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sigmoid),

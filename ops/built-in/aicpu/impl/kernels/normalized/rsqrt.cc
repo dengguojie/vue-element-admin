@@ -33,47 +33,42 @@ constexpr int64_t kParallelComplexDataNums = 4 * 1024;
 
 namespace aicpu {
 uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kRsqrtOutputNum, kRsqrtInputNum),
-                      "Check Rsqrt params failed.");
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kRsqrtOutputNum, kRsqrtInputNum), "Check Rsqrt params failed.");
   if (ctx.Input(0)->GetDataType() != ctx.Output(0)->GetDataType()) {
-    KERNEL_LOG_ERROR(
-        "The data type of the input [%s] need be the same as the ouput [%s]",
-        DTypeStr(ctx.Input(0)->GetDataType()).c_str(),
-        DTypeStr(ctx.Output(0)->GetDataType()).c_str());
+    KERNEL_LOG_ERROR("The data type of the input [%s] need be the same as the ouput [%s]",
+                     DTypeStr(ctx.Input(0)->GetDataType()).c_str(),
+                     DTypeStr(ctx.Output(0)->GetDataType()).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   if (ctx.Input(0)->GetDataSize() != ctx.Output(0)->GetDataSize()) {
-    KERNEL_LOG_ERROR(
-        "The data size of the input [%llu] need be the same as the ouput "
-        "[%llu]",
-        ctx.Input(0)->GetDataSize(), ctx.Output(0)->GetDataSize());
+    KERNEL_LOG_ERROR("The data size of the input [%llu] need be the same as the ouput "
+                     "[%llu]", ctx.Input(0)->GetDataSize(), ctx.Output(0)->GetDataSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  Tensor *x = ctx.Input(0);
+  const Tensor *x = ctx.Input(0);
   const Tensor *y = ctx.Output(0);
-  int64_t data_num = x->NumElements();
-  DataType data_type = x->GetDataType();
+  int64_t datanum = x->NumElements();
+  DataType datatype = x->GetDataType();
   uint32_t res = KERNEL_STATUS_OK;
 
-  switch (data_type) {
+  switch (datatype) {
     case DT_FLOAT16:
-      res = RsqrtCompute<Eigen::half>(x, y, data_num, ctx);
+      res = RsqrtCompute<Eigen::half>(x, y, datanum, ctx);
       break;
     case DT_FLOAT:
-      res = RsqrtCompute<float>(x, y, data_num, ctx);
+      res = RsqrtCompute<float>(x, y, datanum, ctx);
       break;
     case DT_DOUBLE:
-      res = RsqrtCompute<double>(x, y, data_num, ctx);
+      res = RsqrtCompute<double>(x, y, datanum, ctx);
       break;
     case DT_COMPLEX64:
-      res = RsqrtComputeComplex<std::complex<float>>(x, y, data_num, ctx);
+      res = RsqrtComputeComplex<std::complex<float>>(x, y, datanum, ctx);
       break;
     case DT_COMPLEX128:
-      res = RsqrtComputeComplex<std::complex<double>>(x, y, data_num, ctx);
+      res = RsqrtComputeComplex<std::complex<double>>(x, y, datanum, ctx);
       break;
     default:
-      KERNEL_LOG_ERROR("Rsqrt invalid input type [%s]",
-                       DTypeStr(data_type).c_str());
+      KERNEL_LOG_ERROR("Rsqrt invalid input type [%s]", DTypeStr(datatype).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   if (res != KERNEL_STATUS_OK) {
@@ -83,100 +78,92 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t RsqrtCpuKernel::RsqrtCompute(const Tensor *x, const Tensor *y, int64_t data_num,
+uint32_t RsqrtCpuKernel::RsqrtCompute(const Tensor *x, const Tensor *y, int64_t datanum,
                                       const CpuKernelContext &ctx) const {
-  auto input_x = reinterpret_cast<T *>(x->GetData());
-  KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
-  auto output_y = reinterpret_cast<T *>(y->GetData());
-  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
-  if (data_num <= kParallelDataNums) {
-    for (int64_t i = 0; i < data_num; i++) {
+  auto inputx = reinterpret_cast<T *>(x->GetData());
+  KERNEL_CHECK_NULLPTR(inputx, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
+  auto outputy = reinterpret_cast<T *>(y->GetData());
+  KERNEL_CHECK_NULLPTR(outputy, KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
+  if (datanum <= kParallelDataNums) {
+    for (int64_t i = 0; i < datanum; i++) {
       if (x->GetDataType() == DT_FLOAT16) {
-        if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) {
+        if ((Eigen::half)inputx[i] == Eigen::half{0.0f}) {
           KERNEL_LOG_ERROR("Rsqrt kernel input[%ld] cannot be 0", i);
           return KERNEL_STATUS_PARAM_INVALID;
         }
       } else if (x->GetDataType() == DT_FLOAT) {
-        if ((std::fabs(static_cast<float>(input_x[i])) < FLT_EPSILON)) {
+        if ((std::fabs(static_cast<float>(inputx[i])) < FLT_EPSILON)) {
           KERNEL_LOG_ERROR("Rsqrt kernel input[%ld] cannot be 0", i);
           return KERNEL_STATUS_PARAM_INVALID;
         }
       } else if (x->GetDataType() == DT_DOUBLE) {
-        if ((std::fabs(static_cast<double>(input_x[i])) < DBL_EPSILON)) {
+        if ((std::fabs(static_cast<double>(inputx[i])) < DBL_EPSILON)) {
           KERNEL_LOG_ERROR("Rsqrt kernel input[%ld] cannot be 0", i);
           return KERNEL_STATUS_PARAM_INVALID;
         }
       }
-      output_y[i] = static_cast<T>(1) / (sqrt(input_x[i]));
+      outputy[i] = static_cast<T>(1) / (sqrt(inputx[i]));
     }
   } else {
     uint32_t min_core_num = 1;
     int64_t max_core_num = std::max(
         min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-    if (max_core_num > data_num) {
-      max_core_num = data_num;
+    if (max_core_num > datanum) {
+      max_core_num = datanum;
     }
     auto shard_rsqrt = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
         if (x->GetDataType() == DT_FLOAT16) {
-          if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) {
+          if ((Eigen::half)inputx[i] == Eigen::half{0.0f}) {
             KERNEL_LOG_ERROR("Rsqrt kernel input[%zu] cannot be 0", i);
           }
         } else if (x->GetDataType() == DT_FLOAT) {
-          if ((std::fabs(static_cast<float>(input_x[i])) < FLT_EPSILON)) {
+          if ((std::fabs(static_cast<float>(inputx[i])) < FLT_EPSILON)) {
             KERNEL_LOG_ERROR("Rsqrt kernel input[%zu] cannot be 0", i);
           }
         } else if (x->GetDataType() == DT_DOUBLE) {
-          if ((std::fabs(static_cast<double>(input_x[i])) < DBL_EPSILON)) {
+          if ((std::fabs(static_cast<double>(inputx[i])) < DBL_EPSILON)) {
             KERNEL_LOG_ERROR("Rsqrt kernel input[%zu] cannot be 0", i);
           }
         }
-        output_y[i] = static_cast<T>(1) / (sqrt(input_x[i]));
+        outputy[i] = static_cast<T>(1) / (sqrt(inputx[i]));
       }
     };
     KERNEL_HANDLE_ERROR(
-        CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
-                                    shard_rsqrt),
-        "Rsqrt Compute failed.")
+        CpuKernelUtils::ParallelFor(ctx, datanum, datanum / max_core_num, shard_rsqrt),
+        "Rsqrt Compute failed.");
   }
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
 uint32_t RsqrtCpuKernel::RsqrtComputeComplex(const Tensor *x, const Tensor *y,
-                                             int64_t data_num,
+                                             int64_t datanum,
                                              const CpuKernelContext &ctx) const {
-  auto input_x = reinterpret_cast<T *>(x->GetData());
-  KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input data failed")
-  auto output_y = reinterpret_cast<T *>(y->GetData());
-  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output data failed")
-  if (data_num <= kParallelComplexDataNums) {
-    for (int64_t i = 0; i < data_num; i++) {
-      output_y[i] =
-          sqrt(conj(input_x[i])) / sqrt(input_x[i].real() * input_x[i].real() +
-                                        input_x[i].imag() * input_x[i].imag());
+  auto inputx = reinterpret_cast<T *>(x->GetData());
+  KERNEL_CHECK_NULLPTR(inputx, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
+  auto outputy = reinterpret_cast<T *>(y->GetData());
+  KERNEL_CHECK_NULLPTR(outputy, KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
+  if (datanum <= kParallelComplexDataNums) {
+    for (int64_t i = 0; i < datanum; i++) {
+      outputy[i] =
+          sqrt(conj(inputx[i])) / sqrt(inputx[i].real() * inputx[i].real() + inputx[i].imag() * inputx[i].imag());
     }
   } else {
     uint32_t min_core_num = 1;
-    int64_t max_core_num = std::max(
-        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-    if (max_core_num > data_num) {
-      max_core_num = data_num;
+    int64_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+    if (max_core_num > datanum) {
+      max_core_num = datanum;
     }
 
     auto shard_rsqrt = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        output_y[i] = sqrt(conj(input_x[i])) /
-                      sqrt(input_x[i].real() * input_x[i].real() +
-                           input_x[i].imag() * input_x[i].imag());
+        outputy[i] = sqrt(conj(inputx[i])) / sqrt(inputx[i].real() * inputx[i].real() +
+                                                    inputx[i].imag() * inputx[i].imag());
       }
     };
     KERNEL_HANDLE_ERROR(
-        CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
-                                    shard_rsqrt),
-        "Rsqrt Compute failed.")
+        CpuKernelUtils::ParallelFor(ctx, datanum, datanum / max_core_num, shard_rsqrt), "Rsqrt Compute failed.");
   }
   return KERNEL_STATUS_OK;
 }

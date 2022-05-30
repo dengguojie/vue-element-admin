@@ -22,89 +22,81 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kEditDistance = "EditDistance";
+const char *const kEditDistance = "EditDistance";
 }
 
 namespace aicpu {
 template <typename T>
 static void DistanceTask(
     GroupIterable &hypothesis_grouper, GroupIterable &truth_grouper,
-    GroupIterable::IteratorStep &hypothesis_iter,
-    GroupIterable::IteratorStep &truth_iter,
+    GroupIterable::IteratorStep &hypothesis_iterator,
+    GroupIterable::IteratorStep &truth_iterator,
     Eigen::TensorMap<Eigen::Tensor<float, 1, Eigen::RowMajor>> &output_t,
-    std::vector<int64_t> &output_strides, bool &normalize) {
+    std::vector<int64_t> &output_strides, const bool &normalize) {
   auto cmp = std::equal_to<T>();
-  while (hypothesis_iter != hypothesis_grouper.end() &&
-         truth_iter != truth_grouper.end()) {
-    Group truth_i = *truth_iter;
-    Group hypothesis_j = *hypothesis_iter;
+  while (hypothesis_iterator != hypothesis_grouper.end() && truth_iterator != truth_grouper.end()) {
+    Group truth_i = *truth_iterator;
+    Group hypothesis_j = *hypothesis_iterator;
     std::vector<int64_t> g_truth = truth_i.group();
     std::vector<int64_t> g_hypothesis = hypothesis_j.group();
     auto truth_seq = truth_i.values<T>();
     auto hypothesis_seq = hypothesis_j.values<T>();
 
     if (g_truth == g_hypothesis) {
-      auto loc = std::inner_product(g_truth.begin(), g_truth.end(),
-                                    output_strides.begin(), int64_t{0});
+      auto loc = std::inner_product(g_truth.begin(), g_truth.end(), output_strides.begin(), int64_t{0});
       output_t(loc) = LevenshteinDistance<T>(
           std::vector<T>(truth_seq.data(), truth_seq.data() + truth_seq.size()),
-          std::vector<T>(hypothesis_seq.data(),
-                         hypothesis_seq.data() + hypothesis_seq.size()),
+          std::vector<T>(hypothesis_seq.data(), hypothesis_seq.data() + hypothesis_seq.size()),
           cmp);
-      if (normalize)
+      if (normalize) {
         output_t(loc) /= truth_seq.size();
-
-      ++hypothesis_iter;
-      ++truth_iter;
+      }
+      ++hypothesis_iterator;
+      ++truth_iterator;
     } else if (g_truth > g_hypothesis) {  // zero-length truth
-      auto loc = std::inner_product(g_hypothesis.begin(), g_hypothesis.end(),
-                                    output_strides.begin(), int64_t{0});
+      auto loc = std::inner_product(g_hypothesis.begin(), g_hypothesis.end(), output_strides.begin(), int64_t{0});
       output_t(loc) = hypothesis_seq.size();
       if (normalize && output_t(loc) != 0.0f) {
         output_t(loc) = std::numeric_limits<float>::infinity();
       }
-      ++hypothesis_iter;
+      ++hypothesis_iterator;
     } else {  // zero-length hypothesis
-      auto loc = std::inner_product(g_truth.begin(), g_truth.end(),
-                                    output_strides.begin(), int64_t{0});
+      auto loc = std::inner_product(g_truth.begin(), g_truth.end(), output_strides.begin(), int64_t{0});
       output_t(loc) = (normalize) ? 1.0 : truth_seq.size();
-      ++truth_iter;
+      ++truth_iterator;
     }
   }
 }
 template <typename T>
 static void UpdateResult(
     GroupIterable &hypothesis_grouper, GroupIterable &truth_grouper,
-    GroupIterable::IteratorStep &hypothesis_iter,
-    GroupIterable::IteratorStep &truth_iter,
+    GroupIterable::IteratorStep &hypothesis_iterator,
+    GroupIterable::IteratorStep &truth_iterator,
     Eigen::TensorMap<Eigen::Tensor<float, 1, Eigen::RowMajor>> &output_t,
-    std::vector<int64_t> &output_strides, bool &normalize) {
-  while (hypothesis_iter != hypothesis_grouper.end()) {  // zero-length truths
-    Group hypothesis_j = *hypothesis_iter;
+    std::vector<int64_t> &output_strides, const bool &normalize) {
+  while (hypothesis_iterator != hypothesis_grouper.end()) {  // zero-length truths
+    Group hypothesis_j = *hypothesis_iterator;
     std::vector<int64_t> g_hypothesis = hypothesis_j.group();
     auto hypothesis_seq = hypothesis_j.values<T>();
-    auto loc = std::inner_product(g_hypothesis.begin(), g_hypothesis.end(),
-                                  output_strides.begin(), int64_t{0});
+    auto loc = std::inner_product(g_hypothesis.begin(), g_hypothesis.end(), output_strides.begin(), int64_t{0});
     output_t(loc) = hypothesis_seq.size();
     if (normalize && output_t(loc) != 0.0f) {
       output_t(loc) = std::numeric_limits<float>::infinity();
     }
-    ++hypothesis_iter;
+    ++hypothesis_iterator;
   }
-  while (truth_iter != truth_grouper.end()) {  // missing hypotheses
-    Group truth_i = *truth_iter;
+  while (truth_iterator != truth_grouper.end()) {  // missing hypotheses
+    Group truth_i = *truth_iterator;
     std::vector<int64_t> g_truth = truth_i.group();
     auto truth_seq = truth_i.values<T>();
-    auto loc = std::inner_product(g_truth.begin(), g_truth.end(),
-                                  output_strides.begin(), int64_t{0});
+    auto loc = std::inner_product(g_truth.begin(), g_truth.end(), output_strides.begin(), int64_t{0});
     output_t(loc) = (normalize) ? 1.0 : truth_seq.size();
-    ++truth_iter;
+    ++truth_iterator;
   }
 }
 
 template <typename T>
-uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
-                          std::vector<Tensor *> &outputs, bool &normalize) {
+uint32_t EditDistanceTask(std::vector<Tensor *> &inputs, std::vector<Tensor *> &outputs, bool &normalize) {
   if (inputs.size() == 0 || outputs.size() == 0) {
     KERNEL_LOG_ERROR("EditDistanceTask input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -113,15 +105,13 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
   Tensor *hypothesis_values = inputs[1];
   Tensor *truth_indices = inputs[3];
   Tensor *truth_values = inputs[4];
-  std::vector<int64_t> hypothesis_st_shape(
-      (int64_t *)inputs[2]->GetData(),
+  std::vector<int64_t> hypothesis_st_shape((int64_t *)inputs[2]->GetData(),
       (int64_t *)inputs[2]->GetData() + inputs[2]->GetTensorShape()->GetDimSize(0));
-  std::vector<int64_t> truth_st_shape(
-      (int64_t *)inputs[5]->GetData(),
+  std::vector<int64_t> truth_st_shape((int64_t *)inputs[5]->GetData(),
       (int64_t *)inputs[5]->GetData() + inputs[5]->GetTensorShape()->GetDimSize(0));
   // Assume indices are sorted in row-major order.
   std::vector<int64_t> sorted_order(truth_st_shape.size());
-  std::iota(sorted_order.begin(), sorted_order.end(), 0);
+  (void)std::iota(sorted_order.begin(), sorted_order.end(), 0);
 
   SparseTensor hypothesis;
   SparseTensor truth;
@@ -135,15 +125,14 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
   // Group dims 0, 1, ..., RANK - 1.  The very last dim is assumed
   // to store the variable length sequences.
   std::vector<int64_t> group_dims(truth_st_shape.size() - 1);
-  std::iota(group_dims.begin(), group_dims.end(), 0);
+  (void)std::iota(group_dims.begin(), group_dims.end(), 0);
 
   float *outptr = (float *)outputs[0]->GetData();
   if (outptr == NULL) {
     KERNEL_LOG_ERROR("EditDistanceTask output[0]->GetData is null.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  std::vector<int64_t> output_shape =
-      outputs[0]->GetTensorShape()->GetDimSizes();
+  std::vector<int64_t> output_shape = outputs[0]->GetTensorShape()->GetDimSizes();
   Eigen::TensorMap<Eigen::Tensor<float, 1, Eigen::RowMajor>> output_t(outptr, outputs[0]->NumElements());
   output_t.setZero();
   std::vector<int64_t> output_strides(output_shape.size());
@@ -154,19 +143,17 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs,
   auto hypothesis_grouper = hypothesis.group(group_dims);
   auto truth_grouper = truth.group(group_dims);
 
-  auto hypothesis_iter = hypothesis_grouper.begin();
-  auto truth_iter = truth_grouper.begin();
-  DistanceTask<T>(hypothesis_grouper, truth_grouper, hypothesis_iter,
-                  truth_iter, output_t, output_strides, normalize);
-  UpdateResult<T>(hypothesis_grouper, truth_grouper, hypothesis_iter,
-                  truth_iter, output_t, output_strides, normalize);
+  auto hypothesis_iterator = hypothesis_grouper.begin();
+  auto truth_iterator = truth_grouper.begin();
+  DistanceTask<T>(hypothesis_grouper, truth_grouper, hypothesis_iterator,
+                  truth_iterator, output_t, output_strides, normalize);
+  UpdateResult<T>(hypothesis_grouper, truth_grouper, hypothesis_iterator,
+                  truth_iterator, output_t, output_strides, normalize);
   return KERNEL_STATUS_OK;
 }
 
 uint32_t EditDistanceMsCpuKernel::DoCompute() {
-  std::map<int, std::function<uint32_t(std::vector<Tensor *> &,
-                                       std::vector<Tensor *> &, bool &)>>
-      calls;
+  std::map<int, std::function<uint32_t(std::vector<Tensor *> &, std::vector<Tensor *> &, bool &)>> calls;
   calls[DT_INT8] = EditDistanceTask<int8_t>;
   calls[DT_INT16] = EditDistanceTask<int16_t>;
   calls[DT_INT32] = EditDistanceTask<int32_t>;
@@ -187,22 +174,17 @@ uint32_t EditDistanceMsCpuKernel::DoCompute() {
   return calls[param_type_](inputs_, outputs_, normalize_);
 }
 
-uint32_t EditDistanceMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t EditDistanceMsCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("GetInputAndCheck start!");
   // get attr: normalize
   AttrValue *normalize = ctx.GetAttr("normalize");
-  KERNEL_CHECK_NULLPTR(normalize, KERNEL_STATUS_PARAM_INVALID,
-                       "Get attr:[normalize] failed.");
+  KERNEL_CHECK_NULLPTR(normalize, KERNEL_STATUS_PARAM_INVALID, "Get attr:[normalize] failed.");
   normalize_ = normalize->GetBool();
   // get input Tensors
   const uint32_t kNumInput = 6;
   for (uint32_t i = 0; i < kNumInput; ++i) {
     Tensor *tensor = ctx.Input(i);
-    KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
-                         "EditDistance Get input "
-                         "tensor[%d] failed",
-                         i)
-
+    KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID, "EditDistance Get input tensor[%d] failed", i)
     if (tensor->NumElements() < 1) {
       KERNEL_LOG_ERROR("Illegal input tensor[%d]", i);
       return KERNEL_STATUS_PARAM_INVALID;
@@ -213,14 +195,11 @@ uint32_t EditDistanceMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   const uint32_t kNumOutput = 1;
   for (uint32_t i = 0; i < kNumOutput; ++i) {
     Tensor *tensor = ctx.Output(i);
-    KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
-                         "GetInputAndCheck: Get "
-                         "output tensor[%d] failed",
-                         i)
+    KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID, "GetInputAndCheck: Get output tensor[%d] failed", i)
     if (tensor->NumElements() < 1) {
       KERNEL_LOG_ERROR(
-          "GetInputAndCheck: The number of elements:[%lld] in output "
-          "tensor[%d] should be > 0!", tensor->NumElements(), i);
+          "GetInputAndCheck: The number of elements:[%lld] in output tensor[%d] should be > 0!",
+          tensor->NumElements(), i);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     outputs_.push_back(tensor);

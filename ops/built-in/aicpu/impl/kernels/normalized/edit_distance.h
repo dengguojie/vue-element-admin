@@ -28,7 +28,7 @@ class EditDistanceMsCpuKernel : public CpuKernel {
  private:
   uint32_t DoCompute();
 
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
 
   bool normalize_ = true;
   std::vector<Tensor *> inputs_;

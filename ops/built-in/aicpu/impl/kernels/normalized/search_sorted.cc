@@ -31,10 +31,8 @@ constexpr size_t kOutputSize = 1;
 
 namespace aicpu {
 template <typename S>
-std::pair<bool, const S *>CustomizedLowerBound(const S *seq_start,
-                                               const S *seq_end,
-                                               const S key,
-                                               uint64_t sequence_len) {
+std::pair<bool, const S *>CustomizedLowerBound(const S *seq_start, const S *seq_end,
+                                               const S key, uint64_t sequence_len) {
   while (seq_start < seq_end) {
     auto offset = (seq_end - seq_start) >> 1;
     if (static_cast<uint64_t>(offset) > sequence_len) {
@@ -74,8 +72,7 @@ uint32_t CheckParam(const CpuKernelContext &ctx, const Tensor *sequence_t, const
   if (output_t->NumElements() != values_t->NumElements()) {
     KERNEL_LOG_ERROR(
         "The output dimensions [%lld] must match the dimensions of input "
-        "values [%lld]",
-        output_t->NumElements(), values_t->NumElements());
+        "values [%lld]", output_t->NumElements(), values_t->NumElements());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -107,42 +104,36 @@ uint32_t CheckParam(const CpuKernelContext &ctx, const Tensor *sequence_t, const
 
 uint32_t SearchSortedKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   AttrValue *right = ctx.GetAttr("right");
-  KERNEL_CHECK_NULLPTR(right, KERNEL_STATUS_PARAM_INVALID,
-                       "Get attr:[right] failed.");
+  KERNEL_CHECK_NULLPTR(right, KERNEL_STATUS_PARAM_INVALID, "Get attr:[right] failed.");
   right_ = right->GetBool();
 
   sequence_t_ = ctx.Input(0);
-  KERNEL_CHECK_NULLPTR(sequence_t_, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input:[0] failed");
+  KERNEL_CHECK_NULLPTR(sequence_t_, KERNEL_STATUS_PARAM_INVALID, "Get input:[0] failed");
   sequence_dtype_ = static_cast<DataType>(sequence_t_->GetDataType());
   auto sequence_shape = sequence_t_->GetTensorShape();
   sequence_shape_ = sequence_shape->GetDimSizes();
 
   values_t_ = ctx.Input(1);
-  KERNEL_CHECK_NULLPTR(values_t_, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input:[1] failed");
+  KERNEL_CHECK_NULLPTR(values_t_, KERNEL_STATUS_PARAM_INVALID, "Get input:[1] failed");
   values_dtype_ = static_cast<DataType>(values_t_->GetDataType());
   auto values_shape = values_t_->GetTensorShape();
   values_shape_ = values_shape->GetDimSizes();
 
   output_t_ = ctx.Output(0);
-  KERNEL_CHECK_NULLPTR(output_t_, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output:[1] failed");
+  KERNEL_CHECK_NULLPTR(output_t_, KERNEL_STATUS_PARAM_INVALID, "Get output:[1] failed");
   output_dtype_ = static_cast<DataType>(output_t_->GetDataType());
 
   // inputs: sequence, values
   if (ctx.GetInputsSize() != kInputSize) {
-    KERNEL_LOG_ERROR(
-        "Input number is: [%d], but SearchSorted needs [%zu] inputs.",
-        ctx.GetInputsSize(), kInputSize);
+    KERNEL_LOG_ERROR("Input number is: [%d], but SearchSorted needs [%zu] inputs.",
+                     ctx.GetInputsSize(), kInputSize);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   // outputs: positions
   if (ctx.GetOutputsSize() != kOutputSize) {
-    KERNEL_LOG_ERROR(
-        "Output number is: [%d], but SearchSorted needs [%zu] outputs.",
-        ctx.GetOutputsSize(), kOutputSize);
+    KERNEL_LOG_ERROR("Output number is: [%d], but SearchSorted needs [%zu] outputs.",
+                     ctx.GetOutputsSize(), kOutputSize);
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return CheckShape();
@@ -151,11 +142,9 @@ uint32_t SearchSortedKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
 template <typename S, typename T>
 uint32_t CalSearchSorted(bool right, Tensor *sequence_t, const Tensor *values_t,
                          const Tensor *output_t, std::vector<int64_t> sequence_shape,
-                         std::vector<int64_t> values_shape,
-                         CpuKernelContext &ctx) {
+                         std::vector<int64_t> values_shape, CpuKernelContext &ctx) {
   auto res = CheckParam<S>(ctx, sequence_t, values_t, output_t, sequence_shape);
-  KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
-                     "CheckParam failed, result = [%d].", res);
+  KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res, "CheckParam failed, result = [%d].", res);
   auto sequence = reinterpret_cast<S*>(sequence_t->GetData());
   auto values = reinterpret_cast<S*>(values_t->GetData());
   auto output = reinterpret_cast<T*>(output_t->GetData());
@@ -175,17 +164,13 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, const Tensor *values_t,
       auto seq_start = (seq_dim == 1)
                          ? sequence
                          : sequence + (i / search_repeat) * search_len;
-      auto bound = CustomizedLowerBound(seq_start,
-                                        seq_start + search_len,
-                                        values[i], sequence_len);
+      auto bound = CustomizedLowerBound(seq_start, seq_start + search_len, values[i], sequence_len);
       if (!bound.first) {
         task_flag.store(false);
-        KERNEL_LOG_ERROR("Indices of input[0] is out of range: [%u].",
-                         sequence_len);
+        KERNEL_LOG_ERROR("Indices of input[0] is out of range: [%u].", sequence_len);
       }
       output[i] = right ? std::upper_bound(seq_start, seq_start + search_len,
-                            values[i]) - seq_start
-                        : bound.second - seq_start;
+                            values[i]) - seq_start : bound.second - seq_start;
     }
   };
 
@@ -199,13 +184,10 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, const Tensor *values_t,
 
 uint32_t SearchSortedKernel::Compute(CpuKernelContext &ctx) {
   uint32_t res = GetInputAndCheck(ctx);
-  KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
-                     "GetInputAndCheck failed, result = [%u].", res);
+  KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res, "GetInputAndCheck failed, result = [%u].", res);
 
-  std::map<int, std::map<int, std::function<uint32_t(
-                        bool, Tensor *, Tensor *, Tensor *,
-                        std::vector<int64_t>,
-                        std::vector<int64_t>, CpuKernelContext &)>>> calls;
+  std::map<int, std::map<int, std::function<uint32_t(bool, Tensor *, Tensor *, Tensor *,
+                        std::vector<int64_t>, std::vector<int64_t>, CpuKernelContext &)>>> calls;
   calls[DT_FLOAT][DT_INT32] = CalSearchSorted<float, int>;
   calls[DT_DOUBLE][DT_INT32] = CalSearchSorted<double, int>;
   calls[DT_INT8][DT_INT32] = CalSearchSorted<int8_t, int>;
@@ -221,20 +203,15 @@ uint32_t SearchSortedKernel::Compute(CpuKernelContext &ctx) {
 
   auto iter = calls.find(sequence_dtype_);
   if (iter == calls.end()) {
-    KERNEL_LOG_ERROR(
-        "SearchSorted op doesn't support input[0] and input[1] tensor types: "
-        "[%s]",
-        DTypeStr(sequence_dtype_).c_str());
+    KERNEL_LOG_ERROR("SearchSorted op doesn't support input[0] and input[1] tensor types: "
+                     "[%s]", DTypeStr(sequence_dtype_).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   } else {
     if (iter->second.find(output_dtype_) == iter->second.end()) {
-      KERNEL_LOG_ERROR(
-          "SearchSorted op doesn't support output[0] tensor types: [%s]",
-          DTypeStr(output_dtype_).c_str());
+      KERNEL_LOG_ERROR("SearchSorted op doesn't support output[0] tensor types: [%s]", DTypeStr(output_dtype_).c_str());
     }
   }
-  return iter->second[output_dtype_](right_, sequence_t_, values_t_, output_t_,
-                                     sequence_shape_, values_shape_, ctx);
+  return iter->second[output_dtype_](right_, sequence_t_, values_t_, output_t_, sequence_shape_, values_shape_, ctx);
 }
 
 REGISTER_CPU_KERNEL(kSearchSorted, SearchSortedKernel);

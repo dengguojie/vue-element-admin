@@ -16,13 +16,13 @@
 #include "slice_write.h"
 
 #include <atomic>
-#include "unsupported/Eigen/CXX11/Tensor"
 
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "log.h"
 #include "securec.h"
 #include "status.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 #include "utils/kernel_util.h"
 
 namespace {
@@ -45,17 +45,17 @@ void RangeSliceWrite(int64_t start, int64_t end, const aicpu::Tensor *x,
   T *x_data = static_cast<T *>(x->GetData());
   int64_t x_offset = (row_offset + start) * x_col_num + col_offset;
   T *x_start = x_data + x_offset;
-  int64_t x_left_size = static_cast<int64_t>(x->GetDataSize()) - x_offset * static_cast<int64_t>(sizeof(T));
+  int64_t x_left_size = static_cast<int64_t>(x->GetDataSize()) -
+                        x_offset * static_cast<int64_t>(sizeof(T));
   KERNEL_LOG_INFO(
       "Slice write begin, x data offset[%lld], x col num[%lld],"
       "value offset[%lld], value col num[%lld], start[%lld], end[%lld]",
       x_offset, x_col_num, value_offset, value_col_num, start, end);
   for (int64_t i = start; i < end; ++i) {
-    auto ret =
-        memcpy_s(x_start, x_left_size, value_start, value_col_num * static_cast<int64_t>(sizeof(T)));
+    auto ret = memcpy_s(x_start, x_left_size, value_start,
+                        value_col_num * static_cast<int64_t>(sizeof(T)));
     KERNEL_CHECK_FALSE_VOID(
-        (ret == EOK),
-        "[%s] copy to output failed, output left size [%ld], copy size [%ld].",
+        (ret == EOK), "[%s] copy to output failed, output left size [%ld], copy size [%ld].",
         kSliceWrite, x_left_size, value_col_num * static_cast<int64_t>(sizeof(T)));
     value_start += value_col_num;
     x_start += x_col_num;
@@ -65,8 +65,8 @@ void RangeSliceWrite(int64_t start, int64_t end, const aicpu::Tensor *x,
 }  // namespace
 
 namespace aicpu {
-bool SliceWriteCpuKernel::CheckValueSupported(const DataType input_x_type,
-                                              const DataType input_value_type) const {
+bool SliceWriteCpuKernel::CheckValueSupported(
+    const DataType input_x_type, const DataType input_value_type) const {
   switch (input_x_type) {
     case DT_FLOAT16:
     case DT_FLOAT:
@@ -75,20 +75,9 @@ bool SliceWriteCpuKernel::CheckValueSupported(const DataType input_x_type,
     case DT_INT64:
       return true;
     default:
-      KERNEL_LOG_ERROR("Unsupported input x data type[%s]",
-                       DTypeStr(input_x_type).c_str());
+      KERNEL_LOG_ERROR("Unsupported input x data type[%s]", DTypeStr(input_x_type).c_str());
       return false;
   }
-
-  if (input_x_type != input_value_type) {
-    KERNEL_LOG_ERROR(
-        "Invalid input value data type[%s], "
-        "must be the with input x data type[%s]",
-        DTypeStr(input_x_type).c_str(), DTypeStr(input_value_type).c_str());
-    return false;
-  }
-
-  return true;
 }
 
 uint32_t SliceWriteCpuKernel::Check(const Tensor *x, const Tensor *value,
@@ -99,48 +88,37 @@ uint32_t SliceWriteCpuKernel::Check(const Tensor *x, const Tensor *value,
 
   auto x_shape = x->GetTensorShape();
   KERNEL_CHECK_FALSE((x_shape->GetDims() <= 2), KERNEL_STATUS_PARAM_INVALID,
-                     "Input[x] dims value must be <= 2, but got[%d].",
-                     x_shape->GetDims());
+                     "Input[x] dims value must be <= 2, but got[%d].", x_shape->GetDims());
 
   auto value_shape = value->GetTensorShape();
   KERNEL_CHECK_FALSE(
-      (value_shape->GetDims() == x_shape->GetDims()),
-      KERNEL_STATUS_PARAM_INVALID,
+      (value_shape->GetDims() == x_shape->GetDims()), KERNEL_STATUS_PARAM_INVALID,
       "Input [x] dims value[%d] must be equal to input [value] dims value[%d].",
       x_shape->GetDims(), value_shape->GetDims());
 
   int32_t col_index = x_shape->GetDims() - 1;
   KERNEL_CHECK_FALSE(
-      (value_shape->GetDimSize(col_index) + col_offset <=
-       x_shape->GetDimSize(col_index)),
-      KERNEL_STATUS_PARAM_INVALID,
-      "Input [begin] col offset value[%d] error, must be <= [%ld].", col_offset,
-      x_shape->GetDimSize(col_index) - value_shape->GetDimSize(col_index));
+      (value_shape->GetDimSize(col_index) + col_offset <= x_shape->GetDimSize(col_index)),
+      KERNEL_STATUS_PARAM_INVALID, "Input [begin] col offset value[%d] error, must be <= [%ld].",
+      col_offset, x_shape->GetDimSize(col_index) - value_shape->GetDimSize(col_index));
 
   if (x_shape->GetDims() == 2) {
-    KERNEL_CHECK_FALSE(
-        (value_shape->GetDimSize(0) + row_offset <= x_shape->GetDimSize(0)),
-        KERNEL_STATUS_PARAM_INVALID,
-        "Input [begin] row offset value[%d] error, must be <= [%ld].",
+    KERNEL_CHECK_FALSE((value_shape->GetDimSize(0) + row_offset <= x_shape->GetDimSize(0)),
+        KERNEL_STATUS_PARAM_INVALID, "Input [begin] row offset value[%d] error, must be <= [%ld].",
         row_offset, x_shape->GetDimSize(0) - value_shape->GetDimSize(0));
   }
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SliceWriteCpuKernel::GetBeginValue(const Tensor *begin,
-                                            int64_t &row_offset,
-                                            int64_t &col_offset) {
+uint32_t SliceWriteCpuKernel::GetBeginValue(const Tensor *begin, int64_t &row_offset, int64_t &col_offset) {
   auto begin_data = begin->GetData();
   auto begin_data_type = begin->GetDataType();
   auto shape = begin->GetTensorShape();
   KERNEL_CHECK_FALSE((shape->GetDims() == 1), KERNEL_STATUS_INNER_ERROR,
-                     "Input [begin] dims value must be 1, but got[%d].",
-                     shape->GetDims());
+                     "Input [begin] dims value must be 1, but got[%d].", shape->GetDims());
   auto begin_value_num = shape->NumElements();
-  KERNEL_CHECK_FALSE(
-      (begin_value_num <= 2), KERNEL_STATUS_INNER_ERROR,
-      "Input [begin] dim[0] value must be not greater than 2, but got[%d].",
-      begin_value_num);
+  KERNEL_CHECK_FALSE((begin_value_num <= 2), KERNEL_STATUS_INNER_ERROR,
+      "Input [begin] dim[0] value must be not greater than 2, but got[%d].", begin_value_num);
   if (begin_data_type == DT_INT32) {
     col_offset = static_cast<int32_t *>(begin_data)[begin_value_num - 1];
     if (begin_value_num > 1) {
@@ -152,8 +130,7 @@ uint32_t SliceWriteCpuKernel::GetBeginValue(const Tensor *begin,
       row_offset = static_cast<int64_t *>(begin_data)[0];
     }
   } else {
-    KERNEL_LOG_ERROR("Unsupported input begin data type[%s]",
-                     DTypeStr(begin_data_type).c_str());
+    KERNEL_LOG_ERROR("Unsupported input begin data type[%s]", DTypeStr(begin_data_type).c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -161,38 +138,32 @@ uint32_t SliceWriteCpuKernel::GetBeginValue(const Tensor *begin,
 }
 
 uint32_t SliceWriteCpuKernel::Compute(CpuKernelContext &ctx) {
-  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
-                      "Check SliceWrite params failed.");
+  KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum), "Check SliceWrite params failed.");
   Tensor *x = ctx.Input(0);
   Tensor *begin = ctx.Input(1);
-  Tensor *value = ctx.Input(2);
+  const Tensor *value = ctx.Input(2);
   Tensor *output = ctx.Output(0);
   auto x_data = x->GetData();
   auto output_data = output->GetData();
   if (x_data != output_data) {
-    KERNEL_LOG_ERROR(
-        "Input x and output x must be same tensor,"
-        "but input x data[%p], output x data[%p]",
-        x_data, output_data);
+    KERNEL_LOG_ERROR("Input x and output x must be same tensor,"
+        "but input x data[%p], output x data[%p]", x_data, output_data);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   int64_t row_offset = 0;
   int64_t col_offset = 0;
   uint32_t ret = GetBeginValue(begin, row_offset, col_offset);
-  KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), ret,
-                     "Get begin value failed, ret=[%u].", ret);
+  KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), ret, "Get begin value failed, ret=[%u].", ret);
 
   ret = Check(x, value, row_offset, col_offset);
-  KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), ret,
-                     "Check input param failed, ret=[%u].", ret);
+  KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), ret, "Check input param failed, ret=[%u].", ret);
 
   std::atomic<bool> shard_ret(true);
   auto shardCopy = [&](int64_t start, int64_t end) {
     switch (x->GetDataType()) {
       case DT_FLOAT16:
-        RangeSliceWrite<Eigen::half>(start, end, x, value, row_offset,
-                                     col_offset);
+        RangeSliceWrite<Eigen::half>(start, end, x, value, row_offset, col_offset);
         break;
       case DT_FLOAT:
         RangeSliceWrite<float>(start, end, x, value, row_offset, col_offset);
@@ -207,8 +178,7 @@ uint32_t SliceWriteCpuKernel::Compute(CpuKernelContext &ctx) {
         RangeSliceWrite<int64_t>(start, end, x, value, row_offset, col_offset);
         break;
       default:
-        KERNEL_LOG_ERROR("Unsupported input x data type[%s]",
-                         DTypeStr(x->GetDataType()).c_str());
+        KERNEL_LOG_ERROR("Unsupported input x data type[%s]", DTypeStr(x->GetDataType()).c_str());
         shard_ret.store(false);
         return;
     }
@@ -222,8 +192,7 @@ uint32_t SliceWriteCpuKernel::Compute(CpuKernelContext &ctx) {
 
   ret = CpuKernelUtils::ParallelFor(ctx, row_num, 1, shardCopy);
   KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK && shard_ret.load()),
-                     KERNEL_STATUS_INNER_ERROR, "ParallelFor failed, ret=[%u].",
-                     ret);
+                     KERNEL_STATUS_INNER_ERROR, "ParallelFor failed, ret=[%u].", ret);
   return KERNEL_STATUS_OK;
 }
 
