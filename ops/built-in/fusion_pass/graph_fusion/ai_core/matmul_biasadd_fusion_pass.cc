@@ -30,6 +30,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#include "graph_optimizer/fusion_common/fusion_turbo.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -52,10 +53,9 @@ vector<FusionPattern*> MatMulBiasAddFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatMulBiasAddFusion");
-  if (pattern == nullptr) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern is nullptr,Create pattern not success.");
-    return patterns;
-  }
+  FUSION_PASS_CHECK((pattern == nullptr),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern is nullptr,Create pattern not success!"),
+                    return patterns);
 
   pattern->AddOpDesc(kPatternMatmul, {kTfMatmul, kTfMatmulV2, kTfBatchMatmul, kTfBatchMatmulV2})
       .AddOpDesc(kPatternBias)
@@ -159,8 +159,7 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
         OP_LOGI(node_biasadd, "bias shape %ld, is not equal to input second dim %ld.", bias_dim, input_ndim),
         return NOT_CHANGED);
   }
-  // to add node bias as third input, node_matmul must have 2 InDataAnchor
-  // and 2 InputDesc(referenced AddLinkFrom())
+  // to add node bias as third input, node_matmul must have 2 InDataAnchor and 2 InputDesc(referenced AddLinkFrom())
   FUSION_PASS_CHECK(
       matmul_opdesc->GetInputsSize() != kMatmulInputNum,
       OP_LOGI(node_matmul, "MatMul node should have 2 inputs, acutal %zu", node_matmul->GetInAllNodes().size()),
@@ -191,8 +190,7 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   FUSION_PASS_CHECK(ge::AttrUtils::SetBool(matmul_opdesc, kHasBias, true) == false,
                     CUBE_INNER_ERR_REPORT(node_matmul, "set attr:has_bias=true to matmul failed"), return FAILED);
 
-  // add link from node_bias to node_matmul,x3 is the name of third input of
-  // MatMul in IR matmul.h
+  // add link from node_bias to node_matmul,x3 is the name of third input of MatMul in IR matmul.h
   FUSION_PASS_CHECK(node_matmul->AddLinkFrom("bias", node_bias) != ge::GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT(node_matmul, "add link from Bias to MatMul failed"), return FAILED);
 
@@ -222,18 +220,26 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   for (auto &dst_anchor : biasadd_outanchor0->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(dst_anchor == nullptr,
                       CUBE_CALL_ERR_REPORT(node_matmul, "Parameter[dst_anchor] must not be null."), return FAILED);
-    if (ge::GraphUtils::RemoveEdge(biasadd_outanchor0, dst_anchor) != ge::GRAPH_SUCCESS ||
-        ge::GraphUtils::AddEdge(matmul_outanchor, dst_anchor) != ge::GRAPH_SUCCESS) {
-      CUBE_CALL_ERR_REPORT(node_matmul, "Replace edge src Failed.");
-      return FAILED;
-    }
+    
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(biasadd_outanchor0, dst_anchor) != ge::GRAPH_SUCCESS ||
+                      ge::GraphUtils::AddEdge(matmul_outanchor, dst_anchor) != ge::GRAPH_SUCCESS,
+                      CUBE_CALL_ERR_REPORT(node_matmul, "Replace edge src Failed."), return FAILED);
   }
 
+  // relink ctrl edges of BiasAdd node
+  FUSION_PASS_CHECK(FusionTurbo::TransferInCtrlEdges({node_biasadd}, node_matmul) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_biasadd, "link biasadd node input ctrl edges failed"),
+                    return FAILED);
+  FUSION_PASS_CHECK(FusionTurbo::TransferOutCtrlEdges({node_biasadd}, node_matmul) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_biasadd, "link biasadd node output ctrl edges failed"),
+                    return FAILED);
+
   // delete BiasAdd node
-  if (graph.RemoveNode(node_biasadd) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(node_biasadd, "delete BiasAdd failed");
-    return FAILED;
-  }
+  FusionTurbo fusion_turbo(graph);
+  FUSION_PASS_CHECK(fusion_turbo.RemoveNodeOnly(node_biasadd) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_biasadd, "delete BiasAdd failed"),
+                    return FAILED);
+
   fusion_nodes.push_back(node_matmul);
   OP_LOGI(node_matmul, "matmul biasadd fusion success!");
   return SUCCESS;

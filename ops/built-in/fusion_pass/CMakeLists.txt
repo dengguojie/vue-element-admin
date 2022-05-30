@@ -24,6 +24,7 @@ set(_common_fusion_pass_inc
   ${OPS_DIR}/built-in/op_proto/util
   ${OPS_INCLUDE}
   ${FWKACLLIB_INCLUDE}
+  ${METADEF_DIR}
   ${METADEF_INCLUDE}
   ${METADEF_INCLUDE}/external
   ${METADEF_INCLUDE}/external/graph

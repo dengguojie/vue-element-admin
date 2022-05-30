@@ -28,6 +28,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#include "graph_optimizer/fusion_common/fusion_turbo.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -63,8 +64,7 @@ vector<FusionPattern*> MatMulReshapeBiasAddFusionPass::DefinePatterns() {
   string passName = "MatmulReshapeBiasAddFusion";
   FusionPattern* pattern = new (std::nothrow) FusionPattern(passName);
   FUSION_PASS_CHECK((pattern == nullptr),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(),
-                    "pattern is nullptr,Create pattern not success!"),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),"pattern is nullptr,Create pattern not success!"),
                     return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   pattern->AddOpDesc(PATTERN_MATMUL, {TF_MATMUL, TF_MATMULV2})
@@ -88,69 +88,69 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
 
   // check matmul node
   FUSION_PASS_CHECK((node_matmul == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "Parameter[node_matmul] can not be null"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   // check node_matmul must have only one output to node_biasadd
   FUSION_PASS_CHECK((node_matmul->GetOutDataNodes().size() != 1),
                     OP_LOGI(node_matmul, "MatMul node should only have 1 output, actual %zu.",
                             node_matmul->GetOutDataNodes().size()),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   FUSION_PASS_CHECK((node_bias == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "Parameter[node_bias] can not be null"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   FUSION_PASS_CHECK((node_biasadd == nullptr), OP_LOGW(node_biasadd, "Parameter[node_biasadd] can not be null"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   auto matmul_op_desc = node_matmul->GetOpDesc();
   FUSION_PASS_CHECK((matmul_op_desc == nullptr), OP_LOGW(node_matmul, "Parameter[matmul_op_desc] can not be null"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // to check support of matmul fusion
   FUSION_PASS_CHECK(!CheckOpSupported(matmul_op_desc),
                     OP_LOGW(node_matmul, "MatMul[%s] is not supported by FE, fusion pass abort.",
                             matmul_op_desc->GetName().c_str()),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // to add node bias as third input, node_matmul must have 2 InDataAnchor
   // and 2 InputDesc(referenced AddLinkFrom())
   FUSION_PASS_CHECK((matmul_op_desc->GetInputsSize() != MATMUL_INPUT_NUM),
                     OP_LOGI(node_matmul, "MatMul node should have 2 inputs, acutal %zu.",
                             node_matmul->GetInAllNodes().size()),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // check whether the input is dynamic mode
   ge::GeShape matmul_output_shape = matmul_op_desc->GetOutputDesc(0).GetShape();
   FUSION_PASS_CHECK((matmul_output_shape.GetDimNum() != 2),
                     OP_LOGI(node_matmul, "The output dim of matmul node must be 2, actual %zu.",
                             matmul_output_shape.GetDimNum()),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK((PatternFusionUtil::IsUnknownShape(matmul_output_shape.GetDim(1)) ||
                      PatternFusionUtil::IsUnknownShape(matmul_output_shape.GetDim(0))),
                     OP_LOGI(node_matmul, "MatmulReshapeBiasAddFusion cannot be applied for unknown shape"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   // check reshape node
   auto reshape_op_desc = node_reshape->GetOpDesc();
   FUSION_PASS_CHECK((reshape_op_desc == nullptr), OP_LOGW(node_reshape, "Parameter[reshape_op_desc] can not be null"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // check whether reshape node has split the last dim of matmul node output
   ge::GeShape reshape_output_shape = reshape_op_desc->GetOutputDesc(0).GetShape();
   size_t reshape_out_dim = reshape_output_shape.GetDimNum();
   FUSION_PASS_CHECK((reshape_out_dim < 1),
                     OP_LOGI(node_reshape, "The dim ofreshape out shape must be larger than 1."),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // check bias node
   auto biasadd_op_desc = node_biasadd->GetOpDesc();
   FUSION_PASS_CHECK((biasadd_op_desc == nullptr), OP_LOGW(node_biasadd, "Parameter[biasadd_op_desc] can not be null"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // check biasadd_op_desc should only have one outputTensroDesc
   FUSION_PASS_CHECK((biasadd_op_desc->GetAllOutputsDesc().size() != 1),
                     OP_LOGI(node_biasadd, "BiasAdd node should only have 1 output, actual %zu",
                             biasadd_op_desc->GetAllOutputsDesc().size()),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
   // check Bias node should only have 1 output, because ge::graph haven't offer
   // method to modify node anchor, only way to add anchor is AddLinkFrom
   FUSION_PASS_CHECK((node_bias->GetAllOutDataAnchors().size() != 1),
                     OP_LOGI(node_bias, "now don't support fusion Bias with over 1 output"),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   auto node_biasadd_output_desc = node_biasadd->GetOpDesc()->GetOutputDesc(0);
   auto node_reshape_output_desc = node_reshape->GetOpDesc()->GetOutputDesc(0);
@@ -159,53 +159,51 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   auto node_reshape_output_dtype = node_reshape_output_desc.GetDataType();
   FUSION_PASS_CHECK((node_reshape_output_dtype != node_biasadd_output_dtype),
                     OP_LOGI(node_biasadd, "The output dtype of reshape and biasadd is different."),
-                    return fe::NOT_CHANGED);
+                    return NOT_CHANGED);
 
   if (node_biasadd->GetType() == ADD) {
     auto bias_op_desc = node_bias->GetOpDesc();
     FUSION_PASS_CHECK((bias_op_desc == nullptr),
                       OP_LOGW(node_bias, "Parameter[bias_op_desc] can not be null"),
-                      return fe::NOT_CHANGED);
+                      return NOT_CHANGED);
     auto bias_output_tensor = bias_op_desc->GetOutputDesc(0);
     auto bias_output_shape_vec = bias_output_tensor.GetShape().GetDims();
     auto reshape_output_shape_vec = reshape_output_shape.GetDims();
     FUSION_PASS_CHECK(reshape_output_shape_vec.size() < bias_output_shape_vec.size(),
                       OP_LOGI(node_reshape, "reshape output dim num should be larger than bias dim num."),
-                      return fe::NOT_CHANGED);
+                      return NOT_CHANGED);
 
     int64_t bias_length = 1;
     for (auto i : bias_output_shape_vec) {
-      FUSION_PASS_CHECK((i <= 0), OP_LOGW(node_bias, "bias output shape is invalid."), return fe::NOT_CHANGED);
+      FUSION_PASS_CHECK((i <= 0), OP_LOGW(node_bias, "bias output shape is invalid."), return NOT_CHANGED);
       FUSION_PASS_CHECK((bias_length * i / i != bias_length),
-                        OP_LOGW(node_bias, "bias output shape size exceed int64."), return fe::NOT_CHANGED);
+                        OP_LOGW(node_bias, "bias output shape size exceed int64."), return NOT_CHANGED);
       bias_length *= i;
     }
     FUSION_PASS_CHECK(bias_length != matmul_output_shape.GetDim(1),
-                      OP_LOGI(node_bias, "bias dim is not equal with matmul output n dim."), return fe::NOT_CHANGED);
+                      OP_LOGI(node_bias, "bias dim is not equal with matmul output n dim."), return NOT_CHANGED);
     for (size_t i = 0; i < bias_output_shape_vec.size(); i++) {
       FUSION_PASS_CHECK(bias_output_shape_vec[bias_output_shape_vec.size() - i - 1] !=
                             reshape_output_shape_vec[reshape_output_shape_vec.size() - i - 1],
                         OP_LOGI(node_bias, "bias shape can not broadcast to reshape output shape."),
-                        return fe::NOT_CHANGED);
+                        return NOT_CHANGED);
     }
   } else {
     FUSION_PASS_CHECK((matmul_output_shape.GetDim(1) != reshape_output_shape.GetDim(reshape_out_dim - 1)),
                       OP_LOGI(node_matmul, "MatmulReshapeBiasAddFusion only support that do not "
                               "split the last dim of matmul node output when fusion with bias_add node."),
-                      return fe::NOT_CHANGED);
+                      return NOT_CHANGED);
   }
 
   // add HAS_BIAS attr to MatMul, and set value with "true"
-  if (ge::AttrUtils::SetBool(matmul_op_desc, HAS_BIAS, true) == false) {
-    CUBE_INNER_ERR_REPORT(node_matmul, "set attr:has_bias=true to matmul failed");
-    return fe::FAILED;
-  }
+  FUSION_PASS_CHECK(ge::AttrUtils::SetBool(matmul_op_desc, HAS_BIAS, true) == false,
+                    CUBE_INNER_ERR_REPORT(node_matmul, "set attr:has_bias=true to matmul failed"),
+                    return FAILED);
 
   // add link from node_bias to node_matmul
-  if (node_matmul->AddLinkFrom("bias", node_bias) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(node_matmul, "add link from Bias to MatMul failed");
-    return fe::FAILED;
-  }
+  FUSION_PASS_CHECK(node_matmul->AddLinkFrom("bias", node_bias) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_matmul, "add link from Bias to MatMul failed"),
+                    return FAILED);
 
   vector<bool> is_input_const;
   for (auto &anchor : node_matmul->GetAllInDataAnchors()) {
@@ -223,28 +221,24 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   }
   node_matmul->GetOpDesc()->SetIsInputConst(is_input_const);
 
-  // replace src (Reshape -> BiasAdd(0) -> OtherNode) to (MatMul -> OtherNode)
-  auto reshapeOutAnchor = node_reshape->GetOutDataAnchor(0);
-  if (reshapeOutAnchor == nullptr) {
-    CUBE_CALL_ERR_REPORT(node_reshape, "Parameter[reshapeOutAnchor] must not be null.");
-    return fe::FAILED;
-  }
+  // replace src (Reshape -> BiasAdd(0) -> OtherNode) to (Reshape -> OtherNode)
+  auto reshape_out_anchor = node_reshape->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(reshape_out_anchor == nullptr,
+                    CUBE_CALL_ERR_REPORT(node_reshape, "Parameter[reshape_out_anchor] must not be null."),
+                    return FAILED);
 
   auto biasadd_out_anchor0 = node_biasadd->GetOutDataAnchor(0);
-  if (biasadd_out_anchor0 == nullptr) {
-    CUBE_CALL_ERR_REPORT(node_biasadd, "Parameter[biasadd_out_anchor0] must not be null.");
-    return fe::FAILED;
-  }
+  FUSION_PASS_CHECK(biasadd_out_anchor0 == nullptr,
+                    CUBE_CALL_ERR_REPORT(node_biasadd, "Parameter[biasadd_out_anchor0] must not be null."),
+                    return FAILED);
   for (auto &dstAnchor : biasadd_out_anchor0->GetPeerInDataAnchors()) {
-    if (dstAnchor == nullptr) {
-      CUBE_CALL_ERR_REPORT(node_biasadd, "Parameter[dstAnchor] must not be null.");
-      return fe::FAILED;
-    }
-    if (ge::GraphUtils::RemoveEdge(biasadd_out_anchor0, dstAnchor) != ge::GRAPH_SUCCESS ||
-        ge::GraphUtils::AddEdge(reshapeOutAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-      CUBE_CALL_ERR_REPORT(node_biasadd, "Replace edge src Failed.");
-      return fe::FAILED;
-    }
+    FUSION_PASS_CHECK(dstAnchor == nullptr,
+                      CUBE_CALL_ERR_REPORT(node_biasadd, "Parameter[dstAnchor] must not be null."),
+                      return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(biasadd_out_anchor0, dstAnchor) != ge::GRAPH_SUCCESS ||
+                      ge::GraphUtils::AddEdge(reshape_out_anchor, dstAnchor) != ge::GRAPH_SUCCESS,
+                      CUBE_CALL_ERR_REPORT(node_biasadd, "Replace edge src Failed."),
+                      return FAILED);
   }
 
   // ensure the format of output does not change
@@ -264,17 +258,29 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     FUSION_PASS_CHECK(node_reshape->GetOpDesc()->UpdateOutputDesc(0, node_reshape_output_desc) != ge::GRAPH_SUCCESS,
                       CUBE_CALL_ERR_REPORT(node_reshape, "update reshape output desc of [%s] not success.",
                             node_reshape->GetName().c_str()),
-                      return fe::FAILED);
+                      return FAILED);
   }
 
+  // relink ctrl edges of BiasAdd node
+  // input control anchor
+  FUSION_PASS_CHECK(FusionTurbo::TransferInCtrlEdges({node_biasadd}, node_matmul) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_biasadd, "link biasadd node input ctrl edges failed"),
+                    return FAILED);
+
+  // out control anchor
+  FUSION_PASS_CHECK(FusionTurbo::TransferOutCtrlEdges({node_biasadd}, node_matmul) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_biasadd, "link biasadd node output ctrl edges failed"),
+                    return FAILED);
+
   // delete BiasAdd node
-  if (graph.RemoveNode(node_biasadd) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(node_biasadd, "delete BiasAdd failed");
-    return fe::FAILED;
-  }
+  FusionTurbo fusion_turbo(graph);
+  FUSION_PASS_CHECK(fusion_turbo.RemoveNodeOnly(node_biasadd) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(node_biasadd, "delete BiasAdd failed"),
+                    return FAILED);
+
   fusionNodes.push_back(node_matmul);
   OP_LOGI(node_matmul, "matmul reshape biasadd fusion success!");
-  return fe::SUCCESS;
+  return SUCCESS;
 }
 REGISTER_PASS("MatMulReshapeBiasAddFusionPass", BUILT_IN_GRAPH_PASS, MatMulReshapeBiasAddFusionPass);
 }  // namespace fe
