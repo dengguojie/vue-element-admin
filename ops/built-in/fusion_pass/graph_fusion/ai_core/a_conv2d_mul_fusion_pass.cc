@@ -160,9 +160,9 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                                                            "'s OpDesc is null, fusion failed.")),
                     return PARAM_INVALID);
 
-  OP_LOGI(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input anchor.", conv_node->GetName().c_str(),
+  OP_LOGD(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input anchor.", conv_node->GetName().c_str(),
           conv_node->GetAllInDataAnchors().size());
-  OP_LOGI(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input desc.", conv_node->GetName().c_str(),
+  OP_LOGD(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input desc.", conv_node->GetName().c_str(),
           src_op->GetAllInputsDesc().size());
   int32_t in_edges_size = conv_node->GetInDataNodes().size();
   if (in_edges_size < 0) {
@@ -190,7 +190,7 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     hasBias = true;
   }
 
-  OP_LOGI(fused_op_type_.c_str(), "convWeights  size %u .", conv2d_weights.size());
+  OP_LOGD(fused_op_type_.c_str(), "convWeights  size %u .", conv2d_weights.size());
 
   auto conv_filter_anchor = conv_node->GetInDataAnchor(kFilterIndex);
   FUSION_PASS_CHECK(conv_filter_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "filter in anchor is null"),
@@ -436,7 +436,7 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     FUSION_PASS_CHECK(GraphUtils::AddEdge(bias_mul_out_anchor, conv_bias_in_anchor) != GRAPH_SUCCESS,
                       CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from bias_mul to conv failed"), return FAILED);
   }
-  OP_LOGI(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input anchor.",
+  OP_LOGD(fused_op_type_.c_str(), "Conv2DMulFusionPass: conv2d [%s] has %u input anchor.",
           conv_node->GetName().c_str(), conv_node->GetAllInDataAnchors().size());
 
   FUSION_PASS_CHECK(graph.RemoveNode(mul_node) == ge::GRAPH_FAILED,

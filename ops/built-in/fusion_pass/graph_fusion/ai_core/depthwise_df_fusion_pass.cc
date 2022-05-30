@@ -114,7 +114,7 @@ Status DepthwiseDfFusionPass::InsertNode(const ge::OutDataAnchorPtr& src, const 
 }
 
 Status DepthwiseDfFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGI("Enter DepthwiseDfFusionPass");
+  OP_LOGD("Enter DepthwiseDfFusionPass");
   ge::NodePtr depthwise_node = GetNodeFromMapping(PATTERN_DEPTHWISE_DF, mapping);
   OpDescPtr depthwise_desc = depthwise_node->GetOpDesc();
   OP_LOGD(depthwise_desc->GetName().c_str(), "dealing with df fusion");
@@ -171,7 +171,7 @@ Status DepthwiseDfFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   FUSION_PASS_CHECK(depthwise_node->GetOpDesc()->UpdateInputDesc(index, filter_desc) != GRAPH_SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "update depthwise filter input desc failed."), return FAILED);
 
-  OP_LOGI("Leave DepthwiseDfFusionPass");
+  OP_LOGD("Leave DepthwiseDfFusionPass");
   return SUCCESS;
 }
 REGISTER_PASS("DepthwiseDfFusionPass", BUILT_IN_GRAPH_PASS, DepthwiseDfFusionPass);

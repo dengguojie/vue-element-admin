@@ -112,7 +112,7 @@ Status Conv2DGroupFusionPass::ProcessDepthwiseConv(NodePtr convNode) {
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv node input 1 change nc failed"), return FAILED);
 
   // change op type to depthwise
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "change the conv type");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "change the conv type");
   convDesc->SetType("DepthwiseConv2D");
   // because conv2d no data_format and padding setting but depthwise has
   FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(convDesc, "data_format", "NCHW"),
@@ -364,7 +364,7 @@ Status Conv2DGroupFusionPass::SplitDequant(ge::ComputeGraph &graph, const ge::No
     return SUCCESS;
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start proc dequant node: %s", dequantNode->GetName().c_str());
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "GetWeights failed, node name %s, weight size is [%d]",
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "GetWeights failed, node name %s, weight size is [%d]",
           dequantNode->GetName().c_str(), OpDescUtils::GetWeights(dequantNode).size());
   vector<NodePtr> newDequantNodes;
 
@@ -495,7 +495,7 @@ Status Conv2DGroupFusionPass::ProcessGroupConv(ge::ComputeGraph &graph, ge::Node
 }
 
 Status Conv2DGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Conv2DGroupPass::Fusion.");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter Conv2DGroupPass::Fusion.");
   NodePtr convNode = GetNodeFromMapping(PATTERN_CONV2D_ID, mapping);
   OpDescPtr convDesc = convNode->GetOpDesc();
 

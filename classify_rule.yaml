@@ -621,6 +621,9 @@ cube-tiling:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_conv2d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_batchnorm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_fusion_pass_base.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/biasadd_conv_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2d_group_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_depthwise_conv2d_fusion_pass.cc
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/tbe/impl/dynamic/avg_pool.py

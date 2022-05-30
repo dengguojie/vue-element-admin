@@ -43,7 +43,7 @@ static const string DEPTHWISECONV2D = "DepthwiseConv2D";
 static const int DIM_NUM4 = 4;
 static const int DIRECTION_COUNT = 2;
 vector<FusionPattern*> PadDepthwiseConv2dFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass pattern begin");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PadDepthwiseConv2dFusionPass");
 
@@ -56,13 +56,13 @@ vector<FusionPattern*> PadDepthwiseConv2dFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_DEPTHWISECONV2D, {PATTERN_PADD, PATTERN_INPUTS1})
       .SetOutput(PATTERN_DEPTHWISECONV2D);
   patterns.push_back(pattern);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass pattern end");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass pattern end");
   return patterns;
 }
 
 Status PadDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                              vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass fusion begin");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass fusion begin");
   ge::NodePtr paddNode = GetNodeFromMapping(PATTERN_PADD, mapping);
   FUSION_PASS_CHECK(paddNode == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
                     return PARAM_INVALID);
@@ -217,7 +217,7 @@ Status PadDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                     return FAILED);
   fusionNodes.push_back(depthwiseConv2dNode);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass fusion end");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadDepthwiseConv2dFusionPass fusion end");
   return SUCCESS;
 }
 REGISTER_PASS("PadDepthwiseConv2dFusionPass", BUILT_IN_GRAPH_PASS, PadDepthwiseConv2dFusionPass);

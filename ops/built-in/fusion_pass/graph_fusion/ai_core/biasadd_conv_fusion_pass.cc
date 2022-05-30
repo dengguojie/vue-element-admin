@@ -223,7 +223,7 @@ Status BiasaddConvFusionPass::CheckParam(const ge::NodePtr &conv, const ge::Node
 // vector<ge::NodePtr> &fusionNodes: Store fusion nodes,
 //       including newly added nodes and fused but not deleted nodes
 Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter BiasaddConvFusionPass");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter BiasaddConvFusionPass");
   ge::NodePtr conv = GetNodeFromMapping(PATTERN_SRC, mapping);
   ge::NodePtr biasadd_node = GetNodeFromMapping(PATTERN_BIASADD, mapping);
   FUSION_PASS_CHECK(biasadd_node == nullptr,
@@ -233,9 +233,9 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   FUSION_PASS_CHECK(result != SUCCESS, , return result);
 
   ge::OpDescPtr src_op = conv->GetOpDesc();
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input anchor.", conv->GetName().c_str(),
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input anchor.", conv->GetName().c_str(),
           conv->GetAllInDataAnchors().size());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input desc.", conv->GetName().c_str(),
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass: conv2d [%s] has %u input desc.", conv->GetName().c_str(),
           src_op->GetAllInputsDesc().size());
 
   std::map<string, uint32_t> inputNameMap = src_op->GetAllInputName();
@@ -278,25 +278,25 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   convbiasTensor.SetOriginShape(convbiasTensor.GetShape());
   convbiasTensor.SetOriginDataType(convbiasTensor.GetDataType());
   convbiasTensor.SetOriginFormat(inputTensor.GetOriginFormat());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input datatype is %d.", src_op->GetInputDesc(2).GetDataType());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin datatype is %d.",
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input datatype is %d.", src_op->GetInputDesc(2).GetDataType());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin datatype is %d.",
           src_op->GetInputDesc(2).GetOriginDataType());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input format is %d.", src_op->GetInputDesc(2).GetFormat());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin format is %d.", src_op->GetInputDesc(2).GetOriginFormat());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input format is %d.", src_op->GetInputDesc(2).GetFormat());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin format is %d.", src_op->GetInputDesc(2).GetOriginFormat());
   src_op->UpdateInputDesc(2, convbiasTensor);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input datatype is %d.", src_op->GetInputDesc(2).GetDataType());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin datatype is %d.",
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input datatype is %d.", src_op->GetInputDesc(2).GetDataType());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin datatype is %d.",
           src_op->GetInputDesc(2).GetOriginDataType());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input format is %d.", src_op->GetInputDesc(2).GetFormat());
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin format is %d.", src_op->GetInputDesc(2).GetOriginFormat());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input format is %d.", src_op->GetInputDesc(2).GetFormat());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin format is %d.", src_op->GetInputDesc(2).GetOriginFormat());
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(biasadd_node),
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                           "Remove node:[%s] failed", biasadd_node->GetName().c_str()),
                     return FAILED);
   fusionNodes.push_back(conv);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass fusion success.");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass fusion success.");
 
   return SUCCESS;
 }

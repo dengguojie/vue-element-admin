@@ -71,7 +71,7 @@ Status ConvFusionPassBase::GetConvFilterInputIndex(const ge::NodePtr& convNode, 
                     OP_LOGI(convNode->GetType().c_str(), "ConvNode[%s]: the conv node does not have a const input.",
                             convNode->GetName().c_str()),
                     return FAILED);
-  OP_LOGI(convNode->GetType().c_str(), "ConvNode[%s]: the filter index of const input is [%d].",
+  OP_LOGD(convNode->GetType().c_str(), "ConvNode[%s]: the filter index of const input is [%d].",
           convNode->GetName().c_str(), filterInputIdx);
   return SUCCESS;
 }
