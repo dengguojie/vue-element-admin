@@ -251,15 +251,6 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{"Data", 2}, {"BatchMatMul", 1}}},
 
     {2,
-     "dynamic_shape_scene_7",
-     "abd,abc->cd",
-     "Einsum/MatMul",
-     {{10, 10}, {20, 40}, {30, 30}},
-     {{10, 10}, {22, 33}, {40, 40}},
-     {{40, 40}, {30, 30}},
-     {{"Data", 2}, {"MatMulV2", 1}, {"FlattenV2", 2}}},
-
-    {2,
      "dynamic_shape_scene_8",
      "abe,cde->abcd",
      "Einsum/Reshape3",
