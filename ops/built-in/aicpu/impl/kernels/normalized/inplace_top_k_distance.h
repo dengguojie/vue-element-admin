@@ -51,7 +51,7 @@ class InplaceTopKDistanceCpuKernel : public CpuKernel {
   uint32_t GetInputAndCheck(const CpuKernelContext& ctx, Inputs& inputs) const;
 
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext& ctx, Inputs& inputs);
+  uint32_t DoCompute(Inputs& inputs);
 
   template <typename T>
   uint32_t ModifyInput(std::vector<Item<T>> items, const Inputs& inputs);

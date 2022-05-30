@@ -38,7 +38,7 @@ uint32_t GeometricCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   p_ = (p == nullptr) ? PATTRDEFAULT : (p->GetFloat());
   AttrValue *attr_seed = ctx.GetAttr("attr_seed");
   attr_seed_ = (attr_seed == nullptr) ? 0 : (attr_seed->GetInt());
-  srand(attr_seed_);
+  srand(static_cast<uint32_t>(attr_seed_));
   KERNEL_LOG_DEBUG("%s Attr[p] value[%d]", kGeometric, p_);
   std::vector<int64_t> x_dim_size;
   for (int j = 0; j < input_tensor_shape->GetDims(); j++) {

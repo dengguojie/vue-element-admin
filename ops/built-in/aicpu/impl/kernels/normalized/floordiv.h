@@ -38,7 +38,7 @@ class FloorDivCpuKernel : public CpuKernel {
   uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
+  uint32_t BcastCompute(const CpuKernelContext &ctx, Bcast &bcast);
 
   template <typename T>
   uint32_t BcastParallelCompute(const CpuKernelContext &ctx, const Bcast &bcast);

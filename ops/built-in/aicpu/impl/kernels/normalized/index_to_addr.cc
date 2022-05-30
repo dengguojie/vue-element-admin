@@ -24,7 +24,7 @@
 
 namespace {
 const char *const kIndexToAddr = "IndexToAddr";
-const char *kMatrix = "Matrix";
+const char *const kMatrix = "Matrix";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 1;
 

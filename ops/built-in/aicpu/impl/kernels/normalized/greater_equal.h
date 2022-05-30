@@ -41,7 +41,7 @@ class GreaterEqualCpuKernel : public CpuKernel {
   uint32_t BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
-  uint32_t GreaterEqualCompute(CpuKernelContext &ctx);
+  uint32_t GreaterEqualCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

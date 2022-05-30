@@ -68,7 +68,7 @@ uint32_t FloorCpuKernel::FloorCheck(const CpuKernelContext &ctx) const {
 }
 
 template <typename T>
-uint32_t FloorCpuKernel::FloorCompute(CpuKernelContext &ctx) {
+uint32_t FloorCpuKernel::FloorCompute(const CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Output(0)->NumElements();

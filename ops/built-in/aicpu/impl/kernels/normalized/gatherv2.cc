@@ -53,7 +53,7 @@ uint32_t DoGatherV2Compute(const CpuKernelContext &ctx) {
     axis = params->GetTensorShape()->GetDims() + axis;
   }
 
-  int64_t gather_dim_size = params->GetTensorShape()->GetDimSize(axis);
+  int64_t gather_dim_size = params->GetTensorShape()->GetDimSize(static_cast<int32_t>(axis));
   int64_t indices_num = indices->NumElements();
 
   int64_t outer_size = 1;
@@ -66,7 +66,7 @@ uint32_t DoGatherV2Compute(const CpuKernelContext &ctx) {
     inner_size *= params->GetTensorShape()->GetDimSize(static_cast<int32_t>(i));
   }
 
-  int64_t slice_size = inner_size * sizeof(T);
+  int64_t slice_size = inner_size * static_cast<int64_t>(sizeof(T));
   auto params_base = static_cast<T *>(params->GetData());
   KERNEL_CHECK_NULLPTR(params_base, KERNEL_STATUS_PARAM_INVALID, "Get params_base failed.");
   auto indices_data = static_cast<Index *>(indices->GetData());

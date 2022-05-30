@@ -30,7 +30,7 @@ class FloorCpuKernel : public CpuKernel {
   uint32_t FloorCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t FloorCompute(CpuKernelContext &ctx);
+  uint32_t FloorCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

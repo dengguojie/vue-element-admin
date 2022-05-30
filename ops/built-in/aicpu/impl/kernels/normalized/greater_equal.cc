@@ -189,7 +189,7 @@ uint32_t GreaterEqualCpuKernel::BcastCompute(const CpuKernelContext &ctx,
 }
 
 template <typename T>
-uint32_t GreaterEqualCpuKernel::GreaterEqualCompute(CpuKernelContext &ctx) {
+uint32_t GreaterEqualCpuKernel::GreaterEqualCompute(const CpuKernelContext &ctx) {
   Tensor *input0_tensor = ctx.Input(0);
   auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
   int64_t input0_elements_nums = input0_tensor->NumElements();

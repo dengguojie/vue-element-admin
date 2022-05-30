@@ -36,11 +36,11 @@ uint32_t InplaceTopKDistanceCpuKernel::Compute(CpuKernelContext &ctx) {
   switch (data_type) {
     case DT_FLOAT16:
       KERNEL_LOG_DEBUG("InplaceTopKDistance Compute DT_FLOAT16");
-      res = DoCompute<Eigen::half>(ctx, inputs);
+      res = DoCompute<Eigen::half>(inputs);
       break;
     case DT_FLOAT:
       KERNEL_LOG_DEBUG("InplaceTopKDistance compute DT_FLOAT");
-      res = DoCompute<float>(ctx, inputs);
+      res = DoCompute<float>(inputs);
       break;
     default:
       KERNEL_LOG_DEBUG(
@@ -84,7 +84,7 @@ uint32_t InplaceTopKDistanceCpuKernel::GetInputAndCheck(const CpuKernelContext& 
 }
 
 template <typename T>
-uint32_t InplaceTopKDistanceCpuKernel::DoCompute(CpuKernelContext& ctx, Inputs& inputs) {
+uint32_t InplaceTopKDistanceCpuKernel::DoCompute(Inputs& inputs) {
   int64_t topk_elements_num = inputs.topk_pq_distance->NumElements();
   std::vector<Item<T>> items;
   T *topk_value_ptr = static_cast<T *>(inputs.topk_pq_distance->GetData());

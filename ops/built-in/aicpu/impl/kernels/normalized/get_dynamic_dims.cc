@@ -51,7 +51,7 @@ uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t GetDynamicDimsCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t GetDynamicDimsCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   // parse attr
   AttrValue *n_attr = ctx.GetAttr("N");
   KERNEL_CHECK_NULLPTR(n_attr, KERNEL_STATUS_PARAM_INVALID,

@@ -27,7 +27,7 @@ class GetDynamicDimsCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
 
   template <typename T>
   uint32_t FillOutput(const CpuKernelContext &ctx, std::vector<T> &dims);
