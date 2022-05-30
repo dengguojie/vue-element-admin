@@ -687,6 +687,8 @@ vector_A:
       - ops/built-in/framework/tf_plugin/atan_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/leaky_relu_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/log_softmax_v2_plugin.cc
+      - ops/built-in/framework/tf_plugin/softmax_v2_plugin.cc
+      - ops/built-in/framework/tf_plugin/softmax_grad_plugin.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_mean_mul_gatherv2_fusion_pass.cc
@@ -807,6 +809,7 @@ vector_A:
       - ops/built-in/tbe/impl/cumprod_d.py
       - ops/built-in/tbe/impl/cumsum_d.py
       - ops/built-in/tbe/impl/cumulativelogsumexp_d.py
+      - ops/built-in/tbe/impl/softmax_v2.py
       - ops/built-in/tbe/impl/dynamic/aipp.py
       - ops/built-in/tbe/impl/dynamic/dynamic_lstm_grad_cell.py
       - ops/built-in/tbe/impl/dynamic/dynamic_rnn.py
@@ -2444,7 +2447,6 @@ unkown:
       - ops/built-in/tbe/impl/dilation2d_backprop_filter.py
       - ops/built-in/tbe/impl/reduction.py
       - ops/built-in/tbe/impl/sigmoid_grad.py
-      - ops/built-in/tbe/impl/softmax_v2.py
       - ops/built-in/tbe/impl/maximum.py
       - ops/built-in/tbe/impl/roi_pooling_base.py
       - ops/built-in/tbe/impl/lars_v2_update.py
@@ -3224,7 +3226,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/hcom_receive_plugin.cc
       - ops/built-in/framework/tf_plugin/list_plugin.cc
       - ops/built-in/framework/tf_plugin/reduce_mean_plugin.cc
-      - ops/built-in/framework/tf_plugin/softmax_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/cosh_plugin.cc
       - ops/built-in/framework/tf_plugin/mul_no_nan_plugin.cc
       - ops/built-in/framework/tf_plugin/concat_offset_plugin.cc
@@ -3425,7 +3426,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/apply_add_sign_plugin.cc
       - ops/built-in/framework/tf_plugin/avg_pool_plugin.cc
       - ops/built-in/framework/tf_plugin/mask_2_argmax_plugin.cc
-      - ops/built-in/framework/tf_plugin/softmax_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/abs_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool_grad_grad_with_argmax_plugin.cc
       - ops/built-in/framework/tf_plugin/gather_v2_plugin.cc

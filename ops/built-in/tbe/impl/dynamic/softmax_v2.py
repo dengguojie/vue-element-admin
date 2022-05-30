@@ -209,7 +209,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
             data_expsum = tbe.vrec(data_expsum, "high_precision")
         else:
             data_expsum = tbe.vrec(data_expsum)
-        
+
         if check_is_axes_with_last(shape, axis):
             tmp_shape = list(data_expsum.shape[:-1]) + [shape[-1]]
             data_expsum = tbe.broadcast(data_expsum, tmp_shape)

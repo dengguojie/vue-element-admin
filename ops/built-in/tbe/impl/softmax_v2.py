@@ -2767,7 +2767,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         ((ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0) or ori_shape[-1] in (21841,)):
         use_dynamic = False
     if input_format in ("FRACTAL_NZ",) and \
-        input_x.get("dtype").lower() == "float32" and impl_mode == "high_precision":
+        input_x.get("dtype").lower() == "float32":
         use_dynamic = True
 
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and use_dynamic:
