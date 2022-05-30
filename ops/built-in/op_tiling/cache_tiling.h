@@ -58,22 +58,27 @@ struct BatchmatmulRunParas {
   bool b_have_batch = false;  // dim num > 2
   bool is_batch_matmul_mode = false;  // (BatchMatMulV2 or BatchMatMul) and (dynamic_mode == "dynamic_mknb")
   bool used_aligned_pattern = false;
+  bool non_factor_k = false;
   int32_t m_32 = 1;
   int32_t k_32 = 1;
   int32_t n_32 = 1;
   int32_t batch_32 = 1;
+  int32_t m_mapped = 1;
+  int32_t k_mapped = 1;
+  int32_t n_mapped = 1;
+  int32_t batch_mapped = 1;
   int64_t m = 1;
   int64_t k = 1;
   int64_t n = 1;
   int64_t batch = 1;
-  int64_t ori_shape_M = 1;
-  int64_t ori_shape_K = 1;
-  int64_t ori_shape_N = 1;
+  int64_t ori_shape_m = 1;
+  int64_t ori_shape_k = 1;
+  int64_t ori_shape_n = 1;
 };
 
 struct BatchmatmulParas {
   const BatchmatmulCompileParas *compile_params = nullptr;
-  const BatchmatmulRunParas *run_params = nullptr;
+  BatchmatmulRunParas *run_params = nullptr;
 };
 
 struct CoreStatus {
@@ -85,6 +90,8 @@ struct CoreStatus {
   int32_t m_dim = 1;
   int32_t n_dim = 1;
   int32_t k_dim = 1;
+  int32_t kal1_factor = 1;
+  int32_t kbl1_factor = 1;
 };
 
 struct BlockDimCalculator {
@@ -107,6 +114,13 @@ struct BlockDimCalculator {
   int32_t m_dim_cnt = 0;
   int32_t n_dim_cnt = 0;
   int32_t k_dim_cnt = 0;
+  int32_t batch_factor_cnt = 0;
+  int32_t m_factor_less_64_cnt = 0;
+  int32_t m_factor_less_1024_cnt = 0;
+  int32_t k_factor_less_64_cnt = 0;
+  int32_t k_factor_less_1024_cnt = 0;
+  int32_t n_factor_less_64_cnt = 0;
+  int32_t n_factor_less_1024_cnt = 0;
   int32_t ori_amat_size = 0;
   int32_t ori_bmat_size = 0;
   int32_t amat_size = 0;
@@ -122,6 +136,7 @@ struct BlockDimCalculator {
   int32_t tmp_value = 0;
   int32_t final_value = 0;
   bool final_blocking_flag = false;
+  bool init_flag = false;
 };
 
 struct L0Status {
@@ -260,6 +275,8 @@ public:
   int32_t k_dim = 1;
   int32_t kal1_16 = 1;
   int32_t kbl1_16 = 1;
+  int32_t kal1_factor = 1;
+  int32_t kbl1_factor = 1;
   int32_t m_al1 = 1;
   int32_t n_bl1 = 1;
   int32_t db_al1 = 1;
@@ -288,12 +305,12 @@ public:
   void SetParams(const CoreStatus& coreStatus, const L0Status& l0Status, const L1Status& l1Status,
                  const UbStatus& ubStatus, const BatchmatmulParas& params);
   void SetAttachFlag();
-  void GetTilingId(const BatchmatmulCompileParas& params);
+  void GetTilingId(const BatchmatmulParas& params);
   ~Tiling() = default;
 };
 
 void GenTiling(const std::string &op_type, const BatchmatmulCompileParas &compile_params,
-               const BatchmatmulRunParas &run_params, Tiling &tiling, std::string &tilingId);
+               BatchmatmulRunParas &run_params, Tiling &tiling, std::string &tilingId);
 }; // namespace optiling
 
 #endif

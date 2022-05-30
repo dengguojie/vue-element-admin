@@ -17,7 +17,70 @@
 """
 Sub-function of gemm_integrated_schedule
 """
+from tbe import tvm
 from tbe.common import platform as tbe_platform
+from tbe.common.buildcfg import build_config
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute.util import int_ceil_div
+
+
+def get_all_tags(res):
+    """
+    get all tags
+    :param res: tensor
+    :return: list
+    """
+    op_tags = set()
+
+    def get_tag(tensor):
+        """
+        find all tags
+        :param tensor: tensor
+        :return: all tags
+        """
+        tensor_list = tensor.op.input_tensors
+        op_tags.add(tensor.op.tag)
+        for one_tensor in tensor_list:
+            op_tags.add(one_tensor.op.tag)
+            get_tag(one_tensor)
+
+    get_tag(res)
+    return op_tags
+
+
+def copy_attrs(src_tensor, dst_tensor):
+    for attr_key, value in src_tensor.op.attrs.items():
+        dst_tensor.op.attrs[attr_key] = value
+
+
+def print_ir_matmul(debug_ir_flag, process, sch):
+    """
+    print ir for input sch
+    :param process: tag
+    :param sch: schedule
+    :return: IR process
+    """
+    if debug_ir_flag:
+        with build_config():
+            start = process + " IR start"
+            end = process + " IR end\n"
+            sch = sch.normalize()
+            print(start)
+            bounds = tvm.schedule.InferBound(sch)
+            stmt = tvm.schedule.ScheduleOps(sch, bounds, True)
+            print(stmt)
+            print(end)
+
+
+def debug(debug_param_flag, info, tag=""):
+    """
+    print log if debug
+    :param info:
+    :return:
+    """
+    if debug_param_flag:
+        print("----")
+        print(tag, info)
 
 
 class GemmScheduleContainer:
@@ -99,6 +162,7 @@ class GemmScheduleStatusController:
         self.attach_at_flag = None
         self.split_k_axis_by_tiling = False
         self.split_k = False
+        self.non_factor_k_flag = False
         self.over_head_flag = False
         self.batch_broadcast_flag = False
         self.batch_broadcast_change_attach = False
@@ -482,3 +546,127 @@ class UbBufferReuser:
         # Allowing reuse_tensor(or reuse_tensors) to reuse the spaces of src_tensor.
         if (src_tensor is not None) and (reuse_tensor is not None):
             self.buffer_reuse_dict[src_tensor] = reuse_tensor
+
+
+class GemmTilingWork:
+    """ There are tiling parameters in matmul
+    """
+    def __init__(self):
+        self.tiling = None
+        (self.al0_tiling_batch, self.al0_tiling_ma,
+         self.al0_tiling_ka, self.al0_tiling_m0, self.al0_tiling_k0) = 1, 1, 1, 16, 16
+        (self.bl0_tiling_batch, self.bl0_tiling_nb,
+         self.bl0_tiling_kb, self.bl0_tiling_n0, self.bl0_tiling_k0) = 1, 1, 1, 16, 16
+        self.al1_tiling_batch, self.al1_tiling_m, self.al1_tiling_k = 1, 1, 1
+        self.bl1_tiling_batch, self.bl1_tiling_n, self.bl1_tiling_k = 1, 1, 1
+        (self.aub_tiling_batch, self.aub_tiling_m,
+         self.aub_tiling_k, self.aub_tiling_m0, self.aub_tiling_k0) = 1, 1, 1, 16, 16
+        (self.bub_tiling_batch, self.bub_tiling_n,
+         self.bub_tiling_k, self.bub_tiling_n0, self.bub_tiling_k0) = 1, 1, 1, 16, 16
+        (self.cl0_tiling_batch, self.cl0_tiling_nc,
+         self.cl0_tiling_mc, self.cl0_tiling_n0, self.cl0_tiling_m0) = 1, 1, 1, 16, 16
+        self.factor_shape = {"aub": [], "bub": [], "cub": [], "al0": [], "bl0": [], "cl0": [], "al1": [], "bl1": []}
+
+    @staticmethod
+    def get_split_param(cache_tiling, non_factor_k_flag):
+        """
+        get param for attach at, ceildiv by default, use floordiv to aid simplification in binary scene
+        -----------------------
+        Return:
+            split_param: dict, include factor_ceil_mode, split_ceil_mode, tail_strategy and activate_scope.
+        """
+        factor_ceil_mode = True
+        split_ceil_mode = True
+        tail_strategy = "guard_with_if"
+        if cache_tiling and not non_factor_k_flag:
+            factor_ceil_mode = False
+            split_ceil_mode = False
+            tail_strategy = "round_up"
+        return {"split_ceil_mode": split_ceil_mode, "factor_ceil_mode": factor_ceil_mode,
+                "tail_strategy": tail_strategy, "active_scope": "outer"}
+
+    def _set_factor_shape_nz_out(self, cache_tiling, cub_tiling):
+        """
+        define the tiling factor for attach at when output format is NZ.
+        """
+        cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, _, _ = cub_tiling
+        self.factor_shape["cub"] = [cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0]
+        self.factor_shape["cl0"] = [cache_tiling.get("n_ub_l0_time"), 1, 1, 1]
+        if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
+            self.factor_shape["al12ddr"] = [cache_tiling.get("n_bl1"), cache_tiling.get("m_al1"), 1, None]
+        elif self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 1:
+            self.factor_shape["al12ddr"] = [1, 1, 1, None]
+        else:
+            self.factor_shape["al12ddr"] = [1, cache_tiling.get("m_al1"), 1, None]
+
+        if self.tiling.get("attach_at_flag").get("al1_attach_flag") == 1:
+            self.factor_shape["bl12ddr"] = [cache_tiling.get("n_bl1"), cache_tiling.get("m_al1"), None, 1]
+        else:
+            self.factor_shape["bl12ddr"] = [cache_tiling.get("n_bl1"),
+                                            cache_tiling.get("m_single_core") * cache_tiling.get("m_al1"), None, 1]
+
+    def set_factor_shape(self, cache_tiling, format_info, status_controller):
+        """
+        define the tiling factor for attach at.
+        we split root scope from small to large, the basic sequence is UB->L0->L1.
+        the factor is TILING_L0/TILING_UB when split TILING_L0.
+        the factor is TILING_L1/TILING_L0 when split TILING_L1.
+        """
+        attach_at_flag = self.tiling.get("attach_at_flag")
+        cub_tiling = self.tiling.get("CUB_matrix")
+        cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, cub_tiling_batch, _ = cub_tiling
+        ub_ka = int_ceil_div(self.aub_tiling_k, self.aub_tiling_k0)
+        ub_kb = int_ceil_div(self.bub_tiling_k, self.bub_tiling_k0)
+
+        # parent of cub/cl0 is cddr by default, parent of al0/bl0 is cl0 by default.
+        # parent of al1/bl1 is cl0 when attach_flag is equals to 2, otherwise parent of al1/bl1 is cddr.
+        # cddr has 2 iter_vars(m, n) when output format is ND.
+        # cddr has 4 iter_vars(n1, m1, m0, n0) when output format is NZ.
+        # cl0 has 6 iter_vars(n1, m1, m0, n0, k1, k0).
+        self.factor_shape["al0"] = [
+            None, self.al0_tiling_ma, None, self.al0_tiling_m0, self.al0_tiling_ka, self.al0_tiling_k0
+        ]
+        self.factor_shape["bl0"] = [self.bl0_tiling_nb, None, None, 1, 1, 1]
+        if format_info.get("a") == "ND":
+            self.factor_shape["aub"] = [self.aub_tiling_m, ub_ka, self.aub_tiling_m0, self.aub_tiling_k0]
+        if format_info.get("b") == "ND":
+            self.factor_shape["bub"] = [ub_kb, self.bub_tiling_n, self.bub_tiling_n0, self.bub_tiling_k0]
+        # only split by kl0_factor when k_al1/k_bl1 larger than kl0
+        if attach_at_flag.get("min_kl1_cmp_kl0"):
+            if attach_at_flag.get("abkl1_attach_flag") in (0, 1):
+                self.factor_shape["al12cl0"] = [None, 1, None, 1, 1, 1]
+                self.factor_shape["bl12cl0"] = [1, None, None, 1, cache_tiling.get("kbl0_factor"), 1]
+            else:
+                self.factor_shape["al12cl0"] = [None, 1, None, 1, cache_tiling.get("kal0_factor"), 1]
+                self.factor_shape["bl12cl0"] = [1, None, None, 1, 1, 1]
+        if format_info.get("out") == "ND":
+            self.factor_shape["cub"] = [cub_tiling_mc_factor * cub_tiling_m0, cub_tiling_nc_factor * cub_tiling_n0]
+            self.factor_shape["cl0"] = [1, cache_tiling.get("n_ub_l0_time")]
+            self.factor_shape["al12ddr"] = [cache_tiling.get("m_al1"), cache_tiling.get("n_single_core")]
+            self.factor_shape["bl12ddr"] = [1, cache_tiling.get("n_bl1")]
+        else:
+            self._set_factor_shape_nz_out(cache_tiling, cub_tiling)
+
+        if status_controller.split_k_axis_by_tiling:
+            self.factor_shape.get("cub").insert(0, 1)
+            self.factor_shape.get("cl0").insert(0, 1)
+            self.factor_shape.get("al0").insert(0, 1)
+            self.factor_shape.get("bl0").insert(0, 1)
+            self.factor_shape.get("al12ddr").insert(0, 1)
+            self.factor_shape.get("bl12ddr").insert(0, 1)
+            if attach_at_flag.get("min_kl1_cmp_kl0"):
+                self.factor_shape.get("al12cl0").insert(0, 1)
+                self.factor_shape.get("bl12cl0").insert(0, 1)
+
+        if status_controller.have_batch:
+            self.factor_shape.get("cub").insert(0, cub_tiling_batch)
+            self.factor_shape.get("cl0").insert(0, self.cl0_tiling_batch)
+            self.factor_shape.get("aub").insert(0, self.aub_tiling_batch)
+            self.factor_shape.get("al0").insert(0, self.al0_tiling_batch)
+            self.factor_shape.get("al12ddr").insert(0, self.al1_tiling_batch)
+            self.factor_shape.get("bub").insert(0, self.bub_tiling_batch)
+            self.factor_shape.get("bl0").insert(0, self.bl0_tiling_batch)
+            self.factor_shape.get("bl12ddr").insert(0, self.bl1_tiling_batch)
+            if attach_at_flag.get("min_kl1_cmp_kl0"):
+                self.factor_shape.get("al12cl0").insert(0, 1)
+                self.factor_shape.get("bl12cl0").insert(0, 1)

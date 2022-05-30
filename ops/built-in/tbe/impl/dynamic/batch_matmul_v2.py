@@ -761,22 +761,37 @@ def fuzzy_range_check(input_x1: dict, input_x2: dict, bias: dict, trans_a: bool,
     return True
 
 
-def _get_var_name(format_a: str, format_b: str) -> list:
+def _get_var_name(format_a: str, format_b: str, cache_tiling_flag: bool) -> list:
     """
     Get the name of the variables
     """
-    if format_a != "ND":
-        m_var_name = "m"
-        k_var_name = "k"
-    else:
+
+    if format_a == "ND" and not cache_tiling_flag:
         m_var_name = "m_ori"
         k_var_name = "k_ori"
-
-    if format_b != "ND":
-        n_var_name = "n"
     else:
+        m_var_name = "m"
+        k_var_name = "k"
+
+    if format_b == "ND" and not cache_tiling_flag:
         n_var_name = "n_ori"
+    else:
+        n_var_name = "n"
+    if cache_tiling_flag:
+        k_var_name = "k_ori"
     return [m_var_name, k_var_name, n_var_name]
+
+
+def _set_shape(param_var: tuple, format_a: str, format_b: str, cache_tiling_flag: bool) -> tuple:
+    """
+    Set the shape for input
+    """
+    m_var, k_var, n_var = param_var
+    if format_a == "ND" and cache_tiling_flag:
+        m_var = m_var * BLOCK_CUBE
+    if format_b == "ND" and cache_tiling_flag:
+        n_var = n_var * BLOCK_CUBE
+    return [k_var, m_var, n_var, k_var]
 
 
 def _get_m_k_index(format_a: str, trans_a: bool) -> list:
@@ -861,10 +876,7 @@ def _check_nd_in(input_x1: dict, input_x2: dict) -> bool:
 
 def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict) -> None:
     if get_none_range_flag(input_x1, input_x2, bias):
-        if _check_nd_in(input_x1, input_x2):
-            operation.var("m")
-            operation.var("k")
-            operation.var("n")
+        operation.var("k")
         operation.var("batch_single_core")
         operation.var("m_single_core")
         operation.var("n_single_core")
@@ -962,7 +974,8 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
 
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
-    m_var_name, k_var_name, n_var_name = _get_var_name(format_a, format_b)
+    cache_tiling_flag = get_none_range_flag(input_x1, input_x2, bias)
+    m_var_name, k_var_name, n_var_name = _get_var_name(format_a, format_b, cache_tiling_flag)
 
     m_var = operation.var(m_var_name, m_range)
     k_var = operation.var(k_var_name, k_range)
@@ -985,13 +998,11 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     if len(shape_x2) >= BATCH_ND_LENGTH:
         shape_x2 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]
 
-    m_index, k_index = _get_m_k_index(format_a, trans_a)
-    shape_x1[k_index] = k_var
-    shape_x1[m_index] = m_var
-
-    k_index, n_index = _get_k_n_index(format_b, trans_b)
-    shape_x2[n_index] = n_var
-    shape_x2[k_index] = k_var
+    m_index, ka_index = _get_m_k_index(format_a, trans_a)
+    kb_index, n_index = _get_k_n_index(format_b, trans_b)
+    param_var = m_var, k_var, n_var
+    shape_x1[ka_index], shape_x1[m_index], shape_x2[n_index], shape_x2[kb_index] = _set_shape(
+        param_var, format_a, format_b, cache_tiling_flag)
     if format_a != "ND":
         shape_x1 = shape_x1 + [BLOCK_CUBE, BLOCK_CUBE]
     if format_b != "ND":
@@ -1010,7 +1021,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
         "format_out": output_z.get("format"),
         "dst_dtype": dtype_out,
         "tensor_c": tensor_bias,
-        "cache_tiling_flag": get_none_range_flag(input_x1, input_x2, bias),
+        "cache_tiling_flag": cache_tiling_flag,
         "kernel_name": kernel_name,
         "input_range": input_range
     }
@@ -1154,4 +1165,3 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         config.get("build_args")["enable_branch_eliminator_else_case"] = False
     tbe.build(sch, config)
     tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")
-

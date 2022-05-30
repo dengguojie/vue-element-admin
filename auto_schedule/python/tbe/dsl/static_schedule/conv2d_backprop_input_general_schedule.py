@@ -36,6 +36,7 @@ from tbe.tvm.schedule import InferBound
 from tbe.tvm.schedule import ScheduleOps
 from tbe.dsl.boost_schedule_kit import Compare
 from tbe.dsl.boost_schedule_kit import ScheduleAgent
+from tbe.dsl.boost_schedule_kit import SplitParam
 from tbe.dsl.static_schedule.conv2d_backprop_util import check_need_5hd_trans_nhwc
 from tbe.dsl.static_schedule.conv2d_backprop_util import fetch_elewise_fusion_ub_info
 from tbe.dsl.static_schedule.conv2d_backprop_util import fetch_fixpipe_tensor
@@ -2928,10 +2929,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         else:
             ax_g, ax_ni, ax_ci, ax_hw, *_ = axs
         if dyn_util.dynamic_mode == "binary":
-            ax_batch_outer, ax_batch_inner = sch_agent[c_ddr].split(ax_ni, nparts=batch_dim, ceil_mode=False)
+            split_params = SplitParam(split_ceil_mode=False)
+            ax_batch_outer, ax_batch_inner = sch_agent[c_ddr].split(ax_ni, nparts=batch_dim, split_params=split_params)
             ax_m_outer, ax_m_inner = sch_agent[c_ddr].split(ax_hw, nparts=m_dim)
             ax_n_outer, ax_n_inner = sch_agent[c_ddr].split(ax_ci, nparts=n_dim)
-            ax_g_outer, ax_g_inner = sch_agent[c_ddr].split(ax_g, nparts=group_dim, ceil_mode=False)
+            ax_g_outer, ax_g_inner = sch_agent[c_ddr].split(ax_g, nparts=group_dim, split_params=split_params)
             sch[c_ddr].reorder(ax_g_outer, ax_batch_outer, ax_n_outer, ax_m_outer,
                                ax_g_inner, ax_batch_inner, ax_n_inner, ax_m_inner)
             sch.bind_axes([ax_g_outer, ax_batch_outer, ax_n_outer, ax_m_outer], tvm.thread_axis('blockIdx.x'))

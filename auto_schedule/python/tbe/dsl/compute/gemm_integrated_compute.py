@@ -178,12 +178,6 @@ class GEMMComputeParam:
         result_value |= split_k << 1
         return result_value
 
-    @staticmethod
-    def get_var_name(tensor_format, var_name):
-        if tensor_format == "ND":
-            var_name += "_ori"
-        return var_name
-
 
 class GetPerfCoreNum:
     """
@@ -660,9 +654,9 @@ class GEMMCompute(FormatCompute):
         GEMMComputeParam.format_a = self.format_a
         GEMMComputeParam.format_b = self.format_b
         GEMMComputeParam.format_out = self.format_out
-        GEMMComputeParam.m_var_name = GEMMComputeParam.get_var_name(self.format_a, "m")
-        GEMMComputeParam.k_var_name = GEMMComputeParam.get_var_name(self.format_a, "k")
-        GEMMComputeParam.n_var_name = GEMMComputeParam.get_var_name(self.format_b, "n")
+        GEMMComputeParam.m_var_name = self._get_var_name(self.format_a, "m", self.cache_tiling_flag)
+        GEMMComputeParam.k_var_name = self._get_var_name(self.format_a, "k", self.cache_tiling_flag)
+        GEMMComputeParam.n_var_name = self._get_var_name(self.format_b, "n", self.cache_tiling_flag)
         GEMMComputeParam.split_k_flag = self.split_k
 
     def _init_dynamic_tiling_info_dict(self, tensor_a_zz, tensor_b_zn):

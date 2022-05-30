@@ -72,6 +72,24 @@ def floor_div(number_m, number_n):
     return tvm.div(number_m, number_n)
 
 
+def expand_params(args, expand_len):
+    """
+    Expand a single args into a args list.
+
+    Parameters:
+    ----------
+    args: Input parameter for expansion.
+
+    expand_len: Expanded list length.
+
+    Returns: Expanded list of args.
+
+    """
+    if isinstance(args, (tuple, list)):
+        return args
+    return [args] * expand_len
+
+
 class Compare:
     """
     Compare: Compare two tensor's shape.

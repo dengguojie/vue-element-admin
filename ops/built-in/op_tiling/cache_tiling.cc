@@ -77,6 +77,12 @@ static const int32_t kL2Bandwidth8Core = 1300;
 static const int32_t kL2Bandwidth32Core = 3300;
 static const int32_t kCoreNum32 = 32;
 static const int32_t kMNPntMax = 16;
+static const int32_t kSeedMapMin = 16;
+static const int32_t kSeedMapMax = 1024;
+static const int32_t kL0FactorNumLimit = 2;
+static const int32_t kL1FactorNumLimit = 4;
+static const int32_t kL0FactorLimit = 64;
+static const int32_t kL1FactorLimit = 128;
 
 struct AUbStatusCondition {
   /* This struct is used to storage the tiling condition of AUb.
@@ -146,6 +152,76 @@ public:
   ~PreUbTiling() = default;
 };
 
+int32_t MapShape(int32_t shape) {
+  int32_t seed = kSeedMapMin;
+  if (shape < seed) {
+    return shape;
+  }
+  while (seed < kSeedMapMax) {
+    if (seed <= shape && (seed << 1) > shape) {
+      break;
+    }
+    seed = seed << 1;
+  }
+  return seed;
+}
+
+void GetFactorCnt(const int32_t &shape, int32_t &factor_cnt, const int32_t &factor_start, const int32_t &factor_end) {
+  for (int32_t i = factor_start; i <= factor_end; i++) {
+    if (shape < i) {
+      return;
+    }
+    if (shape % i == 0) {
+      ++factor_cnt;
+    }
+  }
+}
+
+void NonFactorMap(const string &op_type, BatchmatmulParas &params, BlockDimCalculator &blockDimCalculator) {
+  const BatchmatmulCompileParas &compile_params = *(params.compile_params);
+  BatchmatmulRunParas &run_params = *(params.run_params);
+  run_params.batch_mapped = run_params.batch_32;
+  run_params.m_mapped = run_params.m_32;
+  run_params.k_mapped = run_params.k_32;
+  run_params.n_mapped = run_params.n_32;
+  GetFactorCnt(run_params.batch_32, blockDimCalculator.batch_factor_cnt, 1, compile_params.core_num);
+  GetFactorCnt(run_params.m_32, blockDimCalculator.m_factor_less_64_cnt, 1, kL0FactorLimit);
+  GetFactorCnt(run_params.m_32, blockDimCalculator.m_factor_less_1024_cnt, kL0FactorLimit + 1, kL1FactorLimit);
+  GetFactorCnt(run_params.k_32, blockDimCalculator.k_factor_less_64_cnt, 1, kL0FactorLimit);
+  GetFactorCnt(run_params.k_32, blockDimCalculator.k_factor_less_1024_cnt, kL0FactorLimit + 1, kL1FactorLimit);
+  GetFactorCnt(run_params.n_32, blockDimCalculator.n_factor_less_64_cnt, 1, kL0FactorLimit);
+  GetFactorCnt(run_params.n_32, blockDimCalculator.n_factor_less_1024_cnt, kL0FactorLimit + 1, kL1FactorLimit);
+  // Split k will introduce atomic_add which can't be used with shift_inwards.
+  // Thus in split k mode, batch/m/n/ can't use non-factorial segmentation.
+  if (compile_params.split_k_flag) {
+    if ((run_params.k_32 > kL0FactorLimit && blockDimCalculator.k_factor_less_64_cnt <= kL0FactorNumLimit) ||
+        (run_params.k_32 > kL1FactorLimit &&
+         blockDimCalculator.k_factor_less_64_cnt + blockDimCalculator.k_factor_less_1024_cnt <= kL1FactorNumLimit)) {
+      run_params.k_mapped = MapShape(run_params.k_32);
+    }
+  } else {
+    if (run_params.batch_32 > 1 && blockDimCalculator.batch_factor_cnt <= kL0FactorNumLimit) {
+      run_params.batch_mapped = MapShape(run_params.batch_32);
+    }
+    bool m_factor_not_enough = (run_params.m_32 > kL0FactorLimit &&
+      blockDimCalculator.m_factor_less_64_cnt <= kL0FactorNumLimit) ||
+      (run_params.m_32 > kL1FactorLimit &&
+       blockDimCalculator.m_factor_less_64_cnt + blockDimCalculator.m_factor_less_1024_cnt <= kL1FactorNumLimit);
+    if (m_factor_not_enough) {
+      run_params.m_mapped = MapShape(run_params.m_32);
+    }
+    bool n_factor_not_enough = (run_params.n_32 > kL0FactorLimit &&
+      blockDimCalculator.n_factor_less_64_cnt <= kL0FactorNumLimit) ||
+      (run_params.n_32 > kL1FactorLimit &&
+        blockDimCalculator.n_factor_less_64_cnt + blockDimCalculator.n_factor_less_1024_cnt <= kL1FactorNumLimit);
+    if (n_factor_not_enough) {
+      run_params.n_mapped = MapShape(run_params.n_32);
+    }
+  }
+  OP_LOGD(op_type.c_str(),
+          "NonFactorMap get mapped shape: batch_mapped: %d, m_mapped: %d, k_mapped: %d, n_mapped: %d.",
+          run_params.batch_mapped, run_params.m_mapped, run_params.k_mapped, run_params.n_mapped);
+}
 
 void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, const L1Status &l1Status,
                        const UbStatus &ubStatus, const BatchmatmulParas &params)
@@ -159,13 +235,15 @@ void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, c
   n_l0 = l0Status.n_l0;
   kal1_16 = l1Status.kal1_16;
   kbl1_16 = l1Status.kbl1_16;
+  kal1_factor = coreStatus.kal1_factor;
+  kbl1_factor = coreStatus.kbl1_factor;
   m_al1 = l1Status.m_al1;
   n_bl1 = l1Status.n_bl1;
   db_al1 = l1Status.db_al1;
   db_bl1 = l1Status.db_bl1;
   n_cub = ubStatus.n_cub;
   db_cub = ubStatus.db_cub;
-  k_org_dim = coreStatus.k * kBlockSize;
+  k_org_dim = kal1_factor * kal1_16 * kBlockSize;
   db_l0c = l0Status.db_l0c;
   al1_full_load = l1Status.al1_full_load;
   bl1_full_load = l1Status.bl1_full_load;
@@ -255,20 +333,22 @@ void Tiling::SetAttachFlag()
   }
 }
 
-void Tiling::GetTilingId(const BatchmatmulCompileParas &params)
+void Tiling::GetTilingId(const BatchmatmulParas &params)
 {
-  int32_t tilingIDLongLong = params.split_k_flag ? 1 : 0;
+  const BatchmatmulCompileParas &compile_params = *(params.compile_params);
+  const BatchmatmulRunParas &run_params = *(params.run_params);
+  int32_t tilingIDLongLong = compile_params.split_k_flag ? 1 : 0;
   tilingIDLongLong = tilingIDLongLong * kDecimal + db_al1;
   tilingIDLongLong = tilingIDLongLong * kDecimal + db_bl1;
   tilingIDLongLong = tilingIDLongLong * kDecimal + db_l0c;
   tilingIDLongLong = tilingIDLongLong * kDecimal + abkl1_attach_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + al1_attach_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + bl1_attach_flag;
-  tilingIDLongLong = tilingIDLongLong * kDecimal + min_kl1_cmp_kl0;
-  if (params.nd_flag) {
+  if (compile_params.nd_flag) {
     tilingIDLongLong = tilingIDLongLong * kDecimal + aub_multi_flag;
     tilingIDLongLong = tilingIDLongLong * kDecimal + bub_multi_flag;
   }
+  tilingIDLongLong = tilingIDLongLong * kDecimal + min_kl1_cmp_kl0 + ((run_params.non_factor_k ? 1 : 0) << 1);
   this->tiling_id = to_string(tilingIDLongLong);
 }
 
@@ -282,11 +362,10 @@ void GetFactors(int32_t *cnt, int32_t *factorList, const int32_t &num, const int
   }
 }
 
-void GetTwoFactors(int32_t *res, const int32_t &base, const int32_t &dim, const int32_t &maxNum = 32)
+void GetTwoFactors(int32_t *res, const int32_t &base, const int32_t &dim, const int32_t &maxNum = 32, int32_t cnt = 0)
 {
   // for up bigger or equal to base + 1, find the smallest num which is a factor of dim
   // form down smaller or equal to base, find the biggest num which is a factor of dim
-  int32_t cnt = 0;
   int32_t up = base + 1;
   int32_t maxCnt = 2;
   while (up <= dim) {
@@ -325,7 +404,7 @@ void BL1FullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &blockDim
     while (coreStatus.n % n0 != 0) {
       n0--;
     }
-    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size * (coreStatus.n / n0);
+    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size * ceil(static_cast<double>(coreStatus.n) / n0);
     blockDimCalculator.bmat_size = b_have_batch ? coreStatus.batch * coreStatus.n : coreStatus.n;
     blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
     blockDimCalculator.tmp_value = n0;
@@ -349,7 +428,7 @@ void AL1FullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &blockDim
       m0--;
     }
     blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size;
-    blockDimCalculator.tmp_bmat_size = coreStatus.n * (blockDimCalculator.ori_amat_size / m0);
+    blockDimCalculator.tmp_bmat_size = coreStatus.n * ceil(static_cast<double>(blockDimCalculator.ori_amat_size) / m0);
     blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
     UpdateBlockDimCalculator(blockDimCalculator);
   }
@@ -370,8 +449,10 @@ void NeitherFullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &bloc
       if (m0 <= 0) {
         continue;
       }
-      blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (coreStatus.n / n0);
-      blockDimCalculator.tmp_bmat_size = coreStatus.n * (blockDimCalculator.ori_amat_size / m0);
+      blockDimCalculator.tmp_amat_size =
+          blockDimCalculator.ori_amat_size * ceil(static_cast<double>(coreStatus.n) / n0);
+      blockDimCalculator.tmp_bmat_size =
+          coreStatus.n * ceil(static_cast<double>(blockDimCalculator.ori_amat_size) / m0);
       blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
       UpdateBlockDimCalculator(blockDimCalculator);
     }
@@ -387,8 +468,10 @@ void NeitherFullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &bloc
       if (n0 <= 0) {
         continue;
       }
-      blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (coreStatus.n / n0);
-      blockDimCalculator.tmp_bmat_size = coreStatus.n * (blockDimCalculator.ori_amat_size / m0);
+      blockDimCalculator.tmp_amat_size =
+          blockDimCalculator.ori_amat_size * ceil(static_cast<double>(coreStatus.n) / n0);
+      blockDimCalculator.tmp_bmat_size =
+          coreStatus.n * ceil(static_cast<double>(blockDimCalculator.ori_amat_size) / m0);
       blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
       UpdateBlockDimCalculator(blockDimCalculator);
     }
@@ -404,27 +487,35 @@ void GetBlockDimHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalcu
   int32_t bFactor = blockDimCalculator.batch_dim_array[blockDimCalculator.batch_idx];
   int32_t nFactor = blockDimCalculator.n_dim_array[blockDimCalculator.n_idx];
   blockDimCalculator.tmp_core_use = bFactor * nFactor;
-  if (blockDimCalculator.tmp_core_use > compile_params.core_num || blockDimCalculator.tmp_core_use == 0) {
+  bool need_cal_load_size = blockDimCalculator.tmp_core_use > compile_params.core_num ||
+    blockDimCalculator.tmp_core_use == 0;
+  if (need_cal_load_size) {
     return;
   }
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
     blockDimCalculator.tmp_core_use = bFactor * nFactor * mFactor;
-    if (mFactor == 0 || blockDimCalculator.tmp_core_use > compile_params.core_num) {
+    need_cal_load_size = mFactor == 0 || blockDimCalculator.tmp_core_use > compile_params.core_num;
+    if (need_cal_load_size) {
       continue;
     }
     for (int32_t kIdx = 0; kIdx < blockDimCalculator.k_dim_cnt; kIdx++) {
       int32_t kFactor = blockDimCalculator.k_dim_array[kIdx];
       blockDimCalculator.tmp_core_use = bFactor * nFactor * mFactor * kFactor;
-      if (kFactor == 0 || blockDimCalculator.tmp_core_use > compile_params.core_num) {
+      need_cal_load_size = kFactor == 0 || blockDimCalculator.tmp_core_use > compile_params.core_num;
+      if (need_cal_load_size) {
         continue;
       }
       blockDimCalculator.k_num = run_params.k_32 / kFactor * kBlockSize * kBlockSize;
       blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
-      coreStatus.batch = run_params.batch_32 / bFactor;
-      coreStatus.m = run_params.m_32 / mFactor;
-      coreStatus.n = run_params.n_32 / nFactor;
+      coreStatus.batch = ceil(static_cast<double>(run_params.batch_32) / bFactor);
+      coreStatus.m = ceil(static_cast<double>(run_params.m_32) / mFactor);
+      coreStatus.n = ceil(static_cast<double>(run_params.n_32) / nFactor);
       coreStatus.k = run_params.k_32 / kFactor;
+      if (run_params.k_mapped != run_params.k_32 && kIdx < kIdxTwo) {
+        blockDimCalculator.k_num = run_params.k_mapped / kFactor * kNumTwo * kBlockSize * kBlockSize;
+        coreStatus.k = run_params.k_mapped / kFactor * kNumTwo;
+      }
       // load size of A matrix is batch * m
       // load size of B matrix is n
       blockDimCalculator.ori_amat_size = coreStatus.batch * coreStatus.m;
@@ -441,7 +532,7 @@ void GetBlockDimHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalcu
         BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, run_params.b_have_batch);
         // AL1 full load
         int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) /
-                             (kMinFractalSize * coreStatus.k * blockDimCalculator.ori_amat_size),
+                             (blockDimCalculator.k_num * blockDimCalculator.ori_amat_size),
                              blockDimCalculator.ori_amat_size),
                          kMaxFactor);
         AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
@@ -459,6 +550,9 @@ void GetBlockDimHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalcu
       } else {
         tmpBlockingPct =
           double(max(blockDimCalculator.amat_size, blockDimCalculator.bmat_size)) / blockDimCalculator.total_load_size;
+      }
+      if (run_params.k_mapped != run_params.k_32) {
+        blockDimCalculator.total_load_size *= coreStatus.k;
       }
       bool tmp_blocking_flag = (loadSizeKb < kLoadSizeRangeLow && max(nFactor, mFactor) > kMLowRange);
       // updateSolution: bool whether update to a new block factor solution
@@ -545,7 +639,7 @@ void ComputePerfSplitK(const int32_t block_dims[], const int32_t single_core_sha
   }
 }
 
-void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
+void GetSplitKdim(const string &op_type, BatchmatmulParas &params, CoreStatus &coreStatus)
 {
   // support multi cores slicing along k dim
   // get batch_dim, m_dim, n_dim and k_dim
@@ -594,33 +688,40 @@ void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreSta
   OP_LOGD(op_type.c_str(), "multi-core slicing factor k_dim:%d", coreStatus.k_dim);
 }
 
-int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
+int32_t GetBlockDim(const string &op_type, BatchmatmulParas &params, CoreStatus &coreStatus,
+                    BlockDimCalculator &blockDimCalculator)
 {
   // get batch_dim, k_dim, m_dim and n_dim for single core
   // support multi cores slicing along k_dim
   // single core batch_dim, m_dim, n_dim, k_dim is a factor of input batch, m, n, k
   const BatchmatmulCompileParas &compile_params = *(params.compile_params);
-  const BatchmatmulRunParas &run_params = *(params.run_params);
-  OP_LOGD(op_type.c_str(), "GetBlockDim input batch:%d, m:%d, k:%d, n:%d, k_dim:%d", run_params.batch_32,
-          run_params.m_32, run_params.k_32, run_params.n_32, coreStatus.k_dim);
+  BatchmatmulRunParas &run_params = *(params.run_params);
+  OP_LOGD(op_type.c_str(), "GetBlockDim input batch:%d, m:%d, k:%d, n:%d, k_dim:%d", run_params.batch_mapped,
+          run_params.m_mapped, run_params.k_mapped, run_params.n_mapped, coreStatus.k_dim);
   // first get k_dim candidate
-  BlockDimCalculator blockDimCalculator;
   int32_t kDimArray[compile_params.core_num] = {0};
   if (coreStatus.k_dim == 1) {
     kDimArray[0] = 1;
     blockDimCalculator.k_dim_cnt = 1;
+    run_params.k_mapped = run_params.k_32;
   } else {
-    GetTwoFactors(kDimArray, coreStatus.k_dim, run_params.k_32, compile_params.core_num);
-    blockDimCalculator.k_dim_cnt = kCandidateLen;
+    if (run_params.k_mapped != run_params.k_32) {
+      GetTwoFactors(kDimArray, coreStatus.k_dim, run_params.k_mapped, compile_params.core_num);
+      blockDimCalculator.k_dim_cnt += kCandidateLen;
+    }
+    GetTwoFactors(kDimArray, coreStatus.k_dim, run_params.k_32, compile_params.core_num, blockDimCalculator.k_dim_cnt);
+    blockDimCalculator.k_dim_cnt += kCandidateLen;
   }
   if (run_params.batch_32 * run_params.m_32 * run_params.n_32 * kDimArray[0] <= compile_params.core_num) {
     coreStatus.batch_dim = run_params.batch_32;
     coreStatus.n_dim = run_params.n_32;
     coreStatus.m_dim = run_params.m_32;
     coreStatus.k_dim = kDimArray[0];
+    run_params.k_mapped = coreStatus.k_dim == 1 ? run_params.k_32 : run_params.k_mapped;
+    run_params.non_factor_k = run_params.k_mapped == run_params.k_32 ? false : true;
     coreStatus.batch = 1;
     coreStatus.m = 1;
-    coreStatus.k = run_params.k_32 / kDimArray[0];
+    coreStatus.k = run_params.k_mapped / kDimArray[0];
     coreStatus.n = 1;
     OP_LOGD(op_type.c_str(), "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, k_dim:%d",
             coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim, coreStatus.k_dim);
@@ -629,19 +730,19 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, CoreS
   int32_t batchDimArray[compile_params.core_num] = {0};
   int32_t nDimArray[compile_params.core_num] = {0};
   int32_t mDimArray[compile_params.core_num] = {0};
-  GetFactors(&blockDimCalculator.batch_dim_cnt, batchDimArray, run_params.batch_32, compile_params.core_num);
-  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, run_params.n_32, compile_params.core_num);
-  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, run_params.m_32, compile_params.core_num);
+  GetFactors(&blockDimCalculator.batch_dim_cnt, batchDimArray, run_params.batch_mapped, compile_params.core_num);
+  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, run_params.n_mapped, compile_params.core_num);
+  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, run_params.m_mapped, compile_params.core_num);
   int32_t m0s[compile_params.core_num + 1][kCandidateLen] = {0};
   int32_t n0s[compile_params.core_num + 1][kCandidateLen] = {0};
   for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
     int32_t tmpNDim = nDimArray[idx];
-    int32_t tmpNSingleCore = run_params.n_32 / tmpNDim;
+    int32_t tmpNSingleCore = ceil(static_cast<double>(run_params.n_mapped) / tmpNDim);
     GetTwoFactors(n0s[tmpNDim], kMNPntMax, tmpNSingleCore, kMaxFactor);
   }
   for (int32_t idx = 0; idx < blockDimCalculator.m_dim_cnt; idx++) {
     int32_t tmpMDim = mDimArray[idx];
-    int32_t tmpMSingleCore = run_params.m_32 / tmpMDim;
+    int32_t tmpMSingleCore = ceil(static_cast<double>(run_params.m_mapped) / tmpMDim);
     GetTwoFactors(m0s[tmpMDim], kMNPntMax, tmpMSingleCore, kMaxFactor);
   }
   blockDimCalculator.n_dim_factor = 1;
@@ -664,10 +765,17 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, CoreS
   coreStatus.n_dim = blockDimCalculator.n_dim_factor;
   coreStatus.m_dim = blockDimCalculator.m_dim_factor;
   coreStatus.k_dim = blockDimCalculator.k_dim_factor;
-  coreStatus.m = run_params.m_32 / blockDimCalculator.m_dim_factor;
-  coreStatus.n = run_params.n_32 / blockDimCalculator.n_dim_factor;
-  coreStatus.k = run_params.k_32 / blockDimCalculator.k_dim_factor;
-  coreStatus.batch = run_params.batch_32 / blockDimCalculator.batch_dim_factor;
+  run_params.m_mapped = coreStatus.m_dim == 1 ? run_params.m_32 : run_params.m_mapped;
+  run_params.n_mapped = coreStatus.n_dim == 1 ? run_params.n_32 : run_params.n_mapped;
+  run_params.k_mapped =
+      (coreStatus.k_dim == 1 || coreStatus.k_dim == kDimArray[kIdxTwo] || coreStatus.k_dim == kDimArray[kIdxThree])
+          ? run_params.k_32
+          : run_params.k_mapped;
+  run_params.non_factor_k = run_params.k_mapped == run_params.k_32 ? false : true;
+  coreStatus.m = run_params.m_mapped / blockDimCalculator.m_dim_factor;
+  coreStatus.n = run_params.n_mapped / blockDimCalculator.n_dim_factor;
+  coreStatus.k = run_params.k_mapped / blockDimCalculator.k_dim_factor;
+  coreStatus.batch = run_params.batch_mapped / blockDimCalculator.batch_dim_factor;
   OP_LOGD(op_type.c_str(),
           "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, k_dim:%d, m_block_pnt_point:%d",
           coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim, coreStatus.k_dim, blockDimCalculator.final_value);
@@ -997,7 +1105,7 @@ void NeitherFullLoadMN(const CoreStatus &coreStatus, const L0Status &l0Status, L
   int32_t mRepeat = coreStatus.m / l0Status.m_l0;
   int32_t nRepeat = coreStatus.n / l0Status.n_l0;
   if (l0Status.k_l0 == coreStatus.k) {
-    if (params.m_32 > params.n_32) {
+    if (params.m_mapped > params.n_mapped) {
       l1Status.bl1_size = coreStatus.k * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
       l1Status.al1_size = kL1Size - l1Status.bl1_size;
       l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 *
@@ -1804,18 +1912,29 @@ void SetUbReuseFlag(const L1Status& l1Status, UbStatus& ubStatus) {
   }
 }
 
-void UpdateL1FullLoadFlag(const string &op_type, const CoreStatus &coreStatus, const L0Status &l0Status,
-                          L1Status &l1Status)
-{
+void UpdateL1FullLoadFlag(const string &op_type, const BatchmatmulRunParas &params, CoreStatus &coreStatus,
+                          SingleCoreStatus &singleCoreStatus) {
+  const L0Status& l0Status = singleCoreStatus.l0Status;
+  L1Status& l1Status = singleCoreStatus.l1Status;
+  int32_t n_single_core = ceil(static_cast<double>(params.n_32) / (coreStatus.n_dim * l1Status.n_bl1 * l0Status.n_l0));
+  int32_t m_single_core = ceil(static_cast<double>(params.m_32) / (coreStatus.m_dim * l1Status.m_al1 * l0Status.m_l0));
+  if (l1Status.kal1_16 >= l1Status.kbl1_16) {
+    coreStatus.kal1_factor = ceil(static_cast<double>(params.k_32) / (coreStatus.k_dim * l1Status.kal1_16));
+    coreStatus.kbl1_factor = coreStatus.kal1_factor * l1Status.kal1_16 / l1Status.kbl1_16;
+  }
+  else {
+    coreStatus.kbl1_factor = ceil(static_cast<double>(params.k_32) / (coreStatus.k_dim * l1Status.kbl1_16));
+    coreStatus.kal1_factor = coreStatus.kbl1_factor * l1Status.kbl1_16 / l1Status.kal1_16;
+  }
   // initialize the full load flag
   l1Status.both_full_load = false;
   l1Status.al1_full_load = false;
   l1Status.bl1_full_load = false;
-  if (coreStatus.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == coreStatus.k) {
+  if (m_single_core == 1 && coreStatus.kal1_factor == 1) {
     l1Status.al1_full_load = true;
     OP_LOGD(op_type.c_str(), "check special template, tiling al1 changed to full load");
   }
-  if (l1Status.n_bl1 * l0Status.n_l0 == coreStatus.n && l1Status.kbl1_16 == coreStatus.k) {
+  if (n_single_core == 1 && coreStatus.kbl1_factor == 1) {
     l1Status.bl1_full_load = true;
     OP_LOGD(op_type.c_str(), "check special template, tiling bl1 changed to full load");
   }
@@ -1863,7 +1982,7 @@ void GetUbFactors(const string &op_type, const BatchmatmulCompileParas &params, 
 
 
 void GenTiling(const string &op_type, const BatchmatmulCompileParas &compile_params,
-               const BatchmatmulRunParas &run_params, Tiling &tiling, string &tilingId)
+               BatchmatmulRunParas &run_params, Tiling &tiling, string &tilingId)
 {
   OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%d, m:%d, k:%d, n:%d", run_params.batch_32, run_params.m_32,
           run_params.k_32, run_params.n_32);
@@ -1876,15 +1995,17 @@ void GenTiling(const string &op_type, const BatchmatmulCompileParas &compile_par
   if (compile_params.split_k_flag) {
     GetSplitKdim(op_type, params, coreStatus);
   }
-  int32_t blockValue = GetBlockDim(op_type, params, coreStatus);
+  BlockDimCalculator blockDimCalculator;
+  NonFactorMap(op_type, params, blockDimCalculator);
+  int32_t blockValue = GetBlockDim(op_type, params, coreStatus, blockDimCalculator);
   GetL0Factors(op_type, coreStatus, blockValue, singleCoreStatus.l0Status);
   GetL1Factors(op_type, params, coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status);
-  UpdateL1FullLoadFlag(op_type, coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status);
+  UpdateL1FullLoadFlag(op_type, run_params, coreStatus, singleCoreStatus);
   GetUbFactors(op_type, compile_params, coreStatus, singleCoreStatus);
 
   tiling.SetParams(coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status, singleCoreStatus.ubStatus, params);
   tiling.SetAttachFlag();
-  tiling.GetTilingId(compile_params);
+  tiling.GetTilingId(params);
   tilingId = tiling.tiling_id;
   OP_LOGD(op_type.c_str(), "the tiling id from cache tiling is: %s", tilingId.c_str());
 }

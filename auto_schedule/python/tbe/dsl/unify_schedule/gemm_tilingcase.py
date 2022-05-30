@@ -653,15 +653,6 @@ class MatmulTiling(CubeTilingOp):
         self.key = ("A_shape", "B_shape")
         self.op_type = "matmul"
 
-    def get_repo_tiling(self):
-        """
-        get tiling using repository model
-        """
-        self.tiling_info["tiling_type"] = None
-        tiling_list = get_tiling(self.tiling_info)
-        tiling_list = self.change_full_load_to_value(tiling_list)
-        return tiling_list
-
     @staticmethod
     def change_full_load_to_value(tiling_list):
         """
@@ -688,6 +679,78 @@ class MatmulTiling(CubeTilingOp):
             transed_tiling_list.append(seed)
 
         return transed_tiling_list
+
+    @staticmethod
+    def _get_attach_choices(nd_flag):
+        """
+        generates all selections of l0 flags
+
+        Returns
+        -------
+        list: all selections of flags
+        """
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
+        bl1_attach_flag, aub_multi_flag, bub_multi_flag, min_kl1_cmp_kl0, non_factor_k_flag) = (
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM],
+            [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM], [0, 1], [0, 1])
+        if nd_flag:
+            attach_choices = list(
+                product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, aub_multi_flag,
+                        bub_multi_flag, min_kl1_cmp_kl0, non_factor_k_flag))
+        else:
+            attach_choices = list(
+                product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
+                        non_factor_k_flag))
+        return attach_choices
+
+    @staticmethod
+    def _check_template_valid(choice, split_k_flag):
+        """
+        Check if the template is valid
+
+        Returns
+        -------
+        bool: True, the template is valid
+        """
+        _, _, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, *_, non_factor_k_flag = choice
+
+        # al1 full load
+        invalid_choice = (al1_attach_flag == utils.ATTACH_FULL_LOAD) and (
+            (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 0) or
+            (bl1_attach_flag == utils.ATTACH_LESS and abkl1_attach != utils.ATTACH_EQUAL))
+
+        # al1 attach at c_ddr
+        invalid_choice = invalid_choice or (al1_attach_flag == utils.ATTACH_EQUAL and (
+            (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 0) or
+            (bl1_attach_flag == utils.ATTACH_LESS and abkl1_attach != utils.ATTACH_EQUAL)))
+
+        # if al1 attach at l0c and full load in l1 buffer, there is no need to open double buffer
+        invalid_choice = invalid_choice or (al1_attach_flag == utils.ATTACH_LESS and
+                                            bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+                                            abkl1_attach != utils.ATTACH_LESS)
+
+        # if not split k, non_factor_k_flag can't be used
+        invalid_choice = invalid_choice or (not split_k_flag and non_factor_k_flag == 1)
+
+        # if non factor k, al1 and bl1 must attach at l0c
+        invalid_choice = invalid_choice or (split_k_flag and non_factor_k_flag == 1 and
+                                            (al1_attach_flag != utils.ATTACH_LESS
+                                             or bl1_attach_flag != utils.ATTACH_LESS))
+
+        return invalid_choice
+
+    def get_repo_tiling(self):
+        """
+        get tiling using repository model
+        """
+        self.tiling_info["tiling_type"] = None
+        tiling_list = get_tiling(self.tiling_info)
+        tiling_list = self.change_full_load_to_value(tiling_list)
+        return tiling_list
 
     def get_costmodel_tiling(self, shape):
         """
@@ -750,22 +813,8 @@ class MatmulTiling(CubeTilingOp):
                                           "l2_size": l2_size})
         # get cache_tiling
         cache_tiling_all = {}
-        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-        bl1_attach_flag, min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag) = (
-            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [0, 1], [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM],
-            [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM])
-        if nd_flag:
-            l1_choice = list(
-                product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-                        bl1_attach_flag, min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag))
-        else:
-            l1_choice = list(
-                product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
-        for choice in l1_choice:
+        attach_choices = self._get_attach_choices(nd_flag)
+        for choice in attach_choices:
             cache_tiling = {
                 'block_dim': [-1, -1, -1, 1],
                 'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
@@ -786,8 +835,12 @@ class MatmulTiling(CubeTilingOp):
                 'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
                 'bl0_attach_flag': utils.ATTACH_LESS,
                 'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
-                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
+                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1},
+                'non_factor_k_flag': -1
             }
+
+            if self._check_template_valid(choice, split_k_flag):
+                continue
             # if bl1 attach at l0c, nbl1, should be 1
             if choice[5] == utils.ATTACH_LESS:
                 cache_tiling.get("BL1_shape")[1] = 1
@@ -796,37 +849,25 @@ class MatmulTiling(CubeTilingOp):
                 # if al1 attach at l0c, mal1 should be 1
                 cache_tiling.get('AL1_shape')[1] = 1
 
-            # al1 full load
-            invalid_choice = (choice[4] == utils.ATTACH_FULL_LOAD) and (
-                (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 0) or
-                (choice[5] == 2 and choice[3] != 1))
-
-            # al1 attach at c_ddr
-            invalid_choice = invalid_choice or (choice[4] == utils.ATTACH_EQUAL and (
-                (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
-                choice[3] != 0) or (choice[5] == utils.ATTACH_LESS and choice[3] != 1)))
-
-            # if al1 attach at l0c and full load in l1 buffer, there is no need to open double buffer
-            invalid_choice = invalid_choice or (choice[4] == utils.ATTACH_LESS and
-                (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 2))
-            if invalid_choice:
-                continue
-
             cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = choice[0]
             cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = choice[1]
             cache_tiling.get('manual_pingpong_buffer')['CL0_pbuffer'] = choice[2]
             cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = choice[3]
             cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
             cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
-            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
             if nd_flag:
-                cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[7]
-                cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
+                cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[6]
+                cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[7]
                 cache_tiling["schedule_pattern"] = "Aligned"
+            # combine min_kl1_cmp_kl0 and non_factor_k_flag
+            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[-2]
+            cache_tiling['non_factor_k_flag'] = choice[-1]
+            choice = list(choice)
+            choice[-2] = choice[-1] * 2 + choice[-2]
             if split_k_flag:
                 cache_tiling["block_dim"] = [UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM]
             # in split k mode, tiling_id starts with 1
-            name = int(('1' if split_k_flag else '') + ''.join((str(i) for i in choice)))
+            name = int(('1' if split_k_flag else '') + ''.join((str(i) for i in choice[:-1])))
             cache_tiling_all[name] = [[], cache_tiling, []]
 
         return cache_tiling_all

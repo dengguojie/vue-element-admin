@@ -237,42 +237,42 @@ static GEMMTilingTestParam general_cases_params[] = {
         "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
         "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
         "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
-    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {4352, 16, 64}, {4352, 64, 32}, {4352, 16, 32}, false, 0, 0, 32, 222000011
+    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {4352, 16, 64}, {4352, 64, 32}, {4352, 16, 32}, false, 0, 0, 32, 222000110
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_02", "BatchMatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":true},
         "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
         "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
         "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
-    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {4352, 64, 16}, {4352, 32, 64}, {4352, 16, 32}, false, 0, 0, 32, 222000011
+    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {4352, 64, 16}, {4352, 32, 64}, {4352, 16, 32}, false, 0, 0, 32, 222000110
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_03", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":true},
         "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
         "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
         "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
-    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {8192, 512}, {512, 512}, {8192, 512}, false, 0, 0, 32, 212220100
+    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {8192, 512}, {512, 512}, {8192, 512}, false, 0, 0, 32, 212220001
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_04", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":false},
       "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
-    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, true, false, {40960, 512}, {40960, 1024}, {512, 1024}, false, 0, 0, 32, 222022100
+    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, true, false, {40960, 512}, {40960, 1024}, {512, 1024}, false, 0, 0, 32, 222022001
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_05", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":false},
       "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
-    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {11776, 2048}, {2048, 512}, {11776, 512}, false, 0, 0, 32, 211220110
+    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {11776, 2048}, {2048, 512}, {11776, 512}, false, 0, 0, 32, 211220101
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_split_k", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":false},
       "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":true, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mkn",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
-    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {11776, 512}, {11776, 512}, {512, 512}, false, 0, 0, 32, 1212220010
+    ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {11776, 512}, {11776, 512}, {512, 512}, false, 0, 0, 32, 1212220100
   },
   {
     "GEMM_op_tiling_fractal_z", "MatMul", R"([{"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn",

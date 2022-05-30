@@ -430,6 +430,9 @@ cube:
       - ops/built-in/framework/tf_plugin/matmul_plugin.cc
       - ops/built-in/framework/tf_plugin/k_means_centroids_plugin.cc
       - ops/built-in/framework/tf_plugin/k_means_centroids_v2_plugin.cc
+      - auto_schedule/python/tbe/dsl/boost_schedule_kit/util.py
+      - auto_schedule/python/tbe/dsl/boost_schedule_kit/schedule_agent.py
+      - auto_schedule/python/tbe/dsl/boost_schedule_kit/__init__.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_filter_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_general_compute.py
@@ -3967,9 +3970,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/__init__.py
-      - auto_schedule/python/tbe/dsl/boost_schedule_kit/util.py
-      - auto_schedule/python/tbe/dsl/boost_schedule_kit/schedule_agent.py
-      - auto_schedule/python/tbe/dsl/boost_schedule_kit/__init__.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin_md.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_util.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin.py

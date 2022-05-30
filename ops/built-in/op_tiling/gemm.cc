@@ -222,13 +222,13 @@ bool CalcGEMMMknb(const ge::OpDescPtr &op_desc, const ge::GeShape &ori_shape_a,
   params.n_32 = static_cast<int32_t>(params.n);
 
   if (compile_value->params.format_a_nd) {
-    params.ori_shape_M = ori_shape_a.GetDim(idx_m_of_a);
-    params.ori_shape_K = ori_shape_a.GetDim(idx_k_of_a);
+    params.ori_shape_m = ori_shape_a.GetDim(idx_m_of_a);
+    params.ori_shape_k = ori_shape_a.GetDim(idx_k_of_a);
   }
   if (compile_value->params.format_b_nd) {
-    params.ori_shape_N = ori_shape_b.GetDim(idx_n_of_b);
+    params.ori_shape_n = ori_shape_b.GetDim(idx_n_of_b);
   }
-  bool unvalid_ori_shape = params.ori_shape_M > INT_MAX || params.ori_shape_K > INT_MAX || params.ori_shape_N > INT_MAX;
+  bool unvalid_ori_shape = params.ori_shape_m > INT_MAX || params.ori_shape_k > INT_MAX || params.ori_shape_n > INT_MAX;
   OP_TILING_CHECK(unvalid_ori_shape,
                   CUBE_INNER_ERR_REPORT(op_desc->GetName().c_str(),
                                         "The m,k,n of a and b tensors' ori_shape must not larger than INT_MAX"),
@@ -237,9 +237,9 @@ bool CalcGEMMMknb(const ge::OpDescPtr &op_desc, const ge::GeShape &ori_shape_a,
                      compile_value->params.format_b_nd;
   if (is_nd_input) {
     // Aligned schedule pattern selection is only enabled in ND input format
-    bool aligned_m = params.ori_shape_M % block_in == 0;
-    bool aligned_k = params.ori_shape_K % block_reduce == 0;
-    bool aligned_n = params.ori_shape_N % block_out == 0;
+    bool aligned_m = params.ori_shape_m % block_in == 0;
+    bool aligned_k = params.ori_shape_k % block_reduce == 0;
+    bool aligned_n = params.ori_shape_n % block_out == 0;
     bool aligned_mkn = aligned_m && aligned_k && aligned_n;
     if (aligned_mkn) {
       params.used_aligned_pattern = true;
@@ -398,29 +398,34 @@ void FillRunInfoParas(const BatchmatmulCompileParas &params, const Tiling &tilin
   runinfoparas.kbl1_16 = runinfoparas.k_bl1 / kBlockSize;
   runinfoparas.kal0_factor = runinfoparas.kal1_16 / runinfoparas.k_l0;
   runinfoparas.kbl0_factor = runinfoparas.kbl1_16 / runinfoparas.k_l0;
-  runinfoparas.kal1_factor = runinfoparas.params.k_32 / runinfoparas.k_dim / runinfoparas.kal1_16;
-  runinfoparas.kbl1_factor = runinfoparas.params.k_32 / runinfoparas.k_dim / runinfoparas.kbl1_16;
+  runinfoparas.kal1_factor = tiling.kal1_factor;
+  runinfoparas.kbl1_factor = tiling.kbl1_factor;
   runinfoparas.kl1_times = (runinfoparas.kal1_16 > runinfoparas.kbl1_16)
                            ? (runinfoparas.kal1_16 / runinfoparas.kbl1_16)
                            : (runinfoparas.kbl1_16 / runinfoparas.kal1_16);
   runinfoparas.n_ub_l0_time = runinfoparas.n_l0 / runinfoparas.cub_n1;
-  runinfoparas.batch_single_core = runinfoparas.params.batch_32 / runinfoparas.batch_dim;
-  runinfoparas.m_single_core =
-    max(runinfoparas.params.m_32 / (runinfoparas.m_dim * runinfoparas.m_al1 * runinfoparas.m_l0), int32_t(1));
-  runinfoparas.n_single_core = max(runinfoparas.params.n_32 / (runinfoparas.n_dim * runinfoparas.n_bl1 *
-                                   runinfoparas.n_ub_l0_time * runinfoparas.cub_n1),
-                                   int32_t(1));
+  runinfoparas.batch_single_core = ceil(static_cast<double>(runinfoparas.params.batch_32) / runinfoparas.batch_dim);
+  runinfoparas.m_single_core = ceil(static_cast<double>(runinfoparas.params.m_32) /
+                                    (runinfoparas.m_dim * runinfoparas.m_al1 * runinfoparas.m_l0));
+  runinfoparas.n_single_core =
+      ceil(static_cast<double>(runinfoparas.params.n_32) /
+           (runinfoparas.n_dim * runinfoparas.n_bl1 * runinfoparas.n_ub_l0_time * runinfoparas.cub_n1));
 }
 
 void SetRunInfoForCacheTiling(const BatchmatmulCompileParas &params, const OpRunInfoParas &runinfoparas,
                               utils::OpRunInfo &run_info) {
+  run_info.AddTilingData(runinfoparas.params.m_32);
+  // need to get origin_k to limit the k real length in non-factorial segmentation.
   if (params.format_a_nd) {
-    run_info.AddTilingData(runinfoparas.params.m_32);
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
+  } else {
     run_info.AddTilingData(runinfoparas.params.k_32);
   }
-  if (params.format_b_nd) {
-    run_info.AddTilingData(runinfoparas.params.n_32);
+  run_info.AddTilingData(runinfoparas.params.n_32);
+  if (runinfoparas.params.is_batch_matmul_mode) {
+    run_info.AddTilingData(runinfoparas.params.batch_32);
   }
+  run_info.AddTilingData(runinfoparas.params.k_32);
   run_info.AddTilingData(runinfoparas.batch_single_core);
   run_info.AddTilingData(runinfoparas.m_single_core);
   run_info.AddTilingData(runinfoparas.n_single_core);
@@ -477,23 +482,24 @@ void SetRunInfo(const BatchmatmulCompileParas &compile_params, string &tiling_id
     tiling_id[0] = ALIGNED_FLAG;
   }
   run_info.SetTilingKey(stoi(tiling_id));
-  if (compile_params.format_a_nd) {
-    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_M));
-    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_K));
-  } else {
-    run_info.AddTilingData(runinfoparas.params.m_32);
-    run_info.AddTilingData(runinfoparas.params.k_32);
-  }
-  if (compile_params.format_b_nd) {
-    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_N));
-  } else {
-    run_info.AddTilingData(runinfoparas.params.n_32);
-  }
-  if (runinfoparas.params.is_batch_matmul_mode) {
-    run_info.AddTilingData(runinfoparas.params.batch_32);
-  }
   if (is_cache_tiling) {
     SetRunInfoForCacheTiling(compile_params, runinfoparas, run_info);
+  } else {
+    if (compile_params.format_a_nd) {
+      run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_m));
+      run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
+    } else {
+      run_info.AddTilingData(runinfoparas.params.m_32);
+      run_info.AddTilingData(runinfoparas.params.k_32);
+    }
+    if (compile_params.format_b_nd) {
+      run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_n));
+    } else {
+      run_info.AddTilingData(runinfoparas.params.n_32);
+    }
+    if (runinfoparas.params.is_batch_matmul_mode) {
+      run_info.AddTilingData(runinfoparas.params.batch_32);
+    }
   }
 }
 
@@ -818,13 +824,13 @@ bool CalcGEMMMknb(const TilingContext *context, const Shape &ori_shape_a, const 
   params.n_32 = static_cast<int32_t>(params.n);
 
   if (compile_value.params.format_a_nd) {
-    params.ori_shape_M = ori_shape_a.GetDim(idx_m_of_a);
-    params.ori_shape_K = ori_shape_a.GetDim(idx_k_of_a);
+    params.ori_shape_m = ori_shape_a.GetDim(idx_m_of_a);
+    params.ori_shape_k = ori_shape_a.GetDim(idx_k_of_a);
   }
   if (compile_value.params.format_b_nd) {
-    params.ori_shape_N = ori_shape_b.GetDim(idx_n_of_b);
+    params.ori_shape_n = ori_shape_b.GetDim(idx_n_of_b);
   }
-  bool unvalid_ori_shape = params.ori_shape_M > INT_MAX || params.ori_shape_K > INT_MAX || params.ori_shape_N > INT_MAX;
+  bool unvalid_ori_shape = params.ori_shape_m > INT_MAX || params.ori_shape_k > INT_MAX || params.ori_shape_n > INT_MAX;
   OP_TILING_CHECK(unvalid_ori_shape,
         CUBE_INNER_ERR_REPORT(op_name, "The m,k,n of a and b tensors' ori_shape must not larger than INT_MAX"),
         return false);
@@ -832,9 +838,9 @@ bool CalcGEMMMknb(const TilingContext *context, const Shape &ori_shape_a, const 
       !compile_value.params.binary_mode_flag && compile_value.params.format_a_nd && compile_value.params.format_b_nd;
   if (is_nd_input) {
     // Aligned schedule pattern selection is only enabled in ND input format
-    bool aligned_m = params.ori_shape_M % block_in == 0;
-    bool aligned_k = params.ori_shape_K % block_reduce == 0;
-    bool aligned_n = params.ori_shape_N % block_out == 0;
+    bool aligned_m = params.ori_shape_m % block_in == 0;
+    bool aligned_k = params.ori_shape_k % block_reduce == 0;
+    bool aligned_n = params.ori_shape_n % block_out == 0;
     bool aligned_mkn = aligned_m && aligned_k && aligned_n;
     if (aligned_mkn) {
       params.used_aligned_pattern = true;
@@ -948,14 +954,14 @@ void SetRunInfo(uint64_t tiling_id, const map<uint64_t, uint32_t> &block_dim_inf
 
   TilingData *tiling_data = context->GetRawTilingData();
   if (compile_params.format_a_nd) {
-    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_M));
-    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_K));
+    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_m));
+    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
   } else {
     tiling_data->Append(runinfoparas.params.m_32);
     tiling_data->Append(runinfoparas.params.k_32);
   }
   if (compile_params.format_b_nd) {
-    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_N));
+    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_n));
   } else {
     tiling_data->Append(runinfoparas.params.n_32);
   }

@@ -19,8 +19,10 @@ schedule_agent
 """
 from tbe import tvm
 from tbe.common.utils.errormgr import error_manager_util
+
 from .util import Compare
 from .util import ceil_div
+from .util import expand_params
 from .util import floor_div
 
 
@@ -54,8 +56,8 @@ class AttachMap:
 
         Parameters
         ----------
-        stage : the processing of compute
-        scope : means axis
+        stage: the processing of compute
+        scope: means axis
 
         Returns
         -------
@@ -72,13 +74,13 @@ class AttachMap:
 
         Parameters
         ----------
-        stage : the processing of compute
-        parent_stage : the parent tensor
-        scope : means axis
+        stage: the processing of compute
+        parent_stage: the parent tensor
+        scope: means axis
 
         Returns
         -------
-        scope : the attached axis
+        scope: the attached axis
         """
         self._parent_stages[scope] = parent_stage
         self.record_attach(stage, scope)
@@ -90,8 +92,8 @@ class AttachMap:
 
         Parameters
         ----------
-        stage : the processing of compute
-        ref_stage : the reference tensor
+        stage: the processing of compute
+        ref_stage: the reference tensor
 
         Returns
         -------
@@ -109,8 +111,8 @@ class AttachMap:
 
         Parameters
         ----------
-        scope : the old axis
-        new_scope : the new axis
+        scope: the old axis
+        new_scope: the new axis
 
         Returns
         -------
@@ -301,16 +303,15 @@ class ScopeManager:
         # add g_axis split list
         self._axis_split_list.insert(0, [outer])
 
-    def _split_with_nparts(self, parent, factor, nparts, ceil_mode=True):
+    def _split_with_nparts(self, parent, nparts, split_params):
         """
         split scopes with nparts
         """
         unit, extent = self._axis_unit.get(parent)
-        if ceil_mode:
-            outer, inner = self._stage.split(parent, nparts=nparts)
+        outer, inner = self._stage.split(parent, nparts=nparts, tail_strategy=split_params.tail_strategy)
+        if split_params.split_ceil_mode:
             factor = ceil_div(extent, nparts)
         else:
-            outer, inner = self._stage.split(parent, nparts=nparts, tail_strategy="round_up")
             factor = floor_div(extent, nparts)
 
         self._axis_unit[inner] = [unit, factor]
@@ -320,42 +321,42 @@ class ScopeManager:
             self._update_active_scope(parent, inner)
         return outer, inner
 
-    def _split_with_factor(self, parent, factor, ceil_mode=True):
+    def _split_with_factor(self, parent, factor, split_params):
         """
         split scopes with factor
         """
         unit, extent = self._axis_unit.get(parent)
         if isinstance(factor, tvm.expr.Var):
             factor = tvm.ir_pass.Simplify(factor)
-        if ceil_mode:
-            outer, inner = self._stage.split(parent, factor=factor)
+        outer, inner = self._stage.split(parent, factor=factor, tail_strategy=split_params.tail_strategy)
+        if split_params.split_ceil_mode:
             nparts =  ceil_div(extent, factor)
         else:
-            outer, inner = self._stage.split(parent, factor=factor, tail_strategy="round_up")
             nparts = floor_div(extent, factor)
 
         self._axis_unit[inner] = [unit, factor]
         self._axis_unit[outer] = [unit * factor, nparts]
 
         if parent in self._active_scopes:
-            self._update_active_scope(parent, outer)
+            active_scope = inner if split_params.active_scope == "inner" else outer
+            self._update_active_scope(parent, active_scope)
         return outer, inner
 
-    def split(self, parent, factor=None, nparts=None, ceil_mode=True):
+    def split(self, parent, factor=None, nparts=None, split_params=None):
         """
         apply split to scope
 
         Parameters
         ----------
-        parent : Itervar
-        factor : int
-        nparts : int
-        ceil_mode : bool
+        parent: Itervar
+        factor: int
+        nparts: int
+        split_params: object of SplitParams, include split_ceil_mode, tail_strategy and active_scope
 
         Returns
         -------
-        outer : Itervar
-        inner : Itervar
+        outer: Itervar
+        inner: Itervar
 
         """
 
@@ -365,10 +366,12 @@ class ScopeManager:
         if self._axis_unit.get(parent) is None:
             raise_schedule_agent_err("parent scope can not be None")
 
+        if not split_params:
+            split_params = SplitParam(True, "guard_with_if", "outer")
         if nparts is not None:
-            outer, inner = self._split_with_nparts(parent, factor, nparts, ceil_mode)
+            outer, inner = self._split_with_nparts(parent, nparts, split_params)
         else:
-            outer, inner = self._split_with_factor(parent, factor, ceil_mode)
+            outer, inner = self._split_with_factor(parent, factor, split_params)
         for axis_list in self._axis_split_list:
             if parent in axis_list:
                 self._updata_axis_split_list(axis_list, parent, outer, inner)
@@ -438,8 +441,8 @@ class ScopeManager:
 
         Returns
         -------
-        _active_scopes : the scopes(axis) now used
-        unit_list : the split part of axis
+        _active_scopes: the scopes(axis) now used
+        unit_list: the split part of axis
         """
         if not self._check_active_scopes(self._active_scopes):
             raise_schedule_agent_err("active itervar should in leaf_iter_vars")
@@ -561,17 +564,17 @@ class ScopeManager:
 
     def bind_core(self, scope_list, core_num_list):
         """
-        bind core : use the chip better
+        bind core: use the chip better
         finally fuse all the outter axes
 
         Parameters
         ----------
-        scope_list : the list that axes to bind
-        core_num_list : the list that core use
+        scope_list: the list that axes to bind
+        core_num_list: the list that core use
 
         Returns
         -------
-        axis_to_bind : the axis that bind
+        axis_to_bind: the axis that bind
 
         """
         if not isinstance(scope_list, (list, tuple)):
@@ -681,7 +684,7 @@ class ScheduleAgent:
 
         Parameters
         ----------
-        tensor : Tensor
+        tensor: Tensor
 
         Returns
         -------
@@ -702,8 +705,8 @@ class ScheduleAgent:
 
         Parameters
         ----------
-        tensor_a : Tensor
-        tensor_b : Tenosr
+        tensor_a: Tensor
+        tensor_b: Tenosr
 
         Returns
         -------
@@ -719,14 +722,15 @@ class ScheduleAgent:
         get infor of axis.
 
         Parameters:
-
+        ----------
         factor_list: infor of factor.
 
         parent: Tensor.
 
         ceil_mode_dict: include factor_ceil_mode and split_ceil_mode
 
-        Returns:
+        Returns
+        ----------
 
         value of axis.
         """
@@ -737,16 +741,23 @@ class ScheduleAgent:
         axis_ori_unrelate = []
 
         origin_axis = scopes.origin_axis
-        split_ceil_mode = len(factor_list) * [True]
+        split_ceil_mode_list = expand_params(True, len(factor_list))
+        tail_strategy_list = expand_params("guard_with_if", len(factor_list))
+        active_scope_list = expand_params("outer", len(factor_list))
         if ceil_mode_dict:
-            split_ceil_mode = ceil_mode_dict.get("split_ceil_mode")
-            if isinstance(split_ceil_mode, bool):
-                split_ceil_mode = len(factor_list) * [split_ceil_mode]
+            if ceil_mode_dict.get("split_ceil_mode"):
+                split_ceil_mode_list = expand_params(ceil_mode_dict.get("split_ceil_mode"), len(factor_list))
+            if ceil_mode_dict.get("tail_strategy"):
+                tail_strategy_list = expand_params(ceil_mode_dict.get("tail_strategy"), len(factor_list))
+            if ceil_mode_dict.get("active_scope"):
+                active_scope_list = expand_params(ceil_mode_dict.get("active_scope"), len(factor_list))
 
-        for factor, axis, ceil_mode in zip(factor_list, ax_list, split_ceil_mode):
+        for factor, axis, split_ceil_mode, tail_strategy, active_scope in zip(
+            factor_list, ax_list, split_ceil_mode_list, tail_strategy_list, active_scope_list):
             if factor is not None and (isinstance(factor, (tvm.expr.Expr, tvm.expr.Var))
                                        or factor > 1 or axis in origin_axis):
-                axo, axi = scopes.split(axis, factor=factor, ceil_mode=ceil_mode)
+                split_params = SplitParam(split_ceil_mode, tail_strategy, active_scope)
+                axo, axi = scopes.split(axis, factor=factor, split_params=split_params)
                 self._attach_map.update_scope(axis, axi)
                 axis_outer.append(axo)
                 axis_intrinsic.append(axi)
@@ -757,12 +768,12 @@ class ScheduleAgent:
 
         return axis_outer, axis_intrinsic, axis_ori_unrelate
 
-    def _start_attach(self, factor_list, tensor, parent, ceil_mode_dict):
+    def _start_attach(self, factor_list, tensor, parent, attach_param_dict):
         """
         get info of scope_attach.
 
         Parameters:
-
+        ----------
         factor_list: info of factor.
 
         tensor: infor of tensor.
@@ -771,11 +782,13 @@ class ScheduleAgent:
 
         ceil_mode_dict: dict, include factor_ceil_mode and split_ceil_mode. default is None.
 
-        Returns:
+        Returns
+        ----------
 
         scope_attach value.
         """
-        axis_outer, axis_intrinsic, axis_ori_unrelate = self._get_axis_info(factor_list, parent, ceil_mode_dict)
+        axis_outer, axis_intrinsic, axis_ori_unrelate = self._get_axis_info(
+            factor_list, parent, attach_param_dict)
 
         scope_attach = None
         if axis_intrinsic:  # len(axis_intrinsic) > 0:
@@ -796,36 +809,36 @@ class ScheduleAgent:
 
         return scope_attach
 
-    def attach_at(self, tensor, parent, affine_shape, ceil_mode_dict=None):
+    def attach_at(self, tensor, parent, affine_shape, factor_shape=None, ceil_mode_dict=None):
         """
         attach tensor to parent according to the affine_shape
 
         Parameters
         ----------
-        tensor : Tensor
-        parent : Tenosr
-        affine_shape : shape of tensor affine to parent
-        flag_nparts : the flag of splited by nparts, default to false
-        ceil_mode_dict : dict, include factor_ceil_mode and split_ceil_mode. default is None
+        tensor: Tensor
+        parent: Tenosr
+        affine_shape: shape of tensor affine to parent.
+        factor_shape: the factor used for split in attach at, default is None.
+        ceil_mode_dict: dict, include factor_ceil_mode, split_ceil_mode, tail_strategy and active_scope.
+                        default is None.
 
         Returns
         -------
-        the scope that tensor follow with
+        the scope that tensor follow with.
         """
         scopes = self[parent]
         ax_list, unit = scopes.get_active_scope_and_unit()
-        if len(affine_shape) != len(ax_list):
-            raise_schedule_agent_err("len(affine_shape) should be equal to "
-                                     "len(shape)+len(reduce_axis) of {} "
-                                     .format(parent))
-        factor_ceil_mode = len(affine_shape) * [True]
-        if ceil_mode_dict:
-            factor_ceil_mode = ceil_mode_dict.get("factor_ceil_mode")
-            if isinstance(factor_ceil_mode, bool):
-                factor_ceil_mode = len(affine_shape) * [factor_ceil_mode]
-
-        factor_list = [(ceil_div(i, j) if ceil_mode else floor_div(i, j))
-            for i, j, ceil_mode in zip(affine_shape, unit, factor_ceil_mode)]
+        factor_list = factor_shape
+        factor_ceil_mode_list = expand_params(True, len(affine_shape))
+        if ceil_mode_dict and ceil_mode_dict.get("factor_ceil_mode"):
+            factor_ceil_mode_list = expand_params(ceil_mode_dict.get("factor_ceil_mode"), len(affine_shape))
+        if not factor_shape:
+            if len(affine_shape) != len(ax_list):
+                raise_schedule_agent_err("len(affine_shape) should be equal to "
+                                        "len(shape)+len(reduce_axis) of {} "
+                                        .format(parent))
+            factor_list = [(ceil_div(i, j) if ceil_mode else floor_div(i, j))
+                for i, j, ceil_mode in zip(affine_shape, unit, factor_ceil_mode_list)]
 
         scope_attach = self._start_attach(factor_list, tensor, parent, ceil_mode_dict)
 
@@ -945,3 +958,21 @@ class ScheduleAgent:
                                      "be both less and greater than {}".
                                      format(tensor_a, tensor_b))
         return attach
+
+
+class SplitParam:
+    """Describe the parameter used for split function in class ScopeManager
+
+    Attributes:
+        split_ceil_mode: Whether it needs to use ceil_div or not, only set to false when the factor is divisible.
+        tail_strategy: The tail strategy in split. The optional values are "round_up", "guard_with_if" and
+                       "shift_inwards". "round_up" and "shift_inwards" will guarantee the same amount of data for
+                       tail block and main block, "round_up" read extra data backwards and "shift_inwards" read extra
+                       data forwards, "guard_with_if" will keep the original amount of data unchanged.
+        active_scope: The axes used for futher split, the optional values are "inner" or "outer"
+    """
+    def __init__(self, split_ceil_mode=True, tail_strategy="guard_with_if", active_scope="outer") -> None:
+        self.split_ceil_mode = split_ceil_mode
+        # specify tail_strategy as "round_up" to simplify expression when split_ceil_mode is False.
+        self.tail_strategy = tail_strategy if split_ceil_mode else "round_up"
+        self.active_scope = active_scope

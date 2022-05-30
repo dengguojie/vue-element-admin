@@ -53,6 +53,13 @@ class FormatCompute(object):
         lambda_expression_str = f'lambda {dst_indice}: ori_tensor[{src_indice}]'
         return shape, lambda_expression_str
 
+    @staticmethod
+    def _get_var_name(tensor_format, var_name, cache_tiling_flag):
+        ori_flag = (tensor_format == "ND" and not cache_tiling_flag) or (var_name == "k" and cache_tiling_flag)
+        if ori_flag:
+            var_name += "_ori"
+        return var_name
+
     def _lambda_nd2nz(self, ori_tensor, block_in, block_reduce):
         """
         the express of nd format trans to Nz format. support batch

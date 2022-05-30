@@ -35,8 +35,6 @@ from impl.util.platform_adapter import tvm
 from tbe.common.context import get_context
 from tbe.common.buildcfg import get_current_build_config
 
-# General limitation of the size for input shape: 2**32 - 1
-SHAPE_SIZE_LIMIT = 2147483648
 NoneType = type(None)
 MKN_MIN = 1
 MKN_MAX = 2147483648
