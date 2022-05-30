@@ -59,7 +59,9 @@ REGISTER_CUSTOM_OP("BatchMultiClassNonMaxSuppression")
                    "ai.onnx::10::BatchMultiClassNMS",
                    "ai.onnx::11::BatchMultiClassNMS",
                    "ai.onnx::12::BatchMultiClassNMS",
-                   "ai.onnx::13::BatchMultiClassNMS"})
+                   "ai.onnx::13::BatchMultiClassNMS",
+                   "ai.onnx::14::BatchMultiClassNMS",
+                   "ai.onnx::15::BatchMultiClassNMS"})
     .ParseParamsFn(ParseParamsBatchMultiClassNMS)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

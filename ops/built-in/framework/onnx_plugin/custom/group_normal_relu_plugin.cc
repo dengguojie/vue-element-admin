@@ -46,7 +46,9 @@ REGISTER_CUSTOM_OP("GroupNormRelu")
                    ge::AscendString("ai.onnx::10::GroupNormRelu"),
                    ge::AscendString("ai.onnx::11::GroupNormRelu"),
                    ge::AscendString("ai.onnx::12::GroupNormRelu"),
-                   ge::AscendString("ai.onnx::13::GroupNormRelu")})
+                   ge::AscendString("ai.onnx::13::GroupNormRelu"),
+                   ge::AscendString("ai.onnx::14::GroupNormRelu"),
+                   ge::AscendString("ai.onnx::15::GroupNormRelu")})
     .ParseParamsByOperatorFn(ParseOnnxParamsGroupNormRelu)
     .ImplyType(ImplyType::TVM);
 }  // domi

@@ -40,6 +40,7 @@ Status ParseParamsTopK(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("sorted", sorted);
   op_dest.SetAttr("dim", axis);
   op_dest.SetAttr("largest", largest);
@@ -85,18 +86,25 @@ Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
   const ge::Tensor value_tensor = Scalar2Tensor(data, dims, ge::DT_INT32); 
   op_dest.SetAttr("k", value_tensor);
   op_dest.SetAttr("dim", axis);
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
 static Status ParseOpToGraphTopKV9(const ge::Operator& op, ge::Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   ge::Tensor k_value;
   if (op.GetAttr("k", k_value) != SUCCESS) {
     ONNX_PLUGIN_LOGE("TopK", "get value from op failed");
     return FAILED;
   }
-  auto data1 = op::Const("data1").set_attr_value(k_value);
-  auto topk = op::TopK().set_input_x(data0).set_input_k(data1);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(k_value);
+  auto topk = op::TopK(ori_name + "_TopK").set_input_x(data0).set_input_k(data1);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
   output_indexs.emplace_back(topk, vector<std::size_t>{0});
@@ -114,7 +122,8 @@ REGISTER_CUSTOM_OP("PartitionedCall")
 
 REGISTER_CUSTOM_OP("TopK")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::10::TopK", "ai.onnx::11::TopK", "ai.onnx::12::TopK", "ai.onnx::13::TopK"})
+    .OriginOpType({"ai.onnx::10::TopK", "ai.onnx::11::TopK", "ai.onnx::12::TopK", "ai.onnx::13::TopK",
+                   "ai.onnx::14::TopK", "ai.onnx::15::TopK"})
     .ParseParamsFn(ParseParamsTopK)
     .ImplyType(ImplyType::TVM);
 

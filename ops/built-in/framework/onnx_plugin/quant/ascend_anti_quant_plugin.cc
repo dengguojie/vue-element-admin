@@ -71,7 +71,9 @@ REGISTER_CUSTOM_OP("AscendAntiQuant")
                    "ai.onnx::10::AscendAntiQuant",
                    "ai.onnx::11::AscendAntiQuant",
                    "ai.onnx::12::AscendAntiQuant",
-                   "ai.onnx::13::AscendAntiQuant"})
+                   "ai.onnx::13::AscendAntiQuant",
+                   "ai.onnx::14::AscendAntiQuant",
+                   "ai.onnx::15::AscendAntiQuant"})
     .ParseParamsFn(ParseParamsAscendAntiQuant)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -94,7 +94,8 @@ Status ParseParamsTfIdfVectorizer(const Message* op_src, ge::Operator& op_dest) 
 REGISTER_CUSTOM_OP("TfIdfVectorizer")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::TfIdfVectorizer", "ai.onnx::10::TfIdfVectorizer", "ai.onnx::11::TfIdfVectorizer",
-                   "ai.onnx::12::TfIdfVectorizer", "ai.onnx::13::TfIdfVectorizer"})
+                   "ai.onnx::12::TfIdfVectorizer", "ai.onnx::13::TfIdfVectorizer", "ai.onnx::14::TfIdfVectorizer",
+                   "ai.onnx::15::TfIdfVectorizer"})
     .ParseParamsFn(ParseParamsTfIdfVectorizer)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

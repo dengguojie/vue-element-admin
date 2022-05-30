@@ -47,7 +47,9 @@ REGISTER_CUSTOM_OP("AffineGrid")
                  "ai.onnx::10::AffineGrid",
                  "ai.onnx::11::AffineGrid",
                  "ai.onnx::12::AffineGrid",
-                 "ai.onnx::13::AffineGrid"})
+                 "ai.onnx::13::AffineGrid",
+                 "ai.onnx::14::AffineGrid",
+                 "ai.onnx::15::AffineGrid"})
   .ParseParamsFn(ParseParamsAffineGrid)
   .ImplyType(ImplyType::TVM);
 } // namespace domi

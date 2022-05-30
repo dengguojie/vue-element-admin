@@ -75,7 +75,9 @@ REGISTER_CUSTOM_OP("YoloPreDetection")
                    "ai.onnx::10::YoloPreDetection",
                    "ai.onnx::11::YoloPreDetection",
                    "ai.onnx::12::YoloPreDetection",
-                   "ai.onnx::13::YoloPreDetection"})
+                   "ai.onnx::13::YoloPreDetection",
+                   "ai.onnx::14::YoloPreDetection",
+                   "ai.onnx::15::YoloPreDetection"})
     .ParseParamsFn(ParseParamsYoloPreDetection)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -75,7 +75,9 @@ REGISTER_CUSTOM_OP("EmbeddingBag")
                     "ai.onnx::10::EmbeddingBag",
                     "ai.onnx::11::EmbeddingBag",
                     "ai.onnx::12::EmbeddingBag",
-                    "ai.onnx::13::EmbeddingBag"})
+                    "ai.onnx::13::EmbeddingBag",
+                    "ai.onnx::14::EmbeddingBag",
+                    "ai.onnx::15::EmbeddingBag"})
     .ParseParamsFn(ParseParamsEmbeddingBag)
     .ImplyType(ImplyType::TVM);
 } // namespace domi

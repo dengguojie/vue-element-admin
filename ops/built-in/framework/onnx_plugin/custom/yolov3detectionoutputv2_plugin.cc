@@ -105,7 +105,9 @@ REGISTER_CUSTOM_OP("YoloV3DetectionOutputV2")
                    "ai.onnx::10::YoloV3DetectionOutputV2",
                    "ai.onnx::11::YoloV3DetectionOutputV2",
                    "ai.onnx::12::YoloV3DetectionOutputV2",
-                   "ai.onnx::13::YoloV3DetectionOutputV2"})
+                   "ai.onnx::13::YoloV3DetectionOutputV2",
+                   "ai.onnx::14::YoloV3DetectionOutputV2",
+                   "ai.onnx::15::YoloV3DetectionOutputV2"})
     .ParseParamsFn(ParseParamsYolov3detectionoutputv2)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

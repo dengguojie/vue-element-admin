@@ -65,7 +65,9 @@ REGISTER_CUSTOM_OP("Constant")
                    "ai.onnx::10::Int8GivenIntTensorFill",
                    "ai.onnx::11::Int8GivenIntTensorFill",
                    "ai.onnx::12::Int8GivenIntTensorFill",
-                   "ai.onnx::13::Int8GivenIntTensorFill"})
+                   "ai.onnx::13::Int8GivenIntTensorFill",
+                   "ai.onnx::14::Int8GivenIntTensorFill",
+                   "ai.onnx::15::Int8GivenIntTensorFill"})
     .ParseParamsFn(ParseParamsInt8GivenIntTensorFill)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

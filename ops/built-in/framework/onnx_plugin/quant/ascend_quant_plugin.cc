@@ -81,7 +81,9 @@ REGISTER_CUSTOM_OP("AscendQuant")
                    "ai.onnx::10::AscendQuant",
                    "ai.onnx::11::AscendQuant",
                    "ai.onnx::12::AscendQuant",
-                   "ai.onnx::13::AscendQuant"})
+                   "ai.onnx::13::AscendQuant",
+                   "ai.onnx::14::AscendQuant",
+                   "ai.onnx::15::AscendQuant"})
     .ParseParamsFn(ParseParamsAscendQuant)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

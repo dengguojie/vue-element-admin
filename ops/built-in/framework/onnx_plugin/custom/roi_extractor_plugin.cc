@@ -80,7 +80,9 @@ REGISTER_CUSTOM_OP("RoiExtractor")
                    "ai.onnx::10::RoiExtractor",
                    "ai.onnx::11::RoiExtractor",
                    "ai.onnx::12::RoiExtractor",
-                   "ai.onnx::13::RoiExtractor"})
+                   "ai.onnx::13::RoiExtractor",
+                   "ai.onnx::14::RoiExtractor",
+                   "ai.onnx::15::RoiExtractor"})
     .ParseParamsFn(ParseParamsRoiExtractor)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

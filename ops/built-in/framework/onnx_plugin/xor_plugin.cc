@@ -33,6 +33,7 @@ Status parseParamsXor(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("original_type", "ai.onnx::11::Xor");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", 2);
@@ -42,13 +43,19 @@ Status parseParamsXor(const Message* op_src, ge::Operator& op_dest) {
 }
 
 static Status ParseOpToGraphXor(const ge::Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
 
-  auto cast_a = op::Cast("Cast_a").set_input_x(data0).set_attr_dst_type(ge::DT_INT32);
-  auto cast_b = op::Cast("Cast_b").set_input_x(data1).set_attr_dst_type(ge::DT_INT32);
-  auto bit_wise_xor = op::BitwiseXor("Xor").set_input_x1(cast_a).set_input_x2(cast_b);
-  auto cast_out = op::Cast("Cast_out").set_input_x(bit_wise_xor).set_attr_dst_type(ge::DT_BOOL);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "_data1").set_attr_index(1);
+
+  auto cast_a = op::Cast(ori_name + "_Cast_a").set_input_x(data0).set_attr_dst_type(ge::DT_INT32);
+  auto cast_b = op::Cast(ori_name + "_Cast_b").set_input_x(data1).set_attr_dst_type(ge::DT_INT32);
+  auto bit_wise_xor = op::BitwiseXor(ori_name + "_Xor").set_input_x1(cast_a).set_input_x2(cast_b);
+  auto cast_out = op::Cast(ori_name + "_Cast_out").set_input_x(bit_wise_xor).set_attr_dst_type(ge::DT_BOOL);
 
   std::vector<ge::Operator> inputs = {data0, data1};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
@@ -60,7 +67,7 @@ static Status ParseOpToGraphXor(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Xor", "ai.onnx::9::Xor", "ai.onnx::10::Xor", "ai.onnx::11::Xor", "ai.onnx::12::Xor",
-                   "ai.onnx::13::Xor"})
+                   "ai.onnx::13::Xor", "ai.onnx::14::Xor", "ai.onnx::15::Xor"})
     .ParseParamsFn(parseParamsXor)
     .ParseOpToGraphFn(ParseOpToGraphXor)
     .ImplyType(ImplyType::TVM);

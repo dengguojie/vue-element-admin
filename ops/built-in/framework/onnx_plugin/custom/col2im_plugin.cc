@@ -68,7 +68,9 @@ REGISTER_CUSTOM_OP("Col2im")
                    ge::AscendString("ai.onnx::10::Col2im"),
                    ge::AscendString("ai.onnx::11::Col2im"),
                    ge::AscendString("ai.onnx::12::Col2im"),
-                   ge::AscendString("ai.onnx::13::Col2im")})
+                   ge::AscendString("ai.onnx::13::Col2im"),
+                   ge::AscendString("ai.onnx::14::Col2im"),
+                   ge::AscendString("ai.onnx::15::Col2im")})
     .ParseParamsByOperatorFn(ParseOnnxParamsCol2im)
     .ImplyType(ImplyType::TVM);
 }  // domi

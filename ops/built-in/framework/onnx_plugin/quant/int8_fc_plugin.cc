@@ -54,6 +54,8 @@ Status ParseParamsInt8Fc(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("num_input", op_input_size);
   op_dest.SetAttr("num_output", op_output_size);
 
+  op_dest.SetAttr("name", node->name());
+
   unsigned int s_conter = 0;
   for (auto iter = scale_map.begin(); iter != scale_map.end(); ++iter) {
     if (s_conter == 3) {
@@ -81,6 +83,12 @@ Status ParseParamsInt8Fc(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   float quant_scale = 1.0;
   float quant_offset = 0.0;
   float deq_scale = 1.0;
@@ -95,19 +103,19 @@ Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
   std::vector<ge::Operator> inputs;
   ge::Operator fc_op;
   if (input_size == 2) {
-    auto data1 = op::Data("data1").set_attr_index(0);
-    auto data2 = op::Data("data2").set_attr_index(1);
-    fc_op = op::FullyConnection("Int8FcFullyconnection")
+    auto data1 = op::Data(ori_name + "_data1").set_attr_index(0);
+    auto data2 = op::Data(ori_name + "_data2").set_attr_index(1);
+    fc_op = op::FullyConnection(ori_name + "_Int8FcFullyconnection")
                 .set_input_x(data1)
                 .set_input_w(data2)
                 .set_attr_num_output(output_size)
                 .set_attr_transpose(false);
     inputs = {data1, data2};
   } else if (input_size == 3) {
-    auto data1 = op::Data("data1").set_attr_index(0);
-    auto data2 = op::Data("data2").set_attr_index(1);
-    auto data3 = op::Data("data3").set_attr_index(2);
-    fc_op = op::FullyConnection("Int8FcFullyconnection")
+    auto data1 = op::Data(ori_name + "_data1").set_attr_index(0);
+    auto data2 = op::Data(ori_name + "_data2").set_attr_index(1);
+    auto data3 = op::Data(ori_name + "_data3").set_attr_index(2);
+    fc_op = op::FullyConnection(ori_name + "_Int8FcFullyconnection")
                 .set_input_x(data1)
                 .set_input_w(data2)
                 .set_input_b(data3)
@@ -121,15 +129,15 @@ Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
 
   std::vector<int64_t> dims = {1};
   ge::Tensor scale_tensor = Scalar2Tensor(deq_scale, dims, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0);
-  auto const_op = op::Const("deq_scale").set_attr_value(scale_tensor);
-  auto ascend_deq = op::AscendDequant("Int8FcAscendDequant")
+  auto const_op = op::Const(ori_name + "_deq_scale").set_attr_value(scale_tensor);
+  auto ascend_deq = op::AscendDequant(ori_name + "_Int8FcAscendDequant")
                         .set_input_x(fc_op)
                         .set_input_deq_scale(const_op)
                         .set_attr_sqrt_mode(false)
                         .set_attr_relu_flag(false)
                         .set_attr_dtype(DT_FLOAT16);
 
-  auto ascend_quant = op::AscendQuant("Int8FcAscendQuant")
+  auto ascend_quant = op::AscendQuant(ori_name + "_Int8FcAscendQuant")
                           .set_input_x(ascend_deq)
                           .set_attr_scale(quant_scale)
                           .set_attr_offset(quant_offset)
@@ -155,7 +163,7 @@ Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Int8FC", "ai.onnx::9::Int8FC", "ai.onnx::10::Int8FC", "ai.onnx::11::Int8FC",
-                   "ai.onnx::12::Int8FC", "ai.onnx::13::Int8FC"})
+                   "ai.onnx::12::Int8FC", "ai.onnx::13::Int8FC", "ai.onnx::14::Int8FC", "ai.onnx::15::Int8FC"})
     .ParseParamsFn(ParseParamsInt8Fc)
     .ParseOpToGraphFn(ParseOpToGraphInt8Fc)
     .ImplyType(ImplyType::TVM);

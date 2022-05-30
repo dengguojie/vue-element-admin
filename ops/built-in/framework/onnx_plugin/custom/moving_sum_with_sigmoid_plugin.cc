@@ -46,7 +46,9 @@ REGISTER_CUSTOM_OP("MovingSumWithSigmoid")
                  "ai.onnx::10::MovingSumWithSigmoid",
                  "ai.onnx::11::MovingSumWithSigmoid",
                  "ai.onnx::12::MovingSumWithSigmoid",
-                 "ai.onnx::13::MovingSumWithSigmoid"})
+                 "ai.onnx::13::MovingSumWithSigmoid",
+                 "ai.onnx::14::MovingSumWithSigmoid",
+                 "ai.onnx::15::MovingSumWithSigmoid"})
   .ParseParamsFn(ParseParamsMovingSumWithSigmoid)
   .ImplyType(ImplyType::TVM);
 } // namespace domi

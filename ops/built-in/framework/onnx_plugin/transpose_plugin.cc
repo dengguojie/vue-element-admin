@@ -35,6 +35,7 @@ Status ParseParamsTranspose(const Message *op_src, ge::Operator &op_dest) {
     }
   }
 
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("perm", perm);
 
   // add dynamic input and out
@@ -51,6 +52,12 @@ Status ParseParamsTranspose(const Message *op_src, ge::Operator &op_dest) {
 
 
 Status ParseOpToGraphTranspose(const ge::Operator& op, Graph & graph){
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   std::vector<int32_t> perm;
   if (op.GetAttr("perm", perm) != SUCCESS){
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "Failed to get perm from operator");
@@ -62,14 +69,14 @@ Status ParseOpToGraphTranspose(const ge::Operator& op, Graph & graph){
     return FAILED;
   }
 
-  auto data0 = op::Data("data0").set_attr_index(0);
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   std::vector<Operator> inputs {data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> output_indexs;
 
   int32_t dim = perm.size();
   auto trans_perm = Vec2Tensor<int32_t>(perm, {dim}, ge::DT_INT32);
-  auto const_perm = op::Const().set_attr_value(trans_perm);
-  auto transpose = op::Transpose().set_input_x(data0).set_input_perm(const_perm);
+  auto const_perm = op::Const(ori_name + "_Const").set_attr_value(trans_perm);
+  auto transpose = op::Transpose(ori_name + "_Transpose").set_input_x(data0).set_input_perm(const_perm);
 
   output_indexs.emplace_back(transpose, vector<std::size_t>{0});
   graph.SetInputs(inputs).SetOutputs(output_indexs);
@@ -83,7 +90,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::10::Transpose",
                  "ai.onnx::11::Transpose",
                  "ai.onnx::12::Transpose",
-                 "ai.onnx::13::Transpose"})
+                 "ai.onnx::13::Transpose",
+                 "ai.onnx::14::Transpose",
+                 "ai.onnx::15::Transpose"})
   .ParseParamsFn(ParseParamsTranspose)
   .ParseOpToGraphFn(ParseOpToGraphTranspose)
   .ImplyType(ImplyType::TVM);

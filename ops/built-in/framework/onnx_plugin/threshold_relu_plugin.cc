@@ -33,6 +33,8 @@ Status ParseParamsThresholdedRelu(const Message* op_src, ge::Operator& op_dest) 
       alpha = attr.f();
     }
   }
+
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("alpha", alpha);
   op_dest.SetAttr("original_type", "ai.onnx::11::ThresholdedRelu");
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -43,12 +45,18 @@ Status ParseParamsThresholdedRelu(const Message* op_src, ge::Operator& op_dest) 
 }
 
 Status ParseOpToThresholdedRelu(const ge::Operator &op, Graph &graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   float alpha = 1.0f;
   op.GetAttr("alpha", alpha);
-  auto data = op::Data("data1").set_attr_index(0);
-  auto identity_op = op::Identity("identity").set_input_x(data);
-  auto threshold_op = op::Threshold("threshold").set_input_x(identity_op).set_attr_threshold(alpha);
-  auto mul_op = op::Mul("mul").set_input_x1(identity_op).set_input_x2(threshold_op);
+  auto data = op::Data(ori_name + "_data1").set_attr_index(0);
+  auto identity_op = op::Identity(ori_name + "_identity").set_input_x(data);
+  auto threshold_op = op::Threshold(ori_name + "_threshold").set_input_x(identity_op).set_attr_threshold(alpha);
+  auto mul_op = op::Mul(ori_name + "_mul").set_input_x1(identity_op).set_input_x2(threshold_op);
   std::vector<ge::Operator> inputs{data};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   output_indexs.emplace_back(mul_op, std::vector<size_t>{0});
@@ -61,7 +69,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
   .OriginOpType({"ai.onnx::10::ThresholdedRelu",
                  "ai.onnx::11::ThresholdedRelu",
                  "ai.onnx::12::ThresholdedRelu",
-                 "ai.onnx::13::ThresholdedRelu"})
+                 "ai.onnx::13::ThresholdedRelu",
+                 "ai.onnx::14::ThresholdedRelu",
+                 "ai.onnx::15::ThresholdedRelu"})
   .ParseParamsFn(ParseParamsThresholdedRelu)
   .ParseOpToGraphFn(ParseOpToThresholdedRelu)
   .ImplyType(ImplyType::TVM);

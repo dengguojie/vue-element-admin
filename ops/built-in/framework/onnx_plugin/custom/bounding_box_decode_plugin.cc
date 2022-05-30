@@ -79,7 +79,9 @@ REGISTER_CUSTOM_OP("BoundingBoxDecode")
                    ge::AscendString("ai.onnx::10::BoundingBoxDecode"),
                    ge::AscendString("ai.onnx::11::BoundingBoxDecode"),
                    ge::AscendString("ai.onnx::12::BoundingBoxDecode"),
-                   ge::AscendString("ai.onnx::13::BoundingBoxDecode")})
+                   ge::AscendString("ai.onnx::13::BoundingBoxDecode"),
+                   ge::AscendString("ai.onnx::14::BoundingBoxDecode"),
+                   ge::AscendString("ai.onnx::15::BoundingBoxDecode")})
     .ParseParamsByOperatorFn(ParseParamsBoundingBoxDecode)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

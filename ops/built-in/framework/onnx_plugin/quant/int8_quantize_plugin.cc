@@ -72,7 +72,8 @@ Status ParseParamsInt8Quantize(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("AscendQuant")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Int8Quantize", "ai.onnx::9::Int8Quantize", "ai.onnx::10::Int8Quantize",
-                   "ai.onnx::11::Int8Quantize", "ai.onnx::12::Int8Quantize", "ai.onnx::13::Int8Quantize"})
+                   "ai.onnx::11::Int8Quantize", "ai.onnx::12::Int8Quantize", "ai.onnx::13::Int8Quantize",
+                   "ai.onnx::14::Int8Quantize", "ai.onnx::15::Int8Quantize"})
     .ParseParamsFn(ParseParamsInt8Quantize)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

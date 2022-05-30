@@ -34,7 +34,9 @@ REGISTER_CUSTOM_OP("DynSeqOuter")
                  "ai.onnx::10::DynSeqOuter",
                  "ai.onnx::11::DynSeqOuter",
                  "ai.onnx::12::DynSeqOuter",
-                 "ai.onnx::13::DynSeqOuter"})
+                 "ai.onnx::13::DynSeqOuter",
+                 "ai.onnx::14::DynSeqOuter",
+                 "ai.onnx::15::DynSeqOuter"})
   .ParseParamsFn(ParseParamsDynSeqOuter)
   .ImplyType(ImplyType::TVM);
 } // namespace domi

@@ -33,7 +33,9 @@ REGISTER_CUSTOM_OP("BatchMatMul")
                  "ai.onnx::10::BatchMatMul",
                  "ai.onnx::11::BatchMatMul",
                  "ai.onnx::12::BatchMatMul",
-                 "ai.onnx::13::BatchMatMul"})
+                 "ai.onnx::13::BatchMatMul",
+                 "ai.onnx::14::BatchMatMul",
+                 "ai.onnx::15::BatchMatMul"})
   .ParseParamsFn(ParseParamsBatchMatMul)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

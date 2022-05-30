@@ -45,23 +45,30 @@ Status ParseParamsInt8Dequantize(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("original_type", "ai.onnx::11::Int8Dequantize");
   op_dest.SetAttr("scale", scale);
   op_dest.SetAttr("offset", offset);
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
 Status ParseOpToGraphInt8Dequantize(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   float scale = 0.f;
   float offset = 0.f;
   ge::Operator::OpListInt maxpool_ksize = {1, 1, 1, 1};
   ge::Operator::OpListInt maxpool_strides = {1, 1, 1, 1};
   op.GetAttr("scale", scale);
   op.GetAttr("offset", offset);
-  auto data1 = op::Data("data1").set_attr_index(0);
-  auto ascend_op = op::AscendAntiQuant("Int8DeqAscendAntiquant")
+  auto data1 = op::Data(ori_name + "_data1").set_attr_index(0);
+  auto ascend_op = op::AscendAntiQuant(ori_name + "_Int8DeqAscendAntiquant")
                        .set_input_x(data1)
                        .set_attr_scale(scale)
                        .set_attr_offset(offset)
                        .set_attr_dtype(DT_FLOAT16);
-  auto maxpool = op::MaxPool("Int8DeqAscendMaxpool")
+  auto maxpool = op::MaxPool(ori_name + "_Int8DeqAscendMaxpool")
                      .set_input_x(ascend_op)
                      .set_attr_ksize(maxpool_ksize)
                      .set_attr_strides(maxpool_strides)
@@ -78,7 +85,8 @@ Status ParseOpToGraphInt8Dequantize(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Int8Dequantize", "ai.onnx::9::Int8Dequantize", "ai.onnx::10::Int8Dequantize",
-                   "ai.onnx::11::Int8Dequantize", "ai.onnx::12::Int8Dequantize", "ai.onnx::13::Int8Dequantize"})
+                   "ai.onnx::11::Int8Dequantize", "ai.onnx::12::Int8Dequantize", "ai.onnx::13::Int8Dequantize",
+                   "ai.onnx::14::Int8Dequantize", "ai.onnx::15::Int8Dequantize"})
     .ParseParamsFn(ParseParamsInt8Dequantize)
     .ParseOpToGraphFn(ParseOpToGraphInt8Dequantize)
     .ImplyType(ImplyType::TVM);

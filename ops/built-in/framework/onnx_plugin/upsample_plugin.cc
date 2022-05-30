@@ -37,6 +37,8 @@ Status ParseParamsUpsample(const Message *op_src, ge::Operator &op_dest) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Upsample only supports nearest and linear, current is %s .", mode_value.c_str());
     return FAILED;
   }
+
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("mode", mode_value);
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", 2);
@@ -45,14 +47,20 @@ Status ParseParamsUpsample(const Message *op_src, ge::Operator &op_dest) {
 }
 
 Status ParseOpToGraphUpsample(const ge::Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
-  auto data1 = op::Data("data1").set_attr_index(1);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
+  auto data1 = op::Data(ori_name + "_data1").set_attr_index(1);
 
   std::vector<float> pads_vector(8, 0);
   int64_t len = pads_vector.size();
   const vector<int64_t> dims = {len};
   ge:: Tensor const_value = Vec2Tensor(pads_vector, dims, DT_FLOAT, ge::FORMAT_ND);
-  auto const_op = op::Const("const_data").set_attr_value(const_value);
+  auto const_op = op::Const(ori_name + "_const_data").set_attr_value(const_value);
   auto ret_x = ChangeFormatFromOnnx(data0, 0, ge::FORMAT_NCHW, false);
   if (ret_x != ge::GRAPH_SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "update upsample_x format failed.");
@@ -63,10 +71,10 @@ Status ParseOpToGraphUpsample(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value of mode from op failed.");
     return FAILED;
   }
-  auto resize_op = op::Resize("resize").set_input_x(data0)
-                                       .set_input_roi(const_op)
-                                       .set_input_scales(data1)
-                                       .set_attr_mode(mode_value1);
+  auto resize_op = op::Resize(ori_name + "_resize").set_input_x(data0)
+                                                   .set_input_roi(const_op)
+                                                   .set_input_scales(data1)
+                                                   .set_attr_mode(mode_value1);
   
   ChangeFormatFromOnnx(resize_op, 0, ge::FORMAT_NCHW, true);
   ChangeFormatFromOnnx(resize_op, 0, ge::FORMAT_NCHW, false);
@@ -85,7 +93,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                  "ai.onnx::9::Upsample",
                  "ai.onnx::11::Upsample",
                  "ai.onnx::12::Upsample",
-                 "ai.onnx::13::Upsample"})
+                 "ai.onnx::13::Upsample",
+                 "ai.onnx::14::Upsample",
+                 "ai.onnx::15::Upsample"})
   .ParseParamsFn(ParseParamsUpsample)
   .ParseOpToGraphFn(ParseOpToGraphUpsample)
   .ImplyType(ImplyType::TVM);

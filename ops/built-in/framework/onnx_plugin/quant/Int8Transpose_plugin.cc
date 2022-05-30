@@ -46,11 +46,18 @@ Status ParseParamsInt8Transpose(const Message* op_src, ge::Operator& op_dest) {
   std::vector<int64_t> dims = {num};
   ge::Tensor tensor = Vec2Tensor(axes, dims, ge::DT_INT64);
   op_dest.SetAttr("axes", tensor);
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
 static Status ParseOpToGraphInt8Transpose(const ge::Operator& op, Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
 
   ge::Tensor perm;
   if (op.GetAttr("axes", perm) != SUCCESS) {
@@ -58,8 +65,8 @@ static Status ParseOpToGraphInt8Transpose(const ge::Operator& op, Graph& graph) 
     return FAILED;
   }
 
-  auto data1 = op::Const("data1").set_attr_value(perm);
-  auto int8transpose = op::Transpose().set_input_x(data0).set_input_perm(data1);
+  auto data1 = op::Const(ori_name + "_data1").set_attr_value(perm);
+  auto int8transpose = op::Transpose(ori_name + "_Transpose").set_input_x(data0).set_input_perm(data1);
 
   std::vector<ge::Operator> inputs{data0, data1};
   std::vector<std::pair<ge::Operator, std::vector<size_t> > > outputs;
@@ -76,7 +83,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::Int8Transpose",
                    "ai.onnx::11::Int8Transpose",
                    "ai.onnx::12::Int8Transpose",
-                   "ai.onnx::13::Int8Transpose"})
+                   "ai.onnx::13::Int8Transpose",
+                   "ai.onnx::14::Int8Transpose",
+                   "ai.onnx::15::Int8Transpose"})
     .ParseParamsFn(ParseParamsInt8Transpose)
     .ParseOpToGraphFn(ParseOpToGraphInt8Transpose)
     .ImplyType(ImplyType::TVM);

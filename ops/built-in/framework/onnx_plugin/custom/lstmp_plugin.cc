@@ -30,6 +30,8 @@ REGISTER_CUSTOM_OP("LSTMP")
                    ge::AscendString("ai.onnx::11::LSTMP"),
                    ge::AscendString("ai.onnx::12::LSTMP"),
                    ge::AscendString("ai.onnx::13::LSTMP"),
+                   ge::AscendString("ai.onnx::14::LSTMP"),
+                   ge::AscendString("ai.onnx::15::LSTMP"),
                    ge::AscendString("onnxinfer::1::LSTMP")})
     .ParseParamsByOperatorFn(ParseOnnxParamsLSTMP)
     .ImplyType(ImplyType::TVM);

@@ -65,7 +65,9 @@ REGISTER_CUSTOM_OP("PSROIPoolingV2")
                    ge::AscendString("ai.onnx::10::PSROIPooling"),
                    ge::AscendString("ai.onnx::11::PSROIPooling"),
                    ge::AscendString("ai.onnx::12::PSROIPooling"),
-                   ge::AscendString("ai.onnx::13::PSROIPooling")})
+                   ge::AscendString("ai.onnx::13::PSROIPooling"),
+                   ge::AscendString("ai.onnx::14::PSROIPooling"),
+                   ge::AscendString("ai.onnx::15::PSROIPooling")})
     .ParseParamsByOperatorFn(ParseOnnxParamsPSROIPoolingV2)
     .ImplyType(ImplyType::TVM);
 }  // domi

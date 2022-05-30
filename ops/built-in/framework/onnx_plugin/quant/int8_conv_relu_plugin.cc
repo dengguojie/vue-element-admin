@@ -24,6 +24,12 @@
 #include "quantize_ops.h"
 #include "nonlinear_fuc_ops.h"
 
+namespace {
+  constexpr int X_INDEX = 0;
+  constexpr int FILTER_INDEX = 1;
+  constexpr int BIAS_INDEX = 2;
+}
+
 namespace domi {
 
 using OpDesc = std::shared_ptr<ge::OpDesc>;
@@ -160,6 +166,7 @@ Status ParseParamsInt8ConvRelu(const Message* op_src, ge::Operator& op) {
     return FAILED;
   }
 
+  op.SetAttr("name", node->name());
   int n = node->input_size();
   op.SetAttr("input_num", n);
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
@@ -282,6 +289,12 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
 }
 
 static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   Int8ConvAttr tbeAttr;
   if (GetInt8ConvAttr(op, tbeAttr) != SUCCESS) {
     ONNX_PLUGIN_LOGE("Int8ConvRelu", "get attr value failed.");
@@ -289,8 +302,8 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
   }
   std::map<string, ge::Format> format_map = {
       {"NCHW", ge::FORMAT_NCHW}, {"NHWC", ge::FORMAT_NHWC}, {"NCDHW", ge::FORMAT_NCDHW}, {"NDHWC", ge::FORMAT_NDHWC}};
-  ge::Operator dataX = op::Data("dataX").set_attr_index(0);
-  ge::Operator dataW = op::Data("dataW").set_attr_index(1);
+  ge::Operator dataX = op::Data(ori_name + "_dataX").set_attr_index(X_INDEX);
+  ge::Operator dataW = op::Data(ori_name + "_dataW").set_attr_index(FILTER_INDEX);
   std::vector<Operator> inputs{dataX, dataW};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   ge::Operator conv;
@@ -298,7 +311,7 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
   if (tbeAttr.dim_size == INPUT_4D) {
     switch (tbeAttr.input_num) {
       case INPUT_NUM_2:
-        conv = op::Conv2D("Int8ConvReluConv2D")
+        conv = op::Conv2D(ori_name + "_Int8ConvReluConv2D")
                    .set_input_x(dataX)
                    .set_input_filter(dataW)
                    .set_attr_strides(tbeAttr.strides)
@@ -308,9 +321,9 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
                    .set_attr_data_format(tbeAttr.data_format);
         break;
       case INPUT_NUM_3:
-        dataB = op::Data("dataB").set_attr_index(2);
+        dataB = op::Data(ori_name + "_dataB").set_attr_index(BIAS_INDEX);
         inputs.push_back(dataB);
-        conv = op::Conv2D("Int8ConvReluConv2D")
+        conv = op::Conv2D(ori_name + "_Int8ConvReluConv2D")
                    .set_input_x(dataX)
                    .set_input_filter(dataW)
                    .set_input_bias(dataB)
@@ -335,8 +348,8 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
 
   std::vector<int64_t> dims = {1};
   ge::Tensor scale_tensor = Scalar2Tensor(tbeAttr.ascend_dequant_scale, dims, ge::DT_FLOAT);
-  auto const_op = op::Const("scale").set_attr_value(scale_tensor);
-  ge::Operator ascend_deq = op::AscendDequant("Int8ConvReluAscendDeq")
+  auto const_op = op::Const(ori_name + "_scale").set_attr_value(scale_tensor);
+  ge::Operator ascend_deq = op::AscendDequant(ori_name + "_Int8ConvReluAscendDeq")
                                 .set_input_x(conv)
                                 .set_input_deq_scale(const_op)
                                 .set_attr_sqrt_mode(false)
@@ -346,12 +359,12 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE("Int8ConvRelu", "set format for input and output of ascend dequant failed.");
     return FAILED;
   }
-  ge::Operator relu = op::Relu("Int8ConvReluRelu").set_input_x(ascend_deq);
+  ge::Operator relu = op::Relu(ori_name + "_Int8ConvReluRelu").set_input_x(ascend_deq);
   if (SetInt8Format(relu, tbeAttr.dim_size, format_map[tbeAttr.data_format]) != SUCCESS) {
     ONNX_PLUGIN_LOGE("Int8ConvRelu", "set format for input and output of relu failed.");
     return FAILED;
   }
-  ge::Operator ascend_quant = op::AscendQuant("Int8ConvReluAscendQuant")
+  ge::Operator ascend_quant = op::AscendQuant(ori_name + "_Int8ConvReluAscendQuant")
                                   .set_input_x(relu)
                                   .set_attr_scale(tbeAttr.ascend_quant_scale)
                                   .set_attr_offset(tbeAttr.ascend_quant_offset)
@@ -369,7 +382,8 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Int8ConvRelu", "ai.onnx::9::Int8ConvRelu", "ai.onnx::10::Int8ConvRelu",
-                   "ai.onnx::11::Int8ConvRelu", "ai.onnx::12::Int8ConvRelu", "ai.onnx::13::Int8ConvRelu"})
+                   "ai.onnx::11::Int8ConvRelu", "ai.onnx::12::Int8ConvRelu", "ai.onnx::13::Int8ConvRelu",
+                   "ai.onnx::14::Int8ConvRelu", "ai.onnx::15::Int8ConvRelu"})
     .ParseParamsFn(ParseParamsInt8ConvRelu)
     .ParseOpToGraphFn(ParseOpToGraphInt8ConvRelu)
     .ImplyType(ImplyType::TVM);

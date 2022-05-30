@@ -69,7 +69,9 @@ REGISTER_CUSTOM_OP("Yolo")
                    "ai.onnx::10::Yolo",
                    "ai.onnx::11::Yolo",
                    "ai.onnx::12::Yolo",
-                   "ai.onnx::13::Yolo"})
+                   "ai.onnx::13::Yolo",
+                   "ai.onnx::14::Yolo",
+                   "ai.onnx::15::Yolo"})
     .ParseParamsFn(ParseParamsYolo)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

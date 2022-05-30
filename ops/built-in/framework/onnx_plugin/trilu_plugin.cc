@@ -38,6 +38,8 @@ Status ParseParamsTrilu(const Message* op_src, ge::Operator& op_dest) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "now only support one input, not support k input");
     return FAILED;
   }
+
+  op_dest.SetAttr("name", node->name());
   op_dest.SetAttr("upper", upper);
   op_dest.SetAttr("original_type", "ai.onnx::14::Trilu");
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -47,14 +49,20 @@ Status ParseParamsTrilu(const Message* op_src, ge::Operator& op_dest) {
 }
 
 static Status ParseOpToGraphTrilu(const ge::Operator& op, ge::Graph& graph) {
-  auto data0 = op::Data("data0").set_attr_index(0);
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
+  auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   int upper = 1;
   op.GetAttr("upper", upper);
   ge::Operator trilu;
   if (upper) {
-    trilu = op::Triu("triu").set_input_x(data0).set_attr_diagonal(0);
+    trilu = op::Triu(ori_name + "_triu").set_input_x(data0).set_attr_diagonal(0);
   } else {
-    trilu = op::Tril("tril").set_input_x(data0).set_attr_diagonal(0);
+    trilu = op::Tril(ori_name + "_tril").set_input_x(data0).set_attr_diagonal(0);
   }
 
   std::vector<Operator> inputs{data0};
@@ -66,7 +74,8 @@ static Status ParseOpToGraphTrilu(const ge::Operator& op, ge::Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::14::Trilu"})
+    .OriginOpType({"ai.onnx::14::Trilu",
+                   "ai.onnx::15::Trilu"})
     .ParseParamsFn(ParseParamsTrilu)
     .ParseOpToGraphFn(ParseOpToGraphTrilu)
     .ImplyType(ImplyType::TVM);
