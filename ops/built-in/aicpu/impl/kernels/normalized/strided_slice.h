@@ -154,7 +154,7 @@ class StridedSliceCpuKernel : public CpuKernel {
    */
   uint32_t ParseKernelParams(CpuKernelContext &ctx);
 
-  uint32_t ParseIndexInput(CpuKernelContext &ctx, uint32_t index,
+  uint32_t ParseIndexInput(const CpuKernelContext &ctx, uint32_t index,
                            std::vector<int64_t> &vec);
   uint32_t GetMaskAttr(const CpuKernelContext &ctx, const std::string attr, int64_t &mask) const;
 

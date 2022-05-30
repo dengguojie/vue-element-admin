@@ -128,7 +128,7 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(const CpuKernelContext& ctx)
   T dims_exp_sum[length];
   T dims_maximum[length];
   memset_s(dims_exp_sum, length * sizeof(T), 0, length * sizeof(T));
-  int64_t data_size = total * sizeof(T);
+  int64_t data_size = total * static_cast<int64_t>(sizeof(T));
   if (data_size <= paralled_data_size) {
     Eigen::TensorMap<Eigen::Tensor<T, dimType3>, Eigen::Aligned> logits(
         input, inner_size, (int)dims[pivot], outer_size);

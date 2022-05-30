@@ -168,7 +168,7 @@ uint32_t LessCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t LessCpuKernel::BcastCompute(CpuKernelContext &ctx, const Bcast &bcast) {
+uint32_t LessCpuKernel::BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<bool *>(ctx.Output(0)->GetData());

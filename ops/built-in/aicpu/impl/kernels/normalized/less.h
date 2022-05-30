@@ -38,7 +38,7 @@ class LessCpuKernel : public CpuKernel {
   uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t BcastCompute(CpuKernelContext &ctx, const Bcast &bcast);
+  uint32_t BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
   uint32_t LessCompute(CpuKernelContext &ctx);

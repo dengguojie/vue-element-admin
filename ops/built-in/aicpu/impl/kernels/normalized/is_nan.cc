@@ -69,7 +69,7 @@ uint32_t IsNanCpuKernel::IsNanCheck(const CpuKernelContext &ctx) const {
 }
 
 template <typename T>
-uint32_t IsNanCpuKernel::IsNanCompute(CpuKernelContext &ctx) const {
+uint32_t IsNanCpuKernel::IsNanCompute(const CpuKernelContext &ctx) const {
   auto input = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
 

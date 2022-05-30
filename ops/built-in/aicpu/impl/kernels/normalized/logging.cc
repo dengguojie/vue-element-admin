@@ -74,7 +74,7 @@ uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   return KERNEL_STATUS_PARAM_INVALID;
 }
 
-string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries, const bool print_v2) {
+string AssertCpuKernel::SummarizeValue(const Tensor &t, int64_t max_entries, const bool print_v2) {
   const int64_t num_elts = t.NumElements();
   if (max_entries < 0) {
     max_entries = num_elts;
@@ -84,7 +84,7 @@ string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries, const boo
     string ret = "uninitialized Tensor of ";
     ret.append(to_string(num_elts));
     ret.append(" elements of type ");
-    return ret.append(to_string(t.GetDataType()));
+    return ret.append(to_string(static_cast<int>(t.GetDataType())));
   }
   switch (t.GetDataType()) {
     case DT_FLOAT16:

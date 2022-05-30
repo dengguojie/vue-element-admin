@@ -164,7 +164,7 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
           if (martix_x.size() > 0) {
             Eigen::PartialPivLU<MartixXd> lu(martix_x);
             MartixXd LU = lu.matrixLU();
-            sign = lu.permutationP().determinant();
+            sign = static_cast<T>(lu.permutationP().determinant());
             auto diag = LU.diagonal().array().eval();
             auto abs_diag = diag.cwiseAbs().eval();
             log_abs_det += abs_diag.log().sum();

@@ -185,7 +185,7 @@ uint32_t SplitVCpuKernel::SplitVCompute(T *input_data_ptr,
     T *output_data_ptr = output_data_vec[i];
     T *input_copy_ptr = input_data_ptr + offset;
     int64_t copy_num = subfix * size_splits_[i];
-    int64_t copy_size = copy_num * sizeof(T);
+    int64_t copy_size = copy_num * static_cast<int64_t>(sizeof(T));
     for (int64_t j = 0; j < prefix; j++) {
       auto mem_ret = memcpy_s(output_data_ptr, copy_size, input_copy_ptr, copy_size);
       KERNEL_CHECK_FALSE((mem_ret == EOK), KERNEL_STATUS_PARAM_INVALID,

@@ -303,7 +303,7 @@ uint32_t StridedSliceCpuKernel::ParseKernelParams(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t StridedSliceCpuKernel::ParseIndexInput(CpuKernelContext &ctx,
+uint32_t StridedSliceCpuKernel::ParseIndexInput(const CpuKernelContext &ctx,
                                                 uint32_t index,
                                                 std::vector<int64_t> &vec) {
   Tensor *index_tensor = ctx.Input(index);

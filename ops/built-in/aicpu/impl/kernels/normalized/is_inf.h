@@ -23,8 +23,6 @@ class IsInfCpuKernel : public CpuKernel {
  public:
   IsInfCpuKernel() = default;
   ~IsInfCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

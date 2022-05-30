@@ -21,7 +21,7 @@
 
 namespace aicpu {
 class SquareCpuKernel final : public CpuKernel {
- public:
+public:
   std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu

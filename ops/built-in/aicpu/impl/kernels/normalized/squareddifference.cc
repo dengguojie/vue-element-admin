@@ -167,7 +167,7 @@ uint32_t SquaredDifferenceCpuKernel::NoBcastCompute(const CpuKernelContext &ctx)
 }
 
 template <typename T>
-uint32_t SquaredDifferenceCpuKernel::BcastCompute(const CpuKernelContext &ctx, Bcast &bcast) {
+uint32_t SquaredDifferenceCpuKernel::BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
@@ -206,7 +206,7 @@ uint32_t SquaredDifferenceCpuKernel::BcastCompute(const CpuKernelContext &ctx, B
 }
 
 template <typename T>
-uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCompute(CpuKernelContext &ctx) {
+uint32_t SquaredDifferenceCpuKernel::SquaredDifferenceCompute(const CpuKernelContext &ctx) {
   Tensor *input0_tensor = ctx.Input(0);
   auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
   int64_t input0_elements_nums = input0_tensor->NumElements();

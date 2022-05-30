@@ -37,10 +37,10 @@ class SquaredDifferenceCpuKernel : public CpuKernel {
   uint32_t NoBcastCompute(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t BcastCompute(const CpuKernelContext &ctx, Bcast &bcast);
+  uint32_t BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
-  uint32_t SquaredDifferenceCompute(CpuKernelContext &ctx);
+  uint32_t SquaredDifferenceCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

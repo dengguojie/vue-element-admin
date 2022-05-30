@@ -27,7 +27,7 @@ class AssertCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  std::string SummarizeValue(Tensor &t, int64_t max_entries,
+  std::string SummarizeValue(const Tensor &t, int64_t max_entries,
                              const bool print_v2 = false);
   template <typename T>
   std::string SummarizeArray(const int64_t limit, const int64_t num_elts,
