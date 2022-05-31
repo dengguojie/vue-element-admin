@@ -75,7 +75,6 @@ uint32_t GreaterCpuKernel::DoCompute(const CpuKernelContext &ctx) {
                       input1_elements_num);
 
   auto output_tensor = ctx.Output(kFirstOutputIndex);
-  auto output_shape_sizes = output_tensor->GetTensorShape()->GetDimSizes();
   auto output_elements_num = output_tensor->NumElements();
   TensorMap<bool> output(reinterpret_cast<bool *>(output_tensor->GetData()),
                          output_elements_num);

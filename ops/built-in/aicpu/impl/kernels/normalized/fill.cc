@@ -122,7 +122,7 @@ uint32_t FillCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t FillCpuKernel::CalcDims(const Tensor *dims_tensor,
-                                 std::vector<int64_t> &dims) {
+                                 std::vector<int64_t> &dim_vec) {
   uint64_t data_num = dims_tensor->GetDataSize() / sizeof(T);
   if (data_num == 0) {
     KERNEL_LOG_INFO("Fill kernel: dims is empty, no need to fill");
@@ -139,10 +139,10 @@ uint32_t FillCpuKernel::CalcDims(const Tensor *dims_tensor,
     }
     if (dim == 0) {
       KERNEL_LOG_INFO("Fill kernel: input dim [%llu] is zero", i);
-      dims.clear();
+      dim_vec.clear();
       break;
     }
-    dims.emplace_back(dim);
+    dim_vec.emplace_back(dim);
   }
 
   return KERNEL_STATUS_OK;

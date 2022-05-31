@@ -36,7 +36,7 @@ class ImageWarpOffsetsCpuKernel : public CpuKernel {
   template <typename TImage, typename TIndex>
   static uint32_t DoCompute(CpuKernelContext &ctx);
 
-  uint32_t CheckParams(CpuKernelContext &ctx);
+  uint32_t CheckParams(const CpuKernelContext &ctx);
 
   uint32_t CheckParam(const CpuKernelContext &ctx, const std::string &in_or_out,
                       uint32_t index, size_t rank);

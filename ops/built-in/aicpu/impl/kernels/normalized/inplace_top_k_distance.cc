@@ -84,7 +84,7 @@ uint32_t InplaceTopKDistanceCpuKernel::GetInputAndCheck(const CpuKernelContext& 
 }
 
 template <typename T>
-uint32_t InplaceTopKDistanceCpuKernel::DoCompute(Inputs& inputs) {
+uint32_t InplaceTopKDistanceCpuKernel::DoCompute(const Inputs& inputs) {
   int64_t topk_elements_num = inputs.topk_pq_distance->NumElements();
   std::vector<Item<T>> items;
   T *topk_value_ptr = static_cast<T *>(inputs.topk_pq_distance->GetData());

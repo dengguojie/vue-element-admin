@@ -204,7 +204,7 @@ uint32_t ImageWarpOffsetsCpuKernel::CheckShapes(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ImageWarpOffsetsCpuKernel::CheckParams(CpuKernelContext &ctx) {
+uint32_t ImageWarpOffsetsCpuKernel::CheckParams(const CpuKernelContext &ctx) {
   auto ret = CheckParam(ctx, kInputStr, kFirstInputIndex, kInputShapeRank);
   if (ret != KERNEL_STATUS_OK) {
     return ret;
