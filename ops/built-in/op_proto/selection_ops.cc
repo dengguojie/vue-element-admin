@@ -4329,7 +4329,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
         axes_list[i] = axes_index + rank_num;
       }
       // axes out of boundary
-      if(axes_index >= static_cast<int64_t>(rank_num)){
+      if(static_cast<size_t>(axes_index) >= rank_num){
         axes_index = rank_num - 1;
         OP_LOGD(TbeGetName(op).c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(axes_list).c_str());
       }
