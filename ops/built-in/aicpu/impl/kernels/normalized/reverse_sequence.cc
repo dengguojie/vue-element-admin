@@ -158,8 +158,8 @@ uint32_t ReverseSequenceMsCpuKernel::GetInputAndCheck(const CpuKernelContext &ct
   }
 
   if (batch_dim_ == seq_dim_ ||
-      static_cast<uint64_t>(seq_dim_) >= x_shape_.size() ||
-      static_cast<uint64_t>(batch_dim_) >= x_shape_.size()) {
+      seq_dim_ >= static_cast<int>(x_shape_.size()) ||
+      batch_dim_ >= static_cast<int>(x_shape_.size())) {
     KERNEL_LOG_ERROR("Invalid batch_dim_: [%d], seq_dim_: [%d], x dims:[ %d]",
                      batch_dim_, seq_dim_, x_shape_.size());
     return KERNEL_STATUS_PARAM_INVALID;

@@ -140,9 +140,9 @@ uint32_t SearchSortedKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
 }
 
 template <typename S, typename T>
-uint32_t CalSearchSorted(bool right, Tensor *sequence_t, const Tensor *values_t,
+uint32_t CalSearchSorted(bool right, const Tensor *sequence_t, const Tensor *values_t,
                          const Tensor *output_t, std::vector<int64_t> sequence_shape,
-                         std::vector<int64_t> values_shape, CpuKernelContext &ctx) {
+                         std::vector<int64_t> values_shape, const CpuKernelContext &ctx) {
   auto res = CheckParam<S>(ctx, sequence_t, values_t, output_t, sequence_shape);
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res, "CheckParam failed, result = [%d].", res);
   auto sequence = reinterpret_cast<S*>(sequence_t->GetData());

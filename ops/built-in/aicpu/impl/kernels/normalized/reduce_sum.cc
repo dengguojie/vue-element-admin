@@ -22,7 +22,7 @@
 namespace {
 const uint32_t kReduceSumInputNum = 2;
 const uint32_t kReduceSumOutputNum = 1;
-const char *kReduceSum = "ReduceSum";
+const char *const kReduceSum = "ReduceSum";
 #define REDUCESUM_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                        \
     uint32_t result = ReduceSumCompute<TYPE>(CTX);          \
@@ -70,7 +70,7 @@ uint32_t ReduceSumCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   return KERNEL_STATUS_OK;
 }
-uint32_t ReduceSumCpuKernel::ReduceSumCheck(CpuKernelContext &ctx) {
+uint32_t ReduceSumCpuKernel::ReduceSumCheck(const CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetData(),
                        KERNEL_STATUS_PARAM_INVALID, "get input failed.");
   KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetTensorShape(),
@@ -229,7 +229,7 @@ uint32_t ReduceSumCpuKernel::ReduceSumOneAxes2(const T *input_data, int64_t inpu
   }
   return result;
 }
-uint32_t ReduceSumCpuKernel::ReduceSumDedupAxes(CpuKernelContext &ctx, std::vector<int64_t> &axes) {
+uint32_t ReduceSumCpuKernel::ReduceSumDedupAxes(const CpuKernelContext &ctx, std::vector<int64_t> &axes) {
   int32_t rank = ctx.Input(0)->GetTensorShape()->GetDims();
   auto axes_data = reinterpret_cast<int32_t *>(ctx.Input(1)->GetData());
   int64_t axes_num = ctx.Input(1)->NumElements();
@@ -256,7 +256,7 @@ uint32_t ReduceSumCpuKernel::ReduceSumDedupAxes(CpuKernelContext &ctx, std::vect
 }
 uint32_t ReduceSumCpuKernel::ReduceSumParseAxes(std::vector<int64_t> &input_shape,
                                                 std::vector<int64_t> &axes, uint32_t &axes_idx,
-                                                int64_t &inner, int64_t &outer, int64_t &depth) {
+                                                int64_t &inner, int64_t &outer, int64_t &depth) const{
   int64_t axis = axes[axes_idx];
   axes_idx++;
   int64_t rank = input_shape.size();
