@@ -134,7 +134,7 @@ uint32_t EditDistanceTask(std::vector<Tensor *> &inputs, std::vector<Tensor *> &
   }
   std::vector<int64_t> output_shape = outputs[0]->GetTensorShape()->GetDimSizes();
   Eigen::TensorMap<Eigen::Tensor<float, 1, Eigen::RowMajor>> output_t(outptr, outputs[0]->NumElements());
-  output_t.setZero();
+  (void)output_t.setZero();
   std::vector<int64_t> output_strides(output_shape.size());
   output_strides[output_shape.size() - 1] = 1;
   for (int d = output_shape.size() - 2; d >= 0; --d) {

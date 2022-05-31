@@ -25,7 +25,7 @@ class EmbeddingLookuptMsCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
   uint32_t GetInput(const CpuKernelContext &ctx);
 
   template <typename T>

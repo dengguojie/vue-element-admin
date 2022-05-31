@@ -33,7 +33,7 @@ uint32_t CopyExpandIndex(std::vector<T> x_indexes,
         return aicpu::KERNEL_STATUS_PARAM_INVALID;
       }
       expand_to_axis = static_cast<uint64_t>(shape_out[i]);
-      break_axis_num = i;
+      break_axis_num = static_cast<uint64_t>(i);
       break;
     }
   }
@@ -66,7 +66,7 @@ uint32_t CopyExpandIndex(std::vector<T> x_indexes,
 }
 
 template <typename T, typename IndexT>
-uint32_t GetExpandIndex(std::vector<T> x_indexes,
+uint32_t GetExpandIndex(const std::vector<T> x_indexes,
                         std::vector<T>& out_indexes,
                         std::vector<IndexT> shape_in,
                         std::vector<IndexT>& shape_out,
@@ -84,7 +84,7 @@ uint32_t GetExpandIndex(std::vector<T> x_indexes,
         return aicpu::KERNEL_STATUS_PARAM_INVALID;
       }
       expand_to_axis = shape_out[j];
-      break_axis_num = j;
+      break_axis_num = static_cast<uint64_t>(j);
       break;
     }
   }
@@ -134,7 +134,7 @@ void GetExpandShape(std::vector<T>& x_indexes1,
                     std::vector<IndexT>& shape_in,
                     std::vector<IndexT>& shape_out,
                     std::vector<int64_t> size0,
-                    T* tensorBase) {
+                    const T* tensorBase) {
   for (uint64_t i = 0; i < size0.size(); i++) {
     shape_in.push_back(static_cast<IndexT>(size0[i]));
   }
@@ -164,7 +164,7 @@ void GetExpandShape(std::vector<T>& x_indexes1,
 }
 
 template <typename T, typename IndexT>
-uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
+uint32_t DoExpandCompute(const aicpu::CpuKernelContext& ctx) {
   auto tensorBase =
       static_cast<T*>(ctx.Input(0)->GetData());  // input tensor address
   auto shapeData =
@@ -244,7 +244,7 @@ uint32_t IndicesExpandCompute(aicpu::CpuKernelContext& ctx) {
 }  // namespace expand
 
 namespace aicpu {
-const char* kExpand = "Expand";
+const char* const kExpand = "Expand";
 uint32_t ExpandCpuKernel::Compute(CpuKernelContext& ctx) {
   KERNEL_LOG_INFO("ExpandCpuKernel start.");
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),

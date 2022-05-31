@@ -104,16 +104,16 @@ uint32_t EmbeddingLookuptMsCpuKernel::DoComputeForEachType(const CpuKernelContex
 
 uint32_t EmbeddingLookuptMsCpuKernel::GetInput(const CpuKernelContext &ctx) {
   // get input Tensors
-  const int kNumInput = 3;
-  for (int i = 0; i < kNumInput; ++i) {
+  const uint32_t kNumInput = 3;
+  for (uint32_t i = 0; i < kNumInput; ++i) {
     Tensor *tensor = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get input:[%d] failed", i);
     ioAddrs_.push_back(reinterpret_cast<void *>(tensor->GetData()));
   }
   // get output Tensors
-  const int kNumOutput = 1;
-  for (int i = 0; i < kNumOutput; ++i) {
+  const uint32_t kNumOutput = 1;
+  for (uint32_t i = 0; i < kNumOutput; ++i) {
     Tensor *tensor = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get output:[%d] failed", i);
@@ -122,7 +122,7 @@ uint32_t EmbeddingLookuptMsCpuKernel::GetInput(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t EmbeddingLookuptMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t EmbeddingLookuptMsCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   uint32_t ret = GetInput(ctx);
   if (ret != KERNEL_STATUS_OK) {
     return ret;
