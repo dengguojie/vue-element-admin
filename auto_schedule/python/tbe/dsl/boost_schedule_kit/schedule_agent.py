@@ -269,6 +269,12 @@ class ScopeManager:
         """
         return self._last_attached
 
+    def get_axis_unit(self):
+        """
+        get stage's _axis_unit
+        """
+        return self._axis_unit
+
     def reused_by(self, *args):
         """
         stage's original reused_by function

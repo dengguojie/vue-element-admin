@@ -28,6 +28,8 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute.conv2d_backprop_filter_compute import DynamicConv2dBpFilterParams
 from tbe.dsl.compute import cube_util
+from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule_util import Conv2dbpFilterReverseLoad
+from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule_util import ScheduleAgentReverse
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 from tbe.dsl.static_schedule.util import check_fixpipe_op_support
 from tbe.common import platform as tbe_platform
@@ -154,6 +156,19 @@ class CceConv2dBackpropFilterOp:
         self._fmap_in_ub = {}
         self._grads_in_ub = {}
         self.is_binary_flag = DynamicConv2dBpFilterParams.is_binary_flag
+        self.l0c_attach_axis = None
+        # reverse direction control number
+        self.direction_control = 2
+        self.reverse_params = {
+            "reverse_status": False,
+            "reverse_load": False,
+            "axis_unit": None,
+            "control_reverse_axis": None,
+            "reversed_tensor": [],
+            "k_axis_split_dict": {}
+        }
+
+
 
     def schedule(self, res, spec_node_list, sch_list, dynamic_para=None):
         """
@@ -661,7 +676,8 @@ class CceConv2dBackpropFilterOp:
                 sch[grads_matrix].compute_at(sch[al1_attach_scope], al1_attach_axis)
                 if grads_trans_flag:
                     sch[grads].compute_at(sch[al1_attach_scope], al1_attach_axis)
-            _grad_matrix_attach(run_once_n_dim)
+                return al1_attach_scope, al1_attach_axis
+            return _grad_matrix_attach(run_once_n_dim)
 
         def _bl1_attach():
             """
@@ -720,6 +736,7 @@ class CceConv2dBackpropFilterOp:
             #   group, batch, hw, fkk(cin_1*hw*wk), mad->16, cin_0->16
             if fmap_ub is not None:
                 sch[fmap_ub].compute_at(sch[fmap_l1], sch[fmap_l1].op.axis[4])
+            return bl1_attach_scope, bl1_attach_axis
 
         def _double_buffer():
             """
@@ -894,10 +911,9 @@ class CceConv2dBackpropFilterOp:
             setfmatrix_dict["conv_fm_c"] = featuremap_channel
             setfmatrix_dict["conv_fm_h"] = featuremap_height
             setfmatrix_dict["conv_fm_w"] = featuremap_width
+
             mad_dict = {"mad_pattern": 3,
-                        "k_outer":
-                            [batch_insn_o, hw_mad_1_l1_out_at,
-                            hw_mad_1_l1_in_at, hw_mad_1_mad_at]}
+                        "k_outer": _get_k_outer_info()}
 
             if self.var_map and not flag_all_one_case:
                 setfmatrix_dict["set_fmatrix"] = 1
@@ -934,6 +950,33 @@ class CceConv2dBackpropFilterOp:
                 setfmatrix_dict_0["conv_dilation_h"] = dilation_height
                 setfmatrix_dict_0["conv_dilation_w"] = dilation_width
             return setfmatrix_dict, setfmatrix_dict_0, mad_dict
+
+        def _get_k_outer_info():
+            """
+            if dw_cc is revsersed pragma will be reversed too
+            """
+            if dw_cc in self.reverse_params.get("reversed_tensor"):
+                control_reverse_axis = self.reverse_params.get("control_reverse_axis")
+                axis_unit = self.reverse_params.get("axis_unit")
+                k_outer_info = [batch_insn_o, hw_mad_1_l1_out_at, hw_mad_1_l1_in_at, hw_mad_1_mad_at]
+                k_axis_split_dict = self.reverse_params.get("k_axis_split_dict")
+
+                k_outer_info_reverse = []
+                for k_axis in k_outer_info:
+                    if k_axis in k_axis_split_dict:
+                        new_k_outer, new_k_inner = k_axis_split_dict.get(k_axis)
+                        k_outer_info_reverse.append(
+                            tvm.select(control_reverse_axis % self.direction_control == 0,
+                                       axis_unit.get(new_k_outer)[-1] - 1 - new_k_outer.var, new_k_outer))
+                        k_outer_info_reverse.append(new_k_inner)
+                    else:
+                        k_outer_info_reverse.append(
+                            tvm.select(control_reverse_axis % self.direction_control == 0,
+                                       axis_unit.get(k_axis)[-1] - 1 - k_axis.var, k_axis))
+                return k_outer_info_reverse
+            else:
+                k_outer_info = [batch_insn_o, hw_mad_1_l1_out_at, hw_mad_1_l1_in_at, hw_mad_1_mad_at]
+                return k_outer_info
 
         def _emit_insn_aub_bub():
             """
@@ -1054,6 +1097,11 @@ class CceConv2dBackpropFilterOp:
             if preload:
                 if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2:
                     sch[dw_cc].preload()
+            if tbe_compile_para is not None:
+                # the number 5 means use tbe_compile_para's bit 5 as the reverse_load flag
+                # reverse is conflit with nbuffer
+                self.reverse_params["reverse_load"] = ((tbe_compile_para >> 5) & 1) and (
+                    not tiling.get("A_overhead_opt_flag")) and (not tiling.get("B_overhead_opt_flag"))
 
         def _get_attach_flag():
             dynamic_l0a_attach = None
@@ -1264,6 +1312,8 @@ class CceConv2dBackpropFilterOp:
         #   dw_ddr.rf -> fixpipe_reform
 
         sch = sch_list[0]
+        # use ScheduleAgentReverse for split dw_cc and dw_ddr's axes, record split factor while split axis
+        sch_agent = ScheduleAgentReverse(sch)
         # for binary dynamic
         binary_schedule = BinaryDynamic(sch, self.is_binary_flag)
 
@@ -1705,25 +1755,25 @@ class CceConv2dBackpropFilterOp:
         if c_split_flag and not dw_trans_flag:
             # dw_shape is (real_g, fmap_channel_1, kernel_height*kernel_width,
             #              grads_channel, C0_fmap)
-            g_multicore, g_axis = sch[dw_ddr].split(sch[dw_ddr].op.axis[0],
+            g_multicore, g_axis = sch_agent[dw_ddr].split(sch[dw_ddr].op.axis[0],
                                                     nparts=block_dim_group)
             c_fmap_multicore, c_fmap_mad \
-                = sch[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
+                = sch_agent[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
             # split c_fmap_mad with factor=2 according to EmitInsn Channel_split
-            c_fmap_mad_c1, c_fmap_mad_insn = sch[dw_ddr].split(c_fmap_mad, factor=2)
+            c_fmap_mad_c1, c_fmap_mad_insn = sch_agent[dw_ddr].split(c_fmap_mad, factor=2)
             c_fmap_mad_at = sch[dw_ddr].op.axis[2]
             c_fmap_l1_ori, c_fmap_mad_at \
-                = sch[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
+                = sch_agent[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
             # split n dim
-            c_fmap_l1_out, c_fmap_l1_at = sch[dw_ddr].split(c_fmap_l1_ori, factor_kw)
-            c_fmap_l1_c1, c_fmap_l1_kh = sch[dw_ddr].split(c_fmap_l1_out, factor_kh)
+            c_fmap_l1_out, c_fmap_l1_at = sch_agent[dw_ddr].split(c_fmap_l1_ori, factor_kw)
+            c_fmap_l1_c1, c_fmap_l1_kh = sch_agent[dw_ddr].split(c_fmap_l1_out, factor_kh)
             # split axis M, M axis located at 4th axis
             c_grads_mad_at, c_grads_mad_insn \
-                = sch[dw_ddr].split(sch[dw_ddr].op.axis[3], dw_tiling_factor[1]*CUBE_DIM)
+                = sch_agent[dw_ddr].split(sch[dw_ddr].op.axis[3], dw_tiling_factor[1]*CUBE_DIM)
             c_grads_multicore, c_grads_mad_at \
-                = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
+                = sch_agent[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
             c_grads_l1_at, c_grads_mad_at = \
-                sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
+                sch_agent[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
             # reorder according to requirments of mmad EmitInsn
             sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0],
                                 g_multicore,
@@ -1736,24 +1786,24 @@ class CceConv2dBackpropFilterOp:
         elif not dw_trans_flag:
             # dw_shape is (real_g, fmap_channel_1*kernel_height*kernel_width,
             #              grads_channel_1, C0_grads, C0_fmap)
-            g_multicore, g_axis = sch[dw_ddr].split(sch[dw_ddr].op.axis[0],
+            g_multicore, g_axis = sch_agent[dw_ddr].split(sch[dw_ddr].op.axis[0],
                                                     nparts=block_dim_group)
             c_fmap_multicore, c_fmap_mad_at \
-                = sch[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
+                = sch_agent[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
             c_fmap_mad_at, c_fmap_mad_insn \
-                = sch[dw_ddr].split(c_fmap_mad_at, nparts=dw_tiling_nparts[0])
+                = sch_agent[dw_ddr].split(c_fmap_mad_at, nparts=dw_tiling_nparts[0])
             c_fmap_l1_ori, c_fmap_mad_at \
-                = sch[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
+                = sch_agent[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
             # split n dim
-            c_fmap_l1_out, c_fmap_l1_at = sch[dw_ddr].split(c_fmap_l1_ori, factor_kw)
-            c_fmap_l1_c1, c_fmap_l1_kh = sch[dw_ddr].split(c_fmap_l1_out, factor_kh)
+            c_fmap_l1_out, c_fmap_l1_at = sch_agent[dw_ddr].split(c_fmap_l1_ori, factor_kw)
+            c_fmap_l1_c1, c_fmap_l1_kh = sch_agent[dw_ddr].split(c_fmap_l1_out, factor_kh)
             # split axis M
             c_grads_mad_at, c_grads_mad_insn \
-                = sch[dw_ddr].split(sch[dw_ddr].op.axis[2], dw_tiling_factor[1]*CUBE_DIM)
+                = sch_agent[dw_ddr].split(sch[dw_ddr].op.axis[2], dw_tiling_factor[1]*CUBE_DIM)
             c_grads_multicore, c_grads_mad_at \
-                = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
+                = sch_agent[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
             c_grads_l1_at, c_grads_mad_at = \
-                sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
+                sch_agent[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
             # reorder according to requirments of mmad EmitInsn
             sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0],
                                 g_multicore, c_grads_multicore,
@@ -1768,19 +1818,19 @@ class CceConv2dBackpropFilterOp:
                 dw_ddr = dw_res_trans
             ddr_batch, ddr_hw, ddr_c = sch[dw_ddr].op.axis
             # split the tensor axis to get [group, grads_c, hw, fmap_c1, fmap_c0]
-            ddr_g, ddr_n = sch[dw_ddr].split(ddr_batch, nparts=real_g)
-            ddr_c1, ddr_c0 = sch[dw_ddr].split(ddr_c, factor=16)
+            ddr_g, ddr_n = sch_agent[dw_ddr].split(ddr_batch, nparts=real_g)
+            ddr_c1, ddr_c0 = sch_agent[dw_ddr].split(ddr_c, factor=16)
             # split multiple core axis
-            g_multicore, g_axis = sch[dw_ddr].split(ddr_g, nparts=real_g)
+            g_multicore, g_axis = sch_agent[dw_ddr].split(ddr_g, nparts=real_g)
             # split n axis
-            c_fmap_multicore, c_fmap_mad_at = sch[dw_ddr].split(ddr_c1, nparts=block_dim_cin)
-            c_fmap_mad_at, c_fmap_mad_insn = sch[dw_ddr].split(c_fmap_mad_at, nparts=dw_tiling_nparts[0])
-            c_fmap_l1_c1, c_fmap_mad_at = sch[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
-            c_fmap_l1_kh, c_fmap_l1_at = sch[dw_ddr].split(ddr_hw, factor_kw)
+            c_fmap_multicore, c_fmap_mad_at = sch_agent[dw_ddr].split(ddr_c1, nparts=block_dim_cin)
+            c_fmap_mad_at, c_fmap_mad_insn = sch_agent[dw_ddr].split(c_fmap_mad_at, nparts=dw_tiling_nparts[0])
+            c_fmap_l1_c1, c_fmap_mad_at = sch_agent[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
+            c_fmap_l1_kh, c_fmap_l1_at = sch_agent[dw_ddr].split(ddr_hw, factor_kw)
             # split m axis
-            c_grads_mad_at, c_grads_mad_insn = sch[dw_ddr].split(ddr_n, dw_tiling_factor[1] * CUBE_DIM)
-            c_grads_multicore, c_grads_mad_at = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
-            c_grads_l1_at, c_grads_mad_at = sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
+            c_grads_mad_at, c_grads_mad_insn = sch_agent[dw_ddr].split(ddr_n, dw_tiling_factor[1] * CUBE_DIM)
+            c_grads_multicore, c_grads_mad_at = sch_agent[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
+            c_grads_l1_at, c_grads_mad_at = sch_agent[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
             # reorder according to requirments of mmad EmitInsn
             sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0],
                                 g_multicore,
@@ -1800,7 +1850,7 @@ class CceConv2dBackpropFilterOp:
                 else:
                     nbuffer_size = kernel_height * kernel_width
                 if nbuffer_size <= tiling.get("BL1_shape")[1] and tiling.get("BL1_shape")[1] % nbuffer_size == 0:
-                    c_fmap_run_once, c_fmap_mad_at = sch[dw_ddr].split(c_fmap_mad_at, nbuffer_size)
+                    c_fmap_run_once, c_fmap_mad_at = sch_agent[dw_ddr].split(c_fmap_mad_at, nbuffer_size)
                     run_once_ndim = [c_fmap_mad_at, ]
                     c_fmap_mad_at_list = [c_fmap_run_once, c_fmap_mad_at]
             return run_once_ndim, c_fmap_mad_at_list, c_fmap_mad_at
@@ -1840,7 +1890,7 @@ class CceConv2dBackpropFilterOp:
                 # dw_ub attach
                 # dw_ub split
                 c_fmap_2_ub_at, c_fmap_2_ub_insn \
-                    = sch[dw_ddr].split(c_fmap_mad_insn, dw_ub_tiling_factor[0])
+                    = sch_agent[dw_ddr].split(c_fmap_mad_insn, dw_ub_tiling_factor[0])
                 # dw_ub attach
                 sch[dw_ub].compute_at(sch[dw_ddr], c_fmap_2_ub_at)
             else:
@@ -1849,8 +1899,10 @@ class CceConv2dBackpropFilterOp:
             # dw attach
             if reorder_flag:
                 sch[dw_cc].compute_at(sch[dw_ddr], c_fmap_mad_at)
+                self.l0c_attach_axis = c_fmap_mad_at
             else:
                 sch[dw_cc].compute_at(sch[dw_ddr], c_grads_mad_at)
+                self.l0c_attach_axis = c_grads_mad_at
             return c_fmap_2_ub_insn, reorder_flag, reorder_l1_mn
         c_fmap_2_ub_insn, reorder_flag, reorder_l1_mn = _cub_and_cc_attach()
 
@@ -1859,34 +1911,34 @@ class CceConv2dBackpropFilterOp:
             batch_axis_sc, k_1_axis_sc, k_0 = sch[dw_cc].op.reduce_axis
             # dw_k is the part for one MMAD
             hw_mad_1_mad_at, hw_mad_1_mad_insn \
-                = sch[dw_cc].split(k_1_axis_sc, dw_k)
+                = sch_agent[dw_cc].split(k_1_axis_sc, dw_k)
             # mad_pattern :2 , the 1st axis should be 1, so do a fake split
-            batch_insn_o, batch_insn = sch[dw_cc].split(batch_axis_sc, 1)
+            batch_insn_o, batch_insn = sch_agent[dw_cc].split(batch_axis_sc, 1)
 
             # K of AL1 and BL1 can be different, there are 2 split methods
             # on which one is larger
             if reduce_split_mode:
-                hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
+                hw_mad_1_l1_at, hw_mad_1_mad_at = sch_agent[dw_cc].split(
                     hw_mad_1_mad_at, nparts=grads_l1_tiling_nparts[0])
-                hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                     hw_mad_1_l1_at, nparts=fmap_l1_tiling_nparts[0])
                 al1_at_axis = hw_mad_1_l1_in_at
                 bl1_at_axis = hw_mad_1_l1_out_at
             else:
-                hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
+                hw_mad_1_l1_at, hw_mad_1_mad_at = sch_agent[dw_cc].split(
                     hw_mad_1_mad_at, nparts=fmap_l1_tiling_nparts[0])
-                hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                     hw_mad_1_l1_at, nparts=grads_l1_tiling_nparts[0])
                 al1_at_axis = hw_mad_1_l1_out_at
                 bl1_at_axis = hw_mad_1_l1_in_at
 
             # split dw_cc.op.axis[0](N1), factor is one MMAD
             fkk_mad_at, fkk_mad_insn \
-                = sch[dw_cc].split(sch[dw_cc].op.axis[2], dw_tiling_factor[0])
+                = sch_agent[dw_cc].split(sch[dw_cc].op.axis[2], dw_tiling_factor[0])
 
             # split dw_cc.op.axis[1](M1*M0), factor is one MMAD
             lc_mad_at, lc_mad_insn \
-                = sch[dw_cc].split(sch[dw_cc].op.axis[3],
+                = sch_agent[dw_cc].split(sch[dw_cc].op.axis[3],
                                 dw_tiling_factor[1] * CUBE_DIM)
             sch[dw_cc].reorder(fkk_mad_at, lc_mad_at, sch[dw_cc].op.axis[0],
                                batch_insn_o, hw_mad_1_l1_out_at,
@@ -1901,20 +1953,20 @@ class CceConv2dBackpropFilterOp:
             batch_axis_sc, k_1_axis_sc = sch[dw_cc].op.reduce_axis
             # dw_k is the part for one MMAD
             hw_mad_1_mad_at, hw_mad_1_mad_insn \
-                = sch[dw_cc].split(k_1_axis_sc, dw_k * CUBE_DIM)
+                = sch_agent[dw_cc].split(k_1_axis_sc, dw_k * CUBE_DIM)
             # mad_pattern :2 , the 1st axis should be 1, so do a fake split
-            batch_insn_o, batch_insn = sch[dw_cc].split(batch_axis_sc, 1)
+            batch_insn_o, batch_insn = sch_agent[dw_cc].split(batch_axis_sc, 1)
             if reduce_split_mode:
                 # the factor of grads_l1 is smaller than fmap_l1
-                hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
+                hw_mad_1_l1_at, hw_mad_1_mad_at = sch_agent[dw_cc].split(
                     hw_mad_1_mad_at, grads_l1_tiling_factor_k)
                 if tiling.get("AL1_shape") and tiling.get("BL1_shape"):
                     # grads and fmap need tiling in L1
-                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                         hw_mad_1_l1_at, fmap_l1_tiling_factor_k)
                 elif tiling.get("AL1_shape"):
                     # only grads needs tiling in L1
-                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                         hw_mad_1_l1_at, nparts=fmap_l1_tiling_nparts[0])
                 al1_at_axis = hw_mad_1_l1_in_at
                 bl1_at_axis = hw_mad_1_l1_out_at
@@ -1922,28 +1974,28 @@ class CceConv2dBackpropFilterOp:
                 # the factor of fmap_l1 is smaller than grads_l1
                 if tiling.get("AL1_shape") and tiling.get("BL1_shape"):
                     # grads and fmap need tiling in L1
-                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
+                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch_agent[dw_cc].split(
                         hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
-                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                         hw_mad_1_l1_at, grads_l1_tiling_factor_k)
                 elif tiling.get("BL1_shape"):
                     # only fmap needs tiling in L1
-                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
-                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch_agent[dw_cc].split(hw_mad_1_mad_at, fmap_l1_tiling_factor_k)
+                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                         hw_mad_1_l1_at, nparts=grads_l1_tiling_nparts[0])
                 else:
                     # Neither grads nor fmap need tiling in L1
-                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch[dw_cc].split(
+                    hw_mad_1_l1_at, hw_mad_1_mad_at = sch_agent[dw_cc].split(
                         hw_mad_1_mad_at, nparts=fmap_l1_tiling_nparts[0])
-                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
+                    hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch_agent[dw_cc].split(
                         hw_mad_1_l1_at, nparts=grads_l1_tiling_nparts[0])
                 al1_at_axis, bl1_at_axis = hw_mad_1_l1_out_at, hw_mad_1_l1_in_at
             # split dw_cc.op.axis[0](N1), factor is one MMAD
             fkk_mad_at, fkk_mad_insn \
-                = sch[dw_cc].split(sch[dw_cc].op.axis[2], dw_tiling_factor[0])
+                = sch_agent[dw_cc].split(sch[dw_cc].op.axis[2], dw_tiling_factor[0])
 
             # split dw_cc.op.axis[1](M1*M0), factor is one MMAD
-            lc_mad_at, lc_mad_insn = sch[dw_cc].split(sch[dw_cc].op.axis[3], dw_tiling_factor[1] * CUBE_DIM)
+            lc_mad_at, lc_mad_insn = sch_agent[dw_cc].split(sch[dw_cc].op.axis[3], dw_tiling_factor[1] * CUBE_DIM)
             sch[dw_cc].reorder(fkk_mad_at, lc_mad_at, sch[dw_cc].op.axis[0],
                                batch_insn_o, hw_mad_1_l1_out_at,
                                hw_mad_1_l1_in_at, hw_mad_1_mad_at,
@@ -2297,21 +2349,70 @@ class CceConv2dBackpropFilterOp:
                     _dynamic_bl1_buffer_tile(ho_len, al1_bound, bl1_bound, hw_single_core_factor)
                 _dynamic_memory_management()
 
+        def _reverse_load_l0():
+            # unsupport
+            if self.is_binary_flag or dynamic_para or (
+                    not self.reverse_params.get("reverse_load")) or (height_fmap * width_fmap) % c0_fmap != 0:
+                return
+            tensor_map_in_reverse = {
+                "ddr": dw_ddr,
+                "l0c": dw_cc,
+                "l1a": grads_matrix,
+                "l0a": grads_fractal,
+                "l1b": [fmap_matrix],
+                "l0b": fmap_fractal
+            }
+            double_buffer_info = {
+                "l0a": tiling.get("manual_pingpong_buffer").get("AL0_pbuffer"),
+                "l0b": tiling.get("manual_pingpong_buffer").get("BL0_pbuffer")
+            }
+            if not flag_all_one_case:
+                tensor_map_in_reverse.get("l1b").insert(0, fmap_l1)
+
+            self.reverse_params["axis_unit"] = Conv2dbpFilterReverseLoad.get_axis_split_info(
+                sch_agent, tensor_map_in_reverse)
+            attach_info = {
+                "l0a": {"stage": l0a_attach_scope, "axis": l0a_attach_axis},
+                "l0b": {"stage": l0b_attach_scope, "axis": l0b_attach_axis},
+                "l1a": {"stage": al1_attach_scope, "axis": al1_attach_axis},
+                "l1b": {"stage": bl1_attach_scope, "axis": bl1_attach_axis},
+                "l0c": {"stage": dw_ddr, "axis": self.l0c_attach_axis}
+            }
+            conv2d_dw_reverse_load = Conv2dbpFilterReverseLoad(sch, self.reverse_params.get("axis_unit"), attach_info,
+                                                               tensor_map_in_reverse, double_buffer_info)
+            l0_at_axis_in_ddr = {
+                "c_grads_mad_at": c_grads_mad_at,
+                "c_fmap_mad_at": c_fmap_mad_at
+            }
+            l1_height_and_width_info = {
+                "tiling_k": {"al1": tiling.get("AL1_shape")[0], "bl1": tiling.get("BL1_shape")[0]},
+                "size": {"al1": (height_grads, width_grads), "bl1": (height_fmap, width_fmap)}
+            }
+            if_status = conv2d_dw_reverse_load.judge_exist_if([pad_left, pad_right, pad_up, pad_down],
+                                                              l1_height_and_width_info,
+                                                              [al1_attach_scope, bl1_attach_scope], dw_cc)
+            self.reverse_params["reverse_status"] = conv2d_dw_reverse_load.reverse_load(l0_at_axis_in_ddr, if_status)
+            if self.reverse_params.get("reverse_status"):
+                self.reverse_params["control_reverse_axis"] = conv2d_dw_reverse_load.get_control_reverse_axis()
+                self.reverse_params["reversed_tensor"] = conv2d_dw_reverse_load.get_reversed_tensor()
+                self.reverse_params["k_axis_split_dict"] = conv2d_dw_reverse_load.get_split_k_axis_dict()
+
         if flag_conv1d_case:
             _split_w_for_conv1d()
         if self.l0b_dma_flag:
             sch[fmap_l1].compute_inline()
             sch[fmap_matrix].compute_inline()
             fmap_l1 = fmap_fractal_before
-        l0a_attach_scope, l0a_attach_axis, _, _ = _l0_attach()
-        _al1_attach()
-        _bl1_attach()
+        l0a_attach_scope, l0a_attach_axis, l0b_attach_scope, l0b_attach_axis = _l0_attach()
+        al1_attach_scope, al1_attach_axis = _al1_attach()
+        bl1_attach_scope, bl1_attach_axis = _bl1_attach()
         _split_aub_process()
         _split_bub_process()
         _double_buffer()
+        _handle_tbe_compile_para()
+        _reverse_load_l0()
         _emit_insn()
         _set_bound_ub()
-        _handle_tbe_compile_para()
         _dynamic_extra_process()
 
         return True

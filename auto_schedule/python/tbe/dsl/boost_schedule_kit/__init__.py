@@ -20,4 +20,5 @@ boost schedule kit
 from .util import Compare
 from .util import enhance_check_tiling
 from .schedule_agent import ScheduleAgent
+from .schedule_agent import ScopeManager
 from .schedule_agent import SplitParam

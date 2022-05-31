@@ -14,6 +14,8 @@ from impl.util.platform_adapter import tbe
 from te.platform.cce_conf import te_set_version
 from impl.trans_data import trans_data_compute
 from tbe.common.context import op_context
+from tbe.common.tiling.tiling_helper import TILING_INSTANCE
+from tbe.common.platform.platform_info import set_current_compile_soc_info
 from test_mock_case import *
 
 
@@ -400,6 +402,61 @@ def test_fixpipe_cases(test_args):
             test_conv2d_bp_filter_fixpipe_2()
 ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 
+def test_reverse(test_args):
+    set_current_compile_soc_info("Ascend710")
+    tiling_params = {
+        'op_type': 'conv2d_backprop_filter', 'A_shape': [32, 21, 96, 128, 16], 'B_shape': [32, 21, 96, 128, 16],
+        'C_shape': [336, 21, 1, 1, 16], 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float32',
+        'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
+        "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
+        'group': 1, 'bias_flag': 0, 'fused_double_operand_num': 0, 'fusion_type': 0,
+        'kernel_name': "dw_reverse", 'model_type': 'transformer', 'tiling_access_version': 0}
+    tiling_dict = {
+        "dw_reverse": {
+            'AL0_matrix': [1, 64, 16, 16, 1, 1], 'AL1_shape': [12288, 1, 1, 1], 'AUB_channel_wise_flag': None,
+            'AUB_shape': [1, 0, 0, 0], 'A_overhead_opt_flag': 0,
+            'BL0_matrix': [64, 1, 16, 16, 1, 1], 'BL1_shape': [12288, 1, 1, 1], 'BUB_channel_wise_flag': None,
+            'BUB_shape': None, 'B_overhead_opt_flag': 0,
+            'CL0_matrix': [1, 1, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [1, 1, 16, 16, 1, 1],
+            'batch_bef_group_flag': 0, 'block_dim': [8, 1, 1, 1],
+            'manual_pingpong_buffer': {
+                'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2,
+                'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
+            },
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 32
+        }
+    }
+
+    fmap_5hd = tvm.placeholder((32, 21, 96, 128, 16), name="fmap_5hd", dtype="float16")
+    out_5hd = tvm.placeholder((32, 21, 96, 128, 16), name="out_5hd", dtype="float16")
+    para_dict = {
+        "strides": (1, 1),
+        "padding": (0, 0, 0, 0),
+        "dilations": (1, 1, 1, 1),
+        "groups": 1,
+        "res_dtype": "float32",
+        "kernel_name": "dw_reverse"
+    }
+    filter_fz = tbe.conv2d_backprop_filter(input_x=fmap_5hd,
+                                        out_backprop=out_5hd,
+                                        filter_sizes=(336, 336, 1, 1),
+                                        para_dict=para_dict)
+    cur_tiling_type = TILING_INSTANCE.get_tiling_type()
+    TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(filter_fz)
+    tensor_list_input = [fmap_5hd, out_5hd]
+    real_outs = sch.cce_special["real_out_tensor"]
+    tensor_list = tensor_list_input + real_outs
+    TILING_INSTANCE.instance_refresh(cur_tiling_type, tiling_params, {})
+    config = {
+        "name": "dw_reverse",
+        "tensor_list": tensor_list
+    }
+    tbe.build(sch, config)
+    set_current_compile_soc_info(test_args)
+
+ut_case.add_cust_test_func("Ascend910A", test_func=test_reverse)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
