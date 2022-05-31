@@ -234,15 +234,15 @@ uint32_t TransDataRNNCpuKernel::GetInputAttrs(CpuKernelContext &ctx, int32_t &in
                                               int32_t &stateSize, std::string &srcFormat, std::string &dstFormat) {
   AttrValue *input_size = ctx.GetAttr("input_size");
   KERNEL_CHECK_NULLPTR(input_size, KERNEL_STATUS_PARAM_INVALID, "get input_size failed.");
-  inputSize = input_size->GetInt();
+  inputSize = static_cast<int32_t>(input_size->GetInt());
 
   AttrValue *hidden_size = ctx.GetAttr("hidden_size");
   KERNEL_CHECK_NULLPTR(hidden_size, KERNEL_STATUS_PARAM_INVALID, "get hidden_size failed.");
-  hiddenSize = hidden_size->GetInt();
+  hiddenSize = static_cast<int32_t>(hidden_size->GetInt());
 
   AttrValue *state_size = ctx.GetAttr("state_size");
   if (state_size != NULL) {
-    stateSize = state_size->GetInt();
+    stateSize = static_cast<int32_t>(state_size->GetInt());
   }
 
   AttrValue *src_format = ctx.GetAttr("src_format");

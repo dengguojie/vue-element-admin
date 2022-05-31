@@ -72,7 +72,7 @@ void TransShapeByPerm(const std::vector<int64_t> &src_shape,
 void GetIndexMap(const std::vector<int64_t> &perm_arg,
                  std::map<int32_t, int32_t> &index_map) {
   for (size_t i = 0; i < perm_arg.size(); i++) {
-    index_map[perm_arg[i]] = i;
+    index_map[perm_arg[i]] = static_cast<int32_t>(i);
   }
 }
 
@@ -80,7 +80,7 @@ void GetShapeHead(const std::vector<int64_t> &shape,
                   std::vector<int64_t> &shape_head) {
   shape_head.resize(shape.size());
   shape_head[shape.size() - 1] = 1;
-  for (int i = shape.size() - kShapeOffset; i >= 0; i--) {
+  for (int i = static_cast<int>(shape.size() - kShapeOffset); i >= 0; i--) {
     shape_head[i] = shape_head[i + 1] * shape[i + 1];
   }
 }
@@ -97,7 +97,7 @@ int32_t GetSrcIndex(int32_t dst_index, const std::vector<int64_t> &src_shape,
   }
   int32_t src_index = 0;
   for (size_t i = 0; i < src_shape.size(); i++) {
-    src_index += src_shape_head[i] * src_vec[index_map[i]];
+    src_index += static_cast<int32_t>(src_shape_head[i] * src_vec[index_map[i]]);
   }
   return src_index;
 }
@@ -684,8 +684,8 @@ uint32_t TransDataCpuKernel::Transpose(TransArgs &args,
   std::map<int32_t, int32_t> index_map;
   GetIndexMap(perm_arg, index_map);
   while (dst_index < dst_ele_num) {
-    auto src_index = GetSrcIndex(dst_index, src_shape, dst_shape,
-                                 src_shape_head, dst_shape_head, index_map);
+    auto src_index = static_cast<int32_t>(GetSrcIndex(dst_index, src_shape, dst_shape,
+                                                      src_shape_head, dst_shape_head, index_map));
     auto ret = memcpy_s(dst.get() + dst_index * data_size,
                         dst_size - dst_index * data_size,
                         args.data + src_index * data_size, data_size);

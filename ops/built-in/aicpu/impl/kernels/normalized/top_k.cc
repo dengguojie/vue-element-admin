@@ -565,8 +565,8 @@ void TopKCpuKernel::TopKForNVector(size_t start, size_t end) {
   auto value = reinterpret_cast<T *>(output_values_->GetData());
   auto indice = reinterpret_cast<int32_t *>(output_indices_->GetData());
   for (size_t i = start; i < end; i++) {
-    int32_t head = i / tail_;
-    int32_t tail = i % tail_;
+    int32_t head = static_cast<int32_t>(i / tail_);
+    int32_t tail = static_cast<int32_t>(i % tail_);
     if (largest_) {
       TopKMax::GetValueAndSelect(input + head * n_ * tail_ + tail,
                                  value + head * k_ * tail_ + tail,
@@ -618,7 +618,7 @@ uint32_t TopKCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   }
   input_rank_ = input_rank;
   AttrValue *dim = ctx.GetAttr("dim");
-  dim_ = (dim == nullptr) ? -1 : (dim->GetInt());
+  dim_ = static_cast<int32_t>(dim == nullptr) ? -1 : (dim->GetInt());
   dim_ = dim_ < 0 ? (input_rank + dim_) : dim_;
   KERNEL_CHECK_FALSE(((dim_ >= 0) && (dim_ < input_rank)),
                      KERNEL_STATUS_PARAM_INVALID,
@@ -629,11 +629,11 @@ uint32_t TopKCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   tail_ = 1;
   for (int32_t i = 0; i < input_rank; i++) {
     if (i < dim_) {
-      head_ *= input_shape->GetDimSize(i);
+      head_ *= static_cast<int32_t>(input_shape->GetDimSize(i));
     } else if (i == dim_) {
-      n_ = input_shape->GetDimSize(i);
+      n_ = static_cast<int32_t>(input_shape->GetDimSize(i));
     } else {
-      tail_ *= input_shape->GetDimSize(i);
+      tail_ *= static_cast<int32_t>(input_shape->GetDimSize(i));
     }
   }
 
