@@ -520,5 +520,71 @@
     ],
     "attr": [],
     "case_name": "test_ApplyPowerSignD_003"
+  },
+  {
+    "op": "ApplyPowerSignD",
+    "calc_expect_func_file":"./ApplyPowerSignD.py:apply_power_sign_d_compute",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "var",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "name": "m",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "name": "lr",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "name": "logbase",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [1],
+        "format": "ND",
+        "name": "sign_decay",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [1],
+        "format": "ND",
+        "name": "beta",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [1],
+        "format": "ND",
+        "name": "grad",
+        "type": "float",
+        "typical_shape": [1]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "name": "var_out",
+        "type": "float",
+        "typical_shape": [1]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "name": "m_out",
+        "type": "float",
+        "typical_shape": [1]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ApplyPowerSignD_001"
   }
 ]

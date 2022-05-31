@@ -62,6 +62,34 @@ def gen_nlllossgrad_case(dynamic_input_shape_list, ori_input_shape_list, dtype, 
             "expect": expect,
             "support_expect": True}
 
+def gen_nlllossgrad_case_unknown_shape(dynamic_input_shape_list, ori_input_shape_list, dtype, dtype_target, src_format, reduction,
+                         ignore_idx, case_name_val, expect):
+    """
+    generate ut case
+    """
+    inputs = []
+    for i in range(5):
+        if i == 2:
+            input_type = dtype_target
+        else:
+            input_type = dtype
+        inputs.append({"shape": dynamic_input_shape_list[i],
+                       "dtype": input_type,
+                       "ori_shape": ori_input_shape_list[i],
+                       "ori_format": src_format,
+                       "format": src_format})
+    outputs = (
+        {"shape": dynamic_input_shape_list[0],
+         "dtype": dtype,
+         "ori_shape": ori_input_shape_list[0],
+         "ori_format": src_format,
+         "format": src_format},
+    )
+    return {"params": [inputs[0], inputs[1], inputs[2], inputs[3], inputs[4],
+                       outputs[0], reduction, ignore_idx],
+            "case_name": case_name_val,
+            "expect": expect,
+            "support_expect": True}
 
 ut_case.add_case(["Ascend910A"],
                  gen_nlllossgrad_case([(-1, -1), (-1,), (-1,), (-1,), (-1,)],
@@ -132,6 +160,11 @@ ut_case.add_case(["Ascend910A"],
                  gen_nlllossgrad_case([(-1, -1), (-1,), (-1,), (-1,), (-1,)],
                                       [(2, 16), (2,), (2,), (16,), (1,)],
                                       "float32", "int32", "ND", "test", 3, "case_14", RuntimeError))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_nlllossgrad_case_unknown_shape([(-2, ), (-1,), (-1,), (-1,), (-1,)],
+                                      [(2, 16), (2,), (2,), (16,), (1,)],
+                                      "float32", "int32", "ND", "test", 3, "case_15", RuntimeError))
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 if __name__ == '__main__':

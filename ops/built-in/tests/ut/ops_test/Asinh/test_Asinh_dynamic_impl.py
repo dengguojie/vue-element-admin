@@ -23,9 +23,20 @@ case2 = {
     "support_expect": True
 }
 
+case3 = {
+    "params": [
+        {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (2, 4),"ori_format": "ND","range":[(1, 100)]},
+        {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (2, 4),"ori_format": "ND","range":[(1, 100)]},
+    ],
+    "case_name": "Asinh_3",
+    "expect": "success",
+    "support_expect": True
+}
+
 
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
 ut_case.add_case("Ascend310", case1)
 ut_case.add_case("Ascend310", case2)
 if __name__ == "__main__":

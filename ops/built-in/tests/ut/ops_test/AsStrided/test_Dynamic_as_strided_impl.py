@@ -80,6 +80,52 @@ def gen_as_strided_case(dynamic_input_shapes, ori_input_shapes, dtype, size, str
             "expect": expect,
             "support_expect": True}
 
+def gen_as_strided_case_unknown_shape(dynamic_input_shapes, ori_input_shapes, dtype, size, stride,
+                       case_name_val, expect):
+    inputs = (
+        {"shape": dynamic_input_shapes,
+         "dtype": dtype,
+         "ori_shape": ori_input_shapes,
+         "ori_format": "ND",
+         "format": "ND"},
+        {"shape": [len(size)],
+         "dtype": "int32",
+         "ori_shape": [len(size)],
+         "ori_format": "ND",
+         "format": "ND",
+         'range': [[1, 100000]] * len(size)},
+        {"shape": [len(size)],
+         "dtype": "int32",
+         "ori_shape": [len(size)],
+         "ori_format": "ND",
+         "format": "ND",
+         'range': [[1, 100000]] * len(size)},
+        {"shape": [1],
+         "dtype": "int32",
+         "ori_shape": [1],
+         "ori_format": "ND",
+         "format": "ND",
+         'range': [[1, 100000]]},
+    )
+
+    outputs = (
+        {"shape": size,
+         "dtype": dtype,
+         "ori_shape": size,
+         "ori_format": "ND",
+         "format": "ND",
+         'range': [[1, 100000]] * len(size)},
+    )
+    return {"params": [inputs[0],
+                       inputs[1],
+                       inputs[2],
+                       inputs[3],
+                       outputs[0],
+                       ],
+            "case_name": case_name_val,
+            "expect": expect,
+            "support_expect": True}
+
 
 ut_case.add_case(["Ascend910A"],
                  gen_as_strided_case((-1, -1, -1, -1, -1),
@@ -93,3 +139,11 @@ ut_case.add_case(["Ascend910A"],
                  gen_as_strided_case((-1, -1, -1, -1, -1),
                                     (2, 11, 2673, 11, 16, 16),
                                     "float16", (2,3,4), (1,1,1), "case_3", "success"))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_as_strided_case_unknown_shape((-2,),
+                                    (2, 11, 2673, 11, 16, 16),
+                                    "float16", (2,3,4), (1,1,1), "case_4", "success"))
+
+if __name__ == "__main__":
+    ut_case.run("Ascend910A")

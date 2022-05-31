@@ -444,5 +444,54 @@
         "name": "y"
       }
     ]
+  },
+  {
+    "case_name": "test_Asin_7_ascend910a_2",
+	  "calc_expect_func_file":"./Asin.py:asin_compute",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -2
+        ],
+		"typical_shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
   }
 ]

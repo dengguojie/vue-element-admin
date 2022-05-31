@@ -70,10 +70,29 @@ case3 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_sh
          "expect": "success",
          "support_expect": True}
 
+case4 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,),
+                     "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1, 16), "dtype": "float16", "format": "ND", "ori_shape": (-1, 16),
+                     "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (-1, 16), "dtype": "float16", "format": "ND", "ori_shape": (-1, 16),
+                     "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    ],
+         "case_name": "apply_proximal_gradient_descent_4",
+         "expect": "success",
+         "support_expect": True}
+
 
 ut_case.add_case(["Ascend910A", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710"], case2)
 ut_case.add_case(["Ascend910A", "Ascend710"], case3)
+ut_case.add_case(["Ascend910A", "Ascend710"], case4)
+
 
 # pylint: disable=consider-using-sys-exit
 if __name__ == "__main__":

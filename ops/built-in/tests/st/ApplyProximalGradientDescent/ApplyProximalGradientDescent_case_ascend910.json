@@ -478,5 +478,71 @@
     ],
     "attr": [],
     "case_name": "test_dynamic_ApplyProximalGradientDescent_000"
+  },
+  {
+    "op": "ApplyProximalGradientDescent",
+    "calc_expect_func_file":"./ApplyProximalGradientDescent.py:apply_proximal_gradient_descent_compute",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "alpha",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "l1",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "l2",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1]
+      }, {
+        "shape": [1, 16],
+        "format": "ND",
+        "ori_shape": [1, 16],
+        "ori_format": "ND",
+        "name": "delta",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [1, 16]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 16],
+        "format": "ND",
+        "ori_shape": [-1, 16],
+        "ori_format": "ND",
+        "name": "out",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ApplyProximalGradientDescent_001"
   }
 ]

@@ -1395,5 +1395,132 @@
       }
     ],
     "case_name": "test_ApplyKerasMomentumD_009"
+  },
+  {
+    "op": "ApplyKerasMomentumD",
+    "calc_expect_func_file":"./ApplyKerasMomentumD.py:apply_keras_momentum_d_compute",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "var",
+        "type": "float16",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "accum",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "lr",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "grad",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "momentum",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "out_var",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "out_accum",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ApplyKerasMomentumD_0001"
   }
 ]

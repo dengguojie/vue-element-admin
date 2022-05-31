@@ -283,6 +283,7 @@
   },
   {
     "op": "ApplyFtrlD",
+    "calc_expect_func_file":"./ApplyFtrlD.py:apply_ftrl_d_compute",
     "input_desc": [
       {
         "shape": [
@@ -440,6 +441,8 @@
         "name": "lr_power",
         "type": "float",
         "shape_range": [],
+        "value_range": [[-2, 0]],
+        "data_distribute" : "uniform",
         "typical_shape": [
           1
         ]
@@ -521,5 +524,120 @@
     ],
     "attr": [],
     "case_name": "test_dynamic_ApplyFtrlD_000"
+  },
+  {
+    "op": "ApplyFtrlD",
+    "calc_expect_func_file":"./ApplyFtrlD.py:apply_ftrl_d_compute",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "var",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "accum",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "linear",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [-2],
+        "format": "ND",
+        "ori_shape": [-2],
+        "ori_format": "ND",
+        "name": "grad",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [1],
+        "format": "ND",
+        "ori_shape": [1],
+        "ori_format": "ND",
+        "name": "lr",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [1]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "ori_shape": [1],
+        "ori_format": "ND",
+        "name": "l1",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [1]
+      }, {
+        "shape": [1],
+        "format": "ND",
+        "ori_shape": [1],
+        "ori_format": "ND",
+        "name": "l2",
+        "type": "float",
+        "shape_range": [],
+        "typical_shape": [1]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "ori_shape": [1],
+        "ori_format": "ND",
+        "name": "lr_power",
+        "type": "float",
+        "shape_range": [],
+        "value_range": [[-2, 0]],
+        "data_distribute" : "uniform",
+        "typical_shape": [1]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 16],
+        "format": "ND",
+        "ori_shape": [-1, 16],
+        "ori_format": "ND",
+        "name": "var_out",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [-1, 16],
+        "format": "ND",
+        "ori_shape": [-1, 16],
+        "ori_format": "ND",
+        "name": "accum_out",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }, {
+        "shape": [-1, 16],
+        "format": "ND",
+        "ori_shape": [-1, 16],
+        "ori_format": "ND",
+        "name": "linear_out",
+        "type": "float",
+        "shape_range": [[1, 100]],
+        "typical_shape": [1, 16]
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_ApplyFtrlD_001"
   }
 ]

@@ -22,5 +22,10 @@ ut_case.add_case("all",
                                                "float16", "dynamic_asinh_grad_fp16_ND",
                                                "success"))
 
+ut_case.add_case("all",
+                 gen_dynamic_asinh_grad_case((-2,), (1,), ((16, 16),), ((1, 1),),
+                                               "float16", "dynamic_asinh_grad_fp16_ND_unknown_shape",
+                                               "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
