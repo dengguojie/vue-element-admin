@@ -27,6 +27,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tuple_sum
 from impl.bn_training_reduce import get_op_support_info as bn_get_op_support_info
 from impl.bn_training_reduce import op_select_format as bn_op_select_format
+from impl.util.util_common import is_unknown_rank_input
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -157,6 +158,17 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
         list_axis = [0, 2, 3]
     else:
         list_axis = [0, 1, 3, 4]
+
+    if is_unknown_rank_input(x):
+        if data_format == "NC1HWC0":
+            x["shape"] = [-1, -1, -1, -1, -1]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+        elif data_format == "NCHW":
+            x["shape"] = [-1, -1, -1, -1]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None)]
+        else:
+            x["shape"] = [-1, -1, -1, -1, -1, -1]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None)]
 
     ins = classify([x, list_axis], OpPatternMode.TUPLE_REDUCE)
     schedules, tensors = [], []

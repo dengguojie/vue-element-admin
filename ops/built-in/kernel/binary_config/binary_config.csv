@@ -105,3 +105,8 @@ SpaceToDepth,space_to_depth.json
 SqrtGrad,sqrt_grad.json
 StridedSliceGrad,strided_slice_grad.json
 TanhGrad,tanh_grad.json
+BNTrainingUpdate,bn_training_update.json
+BNTrainingUpdateV3,bn_training_update_v3.json
+BNTrainingUpdateGrad,bn_training_update_grad.json
+BNTrainingReduce,bn_training_reduce.json
+BNTrainingReduceGrad,bn_training_reduce_grad.json

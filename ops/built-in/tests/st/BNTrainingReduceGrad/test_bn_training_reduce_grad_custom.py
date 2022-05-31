@@ -74,7 +74,7 @@ def test_bn_training_reduce_grad_001():
         'ori_format': 'NCHW',
         'format': 'NCHW',
         'dtype': 'float32'
-    }]
+    }, 0.0001]
     with tbe.common.context.op_context.OpContext("static"):
         bn_training_reduce_grad(*input_list)
 

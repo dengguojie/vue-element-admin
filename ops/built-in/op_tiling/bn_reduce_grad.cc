@@ -32,7 +32,7 @@ const int64_t INDEX_3 = 3;
 const int64_t INDEX_4 = 4;
 struct BnTrainingReduceGradCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
-  int64_t have_reduce_mean_cof_dtype;
+  bool have_reduce_mean_cof_dtype;
 };
 
 bool BnTrainingReduceGradTiling(const std::string& op_type, const ge::Operator& op_paras,
@@ -94,11 +94,11 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
   // get core_num value
   std::string dtype;
-  parsed_info.have_reduce_mean_cof_dtype = false;
-  OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get reduce_mean_cof_dtype error"),
-                  return false);
-  parsed_info.have_reduce_mean_cof_dtype = true;
+  bool have_reduce_mean_cof_dtype = false;
+  if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
+    have_reduce_mean_cof_dtype = true;
+  }
+  parsed_info.have_reduce_mean_cof_dtype = have_reduce_mean_cof_dtype;
   return true;
 }
 

@@ -25,6 +25,9 @@ from impl.util import fusion_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.util_common import is_unknown_rank_input
+from impl.util.util_attr_common import get_attr_by_cls
+from impl.util.util_attr_common import OpAttr
 
 
 # 'pylint: disable=redefined-builtin
@@ -74,11 +77,11 @@ def _refine_ins_list(ins_list):
                     if range_bottom <= 1:
                         if range_top is not None and range_top <= 1:
                             range_top = 2
-                        shape_range.append((2, range_top))
+                        shape_range.append((1, range_top))
                     else:
                         shape_range.append((range_bottom, range_top))
                 else:
-                    shape_range.append((2, None))
+                    shape_range.append((1, None))
             else:
                 shape_range.append((dim_val, dim_val))
         ins_list[index]["range"] = tuple(shape_range)
@@ -135,6 +138,9 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     # runtime tiling: "NCHW" or "NC1HWC0" reduce [0, 2, 3]
     num_rec = operation.var("num_rec", dtype="float32")
     batch_var_scaler = operation.var("batch_var_scaler", dtype="float32")
+    epsilon = get_attr_by_cls(epsilon, 
+                              OpAttr(0, "epsilon", "Float", 0.0000001),
+                              "float32")
 
     # compute the saved mean of x
     save_mean_reduce = tbe.vmuls(sum, num_rec)
@@ -240,7 +246,7 @@ def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update_v3(x, sum, square_sum, scale, offset,
                           y, batch_mean, batch_variance, reserve_1, reserve_2,
                           epsilon, kernel_name="bn_training_update_v3"):
@@ -305,21 +311,30 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
                  dtype_scale, dtype_offset)
 
     # check format
-    check_list = ("NC1HWC0", "NCHW")
+    check_list = ("NC1HWC0", "NCHW", "NDC1HWC0")
     para_check.check_format(data_format, check_list, param_name="x")
     if data_format == "NCHW" and origin_format not in ("NCHW",):
         error_detail = "The origin format only supports NCHW when format is NCHW, origin_format:", origin_format
         error_manager_vector.raise_err_specific_reson("bn_training_update_v3", error_detail)
 
-    x["shape"] = shape_x
-    sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
-    square_sum["shape"] = [1, shape_sqrsum[1], 1, 1, shape_sqrsum[4]]
-    scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
-    offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
+    if is_unknown_rank_input(
+        (x, sum, square_sum, scale, offset)) or epsilon is None:
+        for input_dict in (x, sum, square_sum, scale, offset):
+            input_dict["shape"] = [-1, -1, -1, -1, -1]
+            input_dict["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None)]
 
-    ins_list = [x, sum, square_sum, scale, offset]
-    ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
-                   extra_params={"disable_optimization": True})
+        ins = classify([x, sum, square_sum, scale, offset], OpPatternMode.ELEWISE_WITH_BROADCAST,
+                       extra_params={"disable_optimization": True})
+    else:
+        x["shape"] = shape_x
+        sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
+        square_sum["shape"] = [1, shape_sqrsum[1], 1, 1, shape_sqrsum[4]]
+        scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
+        offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
+
+        ins_list = [x, sum, square_sum, scale, offset]
+        ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
+                       extra_params={"disable_optimization": True})
 
     schedules = []
     tensors = []

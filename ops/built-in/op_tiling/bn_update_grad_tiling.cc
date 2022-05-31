@@ -22,8 +22,19 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "graph/utils/op_desc_utils.h"
+#include "op_tiling_util.h"
+#include "vector_tiling.h"
+#include "vector_tiling_log.h"
 
 namespace optiling {
+struct BNTrainingUpdateGradCompileInfo {
+    bool has_epsilon;
+    int64_t max_ub_count;
+    std::string mode;
+    std::vector<int32_t> common_info;
+};
+
 struct BNGradTilingInfo {
     int32_t block_dim;
     int32_t block_tiling_axis;
@@ -191,17 +202,10 @@ int32_t find_closest_factor(vector<int32_t> factors, int32_t value) {
     return closest_factor;
 }
 
-bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_type, const nlohmann::json& op_info) {
-    std::vector<int32_t> common_info;
-    std::vector<int32_t> pattern_info;
-    try {
-        common_info = op_info.at("common_info").get<std::vector<int32_t>>();
-        pattern_info = op_info.at("pattern_info").get<std::vector<int32_t>>();
-    } catch (const std::exception &e) {
-        GE_LOGE("op [%s]: get common_info, pattern_info. Error message: %s", op_type.c_str(), e.what());
-        return false;
-    }
-
+bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_type, 
+                          const BNTrainingUpdateGradCompileInfo& parsed_info)
+{
+    std::vector<int32_t> common_info = parsed_info.common_info;
     try {
         compileInfo.core_num = common_info[0];
         compileInfo.is_keep_dims = (bool)common_info[1];
@@ -215,10 +219,20 @@ bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_
     return true;
 }
 
-bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                        OpRunInfo& run_info) {
-    std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-    std::vector<int64_t> output_shape = op_paras.outputs[0].tensor[0].shape;
+bool BNUpdateGradTiling(const std::string& op_type, const ge::Operator& op_paras,
+                        const BNTrainingUpdateGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+    auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+    OP_TILING_CHECK(operator_info == nullptr,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr"), return false);
+    auto input_x_desc = operator_info->MutableInputDesc(1);
+    OP_TILING_CHECK(input_x_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input_x opdesc failed"),
+                    return false);
+    auto output_y_desc = operator_info->MutableOutputDesc(0);
+    OP_TILING_CHECK(output_y_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get output_y opdesc failed"),
+                    return false);
+    
+    std::vector<int64_t> input_shape = input_x_desc->MutableShape().GetDims();
+    std::vector<int64_t> output_shape = output_y_desc->MutableShape().GetDims();
 
     // input format is NC1HWC0
     int32_t n = input_shape[0];
@@ -227,12 +241,12 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     int32_t w = input_shape[3];
     int32_t c0 = input_shape[4];
 
-    int64_t max_ub_count = op_info.at("max_ub_count").get<std::int64_t>();
-    string mode = op_info["mode"].get<string>();
+    int64_t max_ub_count = parsed_info.max_ub_count;
+    std::string mode = parsed_info.mode;
 
     BNGradCompileInfo compileInfo;
     BNGradTilingInfo tilingInfo;
-    GetBNGradCompileInfo(compileInfo, op_type, op_info);
+    GetBNGradCompileInfo(compileInfo, op_type, parsed_info);
     int32_t core_num = compileInfo.core_num;
     int32_t half_core_num = core_num / 2;
 
@@ -277,28 +291,60 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     tilingInfo.block_tiling_factor = (input_shape[block_tiling_axis] + core_num - 1) / core_num;
 
     if (mode == "const") {
-        run_info.block_dim = tilingInfo.block_dim;
-        run_info.tiling_key = 0;
-        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_axis);
-        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_axis);
-        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
-        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+        run_info.SetBlockDim(tilingInfo.block_dim);
+        run_info.SetTilingKey(0);
+
+        run_info.AddTilingData(static_cast<int32_t>(tilingInfo.block_tiling_axis));
+        run_info.AddTilingData(static_cast<int32_t>(tilingInfo.ub_tiling_axis));
+        run_info.AddTilingData(static_cast<int32_t>(tilingInfo.block_tiling_factor));
+        run_info.AddTilingData(static_cast<int32_t>(tilingInfo.ub_tiling_factor));
         return true;
     }
 
-    run_info.block_dim = tilingInfo.block_dim;
+    run_info.SetBlockDim(tilingInfo.block_dim);
     int32_t pattern = 134;
     int32_t tiling_key = CalcBNGradTilingKey(tilingInfo, pattern, compileInfo);
 
-    run_info.tiling_key = tiling_key;
-    ByteBufferPut(run_info.tiling_data, n);
-    ByteBufferPut(run_info.tiling_data, c1);
-    ByteBufferPut(run_info.tiling_data, h);
-    ByteBufferPut(run_info.tiling_data, w);
+    if (parsed_info.has_epsilon) {
+        float epsilon;
+        AttrUtils::GetFloat(operator_info, "epsilon", epsilon);
+        run_info.AddTilingData(static_cast<float>(epsilon));
+    }
 
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+    run_info.SetTilingKey(tiling_key);
+    run_info.AddTilingData(n);
+    run_info.AddTilingData(c1);
+    run_info.AddTilingData(h);
+    run_info.AddTilingData(w);
+
+    run_info.AddTilingData(static_cast<int32_t>(tilingInfo.block_tiling_factor));
+    run_info.AddTilingData(static_cast<int32_t>(tilingInfo.ub_tiling_factor));
     return true;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingUpdateGrad, BNUpdateGradTiling);
+
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 BNTrainingUpdateGradCompileInfo & parsed_info) {
+    bool has_epsilon = false;
+    if (GetCompileValue(compile_info, "has_epsilon", has_epsilon)) {
+        has_epsilon = true;
+    }
+    parsed_info.has_epsilon = has_epsilon;
+
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "max_ub_count", parsed_info.max_ub_count),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                    "BNTrainingUpdateGradParseFunc, get max_ub_count error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "mode", parsed_info.mode),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                    "BNTrainingUpdateGradParseFunc, get mode error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "common_info", parsed_info.common_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                    "BNTrainingUpdateGradParseFunc, get common_info error"),
+                    return false);
+    return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(BNTrainingUpdateGrad, BNUpdateGradTiling, ParseJsonCompileInfo,
+                             BNTrainingUpdateGradCompileInfo);
 }

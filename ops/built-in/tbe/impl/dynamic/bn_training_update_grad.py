@@ -27,6 +27,9 @@ from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_vector
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import add_compile_info
+from impl.util.util_common import is_unknown_rank_input
+from impl.util.util_attr_common import get_attr_by_cls
+from impl.util.util_attr_common import OpAttr
 
 
 def _check_format_nd(data_format, origin_foramt):
@@ -97,6 +100,11 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     scalar_one = 1
     shape_x = shape_util.shape_to_list(x.shape)
     axis = [0, 2, 3]
+    if not isinstance(epsilon, float):
+        add_compile_info("has_epsilon", True)
+    epsilon = get_attr_by_cls(epsilon, 
+                              OpAttr(0, "epsilon", "Float", 0.0000001),
+                              "float32")
 
     if grads.dtype == "float16":
         grads = tbe.cast_to(grads, "float32")
@@ -126,8 +134,12 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
 
 # 'pylint: disable=too-many-statements,too-many-arguments,too-many-locals,invalid-name,unused-argument
 @register_operator("BNTrainingUpdateGrad", "BNTrainingUpdateGrad")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update_grad(grads, x, batch_mean, batch_variance,
-                            diff_scale, diff_offset, epsilon=0.0001,
+                            diff_scale, diff_offset, epsilon,
                             kernel_name="bn_training_update_grad"):
     """
     algorithm: fused_batch_norm_grad_v2
@@ -182,14 +194,6 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     ori_format = grads.get("ori_format")
     _check_format_nd(data_format, ori_format)
 
-    if data_format == "NDC1HWC0":
-        shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
-        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
-        shape_batch_mean = [shape_batch_mean[0] * shape_batch_mean[1], shape_batch_mean[2], shape_batch_mean[3], \
-        shape_batch_mean[4], shape_batch_mean[5]]
-        shape_batch_variance = [shape_batch_variance[0] * shape_batch_variance[1], shape_batch_variance[2], \
-        shape_batch_variance[3], shape_batch_variance[4], shape_batch_variance[5]]
-
     schedules = []
     tensors = []
 
@@ -202,12 +206,20 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     for (_, _, _, _) in ins:
         with tbe.compute():
 
-            if dynamic_dim in shape_x:
+            if dynamic_dim in shape_x or is_unknown_rank_input(
+                    (grads, x, batch_mean, batch_variance)) or epsilon is None:
                 mode = para_check.ORIGINAL
-                dim_0_0 = operation.var("dim_0_0", range_grads[0])
-                dim_0_1 = operation.var("dim_0_1", range_grads[1])
-                dim_0_2 = operation.var("dim_0_2", range_grads[2])
-                dim_0_3 = operation.var("dim_0_3", range_grads[3])
+                if is_unknown_rank_input(
+                    (grads, x, batch_mean, batch_variance)) or epsilon is None:
+                    dim_0_0 = operation.var("dim_0_0", (1, None))
+                    dim_0_1 = operation.var("dim_0_1", (1, None))
+                    dim_0_2 = operation.var("dim_0_2", (1, None))
+                    dim_0_3 = operation.var("dim_0_3", (1, None))
+                else:
+                    dim_0_0 = operation.var("dim_0_0", range_grads[0])
+                    dim_0_1 = operation.var("dim_0_1", range_grads[1])
+                    dim_0_2 = operation.var("dim_0_2", range_grads[2])
+                    dim_0_3 = operation.var("dim_0_3", range_grads[3])
 
                 shape1 = [dim_0_0, dim_0_1, dim_0_2, dim_0_3, 16]
                 shape2 = [1, dim_0_1, 1, 1, 16]

@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
+#include "array_ops.h"
+#include "reduce_ops.h"
 
 using namespace std;
 
@@ -32,115 +34,20 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling4) {
-    using namespace optiling;
-    std::string op_name = "BNTrainingUpdateGrad";
-    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+using namespace ge;
+#include "common/utils/ut_op_util.h"
+using namespace ut_util;
 
-    std::string compileInfo = R"({"mode": "original",
-                                  "_pattern": "BNTrainingUpdateGrad", 
-                                  "common_info": [32, 1, 8, 1], 
-                                  "pattern_info": [134], 
-                                  "max_ub_count": 7168,
-                                  "_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"], 
-                                  "1213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "1313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "4013400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "4213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "4313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "13400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "2213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]},
-                                  "_normal_vars": {"1013400": [], "1213400": [], "1313400": [], "4013400": [], "4213400": [], 
-                                  "4313400": [], "13400": [], "213400": [], "3213400": [], "2213400": [], "2313400": [], "3313400": []},
-                                  "_attr_vars": {"1013400": [], "1213400": [], "1313400": [], "4013400": [], "4213400": [], 
-                                  "4313400": [], "13400": [], "213400": [], "3213400": [], "2213400": [], "2313400": [], "3313400": []},
-                                  "_custom_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"], 
-                                  "1213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "1313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "4013400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "4213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "4313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "13400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "2213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
-                                  "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
-
-    std::vector<int64_t> inputA{2, 2, 16, 16, 16};
-    std::vector<int64_t> inputB{2, 2, 16, 16, 16};
-    std::vector<int64_t> inputC{1, 2, 1, 1, 16};
-    std::vector<int64_t> inputD{1, 2, 1, 1, 16};
-    std::vector<int64_t> outputA{1, 2, 1, 1, 16};
-    std::vector<int64_t> outputB{1, 2, 1, 1, 16};
-
-    std::string in_dtype1 = "float32";
-    std::string in_dtype2 = "float32";
-    std::string dtype = "float32";
-
-    TeOpTensor tensor_inputA;
-    tensor_inputA.shape = inputA;
-    tensor_inputA.dtype = in_dtype1;
-    TeOpTensor tensor_inputB;
-    tensor_inputB.shape = inputB;
-    tensor_inputB.dtype = in_dtype1;
-    TeOpTensor tensor_inputC;
-    tensor_inputC.shape = inputC;
-    tensor_inputC.dtype = in_dtype2;
-    TeOpTensor tensor_inputD;
-    tensor_inputD.shape = inputD;
-    tensor_inputD.dtype = in_dtype2;
-
-    TeOpTensor tensor_outputA;
-    tensor_outputA.shape = outputA;
-    tensor_outputA.dtype = dtype;
-    TeOpTensor tensor_outputB;
-    tensor_outputB.shape = outputB;
-    tensor_outputB.dtype = dtype;
-
-    TeOpTensorArg tensor_argA;
-    tensor_argA.tensor.push_back(tensor_inputA);
-    tensor_argA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argB;
-    tensor_argB.tensor.push_back(tensor_inputB);
-    tensor_argB.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argC;
-    tensor_argC.tensor.push_back(tensor_inputC);
-    tensor_argC.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argD;
-    tensor_argD.tensor.push_back(tensor_inputD);
-    tensor_argD.arg_type = TensorArgType::TA_SINGLE;
-
-    TeOpTensorArg tensor_arg_outputA;
-    tensor_arg_outputA.tensor.push_back(tensor_outputA);
-    tensor_arg_outputA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_arg_outputB;
-    tensor_arg_outputB.tensor.push_back(tensor_outputB);
-    tensor_arg_outputB.arg_type = TensorArgType::TA_SINGLE;
-
-    TeOpParas opParas;
-    opParas.inputs.push_back(tensor_argA);
-    opParas.inputs.push_back(tensor_argB);
-    opParas.inputs.push_back(tensor_argC);
-    opParas.inputs.push_back(tensor_argD);
-    opParas.outputs.push_back(tensor_arg_outputA);
-    opParas.outputs.push_back(tensor_arg_outputB);
-    opParas.op_type = op_name;
-
-    OpCompileInfo op_compile_info;
-    op_compile_info.str = compileInfo;
-    op_compile_info.key = "4";
-    OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 5213400);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 16 16 3 1 ");
-}
+/*
+.INPUT(grads, TensorType({DT_FLOAT16,DT_FLOAT}))
+.INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
+.INPUT(batch_mean, TensorType({DT_FLOAT}))
+.INPUT(batch_variance, TensorType({DT_FLOAT}))
+.ATTR(epsilon, Float, 0.0001)
+.OUTPUT(diff_scale, TensorType({DT_FLOAT}))
+.OUTPUT(diff_offset, TensorType({DT_FLOAT}))
+.OP_END_FACTORY_REG(BNTrainingUpdateGrad)
+*/
 
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
     using namespace optiling;
@@ -148,11 +55,28 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
     auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
     ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
+    auto opParas = op::BNTrainingUpdateGrad(op_name.c_str());
+
+    vector<vector<int64_t>> input_shapes = {
+        {32, 16, 13, 13, 16}, {32, 16, 13, 13, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}};
+
+    vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+
+    TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[1], dtypes[1], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_shapes[2], dtypes[2], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_shapes[3], dtypes[3], ge::FORMAT_NC1HWC0, {});
+
+    vector<vector<int64_t>> output_shapes = {{1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}};
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_scale, output_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_offset, output_shapes[1], dtypes[0], ge::FORMAT_NC1HWC0, {});
+
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
                                   "common_info": [32, 1, 8, 1], 
                                   "pattern_info": [134], 
                                   "max_ub_count": 7168,
+                                  "has_epsilon": true,
                                   "_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"], 
                                   "1213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
                                   "1313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
@@ -182,74 +106,11 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
                                   "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
                                   "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
 
-    std::vector<int64_t> inputA{32, 16, 13, 13, 16};
-    std::vector<int64_t> inputB{32, 16, 13, 13, 16};
-    std::vector<int64_t> inputC{1, 16, 1, 1, 16};
-    std::vector<int64_t> inputD{1, 16, 1, 1, 16};
-    std::vector<int64_t> outputA{1, 16, 1, 1, 16};
-    std::vector<int64_t> outputB{1, 16, 1, 1, 16};
-
-    std::string in_dtype1 = "float32";
-    std::string in_dtype2 = "float32";
-    std::string dtype = "float32";
-
-    TeOpTensor tensor_inputA;
-    tensor_inputA.shape = inputA;
-    tensor_inputA.dtype = in_dtype1;
-    TeOpTensor tensor_inputB;
-    tensor_inputB.shape = inputB;
-    tensor_inputB.dtype = in_dtype1;
-    TeOpTensor tensor_inputC;
-    tensor_inputC.shape = inputC;
-    tensor_inputC.dtype = in_dtype2;
-    TeOpTensor tensor_inputD;
-    tensor_inputD.shape = inputD;
-    tensor_inputD.dtype = in_dtype2;
-
-    TeOpTensor tensor_outputA;
-    tensor_outputA.shape = outputA;
-    tensor_outputA.dtype = dtype;
-    TeOpTensor tensor_outputB;
-    tensor_outputB.shape = outputB;
-    tensor_outputB.dtype = dtype;
-
-    TeOpTensorArg tensor_argA;
-    tensor_argA.tensor.push_back(tensor_inputA);
-    tensor_argA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argB;
-    tensor_argB.tensor.push_back(tensor_inputB);
-    tensor_argB.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argC;
-    tensor_argC.tensor.push_back(tensor_inputC);
-    tensor_argC.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argD;
-    tensor_argD.tensor.push_back(tensor_inputD);
-    tensor_argD.arg_type = TensorArgType::TA_SINGLE;
-
-    TeOpTensorArg tensor_arg_outputA;
-    tensor_arg_outputA.tensor.push_back(tensor_outputA);
-    tensor_arg_outputA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_arg_outputB;
-    tensor_arg_outputB.tensor.push_back(tensor_outputB);
-    tensor_arg_outputB.arg_type = TensorArgType::TA_SINGLE;
-
-    TeOpParas opParas;
-    opParas.inputs.push_back(tensor_argA);
-    opParas.inputs.push_back(tensor_argB);
-    opParas.inputs.push_back(tensor_argC);
-    opParas.inputs.push_back(tensor_argD);
-    opParas.outputs.push_back(tensor_arg_outputA);
-    opParas.outputs.push_back(tensor_arg_outputB);
-    opParas.op_type = op_name;
-
-    OpCompileInfo op_compile_info;
-    op_compile_info.str = compileInfo;
-    op_compile_info.key = "1";
-    OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 13400);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "32 16 13 13 1 1 ");
+    optiling::utils::OpRunInfo runInfo;
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+    EXPECT_EQ(runInfo.GetBlockDim(), 32);
+    EXPECT_EQ(runInfo.GetTilingKey(), 13400);
+    EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "953267991 32 16 13 13 1 1 ");
 }
 
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling2) {
@@ -258,6 +119,22 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling2) {
     auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
     ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
+    auto opParas = op::BNTrainingUpdateGrad(op_name.c_str());
+
+    vector<vector<int64_t>> input_shapes = {
+        {256, 32, 28, 28, 16}, {256, 32, 28, 28, 16}, {1, 32, 1, 1, 16}, {1, 32, 1, 1, 16}};
+
+    vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+
+    TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[1], dtypes[1], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_shapes[2], dtypes[2], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_shapes[3], dtypes[3], ge::FORMAT_NC1HWC0, {});
+
+    vector<vector<int64_t>> output_shapes = {{1, 32, 1, 1, 16}, {1, 32, 1, 1, 16}};
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_scale, output_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_offset, output_shapes[1], dtypes[0], ge::FORMAT_NC1HWC0, {});
+
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
                                   "common_info": [32, 1, 8, 1], 
@@ -292,74 +169,11 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling2) {
                                   "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
                                   "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
 
-    std::vector<int64_t> inputA{256, 32, 28, 28, 16};
-    std::vector<int64_t> inputB{256, 32, 28, 28, 16};
-    std::vector<int64_t> inputC{1, 32, 1, 1, 16};
-    std::vector<int64_t> inputD{1, 32, 1, 1, 16};
-    std::vector<int64_t> outputA{1, 32, 1, 1, 16};
-    std::vector<int64_t> outputB{1, 32, 1, 1, 16};
-
-    std::string in_dtype1 = "float32";
-    std::string in_dtype2 = "float32";
-    std::string dtype = "float32";
-
-    TeOpTensor tensor_inputA;
-    tensor_inputA.shape = inputA;
-    tensor_inputA.dtype = in_dtype1;
-    TeOpTensor tensor_inputB;
-    tensor_inputB.shape = inputB;
-    tensor_inputB.dtype = in_dtype1;
-    TeOpTensor tensor_inputC;
-    tensor_inputC.shape = inputC;
-    tensor_inputC.dtype = in_dtype2;
-    TeOpTensor tensor_inputD;
-    tensor_inputD.shape = inputD;
-    tensor_inputD.dtype = in_dtype2;
-
-    TeOpTensor tensor_outputA;
-    tensor_outputA.shape = outputA;
-    tensor_outputA.dtype = dtype;
-    TeOpTensor tensor_outputB;
-    tensor_outputB.shape = outputB;
-    tensor_outputB.dtype = dtype;
-
-    TeOpTensorArg tensor_argA;
-    tensor_argA.tensor.push_back(tensor_inputA);
-    tensor_argA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argB;
-    tensor_argB.tensor.push_back(tensor_inputB);
-    tensor_argB.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argC;
-    tensor_argC.tensor.push_back(tensor_inputC);
-    tensor_argC.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argD;
-    tensor_argD.tensor.push_back(tensor_inputD);
-    tensor_argD.arg_type = TensorArgType::TA_SINGLE;
-
-    TeOpTensorArg tensor_arg_outputA;
-    tensor_arg_outputA.tensor.push_back(tensor_outputA);
-    tensor_arg_outputA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_arg_outputB;
-    tensor_arg_outputB.tensor.push_back(tensor_outputB);
-    tensor_arg_outputB.arg_type = TensorArgType::TA_SINGLE;
-
-    TeOpParas opParas;
-    opParas.inputs.push_back(tensor_argA);
-    opParas.inputs.push_back(tensor_argB);
-    opParas.inputs.push_back(tensor_argC);
-    opParas.inputs.push_back(tensor_argD);
-    opParas.outputs.push_back(tensor_arg_outputA);
-    opParas.outputs.push_back(tensor_arg_outputB);
-    opParas.op_type = op_name;
-
-    OpCompileInfo op_compile_info;
-    op_compile_info.str = compileInfo;
-    op_compile_info.key = "2";
-    OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 1213400);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "256 32 28 28 1 14 ");
+    optiling::utils::OpRunInfo runInfo;
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+    EXPECT_EQ(runInfo.GetBlockDim(), 32);
+    EXPECT_EQ(runInfo.GetTilingKey(), 1213400);
+    EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "256 32 28 28 1 14 ");
 }
 
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling3) {
@@ -368,6 +182,22 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling3) {
     auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
     ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
+    auto opParas = op::BNTrainingUpdateGrad(op_name.c_str());
+
+    vector<vector<int64_t>> input_shapes = {
+        {2, 2, 256, 256, 16}, {2, 2, 256, 256, 16}, {1, 2, 1, 1, 16}, {1, 2, 1, 1, 16}};
+
+    vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+
+    TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[1], dtypes[1], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_shapes[2], dtypes[2], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_shapes[3], dtypes[3], ge::FORMAT_NC1HWC0, {});
+
+    vector<vector<int64_t>> output_shapes = {{1, 2, 1, 1, 16}, {1, 2, 1, 1, 16}};
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_scale, output_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_offset, output_shapes[1], dtypes[0], ge::FORMAT_NC1HWC0, {});
+
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
                                   "common_info": [32, 1, 8, 1], 
@@ -402,72 +232,71 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling3) {
                                   "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
                                   "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
 
-    std::vector<int64_t> inputA{2, 2, 256, 256, 16};
-    std::vector<int64_t> inputB{2, 2, 256, 256, 16};
-    std::vector<int64_t> inputC{1, 2, 1, 1, 16};
-    std::vector<int64_t> inputD{1, 2, 1, 1, 16};
-    std::vector<int64_t> outputA{1, 2, 1, 1, 16};
-    std::vector<int64_t> outputB{1, 2, 1, 1, 16};
+    optiling::utils::OpRunInfo runInfo;
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+    EXPECT_EQ(runInfo.GetBlockDim(), 32);
+    EXPECT_EQ(runInfo.GetTilingKey(), 2213400);
+    EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 2 256 256 8 1 ");
+}
 
-    std::string in_dtype1 = "float32";
-    std::string in_dtype2 = "float32";
-    std::string dtype = "float32";
+TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling4) {
+    using namespace optiling;
+    std::string op_name = "BNTrainingUpdateGrad";
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+    auto opParas = op::BNTrainingUpdateGrad(op_name.c_str());
 
-    TeOpTensor tensor_inputA;
-    tensor_inputA.shape = inputA;
-    tensor_inputA.dtype = in_dtype1;
-    TeOpTensor tensor_inputB;
-    tensor_inputB.shape = inputB;
-    tensor_inputB.dtype = in_dtype1;
-    TeOpTensor tensor_inputC;
-    tensor_inputC.shape = inputC;
-    tensor_inputC.dtype = in_dtype2;
-    TeOpTensor tensor_inputD;
-    tensor_inputD.shape = inputD;
-    tensor_inputD.dtype = in_dtype2;
+    vector<vector<int64_t>> input_shapes = {
+        {2, 2, 16, 16, 16}, {2, 2, 16, 16, 16}, {1, 2, 1, 1, 16}, {1, 2, 1, 1, 16}};
 
-    TeOpTensor tensor_outputA;
-    tensor_outputA.shape = outputA;
-    tensor_outputA.dtype = dtype;
-    TeOpTensor tensor_outputB;
-    tensor_outputB.shape = outputB;
-    tensor_outputB.dtype = dtype;
+    vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
 
-    TeOpTensorArg tensor_argA;
-    tensor_argA.tensor.push_back(tensor_inputA);
-    tensor_argA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argB;
-    tensor_argB.tensor.push_back(tensor_inputB);
-    tensor_argB.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argC;
-    tensor_argC.tensor.push_back(tensor_inputC);
-    tensor_argC.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_argD;
-    tensor_argD.tensor.push_back(tensor_inputD);
-    tensor_argD.arg_type = TensorArgType::TA_SINGLE;
+    TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[1], dtypes[1], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_shapes[2], dtypes[2], ge::FORMAT_NC1HWC0, {});
+    TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_shapes[3], dtypes[3], ge::FORMAT_NC1HWC0, {});
 
-    TeOpTensorArg tensor_arg_outputA;
-    tensor_arg_outputA.tensor.push_back(tensor_outputA);
-    tensor_arg_outputA.arg_type = TensorArgType::TA_SINGLE;
-    TeOpTensorArg tensor_arg_outputB;
-    tensor_arg_outputB.tensor.push_back(tensor_outputB);
-    tensor_arg_outputB.arg_type = TensorArgType::TA_SINGLE;
+    vector<vector<int64_t>> output_shapes = {{1, 2, 1, 1, 16}, {1, 2, 1, 1, 16}};
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_scale, output_shapes[0], dtypes[0], ge::FORMAT_NC1HWC0, {});
+    TENSOR_OUTPUT_WITH_SHAPE(opParas, diff_offset, output_shapes[1], dtypes[0], ge::FORMAT_NC1HWC0, {});
 
-    TeOpParas opParas;
-    opParas.inputs.push_back(tensor_argA);
-    opParas.inputs.push_back(tensor_argB);
-    opParas.inputs.push_back(tensor_argC);
-    opParas.inputs.push_back(tensor_argD);
-    opParas.outputs.push_back(tensor_arg_outputA);
-    opParas.outputs.push_back(tensor_arg_outputB);
-    opParas.op_type = op_name;
+    std::string compileInfo = R"({"mode": "original",
+                                  "_pattern": "BNTrainingUpdateGrad", 
+                                  "common_info": [32, 1, 8, 1], 
+                                  "pattern_info": [134], 
+                                  "max_ub_count": 7168,
+                                  "_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"], 
+                                  "1213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "1313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "4013400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "4213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "4313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "13400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "2213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]},
+                                  "_normal_vars": {"1013400": [], "1213400": [], "1313400": [], "4013400": [], "4213400": [], 
+                                  "4313400": [], "13400": [], "213400": [], "3213400": [], "2213400": [], "2313400": [], "3313400": []},
+                                  "_attr_vars": {"1013400": [], "1213400": [], "1313400": [], "4013400": [], "4213400": [], 
+                                  "4313400": [], "13400": [], "213400": [], "3213400": [], "2213400": [], "2313400": [], "3313400": []},
+                                  "_custom_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"], 
+                                  "1213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "1313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "4013400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "4213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "4313400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "13400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "2213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "2313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "3313400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
 
-    OpCompileInfo op_compile_info;
-    op_compile_info.str = compileInfo;
-    op_compile_info.key = "3";
-    OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 2213400);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 256 256 8 1 ");
+    optiling::utils::OpRunInfo runInfo;
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+    EXPECT_EQ(runInfo.GetBlockDim(), 32);
+    EXPECT_EQ(runInfo.GetTilingKey(), 5213400);
+    EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 2 16 16 2 1 ");
 }

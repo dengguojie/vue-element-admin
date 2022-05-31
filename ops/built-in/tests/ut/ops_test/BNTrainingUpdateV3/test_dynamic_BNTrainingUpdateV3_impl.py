@@ -26,9 +26,12 @@ case1 = gen_bn_training_update_v3_case((-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1), (-1,-
                                     "float16", "float32", 0.0001,"bn_training_update_v3_1")
 case2 = gen_bn_training_update_v3_case((-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1), (-1,-1,-1,-1,-1), 
                                     "float32", "float32", 0.0001,"bn_training_update_v3_2")
+case3 = gen_bn_training_update_v3_case((-2,), (-2,), (-2,), (-2,), (-2,),
+                                    "float32", "float32", 0.0001,"bn_training_update_v3_3")
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

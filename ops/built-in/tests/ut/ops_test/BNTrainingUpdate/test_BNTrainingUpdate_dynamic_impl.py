@@ -45,6 +45,10 @@ case9 = gen_bn_training_update_case((32,32,28,28,16), (1,32,1,1,16), (1,32,1,1,1
                                     "float32", "float32", 0.2, 0.0001,"bn_training_update_9", RuntimeError)
 case10 = gen_bn_training_update_case((32,32,28,28,16), (1,32,1,1,16), (1,32,1,1,16), (1,32,1,1,16), (1,32,1,1,16), (1,2,1,1,16), (1,32,1,1,16), 
                                     "float32", "float32", 0.2, 0.0001,"bn_training_update_10", RuntimeError)
+case11 = gen_bn_training_update_case((-2,), (-2,), (-2,), (-2,), (-2,), (-2,), (-2,), 
+                                    "float32", "float32", 0.2, 0.0001,"bn_training_update_11", "success")
+case12 = gen_bn_training_update_case((-2,), (-2,), (-2,), (-2,), (-2,), (-2,), (-2,), 
+                                    "float32", "float32", None, None,"bn_training_update_12", "success")
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -56,6 +60,8 @@ ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_case(["Ascend910A"], case10)
+ut_case.add_case(["Ascend910A"], case11)
+ut_case.add_case(["Ascend910A"], case12)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

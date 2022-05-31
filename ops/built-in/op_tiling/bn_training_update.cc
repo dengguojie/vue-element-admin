@@ -21,6 +21,7 @@
 namespace optiling {
   struct BNTrainingUpdateCompileInfo {
     std::shared_ptr<AutoTilingHandler> tiling_handler;
+    bool has_factor_reverse;
   };
 
   bool BNTrainingUpdateTiling(const std::string& op_type, const ge::Operator& op_paras,
@@ -29,7 +30,7 @@ namespace optiling {
     OP_TILING_CHECK(operator_info == nullptr,
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr"), return false);
     auto input_x_desc = operator_info->MutableInputDesc(0);
-    OP_TILING_CHECK(input_x_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_x opdesc failed"),
+    OP_TILING_CHECK(input_x_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input_x opdesc failed"),
                     return false);
     std::vector<int64_t> shape_x = input_x_desc->MutableShape().GetDims();
 
@@ -61,6 +62,13 @@ namespace optiling {
       return false;
     }
 
+    if (parsed_info.has_factor_reverse) {
+      float factor;
+      AttrUtils::GetFloat(operator_info, "factor", factor);
+      float factor_reverse = 1.0 - factor;
+      run_info.AddTilingData(static_cast<float>(factor_reverse));
+    }
+
     run_info.AddTilingData(static_cast<float>(num_rec));
     run_info.AddTilingData(static_cast<float>(batch_var_scalar));
     return true;
@@ -72,6 +80,11 @@ namespace optiling {
     OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
 
+    bool has_factor_reverse = false;
+    if (GetCompileValue(compile_info, "has_factor_reverse", has_factor_reverse)) {
+      has_factor_reverse = true;
+    }
+    parsed_info.has_factor_reverse = has_factor_reverse;
     return true;
   }
 

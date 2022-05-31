@@ -27,6 +27,10 @@ from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_vector
 from tbe.dsl.base.operation import var
+from impl.util.util_common import is_unknown_rank_input
+from impl.util.util_attr_common import get_attr_by_cls
+from impl.util.util_attr_common import OpAttr
+from tbe.dsl.base import operation
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,invalid-name,unused-argument
@@ -234,6 +238,19 @@ def bn_training_update_compute(x,
     res: TVM tensor list
         the result of bn_training_update_compute
     """
+    if isinstance(factor, float):
+        factor_reverse = 1.0 - factor
+    else:
+        factor_reverse = var("factor_reverse", dtype="float32")
+        operation.add_compile_info("has_factor_reverse", True)
+
+    factor = get_attr_by_cls(factor, 
+                             OpAttr(0, "factor", "Float", 0.2),
+                             "float32")
+    epsilon = get_attr_by_cls(epsilon, 
+                              OpAttr(1, "epsilon", "Float", 0.0000001),
+                              "float32")
+
     shape_x = shape_util.shape_to_list(x.shape)
     num = 1
     for dim in shape_x[:1] + shape_x[2:-1]:
@@ -278,7 +295,6 @@ def bn_training_update_compute(x,
         res_y = tbe.cast_to(res_y, "float16")
     batch_variance = tbe.vmuls(save_variance_reduce, batch_var_scaler)
 
-    factor_reverse = 1.0 - factor
     mean_mul = tbe.vmuls(save_mean_reduce, factor)
     mean_mul_rev = tbe.vmuls(mean, factor_reverse)
     mean = tbe.vadd(mean_mul, mean_mul_rev)
@@ -303,11 +319,11 @@ def _refine_ins_list(ins_list):
                     if range_bottom <= 1:
                         if range_top is not None and range_top <= 1:
                             range_top = 2
-                        shape_range.append((2, range_top))
+                        shape_range.append((1, range_top))
                     else:
                         shape_range.append((range_bottom, range_top))
                 else:
-                    shape_range.append((2, None))
+                    shape_range.append((1, None))
             else:
                 shape_range.append((dim_val, dim_val))
         ins_list[index]["range"] = tuple(shape_range)
@@ -319,7 +335,7 @@ def _refine_ins_list(ins_list):
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update(x,
                        sum,
                        square_sum,
@@ -399,37 +415,33 @@ def bn_training_update(x,
 
     format_x = x.get("format")
 
-    _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
-    _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance, format_x)
+    if not is_unknown_rank_input(
+        (x, sum, square_sum, scale, offset, mean, variance)) and factor is not None and epsilon is not None:
+        _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
+        _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale,
+                     shape_offset, shape_mean, shape_variance, format_x)
+    
+    if is_unknown_rank_input(
+        (x, sum, square_sum, scale, offset, mean, variance)) or factor is None or epsilon is None:
+        for input_dict in (x, sum, square_sum, scale, offset, mean, variance):
+            input_dict["shape"] = [-1, -1, -1, -1, -1]
+            input_dict["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None)]
 
-    if format_x == "NDC1HWC0":
-        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
-        shape_sum = [shape_sum[0] * shape_sum[1], shape_sum[2], shape_sum[3], shape_sum[4], shape_sum[5]]
-        shape_square_sum = [
-            shape_square_sum[0] * shape_square_sum[1], shape_square_sum[2], shape_square_sum[3], shape_square_sum[4],
-            shape_square_sum[5]
-        ]
-        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
-        shape_offset = [
-            shape_offset[0] * shape_offset[1], shape_offset[2], shape_offset[3], shape_offset[4], shape_offset[5]
-        ]
-        shape_mean = [shape_mean[0] * shape_mean[1], shape_mean[2], shape_mean[3], shape_mean[4], shape_mean[5]]
-        shape_variance = [
-            shape_variance[0] * shape_variance[1], shape_variance[2], shape_variance[3], shape_variance[4],
-            shape_variance[5]
-        ]
+        ins_list = [x, sum, square_sum, scale, offset, mean, variance]
+        ins = classify(ins_list, OpPatternMode.ELEWISE_WITH_BROADCAST,
+                       extra_params={"disable_optimization": True})
+    else:
+        x["shape"] = shape_x
+        sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
+        square_sum["shape"] = [1, shape_square_sum[1], 1, 1, shape_square_sum[4]]
+        scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
+        offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
+        mean["shape"] = [1, shape_mean[1], 1, 1, shape_mean[4]]
+        variance["shape"] = [1, shape_variance[1], 1, 1, shape_variance[4]]
 
-    x["shape"] = shape_x
-    sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
-    square_sum["shape"] = [1, shape_square_sum[1], 1, 1, shape_square_sum[4]]
-    scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
-    offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
-    mean["shape"] = [1, shape_mean[1], 1, 1, shape_mean[4]]
-    variance["shape"] = [1, shape_variance[1], 1, 1, shape_variance[4]]
-
-    ins_list = [x, sum, square_sum, scale, offset, mean, variance]
-    ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
-                   extra_params={"disable_optimization": True})
+        ins_list = [x, sum, square_sum, scale, offset, mean, variance]
+        ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
+                       extra_params={"disable_optimization": True})
 
     schedule_list, tensor_list = [], []
 

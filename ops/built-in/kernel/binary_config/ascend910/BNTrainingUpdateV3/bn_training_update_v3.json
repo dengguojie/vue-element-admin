@@ -1,0 +1,233 @@
+{
+    "op_type": "BNTrainingUpdateV3",
+    "op_list": [
+      {
+        "bin_filename": "BNTrainingUpdateV3_0",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "sum",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "square_sum",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "offset",
+            "index": 4,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_mean",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_variance",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "reserve_1",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "reserve_2",
+            "index": 4,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "epsilon",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "BNTrainingUpdateV3_1",
+        "inputs": [
+          {
+            "name": "x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "sum",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "square_sum",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "scale",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "offset",
+            "index": 4,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "y",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_mean",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_variance",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "reserve_1",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "reserve_2",
+            "index": 4,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "epsilon",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      }
+    ]
+  }

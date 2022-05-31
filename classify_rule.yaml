@@ -2176,6 +2176,10 @@ vector_D:
       - ops/built-in/tbe/impl/max_pool_grad.py
       - ops/built-in/tbe/impl/max_pool_v3_grad.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
+      - ops/built-in/op_tiling/bn_training_update.cc
+      - ops/built-in/op_tiling/bn_update_grad_tiling.cc
+      - ops/built-in/tbe/impl/dynamic/bn_training_update.py
+      - ops/built-in/tbe/impl/dynamic/bn_training_update_grad.py
     unrelease:
       - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
@@ -2311,7 +2315,6 @@ unkown:
       - ops/built-in/op_tiling/tabulate_fusion_grad.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
       - ops/built-in/op_tiling/extract_image_patches.cc
-      - ops/built-in/op_tiling/bn_update_grad_tiling.cc
       - ops/built-in/op_tiling/ger.cc
       - ops/built-in/op_tiling/batch_multi_class_non_max_suppression.cc
       - ops/built-in/op_tiling/scan_pq_codes.cc
@@ -2327,7 +2330,6 @@ unkown:
       - ops/built-in/op_tiling/softmax_tiling.h
       - ops/built-in/op_tiling/pad_v3_5hd.h
       - ops/built-in/op_tiling/confusion_softmax_grad.cc
-      - ops/built-in/op_tiling/bn_training_update.cc
       - ops/built-in/op_tiling/prod_virial_se_a.cc
       - ops/built-in/op_tiling/select.cc
       - ops/built-in/op_tiling/gather_elements.cc
@@ -3017,7 +3019,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/depth_to_space.py
       - ops/built-in/tbe/impl/dynamic/abs_grad.py
       - ops/built-in/tbe/impl/dynamic/batch_to_space_nd.py
-      - ops/built-in/tbe/impl/dynamic/bn_training_update.py
       - ops/built-in/tbe/impl/dynamic/relu6_grad.py
       - ops/built-in/tbe/impl/dynamic/ascend_anti_quant.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss_grad.py
@@ -3036,7 +3037,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/pad.py
       - ops/built-in/tbe/impl/dynamic/concat_offset.py
       - ops/built-in/tbe/impl/dynamic/reverse_v2.py
-      - ops/built-in/tbe/impl/dynamic/bn_training_update_grad.py
       - ops/built-in/tbe/impl/dynamic/masked_fill.py
       - ops/built-in/tbe/impl/dynamic/sub.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_dynamic_common.py

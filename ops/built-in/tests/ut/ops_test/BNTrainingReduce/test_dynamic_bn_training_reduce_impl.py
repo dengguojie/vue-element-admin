@@ -72,6 +72,9 @@ CASE_5 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, -1), (-1, -1, -1, -1, -1), 
 CASE_6 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
                                     ((1, None), (1, None), (1, None), (1, None), (16, 16)), "int32", "NC1HWC0",
                                     "dynamic_bn_training_reduce_6", "failed")
+CASE_7 = gen_dynamic_bn_reduce_case((-2,), (-2,), (-2,),
+                                    ((1, None), (1, None), (1, None), (1, None), (1, None)), "float16", "NC1HWC0",
+                                    "dynamic_bn_training_reduce_7", "success")
 
 ut_case.add_case("Ascend910A", CASE_1)
 ut_case.add_case("Ascend910A", CASE_2)
@@ -79,6 +82,7 @@ ut_case.add_case("Ascend910A", CASE_3)
 ut_case.add_case("Ascend910A", CASE_4)
 ut_case.add_case("Ascend910A", CASE_5)
 ut_case.add_case("Ascend910A", CASE_6)
+ut_case.add_case("Ascend910A", CASE_7)
 
 # ut_case.add_precision_case("Ascend910A", CASE_1)
 # ut_case.add_precision_case("Ascend910A", CASE_2)

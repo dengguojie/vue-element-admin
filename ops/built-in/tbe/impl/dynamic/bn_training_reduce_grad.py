@@ -29,6 +29,9 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 from impl.bn_training_reduce_grad import get_op_support_info as bn_get_op_support_info
 from impl.bn_training_reduce_grad import op_select_format as bn_op_select_format
+from impl.util.util_common import is_unknown_rank_input
+from impl.util.util_attr_common import get_attr_by_cls
+from impl.util.util_attr_common import OpAttr
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -187,6 +190,9 @@ def bn_training_reduce_grad_compute(grads,
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
         return []
 
+    epsilon = get_attr_by_cls(epsilon, 
+                              OpAttr(0, "epsilon", "Float", 0.0000001),
+                              "float32")
     is_cast = False
     if grads.dtype == "float16":
         is_cast = True
@@ -262,31 +268,32 @@ def _check_shape(shape_grads, shape_diff_scale, data_format):
     """
     para_check.check_shape(shape_grads, param_name="grads")
     para_check.check_shape(shape_diff_scale, param_name="diff_scale")
-    dim_c0 = 0
-    if data_format == "NDC1HWC0":
-        dim_c0 = shape_grads[5]
-        n_shape = shape_diff_scale[0] * shape_diff_scale[1]
-        if n_shape != 1 or shape_diff_scale[3] != 1 or shape_diff_scale[4] != 1:
-            error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if shape_diff_scale[5] != dim_c0:
-            error_reson = "Dimension C must be equal"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-    else:
-        dim_c0 = shape_grads[4]
-        if shape_diff_scale[0] != 1 or shape_diff_scale[2] != 1 or shape_diff_scale[3] != 1:
-            error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if shape_diff_scale[4] != dim_c0:
-            error_reson = "Dimension C must be equal"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+    if -1 not in shape_grads:
+        dim_c0 = 0
+        if data_format == "NDC1HWC0":
+            dim_c0 = shape_grads[5]
+            n_shape = shape_diff_scale[0] * shape_diff_scale[1]
+            if n_shape != 1 or shape_diff_scale[3] != 1 or shape_diff_scale[4] != 1:
+                error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
+                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+            if shape_diff_scale[5] != dim_c0:
+                error_reson = "Dimension C must be equal"
+                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+        else:
+            dim_c0 = shape_grads[4]
+            if shape_diff_scale[0] != 1 or shape_diff_scale[2] != 1 or shape_diff_scale[3] != 1:
+                error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
+                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+            if shape_diff_scale[4] != dim_c0:
+                error_reson = "Dimension C must be equal"
+                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
-    if len(shape_grads) not in (5, 6) or len(shape_diff_scale) not in (5, 6):
-        error_reson = "This operator can only support 5D,6D, but some input's shape length is not 5 or 6"
-        error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-    if dim_c0 != 16:
-        error_reson = "shape_grads last dim must be 16"
-        error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+        if len(shape_grads) not in (5, 6) or len(shape_diff_scale) not in (5, 6):
+            error_reson = "This operator can only support 5D,6D, but some input's shape length is not 5 or 6"
+            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
+        if dim_c0 != 16:
+            error_reson = "shape_grads last dim must be 16"
+            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
 
 @register_operator("BNTrainingReduceGrad")
@@ -302,7 +309,7 @@ def bn_training_reduce_grad(grads,
                             batch_mean,
                             batch_variance,
                             y,
-                            epsilon=0.0001,
+                            epsilon,
                             kernel_name="bn_training_reduce_grad"):
     """
     algorithm: batch_norm_grad
@@ -347,7 +354,6 @@ def bn_training_reduce_grad(grads,
 
     shape_grads = grads.get("shape")
     shape_diff_scale = diff_scale.get("shape")
-    shape_util.compare_tensor_dict_key(grads, x, "shape")
 
     dtype_grads = grads.get("dtype")
     dtype_x = x.get("dtype")
@@ -373,32 +379,28 @@ def bn_training_reduce_grad(grads,
     para_check.check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
     para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
-    shape_util.compare_tensor_dict_key(grads, x, "shape")
-    shape_util.compare_tensor_dict_key(diff_scale, diff_offset, "shape")
-    shape_util.compare_tensor_dict_key(diff_scale, scale, "shape")
-    shape_util.compare_tensor_dict_key(diff_scale, batch_mean, "shape")
-    shape_util.compare_tensor_dict_key(diff_scale, batch_variance, "shape")
-
     ori_format = grads.get("ori_format").upper()
     data_format = grads.get("format").upper()
     _check_format(data_format, ori_format)
 
-    if data_format in ("NC1HWC0", "NDC1HWC0"):
-        _check_shape(shape_grads, shape_diff_scale, data_format)
-    else:
-        shape_list = [1, 1, 1, 1]
-        shape_list[1] = shape_grads[1]
-        range_list = util_common.gen_range(shape_list)
-        diff_scale["shape"] = shape_list
-        diff_scale["range"] = range_list
-        diff_offset["shape"] = shape_list
-        diff_offset["range"] = range_list
-        scale["shape"] = shape_list
-        scale["range"] = range_list
-        batch_mean["shape"] = shape_list
-        batch_mean["range"] = range_list
-        batch_variance["shape"] = shape_list
-        batch_variance["range"] = range_list
+    if not is_unknown_rank_input((grads, x, diff_scale, 
+       diff_offset, scale, batch_mean, batch_variance)) and epsilon is not None:
+        if data_format in ("NC1HWC0", "NDC1HWC0"):
+            _check_shape(shape_grads, shape_diff_scale, data_format)
+        else:
+            shape_list = [1, 1, 1, 1]
+            shape_list[1] = shape_grads[1]
+            range_list = util_common.gen_range(shape_list)
+            diff_scale["shape"] = shape_list
+            diff_scale["range"] = range_list
+            diff_offset["shape"] = shape_list
+            diff_offset["range"] = range_list
+            scale["shape"] = shape_list
+            scale["range"] = range_list
+            batch_mean["shape"] = shape_list
+            batch_mean["range"] = range_list
+            batch_variance["shape"] = shape_list
+            batch_variance["range"] = range_list
 
     dyn_flag = util_common.is_unknown([grads, x])
 
@@ -408,8 +410,25 @@ def bn_training_reduce_grad(grads,
     elif not dyn_flag and data_format in ("NDC1HWC0",):
         reduce_shape = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
 
+    if is_unknown_rank_input((grads, x, diff_scale, 
+       diff_offset, scale, batch_mean, batch_variance)) or epsilon is None:
+        if data_format == "NC1HWC0":
+            dynamic_shape = [-1, -1, -1, -1, -1]
+            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+        elif data_format == "NCHW":
+            dynamic_shape = [-1, -1, -1, -1]
+            dynamic_range = [(1, None), (1, None), (1, None), (1, None)]
+        else:
+            dynamic_shape = [-1, -1, -1, -1, -1, -1]
+            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None)]
+
+        for input_dict in (grads, x, diff_scale, diff_offset,
+                           scale, batch_mean, batch_variance):
+            input_dict["shape"] = dynamic_shape
+            input_dict["range"] = dynamic_range
+
     ins = classify([grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance],
-                   OpPatternMode.ELEWISE_WITH_BROADCAST)
+                    OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []
 

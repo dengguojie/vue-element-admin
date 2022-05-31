@@ -1,0 +1,301 @@
+{
+    "op_type": "BNTrainingUpdateGrad",
+    "op_list": [
+      {
+        "bin_filename": "BNTrainingUpdateGrad_0",
+        "inputs": [
+          {
+            "name": "grads",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_mean",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_variance",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "diff_scale",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "diff_offset",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "epsilon",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "BNTrainingUpdateGrad_1",
+        "inputs": [
+          {
+            "name": "grads",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_mean",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_variance",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "diff_scale",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "diff_offset",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "epsilon",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "BNTrainingUpdateGrad_2",
+        "inputs": [
+          {
+            "name": "grads",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_mean",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_variance",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "diff_scale",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "diff_offset",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "epsilon",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "BNTrainingUpdateGrad_3",
+        "inputs": [
+          {
+            "name": "grads",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_mean",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "batch_variance",
+            "index": 3,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "diff_scale",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "diff_offset",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "epsilon",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      }
+    ]
+  }
