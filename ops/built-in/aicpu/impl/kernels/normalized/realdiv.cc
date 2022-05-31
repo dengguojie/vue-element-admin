@@ -56,6 +56,7 @@ uint32_t RealDivKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(y, KERNEL_STATUS_PARAM_INVALID,
                        "Get output[0], name[y] failed");
   DataType data_type = DataType(x1->GetDataType());
+
   uint32_t ret = ComputeDiffType(x1, x2, y, data_type, ctx);
   if (ret != KERNEL_STATUS_OK) {
     return ret;
@@ -63,9 +64,9 @@ uint32_t RealDivKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t RealDivKernel::ComputeDiffType(Tensor *x, Tensor *y, Tensor *z,
+uint32_t RealDivKernel::ComputeDiffType(const Tensor *x, Tensor *y, Tensor *z,
                                         DataType data_type,
-                                        CpuKernelContext &ctx) {
+                                        const CpuKernelContext &ctx) {
   switch (data_type) {
     case DT_FLOAT16:
       return ComputeRealdiv<Eigen::half>(x, y, z, ctx);
@@ -90,12 +91,11 @@ uint32_t RealDivKernel::ComputeDiffType(Tensor *x, Tensor *y, Tensor *z,
                        DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-  return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t RealDivKernel::ComputeRealdiv(const Tensor *x, Tensor *y, Tensor *z,
-                                       CpuKernelContext &ctx) {
+uint32_t RealDivKernel::ComputeRealdiv(const Tensor *x, Tensor *y, const Tensor *z,
+                                       const CpuKernelContext &ctx) {
   auto x_addr = x->GetData();
   auto y_addr = y->GetData();
   auto z_addr = z->GetData();
@@ -147,7 +147,7 @@ uint32_t RealDivKernel::ComputeDiffShape(int64_t dim, T *x_addr, T *y_addr,
                                          std::vector<int64_t> &x_dim_size,
                                          std::vector<int64_t> &y_dim_size,
                                          std::vector<int64_t> &z_dim_size,
-                                         CpuKernelContext &ctx) {
+                                         const CpuKernelContext &ctx) {
   switch (dim) {
     case 0:
       *((T *)z_addr) = *((T *)x_addr) / *((T *)y_addr);

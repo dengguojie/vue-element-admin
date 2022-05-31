@@ -23,7 +23,7 @@ class TileWithAxisCpuKernel : public CpuKernel {
   uint32_t TileComputeByAxis(const CpuKernelContext &ctx);
 
   template <typename T, int32_t OPTION>
-  uint32_t TileComputeInDims(CpuKernelContext &ctx);
+  uint32_t TileComputeInDims(const CpuKernelContext &ctx);
 
   template <typename T>
   uint32_t TileCompute(CpuKernelContext &ctx);

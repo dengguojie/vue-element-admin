@@ -27,7 +27,7 @@
 
 namespace
 {
-  const char *kProdEnvMatACalcRij = "ProdEnvMatACalcRij";
+  const char *const kProdEnvMatACalcRij = "ProdEnvMatACalcRij";
   const uint32_t kInputNum = 5;
   const uint32_t kOutputNum = 6;
   const uint32_t kIndexZero = 0;
@@ -53,7 +53,7 @@ namespace aicpu
     std::vector<int64_t> sel_a = ctx.GetAttr("sel_a")->GetListInt();
     std::vector<int64_t> sec_a;
     cum_sum(sec_a, sel_a);
-    int32_t nnei = sec_a.back();
+    int32_t nnei = static_cast<int32_t>(sec_a.back());
 
     // analysis input
     auto natoms = static_cast<int32_t *>(natoms_tensor->GetData());
@@ -79,7 +79,7 @@ namespace aicpu
     }
   }
 
-  uint32_t ProdEnvMatACalcRijCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  uint32_t ProdEnvMatACalcRijCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
     Tensor *coord_tensor = ctx.Input(kIndexZero);
     Tensor *type_tensor = ctx.Input(kIndexOne);
     Tensor *natoms_tensor = ctx.Input(kIndexTwo);
@@ -140,7 +140,7 @@ namespace aicpu
 
   template <typename FPTYPE>
   void ProdEnvMatACalcRijCpuKernel::prod_env_mat_a_rij_cal(
-      FPTYPE *rij, CpuKernelContext &ctx, int32_t batchIndex, int32_t nnei,
+      FPTYPE *rij, const CpuKernelContext &ctx, int32_t batchIndex, int32_t nnei,
       std::vector<int64_t> &sec_a) {
     FPTYPE *p_distance = static_cast<FPTYPE *>(ctx.Output(kIndexTwo)->GetData());
     int32_t *p_nlist = static_cast<int32_t *>(ctx.Output(kIndexOne)->GetData());
@@ -177,7 +177,7 @@ namespace aicpu
       meshdata.nallmaptable = &p_mesh[1 + meshDataLength * meshdata.nlocnum];
       needmap = true;
     }
-    int32_t atomTypes = sec_a.size() - 1;
+    int32_t atomTypes = static_cast<int32_t>(sec_a.size()) - 1;
 
     auto ComputeRijDistance = [&](int32_t start, int32_t end) {
       int32_t rijaxeslen = (end - start) * nnei * sizeof(FPTYPE);
@@ -211,7 +211,7 @@ namespace aicpu
 
         std::vector<std::vector<NeighborInfo>> selNeighbors(atomTypes, std::vector<NeighborInfo>());
         for (uint32_t s_j = 0; s_j < selNeighbors.size(); s_j++) {
-          selNeighbors[s_j].reserve(numNeighbor);
+          selNeighbors[s_j].reserve(static_cast<size_t>(numNeighbor));
         }
 
         for (int32_t j = 0; j < numNeighbor; j++) {
@@ -237,9 +237,9 @@ namespace aicpu
 
         for (uint32_t m_k = 0; m_k < selNeighbors.size(); m_k++) {
           uint32_t sortedIdx = 0;
-          uint32_t len = selNeighbors[m_k].size();
+          uint32_t len = static_cast<uint32_t>(selNeighbors[m_k].size());
           uint32_t cntSize = std::min(sec_a[m_k + 1], sec_a[m_k] + len);
-          for (uint32_t res_idx = sec_a[m_k]; res_idx < cntSize; res_idx++) {
+          for (int64_t res_idx = sec_a[m_k]; res_idx < cntSize; res_idx++) {
             int32_t curAtomIdx = selNeighbors[m_k][sortedIdx].index;
             *(curNlist + res_idx) = needmap ? meshdata.nallmaptable[curAtomIdx] : curAtomIdx;
             *(curDist + res_idx) = selNeighbors[m_k][sortedIdx].dist;

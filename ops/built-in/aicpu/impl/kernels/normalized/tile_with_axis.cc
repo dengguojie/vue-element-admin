@@ -62,7 +62,7 @@ uint32_t TileWithAxisCpuKernel::TileComputeByAxis(const CpuKernelContext &ctx) {
 }
 
 template <typename T, int32_t OPTION>
-uint32_t TileWithAxisCpuKernel::TileComputeInDims(CpuKernelContext &ctx) {
+uint32_t TileWithAxisCpuKernel::TileComputeInDims(const CpuKernelContext &ctx) {
   int32_t dims = ctx.Output(kFirstOutputIndex)->GetTensorShape()->GetDims();
   switch (dims) {
     case 0: {

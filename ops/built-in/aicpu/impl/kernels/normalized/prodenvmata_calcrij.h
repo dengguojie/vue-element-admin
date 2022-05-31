@@ -19,7 +19,6 @@
 #include "cpu_kernel.h"
 #include "cpu_kernel_utils.h"
 #include "status.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace aicpu {
   class ProdEnvMatACalcRijCpuKernel : public CpuKernel {
@@ -75,10 +74,10 @@ namespace aicpu {
       uint32_t DoCompute(CpuKernelContext &ctx);
       template <typename FPTYPE>
       uint32_t DoProdEnvMatACalcRijCompute(CpuKernelContext &ctx);
-      uint32_t GetInputAndCheck(CpuKernelContext &ctx);
+      uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
       void cum_sum(std::vector<int64_t> &sec, const std::vector<int64_t> &n_sel);
       template <typename FPTYPE>
-      void prod_env_mat_a_rij_cal(FPTYPE *rij, CpuKernelContext &ctx,
+      void prod_env_mat_a_rij_cal(FPTYPE *rij, const CpuKernelContext &ctx,
                                   int32_t batchIndex, int32_t nnei,
                                   std::vector<int64_t> &sec_a);
   };
