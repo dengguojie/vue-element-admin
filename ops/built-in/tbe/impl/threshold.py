@@ -24,6 +24,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from impl.util.platform_adapter import OpImplMode
 
 # define a scalar , value = 1.0
 SCALAR_POSITIVE_ONE = 1.0
@@ -33,7 +34,7 @@ SCALAR_ZERO = 0.0
 
 # 'pylint: disable=redefined-outer-name
 @tbe_platform.fusion_manager.fusion_manager.register("threshold")
-def threshold_compute(input_x, input_y, output_y, kernel_name="threshold"):
+def threshold_compute(input_x, input_y, output_y, kernel_name="threshold", impl_mode=None):
     """
     compare data with threshold,x > threshold ? 1; 0
 
@@ -56,8 +57,11 @@ def threshold_compute(input_x, input_y, output_y, kernel_name="threshold"):
     # switch zoom value
     input_dtype = input_x.dtype
     if input_dtype == "float16":
+        if impl_mode == OpImplMode.HIGH_PRECISION:
+            input_x = tbe.cast_to(input_x, "float32")
         SCALAR_TEN_MILLION = 10000.0
 
+    x_dtype = input_x.dtype
     sub_threshold = tbe.vadds(input_x, -input_y)
     zero_data = tbe.vmaxs(sub_threshold, SCALAR_ZERO)
     one_data = tbe.vmins(zero_data, SCALAR_POSITIVE_ONE)
@@ -67,12 +71,14 @@ def threshold_compute(input_x, input_y, output_y, kernel_name="threshold"):
 
     zoom_data = tbe.vmuls(res_tmp, SCALAR_TEN_MILLION)
     res = tbe.vmins(zoom_data, SCALAR_POSITIVE_ONE)
+    if x_dtype != input_dtype:
+        res = tbe.cast_to(res, "float16")
 
     return res
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def threshold(input_x, output_y, threshold=0.0, kernel_name="threshold"):
+def threshold(input_x, output_y, threshold=0.0, kernel_name="threshold", impl_mode=None):
     """
     algorithm: threshold
     compare data with threshold: x > threshold ? 1; 0
@@ -104,7 +110,7 @@ def threshold(input_x, output_y, threshold=0.0, kernel_name="threshold"):
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x * y, shape)
     data_x = tvm.placeholder(fuseshape, name="data_x", dtype=input_data_type)
-    res = threshold_compute(data_x, threshold, output_y, kernel_name)
+    res = threshold_compute(data_x, threshold, output_y, kernel_name, impl_mode)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)

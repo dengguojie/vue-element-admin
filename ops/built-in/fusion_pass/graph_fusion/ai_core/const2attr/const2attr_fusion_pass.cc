@@ -157,7 +157,7 @@ REGISTER_CONST2ATTR("ApplyAdadeltaD").OriginOpType("ApplyAdadelta");
 
 REGISTER_CONST2ATTR("ApplyAdagradD").OriginOpType("ApplyAdagrad");
 
-REGISTER_CONST2ATTR("ApplyAdagradDAD").OriginOpType("ApplyAdagradDA");
+REGISTER_CONST2ATTR("ApplyAdagradDAD").NeedCheckSupported(true).OriginOpType("ApplyAdagradDA");
 
 REGISTER_CONST2ATTR("ApplyFtrlD").OriginOpType("ApplyFtrl");
 

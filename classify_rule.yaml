@@ -1400,6 +1400,7 @@ vector_B:
       - ops/built-in/tbe/impl/square_sum_v1.py
       - ops/built-in/tbe/impl/strided_slice_d.py
       - ops/built-in/tbe/impl/tile_with_axis.py
+      - ops/built-in/tbe/impl/threshold.py
       - ops/built-in/tbe/impl/trans_data.py
       - ops/built-in/tbe/impl/trans_data_common_func.py
       - ops/built-in/tbe/impl/trans_data_negative_target_ntc.py
@@ -2683,7 +2684,6 @@ unkown:
       - ops/built-in/tbe/impl/relu_grad.py
       - ops/built-in/tbe/impl/dilation2d_backprop_input.py
       - ops/built-in/tbe/impl/axpy.py
-      - ops/built-in/tbe/impl/threshold.py
       - ops/built-in/tbe/impl/sigmoid_cross_entropy_with_logits.py
       - ops/built-in/tbe/impl/concat_last_dim.py
       - ops/built-in/tbe/impl/euclidean_norm_d.py

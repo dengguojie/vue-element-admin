@@ -26,6 +26,21 @@ ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (512, 10
 
 # ============ auto gen ["Ascend910"] test cases end =================
 # import pytest
+
+def test_high_precision_mode(test_arg):
+    from impl.threshold import threshold
+    threshold(
+        {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+        {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+        0.0,
+        kernel_name="threshold",
+        impl_mode="high_precision"
+    )
+
+
+ut_case.add_cust_test_func(test_func=test_high_precision_mode)
+
+
 if __name__ == '__main__':
     ut_case.run("Ascend910")
     # ut_case.run()
