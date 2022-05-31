@@ -88,21 +88,21 @@ Status AttentionQKVGradWFusionPass::Fusion(ge::ComputeGraph &graph,
   std::vector<ge::NodePtr> matmul_list;
   std::vector<ge::NodePtr> reduce_sum_list;
   if (!IsMatch(conf_transpose_node, conf_trans_list, matmul_list, reduce_sum_list)) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "Match AttentionQKVGradWFusionPass failed.");
+    OP_LOGD(conf_transpose_node, "Match AttentionQKVGradWFusionPass failed.");
     return NOT_CHANGED;
   }
   ge::NodePtr attention_qkv_gradw_node = nullptr;
   FUSION_PASS_CHECK(SUCCESS != ReplaceAttentionQKVGradW(graph, conf_trans_list,
       matmul_list, reduce_sum_list, attention_qkv_gradw_node),
-      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReplaceAttentionQKVGradW failed!"), return FAILED);
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ReplaceAttentionQKVGradW failed!"), return NOT_CHANGED);
   std::vector<ge::NodePtr> node_list;
   node_list.insert(node_list.end(), reduce_sum_list.begin(), reduce_sum_list.end());
   node_list.insert(node_list.end(), matmul_list.begin(), matmul_list.end());
   for (auto &node : node_list) {
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node), OP_LOGE(FUSED_OP_TYPE.c_str(),
-                      "remove [%s] node failed.", node->GetName().c_str()), return FAILED);
+                      "remove [%s] node failed.", node->GetName().c_str()), return NOT_CHANGED);
   }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End AttentionQKVGradWFusionPass.");
+  OP_LOGD(attention_qkv_gradw_node, "End AttentionQKVGradWFusionPass.");
   fusion_nodes.push_back(attention_qkv_gradw_node);
   return SUCCESS;
 }
@@ -114,14 +114,14 @@ bool AttentionQKVGradWFusionPass::IsMatch(const ge::NodePtr &conf_transpose_node
   auto conf_trans_out_anchor = conf_transpose_node->GetOutDataAnchor(0);
   // conf_transpose_node output is passed to matmul_dx, matmul_dw and reduce_sum_d
   if (conf_trans_out_anchor->GetPeerInDataAnchors().size() != kKernelNum) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "output nums of conf_transpose_node [%d] unmatched.",
+    OP_LOGD(conf_transpose_node, "output nums of conf_transpose_node [%zu] unmatched.",
         conf_trans_out_anchor->GetPeerInDataAnchors().size());
     return false;
   }
   auto matmul_dw_node = conf_transpose_node->GetOutDataNodes().at(1);
   auto out_anchor = matmul_dw_node->GetInDataAnchor(0)->GetPeerOutAnchor();
   if (out_anchor->GetPeerInDataAnchors().size() < kKernelNum) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "num of matmul_dw nodes [%d] unmatched.", out_anchor->GetPeerInDataAnchors().size());
+    OP_LOGD(matmul_dw_node, "num of matmul_dw nodes [%zu] unmatched.", out_anchor->GetPeerInDataAnchors().size());
     return false;
   }
   for (size_t i = 0; i < kKernelNum; i++) {
@@ -134,11 +134,11 @@ bool AttentionQKVGradWFusionPass::IsMatch(const ge::NodePtr &conf_transpose_node
     bool transpose_x1 = false;
     bool transpose_x2 = false;
     FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(matmul_node->GetOpDesc(), "transpose_x1", transpose_x1),
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr transpose_x1 failed."), return false);
+        OP_LOGW(matmul_node, "get attr transpose_x1 failed."), return false);
     FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(matmul_node->GetOpDesc(), "transpose_x2", transpose_x2),
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr transpose_x2 failed."), return false);
+        OP_LOGW(matmul_node, "get attr transpose_x2 failed."), return false);
     if (!transpose_x1 || transpose_x2) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "trans_a/trans_b should be true/false, the actual trans_flags are [%s] and [%s].",
+      OP_LOGD(matmul_node, "trans_a/trans_b should be true/false, the actual trans_flags are [%s] and [%s].",
           kBoolToStr[transpose_x1].c_str(), kBoolToStr[transpose_x2].c_str());
       return false;
     }
@@ -164,23 +164,22 @@ bool AttentionQKVGradWFusionPass::IsMatch(const ge::NodePtr &conf_transpose_node
   vector<int64_t> kernel_shape = matmul_list[0]->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
   bool invalid_matmul_shape = x_shape[0] != kCandidateK || x_shape[1] != kCandidateM || kernel_shape[1] != kCandidateM;
   if (invalid_matmul_shape) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "invalid matmul shape.");
+    OP_LOGD(matmul_list[0], "invalid matmul shape.");
     return false;
   }
   // dtype check
   auto out_desc = conf_transpose_node->GetOpDesc()->GetOutputDesc(0);
   if (out_desc.GetDataType() != ge::DT_FLOAT16) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "conf_trans_node dtype is not fp16, but [%s]!",
+    OP_LOGD(conf_transpose_node, "conf_trans_node dtype is not fp16, but [%s]!",
         ge::TypeUtils::DataTypeToSerialString(out_desc.GetDataType()).c_str());
     return false;
   }
   // format check
   if (out_desc.GetFormat() != ge::FORMAT_FRACTAL_NZ) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "conf_trans_node output format is not FRACTAL_NZ, but [%s]!",
+    OP_LOGD(conf_transpose_node, "conf_trans_node output format is not FRACTAL_NZ, but [%s]!",
         ge::TypeUtils::FormatToSerialString(out_desc.GetFormat()).c_str());
     return false;
   }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "AttentionQKVGradWFusionPass match success");
   return true;
 }
 
@@ -189,7 +188,6 @@ Status AttentionQKVGradWFusionPass::ReplaceAttentionQKVGradW(ge::ComputeGraph &g
                                                              const std::vector<ge::NodePtr> &matmul_list,
                                                              const std::vector<ge::NodePtr> &reduce_sum_list,
                                                              ge::NodePtr &new_node) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter ReplaceAttentionQKVGradW.");
   ge::OpDescPtr attention_qkv_gradw_desc;
   FUSION_PASS_MAKE_SHARED((attention_qkv_gradw_desc = std::make_shared<ge::OpDesc>(
                           matmul_list[0]->GetName() + "/attention_qkv_grad_w", kOpAttentionQKVGradW)), return FAILED);
@@ -199,12 +197,12 @@ Status AttentionQKVGradWFusionPass::ReplaceAttentionQKVGradW(ge::ComputeGraph &g
   // AddInputDesc
   FUSION_PASS_CHECK(attention_qkv_gradw_desc->AddInputDesc("x",
       matmul_list[0]->GetOpDesc()->GetInputDesc(0).Clone()) != GRAPH_SUCCESS,
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add input desc x to attention_qkv_grad_w."), return FAILED);
+      OP_LOGW(conf_trans_list[0], "failed to add input desc x to attention_qkv_grad_w."), return FAILED);
   for (size_t i = 0; i < matmul_list.size(); i++) {
     auto matmul_op_desc = matmul_list[i]->GetOpDesc();
     FUSION_PASS_CHECK(attention_qkv_gradw_desc->AddInputDesc(input_names[i],
         matmul_op_desc->GetInputDesc(1).Clone()) != GRAPH_SUCCESS,
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add input desc [%s] to attention_qkv_grad_w.", input_names[i]),
+        OP_LOGW(conf_trans_list[0], "failed to add input desc [%s] to attention_qkv_grad_w.", input_names[i]),
         return FAILED);
   }
   // AddOutputDesc
@@ -214,13 +212,13 @@ Status AttentionQKVGradWFusionPass::ReplaceAttentionQKVGradW(ge::ComputeGraph &g
     for (size_t j = 0; j < out_nodes.size(); j++) {
       auto op_desc = out_nodes[j]->GetOpDesc();
       FUSION_PASS_CHECK(attention_qkv_gradw_desc->AddOutputDesc(output_names[kKernelNum * i + j],
-          op_desc->GetOutputDesc(0).Clone()) != GRAPH_SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(),
+          op_desc->GetOutputDesc(0).Clone()) != GRAPH_SUCCESS, OP_LOGW(conf_trans_list[0],
           "failed to add output desc [%s] to attention_qkv_grad_w.", output_names[kKernelNum * i + j]), return FAILED);
     }
   }
   // AddNode
   auto attention_qkv_gradw_node = graph.AddNode(attention_qkv_gradw_desc);
-  FUSION_PASS_CHECK(attention_qkv_gradw_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(attention_qkv_gradw_node == nullptr, OP_LOGW(conf_trans_list[0],
       "failed to add attention_qkv_grad_w to graph."), return FAILED);
   new_node = attention_qkv_gradw_node;
   // Add Input Edge
