@@ -10,6 +10,7 @@ from tbe.common import buildcfg
 from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
 from tbe.common.register import register_op_compute
+from tbe.dsl.unify_schedule import unify_auto_schedule
 
 
 warnings.filterwarnings("ignore")
@@ -71,4 +72,41 @@ def test_unify_auto_schedule(_):
             return ins == expect_ins
 
 
+def test_support_fusion_bool_false(_):
+    class A: pass
+    compute_ = A()
+    compute_.if_support_fusion = lambda : False
+    ret = unify_auto_schedule._support_fusion(compute_)
+
+    return ret is False
+
+
+def test_support_fusion_none(_):
+    ret = unify_auto_schedule._support_fusion(None)
+
+    return ret is False
+
+
+def test_support_fusion_func_bool_true(_):
+    class A: pass
+    compute_ = A()
+    compute_.if_support_fusion = lambda : lambda : True
+    ret = unify_auto_schedule._support_fusion(compute_)
+
+    return ret is True
+
+
+def test_support_fusion_other_false(_):
+    class A: pass
+    compute_ = A()
+    compute_.if_support_fusion = lambda : 3
+    ret = unify_auto_schedule._support_fusion(compute_)
+
+    return ret is False
+
+
 ut_case.add_cust_test_func(test_func=test_unify_auto_schedule)
+ut_case.add_cust_test_func(test_func=test_support_fusion_bool_false)
+ut_case.add_cust_test_func(test_func=test_support_fusion_none)
+ut_case.add_cust_test_func(test_func=test_support_fusion_func_bool_true)
+ut_case.add_cust_test_func(test_func=test_support_fusion_other_false)
