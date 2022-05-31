@@ -76,7 +76,7 @@ class SparseTensor {
       bool valid = true;
       bool different = false;
       bool increasing = true;
-      for (int di = 0; di < dims_; ++di) {
+      for (int32_t di = 0; di < dims_; ++di) {
         if (ix_t(n, di) < 0 || ix_t(n, di) >= shape_[di]) {
           valid = false;
         }
@@ -90,18 +90,18 @@ class SparseTensor {
       }
       if (!valid) {
         KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld.", n);
-        return KERNEL_STATUS_PARAM_INVALID;
+        return static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
       }
       if (!increasing) {
         KERNEL_LOG_ERROR("indices is out of order, index=%lld.", n);
-        return KERNEL_STATUS_PARAM_INVALID;
+        return static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
       }
       if (!different) {
         KERNEL_LOG_ERROR("indices is repeated, index=%lld.", n);
-        return KERNEL_STATUS_PARAM_INVALID;
+        return static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
       }
     }
-    return KERNEL_STATUS_OK;
+    return static_cast<uint32_t>(KERNEL_STATUS_OK);
   }
   /*
    * sparse eigen tensor indices valid
@@ -110,8 +110,8 @@ class SparseTensor {
   template <typename T>
   uint32_t EigenTensorIndicesValidParaCheck(const CpuKernelContext &ctx, int64_t dims_size) const {
     uint32_t min_core_num = 1;
-    size_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-    uint32_t result = KERNEL_STATUS_OK;
+    int64_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+    uint32_t result = static_cast<uint32_t>(KERNEL_STATUS_OK);
     (void)aicpu::CpuKernelUtils::ParallelFor(
         ctx, dims_size, dims_size / max_core_num, [&](std::int64_t begin, std::int64_t end) {
         int64_t start = begin;
@@ -123,7 +123,7 @@ class SparseTensor {
           bool valid = true;
           bool different = false;
           bool increasing = true;
-          for (int di = 0; di < dims_; ++di) {
+          for (int32_t di = 0; di < dims_; ++di) {
             if (ix_t(n, di) < 0 || ix_t(n, di) >= shape_[di]) {
               valid = false;
             }
@@ -137,22 +137,22 @@ class SparseTensor {
           }
           if (!valid) {
             KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld.", n);
-            result = KERNEL_STATUS_PARAM_INVALID;
+            result = static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
             return;
           }
           if (!increasing) {
             KERNEL_LOG_ERROR("indices is out of order, index=%lld.", n);
-            result = KERNEL_STATUS_PARAM_INVALID;
+            result = static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
             return;
           }
           if (!different) {
             KERNEL_LOG_ERROR("indices is repeated, index=%lld.", n);
-            result = KERNEL_STATUS_PARAM_INVALID;
+            result = static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
             return;
           }
         }
       });
-    return result; 
+    return result;
   }
   /*
    * sparse eigen tensor indices valid
@@ -206,7 +206,7 @@ class SparseTensor {
     auto vals_t = vals_->vec<ValueT>();
     int64_t vals_size = vals_t.dimension(0);
     uint32_t min_core_num = 1;
-    size_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+    int64_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     uint32_t result = static_cast<uint32_t>(KERNEL_STATUS_OK);
     auto parallel_proc = [&](std::int64_t begin, std::int64_t end) {
       for (int64_t n = begin; n < end; ++n) {
