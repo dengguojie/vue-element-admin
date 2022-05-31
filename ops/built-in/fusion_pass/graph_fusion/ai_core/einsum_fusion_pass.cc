@@ -2648,43 +2648,41 @@ Status EinsumPass::SplitOpInFuzzScene(const std::string &equation, ComputeGraph 
 
   bmm_input_nodes.resize(in_equations.size());
   FUSION_PASS_CHECK(TransposeInput(in_equations, node, graph) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process input transpose"), return FAILED);
+                    OP_LOGW(node, "failed to process input transpose"), return fe::NOT_CHANGED);
 
-  FUSION_PASS_CHECK(StrideInput(in_equations) != SUCCESS,
-                    OP_LOGW(kFusedOpType.c_str(), "failed to process input stride"), return FAILED);
+  FUSION_PASS_CHECK(StrideInput(in_equations) != SUCCESS, OP_LOGW(node, "failed to process input stride"),
+                    return fe::NOT_CHANGED);
 
-  FUSION_PASS_CHECK(ReduceInput(in_equations, node, graph) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process input reduce"), return FAILED);
+  FUSION_PASS_CHECK(ReduceInput(in_equations, node, graph) != SUCCESS, OP_LOGW(node, "failed to process input reduce"),
+                    return fe::NOT_CHANGED);
 
   FUSION_PASS_CHECK(ReshapeInput(in_equations, out_equation, node, graph) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process input reshape"), return FAILED);
+                    OP_LOGW(node, "failed to process input reshape"), return fe::NOT_CHANGED);
 
-  FUSION_PASS_CHECK(DoBatchMatmul(in_equations, node, graph) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process batchmatmul"), return FAILED);
+  FUSION_PASS_CHECK(DoBatchMatmul(in_equations, node, graph) != SUCCESS, OP_LOGW(node, "failed to process batchmatmul"),
+                    return fe::NOT_CHANGED);
 
   FUSION_PASS_CHECK(ReshapeOutput(out_equation, node, graph, cur_out_equation, in_equations) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process output reshape"), return FAILED);
+                    OP_LOGW(node, "failed to process output reshape"), return fe::NOT_CHANGED);
 
-  FUSION_PASS_CHECK(InflatedOutput(out_equation) != SUCCESS,
-                    OP_LOGW(kFusedOpType.c_str(), "failed to process output inflated"), return FAILED);
+  FUSION_PASS_CHECK(InflatedOutput(out_equation) != SUCCESS, OP_LOGW(node, "failed to process output inflated"),
+                    return fe::NOT_CHANGED);
 
   FUSION_PASS_CHECK(TransposeOutput(out_equation, node, graph, cur_out_equation) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process output transpose"), return FAILED);
+                    OP_LOGW(node, "failed to process output transpose"), return fe::NOT_CHANGED);
 
   auto last_y_desc = GetPrevOutputDescAfterBmm(node);
-  FUSION_PASS_CHECK(
-      !(last_y_desc->MutableShape() == y_desc->MutableShape()),
-      OP_LOGE(kFusedOpType.c_str(), "last node output not equal with origin einsum[%s]", node->GetName().c_str()),
-      return FAILED);
+  FUSION_PASS_CHECK(!(last_y_desc->MutableShape() == y_desc->MutableShape()),
+                    OP_LOGW(node, "last node output not equal with origin einsum[%s]", node->GetName().c_str()),
+                    return fe::NOT_CHANGED);
 
-  FUSION_PASS_CHECK(ReLinkNodes(node) != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "failed to relink nodes"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ReLinkNodes(node) != SUCCESS, OP_LOGW(node, "failed to relink nodes"), return fe::NOT_CHANGED);
 
   // remove node
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "remove einsum node failed"), return FAILED);
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node), OP_LOGW(node, "remove einsum node failed"),
+                    return fe::NOT_CHANGED);
   return SUCCESS;
 }
 
 REGISTER_PASS("EinsumPass", BUILT_IN_GRAPH_PASS, EinsumPass);
-}  // namespace fe
+} // namespace fe

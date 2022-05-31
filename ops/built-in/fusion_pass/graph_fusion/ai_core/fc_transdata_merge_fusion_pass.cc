@@ -53,8 +53,7 @@ static const int NUM_4 = 4;
 vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FCTransdataMergePass1");
-  FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern1->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
       .AddOpDesc(PATTERN_REFORMAT, {"ReFormat"})
@@ -67,8 +66,7 @@ vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
   patterns.push_back(pattern1);
 
   FusionPattern* pattern2 = new (std::nothrow) FusionPattern("FCTransdataMergePass2");
-  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
   pattern2->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
       .AddOpDesc(PATTERN_REFORMAT, {"ReFormat"})
       .AddOpDesc(PATTERN_UNSQUEEZE_V2, {"UnsqueezeV2"})
@@ -83,7 +81,6 @@ vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
 }
 
 Status FCTransdataMergePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass fusion begin");
   ge::NodePtr transData_1 = GetNodeFromMapping(PATTERN_TRANSDATA_1, mapping);
   ge::NodePtr reFormat = GetNodeFromMapping(PATTERN_REFORMAT, mapping);
   ge::NodePtr reShape = GetNodeFromMapping(PATTERN_UNSQUEEZE_V2, mapping);
@@ -93,96 +90,83 @@ Status FCTransdataMergePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     reShape = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
   }
 
-  FUSION_PASS_CHECK(transData_1 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(reFormat == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reFormat is null"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(reShape == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reShape is null"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(transData_2 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_2 is null"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(transData_1 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
+                    return fe::NOT_CHANGED);
+  FUSION_PASS_CHECK(reFormat == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "reFormat is null"), return fe::NOT_CHANGED);
+  FUSION_PASS_CHECK(reShape == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "reShape is null"), return fe::NOT_CHANGED);
+  FUSION_PASS_CHECK(transData_2 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "transData_2 is null"),
+                    return fe::NOT_CHANGED);
 
   ge::OpDescPtr secondTransDataOpDesc = transData_2->GetOpDesc();
-  FUSION_PASS_CHECK(secondTransDataOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "transData_2 opdesc is null"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(secondTransDataOpDesc == nullptr, OP_LOGW(transData_2, "transData_2 opdesc is null"),
+                    return fe::NOT_CHANGED);
   ge::GeTensorDesc secondTransDataOutputTensor = secondTransDataOpDesc->GetOutputDesc(0);
   if (secondTransDataOutputTensor.GetDataType() != ge::DT_FLOAT16 &&
       secondTransDataOutputTensor.GetDataType() != ge::DT_INT8) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "Second transdata output data type is not fp16 or int8 ,not support fusion, fusion end");
+    OP_LOGI(transData_2, "Second transdata output data type is not fp16 or int8 ,not support fusion, fusion end");
     return SUCCESS;
   }
 
   if (secondTransDataOutputTensor.GetFormat() != ge::FORMAT_NC1HWC0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
+    OP_LOGI(transData_2,
             "Second transdata output format is not NC1HWC0 ,not support fusion, FCTransdataMergePass fusion end");
     return SUCCESS;
   }
   ge::GeTensorDesc secondTransDataInputTensor = secondTransDataOpDesc->GetInputDesc(0);
   if (secondTransDataInputTensor.GetFormat() != ge::FORMAT_NCHW &&
       secondTransDataInputTensor.GetFormat() != ge::FORMAT_ND) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
+    OP_LOGI(transData_2,
             "Second transdata input format is not NCHW or ND ,not support fusion, FCTransdataMergePass fusion end");
     return SUCCESS;
   }
 
   ge::OpDescPtr reshapeOpDesc = reShape->GetOpDesc();
-  FUSION_PASS_CHECK(reshapeOpDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Reshape opdesc is null"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshapeOpDesc == nullptr, OP_LOGW(reShape, "Reshape opdesc is null"), return fe::NOT_CHANGED);
   ge::GeTensorDesc reshapeInputTensor = reshapeOpDesc->GetInputDesc(0);
   ge::GeTensorDesc reshapeOutputTensor = reshapeOpDesc->GetOutputDesc(0);
   ge::GeShape reshapeInputShape = reshapeInputTensor.GetShape();
   auto xShape = reshapeInputShape.GetDims();
   ge::GeShape reshapeOutputShape = reshapeOutputTensor.GetShape();
   auto yShape = reshapeOutputShape.GetDims();
-  if ((xShape.size() != NUM_2) || (yShape.size() != NUM_4)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "reshape input and output dims is not match, FCTransdataMergePass fusion end");
-    return SUCCESS;
-  }
+  FUSION_PASS_CHECK(((xShape.size() != NUM_2) || (yShape.size() != NUM_4)),
+                    OP_LOGW(reShape, "reshape input and output dims is not match, FCTransdataMergePass fusion end"),
+                    return fe::NOT_CHANGED);
   int64_t reshapeInputDim0Value = xShape[0];
   int64_t reshapeInputDim1Value = xShape[1];
   int64_t reshapeOutputDim0Value = yShape[0];
   int64_t reshapeOutputDim1Value = yShape[1];
-  if (reshapeInputDim0Value != reshapeOutputDim0Value) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "reshapeInputDim0Value is not same with reshapeOutputDim0Value, fusion end");
-    return SUCCESS;
-  }
-  if (reshapeInputDim1Value != reshapeOutputDim1Value) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "reshapeInputDim1Value is not same with reshapeOutputDim1Value, fusion end");
-    return SUCCESS;
-  }
-
+  FUSION_PASS_CHECK(reshapeInputDim0Value != reshapeOutputDim0Value,
+                    OP_LOGW(reShape, "reshapeInputDim0Value is not same with reshapeOutputDim0Value, fusion end"),
+                    return fe::NOT_CHANGED);
+  FUSION_PASS_CHECK(reshapeInputDim1Value != reshapeOutputDim1Value,
+                    OP_LOGW(reShape, "reshapeInputDim1Value is not same with reshapeOutputDim1Value, fusion end"),
+                    return fe::NOT_CHANGED);
   ge::OpDescPtr firstTransDataOpDesc = transData_1->GetOpDesc();
-  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "transData_1 opdesc is null"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, OP_LOGW(transData_1, "transData_1 opdesc is null"),
+                    return fe::NOT_CHANGED);
   ge::GeTensorDesc firstTransDataInputTensor = firstTransDataOpDesc->GetInputDesc(0);
   if (static_cast<ge::Format>(ge::GetPrimaryFormat(firstTransDataInputTensor.GetFormat())) != ge::FORMAT_FRACTAL_NZ) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "firstTransDataInputTensor format is not FRACTAL_NZ, FCTransdataMergePass fusion end");
+    OP_LOGI(transData_1, "firstTransDataInputTensor format is not FRACTAL_NZ, FCTransdataMergePass fusion end");
     return SUCCESS;
   }
   ge::GeTensorDesc firstTransDataOutputTensor = firstTransDataOpDesc->GetOutputDesc(0);
   if (firstTransDataOutputTensor.GetFormat() != ge::FORMAT_ND) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "firstTransDataOutputTensor format is not ND, FCTransdataMergePass fusion end");
+    OP_LOGI(transData_1, "firstTransDataOutputTensor format is not ND, FCTransdataMergePass fusion end");
     return SUCCESS;
   }
   FUSION_PASS_CHECK(transData_1->GetOpDesc()->UpdateOutputDesc(0, secondTransDataOutputTensor) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update output desc fail."), return FAILED);
+                    OP_LOGW(transData_1, "Update output desc fail."), return fe::NOT_CHANGED);
   ge::AttrUtils::SetStr(transData_1->GetOpDesc(), "dst_format", "NC1HWC0");
   // delete transData_2 node
   FUSION_PASS_CHECK(graph.RemoveNode(reFormat) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"), return FAILED);
+                    OP_LOGW(reFormat, "remove node failed"), return fe::NOT_CHANGED);
   FUSION_PASS_CHECK(graph.RemoveNode(reShape) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"), return FAILED);
+                    OP_LOGW(reShape, "remove node failed"), return fe::NOT_CHANGED);
   FUSION_PASS_CHECK(graph.RemoveNode(transData_2) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"), return FAILED);
+                    OP_LOGW(transData_2, "remove node failed"), return fe::NOT_CHANGED);
   fusionNodes.push_back(transData_1);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "FCTransdataMergePass fusion end");
   return SUCCESS;
 }
 
 REGISTER_PASS("FCTransdataMergePass", SECOND_ROUND_BUILT_IN_GRAPH_PASS, FCTransdataMergePass);
-}  // namespace fe
+} // namespace fe

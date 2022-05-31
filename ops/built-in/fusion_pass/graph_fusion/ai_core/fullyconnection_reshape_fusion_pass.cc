@@ -54,8 +54,7 @@ static const int kDimNumThree = 3;
 vector<FusionPattern*> FullyConnectionReshapePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FullyConnectionReshapePass");
-  FUSION_PASS_CHECK(pattern1 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern1->AddOpDesc(PATTERN_RESHAPE, {"Reshape", "FlattenV2"})
       .AddOpDesc(PATTERN_FULLYCONNECTION, {"FullyConnection"})
@@ -68,36 +67,30 @@ vector<FusionPattern*> FullyConnectionReshapePass::DefinePatterns() {
 
 Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                           vector<ge::NodePtr>& /* fusionNodes */) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FullyConnectionReshapePass fusion begin");
   ge::NodePtr reshapeNode = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
   ge::NodePtr fullyConnectionNode = GetNodeFromMapping(PATTERN_FULLYCONNECTION, mapping);
 
-  FUSION_PASS_CHECK(reshapeNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeNode is null"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(fullyConnectionNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                    "fullyConnectionNode is null"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshapeNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "reshapeNode is null"),
+                    return fe::NOT_CHANGED);
+  FUSION_PASS_CHECK(fullyConnectionNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "fullyConnectionNode is null"),
+                    return fe::NOT_CHANGED);
 
-  if (reshapeNode->GetOutDataNodes().size() > 1)
-  {
-    return SUCCESS;
-  }
+  FUSION_PASS_CHECK(reshapeNode->GetOutDataNodes().size() > 1,
+                    OP_LOGW(reshapeNode, "output data nodes can not greater than 1"), return fe::NOT_CHANGED);
 
   ge::OpDescPtr fullyConnectionDesc = fullyConnectionNode->GetOpDesc();
   FUSION_PASS_CHECK(fullyConnectionDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fullyConnectionNode's OpDesc is null."),
-                    return PARAM_INVALID);
+                    OP_LOGW(fullyConnectionNode, "fullyConnectionNode's OpDesc is null."), return fe::NOT_CHANGED);
   int64_t axis = 0;
   FUSION_PASS_CHECK(
       !ge::AttrUtils::GetInt(fullyConnectionNode->GetOpDesc(), "axis", axis),
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Get node[%s]'s axis attr not success.", fullyConnectionNode->GetName().c_str()),
-      return false);
-  if (axis != 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "node[FullyConnection]'s axis is not 1, not support fusion, FullyConnectionReshapePass fusion end");
-    return SUCCESS;
-  }
-
+      OP_LOGI(fullyConnectionNode, "Get node[%s]'s axis attr not success.", fullyConnectionNode->GetName().c_str()),
+      return fe::NOT_CHANGED);
+  FUSION_PASS_CHECK(
+      axis != 1,
+      OP_LOGI(fullyConnectionNode,
+              "node[FullyConnection]'s axis is not 1, not support fusion, FullyConnectionReshapePass fusion end"),
+      return fe::NOT_CHANGED);
   ge::OpDescPtr reshapeDesc = reshapeNode->GetOpDesc();
   FUSION_PASS_CHECK(reshapeDesc == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeNode's OpDesc is null."),
@@ -181,4 +174,4 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
 }
 
 REGISTER_PASS("AFullyConnectionReshapePass", BUILT_IN_GRAPH_PASS, FullyConnectionReshapePass);
-}  // namespace fe
+} // namespace fe
