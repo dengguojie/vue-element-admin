@@ -151,5 +151,119 @@
     ],
     "attr": [],
     "case_name": "test_ApplyAdaMaxD_000"
+  },
+  {
+    "op": "ApplyAdaMaxD",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "var",
+        "type": "float16",
+        "typical_shape": [10]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "m",
+        "type": "float16",
+        "typical_shape": [10]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "v",
+        "type": "float16",
+        "typical_shape": [10]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "beta1_power",
+        "type": "float16",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "lr",
+        "type": "float16",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "beta1",
+        "type": "float16",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "beta2",
+        "type": "float16",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "epsilon",
+        "type": "float16",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [
+          -2
+        ],
+        "format": "ND",
+        "name": "grad",
+        "type": "float16",
+        "typical_shape": [10]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "name": "var_out",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "name": "m_out",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          10
+        ],
+        "format": "ND",
+        "name": "v_out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ApplyAdaMaxD_unknowshape_000"
   }
 ]

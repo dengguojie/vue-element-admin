@@ -4,12 +4,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "uint16"
-        ],
+        "format": "ND",
+        "type": "uint16",
         "shape": [
           2,
           16,
@@ -27,12 +23,8 @@
         "name": "x1"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "uint16"
-        ],
+        "format": "ND",
+        "type": "uint16",
         "shape": [
           2,
           16,
@@ -52,12 +44,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "uint16"
-        ],
+        "format": "ND",
+        "type": "uint16",
         "shape": [
           2,
           16,
@@ -72,12 +60,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           1,
           1
@@ -94,12 +78,8 @@
         "name": "x1"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           1,
           1
@@ -118,12 +98,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           1,
           1
@@ -137,12 +113,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           15,
           8,
@@ -171,12 +143,8 @@
         ]
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           15,
           8,
@@ -207,12 +175,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           15,
           8,
@@ -238,12 +202,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           8,
           375
@@ -260,12 +220,8 @@
         "name": "x1"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -296,12 +252,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -327,12 +279,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -361,12 +309,8 @@
         ]
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           8,
           375
@@ -385,12 +329,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -416,12 +356,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -450,12 +386,8 @@
         ]
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -486,12 +418,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -517,12 +445,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           1,
           24,
@@ -541,12 +465,8 @@
         "name": "x1"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           1,
           24,
@@ -567,12 +487,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int16"
-        ],
+        "format": "ND",
+        "type": "int16",
         "shape": [
           1,
           24,
@@ -588,12 +504,8 @@
     "op": "BitwiseOr",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           -1,
           8,
@@ -622,12 +534,8 @@
         ]
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           -1,
           8,
@@ -658,12 +566,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           15,
           8,
@@ -681,6 +585,61 @@
           8,
           375
         ]
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseOr_knownrankshape_BitwiseOr_01_ascend910a",
+    "calc_expect_func_file" : "test_BitwiseOr_golden.py:calc_expect_func",
+    "op": "BitwiseOr",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [-2],
+        "data_distribute": "uniform",
+        "name": "x1",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      },
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [-2],
+        "data_distribute": "uniform",
+        "name": "x2",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y"
       }
     ]
   }

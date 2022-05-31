@@ -683,5 +683,64 @@
         ]
       }
     ]
+  },
+  {
+    "case_name": "BitwiseXor_knownrankshape_BitwiseXor_01_ascend910a",
+    "calc_expect_func_file" : "test_BitwiseXor_golden.py:calc_expect_func",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "int16",
+        "shape": [
+          -2
+        ],
+        "data_distribute": "uniform",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      },
+      {
+        "format": "ND",
+        "type": "int16",
+        "shape": [
+          -2
+        ],
+        "data_distribute": "uniform",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "int16",
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y"
+      }
+    ]
   }
 ]
