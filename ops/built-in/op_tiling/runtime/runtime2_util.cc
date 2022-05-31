@@ -18,9 +18,6 @@
  * \file runtime2_util.cc
  * \brief
  */
-#include "../error_log.h"
-#include "../fusion_pass/common/fp16_t.hpp"
-#include "op_util.h"
 #include "runtime2_util.h"
 
 namespace optiling {

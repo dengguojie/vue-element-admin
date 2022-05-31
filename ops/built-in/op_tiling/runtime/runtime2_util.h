@@ -29,6 +29,9 @@
 #include "runtime/tiling_context.h"
 #include "runtime/tiling_parse_context.h"
 #include "context_util.h"
+#include "op_util.h"
+#include "../error_log.h"
+#include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
 template <typename T>
@@ -87,5 +90,25 @@ int64_t GetPartShapeSize(const gert::Shape& shape, size_t begin, size_t end);
  */
 bool AddReducMeanCof(const gert::Shape& input_shape, const ge::DataType input_dtype,
                      const std::vector<int32_t>& reduce_axis, gert::TilingData* tiling_data);
+
+/*
+ * @brief: for debug print runtime2 tiling data
+ * @param [in] context: gert::TilingContext
+ * @param [out] string: tiling data string
+ * @return string: result
+ */
+template <typename T>
+std::string GetTilingDataString(gert::TilingContext* context) {
+  auto tiling_data = context->GetRawTilingData();
+  auto data_size = tiling_data->GetDataSize();
+  std::string result;
+  const T *data = reinterpret_cast<const T*>(tiling_data->GetData());
+  size_t len = data_size / sizeof(T);
+  for (size_t i = 0; i < len; i++) {
+    result += std::to_string(data[i]);
+    result += " ";
+  }
+  return result;
+}
 }  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_RUNTIME2_UTIL_H_

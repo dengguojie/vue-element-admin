@@ -18,11 +18,11 @@
 using namespace gert;
 namespace optiling {
 namespace transdata {
-const  int64_t FOUR_IN_CORE_CNT = 4;
-const  int64_t PLN_CL_GATE = 64;
-void GetMcInfoPositive1010(int64_t dst_cl_lp_cnt, int64_t vnc_row_cl_left, int64_t ll_dst_cl_left,
-                           int64_t c_lp_cnt, int64_t c_left, int64_t dst_cr_lp_cnt, int64_t vnc_row_left,
-                           int64_t ll_dst_cr_left, int64_t core_num, TransDataMode1010Param& params) {
+const int64_t FOUR_IN_CORE_CNT = 4;
+const int64_t PLN_CL_GATE = 64;
+void GetMcInfoPositive1010(int64_t dst_cl_lp_cnt, int64_t vnc_row_cl_left, int64_t ll_dst_cl_left, int64_t c_lp_cnt,
+                           int64_t c_left, int64_t dst_cr_lp_cnt, int64_t vnc_row_left, int64_t ll_dst_cr_left,
+                           int64_t core_num, TransDataMode1010Param& params) {
   int64_t tmp_full_loop_cnt_cr = ge::FloorDiv(dst_cr_lp_cnt, core_num) > 0 ? core_num : 0;
   int64_t reminder_loop_cnt_cr = GetRemainder(dst_cr_lp_cnt, core_num);
   if (reminder_loop_cnt_cr == 0) {
@@ -129,14 +129,19 @@ void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int
 }
 
 ge::graphStatus TillingPositiveMode1010(TilingContext* context, const gert::Shape& in_shape,
-                                        const gert::Shape& out_shape, const RealFormat& src_format,
-                                        const RealFormat& dst_format, int64_t core_num,
-                                        int64_t block_elem_cnt, int64_t ub_size) {
+                                        const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                        const TransDataCompileInfo* compile_info) {
   auto params = context->GetTilingData<TransDataMode1010Param>();
   OPS_CHECK_NULL_WITH_CONTEXT(context, params);
+  auto src_td = context->GetInputDesc(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, src_td);
+  auto dtype = src_td->GetDataType();
+  int64_t block_elem_cnt = BLOCK_BYTE_SIZE / ge::GetSizeByDataType(dtype);
+  RealFormat src_format = real_formats->src;
+  RealFormat dst_format = real_formats->dst;
   int64_t axis_c_size = in_shape[in_shape.GetDimNum() - 1];
   int64_t c0_len = out_shape[out_shape.GetDimNum() - 1];
-  GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, *params);
+  GetCommonParam(compile_info->ub_size, block_elem_cnt, c0_len, axis_c_size, *params);
   params->tiling_mode = TILING_MODE_1010;
   params->vnc_line_size = params->vnc_line_size / c0_len * c0_len;
 
@@ -165,12 +170,13 @@ ge::graphStatus TillingPositiveMode1010(TilingContext* context, const gert::Shap
   params->pln_dst_cr_size = params->vnc_line_size / CeilAlign(params->c_lp_unit, c0_len);
   params->vnc_row_size = VNC_LINES;
   int64_t per_vnc_dst_cr_cnt = params->pln_dst_cr_size * params->vnc_row_size;
-  if (per_vnc_dst_cr_cnt >= axis_dst_cr_size && core_num > 1 && axis_dst_cl_size == 1) {
+  if (per_vnc_dst_cr_cnt >= axis_dst_cr_size && compile_info->block_dim > 1 && axis_dst_cl_size == 1) {
     int64_t new_vnc_lines = ge::CeilDiv(axis_dst_cr_size, params->pln_dst_cr_size);
     if (new_vnc_lines > VNC_LINES) {
       new_vnc_lines = VNC_LINES;
     }
-    int64_t vnc_per_core = new_vnc_lines > core_num ? ge::CeilDiv(new_vnc_lines, core_num) : 1;
+    int64_t vnc_per_core =
+        new_vnc_lines > compile_info->block_dim ? ge::CeilDiv(new_vnc_lines, compile_info->block_dim) : 1;
     params->vnc_row_size = vnc_per_core;
     per_vnc_dst_cr_cnt = params->pln_dst_cr_size * params->vnc_row_size;
   }
@@ -241,14 +247,15 @@ ge::graphStatus TillingPositiveMode1010(TilingContext* context, const gert::Shap
     per_vnc_dst_cl_cnt = params->pln_dst_cl_size * params->vnc_row_size;
     dst_cl_lp_cnt = ge::CeilDiv(axis_dst_cl_size, per_vnc_dst_cl_cnt);
     // adjust c-left parameters
-    if ((ge::FloorDiv(core_num, FOUR_IN_CORE_CNT) > dst_cl_lp_cnt) && (params->pln_dst_cl_size > PLN_CL_GATE)) {
+    if ((ge::FloorDiv(compile_info->block_dim, FOUR_IN_CORE_CNT) > dst_cl_lp_cnt) &&
+        (params->pln_dst_cl_size > PLN_CL_GATE)) {
       params->pln_dst_cl_size = ge::FloorDiv(params->pln_dst_cl_size, PLN_CL_GATE);
       per_vnc_dst_cl_cnt = params->pln_dst_cl_size * params->vnc_row_size;
       dst_cl_lp_cnt = ge::CeilDiv(axis_dst_cl_size, per_vnc_dst_cl_cnt);
     }
     dst_cl_left = GetRemainder(axis_dst_cl_size, per_vnc_dst_cl_cnt);
     vnc_row_cl_left = ge::CeilDiv(dst_cl_left, params->pln_dst_cl_size);
-    
+
     tmp_dst_cl_left = GetRemainder(dst_cl_left, params->pln_dst_cl_size);
     if (tmp_dst_cl_left > 0) {
       ll_dst_cl_left = tmp_dst_cl_left;
@@ -274,7 +281,9 @@ ge::graphStatus TillingPositiveMode1010(TilingContext* context, const gert::Shap
   }
 
   GetMcInfoPositive1010(dst_cl_lp_cnt, vnc_row_cl_left, ll_dst_cl_left, c_lp_cnt, c_left, dst_cr_lp_cnt, vnc_row_left,
-                        ll_dst_cr_left, core_num, *params);
+                        ll_dst_cr_left, compile_info->block_dim, *params);
+  OP_LOGD(context->GetNodeName(), "TillingPositiveMode1010 tiling_data:%s",
+          GetTilingDataString<int64_t>(context).c_str());
   return ge::SUCCESS;
 }
 }  // namespace transdata

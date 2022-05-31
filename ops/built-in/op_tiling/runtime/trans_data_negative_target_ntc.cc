@@ -20,9 +20,8 @@ namespace optiling {
 namespace transdata {
 static const int32_t NTC_FRAME_LEVEL = 2;
 
-void GetMcInfoNegative200(int64_t dst_cr_lp_cnt, int64_t dst_cr_left, int64_t src_c_lp_cnt,
-                          int64_t src_c_left, int64_t dst_cl_lp_cnt, int64_t dst_cl_left,
-                          int64_t core_num, TransDataNtc200Param& params) {
+void GetMcInfoNegative200(int64_t dst_cr_lp_cnt, int64_t dst_cr_left, int64_t src_c_lp_cnt, int64_t src_c_left,
+                          int64_t dst_cl_lp_cnt, int64_t dst_cl_left, int64_t core_num, TransDataNtc200Param& params) {
   int64_t tmp_full_loop_cnt_cr;
   if (ge::FloorDiv(dst_cr_lp_cnt, core_num) > 0) {
     tmp_full_loop_cnt_cr = core_num;
@@ -121,11 +120,18 @@ void GetMcInfoNegative200(int64_t dst_cr_lp_cnt, int64_t dst_cr_left, int64_t sr
 }
 
 ge::graphStatus TilingNegativeNtc200(TilingContext* context, const gert::Shape& in_shape, const gert::Shape& out_shape,
-                                     const RealFormat& src_format, const RealFormat& dst_format,
-                                     int64_t core_num, int64_t block_elem_cnt, int64_t ub_size,
-                                     ge::DataType dtype, int64_t vnc_fp32_flag) {
+                                     const RealSrcDstFormat* real_formats, const TransDataCompileInfo* compile_info) {
   auto params = context->GetTilingData<TransDataNtc200Param>();
   OPS_CHECK_NULL_WITH_CONTEXT(context, params);
+  auto src_td = context->GetInputDesc(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, src_td);
+  RealFormat src_format = real_formats->src;
+  RealFormat dst_format = real_formats->dst;
+  auto dtype = src_td->GetDataType();
+  int64_t block_elem_cnt = BLOCK_BYTE_SIZE / ge::GetSizeByDataType(dtype);
+  int64_t ub_size = compile_info->ub_size;
+  int64_t core_num = compile_info->block_dim;
+  int64_t vnc_fp32_flag = compile_info->vnc_fp32_flag;
   int64_t c0_len = in_shape[in_shape.GetDimNum() - 1];
   params->c0_len = c0_len;
 
@@ -332,7 +338,7 @@ ge::graphStatus TilingNegativeNtc200(TilingContext* context, const gert::Shape& 
 
   GetMcInfoNegative200(dst_cr_lp_cnt, dst_cr_left, src_c_lp_cnt, src_c_left, dst_cl_lp_cnt, dst_cl_left, core_num,
                        *params);
-
+  OP_LOGD(context->GetNodeName(), "TilingNegativeNtc200 tiling_data:%s", GetTilingDataString<int64_t>(context).c_str());
   return ge::GRAPH_SUCCESS;
 }
 }  // namespace transdata

@@ -29,9 +29,9 @@ void GetFullLpCnt(const int64_t& core_num, const int64_t& src_lp_cnt, int64_t& f
   full_lp_cnt = tmp_full_lp_cnt + reminder_lp_cnt;
 }
 
-void GetMcInfoPositiveNtc100(int64_t src_cr_lp_cnt, int64_t src_cr_size, int64_t src_c_lp_cnt,
-                             int64_t src_c_size, int64_t src_cl_lp_cnt, int64_t src_cl_size,
-                             int64_t core_num, TransDataNtc100Param& params) {
+void GetMcInfoPositiveNtc100(int64_t src_cr_lp_cnt, int64_t src_cr_size, int64_t src_c_lp_cnt, int64_t src_c_size,
+                             int64_t src_cl_lp_cnt, int64_t src_cl_size, int64_t core_num,
+                             TransDataNtc100Param& params) {
   int64_t full_lp_cnt_cr = 0;
   int64_t full_lp_cnt_c = 0;
   int64_t full_lp_cnt_cl = 0;
@@ -103,12 +103,19 @@ void GetMcInfoPositiveNtc100(int64_t src_cr_lp_cnt, int64_t src_cr_size, int64_t
 }
 
 ge::graphStatus TilingPositiveSourceNtc100(TilingContext* context, const gert::Shape& in_shape,
-                                           const gert::Shape& out_shape, const RealFormat& src_format,
-                                           const RealFormat& dst_format, int64_t core_num,
-                                           int64_t block_elem_cnt, int64_t ub_size,
-                                           ge::DataType dtype, int64_t c0_len) {
+                                           const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                           const TransDataCompileInfo* compile_info) {
   auto params = context->GetTilingData<TransDataNtc100Param>();
   OPS_CHECK_NULL_WITH_CONTEXT(context, params);
+  auto src_td = context->GetInputDesc(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, src_td);
+  RealFormat src_format = real_formats->src;
+  RealFormat dst_format = real_formats->dst;
+  auto dtype = src_td->GetDataType();
+  auto c0_len = transdata::GetC0SizeWithType(dtype);
+  int64_t block_elem_cnt = BLOCK_BYTE_SIZE / ge::GetSizeByDataType(dtype);
+  int64_t ub_size = compile_info->ub_size;
+  int64_t core_num = compile_info->block_dim;
   // get tiling params for using vnchwconv
   int64_t half_ub_size = c0_len == C0_16 ? ub_size / TRANSDATA_TILING_FACTOR_2 : ub_size / TRANSDATA_TILING_FACTOR_4;
   int64_t one_vnc_line_size = half_ub_size / VNC_LINES / block_elem_cnt * block_elem_cnt;
@@ -248,6 +255,8 @@ ge::graphStatus TilingPositiveSourceNtc100(TilingContext* context, const gert::S
   // mulitple core parameters
   GetMcInfoPositiveNtc100(src_cr_lp_cnt, axis_src_cr_size, src_c_lp_cnt, axis_src_c_size, src_cl_lp_cnt,
                           axis_src_cl_size, core_num, *params);
+  OP_LOGD(context->GetNodeName(), "TilingPositiveSourceNtc100 tiling_data:%s",
+          GetTilingDataString<int64_t>(context).c_str());
 
   return ge::GRAPH_SUCCESS;
 }

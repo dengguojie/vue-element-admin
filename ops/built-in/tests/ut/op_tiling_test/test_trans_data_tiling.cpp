@@ -247,6 +247,8 @@ TEST_F(TransDataTiling, TransData_tiling6) {
       "25200 5 1 512 5 5 10240 2 3952 1 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling7) {
@@ -281,6 +283,8 @@ TEST_F(TransDataTiling, TransData_tiling8) {
       "1 0 2 0 1 0 8 1 16384 1 1 0 256 1 16 2 256 8192 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling9) {
@@ -297,6 +301,8 @@ TEST_F(TransDataTiling, TransData_tiling9) {
       "256 3 1156 295936 2 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling10) {
@@ -313,6 +319,8 @@ TEST_F(TransDataTiling, TransData_tiling10) {
       "0 1 1 2 7 1 0 6241 1 512 1 1 0 31 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 /*
@@ -438,6 +446,8 @@ TEST_F(TransDataTiling, TransData_tiling11) {
       "256 7 121 30976 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1011Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling12) {
@@ -454,6 +464,8 @@ TEST_F(TransDataTiling, TransData_tiling12) {
       "121 1 0 1 14 14 1 1 121 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1010Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling13) {
@@ -470,6 +482,8 @@ TEST_F(TransDataTiling, TransData_tiling13) {
       "4 9 29 1 0 270000 1 512 1 270000 138240000 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1011Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0) {
@@ -486,6 +500,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0) {
       "1 0 1 0 1 7 1 0 2 1 30976 1 1 0 176 1 16 11 176 2816 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_C) {
@@ -502,6 +518,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_C) {
       "120 120 0 1 0 84 0 17 16 1 0 69 15 17 16 2 1 82798848 1 1 0 176 1 16 11 176 7527168 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_Cl) {
@@ -518,6 +536,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_Cl) {
       "84 0 1 7 17 16 69 15 1 7 17 16 42767 1 30976 1 1 0 176 1 16 11 176 2816 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_Cr) {
@@ -534,6 +554,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2NDC1HWC0_Cr) {
       "3968 3968 0 2 0 1 7 60 0 2 0 1 7 37 3664 2 1 240863744 1 1 0 176 1 32 42767 176 5632 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_HWCN2FRACTALZN) {
@@ -550,6 +572,8 @@ TEST_F(TransDataTiling, TransData_tiling_HWCN2FRACTALZN) {
       "0 1 1 2 7 1 0 6241 1 512 1 1 0 31 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZ_001) {
@@ -566,6 +590,8 @@ TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZ_001) {
       "50 0 1 13 1 0 1817 1 1280 1 1 0 71 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZN) {
@@ -582,6 +608,8 @@ TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZN) {
       "63488 1 0 1 1 1 0 1 0 1 1 1 3087 1 1 684288 1 1 0 42767 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZ_002) {
@@ -598,6 +626,8 @@ TEST_F(TransDataTiling, TransData_tiling_ND2FRACTALZ_002) {
       "1280 20480 1 0 3 0 1 0 1 0 2 0 1 0 1 1 1638400 1 1 0 1280 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCHW2FRACTALZ) {
@@ -614,6 +644,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCHW2FRACTALZ) {
       "124 2539520 42 9 84 0 1 0 42 9 69 15 1 0 1280 1 16 1 1 0 124 1 20480 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCHW2FRACTALZN) {
@@ -630,6 +662,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCHW2FRACTALZN) {
       "124 2539520 42 9 84 0 1 0 42 9 69 15 1 0 1280 1 16 1 1 0 124 1 20480 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_tiling_NCDHW2FRACTALZ3D) {
@@ -646,6 +680,8 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2FRACTALZ3D) {
       "1 2 14 1364 40 0 1 2 14 1364 1280 1 16 1 1 0 124 1 20480 427 124 2539520 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc100Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_NDC1HWC02NCDHW) {
@@ -662,6 +698,8 @@ TEST_F(TransDataTiling, TransData_NDC1HWC02NCDHW) {
       "92480 92480 92480 0 2 1 0 1 1 0 3 1 92480 1 1 0 289 1 16 4 289 23120 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_FRAZ3D2NCDHW) {
@@ -678,6 +716,8 @@ TEST_F(TransDataTiling, TransData_FRAZ3D2NCDHW) {
       "92480 16 92480 0 2 1 0 1 0 0 3 1 16 1 1 0 289 1 256 4 289 369920 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_FRAZ2HWCN) {
@@ -694,6 +734,8 @@ TEST_F(TransDataTiling, TransData_FRAZ2HWCN) {
       "3840 0 1 1 0 1 1 240 289 1 256 1 1 0 3 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_FRAZ3D2DHWCN) {
@@ -710,6 +752,8 @@ TEST_F(TransDataTiling, TransData_FRAZ3D2DHWCN) {
       "1 2 0 1 1 960 289 1 256 4 289 369920 3 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_FRAZ2NCHW) {
@@ -726,6 +770,8 @@ TEST_F(TransDataTiling, TransData_FRAZ2NCHW) {
       "23120 32 46240 0 1 1 0 1 0 23120 3 1 16 1 1 0 289 1 256 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_FRAZ2ND) {
@@ -742,6 +788,8 @@ TEST_F(TransDataTiling, TransData_FRAZ2ND) {
       "30720 23680 0 1 1 0 0 1 0 1 1 30720 1 1 0 37 1 16 1 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataNtc200Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_NZ2NC1HWC0) {
@@ -758,6 +806,8 @@ TEST_F(TransDataTiling, TransData_NZ2NC1HWC0) {
       "9 6912 2 3952 1 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_NDC1HWC02NDHWC) {
@@ -774,6 +824,8 @@ TEST_F(TransDataTiling, TransData_NDC1HWC02NDHWC) {
       "3952 1 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_NZ3D_2_NDHWC) {
@@ -790,6 +842,8 @@ TEST_F(TransDataTiling, TransData_NZ3D_2_NDHWC) {
       "112640 128 1 256 8 128 32768 2 2040 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_NZ3D_2_NDHWC_1) {
@@ -806,6 +860,8 @@ TEST_F(TransDataTiling, TransData_NZ3D_2_NDHWC_1) {
       "16 100000 16 100000 1 1 256 1 1 1600000 2 4080 1 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataTc201Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, ND_2_NZ) {
@@ -822,6 +878,8 @@ TEST_F(TransDataTiling, ND_2_NZ) {
       "54 1 1 1 2 0 63 1 0 1 1 1 1 2 33 1 0 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1010Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, ND_2_NZ_1) {
@@ -838,6 +896,8 @@ TEST_F(TransDataTiling, ND_2_NZ_1) {
       "0 1 1 0 1 0 0 2 0 1 1 1840 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1010Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);           
 }
 
 TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D) {
@@ -853,6 +913,8 @@ TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D) {
       "1011 65280 1 0 47 16 47 16 47 1 47 4080 1 0 47 768 256 16 15 47 1 0 1 0 1 0 1 0 1 0 1 0 1 1 256 1 1 768 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1011Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }
 
 TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D_1) {
@@ -869,4 +931,6 @@ TEST_F(TransDataTiling, TransData_NDHWC_2_NZ3D_1) {
       "5376 ";
   run_case(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling,
            this->test_info_->name());
+  int32_t tiling_len = sizeof(optiling::TransDataMode1011Param);
+  run_case_runtime2(input_shape, output_shape, dtype, src_format, dst_format, compile_info, expect_tiling, tiling_len);
 }

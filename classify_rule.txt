@@ -11,12 +11,6 @@ ops/built-in/dvpp/
 
 [canndev_3RD]
 third_party/
-ops/built-in/op_tiling/runtime/trans_data.cc
-ops/built-in/op_tiling/runtime/trans_data_positive_source_tc_1010.cc
-ops/built-in/op_tiling/runtime/trans_data_negative_target_tc_201.cc
-ops/built-in/op_tiling/runtime/trans_data_positive_source_ntc_100.cc
-ops/built-in/op_tiling/runtime/trans_data_positive_source_tc_1011.cc
-ops/built-in/op_tiling/runtime/trans_data_negative_target_ntc.cc
 
 [toolchain_op_test_frame]
 tools/msopgen/

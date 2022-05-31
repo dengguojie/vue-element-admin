@@ -391,9 +391,21 @@ enum RealFormat {
   RF_NCHT,
   RF_HNC,
   RF_HCNT,
+  RF_NCDH,
+  RF_NDCHT,
+  RF_NDHC,
+  RF_HCN,
+  RF_CHNT,
+  RF_DHCN,
+  RF_DCHNT,
 
   RF_END
 };
+
+const std::map<RealFormat, std::string> RealFormatToStringMap = {
+    {RF_NHC, "NHC"},   {RF_NCH, "NCH"},   {RF_NCHT, "NCHT"},   {RF_HNC, "HNC"},
+    {RF_HCNT, "HCNT"}, {RF_NCDH, "NCDH"}, {RF_NDCHT, "NDCHT"}, {RF_NDHC, "NDHC"},
+    {RF_HCN, "HCN"},   {RF_CHNT, "CHNT"}, {RF_DHCN, "DHCN"},   {RF_DCHNT, "DCHNT"}};
 struct RealFormatAxisType {
   int32_t rank;
   RealAxisType axis_type[8];
@@ -401,11 +413,18 @@ struct RealFormatAxisType {
 
 inline RealAxisType GetAxisType(RealFormat real_format, int32_t dim_index) {
   static RealFormatAxisType real_formats_axis_types[RF_END] = {
-      {3, {RAT_N, RAT_H, RAT_C}},         // NHC
-      {3, {RAT_N, RAT_C, RAT_H}},         // NCH
-      {4, {RAT_N, RAT_C, RAT_H, RAT_T}},  // NCHT
-      {3, {RAT_H, RAT_N, RAT_C}},         // HNC
-      {4, {RAT_H, RAT_C, RAT_N, RAT_T}},  // HCNT
+      {3, {RAT_N, RAT_H, RAT_C}},                // NHC
+      {3, {RAT_N, RAT_C, RAT_H}},                // NCH
+      {4, {RAT_N, RAT_C, RAT_H, RAT_T}},         // NCHT
+      {3, {RAT_H, RAT_N, RAT_C}},                // HNC
+      {4, {RAT_H, RAT_C, RAT_N, RAT_T}},         // HCNT
+      {4, {RAT_N, RAT_C, RAT_D, RAT_H}},         // NCDH
+      {5, {RAT_N, RAT_D, RAT_C, RAT_H, RAT_T}},  // NDCHT
+      {4, {RAT_N, RAT_D, RAT_H, RAT_C}},         // NDHC
+      {3, {RAT_H, RAT_C, RAT_N}},                // HCN
+      {4, {RAT_C, RAT_H, RAT_N, RAT_T}},         // CHNT
+      {4, {RAT_D, RAT_H, RAT_C, RAT_N}},         // DHCN
+      {5, {RAT_D, RAT_C, RAT_H, RAT_N, RAT_T}},  // DCHNT
   };
   if (real_format >= RF_END) {
     return RAT_END;
@@ -426,11 +445,19 @@ inline RealAxisType GetAxisType(RealFormat real_format, int32_t dim_index) {
 }
 inline int32_t GetAxisIndex(RealFormat real_format, RealAxisType axis_type) {
   static int32_t real_formats_axis_index[RF_END][RAT_END] = {
+      // C, H, N, T, D
       {2, 1, 0, -1, -1},  // NHC
       {1, 2, 0, -1, -1},  // NCH
       {1, 2, 0, 3, -1},   // NCHT
       {2, 0, 1, -1, -1},  // HNC
       {1, 0, 2, 3, -1},   // HCNT
+      {1, 3, 0, -1, 2},   // NCDH
+      {2, 3, 0, 4, 1},    // NDCHT
+      {3, 2, 0, -1, 1},   // NDHC
+      {1, 0, 2, -1, -1},  // HCN
+      {0, 1, 2, 3, -1},   // CHNT
+      {2, 1, 3, -1, 0},   // DHCN
+      {1, 2, 3, 4, 0},    // DCHNT
   };
   if (real_format >= RF_END) {
     return -1;
@@ -441,39 +468,48 @@ inline int32_t GetAxisIndex(RealFormat real_format, RealAxisType axis_type) {
   return real_formats_axis_index[real_format][axis_type];
 }
 
-using RealShapeConvertFunc = ge::graphStatus (*)(const gert::Shape& in_shape, const gert::Shape& out_shape,
-                                                 int64_t c0_size, gert::Shape& real_in_shape,
-                                                 gert::Shape& real_out_shape);
+struct RealSrcDstFormat {
+  RealSrcDstFormat() = default;
+  RealSrcDstFormat(const RealSrcDstFormat& other) = default;
+  RealSrcDstFormat& operator=(const RealSrcDstFormat& other) = default;
+  RealSrcDstFormat(RealFormat src, RealFormat dst) : src(src), dst(dst) {
+  }
+  RealFormat src;
+  RealFormat dst;
+};
+
+using RealShapeConvertFunc = bool (*)(const gert::Shape& in_shape, const gert::Shape& out_shape, int64_t c0_size,
+                                      gert::Shape& real_in_shape, gert::Shape& real_out_shape);
 RealShapeConvertFunc GetRealShapeConvertFunc(ge::Format src_format, ge::Format dst_format);
 
+using DoRealTilingFunc = ge::graphStatus (*)(gert::TilingContext* context, const gert::Shape& in_shape,
+                                             const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                             const TransDataCompileInfo* compile_info);
+DoRealTilingFunc GetRealTilingFunc(RealFormat src_rf, RealFormat dst_rf);
+
 ge::graphStatus TillingPositiveMode1010(gert::TilingContext* context, const gert::Shape& in_shape,
-                                        const gert::Shape& out_shape, const RealFormat& src_format,
-                                        const RealFormat& dst_format, int64_t core_num,
-                                        int64_t block_elem_cnt, int64_t ub_size);
+                                        const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                        const TransDataCompileInfo* compile_info);
 
 ge::graphStatus TilingNegativeTc201(gert::TilingContext* context, const gert::Shape& in_shape,
-                                    const gert::Shape& out_shape, const RealFormat& src_format,
-                                    const RealFormat& dst_format, int64_t core_num,
-                                    int64_t block_elem_cnt, int64_t ub_size, ge::DataType dtype);
+                                    const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                    const TransDataCompileInfo* compile_info);
 
 ge::graphStatus TilingPositiveSourceNtc100(gert::TilingContext* context, const gert::Shape& in_shape,
-                                           const gert::Shape& out_shape, const RealFormat& src_format,
-                                           const RealFormat& dst_format, int64_t core_num,
-                                           int64_t block_elem_cnt, int64_t ub_size,
-                                           ge::DataType dtype, int64_t c0_len);
+                                           const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                           const TransDataCompileInfo* compile_info);
 
 ge::graphStatus TillingPositiveMode1011(gert::TilingContext* context, const gert::Shape& in_shape,
-                                        const gert::Shape& out_shape, const RealFormat& src_format,
-                                        const RealFormat& dst_format, int64_t core_num,
-                                        int64_t block_elem_cnt, int64_t ub_size);
+                                        const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                        const TransDataCompileInfo* compile_info);
 
 ge::graphStatus TilingNegativeNtc200(gert::TilingContext* context, const gert::Shape& in_shape,
-                                     const gert::Shape& out_shape, const RealFormat& src_format,
-                                     const RealFormat& dst_format, int64_t core_num,
-                                     int64_t block_elem_cnt, int64_t ub_size, ge::DataType dtype,
-                                     int64_t vnc_fp32_flag);
+                                     const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                     const TransDataCompileInfo* compile_info);
 
 int64_t GetShapeSize(const gert::Shape& in_shape, int32_t pos);
-} // namespace transdata
-} // namespace optiling
-#endif // AIR_CXX_RUNTIME_V2_OP_IMPL_TRANSDATA_OP_IMPL_H_
+
+int64_t GetC0SizeWithType(ge::DataType& dtype);
+}  // namespace transdata
+}  // namespace optiling
+#endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_TRANSDATA_OP_IMPL_H_

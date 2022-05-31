@@ -114,10 +114,17 @@ void GetMcInfoNegative201(int64_t dst_r2nd_lp_cnt, int64_t dst_r2nd_left, int64_
 }
 
 ge::graphStatus TilingNegativeTc201(TilingContext* context, const gert::Shape& in_shape, const gert::Shape& out_shape,
-                                    const RealFormat& src_format, const RealFormat& dst_format, int64_t core_num,
-                                    int64_t block_elem_cnt, int64_t ub_size, ge::DataType dtype) {
+                                    const RealSrcDstFormat* real_formats, const TransDataCompileInfo* compile_info) {
   auto params = context->GetTilingData<TransDataTc201Param>();
   OPS_CHECK_NULL_WITH_CONTEXT(context, params);
+  auto src_td = context->GetInputDesc(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, src_td);
+  RealFormat src_format = real_formats->src;
+  RealFormat dst_format = real_formats->dst;
+  auto dtype = src_td->GetDataType();
+  int64_t block_elem_cnt = BLOCK_BYTE_SIZE / ge::GetSizeByDataType(dtype);
+  int64_t ub_size = compile_info->ub_size;
+  int64_t core_num = compile_info->block_dim;
   int64_t c0_len = in_shape[in_shape.GetDimNum() - 1];
   params->c0_len = c0_len;
 
@@ -342,6 +349,8 @@ ge::graphStatus TilingNegativeTc201(TilingContext* context, const gert::Shape& i
 
   GetMcInfoNegative201(dst_r2nd_lp_cnt, dst_r2nd_left, src_cl_lp_cnt, src_cl_left, src_left_lp_cnt, src_left_left,
                        core_num, *params);
+  OP_LOGD(context->GetNodeName(), "TilingNegativeTc201 tiling_data:%s",
+          GetTilingDataString<int64_t>(context).c_str());
   return ge::SUCCESS;
 }
 }  // namespace transdata

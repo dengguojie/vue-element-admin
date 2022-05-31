@@ -18,9 +18,9 @@
 using namespace gert;
 namespace optiling {
 namespace transdata {
-void GetMcInfoPositive1011(int64_t axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_left,
-                           int64_t c_lp_cnt, int64_t c_left, int64_t axis_src_cl_lp_cnt,
-                           int64_t axis_src_cl_left, int64_t core_num, TransDataMode1011Param& params) {
+void GetMcInfoPositive1011(int64_t axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_left, int64_t c_lp_cnt, int64_t c_left,
+                           int64_t axis_src_cl_lp_cnt, int64_t axis_src_cl_left, int64_t core_num,
+                           TransDataMode1011Param& params) {
   int64_t tmp_full_loop_cnt_r2nd = ge::FloorDiv(axis_dst_r2nd_lp_cnt, core_num) > 0 ? core_num : 0;
   int64_t reminder_loop_cnt_r2nd = GetRemainder(axis_dst_r2nd_lp_cnt, core_num);
   if (reminder_loop_cnt_r2nd == 0) {
@@ -96,8 +96,8 @@ void GetMcInfoPositive1011(int64_t axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_l
     params.lc_dst_r2nd_left = axis_dst_r2nd_left;
   }
 }
-void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len,
-                    int64_t axis_c_size, TransDataMode1011Param& params) {
+void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
+                    TransDataMode1011Param& params) {
   int64_t half_ub_size;
   if (c0_len == C0_16) {
     half_ub_size = ub_size / TRANSDATA_TILING_FACTOR_2;
@@ -116,15 +116,21 @@ void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len,
 }
 
 ge::graphStatus TillingPositiveMode1011(TilingContext* context, const gert::Shape& in_shape,
-                                        const gert::Shape& out_shape, const RealFormat& src_format,
-                                        const RealFormat& dst_format, int64_t core_num,
-                                        int64_t block_elem_cnt, int64_t ub_size) {
+                                        const gert::Shape& out_shape, const RealSrcDstFormat* real_formats,
+                                        const TransDataCompileInfo* compile_info) {
   auto params = context->GetTilingData<TransDataMode1011Param>();
   OPS_CHECK_NULL_WITH_CONTEXT(context, params);
+  auto src_td = context->GetInputDesc(0);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, src_td);
+  auto dtype = src_td->GetDataType();
+  int64_t block_elem_cnt = BLOCK_BYTE_SIZE / ge::GetSizeByDataType(dtype);
+  RealFormat src_format = real_formats->src;
+  RealFormat dst_format = real_formats->dst;
   int64_t axis_c_size = in_shape[in_shape.GetDimNum() - 1];
   int64_t c0_len = out_shape[out_shape.GetDimNum() - 1];
-  OP_TILING_CHECK(c0_len == 0,
-                  VECTOR_INNER_ERR_REPORT_TILIING("TransData", "invalid value c0_len = 0 "),
+  int64_t ub_size = compile_info->ub_size;
+  int64_t core_num = compile_info->block_dim;
+  OP_TILING_CHECK(c0_len == 0, VECTOR_INNER_ERR_REPORT_TILIING("TransData", "invalid value c0_len = 0 "),
                   return ge::GRAPH_FAILED);
   GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, *params);
 
@@ -208,6 +214,8 @@ ge::graphStatus TillingPositiveMode1011(TilingContext* context, const gert::Shap
 
   GetMcInfoPositive1011(axis_dst_r2nd_lp_cnt, axis_dst_r2nd_left, c_lp_cnt, c_left, axis_src_cl_lp_cnt,
                         axis_src_cl_left, core_num, *params);
+  OP_LOGD(context->GetNodeName(), "TillingPositiveMode1011 tiling_data:%s",
+          GetTilingDataString<int64_t>(context).c_str());
   return ge::GRAPH_SUCCESS;
 }
 }  // namespace transdata
