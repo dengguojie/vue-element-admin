@@ -760,6 +760,10 @@ class Conv2dTiling(CubeTilingOp):
         tiling_list = get_tiling(self.tiling_info)
         res_list = []
         for tiling in tiling_list:
+            if (tiling["tiling"]["CL0_matrix"][4] > 1 and tiling["tiling"]["BL1_shape"] is None) or \
+                (len(tiling["tiling"]["AL1_shape"]) > 2 and tiling["tiling"]["AL1_shape"][2] > 1):
+                log.info("dynamic not support innerbatch")
+                continue
             t_h, t_w = self.get_output_h(tiling["A_shape"][2]), \
                 self.get_output_w(tiling["A_shape"][3])
             if t_h == tiling["C_shape"][2] and t_w == tiling["C_shape"][3]:

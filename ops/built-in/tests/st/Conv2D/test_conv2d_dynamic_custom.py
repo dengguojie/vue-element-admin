@@ -3,6 +3,7 @@
 from te import tvm
 from impl.util.util_conv2d_dynamic import Conv2dParaProcess
 from impl.dynamic.conv2d import conv2d
+from impl.dynamic.depthwise_conv2d import depthwise_conv2d
 
 
 def test_conv2d_param_process():
@@ -107,9 +108,25 @@ def test_conv2d_pad_dy():
      
 print("adding Conv2D dyanmic pad -1 end")
 
+def test_conv2d_innerbatch_dy():
+    from tbe.common.context import op_context
+    inputs = {"ori_shape": (4, -1, 4, 336), "shape": (4, 21, -1, 4, 16), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16", "range": ((4, 4), (21, 21), (4, 104), (4, 4), (16, 16)), 
+             "ori_range": ((4, 4), (4, 104), (4, 4), (336, 336))}
+    weight = {"shape": (1029, 1, 16, 16), "ori_shape": (7, 7, 1, 336), "format": "FRACTAL_Z", "sub_format": 336, "ori_format": "HWCN", "dtype": "float16"}
+    bias_tensor = None
+    offset_w_tensor = None
+    strides = [1, 1, 1, 1]   
+    dilations = [1, 1, 1, 1] 
+    outputs = {'shape':(4, 21, -1, 4, 16), 'ori_shape':(4, -1, 4, 336), "format": "NC1HWC0",  'ori_format': 'NHWC', 'dtype': 'float16'}
+    with op_context.OpContext("dynamic"):
+        pads = [-1, -1, -1, -1]
+        depthwise_conv2d(inputs, weight, bias_tensor, None, outputs, strides, dilations, pads, data_format="NHWC", kernel_name="conv2d")
+     
+print("adding Conv2D dyanmic pad -1 end")
+
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic_cdim()
     test_conv2d_param_process()
     test_cachetiling_conv2d()
     test_conv2d_caculate_shape()
-    test_conv2d_pad_dy()
+    test_conv2d_innerbatch_dy()
