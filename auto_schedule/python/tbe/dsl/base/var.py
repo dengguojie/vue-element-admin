@@ -25,7 +25,7 @@ from typing import Dict
 from typing import Optional
 from typing import Tuple
 
-from tbe import tvm
+from tbe.dsl.base import var_api
 
 
 class Category(Enum):
@@ -52,7 +52,8 @@ class Var:
         :param addition:
         """
         # noinspection PyTypeChecker
-        self._tvm_var = tvm.var(name, dtype=dtype)
+        annotation = None if addition is None else addition.get("annotation")
+        self._tvm_var = var_api.var(name, dtype=dtype, annotation=annotation)
         self._name = name  # type: str
         self._bound = bound  # type: Tuple[int, Optional[int]]
         self._category = category  # type: Category

@@ -20,6 +20,73 @@ var api
 from tbe import tvm
 
 
+ORIGINAL = "original"
+
+
+def _set_var_attr(target_var, src_vars=None, original_op=None, annotation=None):
+    def merge(_vars):
+        _annotation, _originals = {}, []
+        exist_original = False
+        for x_var in _vars:
+            if not isinstance(x_var, tvm.expr.Expr):
+                _originals.append(x_var)
+                continue
+            _originals.append(x_var)
+            for k, v in get_annotation(x_var).items():
+                if k == ORIGINAL:
+                    _originals[-1] = v
+                    exist_original = True
+                    continue
+                if k not in _annotation or v not in _annotation.get(k):
+                    _annotation.setdefault(k, []).append(v)
+
+        for k in list(_annotation.keys()):
+            v = _annotation.get(k)
+            if len(v) == 1:
+                _annotation[k] = v[0]
+            else:
+                _annotation.pop(k)
+
+        if exist_original is False:
+            _originals = []
+
+        return _annotation, _originals
+
+    src_vars = [] if src_vars is None else src_vars
+    annotation = {} if annotation is None else annotation
+    merged_annotation, originals = merge(src_vars)
+    merged_annotation.update(annotation)
+
+    if ORIGINAL not in merged_annotation and originals and original_op:
+        original_expr = original_op(*originals)
+        ori_merged_annotation, _ = merge(originals)
+        set_annotation(original_expr, ori_merged_annotation)
+        merged_annotation[ORIGINAL] = original_expr
+
+    set_annotation(target_var, merged_annotation)
+
+
+def get_annotation(var_):
+    return tvm.get_expr_annotation(var_)
+
+
+def set_annotation(var_, annotation):
+    for k, v in annotation.items():
+        set_attr(var_, k, v)
+
+
+def get_attr_keys(var_):
+    return tvm.expr_attr_keys(var_)
+
+
+def get_attr(var_, key):
+    return tvm.get_expr_attr(var_, key)
+
+
+def set_attr(var_, key, value):
+    tvm.set_expr_attr(var_, key, value)
+
+
 def const(value, dtype=None, annotation=None):
     """construct a constant
 
@@ -40,6 +107,7 @@ def const(value, dtype=None, annotation=None):
         The result expression.
     """
     var_ = tvm.const(value, dtype)
+    _set_var_attr(var_, annotation=annotation)
 
     return var_
 
@@ -64,6 +132,7 @@ def var(name="tindex", dtype=None, annotation=None):
         The result symbolic variable.
     """
     var_ = tvm.var(name, dtype)
+    _set_var_attr(var_, annotation=annotation)
 
     return var_
 
@@ -91,6 +160,7 @@ def div(a, b, annotation=None):
     When operands are integers, returns truncdiv(a, b).
     """
     var_ = tvm.div(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.div, annotation=annotation)
 
     return var_
 
@@ -121,6 +191,7 @@ def indexdiv(a, b, annotation=None):
     non-negativeness.
     """
     var_ = tvm.indexdiv(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.indexdiv, annotation=annotation)
 
     return var_
 
@@ -151,6 +222,7 @@ def indexmod(a, b, annotation=None):
     non-negativeness.
     """
     var_ = tvm.indexmod(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.indexmod, annotation=annotation)
 
     return var_
 
@@ -179,6 +251,7 @@ def truncdiv(a, b, annotation=None):
     This is the default integer division behavior in C.
     """
     var_ = tvm.truncdiv(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.truncdiv, annotation=annotation)
 
     return var_
 
@@ -207,6 +280,7 @@ def truncmod(a, b, annotation=None):
     This is the default integer division behavior in C.
     """
     var_ = tvm.truncmod(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.truncmod, annotation=annotation)
 
     return var_
 
@@ -231,6 +305,7 @@ def floordiv(a, b, annotation=None):
         The result expression.
     """
     var_ = tvm.floordiv(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.floordiv, annotation=annotation)
 
     return var_
 
@@ -255,6 +330,7 @@ def floormod(a, b, annotation=None):
         The result expression.
     """
     var_ = tvm.floormod(a, b)
+    _set_var_attr(var_, src_vars=[a, b], original_op=tvm.floormod, annotation=annotation)
 
     return var_
 
@@ -276,6 +352,7 @@ def sum(*args, annotation=None):
         The result expression.
     """
     var_ = tvm.sum(*args)
+    _set_var_attr(var_, src_vars=args, original_op=tvm.sum, annotation=annotation)
 
     return var_
 
@@ -297,6 +374,7 @@ def min(*args, annotation=None):
         The result expression.
     """
     var_ = tvm.min(*args)
+    _set_var_attr(var_, src_vars=args, original_op=tvm.min, annotation=annotation)
 
     return var_
 
@@ -318,6 +396,7 @@ def max(*args, annotation=None):
         The result expression.
     """
     var_ = tvm.max(*args)
+    _set_var_attr(var_, src_vars=args, original_op=tvm.max, annotation=annotation)
 
     return var_
 
@@ -339,6 +418,7 @@ def prod(*args, annotation=None):
         The result expression.
     """
     var_ = tvm.prod(*args)
+    _set_var_attr(var_, src_vars=args, original_op=tvm.prod, annotation=annotation)
 
     return var_
 
@@ -360,5 +440,6 @@ def bit(*args, annotation=None):
         The result expression.
     """
     var_ = tvm.bit(*args)
+    _set_var_attr(var_, src_vars=args, original_op=tvm.bit, annotation=annotation)
 
     return var_

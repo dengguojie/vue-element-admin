@@ -595,5 +595,50 @@
     ],
     "auto_schedule/python/tbe/dsl/base/var.py":[
         "context/test_dynamic_context_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/d_format_util.py":[
+        "base/test_d_format_util_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/graph.py":[
+        "padding/test_graph_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/padding.py":[
+        "padding/test_padding_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulator.py":[
+        "padding/test_simulator_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/smath.py":[
+        "padding/test_smath_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/util.py":[
+        "padding/test_util_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/value.py":[
+        "padding/test_value_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/binary_sml.py":[
+        "padding_simulator/test_binary_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/bitwise_sml.py":[
+        "padding_simulator/test_bitwise_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/broadcast_sml.py":[
+        "padding_simulator/test_broadcast_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/cast_sml.py":[
+        "padding_simulator/test_cast_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/nn_sml.py":[
+        "padding_simulator/test_nn_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/reduce_sml.py":[
+        "padding_simulator/test_reduce_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/single_sml.py":[
+        "padding_simulator/test_single_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/padding/simulators/tensor_scalar_sml.py":[
+        "padding_simulator/test_tensor_scalar_sml_impl.py"
     ]
 }

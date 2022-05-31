@@ -25,6 +25,7 @@ from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils.varshape import get_variable
 from tbe.dsl.base import operation
+from tbe.dsl.base import var_api
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.tvm import api as tvm
 from tbe.tvm import expr as _expr
@@ -151,11 +152,11 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
     def _max(_shape):
         no_one_shape = [s for s in _shape if not expr_equal(s, 1)]
         if len(no_one_shape) == 0:
-            max_value = tvm.const(1)
+            max_value = var_api.max(*_shape)
         elif len(no_one_shape) == 1:
             max_value = no_one_shape[0]
         else:
-            max_value = tvm.max(*no_one_shape)
+            max_value = var_api.max(*no_one_shape)
             for value in no_one_shape:
                 if _greater_one(value):
                     max_value = value

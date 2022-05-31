@@ -259,6 +259,25 @@ auto_schedule:
       - auto_schedule/python/tbe/common/utils/varshape/variable_shape.py
       - auto_schedule/python/tbe/common/utils/varshape/vector/
       - auto_schedule/python/tbe/dsl/base/var_api.py
+      - auto_schedule/python/tbe/dsl/base/d_format_util.py
+      - auto_schedule/python/tbe/dsl/base/padding/__init__.py
+      - auto_schedule/python/tbe/dsl/base/padding/graph.py
+      - auto_schedule/python/tbe/dsl/base/padding/padding.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulator.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/__init__.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/binary_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/bitwise_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/broadcast_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/cast_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/cmpsel_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/multiple_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/nn_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/reduce_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/single_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/simulators/tensor_scalar_sml.py
+      - auto_schedule/python/tbe/dsl/base/padding/smath.py
+      - auto_schedule/python/tbe/dsl/base/padding/util.py
+      - auto_schedule/python/tbe/dsl/base/padding/value.py
     unrelease:
     llt:
       ut_check: true

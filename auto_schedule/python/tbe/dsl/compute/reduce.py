@@ -25,6 +25,8 @@ from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base import d_format_util
+from tbe.dsl.base import var_api
 
 from .cast import _cast
 from .math import vmuls
@@ -285,7 +287,15 @@ def _single_reduce_op(input_tensor,  # 'pylint: disable=too-many-statements
                 res_reshape.append(shape_l)
             else:
                 if keepdims:
-                    res_reshape.append(1)
+                    r_dim = var_api.const(1)
+                    if d_format_util.in_axis_type(shape_l, ["C1", "C0"]):
+                        ori_c = var_api.const(1)
+                        d_format_util.set_axis_type(ori_c, "C")
+                        d_format_util.set_original(r_dim, ori_c)
+                    for k, v in var_api.get_annotation(shape_l).items():
+                        if k not in var_api.get_attr_keys(r_dim):
+                            var_api.set_attr(r_dim, k, v)
+                    res_reshape.append(r_dim)
 
         # all axis reduce, the dim is 1
         if not res_reshape:
