@@ -25,7 +25,7 @@ namespace domi {
 Status AutoMappingFnSplit(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["out"] = pair<string, string>("y", "num_split");
-  if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS){
+  if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS) {
     OP_LOGE("split",
             "tensorflow plugin parser failed. auto mapping failed.");
     return FAILED;

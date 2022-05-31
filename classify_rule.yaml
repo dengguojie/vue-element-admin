@@ -925,6 +925,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/dynamic_lstm_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_rnn_plugin.cc
       - ops/built-in/framework/tf_plugin/einsum_plugin.cc
+      - ops/built-in/framework/tf_plugin/split_plugin.cc
       - ops/built-in/framework/tf_plugin/instance_norm_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/instance_norm_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
@@ -3509,7 +3510,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/histogram_fixed_width_plugin.cc
       - ops/built-in/framework/tf_plugin/decode_bbox_plugin.cc
       - ops/built-in/framework/tf_plugin/erf_plugin.cc
-      - ops/built-in/framework/tf_plugin/split_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_broadcast_plugin.cc
       - ops/built-in/framework/tf_plugin/expm1_plugin.cc
       - ops/built-in/framework/tf_plugin/bias_add_plugin.cc
