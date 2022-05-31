@@ -825,6 +825,7 @@ class CceConv2dBackpropFilterOp:
                             sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
                         sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],
                                                    'set_fmatrix', setfmatrix_dict)
+                        fmap_fractal_emit_insn_axis = fmap_fractal.op.axis[1]
                         if in_dtype == "float32":
                             # fmap_fractal axes:
                             #       group, batch, hw_mad_1, fkk(cin_1*hk*wk), cin_0->16, mad_0->8
@@ -836,7 +837,9 @@ class CceConv2dBackpropFilterOp:
                             fmap_fractal_axes = fmap_fractal.op.axis[1:]
                             fmap_fractal_axes[-2] = cin_inner
                             sch[fmap_fractal].reorder(fmap_fractal.op.axis[0], cin_outer, *fmap_fractal_axes)
-                        sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1], 'im2col')
+                            if kernel_height != 1 and kernel_width != 1:
+                                fmap_fractal_emit_insn_axis = cin_outer
+                        sch[fmap_fractal].emit_insn(fmap_fractal_emit_insn_axis, 'im2col')
             else:
                 if fmap_trans_flag:
                     sch[fmap].emit_insn(fmap.op.axis[1], 'dma_copy', {"layout_transform": "nd2nz"})
@@ -1043,10 +1046,6 @@ class CceConv2dBackpropFilterOp:
             if in_dtype == "float32":
                 tiling["AL0_matrix"][1] = 2
                 tiling["BL0_matrix"][0] = 2
-                # limitation by load3d instruction, n dim must be 1 in fp32
-                # otherwise we cannot combine 2 C0=8 in k dim
-                tiling["BL0_matrix"][1] = 1
-                tiling["CL0_matrix"][0] = 1
             return tiling
 
         def _handle_tbe_compile_para():
