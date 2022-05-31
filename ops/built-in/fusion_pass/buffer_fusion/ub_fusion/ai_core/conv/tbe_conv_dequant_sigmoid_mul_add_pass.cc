@@ -24,103 +24,95 @@
 
 namespace fe {
 using std::vector;
-static const string PATTERN_CONV = "convolution";
-static const string PATTERN_DEQUANT = "dequant";
-static const string PATTERN_OTHER_INPUT = "otherInput";
-static const string PATTERN_OTHER_INPUT2 = "otherInput2";
-static const string PATTERN_SIGMOID = "sigmoid";
-static const string PATTERN_MUL = "mul";
-static const string PATTERN_ADD = "add";
-static const string OP_TYPE_SIGMOID = "Sigmoid";
-static const string OP_TYPE_MUL = "Mul";
-static const string OP_TYPE_ADD = "Add";
+static const string kPatternConv = "convolution";
+static const string kPatternDeq = "dequant";
+static const string kPatternOtherInput = "otherInput";
+static const string kPatternOtherInput2 = "otherInput2";
+static const string kPatternSigmoid = "sigmoid";
+static const string kPatternMul = "mul";
+static const string kPatternAdd = "add";
+static const string kOpTypeSigmoid = "Sigmoid";
+static const string kOpTypeMul = "Mul";
+static const string kOpTypeAdd = "Add";
 
 vector<BufferFusionPattern*> ConvDequantSigmoidMulAddFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
-  string pattern_name = "TbeConvSigmoidMulAddFusionPass";
-  BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(pattern_name);
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
-  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name.c_str());
-  // define pattern rules
-  pattern
-      ->AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_SIGMOID, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_MUL, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_ADD, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .SetHead({PATTERN_CONV})
-      .SetOutputs(PATTERN_CONV, {PATTERN_SIGMOID, PATTERN_MUL}, TBE_OUTPUT_BRANCH_MULTI)
-      .SetOutputs(PATTERN_SIGMOID, {PATTERN_MUL})
-      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_ADD})
-      .SetOutputs(PATTERN_MUL, {PATTERN_ADD});
-  patterns.push_back(pattern);
-  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name.c_str());
-
-  string pattern_name1 = "ConvDequantSigmoidMulAddFusionPass";
-  BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pattern_name1, TBE_FUSION_OP_NUM_MAX + 1);
+  string pattern_name1 = "TbeConvSigmoidMulAddFusionPass";
+  BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pattern_name1);
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name1.c_str());
   // define pattern rules
   pattern1
-      ->AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+      ->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                   TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+      .AddOpDesc(kPatternSigmoid, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_OTHER_INPUT2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+      .AddOpDesc(kPatternMul, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_SIGMOID, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+      .AddOpDesc(kPatternAdd, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_MUL, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .AddOpDesc(PATTERN_ADD, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
-                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-      .SetHead({PATTERN_CONV})
-      .SetOutputs(PATTERN_CONV, {PATTERN_DEQUANT})
-      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DEQUANT})
-      .SetOutputs(PATTERN_DEQUANT, {PATTERN_SIGMOID, PATTERN_MUL}, TBE_OUTPUT_BRANCH_MULTI)
-      .SetOutputs(PATTERN_SIGMOID, {PATTERN_MUL})
-      .SetOutputs(PATTERN_MUL, {PATTERN_ADD})
-      .SetOutputs(PATTERN_OTHER_INPUT2, {PATTERN_ADD});
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternSigmoid, kPatternMul}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternSigmoid, {kPatternMul})
+      .SetOutputs(kPatternOtherInput, {kPatternAdd})
+      .SetOutputs(kPatternMul, {kPatternAdd});
   patterns.push_back(pattern1);
-  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
+
+  string pattern_name2 = "ConvDequantSigmoidMulAddFusionPass";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pattern_name2, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  // define pattern rules
+  pattern2
+      ->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDeq, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternSigmoid, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternMul, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternAdd, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                 TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDeq})
+      .SetOutputs(kPatternOtherInput, {kPatternDeq})
+      .SetOutputs(kPatternDeq, {kPatternSigmoid, kPatternMul}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternSigmoid, {kPatternMul})
+      .SetOutputs(kPatternMul, {kPatternAdd})
+      .SetOutputs(kPatternOtherInput2, {kPatternAdd});
+  patterns.push_back(pattern2);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name2.c_str());
   return patterns;
 }
 
-void SetDeqInfo(std::vector<AxisSplitMap>& split_maps, const ge::NodePtr conv_node, 
-                bool tensor_mode){
+void SetDeqInfo(std::vector<AxisSplitMap>& split_maps, const ge::NodePtr conv_node,
+                bool tensor_mode) {
   size_t split_maps_size = split_maps.size();
   for (size_t i = 0; i < split_maps_size; ++i) {
     auto exist_out = split_maps[i].GetOutputSplitInfoVec();
     std::vector<int64_t> c_out = {1};
     bool valid = !exist_out.empty() && exist_out[0].GetAxis() == c_out;
+    auto exist_in = split_maps[i].GetInputSplitInfoVec();
+    InputSplitInfo input_info;
     if (valid) {
-      if (tensor_mode) {
+      if (tensor_mode && !exist_in.empty() && input_info.Initialize()) {
         // process dequant deq_scale if exists
-        auto exist_in = split_maps[i].GetInputSplitInfoVec();
-        if (!exist_in.empty()) {
-          InputSplitInfo input_info;
-          if (!input_info.Initialize()) {
-            OP_LOGD("SetDeqInfo", "init input_info failed");
-          } else {
-            input_info.SetIndex(conv_node->GetInDataNodes().size());
-            // deq_scale is 5hd format
-            std::vector<int64_t> axis_c = {1};
-            input_info.SetAxis(axis_c);
-            // the index 0 info is the base op info
-            auto head_overlap = exist_in[0].GetHeadOverLap();
-            auto tail_overlap = exist_in[0].GetTailOverLap();
-            input_info.SetHeadOverLap(head_overlap);
-            input_info.SetTailOverLap(tail_overlap);
-            split_maps[i].AddInputSplitInfo(input_info);
-          }
-        }
+        input_info.SetIndex(conv_node->GetInDataNodes().size());
+        // deq_scale is 5hd format
+        std::vector<int64_t> axis_c = {1};
+        input_info.SetAxis(axis_c);
+        // the index 0 info is the base op info
+        auto head_overlap = exist_in[0].GetHeadOverLap();
+        auto tail_overlap = exist_in[0].GetTailOverLap();
+        input_info.SetHeadOverLap(head_overlap);
+        input_info.SetTailOverLap(tail_overlap);
+        split_maps[i].AddInputSplitInfo(input_info);
       }
       break;
     }
@@ -132,7 +124,7 @@ void SetDeqInfo(std::vector<AxisSplitMap>& split_maps, const ge::NodePtr conv_no
 void ConvDequantSigmoidMulAddFusionPass::SetSplitInfo(const BufferFusionMapping& mapping,
                                                       std::vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to SetSplitInfo.");
-  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(PATTERN_CONV, mapping);
+  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
   if (conv_nodes.empty()) {
     OP_LOGD(fused_op_type_.c_str(), "conv node not matched");
     return;
@@ -145,7 +137,7 @@ void ConvDequantSigmoidMulAddFusionPass::SetSplitInfo(const BufferFusionMapping&
   }
   // >>> start: get deq_scale mode
   bool tensor_mode = false;
-  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
+  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(kPatternDeq, mapping);
   if (!dequant_nodes.empty()) {
     auto deq_scale = dequant_nodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
     vector<int64_t> scalar = {1};
@@ -166,24 +158,24 @@ Status ConvDequantSigmoidMulAddFusionPass::GetFusionNodes(const BufferFusionMapp
   OP_LOGD(fused_op_type_.c_str(), "Begin to do ConvDequantSigmoidMulAddFusionPass.");
 
   fusion_nodes = GetMatchedNodes(mapping);
-  auto PatternSigmoid_nodes = GetMatchedNodesByDescName(PATTERN_SIGMOID, mapping);
-  auto PatternMul_nodes = GetMatchedNodesByDescName(PATTERN_MUL, mapping);
-  auto PatternAdd_nodes = GetMatchedNodesByDescName(PATTERN_ADD, mapping);
-  if (!PatternSigmoid_nodes.empty() && PatternSigmoid_nodes[0]->GetType() != "Sigmoid") {
+  auto PatternSigmoid_nodes = GetMatchedNodesByDescName(kPatternSigmoid, mapping);
+  auto PatternMul_nodes = GetMatchedNodesByDescName(kPatternMul, mapping);
+  auto PatternAdd_nodes = GetMatchedNodesByDescName(kPatternAdd, mapping);
+  if (!PatternSigmoid_nodes.empty() && PatternSigmoid_nodes[0]->GetType() != kOpTypeSigmoid) {
     fusion_nodes.clear();
     OP_LOGD(fused_op_type_.c_str(),
             "The optype of node[%s] should be Sigmoid, but actually is [%s], no need to do fusion.",
             PatternSigmoid_nodes[0]->GetName().c_str(), PatternSigmoid_nodes[0]->GetType().c_str());
      return SUCCESS;
   }
-  if (!PatternMul_nodes.empty() && PatternMul_nodes[0]->GetType() != "Mul") {
+  if (!PatternMul_nodes.empty() && PatternMul_nodes[0]->GetType() != kOpTypeMul) {
     fusion_nodes.clear();
     OP_LOGD(fused_op_type_.c_str(),
             "The optype of node[%s] should be Mul, but actually is [%s], no need to do fusion.",
             PatternMul_nodes[0]->GetName().c_str(), PatternMul_nodes[0]->GetType().c_str());
     return SUCCESS;
   }
-  if (!PatternAdd_nodes.empty() && PatternAdd_nodes[0]->GetType() != "Add") {
+  if (!PatternAdd_nodes.empty() && PatternAdd_nodes[0]->GetType() != kOpTypeAdd) {
     fusion_nodes.clear();
     OP_LOGD(fused_op_type_.c_str(),
             "The optype of node[%s] should be Add, but actually is [%s], no need to do fusion.",
