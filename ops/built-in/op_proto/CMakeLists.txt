@@ -42,6 +42,7 @@ set(_op_proto_utils
 
 set(_op_proto_srcs
   runtime/concat_d.cc
+  runtime/gatherv2.cc
   runtime/runtime_util.cc
   runtime/elewise.cc
   runtime/moving_sum_with_sigmoid.cc

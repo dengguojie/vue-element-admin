@@ -22,6 +22,7 @@ static std::map<std::string, std::vector<std::vector<std::string>>> operator_inf
     {"MovingSumWithSigmoid", {{"alpha", "energy", "offset"}, {"y"}, {"ksize"}}},
     {"DynSeqOuter", {{"x1", "x2", "seq_len1", "seq_len2"}, {"y"}, {}}},
     {"Expand", {{"x", "shape"}, {"y"}, {}}},
+    {"GatherV2", {{"x","indices","axis"}, {"y"}, {"batch_dims"}}},
     {"LayerNorm",
      {{"x", "gamma", "beta"}, {"y", "mean", "variance"}, {"begin_norm_axis", "begin_params_axis", "epsilon"}}},
     {"Mul", {{"x1", "x2"}, {"y"}, {}}},

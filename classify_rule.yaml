@@ -886,6 +886,7 @@ vector_B:
       - cmake/template/config.cmake
       - cmake/util/intf_pub_llt_gccnative.cmake
       - ops/common/inc/op_log.h
+      - ops/common/inc/op_const.h
       - ops/common/inc/op_util.h
       - ops/common/src/op_util.cc
       - ops/common/inc/error_code.h
@@ -1446,6 +1447,7 @@ vector_B:
       - ops/built-in/op_proto/runtime/flatten.cc
       - ops/built-in/op_proto/runtime/max_pool_v3.cc
       - ops/built-in/op_proto/runtime/transpose.cc
+      - ops/built-in/op_proto/runtime/gatherv2.cc
       - ops/built-in/op_proto/runtime/layer_norm.cc
       - ops/built-in/op_proto/runtime/concat_d.cc
       - ops/built-in/op_proto/runtime/elewise.cc
@@ -3935,7 +3937,6 @@ unkown:
       - ops/contrib/framework/tf_plugin/tensorflow_fasterrcnn_second_stage_processor_tik_plugin.cc
       - ops/common/inc/example.h
       - ops/common/inc/op_attr.h
-      - ops/common/inc/op_const.h
       - tools/op_test_frame/python/op_test_frame/__init__.py
       - tools/op_test_frame/python/op_test_frame/runtime/__init__.py
       - tools/op_test_frame/python/op_test_frame/config/llt_config.py

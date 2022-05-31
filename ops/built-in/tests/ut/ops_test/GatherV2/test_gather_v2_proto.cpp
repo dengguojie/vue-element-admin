@@ -7,7 +7,8 @@
 #include "utils/attr_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
-
+#include "all_ops.h"
+#include "common/utils/ut_op_common.h"
 class gather_v2 : public testing::Test {
  protected:
   static void SetUpTestCase() {
@@ -18,7 +19,94 @@ class gather_v2 : public testing::Test {
     std::cout << "gather_v2 TearDown" << std::endl;
   }
 };
+using namespace ut_util;
+TEST_F(gather_v2, gather_v2_infershape_runtime_test_1) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({6,7,2});
+  auto input_x_dtype = DT_INT32;
+  auto input_indices_shape = vector<int64_t>({9, 10, 2});
+  auto input_indices_dtype = DT_INT32;
+  // input axes info
+  vector<int64_t> input_axes_shape = {1};
+  auto axes_dtype = DT_INT32;
 
+  vector<int32_t> axes_value = {2};
+  // expect result info
+  std::vector<int64_t> expected_output_shape ={6, 7,9, 10, 2};
+
+  // gen GatherV2 op
+  auto test_op = op::GatherV2("GatherV2");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(test_op, indices, input_indices_shape, input_indices_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, axis, input_axes_shape, axes_dtype, FORMAT_ND, axes_value);
+  test_op.set_attr_batch_dims(0);
+
+  // run InferShapeAndType
+  test_op.InferShapeAndType();
+  vector<bool> input_const = {false,false, true};
+  CommonInferShapeOperator2(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  auto output_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+TEST_F(gather_v2, gather_v2_infershape_runtime_test_2) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({6,7,2});
+  auto input_x_dtype = DT_INT32;
+  auto input_indices_shape = vector<int64_t>({9, 10, 2});
+  auto input_indices_dtype = DT_INT32;
+  // input axes info
+  vector<int64_t> input_axes_shape = {1};
+  auto axes_dtype = DT_INT64;
+
+  vector<int64_t> axes_value = {2};
+  // expect result info
+  std::vector<int64_t> expected_output_shape ={6, 7,9, 10, 2};
+
+  // gen GatherV2 op
+  auto test_op = op::GatherV2("GatherV2");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(test_op, indices, input_indices_shape, input_indices_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, axis, input_axes_shape, axes_dtype, FORMAT_ND, axes_value);
+  test_op.set_attr_batch_dims(0);
+
+  // run InferShapeAndType
+  test_op.InferShapeAndType();
+  vector<bool> input_const = {false,false, true};
+  CommonInferShapeOperator2(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  auto output_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+TEST_F(gather_v2, gather_v2_infershape_runtime_test_3) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({6,7,2});
+  auto input_x_dtype = DT_INT32;
+  auto input_indices_shape = vector<int64_t>({9, 10, 2});
+  auto input_indices_dtype = DT_INT32;
+  // input axes info
+  vector<int64_t> input_axes_shape = {1};
+  auto axes_dtype = DT_INT32;
+
+  vector<int32_t> axes_value = {-1};
+  // expect result info
+  std::vector<int64_t> expected_output_shape ={6, 7,9, 10, 2};
+
+  // gen GatherV2 op
+  auto test_op = op::GatherV2("GatherV2");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(test_op, indices, input_indices_shape, input_indices_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, axis, input_axes_shape, axes_dtype, FORMAT_ND, axes_value);
+  test_op.set_attr_batch_dims(0);
+
+  // run InferShapeAndType
+  test_op.InferShapeAndType();
+  vector<bool> input_const = {false,false, true};
+  CommonInferShapeOperator2(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  auto output_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
 TEST_F(gather_v2, gather_v2_infershape_diff_test_1) {
   ge::op::GatherV2 op;
   op.UpdateInputDesc("x", create_desc_shape_range({6, 7}, ge::DT_INT32, ge::FORMAT_ND, {6, 7}, ge::FORMAT_ND, {{6,6},{7,7}}));
