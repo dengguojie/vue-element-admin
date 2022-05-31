@@ -29,7 +29,10 @@ const int POS_0 = 0;
 const int POS_1 = 1;
 
 Status ParseParamsBasicLSTMCellInputGrad(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(POS_1);
   orgTensorW.SetOriginFormat(ge::FORMAT_HWCN);
@@ -43,7 +46,10 @@ Status ParseParamsBasicLSTMCellInputGrad(const Message* op_src, ge::Operator& op
 }
 
 Status ParseParamsBasicLSTMCellWeightGrad(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetOutputDesc(POS_0);
   orgTensorW.SetOriginFormat(ge::FORMAT_HWCN);
@@ -57,7 +63,10 @@ Status ParseParamsBasicLSTMCellWeightGrad(const Message* op_src, ge::Operator& o
 }
 
 Status ParseParamsBasicLSTMCellCStateGrad(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
 
   return SUCCESS;
 }

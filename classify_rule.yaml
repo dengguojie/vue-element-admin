@@ -872,6 +872,8 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic_augru.py
       - ops/built-in/tbe/impl/dynamic/axpy_v2.py
       - ops/built-in/tbe/impl/augru_hidden_grad_cell.py
+      - ops/built-in/tbe/impl/batch_matmul_vector.py
+      - ops/built-in/tbe/impl/matmul_vector.py
       - ops/built-in/tbe/impl/gru_v2_hidden_grad_cell.py
       - ops/built-in/tbe/impl/dynamic/dynamic_rnn_v2.py
     unrelease:
@@ -2480,7 +2482,6 @@ unkown:
       - ops/built-in/tbe/impl/assign.py
       - ops/built-in/tbe/impl/selu.py
       - ops/built-in/tbe/impl/bn3d_training_reduce.py
-      - ops/built-in/tbe/impl/batch_matmul_vector.py
       - ops/built-in/tbe/impl/wts_arq.py
       - ops/built-in/tbe/impl/matrix_diag_d.py
       - ops/built-in/tbe/impl/truncate_div.py
@@ -2775,7 +2776,6 @@ unkown:
       - ops/built-in/tbe/impl/fractal_nz_2_nc1hwc0.py
       - ops/built-in/tbe/impl/bounding_box_decode.py
       - ops/built-in/tbe/impl/cum_computer.py
-      - ops/built-in/tbe/impl/matmul_vector.py
       - ops/built-in/tbe/impl/bessel_i1e.py
       - ops/built-in/tbe/impl/check_valid.py
       - ops/built-in/tbe/impl/div.py

@@ -1316,10 +1316,7 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
         else:
             build_list = [tensor_a, tensor_b, the_result, tensor_a_gm, tensor_b_gm]
 
-    from te.platform.cce_build import build_config# 'pylint: disable=import-outside-toplevel
-    with build_config:
-        tvm.lower(schedule, build_list, simple_mode=True)
-    with build_config:
+    with tbe_platform.build_config:
         tvm.build(schedule, build_list, "cce", name=kernel_name)
     if trans_flag:
         wk_size_a = 1

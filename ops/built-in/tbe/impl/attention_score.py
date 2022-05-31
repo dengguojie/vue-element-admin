@@ -660,9 +660,11 @@ class MatMulSoftmax:
             inner_m_range_value = self.x1_shape[3] // 4
         else:
             outer_m_range_value = 1
-            if m_size > 16:
+            if m_size % 4 != 0:
+                inner_m_range_value = self.x1_shape[3]
+            elif m_size > 16:
                 inner_m_range_value = self.x1_shape[3] // 2
-            elif m_size == 16:
+            elif m_size >= 12:
                 inner_m_range_value = 4
             else:
                 inner_m_range_value = 2

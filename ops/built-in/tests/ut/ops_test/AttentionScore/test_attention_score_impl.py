@@ -63,6 +63,24 @@ def test_attention_score_case001(test_args):
 
     test_tuili(batch_dim0, batch_dim1, seq_num, n_num, nz_dim, kernel_name)
 
+    kernel_name = "attention_socre_01"
+    batch_dim0 = 32
+    batch_dim1 = 16
+    seq_num = 8
+    n_num = 4
+    nz_dim = 16
+
+    test_tuili(batch_dim0, batch_dim1, seq_num, n_num, nz_dim, kernel_name)
+
+    kernel_name = "attention_socre_02"
+    batch_dim0 = 32
+    batch_dim1 = 16
+    seq_num = 16
+    n_num = 4
+    nz_dim = 16
+
+    test_tuili(batch_dim0, batch_dim1, seq_num, n_num, nz_dim, kernel_name)
+
 
 ut_case.add_cust_test_func(test_func=test_attention_score_case001)
 

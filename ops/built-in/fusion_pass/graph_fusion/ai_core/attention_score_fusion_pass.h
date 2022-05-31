@@ -34,7 +34,12 @@ private:
   ge::NodePtr batch_matmul_node2 = nullptr;
   ge::NodePtr batch_matmul_node3 = nullptr;
   ge::NodePtr softmax_node = nullptr;
-
+  ge::NodePtr confusion_transpose_node = nullptr;
+  ge::NodePtr fused_mul_add_node = nullptr;
+  bool traning = true;
+  Status SetAttrForBsbDesc(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status DeleteFusionNode(ge::ComputeGraph &graph);
+  Status AddControlEdgesForBsbNode(ge::NodePtr bsb_node);
   Status AddOutputEdgeForNode(ge::NodePtr ori_node, ge::NodePtr new_node, int unlinkIndex, int new_node_index) const;
 };
 }  // namespace fe

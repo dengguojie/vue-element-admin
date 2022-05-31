@@ -135,6 +135,106 @@ Status ZAttentionScoreFusionPass::CheckPlatformInfo() {
   return SUCCESS;
 }
 
+Status ZAttentionScoreFusionPass::SetAttrForBsbDesc(std::shared_ptr<ge::OpDesc> bsb_desc) {
+  bool first_transpose_a = false;
+  bool first_transpose_b = false;
+  bool second_transpose_a = false;
+  bool second_transpose_b = false;
+  float keep_prob = 0;
+  vector<int64_t> axes = {};
+  FUSION_PASS_CHECK(
+    !ge::AttrUtils::GetBool(batch_matmul_node1->GetOpDesc(), "adj_x1", first_transpose_a),
+    OP_LOGE(kNameFusionPass, "Failed to get adj_x1 of %s.", batch_matmul_node1->GetName().c_str()),
+    return FAILED);
+  FUSION_PASS_CHECK(
+    !ge::AttrUtils::GetBool(batch_matmul_node1->GetOpDesc(), "adj_x2", first_transpose_b),
+    OP_LOGE(kNameFusionPass, "Failed to get adj_x2 of %s.", batch_matmul_node1->GetName().c_str()),
+    return FAILED);
+  FUSION_PASS_CHECK(
+    !ge::AttrUtils::GetBool(batch_matmul_node2->GetOpDesc(), "adj_x1", second_transpose_a),
+    OP_LOGE(kNameFusionPass, "Failed to get adj_x1 of %s.", batch_matmul_node2->GetName().c_str()),
+    return FAILED);
+  FUSION_PASS_CHECK(
+    !ge::AttrUtils::GetBool(batch_matmul_node2->GetOpDesc(), "adj_x2", second_transpose_b),
+    OP_LOGE(kNameFusionPass, "Failed to get adj_x2 of %s.", batch_matmul_node2->GetName().c_str()),
+    return FAILED);
+  FUSION_PASS_CHECK(
+    !ge::AttrUtils::GetListInt(softmax_node->GetOpDesc(), "axes", axes),
+    OP_LOGE(kNameFusionPass, "Failed to get axes of %s.", softmax_node->GetName().c_str()),
+    return FAILED);
+  if (traning) {
+      FUSION_PASS_CHECK(
+        !ge::AttrUtils::GetFloat(softmax_node->GetOpDesc(), "keep_prob", keep_prob),
+        OP_LOGE(kNameFusionPass, "Failed to get keep_prod of %s.", softmax_node->GetName().c_str()),
+        return FAILED);
+  }
+  ge::AttrUtils::SetFloat(bsb_desc, "keep_prob", keep_prob);
+  ge::AttrUtils::SetBool(bsb_desc, "query_transpose", first_transpose_a);
+  ge::AttrUtils::SetBool(bsb_desc, "key_transpose", first_transpose_b);
+  ge::AttrUtils::SetBool(bsb_desc, "bmm_score_transpose_a", second_transpose_a);
+  ge::AttrUtils::SetBool(bsb_desc, "bmm_score_transpose_b", second_transpose_b);
+  ge::AttrUtils::SetListInt(bsb_desc, "softmax_axes", axes);
+
+  return SUCCESS;
+}
+
+Status ZAttentionScoreFusionPass::DeleteFusionNode(ge::ComputeGraph &graph) {
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(batch_matmul_node1),
+      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
+                           batch_matmul_node1->GetName().c_str()),
+      return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(fused_mul_add_node),
+      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
+                           fused_mul_add_node->GetName().c_str()),
+      return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(batch_matmul_node2),
+      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
+                           batch_matmul_node2->GetName().c_str()),
+      return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(softmax_node),
+      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
+                           softmax_node->GetName().c_str()),
+      return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(confusion_transpose_node),
+      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
+                           confusion_transpose_node->GetName().c_str()),
+      return FAILED);
+
+  return SUCCESS;
+}
+
+Status ZAttentionScoreFusionPass::AddControlEdgesForBsbNode(ge::NodePtr bsb_node) {
+  // add control edge
+  if (softmax_node->GetInControlAnchor()) {
+    for (auto out_control_anchor : softmax_node->GetInControlAnchor()->GetPeerOutControlAnchors()) {
+      FUSION_PASS_CHECK(
+          ge::GraphUtils::AddEdge(out_control_anchor, bsb_node->GetInControlAnchor()) != SUCCESS,
+          CUBE_CALL_ERR_REPORT(kNameFusionPass, "Add new node input control edge failed."),
+          return FAILED);
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_control_anchor, softmax_node->GetInControlAnchor()) != SUCCESS,
+                        CUBE_CALL_ERR_REPORT(kNameFusionPass,
+                                             "Remove softmax_node node input control edge failed."),
+                        return FAILED);
+    }
+  }
+  if (softmax_node->GetOutControlAnchor()) {
+    for (auto in_control_anchor : softmax_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(softmax_node->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
+                        CUBE_CALL_ERR_REPORT(kNameFusionPass, "Remove softmax node out control edge failed."),
+                        return FAILED);
+      FUSION_PASS_CHECK(
+          ge::GraphUtils::AddEdge(bsb_node->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
+          CUBE_CALL_ERR_REPORT(kNameFusionPass, "Add new node out control edge failed."), return FAILED);
+    }
+  }
+  return SUCCESS;
+}
+
 Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGI(kNameFusionPass, "Start ZAttentionScoreFusionPass.");
 
@@ -150,12 +250,12 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get batch_matmul_node2 not success."),
                     return PARAM_INVALID);
 
-  ge::NodePtr fused_mul_add_node = GetNodeFromMapping(PATTERN_FUSEDMULADD, mapping);
+  fused_mul_add_node = GetNodeFromMapping(PATTERN_FUSEDMULADD, mapping);
   FUSION_PASS_CHECK(fused_mul_add_node == nullptr,
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get fused_mul_add_node not success."),
                     return PARAM_INVALID);
 
-  ge::NodePtr confusion_transpose_node = GetNodeFromMapping(PATTERN_CONFUSIONTRANSPOSE, mapping);
+  confusion_transpose_node = GetNodeFromMapping(PATTERN_CONFUSIONTRANSPOSE, mapping);
   FUSION_PASS_CHECK(confusion_transpose_node == nullptr,
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get confusion_transpose_node not success."),
                     return PARAM_INVALID);
@@ -182,14 +282,14 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
     return NOT_CHANGED;
   }
   OP_LOGD(kNameFusionPass, "Check BatchMatMul node input dims.");
-  bool traning = true;
   softmax_node = GetNodeFromMapping(PATTERN_SOFTMAXV2WITHDROPOUT, mapping);
   if (softmax_node == nullptr) {
+    traning = false;
+    OP_LOGD(kNameFusionPass, "The traning flag is false.");
     softmax_node = GetNodeFromMapping(PATTERN_SOFTMAXV2, mapping);
     FUSION_PASS_CHECK(softmax_node == nullptr,
                       CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get softmax_node not success."),
                       return PARAM_INVALID);
-    traning = false;
   } else {
     OP_LOGI(kNameFusionPass, "Not Support traing, graph not change.");
     return NOT_CHANGED;
@@ -197,6 +297,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
 
   std::string temp_out_name = "";
   std::string quant_name = "Quant";
+  OP_LOGD(kNameFusionPass, "Check Quant graph.");
   for (auto netout_in_data_anchor : confusion_transpose_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     ge::NodePtr temp_out_node = netout_in_data_anchor->GetOwnerNode();
     temp_out_name = temp_out_node->GetName().c_str();
@@ -216,6 +317,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
       }
     }
   }
+
   OP_LOGD(kNameFusionPass, "Check the training net.");
   vector<int64_t> softmax_shape_dims = softmax_node->GetOpDesc()->MutableOutputDesc(0)->GetShape().GetDims();
   FUSION_PASS_CHECK(softmax_shape_dims.empty(),
@@ -235,7 +337,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   int64_t dim_three = 3;
   bool shape_not_matched = false;
   if ((batch_dim1 != ALIGN_UNIT && batch_dim1 != ALIGN_UNIT_BASE) || batch_dim2 != batch_dim3 ||
-      batch_matmul_node1_dims[dim_three] != batch_dim3_target) {
+    batch_matmul_node1_dims[dim_three] != batch_dim3_target) {
     shape_not_matched = true;
   }
   int64_t seq_value_factor = 32;
@@ -305,6 +407,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
                                              *(fused_mul_add_node->GetOpDesc()->MutableInputDesc(NUM_TWO))) != SUCCESS,
                       OP_LOGE(kNameFusionPass, "Add input5 of AttentionScore failed."),
                       return FAILED);
+    OP_LOGD(kNameFusionPass, "Add fused mul_add input to drop_mask.");
   }
 
   FUSION_PASS_CHECK(bsb_desc->AddOutputDesc("attention_score",
@@ -317,46 +420,11 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
                       OP_LOGE(kNameFusionPass, "Add output1 of AttentionScore failed."),
                       return FAILED);
   }
-  bool first_transpose_a = false;
-  bool first_transpose_b = false;
-  bool second_transpose_a = false;
-  bool second_transpose_b = false;
-  float keep_prob = 0;
-  vector<int64_t> axes = {};
-  FUSION_PASS_CHECK(
-    !ge::AttrUtils::GetBool(batch_matmul_node1->GetOpDesc(), "adj_x1", first_transpose_a),
-    OP_LOGE(kNameFusionPass, "Failed to get adj_x1 of %s.", batch_matmul_node1->GetName().c_str()),
-    return FAILED);
-  FUSION_PASS_CHECK(
-    !ge::AttrUtils::GetBool(batch_matmul_node1->GetOpDesc(), "adj_x2", first_transpose_b),
-    OP_LOGE(kNameFusionPass, "Failed to get adj_x2 of %s.", batch_matmul_node1->GetName().c_str()),
-    return FAILED);
-  FUSION_PASS_CHECK(
-    !ge::AttrUtils::GetBool(batch_matmul_node2->GetOpDesc(), "adj_x1", second_transpose_a),
-    OP_LOGE(kNameFusionPass, "Failed to get adj_x1 of %s.", batch_matmul_node2->GetName().c_str()),
-    return FAILED);
-  FUSION_PASS_CHECK(
-    !ge::AttrUtils::GetBool(batch_matmul_node2->GetOpDesc(), "adj_x2", second_transpose_b),
-    OP_LOGE(kNameFusionPass, "Failed to get adj_x2 of %s.", batch_matmul_node2->GetName().c_str()),
-    return FAILED);
-  FUSION_PASS_CHECK(
-    !ge::AttrUtils::GetListInt(softmax_node->GetOpDesc(), "axes", axes),
-    OP_LOGE(kNameFusionPass, "Failed to get axes of %s.", softmax_node->GetName().c_str()),
-    return FAILED);
-  if (traning) {
-      FUSION_PASS_CHECK(
-        !ge::AttrUtils::GetFloat(softmax_node->GetOpDesc(), "keep_prob", keep_prob),
-        OP_LOGE(kNameFusionPass, "Failed to get keep_prod of %s.", softmax_node->GetName().c_str()),
-        return FAILED);
-
-      ge::AttrUtils::SetBool(bsb_desc, "keep_prob", keep_prob);
-  }
-  ge::AttrUtils::SetBool(bsb_desc, "query_transpose", first_transpose_a);
-  ge::AttrUtils::SetBool(bsb_desc, "key_transpose", first_transpose_b);
-  ge::AttrUtils::SetBool(bsb_desc, "bmm_score_transpose_a", second_transpose_a);
-  ge::AttrUtils::SetBool(bsb_desc, "bmm_score_transpose_b", second_transpose_b);
-  ge::AttrUtils::SetListInt(bsb_desc, "softmax_axes", axes);
-
+  OP_LOGD(kNameFusionPass, "Start to SetAttrForBsbDesc.");
+  FUSION_PASS_CHECK(SUCCESS != SetAttrForBsbDesc(bsb_desc),
+                    OP_LOGE(kNameFusionPass, "SetAttrForBsbDesc failed."),
+                    return FAILED);
+  OP_LOGD(kNameFusionPass, "End to SetAttrForBsbDesc.");
   ge::NodePtr bsb_node = graph.AddNode(bsb_desc);
   FUSION_PASS_CHECK(bsb_node == nullptr,
                     OP_LOGE(kNameFusionPass, "Add AttentionScore to graph failed."),
@@ -393,6 +461,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
                                               bsb_node->GetInDataAnchor(NUM_FIVE)) != SUCCESS,
                       OP_LOGW(kNameFusionPass, "Failed to get nodes."),
                       return FAILED);
+    OP_LOGD(kNameFusionPass, "Add edge mul_add input to drop_mask.");
   }
   if (traning) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(softmax_node->GetOutDataAnchor(1),
@@ -404,62 +473,20 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
                       OP_LOGW(kNameFusionPass, "Failed to add edge bsbNode to bmm3."),
                       return FAILED);
   }
+  OP_LOGD(kNameFusionPass, "Start AddOutputEdgeForNode.");
   AddOutputEdgeForNode(confusion_transpose_node, bsb_node, 0, 0);
   if (traning) {
     AddOutputEdgeForNode(softmax_node, bsb_node, 0, 1);
   }
-
-  // add control edge
-  if (softmax_node->GetInControlAnchor()) {
-    for (auto out_control_anchor : softmax_node->GetInControlAnchor()->GetPeerOutControlAnchors()) {
-      FUSION_PASS_CHECK(
-          ge::GraphUtils::AddEdge(out_control_anchor, bsb_node->GetInControlAnchor()) != SUCCESS,
-          CUBE_CALL_ERR_REPORT(kNameFusionPass, "Add new node input control edge failed."),
-          return FAILED);
-      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_control_anchor, softmax_node->GetInControlAnchor()) != SUCCESS,
-                        CUBE_CALL_ERR_REPORT(kNameFusionPass,
-                                                       "Remove softmax_node node input control edge failed."),
-                        return FAILED);
-    }
-  }
-  if (softmax_node->GetOutControlAnchor()) {
-    for (auto in_control_anchor : softmax_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
-      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(softmax_node->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
-                        CUBE_CALL_ERR_REPORT(kNameFusionPass, "Remove softmax node out control edge failed."),
-                        return FAILED);
-      FUSION_PASS_CHECK(
-          ge::GraphUtils::AddEdge(bsb_node->GetOutControlAnchor(), in_control_anchor) != SUCCESS,
-          CUBE_CALL_ERR_REPORT(kNameFusionPass, "Add new node out control edge failed."), return FAILED);
-    }
-  }
-  // delete edge
-  // delete node
-  FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != graph.RemoveNode(batch_matmul_node1),
-      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
-                                     batch_matmul_node1->GetName().c_str()),
-      return FAILED);
-  FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != graph.RemoveNode(fused_mul_add_node),
-      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
-                                     fused_mul_add_node->GetName().c_str()),
-      return FAILED);
-  FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != graph.RemoveNode(batch_matmul_node2),
-      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
-                                     batch_matmul_node2->GetName().c_str()),
-      return FAILED);
-  FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != graph.RemoveNode(softmax_node),
-      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
-                                     softmax_node->GetName().c_str()),
-      return FAILED);
-  FUSION_PASS_CHECK(
-      ge::GRAPH_SUCCESS != graph.RemoveNode(confusion_transpose_node),
-      CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
-                                     confusion_transpose_node->GetName().c_str()),
-      return FAILED);
-
+  OP_LOGD(kNameFusionPass, "Start to AddControlEdgesForBsbNode.");
+  FUSION_PASS_CHECK(SUCCESS != AddControlEdgesForBsbNode(bsb_node),
+                    OP_LOGE(kNameFusionPass, "Failed to AddControlEdgesForBsbNode."),
+                    return FAILED);
+  OP_LOGD(kNameFusionPass, "End to AddControlEdgesForBsbNode.");
+  FUSION_PASS_CHECK(SUCCESS != DeleteFusionNode(graph),
+                    OP_LOGE(kNameFusionPass, "Failed to DeleteFusionNode."),
+                    return FAILED);
+  OP_LOGD(kNameFusionPass, "End to DeleteFusionNode.");
   return SUCCESS;
 }
 

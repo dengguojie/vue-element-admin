@@ -20,7 +20,6 @@ from __future__ import division
 
 from te import tvm
 from te import platform as cce
-from te.platform.cce_build import build_config
 from te.platform import insn_cmd
 import topi
 from impl.util.util_common import write_code
@@ -1468,9 +1467,7 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
     if trans_flag:
         build_list = [tensor_a, tensor_b, the_result, tensor_a_gm, tensor_b_gm]
 
-    with build_config:
-        tvm.lower(schedule, build_list, simple_mode=True)
-    with build_config:
+    with cce.build_config:
         tvm.build(schedule, build_list, "cce", name=kernel_name)
     if trans_flag:
         wk_size_a = shape_a[0] * shape_a[1] * 4
