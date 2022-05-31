@@ -82,17 +82,21 @@ static Status ParseOpToGraphCompress(const ge::Operator& op, Graph& graph) {
 
   ge::Operator compress;
   auto where = op::Where(ori_name + "_compress_condition").set_input_x(data1);
+
+  ge::Operator::OpListInt axis = {1};
+  auto squeeze_where = op::Squeeze(ori_name + "_squeeze_where").set_input_x(where).set_attr_axis(axis);
+
   if (need_flatten) {
     auto flatten = op::Flatten(ori_name + "_compress_flatten").set_input_x(data0).set_attr_axis(0);
     auto squeeze = op::Squeeze(ori_name + "_squeeze").set_input_x(flatten).set_attr_axis(0);
     compress = op::GatherV2(ori_name + "_compress")
                    .set_input_x(squeeze)
-                   .set_input_indices(where)
+                   .set_input_indices(squeeze_where)
                    .set_input_axis(const_op);
   } else {
     compress = op::GatherV2(ori_name + "_compress")
                    .set_input_x(data0)
-                   .set_input_indices(where)
+                   .set_input_indices(squeeze_where)
                    .set_input_axis(const_op);
   }
 

@@ -103,8 +103,18 @@ static Status ParseOpToGraphTopKV9(const ge::Operator& op, ge::Graph& graph) {
     ONNX_PLUGIN_LOGE("TopK", "get value from op failed");
     return FAILED;
   }
+
+  int dim = -1;
+  if (op.GetAttr("dim", dim) != SUCCESS) {
+    ONNX_PLUGIN_LOGE("TopK", "get dim from op failed");
+    return FAILED;
+  }  
+
   auto data1 = op::Const(ori_name + "_data1").set_attr_value(k_value);
-  auto topk = op::TopK(ori_name + "_TopK").set_input_x(data0).set_input_k(data1);
+  auto topk = op::TopK(ori_name + "_TopK")
+                  .set_input_x(data0)
+                  .set_input_k(data1)
+                  .set_attr_dim(dim);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
   output_indexs.emplace_back(topk, vector<std::size_t>{0});
