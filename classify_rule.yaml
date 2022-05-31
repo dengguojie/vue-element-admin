@@ -830,6 +830,7 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic/softmax_v2.py
       - ops/built-in/tbe/impl/dynamic_gru_v2_hidden.py
       - ops/built-in/tbe/impl/dynamic/swish.py
+      - ops/built-in/tbe/impl/deformable_offsets.py
       - ops/built-in/tbe/impl/leaky_relu.py
       - ops/built-in/tbe/impl/log_softmax_grad.py
       - ops/built-in/tbe/impl/log_softmax_v2.py
@@ -2895,7 +2896,6 @@ unkown:
       - ops/built-in/tbe/impl/ascend_requant_s16.py
       - ops/built-in/tbe/impl/layer_norm_beta_gamma_backprop.py
       - ops/built-in/tbe/impl/strided_slice.py
-      - ops/built-in/tbe/impl/deformable_offsets.py
       - ops/built-in/tbe/impl/adds.py
       - ops/built-in/tbe/impl/nll_loss.py
       - ops/built-in/tbe/impl/img_warp_resize.py

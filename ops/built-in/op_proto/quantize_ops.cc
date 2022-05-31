@@ -29,10 +29,12 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "util/util.h"
+#include "graph/utils/node_utils.h"
 
 namespace ge {
 const int64_t QUANT_3D_ORI_DIM = 5;
 const int64_t DUAL_INPUT = 2;
+static const string CONV3D_TYPE = "Conv3D";
 
 // ----------------Dequantize Op------------------------------------------------
 IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
@@ -98,31 +100,67 @@ COMMON_INFER_FUNC_REG(Quantize, QuantizeInferShape);
 // ----------------Quantize End----------------------------------------------
 
 // ----------------Dequantize End----------------------------------------------
+// get conv3d flag
+static bool GetConv3DFlag(RangeVistor<std::shared_ptr<ge::Node>, std::shared_ptr<const ge::Node>>& nodes) {
+  bool is_conv3d = false;
+  if (nodes.empty()) {
+    return is_conv3d;
+  }
+  // check if is Conv3D scene
+  for (auto node_ptr : nodes) {
+    if (node_ptr != nullptr && node_ptr->GetOpDesc()->GetType() == CONV3D_TYPE) {
+      is_conv3d = true;
+      break;
+    }
+  }
+  return is_conv3d;
+}
 
+// Set format for quant 3D scenes
 static void SetQuant3DFormat(ge::Operator& op, int64_t input_size) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   auto y_desc = op_desc->MutableOutputDesc(0);
   auto x_desc = op_desc->MutableInputDesc(0);
   vector<int64_t> shape_x = x_desc->MutableShape().GetDims();
-
-  if (shape_x.size() == QUANT_3D_ORI_DIM) {
-    string tf_tag = "";
-    Format format_3d;
-    op.GetAttr("tf_tag", tf_tag);
-
+  string tf_tag = "";
+  Format format_3d;
+  op.GetAttr("tf_tag", tf_tag);
+  OP_LOGD(TbeGetName(op).c_str(), "tf_tag is %s", tf_tag.c_str());
+  auto node = ge::NodeUtils::GetNodeFromOperator(op);
+  if (node == nullptr) {
+    return;
+  }
+  // quant scene
+  auto nodes = node->GetOutDataNodes();
+  if (input_size == DUAL_INPUT) {
+    // dequant/requant scene
+    nodes = node->GetInDataNodes();
+  }
+  bool is_conv3d = GetConv3DFlag(nodes);
+  if (!is_conv3d && input_size == DUAL_INPUT && !(tf_tag == "")) {
+    // conv3d + biasadd + dequant/requant
+    auto in_node = node->GetInDataNodes().at(0);
+    if (in_node == nullptr) {
+      return;
+    }
+    auto pre_nodes = in_node->GetInDataNodes();
+    is_conv3d = GetConv3DFlag(pre_nodes);
+  }
+  OP_LOGD(TbeGetName(op).c_str(), "is_conv3d is %d", is_conv3d);
+  // the shape size of 3D is 5-Dim
+  if (is_conv3d && shape_x.size() == QUANT_3D_ORI_DIM) {
+    // tf framework tf_tag is not empty
     if (tf_tag == "") {
-      OP_LOGD(TbeGetName(op).c_str(), "this op is not tf");
       format_3d = ge::FORMAT_NCDHW;
     } else {
-      OP_LOGD(TbeGetName(op).c_str(), "this op is tf");
       format_3d = ge::FORMAT_NDHWC;
     }
-
+    // set input and output format
     x_desc->SetOriginFormat(format_3d);
     x_desc->SetFormat(format_3d);
     y_desc->SetOriginFormat(format_3d);
     y_desc->SetFormat(format_3d);
-
+    // deuant and requant is dual input
     if (input_size == DUAL_INPUT) {
       auto scale_desc = op_desc->MutableInputDesc(1);
       scale_desc->SetOriginFormat(format_3d);

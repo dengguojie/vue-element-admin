@@ -250,6 +250,7 @@ def _conv_dequant_v200_int4(x, deq_scale, do_relu, tensor_flag, op_name):
     group = x.op.input_tensors[0].shape[0].value
     cout1_opt = x.op.input_tensors[0].shape[2].value
     int4_wout = x.op.attrs["int4_wout"]
+
     def lambda_func(batch, cout1, hout, wout, cout0):
         new_indice = util.get_scale_indices(deq_scale, tensor_flag, cout0, cout1)
         if op_name == "vdeq_cast":

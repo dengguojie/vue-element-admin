@@ -102,7 +102,7 @@ def get_global_ub_size(dim_group_c, elem_num_aligned, d_size, thread_num):
 
     ub_offsets = 6 * elem_num_aligned * d_size
     ub_offsets_int32 = 2 * elem_num_aligned * Constant.FP32_SIZE
-    ub_offsets_x_ceil_int32 = 4 * dim_group_c * Constant.FP32_SIZE
+    ub_offsets_x_ceil_int32 = 4 * Constant.CAL_MASK_SIZE * Constant.FP32_SIZE
     ub_weight_lt = 4 * dim_group_c * d_size
     ceil_sub_x = 5 * dim_group_c * d_size
     ub_offset_x_ceil_f32 = 4 * Constant.VECTOR_BYTES_SIZE
@@ -770,13 +770,13 @@ class DeformableOffsets:
             helper_1wc_start = (hlp_start + cur_w_index) * self.elem_num_offsets_filter
             self.load_offsets(offsets_1wc_start, helper_1wc_start, self.elem_num_aligned)
             ub_offsets_x_ceil_int32 = self.tik_instance.Tensor(
-                "int32", (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_offsets_x_ceil_int32")
+                "int32", (Constant.CAL_MASK_SIZE,), scope=tbe_platform.scope_ubuf, name="ub_offsets_x_ceil_int32")
             ub_offsets_y_ceil_int32 = self.tik_instance.Tensor(
-                "int32", (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_offsets_y_ceil_int32")
+                "int32", (Constant.CAL_MASK_SIZE,), scope=tbe_platform.scope_ubuf, name="ub_offsets_y_ceil_int32")
             ub_offsets_x_floor_int32 = self.tik_instance.Tensor(
-                "int32", (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_offsets_x_floor_int32")
+                "int32", (Constant.CAL_MASK_SIZE,), scope=tbe_platform.scope_ubuf, name="ub_offsets_x_floor_int32")
             ub_offsets_y_floor_int32 = self.tik_instance.Tensor(
-                "int32", (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_offsets_y_floor_int32")
+                "int32", (Constant.CAL_MASK_SIZE,), scope=tbe_platform.scope_ubuf, name="ub_offsets_y_floor_int32")
             ub_weight_lt = self.tik_instance.Tensor(
                 self.x_dtype, (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_weight_lt")
             ub_weight_lb = self.tik_instance.Tensor(

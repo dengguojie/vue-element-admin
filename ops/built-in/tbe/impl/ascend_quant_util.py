@@ -164,9 +164,9 @@ def get_conv_flag(x):
     Check if conv fusion
     """
     conv_flag = 0
-    if len(x.op.input_tensors) and ('mad1' in x.op.input_tensors[0].name or
-                                    'convolution_c_col_bias' in x.op.input_tensors[0].name or
-                                    'conv3d_c_col' in x.op.input_tensors[0].name):
+    if (len(x.op.input_tensors) > 0) and ('mad1' in x.op.input_tensors[0].name or
+                                          'convolution_c_col_bias' in x.op.input_tensors[0].name or
+                                          'conv3d_c_col' in x.op.input_tensors[0].name):
         conv_flag = 1
     return conv_flag
 
