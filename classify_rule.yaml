@@ -1122,7 +1122,6 @@ vector_B:
       - ops/built-in/op_tiling/split_d.cc
       - ops/built-in/op_tiling/split_v.cc
       - ops/built-in/op_tiling/strided_slice.cc
-      - ops/built-in/op_tiling/strided_slice.h
       - ops/built-in/op_tiling/tile_d.cc
       - ops/built-in/op_tiling/tile_with_axis.cc
       - ops/built-in/op_tiling/top_k.cc
@@ -2288,6 +2287,7 @@ unkown:
       - ops/built-in/op_tiling/prod_env_mat_a.cc
       - ops/built-in/op_tiling/prod_env_mat_a_calc_descrpt.cc
       - ops/built-in/op_tiling/ifmr.cc
+      - ops/built-in/op_tiling/strided_slice.h
       - ops/built-in/op_tiling/layer_norm_v1.h
       - ops/built-in/op_tiling/sparse_apply_common.cc
       - ops/built-in/op_tiling/vector_tiling_profiling.h
@@ -4058,8 +4058,6 @@ pytorch:
       - ops/built-in/op_proto/runtime/dyn_seq_outer.cc
       - ops/built-in/op_tiling/runtime/dyn_seq_outer.cc
       - ops/built-in/op_tiling/runtime/dyn_seq_outer.h
-      - ops/built-in/op_tiling/runtime/strided_slice_v3.cc
-      - ops/built-in/op_tiling/runtime/strided_slice_v3.h
       - ops/built-in/op_proto/runtime/expand.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
       - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc

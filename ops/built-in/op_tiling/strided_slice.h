@@ -42,9 +42,7 @@ struct SliceParameters {
 
 void SetSliceTilingData(const string& opType, SliceParameters& slice_params, utils::OpRunInfo& runInfo,
                         const ge::DataType& dtype, int32_t core_num, int32_t ub_size);
-void MakePerformanceParams(SliceParameters& parameters);
-void SetTilingMode(SliceParameters& parameters, int32_t core_num, const ge::DataType& dtype, int32_t ub_size,
-                   const std::string& opType);
+
 }  // namespace optiling
 
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_STRIDED_SLICE_H_

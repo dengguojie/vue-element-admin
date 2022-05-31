@@ -220,7 +220,6 @@ set(_optiling_files
   moving_sum_with_sigmoid.cc
   dyn_seq_outer.cc
   resize.cc
-  runtime/strided_slice_v3.cc
 )
 
 set(_op_tiling_include

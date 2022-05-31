@@ -117,8 +117,8 @@ static bool IsShapeEqualExceptLast(const std::vector<int64_t>& input_shape, cons
   return true;
 }
 
-void SetTilingMode(SliceParameters& parameters, int32_t core_num, const ge::DataType& dtype, int32_t ub_size,
-                   const std::string& opType) {
+static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const ge::DataType& dtype, int32_t ub_size,
+                          const std::string& opType) {
   int64_t dtype_size = GetSizeByDataType(dtype);
   const int32_t STRIDE_LIMIT = 65535 * BYTE_BLOCK;
   OP_LOGD(opType.c_str(), "param input/output tensor's data type: %s", to_string(dtype).c_str(), "dtype size: %lld",
@@ -248,7 +248,7 @@ static void MakeSameDims(SliceParameters* parametersPtr) {
   }
 }
 
-void MakePerformanceParams(SliceParameters& parameters) {
+static void MakePerformanceParams(SliceParameters& parameters) {
   SliceParameters perf_params;
   bool last_same = false;
   size_t perf_size = 0;

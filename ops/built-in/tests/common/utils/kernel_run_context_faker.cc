@@ -166,12 +166,12 @@ TilingContextFaker &TilingContextFaker::NodeIoNum(size_t input_num, size_t outpu
   base_faker_.NodeIoNum(input_num, output_num);
   return *this;
 }
-TilingContextFaker &TilingContextFaker::InputShapes(std::vector<void *> input_shapes) {
+TilingContextFaker &TilingContextFaker::InputShapes(std::vector<gert::StorageShape *> input_shapes) {
   input_shapes_ = std::move(input_shapes);
   UpdateInputs();
   return *this;
 }
-TilingContextFaker &TilingContextFaker::OutputShapes(std::vector<void *> output_shapes) {
+TilingContextFaker &TilingContextFaker::OutputShapes(std::vector<gert::StorageShape *> output_shapes) {
   output_shapes_ = std::move(output_shapes);
   UpdateInputs();
   return *this;
