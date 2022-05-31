@@ -200,7 +200,7 @@ uint32_t SplitVCpuKernel::SplitVCompute(T *input_data_ptr,
 }
 
 template <typename T>
-uint32_t SplitVCpuKernel::DoCompute(const CpuKernelContext &ctx) {
+uint32_t SplitVCpuKernel::DoCompute() {
   T *input_data_ptr = reinterpret_cast<T *>(value_data_ptr_);
   std::vector<T *> output_data_vec;
   output_data_vec.resize(static_cast<std::size_t>(num_split_));
@@ -229,29 +229,29 @@ uint32_t SplitVCpuKernel::Compute(CpuKernelContext &ctx) {
                      KERNEL_STATUS_PARAM_INVALID, "CheckAndInitParams failed.");
   switch (data_type_) {
     case DT_FLOAT16:
-      return DoCompute<Eigen::half>(ctx);
+      return DoCompute<Eigen::half>();
     case DT_FLOAT:
-      return DoCompute<float>(ctx);
+      return DoCompute<float>();
     case DT_DOUBLE:
-      return DoCompute<double>(ctx);
+      return DoCompute<double>();
     case DT_BOOL:
-      return DoCompute<bool>(ctx);
+      return DoCompute<bool>();
     case DT_INT8:
-      return DoCompute<int8_t>(ctx);
+      return DoCompute<int8_t>();
     case DT_INT16:
-      return DoCompute<int16_t>(ctx);
+      return DoCompute<int16_t>();
     case DT_INT32:
-      return DoCompute<int32_t>(ctx);
+      return DoCompute<int32_t>();
     case DT_INT64:
-      return DoCompute<int64_t>(ctx);
+      return DoCompute<int64_t>();
     case DT_UINT8:
-      return DoCompute<uint8_t>(ctx);
+      return DoCompute<uint8_t>();
     case DT_UINT16:
-      return DoCompute<uint16_t>(ctx);
+      return DoCompute<uint16_t>();
     case DT_UINT32:
-      return DoCompute<uint32_t>(ctx);
+      return DoCompute<uint32_t>();
     case DT_UINT64:
-      return DoCompute<uint64_t>(ctx);
+      return DoCompute<uint64_t>();
     default:
       KERNEL_LOG_ERROR("Unsupport datatype[%s]", DTypeStr(data_type_).c_str());
       return KERNEL_STATUS_PARAM_INVALID;

@@ -105,21 +105,21 @@ uint32_t MulCpuKernel::MulCompute(const CpuKernelContext &ctx) {
       return KERNEL_STATUS_OK;
     }
     case 1:
-      return MulCalculateWithAlignedCheck<1, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<1, T>(calcInfo);
     case 2:
-      return MulCalculateWithAlignedCheck<2, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<2, T>(calcInfo);
     case 3:
-      return MulCalculateWithAlignedCheck<3, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<3, T>(calcInfo);
     case 4:
-      return MulCalculateWithAlignedCheck<4, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<4, T>(calcInfo);
     case 5:
-      return MulCalculateWithAlignedCheck<5, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<5, T>(calcInfo);
     case 6:
-      return MulCalculateWithAlignedCheck<6, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<6, T>(calcInfo);
     case 7:
-      return MulCalculateWithAlignedCheck<7, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<7, T>(calcInfo);
     case 8:
-      return MulCalculateWithAlignedCheck<8, T>(ctx, calcInfo);
+      return MulCalculateWithAlignedCheck<8, T>(calcInfo);
     default:
       KERNEL_LOG_ERROR("[%s] Rank of output should less than 8 but get [%zu].",
                        ctx.GetOpType().c_str(), calcInfo.shape_out.size());
@@ -128,11 +128,11 @@ uint32_t MulCpuKernel::MulCompute(const CpuKernelContext &ctx) {
 }
 
 template <int32_t RANK, typename T>
-uint32_t MulCpuKernel::MulCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calcInfo) {
+uint32_t MulCpuKernel::MulCalculateWithAlignedCheck(BCalcInfo &calcInfo) {
   if (AlignedCheck(calcInfo)) {
-    return MulCalculate<RANK, T, Eigen::Aligned>(ctx, calcInfo);
+    return MulCalculate<RANK, T, Eigen::Aligned>(calcInfo);
   }
-  return MulCalculate<RANK, T, Eigen::Unaligned>(ctx, calcInfo);
+  return MulCalculate<RANK, T, Eigen::Unaligned>(calcInfo);
 }
 
 bool MulCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) const {
@@ -142,7 +142,7 @@ bool MulCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) const {
 }
 
 template <int32_t RANK, typename T, int32_t OPTION>
-uint32_t MulCpuKernel::MulCalculate(const CpuKernelContext &ctx, BCalcInfo &calcInfo) {
+uint32_t MulCpuKernel::MulCalculate(BCalcInfo &calcInfo) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input0(
       static_cast<T *>(calcInfo.input_0->GetData()),
       calcInfo.input_0->GetTensorShape()->NumElements());

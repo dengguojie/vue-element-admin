@@ -88,35 +88,35 @@ string AssertCpuKernel::SummarizeValue(const Tensor &t, int64_t max_entries, con
   }
   switch (t.GetDataType()) {
     case DT_FLOAT16:
-      return SummarizeArray<Eigen::half>(limit, num_elts, t, print_v2);
+      return SummarizeArray<Eigen::half>(limit, num_elts, t);
     case DT_FLOAT:
-      return SummarizeArray<float>(limit, num_elts, t, print_v2);
+      return SummarizeArray<float>(limit, num_elts, t);
     case DT_DOUBLE:
-      return SummarizeArray<double>(limit, num_elts, t, print_v2);
+      return SummarizeArray<double>(limit, num_elts, t);
     case DT_UINT32:
-      return SummarizeArray<uint32_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<uint32_t>(limit, num_elts, t);
     case DT_INT32:
-      return SummarizeArray<int32_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<int32_t>(limit, num_elts, t);
     case DT_UINT8:
     case DT_QUINT8:
-      return SummarizeArray<uint8_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<uint8_t>(limit, num_elts, t);
     case DT_UINT16:
     case DT_QUINT16:
-      return SummarizeArray<uint16_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<uint16_t>(limit, num_elts, t);
     case DT_INT16:
     case DT_QINT16:
-      return SummarizeArray<int16_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<int16_t>(limit, num_elts, t);
     case DT_INT8:
     case DT_QINT8:
-      return SummarizeArray<int8_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<int8_t>(limit, num_elts, t);
     case DT_UINT64:
-      return SummarizeArray<uint64_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<uint64_t>(limit, num_elts, t);
     case DT_INT64:
-      return SummarizeArray<int64_t>(limit, num_elts, t, print_v2);
+      return SummarizeArray<int64_t>(limit, num_elts, t);
     case DT_BOOL:
-      return SummarizeArray<bool>(limit, num_elts, t, print_v2);
+      return SummarizeArray<bool>(limit, num_elts, t);
     case DT_STRING:
-      return SummarizeArray<string>(limit, num_elts, t, print_v2);
+      return SummarizeArray<string>(limit, num_elts, t);
     default: {
       // All irregular cases
       string ret;
@@ -176,7 +176,7 @@ void AssertCpuKernel::PrintOneDim(int dim_index, const std::shared_ptr<TensorSha
 
 template <typename T>
 string AssertCpuKernel::SummarizeArray(const int64_t limit, const int64_t num_elts,
-                                       const Tensor &t, const bool print_v2) {
+                                       const Tensor &t) {
   string ret;
   const T *array = reinterpret_cast<const T *>(t.GetData());
   std::shared_ptr<TensorShape> shape = t.GetTensorShape();

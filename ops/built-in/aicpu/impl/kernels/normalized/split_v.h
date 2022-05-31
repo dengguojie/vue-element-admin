@@ -92,7 +92,7 @@ class SplitVCpuKernel : public CpuKernel {
                          std::vector<T *> output_data_vec);
 
   template <typename T>
-  uint32_t DoCompute(const CpuKernelContext &ctx);
+  uint32_t DoCompute();
 
   DataType data_type_;
   int32_t split_dim_;

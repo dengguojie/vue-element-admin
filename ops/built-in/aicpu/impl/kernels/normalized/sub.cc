@@ -70,7 +70,6 @@ uint32_t SubCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   TensorMap<T> input1(reinterpret_cast<T *>(input1_tensor->GetData()),
                       input1_elements_num);
   auto output_tensor = ctx.Output(kFirstOutputIndex);
-  auto output_shape = output_tensor->GetTensorShape()->GetDimSizes();
   auto output_elements_num = output_tensor->NumElements();
   TensorMap<T> output(reinterpret_cast<T *>(output_tensor->GetData()),
                       output_elements_num);

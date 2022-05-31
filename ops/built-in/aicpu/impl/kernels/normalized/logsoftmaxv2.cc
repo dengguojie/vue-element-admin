@@ -103,8 +103,7 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(const CpuKernelContext& ctx)
     axes = ctx.GetAttr("axes")->GetListInt();
   }
   std::int64_t total = ctx.Input(0)->NumElements();
-  std::vector<std::int64_t> dims =
-      ctx.Input(0)->GetTensorShape()->GetDimSizes();
+  std::vector<std::int64_t> dims = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   uint32_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx);
   if (cores < 1) {
     return KERNEL_STATUS_INNER_ERROR;
@@ -132,14 +131,11 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(const CpuKernelContext& ctx)
   if (data_size <= paralled_data_size) {
     Eigen::TensorMap<Eigen::Tensor<T, dimType3>, Eigen::Aligned> logits(
         input, inner_size, (int)dims[pivot], outer_size);
-    Eigen::TensorMap<Eigen::Tensor<T, dimType1>, Eigen::Aligned> dims_sum(dims_exp_sum,
-                                                                   length);
-    Eigen::TensorMap<Eigen::Tensor<T, dimType2>, Eigen::Aligned> dims_max(
-        dims_maximum, inner_size, outer_size);
+    Eigen::TensorMap<Eigen::Tensor<T, dimType1>, Eigen::Aligned> dims_sum(dims_exp_sum, length);
+    Eigen::TensorMap<Eigen::Tensor<T, dimType2>, Eigen::Aligned> dims_max(dims_maximum, inner_size, outer_size);
     Eigen::array<int, 1> softmax_axes{{1}};
     dims_max = logits.maximum(softmax_axes);
-    for (int64_t index = 0, index_dst = 0, index_batch = 0, step = 0;
-         index < total; index++) {
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, step = 0; index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         step++;
         if (step == dims[pivot]) {
@@ -148,14 +144,12 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(const CpuKernelContext& ctx)
         }
         index_dst = index_batch;
       }
-      *(output + index) =
-          Eigen::numext::exp(*(input + index) - dims_maximum[index_dst]);
+      *(output + index) = Eigen::numext::exp(*(input + index) - dims_maximum[index_dst]);
       dims_exp_sum[index_dst] += (*(output + index));
       index_dst++;
     }
     dims_sum = dims_sum.inverse();
-    for (int64_t index = 0, index_dst = 0, index_batch = 0, step = 0;
-         index < total; index++) {
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, step = 0; index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         step++;
         if (step == dims[pivot]) {
@@ -169,37 +163,27 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(const CpuKernelContext& ctx)
       index_dst++;
     }
   } else {
-    std::int64_t per_unit_size{length /
-                               std::min(std::max(1L, cores - 2L), length)};
+    std::int64_t per_unit_size{length / std::min(std::max(1L, cores - 2L), length)};
     const T constant_one(1.0);
-    ParallelFor(
-        ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
-          for (int64_t index = begin, dim_length = dims[pivot], outer_index,
-                      index_base;
-               index < end; ++index) {
+    ParallelFor(ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
+          for (int64_t index = begin, dim_length = dims[pivot], outer_index, index_base; index < end; ++index) {
             outer_index = index / inner_size;
-            index_base =
-                outer_index * dim_length * inner_size + index % inner_size;
+            index_base = outer_index * dim_length * inner_size + index % inner_size;
             dims_maximum[index] = *(input + index_base);
-            for (int64_t inner_index = 0, index_dst = index_base;
-                 inner_index < dim_length; ++inner_index) {
+            for (int64_t inner_index = 0, index_dst = index_base; inner_index < dim_length; ++inner_index) {
               if (*(input + index_dst) > dims_maximum[index]) {
                 dims_maximum[index] = *(input + index_dst);
               }
               index_dst += inner_size;
             }
-            for (int64_t inner_index = 0, index_dst = index_base;
-                 inner_index < dim_length; ++inner_index) {
-              *(output + index_dst) = Eigen::numext::exp(*(input + index_dst) -
-                                                         dims_maximum[index]);
+            for (int64_t inner_index = 0, index_dst = index_base; inner_index < dim_length; ++inner_index) {
+              *(output + index_dst) = Eigen::numext::exp(*(input + index_dst) - dims_maximum[index]);
               dims_exp_sum[index] += (*(output + index_dst));
               index_dst += inner_size;
             }
             dims_exp_sum[index] = constant_one / dims_exp_sum[index];
-            for (int64_t inner_index = 0, index_dst = index_base;
-                 inner_index < dim_length; ++inner_index) {
-              *(output + index_dst) =
-                  *(output + index_dst) * dims_exp_sum[index];
+            for (int64_t inner_index = 0, index_dst = index_base; inner_index < dim_length; ++inner_index) {
+              *(output + index_dst) = *(output + index_dst) * dims_exp_sum[index];
               *(output + index_dst) = Eigen::numext::log(*(output + index_dst));
               index_dst += inner_size;
             }
