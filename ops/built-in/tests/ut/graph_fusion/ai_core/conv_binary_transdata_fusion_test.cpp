@@ -9,11 +9,8 @@
 #include "buffer_fusion/ub_fusion/ai_core/conv/conv2d_transdata_fusion_pass.h"
 #undef protected
 #undef private
-#include "register/op_tiling_registry.h"
-#include "common/utils/ut_op_util.h"
 
 using namespace ge;
-using namespace optiling;
 
 class ConvBinaryTransdataFusionTest : public testing::Test {
 protected:
