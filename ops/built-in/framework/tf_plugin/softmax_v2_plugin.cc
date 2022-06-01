@@ -25,12 +25,15 @@
 
 namespace domi {
 Status ParseParamsSoftmaxMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   std::vector<int64_t> reduce_dims = {-1};
   if (op.GetAttr("axis", reduce_dims) != ge::GRAPH_SUCCESS) {
     OP_LOGW("SoftmaxV2", "GetAttr axis failed");
   }
-  op.SetAttr("axes", reduce_dims);
+  (void)op.SetAttr("axes", reduce_dims);
   return SUCCESS;
 }
 REGISTER_CUSTOM_OP("SoftmaxV2")

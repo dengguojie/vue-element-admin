@@ -25,7 +25,7 @@
 #include "op_log.h"
 
 namespace domi {
-uint32_t wInputPosition = 1;
+static const uint32_t wInputPosition = 1;
 
 Status DynamicLSTMParserParams(const std::vector<const google::protobuf::Message*> inside_nodes, ge::Operator& op) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter DynamicLSTM fusion parser.");
@@ -48,7 +48,10 @@ Status DynamicLSTMParserParams(const std::vector<const google::protobuf::Message
 }
 
 Status ParseParamsDynamicLSTM(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(wInputPosition);
   orgTensorW.SetOriginFormat(ge::FORMAT_HWCN);

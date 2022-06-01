@@ -21,9 +21,14 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 
+#include "op_log.h"
+
 namespace domi {
 Status ParseParamsSoftmaxGradMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(0);
   ge::GeTensorDesc orgTensorW1 = op_dsc->GetInputDesc(1);

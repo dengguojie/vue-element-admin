@@ -86,7 +86,7 @@ bool SoftmaxFusionPass::CheckISUsePattern(vector<int64_t>& dimInfo) {
 }
 
 vector<FusionPattern*> SoftmaxFusionPass::DefinePatterns() {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern begin");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern begin.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr,
@@ -94,7 +94,7 @@ vector<FusionPattern*> SoftmaxFusionPass::DefinePatterns() {
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern end");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Define SoftmaxFusionPass pattern end.");
   return patterns;
 }
 
@@ -129,7 +129,7 @@ Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {
 }
 
 Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SoftmaxFusionPass!");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SoftmaxFusionPass.");
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
   FUSION_PASS_CHECK(softmaxNode == nullptr,
