@@ -473,8 +473,7 @@ class MergeSort:
                     element_count_list[valid_num] = element_count
                     valid_num += 1
                     index_start += element_count
-            src_list = [proposal_sorted[index_temp, 0] for index_temp in
-                        index_start_all]
+            src_list = [proposal_sorted[index_temp, 0] for index_temp in index_start_all]
             self.tik_inst.vmrgsort4(proposal_next, src_list, element_count_list,
                                     False, self._valid_bit_all.get(valid_num), 1)
             proposal_sorted, proposal_next = proposal_next, proposal_sorted
