@@ -6807,6 +6807,14 @@ static bool NormalizeConv3dShape(const op::Conv3D& op, vector<int64_t>& x_shape_
   return true;
 }
 
+static void SetOutDtype(const TensorDesc& x_tensor, TensorDesc& y_tensor) {
+  auto x_dtype = x_tensor.GetDataType();
+  if (x_dtype == ge::DT_INT8) {
+    y_tensor.SetDataType(ge::DT_INT32);
+  } else {
+    y_tensor.SetDataType(x_dtype);
+  }
+}
 
 IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   AscendString op_name;
@@ -6919,8 +6927,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     return GRAPH_FAILED;
   }
   y_tensor.SetShape(Shape(y_shape));
-  auto x_dtype = x_tensor.GetDataType();
-  y_tensor.SetDataType(x_dtype);
+  SetOutDtype(x_tensor, y_tensor);
 
   // set dynamic out range
   map<std::string, int32_t> attr_params = {

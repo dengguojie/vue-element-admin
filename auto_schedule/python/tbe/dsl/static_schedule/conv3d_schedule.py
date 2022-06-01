@@ -25,6 +25,7 @@ from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.compute import conv3d_compute
 from tbe.dsl.compute import util as compute_util
+from tbe.dsl.static_schedule.util import CalculateMultiUB
 
 
 # tiling check
@@ -71,6 +72,15 @@ class CceConv3dOp:
         self.tiling_case = {}
         self.var_range = {}
         self.flag_load3d_special_case = self._tensor_map["flag_load3d_special_case"]
+        self.is_v200_version = self._tensor_map.get("is_v200_version")
+        self.quant_fused_flag = self._tensor_map.get("quant_fused_flag")
+        self.quant_bias_flag = self._tensor_map.get("quant_bias_flag")
+        self.noquant_bias_flag = self._tensor_map.get("noquant_bias_flag")
+        self.requant_multi_group_flag = False
+        self.ub_start_tensor = ('dequant1_vector', 'dequant_vector', 'dequant1_scale', 'dequant_scale',
+                                'requant_vector', 'requant_scale')
+        self.inline_tensors = ('dequant_remove_pad', 'requant_remove_pad', 'requant_vector', 'requant_scale',
+                               'conv_vector_remove_pad')
 
     @staticmethod
     def _get_value(ele):
@@ -421,6 +431,18 @@ class CceConv3dOp:
 
         return cyclebuffer_flag
 
+    def _get_fused_tensor(self, lop):
+        if lop['op'] in self.inline_tensors or lop['op'] in self.ub_start_tensor:
+            self._tensor_map[lop['op']] = lop['dst_buffer']
+        elif lop['op'] == 'conv_vector_remove_pad':
+            self._tensor_map[lop['op']] = lop['dst_buffer']
+
+    def _quant_bias_set_scope(self, lop):
+        if lop['op'] == 'conv3d_bias_zn' or lop['op'] == 'conv3d_c_col_bias':
+            self._schedule[lop["dst_buffer"]].set_scope(tbe_platform_info.scope_cc)
+        elif lop['op'] == 'conv3d_bias_brdcst' or lop['op'] == 'conv3d_bias_align':
+            self._schedule[lop["dst_buffer"]].set_scope(tbe_platform_info.scope_ubuf)
+
     def _cachebuffer(self, spec_node_list):
         """
         tensor not for conv set scope.
@@ -438,15 +460,20 @@ class CceConv3dOp:
 
         """
         for lop in self.body_ops:
+            self._get_fused_tensor(lop)
             if (("conv3d" not in lop["op"] or
                  (self.dsl_flag and (lop["op"] == "conv3d_C"))) and
                 lop['dst_buffer'] not in spec_node_list):
                 self._schedule[lop["dst_buffer"]].set_scope(tbe_platform_info.scope_ubuf)
+            else:
+                self._quant_bias_set_scope(lop)
+
         for lop in self.input_ops:  # not for A, B, DeqScale, ReqScale,
             if "conv3d" in lop["op"]:
                 continue
-            if ("bias_tensor" in lop["dst_buffer"].name) and (
-                    "bias" in self._tensor_map.keys()):
+            is_read_bias = ((self.dsl_flag and lop['next_op'][0]['op'] == 'conv3d_bias_align')
+                            or "bias_tensor" in lop["dst_buffer"].name) and ("bias_align" in self._tensor_map)
+            if is_read_bias:
                 continue
             tmp_read_map = []
             for nop in lop["next_op"]:
@@ -543,6 +570,8 @@ class CceConv3dOp:
                     cube_err.raise_err_specific('conv3d',
                         "tiling['%s'][0] must equal to tiling['%s'][1]" % (index0, index1))
 
+        w_dtype = conv3d_compute.Conv3DParam.tiling_info_dict['b_dtype']
+        block_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
         for matrix in matrix_list[0:3]:
             if tiling[matrix] != []:
                 if tiling[matrix][2] != _TILING_FLOAT16_MKN:
@@ -554,18 +583,32 @@ class CceConv3dOp:
                     }
                     raise RuntimeError(dict_args,
                                        error_manager_util.get_error_message(dict_args))
-
-                if tiling[matrix][3] != _TILING_FLOAT16_MKN:
+                block_size = block_k if matrix in ("AL0_matrix", "BL0_matrix") else _TILING_FLOAT16_MKN
+                if tiling[matrix][3] != block_size:
                     dict_args = {
                         'errCode': 'E62305',
                         'param_name': matrix,
-                        'expect_value': str(_TILING_FLOAT16_MKN),
+                        'expect_value': str(block_size),
                         'value': str(tiling[matrix][3])
                     }
                     raise RuntimeError(dict_args,
                                        error_manager_util.get_error_message(dict_args))
 
         return True
+
+    def _get_tiling_mn(self, m_target, m_bit_ratio):
+        tiling_n = 1
+        if self.requant_multi_group_flag:
+            tiling_n = self._tensor_map['group_dict']['cout_g'] // _TILING_FLOAT16_MKN
+            for m in range(m_target, 0, -1):
+                l0c_used_size = (m * tiling_n * _TILING_FLOAT16_MKN * _TILING_FLOAT16_MKN *
+                                m_bit_ratio.get('int32') * 2)
+                if l0c_used_size < tbe_platform_info.get_soc_spec('L0C_SIZE'):
+                    m_target = m
+                    break
+        elif self._res_tensor.dtype == 'int8':
+            tiling_n = 2
+        return m_target, tiling_n
 
     def _tiling_fetch(self):
         """
@@ -579,7 +622,7 @@ class CceConv3dOp:
         shape_w_ndc1hwc0 = conv3d_compute.Conv3DParam.tiling_info_dict["b_shape"]
         in_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["a_dtype"]
         w_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["b_dtype"]
-        res_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["c_dtype"]
+        res_dtype = self._res_tensor.dtype
         mad_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["mad_dtype"]
         padd = conv3d_compute.Conv3DParam.tiling_info_dict["pad"][0:2]
         padh = conv3d_compute.Conv3DParam.tiling_info_dict["pad"][2:4]
@@ -691,9 +734,8 @@ class CceConv3dOp:
                 if max_feature_map < l1_buffer_size:
                     break
 
-            tiling_m = m_target
+            tiling_m, tiling_n = self._get_tiling_mn(m_target, m_bit_ratio)
             tiling_k = 1
-            tiling_n = 1
             tiling["AL1_shape"] = [1]
             tiling["BL1_shape"] = None
             tiling["AL0_matrix"] = [tiling_m, tiling_k, 16, 16]
@@ -771,10 +813,15 @@ class CceConv3dOp:
         # L0C
         if double_buffer_flag["CL0_pbuffer"] == 2:
             sch[buffer_dict["c_col"]].double_buffer()
+            if self.quant_bias_flag:
+                sch[self._tensor_map["c_col_bias"]].double_buffer()
+                sch[self._tensor_map["bias_zn"]].double_buffer()
+                if not self.is_v200_version:
+                    sch[self._tensor_map["bias_brdcst"]].double_buffer()
         # CUB
-        if double_buffer_flag["CUB_pbuffer"] == 2:
+        if (double_buffer_flag["CUB_pbuffer"] == 2 and not self.quant_fused_flag):
             sch[buffer_dict["c_ub"]].double_buffer()
-            if conv3d_compute.Conv3DParam.tiling_info_dict['bias_flag']:
+            if self.noquant_bias_flag:
                 sch[self._tensor_map['bias_add_tensor']].double_buffer()
 
     def _condition_cycle_buffer_dynamic(self, cycle_buffer_dynamic_param_dict):
@@ -877,21 +924,27 @@ class CceConv3dOp:
         stride_d = c_col.op.attrs['stride_d']
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         kernel_d = c_ub.op.attrs['kernel_d']
-        if cyclebuffer_flag and not self.var_map:
-            # Specifies AL1 memory
-            sch[al1].mem_unique()
-            sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
-        elif self.var_map and not l0a_load2d_flag:
-            cycle_buffer_dynamic_param_dict = {'cyclebuffer_flag': cyclebuffer_flag, 'al1': al1,
-                                               'c_col': c_col, 'c_ub': c_ub, 'tiling': tiling, 'cin1_g': cin1_g}
-            self._condition_cycle_buffer_dynamic(cycle_buffer_dynamic_param_dict)
-        elif self.var_map and l0a_load2d_flag:
-            sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
-        else:
-            sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
+        def _al1_intrin_mapping():
+            if cyclebuffer_flag and not self.var_map:
+                # Specifies AL1 memory
+                sch[al1].mem_unique()
+                sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
+            elif self.var_map and not l0a_load2d_flag:
+                self._condition_cycle_buffer_dynamic({'cyclebuffer_flag': cyclebuffer_flag,
+                                                      'al1': al1,
+                                                      'c_col': c_col,
+                                                      'c_ub': c_ub,
+                                                      'tiling': tiling,
+                                                      'cin1_g': cin1_g
+                                                     })
+            elif self.var_map and l0a_load2d_flag:
+                sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
+            else:
+                sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
+        _al1_intrin_mapping()
 
         if l0a_load2d_flag:
-            sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
+            sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy', {'mem_align': 1})
         elif self.var_map:
             stride_update = 1 if self._tensor_map["opti_h_flag"] else c_ub.op.attrs['stride'][0]
             im2col_attr = {
@@ -934,8 +987,28 @@ class CceConv3dOp:
             sch[bl1].emit_insn(sch[bl1].op.axis[0], 'dma_copy')
         sch[bl0].emit_insn(bl0.op.axis[0], 'dma_copy')
 
-        sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
+        if not self.quant_fused_flag:
+            sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
         sch[c_col].emit_insn(cn_axis, 'mad', mad_dict)
+
+    def _handle_requant(self, data_transfer, compute_at_buffer, compute_at_axis):
+        reform_outer, reform_inner = self._schedule[data_transfer].split(data_transfer.op.axis[-1], nparts=2)
+        self._schedule[data_transfer].compute_at(self._schedule[compute_at_buffer[1]], compute_at_axis[1])
+        if 'requant_vector' in self._tensor_map:
+            requant_tensor = self._tensor_map.get('requant_vector')
+        else:
+            requant_tensor = self._tensor_map.get('requant_scale')
+        config = tbe_platform.CUBE_MKN[requant_tensor.dtype]
+        if len(data_transfer.op.axis) == 5:
+            self._schedule[data_transfer].reorder(data_transfer.op.axis[0], data_transfer.op.axis[1],
+                                                  data_transfer.op.axis[2], reform_outer, data_transfer.op.axis[3],
+                                                  reform_inner)
+            self._schedule[data_transfer].buffer_align((1, 1), (1, 1), (1, 1), (1, config["mac"][0]),
+                                                       (1, config["mac"][2]))
+        else:
+            self._schedule[data_transfer].reorder(data_transfer.op.axis[0], data_transfer.op.axis[1], reform_outer,
+                                                  data_transfer.op.axis[2], reform_inner)
+            self._schedule[data_transfer].buffer_align((1, 1), (1, 1), (1, config["mac"][0]), (1, config["mac"][2]))
 
     def _attach_at(self, bodyops, inputops, compute_at_buffer, compute_at_axis, tiling):
         """
@@ -967,6 +1040,9 @@ class CceConv3dOp:
                 (self.dsl_flag and (lop["op"] == "conv3d_C")):
                 if lop["op"] == "conv_vector_remove_pad":
                     continue
+                if lop['op'] == 'data_transfer':
+                    self._handle_requant(lop['dst_buffer'], compute_at_buffer, compute_at_axis)
+                    continue
                 self._schedule[lop["dst_buffer"]].compute_at(
                     self._schedule[compute_at_buffer[1]],
                     compute_at_axis[1])
@@ -974,15 +1050,33 @@ class CceConv3dOp:
                     (1, 1), (1, 1),
                     (1, tiling_mc),
                     (1, 1))
+            elif lop['op'] in ('conv3d_bias_zn', 'conv3d_c_col_bias', 'conv3d_bias_brdcst', 'conv3d_bias_align'):
+                self._schedule[lop['dst_buffer']].compute_at(self._schedule[compute_at_buffer[1]], compute_at_axis[0])
 
         for lop in inputops:
             if "conv3d" in lop["op"]:
                 continue
-            if ("bias_tensor" in lop["op"]) and (
-                    "bias" in self._tensor_map.keys()):
+            is_read_bias = ((self.dsl_flag and lop['next_op'][0]['op'] == 'conv3d_bias_align')
+                            or "bias_tensor" in lop["dst_buffer"].name) and ("bias_align" in self._tensor_map)
+            if is_read_bias:
                 continue
             self._schedule[lop["cache_buffer"]].compute_at(
                 self._schedule[compute_at_buffer[0]], compute_at_axis[1])
+
+    def _quant_bias_intrin_mapping(self, lop):
+        if lop['op'] == 'conv3d_bias_zn':
+            self._schedule[lop['dst_buffer']].reused_by(self._tensor_map['c_col_bias'], self._tensor_map['c_col'])
+            if 'bias_brdcst' in self._tensor_map:
+                self._schedule[lop['dst_buffer']].split(lop['dst_buffer'].op.axis[3], 16)
+                self._schedule[lop['dst_buffer']].emit_insn(lop['dst_buffer'].op.axis[2], 'dma_copy')
+            else:
+                self._schedule[lop['dst_buffer']].emit_insn(lop['dst_buffer'].op.axis[1], 'dma_copy')
+        elif lop['op'] == 'conv3d_c_col_bias':
+            self._schedule[lop['dst_buffer']].emit_insn(lop['dst_buffer'].op.axis[0], 'phony_insn')
+        elif lop['op'] == 'conv3d_bias_brdcst':
+            self._schedule[lop['dst_buffer']].emit_insn(lop['dst_buffer'].op.axis[1], 'vector_auto')
+        elif lop['op'] == 'conv3d_bias_align':
+            self._schedule[lop['dst_buffer']].emit_insn(lop['dst_buffer'].op.axis[0], 'dma_copy')
 
     def _to_pragma(self, bodyops, inputops, c_outer_inner_inner):
         """
@@ -1014,12 +1108,15 @@ class CceConv3dOp:
                 if "_conv3d_A" in lop["op"]:
                     lop["op"] = lop["op"].replace("_conv3d_A", "")
                 self.__pragma_for_op(lop, c_outer_inner_inner)
+            else:
+                self._quant_bias_intrin_mapping(lop)
 
         for lop in inputops:
             if "conv3d" in lop["op"]:
                 continue
-            if ("bias_tensor" in lop["op"]) and (
-                    "bias" in self._tensor_map.keys()):
+            is_read_bias = ((self.dsl_flag and lop['next_op'][0]['op'] == 'conv3d_bias_align')
+                            or "bias_tensor" in lop["op"]) and ("bias_align" in self._tensor_map)
+            if is_read_bias:
                 continue
             self._schedule[lop["cache_buffer"]].emit_insn(
                 lop["cache_buffer"].op.axis[0], 'dma_copy')
@@ -1242,17 +1339,8 @@ class CceConv3dOp:
         res_c = self._res_tensor
         self._cachebuffer(spec_node_list)
         l0a_load2d_flag = tensor_map["l0a_load2d_flag"]
-        bias_flag = conv3d_compute.Conv3DParam.tiling_info_dict["bias_flag"]
+        self._get_requant_multi_group()
 
-        def _get_fused_op_num():
-            fuse_op_num = len(self.body_ops) - _CONV_NUM
-            if not l0a_load2d_flag:
-                fuse_op_num -= 1
-            if bias_flag:
-                fuse_op_num -= 1
-            return fuse_op_num
-
-        self._fused_op_num = _get_fused_op_num()
         if self.var_map:
             self.tiling_case = dynamic_para.get("tiling")
             self.var_range = dynamic_para.get("var_range")
@@ -1262,6 +1350,7 @@ class CceConv3dOp:
         c_col = tensor_map["c_col"]
         stage_dict = {"res_c": res_c, "c_col": c_col}
 
+        self._fused_op_num = self._get_fused_op_num(weight.dtype)
         config = tbe_platform.CUBE_MKN[weight.dtype]
 
         pad_right = c_ub.op.attrs['padding'][2]
@@ -1272,23 +1361,13 @@ class CceConv3dOp:
         fmap_w = fmap.shape[-2] if fmap.op.input_tensors else fmap.op.shape[-2]
         stride_w = c_ub.op.attrs['stride'][1]
         dilation_w = c_ub.op.attrs['dilation'][1]
-
-        if "fmap_d" in self.var_map:
-            sch.set_var_range(self.var_map.get("fmap_d"), *self.var_range.get('fmap_d'))
-            sch.set_var_range(self.var_map.get("d_out"), *self.var_range.get('d_out'))
-        if "fmap_h" in self.var_map:
-            sch.set_var_range(self.var_map.get("fmap_h"), *self.var_range.get('fmap_h'))
-            sch.set_var_range(self.var_map.get("h_out"), *self.var_range.get('h_out'))
-        if "fmap_w" in self.var_map:
-            sch.set_var_range(self.var_map.get("fmap_w"), *self.var_range.get('fmap_w'))
-            sch.set_var_range(self.var_map.get("w_out"), *self.var_range.get('w_out'))
-        if "batch_n" in self.var_map:
-            sch.set_var_range(self.var_map.get("batch_n"), *self.var_range.get('batch_n'))
-
-        if "fmap_w" in self.var_map:
-            w_out = self.var_map.get("w_out")
-        else:
-            w_out = (fmap_w + pad_left + pad_right - ((kernel_w - 1) * dilation_w + 1)) // stride_w + 1
+        self._set_dhw()
+        def _get_w_out():
+            if "fmap_w" in self.var_map:
+                return self.var_map.get("w_out")
+            else:
+                return (fmap_w + pad_left + pad_right - ((kernel_w - 1) * dilation_w + 1)) // stride_w + 1
+        w_out = _get_w_out()
 
         def _load2d_process():
             if l0a_load2d_flag:
@@ -1315,9 +1394,10 @@ class CceConv3dOp:
 
         _, fmap_col_before, fmap_col, al1 = _load2d_process()
 
-        sch[c_ub].buffer_align((1, 1), (1, 1),
-                               (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
-                               (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
+        if not self.quant_fused_flag:
+            sch[c_ub].buffer_align((1, 1), (1, 1),
+                                   (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
+                                   (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
         # for fusion vector
         if self.dsl_flag:
             res_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
@@ -1339,7 +1419,8 @@ class CceConv3dOp:
         bl0 = sch.cache_read(bl1, tbe_platform_info.scope_cb, [c_col])
 
         sch[c_col].set_scope(tbe_platform_info.scope_cc)
-        sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
+        if not self.quant_fused_flag:
+            sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
 
         compute_at_buffer = []
         compute_at_axis = []
@@ -1430,8 +1511,13 @@ class CceConv3dOp:
         # to split G
         group_dict = tensor_map["group_dict"]
         cout1_g = group_dict["cout_g"] // n_0
-        c_outer_g, c_outer = sch[res_c].split(res_c.op.axis[1], cout1_g)
-        c_outer_outer, c_outer_inner = sch[res_c].split(c_outer, c_tiling_factor[0])
+        if res_c.dtype == 'int8':
+            # n0 is 32 when conv3d_requant, axis n1 need split 2
+            c_outer_g, c_outer = sch[res_c].split(res_c.op.axis[1], compute_util.int_ceil_div(cout1_g, 2))
+            c_outer_outer, c_outer_inner = sch[res_c].split(c_outer, compute_util.int_ceil_div(c_tiling_factor[0], 2))
+        else:
+            c_outer_g, c_outer = sch[res_c].split(res_c.op.axis[1], cout1_g)
+            c_outer_outer, c_outer_inner = sch[res_c].split(c_outer, c_tiling_factor[0])
         c_outer_g_outer, c_outer_g_inner = sch[res_c].split(c_outer_g, nparts=tiling["g_dim"])
 
         m_outer_outer, m_outer_inner = sch[res_c].split(res_c.op.axis[2], c_tiling_factor[1])
@@ -1549,7 +1635,8 @@ class CceConv3dOp:
 
         sch[res_c].reorder(c_outer_inner_outer, m_outer_inner_outer,
                            c_outer_inner_inner, m_outer_inner_inner)
-        sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)
+        if not self.quant_fused_flag:
+            sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)
         c_pragma_axis = c_outer_inner_inner
 
         # ============ tile c_col =======================
@@ -1738,6 +1825,8 @@ class CceConv3dOp:
                       (outer_factor // inner_factor) + k_outer_outer_outer_inner) *
                      k_outer_outer_inner_size + k_outer_outer_inner) == 0),
         }
+        if self.quant_bias_flag:
+            mad_dict['k_cond'] = False
         intrin_mapping_param_dict = {'fmap': fmap, 'mad_dict': mad_dict, 'buffer_dict': buffer_dict,
                                      'new_fmap_col_axis': new_fmap_col_axis, 'tiling': tiling,
                                      'cn_axis': cn_axis, 'l0a_load2d_flag': l0a_load2d_flag}
@@ -1790,7 +1879,7 @@ class CceConv3dOp:
                     al1_m = compute_util.align(al1_m, align_util)
                 return al1_m * cin1_g * fmap_c0 * kernel_d
         # Reused UB memory
-        if bias_flag:
+        if self.noquant_bias_flag:
             bias_add_tensor = tensor_map['bias_add_tensor']
             sch[c_ub].reused_by(bias_add_tensor)
             sch[bias_add_tensor].buffer_align((1, 1), (1, 1),
@@ -1855,6 +1944,66 @@ class CceConv3dOp:
 
         return out_instr
 
+    def _set_dhw(self):
+        if "fmap_d" in self.var_map:
+            self._schedule.set_var_range(self.var_map.get("fmap_d"), *self.var_range.get('fmap_d'))
+            self._schedule.set_var_range(self.var_map.get("d_out"), *self.var_range.get('d_out'))
+        if "fmap_h" in self.var_map:
+            self._schedule.set_var_range(self.var_map.get("fmap_h"), *self.var_range.get('fmap_h'))
+            self._schedule.set_var_range(self.var_map.get("h_out"), *self.var_range.get('h_out'))
+        if "fmap_w" in self.var_map:
+            self._schedule.set_var_range(self.var_map.get("fmap_w"), *self.var_range.get('fmap_w'))
+            self._schedule.set_var_range(self.var_map.get("w_out"), *self.var_range.get('w_out'))
+        if "batch_n" in self.var_map:
+            self._schedule.set_var_range(self.var_map.get("batch_n"), *self.var_range.get('batch_n'))
+
+    def _get_requant_multi_group(self):
+        cout1_g = self._tensor_map['group_dict']['cout_g'] // _TILING_FLOAT16_MKN
+        real_g = self._tensor_map['group_dict']['real_g']
+        self.requant_multi_group_flag = (cout1_g % 2 == 1 and real_g > 1 and self._res_tensor.dtype == 'int8')
+
+    def _get_fused_op_num(self, w_dtype):
+        if w_dtype != 'int8':
+            fuse_op_num = len(self.body_ops) - _CONV_NUM
+            if not self._tensor_map["l0a_load2d_flag"]:
+                fuse_op_num -= 1
+            bias_flag = conv3d_compute.Conv3DParam.tiling_info_dict["bias_flag"]
+            if bias_flag:
+                fuse_op_num -= 1
+            return fuse_op_num
+
+        not_count_list = []
+        for item in self.inline_tensors:
+            if item in self._tensor_map:
+                not_count_list.append(self._tensor_map[item])
+        start_node = self._tensor_map["c_ub"]
+        if self.dsl_flag:
+            for item in self.ub_start_tensor:
+                if item in self._tensor_map:
+                    start_node = self._tensor_map[item]
+                    break
+        multi_ub = CalculateMultiUB(start_node, self._res_tensor, not_count_list)
+        ub_res, _ = multi_ub.calculate_start()
+        fuse_op_num = ub_res / CalculateMultiUB.BYTES_DTYPE.get(self._res_tensor.dtype) - 1
+        return fuse_op_num
+
+    def _quant_intrin_mapping(self, lop):
+        cache_buffer = lop["dst_buffer"]
+        if lop['op'] in ('dequant_remove_pad', 'requant_remove_pad'):
+            self._schedule[cache_buffer].compute_inline()
+        elif lop['op'] in ('requant_vector', 'requant_scale'):
+            self._schedule[cache_buffer].compute_inline()
+        elif lop['op'] == 'data_transfer':
+            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[2], 'dma_copy')
+        elif lop['op'] in ('dequant_vector', 'dequant_scale'):
+            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[2], 'dma_copy')
+        elif lop['op'] == 'dequant1_vector':
+            self._schedule[cache_buffer].pragma(self._schedule[cache_buffer].op.axis[2], "deq_scale", 'vector')
+        elif lop['op'] == 'dequant1_scale':
+            self._schedule[cache_buffer].pragma(self._schedule[cache_buffer].op.axis[0], "deq_scale", 'scalar')
+        elif lop["op"] in ('dequant2_vector', 'dequant2_scale'):
+            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], "vector_auto")
+
     def __pragma_for_op(self, lop, c_outer_inner_inner=None):
         # for not in conv op pragma
         op_cmd = lop["op"].split("_")
@@ -1886,7 +2035,7 @@ class CceConv3dOp:
             self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[-1],
                                                    "vector_auto")
         else:
-            pass
+            self._quant_intrin_mapping(lop)
 
 
 class AutoScheduleDict(dict):
@@ -1962,8 +2111,6 @@ class AutoScheduleOp:
                         i.tag = "conv3d_A"
                     if tmp_op["op"] == "conv3d_al1_load2d":
                         i.tag = "conv3d_A"
-                    if tmp_op["op"] == "conv3d_bias_l0c":
-                        i.tag = "conv3d_bias_tensor"
             operation_list = tmp_operation_list
 
     def __connect_op(self):

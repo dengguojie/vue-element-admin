@@ -340,6 +340,152 @@ def test_conv3d_mul_fusion_load3d_special_case(test_args):
     tbe.build(sch, config)
 ut_case.add_cust_test_func(test_func=test_conv3d_mul_fusion_load3d_special_case)
 
+# test conv3d+dequant scene
+def test_conv3d_dequant_fusion_scene(test_args):
+    from impl.util.platform_adapter import tvm
+    from impl.util.platform_adapter import tbe
+    from impl.conv3d import conv3d_fusion_compute
+    from impl.ascend_dequant import ascend_dequant_compute
+
+    shape_fmap = tvm.placeholder((3, 98, 1, 116, 67, 32),
+                                  name='params_0',
+                                  dtype='int8',
+                                  attrs={"ori_shape": (3, 98, 116, 67, 26),
+                                         "format": 'NDC1HWC0'})
+    shape_filter = tvm.placeholder((104, 5, 16, 32),
+                                  name='params_1',
+                                  dtype='int8',
+                                  attrs={"ori_shape": (76, 26, 1, 4, 26),
+                                         "ori_format": 'NDHWC'})
+
+    bias = tvm.placeholder((76,), name='params_2', attrs={'format': 'NCDHW', "ori_shape": (76,)}, dtype='int32')
+
+    output = {'ori_shape': (3, 76, 17, 6, 5), 'shape': (3, 17, 5, 6, 5, 16),
+              'ori_format': 'NCDHW', 'format': 'NDC1HWC0', 'dtype': 'int32'}
+
+    strides = [1, 1, 6, 22, 15]
+    pads = [12, 12, 0, 0, 0, 0]
+
+    res = conv3d_fusion_compute(shape_fmap,
+                          shape_filter,
+                          bias,
+                          offset_w=None,
+                          output=output,
+                          strides=strides,
+                          pads=pads,
+                          dilations=(1, 1, 1, 1, 1),
+                          groups=1,
+                          data_format="NDHWC",
+                          offset_x=127,
+                          kernel_name="conv3d")
+
+    shape_out = {"shape": (3, 17, 5, 6, 5, 16), "dtype": 'float16', "format": 'NDC1HWC0',
+                 "ori_shape": (3, 76, 17, 6, 5), "ori_format": 'NCDHW'}
+    deq_tensor = tvm.placeholder((1, 1, 5, 1, 1, 16), name='deq_tensor',
+                 attrs={'format': 'NCDHW', "ori_shape": (76,)}, dtype='float16')
+    out = ascend_dequant_compute(res, deq_tensor, shape_out, sqrt_mode=False, relu_flag=False, kernel_name='conv3d_dequant_test')
+    tensor_list = [shape_fmap, shape_filter, bias, deq_tensor, out]
+
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(out)
+
+    config = {
+            "name": "test_conv3d_dequant",
+            "tensor_list": tensor_list,
+        }
+    tbe.build(sch, config)
+ut_case.add_cust_test_func(test_func=test_conv3d_dequant_fusion_scene)
+
+# test conv3d+requant scene
+def test_conv3d_requant_fusion_scene(test_args):
+    from impl.util.platform_adapter import tvm
+    from impl.util.platform_adapter import tbe
+    from impl.conv3d import conv3d_fusion_compute
+    from impl.ascend_requant import ascend_requant_compute
+    from te.platform.cce_conf import te_set_version
+    from tbe.common.tiling.tiling_helper import TILING_INSTANCE
+    te_set_version("Ascend710")
+
+    try:
+        tiling_type = "auto_tiling"
+        tiling_params = {'op_type': 'convolution_3d',
+            'a_shape': [3, 98, 1, 116, 67, 32], 'b_shape': [80, 26, 1, 1, 4, 32],
+            'a_dtype': 'int8', 'b_dtype': 'int8', 'c_dtype': 'int8',
+            'mad_dtype': 'int32', 'pad': [12, 12, 0, 0, 0, 0], 'stride': [6, 22, 15],
+            'dilation': [1, 1, 1], 'bias_flag': True, 'fused_coefficient': [0, 0, 0.0],
+            'group': 1, 'kernel_name': 'te_fused_op_conv3d_ascend_requant',
+            'model_type': 'xgboost', 'c_shape': [0, 0, 0, 0, 0], 'strideh_expand': 1, 'stridew_expand': 1,
+            'dynamic_shape_flag': False, 'fused_channel_wise': [0, 0, 0],
+            'fusion_type': 0, 'l1_fusion_type': -1, 'l2_fusion_type': -1,
+            'fm_l1_valid_size': 0, 'fm_l1_valid_size_level': 0}
+        tiling_dict = {'conv3d_tiling_test':
+                {'AL0_matrix': [2, 4, 16, 32, 1, 1], 'AL1_shape': [128, 1, 1, 26],
+                'AUB_channel_wise_flag': None, 'AUB_shape': None, 'A_overhead_opt_flag': 0,
+                'BL0_matrix': [4, 2, 16, 32, 1, 1], 'BL1_shape': [], 'BUB_channel_wise_flag': None,
+                'BUB_shape': [1, 0, 0, 0], 'B_overhead_opt_flag': 0,
+                'CL0_matrix': [2, 2, 16, 16, 1, 1], 'CUB_channel_wise_flag': False,
+                'CUB_matrix': [2, 2, 16, 16, 1, 1], 'batch_bef_group_flag': 0,
+                'block_dim': [1, 3, 2, 1], 'manual_pingpong_buffer': {'AL0_pbuffer': 2,
+                'AL1_pbuffer': 2, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2,
+                'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2,
+                'CUB_pbuffer': 2, 'UBG_pbuffer': 2},
+                'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}}
+        TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+
+        shape_fmap = tvm.placeholder((3, 98, 1, 116, 67, 32),
+                                    name='params_0',
+                                    dtype='int8',
+                                    attrs={"ori_shape": (3, 26, 98, 116, 67),
+                                            "ori_format": 'NCDHW',
+                                            "format": 'NDC1HWC0'})
+        shape_filter = tvm.placeholder((104, 5, 16, 32),
+                                    name='params_1',
+                                    dtype='int8',
+                                    attrs={"ori_shape": (76, 26, 26, 1, 4),
+                                            "ori_format": 'NCDHW'})
+
+        bias = tvm.placeholder((76,), name='params_2', attrs={'format': 'NCDHW', "ori_shape": (76,)}, dtype='int32')
+
+        output = {'ori_shape': (3, 76, 17, 6, 5), 'shape': (3, 17, 5, 6, 5, 16),
+                'ori_format': 'NCDHW', 'format': 'NDC1HWC0', 'dtype': 'int32'}
+
+        strides = [1, 1, 6, 22, 15]
+        pads = [12, 12, 0, 0, 0, 0]
+
+        res = conv3d_fusion_compute(shape_fmap,
+                            shape_filter,
+                            bias,
+                            offset_w=None,
+                            output=output,
+                            strides=strides,
+                            pads=pads,
+                            dilations=(1, 1, 1, 1, 1),
+                            groups=1,
+                            data_format="NCDHW",
+                            offset_x=-128,
+                            kernel_name="conv3d")
+
+        shape_out = {"shape": (3, 17, 3, 6, 5, 32), "dtype": 'int8', "format": 'NDC1HWC0',
+                    "ori_shape": (3, 76, 17, 6, 5), "ori_format": 'NCDHW'}
+        req_tensor = tvm.placeholder((1, 1, 5, 1, 1, 16), name='req_tensor',
+                    attrs={'format': 'NCDHW', "ori_shape": (76,)}, dtype='uint64')
+        out = ascend_requant_compute(res, req_tensor, shape_out, relu_flag=False, kernel_name='conv3d_requant_test')
+        tensor_list = [shape_fmap, shape_filter, bias, req_tensor, out]
+
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(out)
+
+        config = {
+                "name": "test_conv3d_requant",
+                "tensor_list": tensor_list,
+            }
+        tbe.build(sch, config)
+    except RuntimeError as e:
+        print(e)
+    finally:
+        TILING_INSTANCE.instance_refresh(tiling_type, tiling_params, {})
+ut_case.add_cust_test_func(test_func=test_conv3d_requant_fusion_scene)
+
 # test_conv3d_succ_d
 success_case1 = _run_api_end_with_d()
 

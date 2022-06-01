@@ -32,6 +32,8 @@ static const char PATTERN_CONV3D[] = "conv3d";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char PATTERN_ELEM1[] = "elemwise1";
 static const char kPatternOtherInput[] = "otherInput";
+static const char kPatternDequant[] = "dequant";
+static const string PATTERN_REQUANT = "requant";
 static vector<string> elem_typelist = {"Add"};
 static vector<string> elem_typelist1 = {"Relu"};
 static const int DIMS_SIZE = 6;
@@ -92,6 +94,39 @@ vector<BufferFusionPattern*> TbeConv3dElemwisePass::DefinePatterns() {
     .SetOutputs(PATTERN_CONV3D, {PATTERN_ELEM});
   patterns.push_back(pattern3);
 
+  string pass_name4 = "TbeConv3dDequantFusionPass";
+  BufferFusionPattern *pattern4 = new (std::nothrow) BufferFusionPattern(pass_name4);
+  // conv3d --> dequant
+  FUSION_PASS_CHECK((pattern4 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  pattern4-> AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+                       TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+    .AddOpDesc(PATTERN_CONV3D, {OP_PATTERN_CONV3D}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+               TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+    .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+               TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+    .SetHead({PATTERN_CONV3D})
+    .SetOutputs(PATTERN_CONV3D, {kPatternDequant})
+    .SetOutputs(kPatternOtherInput, {kPatternDequant});
+
+  patterns.push_back(pattern4);
+
+  string pass_name5 = "TbeConv3dRequantFusionPass";
+  BufferFusionPattern *pattern5 = new (std::nothrow) BufferFusionPattern(pass_name5);
+  // conv3d --> requant
+  FUSION_PASS_CHECK((pattern5 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  // define pattern rules
+  pattern5-> AddOpDesc(PATTERN_CONV3D, {OP_PATTERN_CONV3D}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+               TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+    .AddOpDesc(PATTERN_REQUANT, {OP_PATTERN_REQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+               TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+    .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+               TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+    .SetHead({PATTERN_CONV3D})
+    .SetOutputs(PATTERN_CONV3D, {PATTERN_REQUANT}, TBE_OUTPUT_BRANCH_SINGLE, true)
+    .SetOutputs(kPatternOtherInput, {PATTERN_REQUANT});
+
+  patterns.push_back(pattern5);
+
   return patterns;
 }
 
@@ -100,7 +135,10 @@ void TbeConv3dElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std
   FUSION_PASS_CHECK(conv3d_nodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv3d node not matched"), return);
 
   vector<ge::NodePtr> elemwise_node = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
-  FUSION_PASS_CHECK(elemwise_node.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise node not matched"), return);
+  vector<ge::NodePtr> dequant_node = GetMatchedNodesByDescName(kPatternDequant, mapping);
+  vector<ge::NodePtr> requant_node = GetMatchedNodesByDescName(PATTERN_REQUANT, mapping);
+  FUSION_PASS_CHECK((elemwise_node.empty() && dequant_node.empty() && requant_node.empty()),
+                     OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise node and dequant,requant node not matched"), return);
 
   vector<int64_t> split_flag = {-1};
   FUSION_PASS_CHECK(conv3d_nodes[0]->GetInDataNodes().size() <= 0,
@@ -266,6 +304,7 @@ Status TbeConv3dElemwisePass::CheckPattern3(const BufferFusionMapping& mapping) 
     OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add and Relu in first elemwise");
     return NOT_CHANGED;
   }
+
   return CheckDynamicShape(mapping);
 }
 
@@ -278,7 +317,8 @@ Status TbeConv3dElemwisePass::CheckPattern3(const BufferFusionMapping& mapping) 
 Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
                                              vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do conv3d_elemwise!");
-  if (SUCCESS != CheckPattern1(mapping) && SUCCESS != CheckPattern2(mapping) && SUCCESS != CheckPattern3(mapping)) {
+  if (SUCCESS != CheckDynamicShape(mapping) && SUCCESS != CheckPattern1(mapping) &&
+      SUCCESS != CheckPattern2(mapping) && SUCCESS != CheckPattern3(mapping)) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "CheckPattern failed!");
     return SUCCESS;
   }

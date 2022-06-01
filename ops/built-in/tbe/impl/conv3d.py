@@ -58,7 +58,7 @@ _FMAP_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
 _FILTER_TARGET_FORMAT = "NCDHW"
 _FILTER_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC", "DHWCN"]
 
-_DTYPE_SIZE = {"float16": 2, "float32": 4}
+_DTYPE_SIZE = {"float16": 2, "float32": 4, "int32": 4}
 _ALIGN_BYTE = 32
 _DEFAULT_FP16_SIZE = 2
 
@@ -240,9 +240,7 @@ def _get_mad_dtype(w_dtype):
     mad_dtype = "float32"
     if w_dtype == 'int8':
         mad_dtype = "int32"
-    elif tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                      "Hi3796CV300CS",
-                                                      "SD3403"):
+    elif tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         mad_dtype = "float16"
 
     return mad_dtype
@@ -258,6 +256,7 @@ def _conv3d_compute(shape_fm,
                     res_dtype,
                     dilation_dhw=None,
                     group_dict=None,
+                    offset_x=0,
                     kernel_name='conv3d'):
     """
     algorithm: compute conv3d
@@ -346,7 +345,8 @@ def _conv3d_compute(shape_fm,
         "mad_dtype": mad_dtype,
         "kernel_name": kernel_name,
         "group_dict": group_dict,
-        "dilation_dhw": dilation_dhw
+        "dilation_dhw": dilation_dhw,
+        "offset_x": offset_x
     }
 
     conv_res = tbe.conv3d(data, weight, shape_filter, para_dict)
@@ -376,9 +376,9 @@ def _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     -------
     None
     """
-    para_check.check_dtype_rule(fmp_dtype, ('float16'), "fmap")
-    para_check.check_dtype_rule(w_dtype, ('float16'), "filter")
-    para_check.check_dtype_rule(res_dtype, ('float16', 'float32'), "output")
+    para_check.check_dtype_rule(fmp_dtype, ('float16', 'int8'), "fmap")
+    para_check.check_dtype_rule(w_dtype, ('float16', 'int8'), "filter")
+    para_check.check_dtype_rule(res_dtype, ('float16', 'float32', 'int32'), "output")
 
 
 def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
@@ -492,7 +492,7 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     if bias:
         util_conv3d.check_bias(bias, res_dtype)
         bias_dtype = bias.get("dtype").lower()
-        para_check.check_dtype_rule(bias_dtype, ("float16", "float32"), "bias")
+        para_check.check_dtype_rule(bias_dtype, ("float16", "float32", "int32"), "bias")
 
     if len(strides) != _STRIDE_LENGTH:
         dict_args = {
@@ -533,7 +533,8 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0], groups, _C0, _C0)
+    w_block_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
+    group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0], groups, _C0, w_block_k)
 
     _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype)
 
@@ -778,7 +779,17 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
             str(dilation_w))
 
 
-def _cal_input_param(fmap, weight, bias_tensor, output, strides, pads, dilations, groups, data_format, kernel_name):
+def _cal_input_param(fmap,
+                     weight,
+                     bias_tensor,
+                     output,
+                     strides,
+                     pads,
+                     dilations,
+                     groups,
+                     data_format,
+                     offset_x=0,
+                     kernel_name="conv3d"):
     """
     to calculate fusion param
     """
@@ -800,7 +811,8 @@ def _cal_input_param(fmap, weight, bias_tensor, output, strides, pads, dilations
 
     _check_groups_validation(shape_fmap[1], shape_filter[1], groups)
 
-    group_dict = util_common.calculate_group(shape_fmap[1], shape_filter[0], groups, _C0, _C0)
+    w_block_k = tbe_platform.CUBE_MKN[weight.dtype]['mac'][1]
+    group_dict = util_common.calculate_group(shape_fmap[1], shape_filter[0], groups, _C0, w_block_k)
 
     para_dict = {
         "dsl_flag": True,
@@ -811,7 +823,8 @@ def _cal_input_param(fmap, weight, bias_tensor, output, strides, pads, dilations
         "mad_dtype": mad_dtype,
         "kernel_name": kernel_name,
         "group_dict": group_dict,
-        "dilation_dhw": dilation_dhw
+        "dilation_dhw": dilation_dhw,
+        "offset_x": offset_x
     }
 
     return para_dict, shape_filter
@@ -963,6 +976,7 @@ def conv3d(fmap,
                                   res_dtype,
                                   dilation_dhw=dilation_dhw,
                                   group_dict=group_dict,
+                                  offset_x=offset_x,
                                   kernel_name=kernel_name)
 
     with tvm.target.cce():
@@ -987,7 +1001,7 @@ def conv3d_fusion_compute(data,
                           kernel_name="conv3d"):
 
     para_dict, filter_size = _cal_input_param(
-        data, weight, bias, output, strides, pads, dilations, groups, data_format, kernel_name)
+        data, weight, bias, output, strides, pads, dilations, groups, data_format, offset_x, kernel_name)
 
     res = tbe.conv3d(data, weight, filter_size, para_dict)
 

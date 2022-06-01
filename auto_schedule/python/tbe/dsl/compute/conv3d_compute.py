@@ -51,9 +51,9 @@ _DILATION_MIN = 1
 _DILATION_MAX = 255
 
 # Dtype list
-_FMAP_DTYPE = ('float16')
-_W_DTYPE = ('float16')
-_RES_DTYPE = ('float16', 'float32')
+_FMAP_DTYPE = ('float16', 'int8')
+_W_DTYPE = ('float16', 'int8')
+_RES_DTYPE = ('float16', 'float32', 'int32')
 
 
 class Conv3DParam:
@@ -155,15 +155,17 @@ def _cube_3d_compute(fmap,
     else:
         width_out = (fmap_w + pad_left + pad_right - ((filter_w - 1) * dilation_w + 1)) // stride_w + 1
 
-    if not Conv3DParam.var_map \
-        and tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
-        and width_out < 2 \
-        and height_out != 1 \
-        and not _TENSOR_MAP.get("l0a_load2d_flag"):
+    _TENSOR_MAP["flag_load3d_special_case"] = (not Conv3DParam.var_map
+                                               and (tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
+                                                    not in ("Hi3796CV300CS", "Ascend310"))
+                                               and width_out < 2
+                                               and height_out != 1
+                                               and not _TENSOR_MAP.get("l0a_load2d_flag"))
+    if _TENSOR_MAP["flag_load3d_special_case"]:
         pad_right += stride_w
         pads[5] += stride_w
         width_out += 1
-        _TENSOR_MAP["flag_load3d_special_case"] = True
+        _TENSOR_MAP["is_double_w"] = 2
 
     config = tbe_platform.CUBE_MKN[in_dtype]
     block_size_k = config['mac'][1]
@@ -242,7 +244,8 @@ def _cube_3d_compute(fmap,
                                                                fmap.dtype,
                                                                opti_h_flag,
                                                                tag=_OP_TAG,
-                                                               dilation=dilation_hw)
+                                                               dilation=dilation_hw,
+                                                               offset_x=Conv3DParam.para_dict.get("offset_x"))
         _TENSOR_MAP["fmap_im2col_row_major_res"] = fmap_im2col_row_major_res
 
         # im2col
@@ -301,6 +304,16 @@ def _cube_3d_compute(fmap,
                   'stride': stride_dhw[1:],
                   'dilation': dilation_dhw[1:]}
 
+    _TENSOR_MAP["quant_bias_flag"] = (isinstance(bias, tvm.tensor.Tensor) and w_dtype == 'int8')
+    if _TENSOR_MAP.get("quant_bias_flag"):
+        attrs_dict['conv_shape'] = conv_shape
+        attrs_dict['true_conv_shape'] = list(conv_shape)
+        attrs_dict.get('true_conv_shape')[2] //= _TENSOR_MAP.get("is_double_w")
+        attrs_dict['mad_shape'] = mad_shape
+        attrs_dict['invalid_data_rm_flag'] = 0
+        attrs_dict['remove_padded_column_in_next_op'] = _TENSOR_MAP.get('flag_load3d_special_case')
+        c_col = _cal_bias_res(c_col, bias, attrs_dict)
+
     conv_aligned_shape = (fused_batch_dout,
                           (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
                           howo_mad, config['mac'][2])
@@ -324,7 +337,8 @@ def _cube_3d_compute(fmap,
     Conv3DParam.tiling = None
     res = c_ub
 
-    if isinstance(bias, tvm.tensor.Tensor):
+    _TENSOR_MAP["noquant_bias_flag"] = (isinstance(bias, tvm.tensor.Tensor) and w_dtype != 'int8')
+    if _TENSOR_MAP.get("noquant_bias_flag"):
         res = _bias_add(c_ub, bias, attrs_dict)
 
     return res
@@ -678,10 +692,11 @@ def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
         mode = 'f162f16'
     else:
         mode = 'f162f32'
+    offset_x = Conv3DParam.para_dict.get("offset_x") if _TENSOR_MAP.get("is_v200_version") else 0
     c_col = tvm.compute(
         mad_shape,
         lambda g, n, index_j1, i, index_j0: tvm.sum(
-            (fmap[g, n, i // block_size_m, axis_k1, i % block_size_m, axis_k0] *
+            ((fmap[g, n, i // block_size_m, axis_k1, i % block_size_m, axis_k0] - offset_x) *
              weight[g * ckk + axis_k1, index_j1, index_j0, axis_k0]).astype(mad_dtype),
             axis=[axis_k1, axis_k0]),
         name='mad1',
@@ -694,6 +709,59 @@ def _mad(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d, d_out,
             'd_out': d_out
         })
     return c_col
+
+
+def _cal_bias_res(in_tensor0, in_tensor1, attrs_dict):
+    """
+    calculate conv res + bias in L0C
+    Parameters
+    ----------
+
+    in_tensor0: conv res tensor
+
+    in_tensor1: bias vector
+
+    attrs_dict: attr
+
+    Returns
+    -------
+    in_tensor0 + in_tensor1 tensor
+    """
+    shape_mad = attrs_dict['mad_shape']
+    block_size = shape_mad[-1]
+    cout1 = shape_mad[2]
+
+    # load bias into UB and do 32Byte align
+    shape_bias_align = []
+    shape_bias_align.append(compute_util.align(in_tensor1.shape[0], 8))
+    bias_align = tvm.compute(shape_bias_align, lambda *indice: in_tensor1(*indice), name=_OP_TAG + 'bias_align')
+    if _TENSOR_MAP.get("is_v200_version"):
+        bias_zn = tvm.compute(shape_mad,
+                              lambda g_idx, batch_idx, cout1_idx, howo_idx, cout0_idx: bias_align(
+                                  g_idx * cout1 * block_size + cout1_idx * block_size + cout0_idx),
+                              name=_OP_TAG + 'bias_zn')
+    else:
+        shape_bias_brdcst = list(shape_mad)
+        # 3 is howo_mad
+        shape_bias_brdcst[3] = shape_bias_brdcst[3] // block_size
+        bias_brdcst = tvm.compute(shape_bias_brdcst,
+                                  lambda g_idx, batch_idx, cout1_idx, howo_idx, cout0_idx: bias_align(
+                                      g_idx * cout1 * block_size + cout1_idx * block_size + cout0_idx),
+                                  name=_OP_TAG + 'bias_brdcst')
+        _TENSOR_MAP["bias_brdcst"] = bias_brdcst
+        bias_zn = tvm.compute(shape_mad,
+                              lambda g_idx, batch_idx, cout1_idx, howo_idx, cout0_idx: bias_brdcst(
+                                  g_idx, batch_idx, cout1_idx, howo_idx // block_size, cout0_idx),
+                              name=_OP_TAG + 'bias_zn')
+    _TENSOR_MAP["bias_zn"] = bias_zn
+    c_col_bias = tvm.compute(shape_mad,
+                             lambda *index: bias_zn(*index) + in_tensor0(*index),
+                             name=_OP_TAG + 'c_col_bias',
+                             tag=_OP_TAG + 'c_col_bias',
+                             attrs=attrs_dict)
+    _TENSOR_MAP["c_col_bias"] = c_col_bias
+    _TENSOR_MAP["bias_align"] = bias_align
+    return c_col_bias
 
 
 def _bias_add(in_tensor0, in_tensor1, attrs=None):
@@ -1144,6 +1212,11 @@ def conv3d(x, filter, filter_size, para_dict):
     dsl_flag = para_dict.get("dsl_flag")
     _TENSOR_MAP["dsl_flag"] = dsl_flag
     _TENSOR_MAP["flag_load3d_special_case"] = False
+    _TENSOR_MAP["is_v200_version"] = cube_util.is_v200_version_new()
+    _TENSOR_MAP["quant_fused_flag"] = (dsl_flag and w_dtype == 'int8')
+    _TENSOR_MAP["is_double_w"] = 1
+    if 'offset_x' not in para_dict:
+        para_dict["offset_x"] = 0
 
     conv_res = _cube_3d_compute(x,
                                 filter,
@@ -1157,6 +1230,9 @@ def conv3d(x, filter, filter_size, para_dict):
                                 group_dict,
                                 bias=bias_tensor)
     res = conv_res
+    if _TENSOR_MAP.get("quant_fused_flag"):
+        return res
+
     res_remove_pad_shape = list(res.shape)
     # UB fusion
     if 'value' in dir(conv_res.op.attrs['true_shape'][2]):
