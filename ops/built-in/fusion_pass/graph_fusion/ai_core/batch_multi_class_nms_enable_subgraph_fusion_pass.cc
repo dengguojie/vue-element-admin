@@ -103,8 +103,8 @@ Status BatchMultiClassNonMaxSuppressionEnableSubgraphFusionPass::AddNMSSubgraphA
   // Update subgraphDims
   for (uint32_t dimIndex = 1; dimIndex <= levelNum; ++dimIndex) {
     if (dimIndex * SPLIT_LEVEL < maxTotalSize) {
-      subgraphDims +=
-          SubgraphDimsRepeat(to_string(dimIndex * SPLIT_LEVEL) + ",", inputCount - 1) + to_string(dimIndex * SPLIT_LEVEL) + ";";
+      subgraphDims += SubgraphDimsRepeat(to_string(dimIndex * SPLIT_LEVEL) + ",", inputCount - 1) +
+          to_string(dimIndex * SPLIT_LEVEL) + ";";
     } else {
       subgraphDims += SubgraphDimsRepeat(to_string(maxTotalSize) + ",", inputCount - 1) + to_string(maxTotalSize) + ";";
     }

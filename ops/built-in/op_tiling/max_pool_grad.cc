@@ -63,6 +63,9 @@ const int64_t VCMP_NUM_EACH_REPEAT = 128;
 const int64_t LOAD3D_NUM_EACH_REPEAT = 16;
 const int64_t WO_ALIGN_FACTOR = 8;
 const int64_t RESERVE_UB_SIZE = 288;
+const int64_t CORE_BRANCH_0 = 0;
+const int64_t CORE_BRANCH_2 = 2;
+const int64_t CORE_BRANCH_3 = 3;
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {
     "core_num", "ub_size", "kh", "kw", "sh", "sw", "padding", "l1_size"};
@@ -822,12 +825,12 @@ vector<int64_t> SplitCore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int
   if (base_num >= core_num) {
     total_num = base_num;
     real_core = core_num;
-    core_branch = 0;
+    core_branch = CORE_BRANCH_0;
   } else if (base_num * ho_ys >= core_num) {
     DivisionNDearest(ho_ys, base_num, core_num, new_ho, total_num);
     real_core = core_num;
     core_ou_shape_h = new_ho;
-    core_branch = 2;
+    core_branch = CORE_BRANCH_2;
   } else {
     base_num = base_num * ho_ys;
     new_ho = 1;
@@ -838,7 +841,7 @@ vector<int64_t> SplitCore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int
     if (total_num >= core_num) {
       real_core = core_num;
     }
-    core_branch = 3;
+    core_branch = CORE_BRANCH_3;
   }
 
   bool true_false = true;
@@ -885,7 +888,7 @@ void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vecto
 
   if (l1_size == 0) {
     l1_in_size = 0;
-    InferDimReturn(ho, UssCeilDiv(wo, WO_ALIGN_FACTOR) * WO_ALIGN_FACTOR, true_false, ksize, strides, 
+    InferDimReturn(ho, UssCeilDiv(wo, WO_ALIGN_FACTOR) * WO_ALIGN_FACTOR, true_false, ksize, strides,
                    ho_ys, wo_ys, h_ys, w_ys, infer_hi, infer_wi);
     ori_in_size = infer_hi * infer_wi * C0;
   } else {
@@ -1142,8 +1145,9 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   bool support = true;
   OP_LOGD(op_type.c_str(), "GetCompileParams, core_branch is %d ,padding is %s", core_branch, padding.c_str());
   std::vector<int64_t> params_ub = {};
-  Pattern(params.core_ou_shape_h, params.core_ou_shape_w, core_branch, ksize, strides, params.ho, params.wo, params.h,
-          params.w, padding, pad, ub_size, l1_size, params.select_key, params.new_ho, params.new_wo, params_ub, support);
+  Pattern(params.core_ou_shape_h, params.core_ou_shape_w, core_branch, ksize,
+          strides, params.ho, params.wo, params.h, params.w, padding, pad,
+          ub_size, l1_size, params.select_key, params.new_ho, params.new_wo, params_ub, support);
   if (!support) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "kernel is too larger !!!");
     return false;

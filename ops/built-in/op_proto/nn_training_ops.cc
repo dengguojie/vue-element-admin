@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ void DynamicApplyInferShapeRange(Operator& op, const string& input_name, const s
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr input_tensor_desc = op_desc->MutableInputDesc(input_name);
   GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc(output_name);
-  if (output_tensor_desc == nullptr){
+  if (output_tensor_desc == nullptr) {
     return;
   }
   std::vector<std::pair<int64_t, int64_t>> input_shape_range;
@@ -158,8 +158,9 @@ IMPLEMT_VERIFIER(ApplyAdaMaxD, ApplyAdaMaxDVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ApplyAdaMaxDInferShape) {
-  if ((OneInOneOutDynamicInfer(op, "var", {"var"})) && (OneInOneOutDynamicInfer(op, 
-      "m", {"m"})) && (OneInOneOutDynamicInfer(op, "v", {"v"}))) {
+  if ((OneInOneOutDynamicInfer(op, "var", {"var"})) &&
+      (OneInOneOutDynamicInfer(op, "m", {"m"})) &&
+      (OneInOneOutDynamicInfer(op, "v", {"v"}))) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -388,7 +389,7 @@ IMPLEMT_VERIFIER(ApplyAdagradV2D, ApplyAdagradV2DVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(ApplyAdagradV2DInferShape) {
   if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
-  if (OneInOneOutDynamicInfer(op, "var", {"accum"})){
+  if (OneInOneOutDynamicInfer(op, "var", {"accum"})) {
     return GRAPH_SUCCESS;
   }
   }
@@ -1593,7 +1594,9 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
   if (op.GetAttr("dampening", dampening) == GRAPH_SUCCESS && op.GetAttr("nesterov", nesterov) == GRAPH_SUCCESS) {
     if (nesterov) {
       if (dampening != 0.0) {
-        std::string err_msg = OtherErrMsg(ConcatString("Attr dampening(", dampening, ") must == 0 when nesterov == true"));
+        std::string err_msg = OtherErrMsg(ConcatString("Attr dampening(",
+                                                       dampening,
+                                                       ") must == 0 when nesterov == true"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
       }
@@ -1602,7 +1605,9 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
 
   if (op.GetAttr("weight_decay", weight_decay) == GRAPH_SUCCESS) {
     if (weight_decay < 0) {
-      std::string err_msg = GetAttrValueErrMsg("weight_decay", ConcatString(weight_decay), ConcatString("more than or equal to 0"));
+      std::string err_msg = GetAttrValueErrMsg("weight_decay",
+                                               ConcatString(weight_decay),
+                                               ConcatString("more than or equal to 0"));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -1835,7 +1840,9 @@ IMPLEMT_VERIFIER(SparseApplyFtrlD, SparseApplyFtrlDVerify) {
     return GRAPH_FAILED;
   }
   if (lr_power > 0) {
-    std::string err_msg = GetAttrValueErrMsg("lr_power", ConcatString(lr_power), ConcatString("less than or equal to 0"));
+    std::string err_msg = GetAttrValueErrMsg("lr_power",
+                                             ConcatString(lr_power),
+                                             ConcatString("less than or equal to 0"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -1930,7 +1937,9 @@ IMPLEMT_VERIFIER(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify) {
     return GRAPH_FAILED;
   }
   if (l2_shrinkage < 0) {
-    std::string err_msg = GetAttrValueErrMsg("l2_shrinkage", ConcatString(l2_shrinkage), ConcatString("more than or equal to 0"));
+    std::string err_msg = GetAttrValueErrMsg("l2_shrinkage",
+                                             ConcatString(l2_shrinkage),
+                                             ConcatString("more than or equal to 0"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -1940,7 +1949,9 @@ IMPLEMT_VERIFIER(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify) {
     return GRAPH_FAILED;
   }
   if (lr_power < 0) {
-    std::string err_msg = GetAttrValueErrMsg("lr_power", ConcatString(lr_power), ConcatString("more than or equal to 0"));
+    std::string err_msg = GetAttrValueErrMsg("lr_power",
+                                             ConcatString(lr_power),
+                                             ConcatString("more than or equal to 0"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }

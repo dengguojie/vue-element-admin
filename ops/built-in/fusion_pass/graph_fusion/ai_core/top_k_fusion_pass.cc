@@ -137,7 +137,7 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
    if (optional_info.soc_version.find("Ascend910B1") != string::npos ||
        optional_info.soc_version.find("Ascend910B2") != string::npos ||
        optional_info.soc_version.find("Ascend910B3") != string::npos ||
-       optional_info.soc_version.find("Ascend910B4") != string::npos ) {
+       optional_info.soc_version.find("Ascend910B4") != string::npos) {
     calcParams.soc_version = "Ascend910B";
     // 32: proposal num processed for each repeat
     calcParams.core_align_num = 32;

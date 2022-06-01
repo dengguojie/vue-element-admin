@@ -1467,6 +1467,12 @@ vector_B:
       - ops/built-in/tbe/impl/sparse_apply_ftrl_v2_d.py
       - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/sparse_apply_rms_prop_d.py
+      - ops/built-in/op_proto/avg_pool_1d_ops.cc
+      - ops/built-in/op_proto/nn_training_ops.cc
+      - ops/built-in/op_proto/npu_loss_scale_ops.cc
+      - ops/built-in/op_proto/sparse_ops.cc
+      - ops/built-in/tbe/impl/im2col_common_func.py
+      - ops/built-in/op_tiling/sparse_apply_common.cc
     unrelease:
       - ops/built-in/op_proto/runtime/moving_sum_with_sigmoid.cc
       - ops/built-in/op_proto/runtime/reduce_infer.cc
@@ -2359,7 +2365,6 @@ unkown:
       - ops/built-in/op_tiling/avg_poolv2.cc
       - ops/built-in/op_tiling/resize.cc
       - ops/built-in/op_proto/sdca_ops.cc
-      - ops/built-in/op_proto/avg_pool_1d_ops.cc
       - ops/built-in/op_proto/batch_ops.cc
       - ops/built-in/op_proto/audio_ops.cc
       - ops/built-in/op_proto/act_ulq_clamp_min_grad.cc
@@ -2368,7 +2373,6 @@ unkown:
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/string_ops.cc
       - ops/built-in/op_proto/acts_ulq.cc
-      - ops/built-in/op_proto/nn_training_ops.cc
       - ops/built-in/op_proto/random_ops.cc
       - ops/built-in/op_proto/condtake_ops.cc
       - ops/built-in/op_proto/nn_ops.cc
@@ -2401,9 +2405,7 @@ unkown:
       - ops/built-in/op_proto/outfeed_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/nn_other_ops.cc
-      - ops/built-in/op_proto/sparse_ops.cc
       - ops/built-in/op_proto/lookup_ops.cc
-      - ops/built-in/op_proto/npu_loss_scale_ops.cc
       - ops/built-in/op_proto/inc/ragged_conversion_ops.h
       - ops/built-in/op_proto/inc/warp_perspective_ops.h
       - ops/built-in/op_proto/inc/save_ops.h
@@ -2979,7 +2981,6 @@ unkown:
       - ops/built-in/tbe/impl/fractal_z_3d_2_dhwcn.py
       - ops/built-in/tbe/impl/top_k.py
       - ops/built-in/tbe/impl/drop_out_with_muls_and_softmax_grad.py
-      - ops/built-in/tbe/impl/im2col_common_func.py
       - ops/built-in/tbe/impl/dot.py
       - ops/built-in/tbe/impl/invert.py
       - ops/built-in/tbe/impl/add_row_ranges.py

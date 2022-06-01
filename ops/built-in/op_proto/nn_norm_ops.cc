@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ IMPLEMT_COMMON_INFERFUNC(AxpyWithSoftmaxAndDropOutDoMaskInferShape) {
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(AxpyWithSoftmaxAndDropOutDoMask, AxpyWithSoftmaxAndDropOutDoMaskInferShape);
-// ------------------AxpyWithSoftmaxAndDropOutDoMask END------------------ 
+// ------------------AxpyWithSoftmaxAndDropOutDoMask END------------------
 
 // --------------------------DropoutWithMulsAndSoftmaxGrad-------------------------
 IMPLEMT_COMMON_INFERFUNC(DropoutWithMulsAndSoftmaxGradInferShape) {
@@ -172,7 +172,7 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
     if (OneInOneOutDynamicInfer(op, input_predict_idx, {output_loss_idx})) {
       return GRAPH_SUCCESS;
     }
-    return GRAPH_FAILED;  
+    return GRAPH_FAILED;
   }
   // if reduction == "mean" or reduction == "sum" , output a scalar
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
@@ -278,7 +278,7 @@ IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyInferShape) {
   if (reduceType == "none") {
     // if reduction == "none" , output shape == x.shape
     OP_LOGI(TbeGetName(op).c_str(), "the attr reduction = none");
-    if (OneInOneOutDynamicInfer(op, "x", {"output"})){
+    if (OneInOneOutDynamicInfer(op, "x", {"output"})) {
       return GRAPH_SUCCESS;
     }
     return GRAPH_SUCCESS;
@@ -807,7 +807,7 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
   std::set<Format> vaildFormat = {FORMAT_ND, FORMAT_NHWC, FORMAT_NCHW,
                                   FORMAT_NC1HWC0, FORMAT_FRACTAL_NZ};
   if (vaildFormat.find(x_format) == vaildFormat.end()) {
-    OP_LOGE(TbeGetName(op).c_str(), 
+    OP_LOGE(TbeGetName(op).c_str(),
             "Attr x_format only support NHWC or NCHW or ND or NC1HWC0 or FRACTAL_NZ");
     return GRAPH_FAILED;
   }
@@ -1010,7 +1010,7 @@ VERIFY_FUNC_REG(DropOutDoMaskV3, DropOutDoMaskV3Verify);
 // ----------------DropOutDoMaskV3D Op Start-------------------
 IMPLEMT_VERIFIER(DropOutDoMaskV3D, DropOutDoMaskV3DVerify) {
   std::vector<float> constAttr;
-  if(!GetConstAttr(op, {"keep_prob"}, constAttr)){
+  if (!GetConstAttr(op, {"keep_prob"}, constAttr)) {
      OP_LOGE(TbeGetName(op).c_str(), "The GetOpAttr ConstValue failed!");
      return GRAPH_FAILED;
   }
@@ -1081,7 +1081,8 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   if ((!scale_from_blob) && (scale_dim_num != 0)) {
     int64_t scale_check_num = axis_ + length_scale;
     if (scale_check_num > length_x) {
-      string err_msg1 = ConcatString("scale shape extends x shape when check applied, scale_check_num:",scale_check_num, ", length_x:",length_x);
+      string err_msg1 = ConcatString("scale shape extends x shape when check applied, scale_check_num:",
+                                     scale_check_num, ", length_x:", length_x);
       std::string err_msg = OtherErrMsg(err_msg1);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
@@ -1203,7 +1204,7 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
   if ((axis >= length_x) || (axis < (-length_x))) {
     string minvalue = ConcatString(-length_x);
     string maxvalue = ConcatString(length_x - 1);
-    string excepted_value = ConcatString("in the range of [", minvalue, ", ", maxvalue,"]");
+    string excepted_value = ConcatString("in the range of [", minvalue, ", ", maxvalue, "]");
     std::string err_msg = GetAttrValueErrMsg("axis", ConcatString(axis), excepted_value);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -1226,7 +1227,8 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
   if ((!scale_from_blob) && (scale_dim_num != 0)) {
     int64_t scale_check_num = axis_ + length_scale;
     if (scale_check_num > length_x) {
-      string err_msg1 = ConcatString("scale shape extends x shape when check applied, scale_check_num:",scale_check_num, ", length_x:",length_x);
+      string err_msg1 = ConcatString("scale shape extends x shape when check applied, scale_check_num:",
+                                     scale_check_num, ", length_x:", length_x);
       std::string err_msg = OtherErrMsg(err_msg1);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
@@ -1253,14 +1255,16 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     if (num_axes == -1) {
       int64_t scale_num = length_x - axis_;
       if (length_scale != scale_num) {
-        string err_msg1 = ConcatString("length_scale and scale_num must be equal, length_scale:",length_scale, ", scale_num:",scale_num);
+        string err_msg1 = ConcatString("length_scale and scale_num must be equal, length_scale:",
+                                       length_scale, ", scale_num:", scale_num);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < scale_num; i++) {
         if (dims_x[axis_ + i] != dims_scale[i]) {
-        string err_msg1 = ConcatString("length_scale and scale_num must be equal, dims_x[axis_ + i]:",dims_x[axis_ + i], ", dims_scale[i]:",dims_scale[i]);
+        string err_msg1 = ConcatString("length_scale and scale_num must be equal, dims_x[axis_ + i]:",
+                                       dims_x[axis_ + i], ", dims_scale[i]:", dims_scale[i]);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
@@ -1275,20 +1279,23 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     } else if (num_axes > 0) {
       int64_t num_axis = axis_ + num_axes;
       if (num_axis > length_x) {
-        string err_msg1 = ConcatString("scale shape extends x shape when applied, num_axis:",num_axis, ", length_x:",length_x);
+        string err_msg1 = ConcatString("scale shape extends x shape when applied, num_axis:",
+                                       num_axis, ", length_x:", length_x);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
       }
       if (length_scale != num_axes) {
-        string err_msg1 = ConcatString("length_scale and num_axes must be equal, length_scale:",length_scale, ", num_axes:",num_axes);
+        string err_msg1 = ConcatString("length_scale and num_axes must be equal, length_scale:",
+                                       length_scale, ", num_axes:", num_axes);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < num_axes; i++) {
         if (dims_x[axis_ + i] != dims_scale[i]) {
-          string err_msg1 = ConcatString("dimensions shape_x and shape_scale must be equal, dims_x[axis_ + i]:",dims_x[axis_ + i], ", dims_scale[i]:",dims_scale[i]);
+          string err_msg1 = ConcatString("dimensions shape_x and shape_scale must be equal, dims_x[axis_ + i]:",
+                                         dims_x[axis_ + i], ", dims_scale[i]:", dims_scale[i]);
           std::string err_msg = OtherErrMsg(err_msg1);
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
           return GRAPH_FAILED;
@@ -1301,14 +1308,16 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     if (scale_dim_num_new != 0) {
       int64_t scale_num = axis_ + length_scale_new;
       if (scale_num > length_x) {
-        string err_msg1 = ConcatString("scale shape extends x shape when applied, scale_num:",scale_num, ", length_x:",length_x);
+        string err_msg1 = ConcatString("scale shape extends x shape when applied, scale_num:",
+                                       scale_num, ", length_x:", length_x);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < length_scale_new; i++) {
         if (dims_x[axis_ + i] != scale_shape_new[i]) {
-          string err_msg1 = ConcatString("dimensions shape_x and shape_scale must be equal, dims_x[axis_ + i]:",dims_x[axis_ + i], ", scale_shape_new[i]:",scale_shape_new[i]);
+          string err_msg1 = ConcatString("dimensions shape_x and shape_scale must be equal, dims_x[axis_ + i]:",
+                                         dims_x[axis_ + i], ", scale_shape_new[i]:", scale_shape_new[i]);
           std::string err_msg = OtherErrMsg(err_msg1);
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
           return GRAPH_FAILED;
@@ -1695,7 +1704,7 @@ IMPLEMT_COMMON_INFERFUNC(LpLossInferShape) {
   if (reduction == "none") {
     // if reduction == "none" , output shape == x.shape
     OP_LOGI(TbeGetName(op).c_str(), "the attr reduction = none");
-    if (OneInOneOutDynamicInfer(op, "predict", {"y"})){
+    if (OneInOneOutDynamicInfer(op, "predict", {"y"})) {
       return GRAPH_SUCCESS;
     }
     return GRAPH_FAILED;
@@ -1737,7 +1746,7 @@ IMPLEMT_COMMON_INFERFUNC(MseLossGradInferShape) {
     return GRAPH_FAILED;
   }
 
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "label", "y", is_dynamic_output)){
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "label", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1757,7 +1766,7 @@ IMPLEMT_COMMON_INFERFUNC(MseLossInferShape) {
   if (reduceType == "none") {
     // if reduction == "none" , output shape == x.shape
     OP_LOGI(TbeGetName(op).c_str(), "the attr reduction = none");
-    if (OneInOneOutDynamicInfer(op, "predict", {"y"})){
+    if (OneInOneOutDynamicInfer(op, "predict", {"y"})) {
       return GRAPH_SUCCESS;
     }
     return GRAPH_FAILED;
@@ -1792,7 +1801,7 @@ bool InferShapeAndTypeSoftMarginLoss(Operator& op, const string& input_name1, co
     std::string attr_value = "none";
     op.GetAttr("reduction", attr_value);
 
-    if(attr_value == "none") {
+    if (attr_value == "none") {
         ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
         ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
         std::vector<int64_t> dims_x = shape_x.GetDims();
@@ -1841,7 +1850,7 @@ IMPLEMT_VERIFIER(SoftMarginLoss, SoftMarginLossVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SoftMarginLossInferShape) {
-    if(InferShapeAndTypeSoftMarginLoss(op, "input_x", "input_y", "output_z", "reduction")) {
+    if (InferShapeAndTypeSoftMarginLoss(op, "input_x", "input_y", "output_z", "reduction")) {
         return GRAPH_SUCCESS;
     }
     return GRAPH_FAILED;
@@ -2026,7 +2035,7 @@ IMPLEMT_VERIFIER(PoissonNllLoss, PoissonNllLossVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(PoissonNllLossInferShape) {
     std::string reduction_str = "";
-    op.GetAttr("reduction",reduction_str);
+    op.GetAttr("reduction", reduction_str);
     if (InferShapeAndTypePoissonNllLoss(op, "input_x", "target", "loss", reduction_str)) {
         return GRAPH_SUCCESS;
     }
@@ -2048,20 +2057,20 @@ IMPLEMT_COMMON_INFERFUNC(RnnGenMaskInferShape) {
   Shape length_shape = tensordesc_input.GetShape();
   std::vector<int64_t> dim_length = length_shape.GetDims();
 
-  if(dim_length.size() != 1){
+  if (dim_length.size() != 1) {
     OP_LOGE(TbeGetName(op).c_str(), "Unexcepeted Input Shape.");
     return GRAPH_FAILED;
   }
   int64_t batch_size = dim_length[0];
 
   int64_t num_step = 0;
-  if(GRAPH_SUCCESS != op.GetAttr("num_step", num_step)){
+  if (GRAPH_SUCCESS != op.GetAttr("num_step", num_step)) {
     OP_LOGE(TbeGetName(op).c_str(), "Failed to get the value of num_step.");
     return GRAPH_FAILED;
   }
 
   int64_t hidden_size = 0;
-  if(GRAPH_SUCCESS != op.GetAttr("hidden_size", hidden_size)){
+  if (GRAPH_SUCCESS != op.GetAttr("hidden_size", hidden_size)) {
     OP_LOGE(TbeGetName(op).c_str(), "Failed to get the value of hidden_size.");
     return GRAPH_FAILED;
   }
@@ -2077,10 +2086,10 @@ IMPLEMT_COMMON_INFERFUNC(RnnGenMaskInferShape) {
  IMPLEMT_VERIFIER(RnnGenMask, RnnGenMaskVerify) {
     return GRAPH_SUCCESS;
 }
-//Registered inferfunction
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(RnnGenMask, RnnGenMaskInferShape);
 
-//Registered verify function
+// Registered verify function
 VERIFY_FUNC_REG(RnnGenMask, RnnGenMaskVerify);
 // --------------------------RnnGenMask END---------------------
 // --------------------------MultilabelMarginLoss-------------------------

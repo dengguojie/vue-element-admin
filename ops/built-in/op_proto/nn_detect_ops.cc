@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,9 @@ IMPLEMT_COMMON_INFERFUNC(YoloInferShape) {
   OP_LOGI("yolo", "infer shape begin---");
   auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 4,
-        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
+        std::string err_msg = GetShapeErrMsg(0,
+                                             ConcatString(inputShape.size()),
+                                             ConcatString("more than or equal to 4"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t batchNum = (int64_t)inputShape[0];
@@ -93,7 +95,8 @@ IMPLEMT_VERIFIER(Yolo, YoloVerify) {
   int64_t classNum = 0;
   auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 2,
-        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
+        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()),
+                                             ConcatString("more than or equal to 2"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t channelNum = (int64_t)inputShape[1];
@@ -124,7 +127,9 @@ IMPLEMT_VERIFIER(Yolo, YoloVerify) {
   }
 
   if (boxNum * (1 + coordNum + classNum) != channelNum) {
-    std::string err_msg = GetAttrValueErrMsg("channels", ConcatString(channelNum), ConcatString("equal with boxes*(1+coords+classes)"));
+    std::string err_msg = GetAttrValueErrMsg("channels",
+                                             ConcatString(channelNum),
+                                             ConcatString("equal with boxes*(1+coords+classes)"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -146,7 +151,9 @@ IMPLEMT_COMMON_INFERFUNC(YoloPreDetectionInferShape) {
   OP_LOGI("yolo_pre_detection", "infer shape begin---");
   auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 4,
-        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
+        std::string err_msg = GetShapeErrMsg(0,
+                                             ConcatString(inputShape.size()),
+                                             ConcatString("more than or equal to 4"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t batchNum = (int64_t)inputShape[0];
@@ -199,7 +206,9 @@ IMPLEMT_VERIFIER(YoloPreDetection, YoloPreDetectionVerify) {
   int64_t classNum = 0;
   auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 2,
-        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
+        std::string err_msg = GetShapeErrMsg(0,
+                                             ConcatString(inputShape.size()),
+                                             ConcatString("more than or equal to 2"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t channelNum = (int64_t)inputShape[1];
@@ -230,7 +239,9 @@ IMPLEMT_VERIFIER(YoloPreDetection, YoloPreDetectionVerify) {
   }
 
   if (boxNum * (1 + coordNum + classNum) != channelNum) {
-    std::string err_msg = GetAttrValueErrMsg("channels", ConcatString(channelNum), ConcatString("equal with boxes*(1+coords+classes)"));
+    std::string err_msg = GetAttrValueErrMsg("channels",
+                                             ConcatString(channelNum),
+                                             ConcatString("equal with boxes*(1+coords+classes)"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -588,11 +599,12 @@ VERIFY_FUNC_REG(YoloV3DetectionOutputV2D, YoloV3DetectionOutputV2DVerify);
 // ----------------YoloV3DetectionOutputV2D------------------
 
 // ----------------SPP-------------------
-int64_t GetLogN(int64_t base) {
+int64_t GetLogN(int64_t factor) {
   int64_t n = 1;
   int64_t powVal = 1;
-  while (powVal < base) {
-    powVal *= 2;
+  int64_t base = 2;  // log based on 2
+  while (powVal < factor) {
+    powVal *= base;
     n += 1;
   }
   return n;
@@ -754,9 +766,9 @@ IMPLEMT_COMMON_INFERFUNC(DecodeBboxInferShapeCommon) {
     dim_vector1.push_back(shape_n / 4);
   }
   if ((boxPredictionsShape.size() == 3) && (boxPredictionsShape[2] == 4)) {
-    if (boxPredictionsShape[0] == -1){
+    if (boxPredictionsShape[0] == -1) {
       dim_vector1.push_back(-1);
-    }else{
+    } else {
       dim_vector1.push_back(shape_n / 4);
     }
     dim_vector1.push_back(4);
@@ -765,7 +777,7 @@ IMPLEMT_COMMON_INFERFUNC(DecodeBboxInferShapeCommon) {
   TensorDesc decoded_boxes_desc = op.GetOutputDescByName("decoded_boxes");
   decoded_boxes_desc.SetShape(out_shape_decoded_boxes);
   std::vector<std::pair<int64_t, int64_t>> range;
-  if (op.GetInputDescByName("box_predictions").GetShapeRange(range) == GRAPH_SUCCESS){
+  if (op.GetInputDescByName("box_predictions").GetShapeRange(range) == GRAPH_SUCCESS) {
     decoded_boxes_desc.SetShapeRange(range);
   }
   (void)op.UpdateOutputDesc("decoded_boxes", decoded_boxes_desc);
@@ -921,7 +933,7 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("rois shape is empty, please check!"));
     return GRAPH_FAILED;
   }
-  if (IsUnknown(score_shape) || IsUnknown(rois_shape)){
+  if (IsUnknown(score_shape) || IsUnknown(rois_shape)) {
     return GRAPH_SUCCESS;
   }
   int64_t score_shape_dimension = score_shape.size();
@@ -1462,7 +1474,9 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
     auto scoreClassNum = inputScoreShape[inputScoreShape.size() - 1];
     auto boxesClassNum = inputShape[2];
     if ((boxesClassNum != scoreClassNum) && (boxesClassNum != 1)) {
-      OP_LOGE(TbeGetName(op).c_str(), "the ClassNum in input score is %ld, while ClassNum in boxes is %ld", scoreClassNum,
+      OP_LOGE(TbeGetName(op).c_str(),
+              "the ClassNum in input score is %ld, while ClassNum in boxes is %ld",
+              scoreClassNum,
               boxesClassNum);
       map<string, string> err_map;
       err_map["param_name"] = "ClassNum in boxes";
@@ -1507,7 +1521,8 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   DataType inputDtype = op.GetInputDescByName("scores").GetDataType();
 
   // check input shape
-  CHECK(inputScoreShape.empty(), OP_LOGE(TbeGetName(op).c_str(), "can not get input scores shape."), return GRAPH_FAILED);
+  CHECK(inputScoreShape.empty(), OP_LOGE(TbeGetName(op).c_str(), "can not get input scores shape."),
+        return GRAPH_FAILED);
 
   bool transposeBox;
   if (GRAPH_SUCCESS != op.GetAttr("transpose_box", transposeBox)) {
@@ -1520,7 +1535,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   if (is_unknown) {
     score_dim0 = -1;
   }
-  
+
   vector<int64_t> nmsedBoxesShape;
   nmsedBoxesShape.push_back(score_dim0);
   vector<int64_t> nmsedValidNum = {score_dim0};
@@ -1582,12 +1597,12 @@ COMMON_INFER_FUNC_REG(ToAbsoluteBBox, ELMTWISE_INFER_SHAPEANDTYPE("normalized_bo
 IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
   // check shape
   auto box_predictions_shape = op.GetInputDescByName("boxes").GetShape().GetDims();
-  CHECK(box_predictions_shape.empty(), 
+  CHECK(box_predictions_shape.empty(),
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("box_predictions shape")),
         return GRAPH_FAILED);
   auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
-  CHECK(anchors_shape.empty(), 
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("anchors shape")), 
+  CHECK(anchors_shape.empty(),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("anchors shape")),
         return GRAPH_FAILED);
 
   // check attr decode_clip
@@ -1596,7 +1611,10 @@ IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("decode_clip")),
         return GRAPH_FAILED);
   CHECK(decode_clip > 10 || decode_clip < 0,
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetParamOutRangeErrMsg("decode_clip", ConcatString(0, 10), std::to_string(decode_clip))),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                            GetParamOutRangeErrMsg("decode_clip",
+                                                                   ConcatString(0, 10),
+                                                                   std::to_string(decode_clip))),
         return GRAPH_FAILED);
 
   // check attr reversed_box
@@ -1612,7 +1630,10 @@ IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
         return GRAPH_FAILED);
 
   CHECK(scales_list.size() != 4,
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetAttrValueErrMsg("scales_list.size()", std::to_string(scales_list.size()), ConcatString("4"))),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                            GetAttrValueErrMsg("scales_list.size()",
+                                                               std::to_string(scales_list.size()),
+                                                               ConcatString("4"))),
         return GRAPH_FAILED);
   // check shape
   int64_t box_predictions_shape_n = 1;
@@ -1624,7 +1645,12 @@ IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
     anchors_shape_n = anchors_shape_n * anchors_shape[i];
   }
   CHECK(box_predictions_shape_n != anchors_shape_n,
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("first dimension of inputs should be equal, box_predictions_shape_n:",box_predictions_shape_n, ", anchors_shape_n:",anchors_shape_n))),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                            OtherErrMsg(ConcatString(
+                                                "first dimension of inputs should be equal, box_predictions_shape_n: ",
+                                                box_predictions_shape_n,
+                                                ", anchors_shape_n:",
+                                                anchors_shape_n))),
         return GRAPH_FAILED);
   int64_t box_predictions_shape_D = box_predictions_shape[box_predictions_shape.size() - 1];
   int64_t box_predictions_shape_N = box_predictions_shape[0];
@@ -1632,12 +1658,14 @@ IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
   int64_t anchors_shape_N = anchors_shape[0];
   if (reversed_box == false) {
     CHECK(box_predictions_shape_D != 4 || anchors_shape_D != 4,
-          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString( "The input shape not in {(N4), (N4)}"))),
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                              OtherErrMsg(ConcatString("The input shape not in {(N4), (N4)}"))),
           return GRAPH_FAILED);
   }
   if (reversed_box == true) {
     CHECK(box_predictions_shape_N != 4 || anchors_shape_N != 4,
-          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("The input shape not in {(4N), (4N)}"))), 
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                              OtherErrMsg(ConcatString("The input shape not in {(4N), (4N)}"))),
           return GRAPH_FAILED);
   }
   return GRAPH_SUCCESS;
@@ -1670,7 +1698,8 @@ IMPLEMT_INFERFUNC(Sort, SortInferShape) {
   output_sorted_desc->SetDataType(x_desc->GetDataType());
   OP_LOGD(op_name, "Update output_val.");
 
-  if(x_desc->GetShapeRange(range) == GRAPH_SUCCESS){
+  if (x_desc->GetShapeRange(range) == GRAPH_SUCCESS) {
+
     output_sorted_desc->SetShapeRange(range);
     output_indices_desc->SetShapeRange(range);
     OP_LOGD(op_name, "SetShapeRange.");
@@ -1742,10 +1771,10 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
 
         std::int64_t max_box_size = 0;
         max_box_size = batch_size*class_size*max_out_num;
-        if (max_box_size > total_size){
+        if (max_box_size > total_size) {
             max_box_size = total_size;
         }
-        op.SetAttr("max_boxes_size",max_box_size);
+        op.SetAttr("max_boxes_size", max_box_size);
         std::int64_t index_last_dim = 3;
         vector<int64_t> selected_indices_shape;
         selected_indices_shape.push_back(max_box_size);
@@ -1754,7 +1783,7 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
         TensorDesc selected_index = op.GetOutputDescByName("selected_indices");
         selected_index.SetShape(ge::Shape(selected_indices_shape));
         selected_index.SetDataType(DT_INT32);
-        CHECK(op.UpdateOutputDesc("selected_indices",selected_index) != GRAPH_SUCCESS,
+        CHECK(op.UpdateOutputDesc("selected_indices", selected_index) != GRAPH_SUCCESS,
               OP_LOGE(TbeGetName(op).c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
         return GRAPH_SUCCESS;
@@ -1867,12 +1896,12 @@ IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)
     OP_LOGI("YoloBoxesEncode", "Infershape input anchor boxes dims isn't equal to 2!");
     return GRAPH_FAILED;
   }
-  
+
   std::vector<int64_t> vec_dims;
   vec_dims.push_back(input_shape.GetDim(0));
   vec_dims.push_back(input_shape.GetDim(1));
   ge::Shape y_shape(vec_dims);
-  
+
   auto output_desc = op.GetOutputDescByName("encoded_bboxes");
   output_desc.SetShape(y_shape);
   output_desc.SetDataType(ge::DataType(input_type));
@@ -1899,12 +1928,12 @@ IMPLEMT_VERIFIER(YoloBoxesEncode, YoloBoxesEncodeVerify)
     OP_LOGI("YoloBoxesEncode", "Verify anchor_boxes dim[0] != stride[0]!");
     return GRAPH_FAILED;
   }
-  
+
   std::string calc_mode = op.get_attr_performance_mode();
-  if(calc_mode.compare("high_precision") != 0 &&
+  if (calc_mode.compare("high_precision") != 0 &&
     calc_mode.compare("high_performance") != 0) {
     OP_LOGI("YoloBoxesEncode", "performance_mode only support high_precision or high_performance!");
-    return GRAPH_FAILED;   
+    return GRAPH_FAILED;
   }
 
   return GRAPH_SUCCESS;
@@ -2019,9 +2048,8 @@ static bool IoUGradVerify(ge::Operator& op) {
     OP_LOGE(TbeGetName(op).c_str(), "shape_bboxes shoule equal to shape_gtboxes.");
     return false;
   }
-
   bool is_cross = true;
-  if(!AttrUtils::GetBool(op_desc, "is_cross", is_cross)) {
+  if (!AttrUtils::GetBool(op_desc, "is_cross", is_cross)) {
     OP_LOGD(TbeGetName(op).c_str(), "GetBool is_cross failed, defalut true.");
   }
   if (is_cross) {
@@ -2030,13 +2058,13 @@ static bool IoUGradVerify(ge::Operator& op) {
   }
 
   std::string mode = "iou";
-  if(!AttrUtils::GetStr(op_desc, "mode", mode)) {
+  if (!AttrUtils::GetStr(op_desc, "mode", mode)) {
     OP_LOGD(TbeGetName(op).c_str(), "GetStr mode failed, defalut 'iou'.");
   }
   if (mode != "iou") {
     OP_LOGE(TbeGetName(op).c_str(), "The attr_mode only support 'iou' now.");
     return false;
-  }  
+  }
 
   if (bboxes_dtype != gtboxes_dtype || bboxes_dtype != dy_dtype) {
     OP_LOGE(TbeGetName(op).c_str(), "The dtype of bboxes, gtboxes and dy shoule be same.");
@@ -2051,7 +2079,7 @@ static bool IoUGradVerify(ge::Operator& op) {
 IMPLEMT_VERIFIER(GIoUGrad, GIoUGradVerify)
 {
   OP_LOGD(TbeGetName(op).c_str(), "GIoUGradVerify begin.");
-  if(IoUGradVerify(op) == false) {
+  if (IoUGradVerify(op) == false) {
     return GRAPH_FAILED;
   }
   OP_LOGD(TbeGetName(op).c_str(), "GIoUGradVerify end.");
@@ -2066,7 +2094,7 @@ VERIFY_FUNC_REG(GIoUGrad, GIoUGradVerify);
 IMPLEMT_VERIFIER(DIoUGrad, DIoUGradVerify)
 {
   OP_LOGD(TbeGetName(op).c_str(), "DIoUGradVerify begin.");
-  if(IoUGradVerify(op) == false) {
+  if (IoUGradVerify(op) == false) {
     return GRAPH_FAILED;
   }
   OP_LOGD(TbeGetName(op).c_str(), "DIoUGradVerify end.");
@@ -2080,7 +2108,7 @@ VERIFY_FUNC_REG(DIoUGrad, DIoUGradVerify);
 IMPLEMT_VERIFIER(CIoUGrad, CIoUGradVerify)
 {
   OP_LOGD(TbeGetName(op).c_str(), "CIoUGradVerify begin.");
-  if(IoUGradVerify(op) == false) {
+  if (IoUGradVerify(op) == false) {
     return GRAPH_FAILED;
   }
   OP_LOGD(TbeGetName(op).c_str(), "CIoUGradVerify end.");
@@ -2238,12 +2266,12 @@ IMPLEMT_COMMON_INFERFUNC(DIoUInferShape) {
 IMPLEMT_VERIFIER(DIoU, DIoUVerify) {
   // check shape
   auto bboxes_shape = op.GetInputDescByName("bboxes").GetShape().GetDims();
-  CHECK(bboxes_shape.empty(), 
+  CHECK(bboxes_shape.empty(),
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", GetInputInvalidErrMsg("bboxes shape")),
         return GRAPH_FAILED);
   auto gtboxes_shape = op.GetInputDescByName("gtboxes").GetShape().GetDims();
-  CHECK(gtboxes_shape.empty(), 
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", GetInputInvalidErrMsg("gtboxes shape")), 
+  CHECK(gtboxes_shape.empty(),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("DIoU", GetInputInvalidErrMsg("gtboxes shape")),
         return GRAPH_FAILED);
 
   // check attr reversed_box, is_cross is only support false now.

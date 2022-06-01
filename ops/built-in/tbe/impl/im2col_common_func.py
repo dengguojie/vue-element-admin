@@ -252,6 +252,7 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
 
 def _im2col_fractal_v3(shape, fmap, kernel_h, kernel_w, padding, stride, wo):
     block_size = 16
+
     def __im2col_idx(idx, fmap, kernel_h, kernel_w, padding, stride):
         _, _, fmap_h, fmap_w, _ = fmap.shape
         n, col_h, col_w, block_size_h, block_size_w = idx

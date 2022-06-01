@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
       OP_LOGE(TbeGetName(op).c_str(), "Input format only support NCHW or NHWC");
       return GRAPH_FAILED;
   }
-  //dim_w  not equal to  ge::UNKNOWN_DIM
+  // dim_w  not equal to  ge::UNKNOWN_DIM
   if (input_w_size != ge::UNKNOWN_DIM) {
     int32_t ksize = 0;
     int32_t strides = 1;
@@ -122,7 +122,7 @@ IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
     }
     output_shape = Shape(dim_vec);
   } else {
-  //dims_w is ge::UNKNOWN_DIM
+  // dims_w is ge::UNKNOWN_DIM
     if (input_format == FORMAT_NHWC) {
       dim_vec.push_back(1);
       dim_vec.push_back(1);
