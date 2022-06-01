@@ -31,7 +31,7 @@ def _print_log(level: str, msg: str) -> None:
     current_time = time.strftime("%Y-%m-%d %H:%M:%S",
                                  time.localtime(int(time.time())))
     pid = os.getpid()
-    print(current_time + " (" + str(pid) + ") - [" + level + "] " + msg)
+    print(current_time + " (" + str(pid) + ") - [" + level + "] " + str(msg))
     sys.stdout.flush()
 
 

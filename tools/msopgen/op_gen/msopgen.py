@@ -17,10 +17,6 @@ from op_gen.interface.const_manager import ConstManager
 
 def _do_gen_cmd(argument: ArgParser) -> None:
     op_file_generator = OpFileGenerator(argument)
-    if not op_file_generator.op_file:
-        utils.print_error_log(
-            "AICPU is not supported by MindSpore operators.")
-        raise utils.MsOpGenException(ConstManager.MS_OP_GEN_NONE_ERROR)
     op_file_generator.generate()
 
 

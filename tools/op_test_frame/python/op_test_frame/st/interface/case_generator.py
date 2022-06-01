@@ -203,7 +203,7 @@ class CaseGenerator:
         # update mindspore operation of attr information in op_info
         if mindspore_ops_info.get('attr'):
             for attr_info in mindspore_ops_info.get('attr'):
-                if attr_info.get('name') is not None:
+                if attr_info.get('name') is not None and attr_info.get('name') != 'cust_aicpu':
                     attr_name = 'attr_' + attr_info.get('name')
                     self.op_info[attr_name] = attr_info
 

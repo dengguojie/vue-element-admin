@@ -118,10 +118,11 @@ class MsOpGenerator:
         finally:
             pass
         ms_ops_input_list = mindspore_ops_info.get('inputs')
+        imply_type = mindspore_ops_info.get('imply_type')
         # get input param type
         for input_list in ms_ops_input_list:
             ms_input_param_type_list.append(input_list.get('param_type'))
-        return ms_input_param_type_list
+        return ms_input_param_type_list, imply_type
 
     @staticmethod
     def _get_dynamic_input_info(ms_param_type_list,
@@ -226,10 +227,17 @@ class MsOpGenerator:
         return func_content, input_count, input_name_list
 
     def _generate_net_content(self, input_count, input_name_list,
-                              ms_param_type_list):
+                              ms_param_type_list, imply_type):
         testcase_net_content = ''
         inputs_str = ','.join(input_name_list)
         op_name, op_name_lower = self._get_op_name()
+        if imply_type == 'AiCPU':
+            cust_aicpu = "{}{}".format(
+                ConstManager.NEXT_LINE * 2,
+                'self.{op_name}.add_prim_attr("cust_aicpu", "cust_aicpu_kernels")'.format(
+                          op_name=op_name_lower))
+        else:
+            cust_aicpu = ''
         if not self.testcase_list[0].get('attr') or \
                 ConstManager.DYNAMIC_INPUT in ms_param_type_list:
             input_args, inputs_str = self._get_no_attr_input_args(
@@ -239,7 +247,8 @@ class MsOpGenerator:
                     op_lower=op_name_lower,
                     op_name=op_name,
                     input_args=input_args,
-                    inputs=inputs_str)
+                    inputs=inputs_str,
+                    cust_aicpu=cust_aicpu)
         else:
             attr_value_list = []
             for attr_info in self.testcase_list[0].get('attr'):
@@ -254,11 +263,12 @@ class MsOpGenerator:
                     op_name=op_name,
                     op_lower=op_name_lower,
                     attr_value=attr_value,
-                    attr_constrct=attr_construct)
+                    attr_constrct=attr_construct,
+                    cust_aicpu=cust_aicpu)
         return testcase_net_content
 
     def _generate_test_function(self):
-        ms_param_type_list = self._get_mindspore_input_param_type()
+        ms_param_type_list, imply_type = self._get_mindspore_input_param_type()
         testcase_py_func_content = ''
         func_content = ''
         input_count = 1
@@ -272,7 +282,7 @@ class MsOpGenerator:
                                                 input_data_abs_paths)
             func_content += sub_case_func_content
         testcase_py_func_content += self._generate_net_content(
-            input_count, input_name_list, ms_param_type_list)
+            input_count, input_name_list, ms_param_type_list, imply_type)
         testcase_py_func_content += func_content
         return testcase_py_func_content
 

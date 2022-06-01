@@ -34,10 +34,9 @@ class OPFile(metaclass=ABCMeta):
         generate project or only generator an operator according to mode
         """
         if self.mode == ConstManager.GEN_OPERATOR:
-            if os.path.isdir(os.path.join(
-                    self.output_path, ConstManager.PROJ_MS_NAME)):
-                utils.print_error_log("MindSpore operators cannot be added to "
-                                      "a non-MindSpore operator project.")
+            if self._failed_add_op_in_ms_proj():
+                utils.print_error_log(
+                    "MindSpore project cannot support to add new operator of different frameworks or compute unit.")
                 raise utils.MsOpGenException(
                     ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
             utils.print_info_log("Start to add a new operator.")
@@ -237,3 +236,17 @@ class OPFile(metaclass=ABCMeta):
         Parameter:
         Return Value:
         """
+
+    def _failed_add_op_in_ms_proj(self: any) -> bool:
+        if os.path.isdir(
+                os.path.join(self.output_path, ConstManager.PROJ_MS_NAME)):
+            return True
+        if os.path.isdir(os.path.join(self.output_path, 'framework',
+                                      ConstManager.PROJ_MS_NAME)):
+            # indicate that this is a mindspore aicpu project can support add mindspore aicpu operator
+            if self.fmk_type in ConstManager.FMK_MS:
+                return False
+        else:
+            if self.fmk_type in ConstManager.FMK_MS:
+                return True
+        return False

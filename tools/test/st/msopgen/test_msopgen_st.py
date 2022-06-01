@@ -110,6 +110,19 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertTrue(test_utils.check_result(MS_TXT_OUTPUT,
                                                 MS_TXT_GOLDEN_OUTPUT))
 
+    def test_gen_ms_aicpu_from_tf_txt_compare_success(self):
+        test_utils.clear_out_path(MS_TXT_OUTPUT)
+        args = ['msopgen.py', 'gen', '-i', MS_SQUARE_INPUT, '-f', 'ms', '-c',
+                'aicpu', '-out', MS_TXT_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                msopgen.main()
+        args1 = ['msopgen.py', 'gen', '-i', MS_SUM_INPUT, '-f', 'mindspore',
+                 '-c', 'aicpu', '-out', MS_TXT_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args1):
+                msopgen.main()
+
     def test_gen_tf_from_ir_excel_compare_success(self):
         test_utils.clear_out_path(IR_EXCEL_OUTPUT)
         args = ['msopgen.py', 'gen', '-i', IR_EXCEL_PATH, '-f', 'tf', '-c',

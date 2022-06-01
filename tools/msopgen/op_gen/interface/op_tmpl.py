@@ -210,7 +210,7 @@ target_link_libraries(${ONNX_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)
 """
 
     CAFFE_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
-    
+
 aux_source_directory(. SRCS)
 aux_source_directory(./proto/caffe PROTO_SRCS)
 list(APPEND SRCS ${PROTO_SRCS})
@@ -323,11 +323,14 @@ def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
     PY_MS_HEAD = """from __future__ import absolute_import
 from tbe import tvm
 import tbe.dsl as tbe
+from tbe.common.register import register_op_compute
 from tbe.common.utils import shape_refine
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
+
 """
-    PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
+    PY_MS_COMPUTE = """@register_op_compute("{name}")
+def {name}_compute({input_name}, {output}):
     \"""
     The compute function of the {up_name} implementation.
     \"""
@@ -337,11 +340,10 @@ from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 """
     PY_MS_ATTR_WITHOUT_VALUE_INFO = \
         """.attr("{attr_name}", "{param_type}", "{attr_type}", "all")\\"""
-    PY_MS_INPUT_INFO = """.input(0, "{input_name}", False, "required", "all")\\"""
-    PY_MS_OUTPUT_INFO = """.output(0, "{output_name}", False, "required", "all")\\"""
+    PY_MS_DATA_DESC_INFO = """.{data_desc}({index}, "{key_name}", False, "{param_type}", "all")\\"""
     PY_MS_DATA_TYPE = """DataType.{data_type}"""
     PY_MS_DTYPE_FORMAT = """.dtype_format({data_types_join})\\"""
-    PY_MS_OP_WITHOUT_ATTR_INFO = """
+    PY_MS_OP_INFO = """
 # Define the kernel info of {up_name}.
 {name}_op_info = TBERegOp("{up_name}") \\
     .fusion_type("OPAQUE") \\
@@ -350,22 +352,6 @@ from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
     .binfile_name("{name}.so") \\
     .compute_cost(10) \\
     .kernel_name("{name}_impl") \\
-    {inputs}
-    {outputs}
-    {data_types}
-    .get_op_info()
-
-"""
-    PY_MS_OP_WITH_ATTR_INFO = """
-# Define the kernel info of {up_name}.
-{name}_op_info = TBERegOp("{up_name}") \\
-    .fusion_type("OPAQUE") \\
-    .partial_flag(True) \\
-    .async_flag(False) \\
-    .binfile_name("{name}.so") \\
-    .compute_cost(10) \\
-    .kernel_name("{name}_impl") \\
-    {attrs}
     {inputs}
     {outputs}
     {data_types}
@@ -373,7 +359,7 @@ from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
 """
     PY_MS_OP_INFO_REGISTER_TVM = \
-        """data{data_count} = tvm.placeholder(shape, name="data{data_count}", dtype=dtype.lower())"""
+        """input{index} = tvm.placeholder(shape, name="input{index}", dtype=dtype.lower())"""
     PY_MS_OP_INFO_REGISTER = """
 # Binding kernel info with the kernel implementation.
 @op_info_register({name}_op_info)
@@ -388,13 +374,13 @@ def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
     {tvm_placeholder}
 
     with tvm.target.cce():
-        res = {name}_compute({datas_join}, {output})
+        res = {name}_compute({all_inputs}, {output})
         sch = tbe.auto_schedule(res)
 """
     PY_MS_OP_INFO_REGISTER_CONFIG = """
     config = {{"print_ir": False,
               "name": kernel_name,
-              "tensor_list": [{datas_join}, res]}}
+              "tensor_list": [{all_inputs}, res]}}
 
     tbe.build(sch, config)
 """
@@ -402,22 +388,24 @@ def {name}_impl({input_name}, {output}, kernel_name="{name}_impl"):
 PrimitiveWithInfer
 import mindspore.ops as ops
 # description
+
+
 class {up_name}(PrimitiveWithInfer):
     \"""
     The definition of the {up_name} primitive.
     \"""
     @prim_attr_register
-    def __init__(self):
-        self.init_prim_io_names(inputs=['{input_name}'], outputs=['{output}'])
+    def __init__({init_attr}):
+        self.init_prim_io_names(inputs={input_name}, outputs={output})
         # Import the entry function of the kernel implementation from relative
         #  path or PYTHONPATH.
-        from {name}_impl import {name}_impl
+        from {name}_impl import {op_register_func}
 
-    def infer_shape(self, {data_shapes}):
-        return data1_shape
+    def infer_shape(self, {input_shapes}):
+        return {first_input_shape}
 
-    def infer_dtype(self, {data_dtypes}):
-        return data1_dtype"""
+    def infer_dtype(self, {input_dtypes}):
+        return {first_input_dtype}"""
     # ==================5.AICPU ini file==================
     AICPU_INI_STRING = """[{op_type}]
 opInfo.engine=DNN_VM_AICPU
@@ -473,6 +461,33 @@ public:
 {right_braces} // namespace aicpu
 #endif
 """
+
+    # ==================4.4 MindSpore AICPU python file================
+    PY_MS_AICPU_HEAD = """from mindspore.ops.op_info_register import op_info_register, AiCPURegOp, DataType"""
+
+    PY_MS_AICPU_ATTR_INFO = \
+        """.attr("{attr_name}", "{attr_type}")\\"""
+
+    PY_MS_AICPU_CUST_ATTR_INFO = \
+        """.attr("cust_aicpu", "str")\\"""
+
+    PY_MS_AICPU_DATA_DESC_INFO = """.{data_desc}({index}, "{key_name}", "{param_type}")\\"""
+
+    PY_MS_AICPU_REGISTER_OP_INFO = """
+# Define the kernel info of {up_name}.
+{name}_op_info = AiCPURegOp("{up_name}") \\
+    .fusion_type("OPAQUE") \\
+    {inputs}
+    {outputs}
+    {data_types}
+    .get_op_info()
+
+
+@op_info_register({name}_op_info)
+def _{name}_aicpu():
+    \"\"\"{up_name} AiCPU register\"\"\"
+    return
+    """
     # =======================================================
 
     def get_ini_op(self: any) -> str:

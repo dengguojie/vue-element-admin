@@ -9,7 +9,8 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 from op_gen.interface.arg_parser import ArgParser
 from op_gen.interface.op_file_aicore import OpFileAiCore
 from op_gen.interface.op_file_aicpu import OpFileAiCpu
-from op_gen.interface.op_file_mindspore import OpFileMindSpore
+from op_gen.interface.op_file_mindspore_aicore import OpFileMindSporeAiCore
+from op_gen.interface.op_file_mindspore_aicpu import OpFileMindSporeAICPU
 from op_gen.interface import utils
 from op_gen.interface.const_manager import ConstManager
 
@@ -27,11 +28,13 @@ class OpFileGenerator:
         if argument.framework in ConstManager.FMK_MS:
             if argument.core_type == ConstManager.AICORE:
                 utils.print_info_log(
-                    "Start to generate MindSpore operator files.")
-                return OpFileMindSpore(argument)
+                    "Start to generate MindSpore AI core operator files.")
+                return OpFileMindSporeAiCore(argument)
 
             if argument.core_type == ConstManager.AICPU:
-                return ""
+                utils.print_info_log(
+                    "Start to generate MindSpore AI CPU operator files.")
+                return OpFileMindSporeAICPU(argument)
 
         if argument.core_type == ConstManager.AICORE:
             utils.print_info_log(

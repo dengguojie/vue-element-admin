@@ -276,6 +276,7 @@ class ConstManager:
 
     # -----------------MsOpRunner------------------------
     TEST_PY = 'test_{op_name}.py'
+    NEXT_LINE = '\n    '
     # ------------------AdvanceIniArgs---------------------
     ADVANCE_SECTION = 'RUN'
     ASCEND_GLOBAL_LOG_LEVEL_LIST = ['0', '1', '2', '3', '4']

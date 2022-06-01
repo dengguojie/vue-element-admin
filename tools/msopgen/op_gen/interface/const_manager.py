@@ -73,6 +73,7 @@ class ConstManager:
     MS_IMPL_DIR = "mindspore/impl"
     IMPL_NAME = "_impl"
     IMPL_SUFFIX = ".py"
+    FRAMEWORK = 'framework'
 
     # input arguments
     INPUT_ARGUMENT_CMD_GEN = 'gen'
@@ -105,7 +106,7 @@ class ConstManager:
     INFO_IR_TYPES_KEY = "ir_type_list"
     INFO_PARAM_TYPE_KEY = "param_type"
     INFO_PARAM_FORMAT_KEY = "format_list"
-
+    NEXT_LINE = '\n    '
     # GenModeType
     GEN_PROJECT = '0'
     GEN_OPERATOR = '1'

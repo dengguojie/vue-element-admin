@@ -997,7 +997,7 @@ class TestUtilsMethods(unittest.TestCase):
             with mock.patch('sys.argv', args):
                 with mock.patch('op_test_frame.st.interface'
                                 '.ms_op_generator.MsOpGenerator'
-                                '._get_mindspore_input_param_type'):
+                                '._get_mindspore_input_param_type', return_value=['', 'Aicore']):
                     msopst.main()
         fuzz_square_output_src = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'Square/src')
         self.assertTrue(test_utils.check_file_context(
