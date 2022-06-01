@@ -23,7 +23,7 @@
 namespace domi
 {
 REGISTER_CUSTOM_OP("TensorScatterMin")
-    .FrameworkType(TENSORFLOW) 
+    .FrameworkType(TENSORFLOW)
     .OriginOpType("TensorScatterMin")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);

@@ -315,46 +315,55 @@ IMPLEMT_VERIFIER(StatelessSampleDistortedBoundingBox, StatelessSampleDistortedBo
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_INFERFUNC(StatelessSampleDistortedBoundingBox, StatelessSampleDistortedBoundingBoxInfer) {
+bool JudgeRank(Operator& op){
   bool judge = false;
   Shape image_size;
-  judge = (WithRank(op.get_input_desc_image_size(), 1, image_size, TbeGetName(op).c_str()) != GRAPH_SUCCESS);
+  constexpr int64_t BoundingBoxes= 3;
+  judge = (WithRank(op.GetInputDescByName("image_size"), 1, image_size, TbeGetName(op).c_str()) != GRAPH_SUCCESS);
   if (judge) {
     std::string err_msg = ConcatString(
         "Failed to call WithRank function, input[image_size] rank must be 1, "
-        "got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "].");
+        "got rank[",
+        op.GetInputDescByName("image_size").GetShape().GetDimNum(), "].");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return judge;
   }
   Shape bounding_boxes;
-  judge = (WithRank(op.get_input_desc_bounding_boxes(), 3, bounding_boxes, TbeGetName(op).c_str()) != GRAPH_SUCCESS);
+  judge = (WithRank(op.GetInputDescByName("bounding_boxes"), BoundingBoxes, bounding_boxes, TbeGetName(op).c_str()) != 
+           GRAPH_SUCCESS);
   if (judge) {
     std::string err_msg = ConcatString(
         "Failed to call WithRank function, input[bounding_boxes] rank must be 3, "
-        "got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "].");
+        "got rank[", op.GetInputDescByName("bounding_boxes").GetShape().GetDimNum(), "].");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return judge;
   }
   Shape min_object_covered;
-  judge =
-      (WithRank(op.get_input_desc_min_object_covered(), 0, min_object_covered, TbeGetName(op).c_str()) != GRAPH_SUCCESS);
+  judge = (WithRank(op.GetInputDescByName("min_object_covered"), 0, min_object_covered, TbeGetName(op).c_str()) !=
+           GRAPH_SUCCESS);
   if (judge) {
     std::string err_msg = ConcatString(
         "Failed to call WithRank function, input[min_object_covered] rank must "
-        "be scalar, got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "].");
+        "be scalar, got rank[", op.GetInputDescByName("min_object_covered").GetShape().GetDimNum(), "].");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return judge;
   }
   Shape seed;
-  judge =
-      (WithRank(op.get_input_desc_seed(), 1, seed, TbeGetName(op).c_str()) != GRAPH_SUCCESS);
+  judge = (WithRank(op.GetInputDescByName("seed"), 1, seed, TbeGetName(op).c_str()) != GRAPH_SUCCESS);
   if (judge) {
     std::string err_msg = ConcatString(
         "Failed to call WithRank function, input[seed] rank must "
-        "be 1, got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "].");
+        "be 1, got rank[", op.GetInputDescByName("seed").GetShape().GetDimNum(), "].");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return judge;
   }
+  return judge;
+}
+
+IMPLEMT_INFERFUNC(StatelessSampleDistortedBoundingBox, StatelessSampleDistortedBoundingBoxInfer) {
+  if(JudgeRank(op)){
+    return GRAPH_FAILED;
+  };
   const int64_t image_size_dim_value = op.get_input_desc_image_size().GetShape().GetDim(0);
   const int64_t bounding_boxes_dim2_value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
   const int64_t seed_dim_value = op.get_input_desc_seed().GetShape().GetDim(0);
@@ -374,16 +383,14 @@ IMPLEMT_INFERFUNC(StatelessSampleDistortedBoundingBox, StatelessSampleDistortedB
   begin_desc.SetShape(Shape({3}));
   begin_desc.SetDataType(op.GetInputDescByName("image_size").GetDataType());
   if (op.UpdateOutputDesc("begin", begin_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        TbeGetName(op), string("Fail to update output[begin] desc."));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("Fail to update output[begin] desc."));
     return GRAPH_FAILED;
   }
   TensorDesc size_desc = op.GetOutputDescByName("size");
   size_desc.SetShape(Shape({3}));
   size_desc.SetDataType(op.GetInputDescByName("image_size").GetDataType());
   if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        TbeGetName(op), string("Fail to update output[size] desc."));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("Fail to update output[size] desc."));
     return GRAPH_FAILED;
   }
   TensorDesc bboxes_desc = op.GetOutputDescByName("bboxes");
@@ -613,8 +620,8 @@ INFER_FUNC_REG(StatelessRandomUniformFullInt, StatelessRandomUniformFullIntInfer
 VERIFY_FUNC_REG(StatelessRandomUniformFullInt, StatelessRandomUniformFullIntVerify);
 // ----------------StatelessRandomUniformFullIntInferShape End-------------------
 
-IMPLEMT_INFERFUNC(StatelessRandomUniformFullIntV2, StatelessRandomUniformFullIntV2Infer) {
-  std::string error_msg;
+graphStatus CheckStatelessRandomUniformFullIntV2Params(Operator& op) {
+ std::string error_msg;
   // alg-start
   Shape alg;
   Tensor alg_tensor;
@@ -643,16 +650,25 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformFullIntV2, StatelessRandomUniformFullInt
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
-  if (alg_value == 2 && counter.GetDim(0) != 1) {
+  if (alg_value == INPUT_NUM2 && counter.GetDim(0) != 1) {
     error_msg = ConcatString("the value of dim[0] for input[counter] must be 1, ", "but the real value is ",
                              counter.GetDim(0), ".");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
-  if (alg_value == 1 && counter.GetDim(0) != 2) {
+  if (alg_value == 1 && counter.GetDim(0) != INPUT_NUM2) {
     error_msg = ConcatString("the value of dim[0] for input[counter] must be 2, ", "but the real value is ",
                              counter.GetDim(0), ".");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(StatelessRandomUniformFullIntV2, StatelessRandomUniformFullIntV2Infer) {
+  std::string error_msg;
+
+  if (CheckStatelessRandomUniformFullIntV2Params(op) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   // counter-end
@@ -702,8 +718,7 @@ IMPLEMT_VERIFIER(StatelessRandomUniformFullIntV2, StatelessRandomUniformFullIntV
 INFER_FUNC_REG(StatelessRandomUniformFullIntV2, StatelessRandomUniformFullIntV2Infer);
 VERIFY_FUNC_REG(StatelessRandomUniformFullIntV2, StatelessRandomUniformFullIntV2Verify);
 // ----------------StatelessRandomUniformFullIntV2InferShape End-------------------
-
-IMPLEMT_INFERFUNC(StatelessRandomUniformIntV2, StatelessRandomUniformIntV2Infer) {
+graphStatus CheckStatelessRandomUniformIntV2Params(Operator& op) {
   std::string error_msg;
 
   // alg-start
@@ -734,19 +749,26 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformIntV2, StatelessRandomUniformIntV2Infer)
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
-  if (alg_value == 2 && counter.GetDim(0) != 1) {
+  if (alg_value == INPUT_NUM2 && counter.GetDim(0) != 1) {
     error_msg = ConcatString("the value of dim[0] for input[counter] must be 1, ", "but the real value is ",
                              counter.GetDim(0), ".");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
-  if (alg_value == 1 && counter.GetDim(0) != 2) {
+  if (alg_value == 1 && counter.GetDim(0) != INPUT_NUM2) {
     error_msg = ConcatString("the value of dim[0] for input[counter] must be 2, ", "but the real value is ",
                              counter.GetDim(0), ".");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
   // counter-end
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_INFERFUNC(StatelessRandomUniformIntV2, StatelessRandomUniformIntV2Infer) {
+  std::string error_msg;
+  if (CheckStatelessRandomUniformIntV2Params(op) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
 
   Shape shape;
   Tensor shape_tensor;

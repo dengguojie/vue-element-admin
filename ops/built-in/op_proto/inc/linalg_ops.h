@@ -499,7 +499,7 @@ REG_OP(TridiagonalSolve)
 * @li bands:A Tensor. Must be one of the following types: double, float32,
   float16,complex64, complex128. Shape is  [... K,M], K corresponds to the
   number of bands (actually stored diagonals), and M is the data of the
-  diagonals. . 
+  diagonals.
   @li rhs:shape is [...M] or [...M, N]. Has the same type as bands \n
 
 * @par Outputs:
@@ -522,7 +522,7 @@ REG_OP(BandedTriangularSolve)
         DT_FLOAT16, DT_COMPLEX64, DT_COMPLEX128}))
     .OUTPUT(output,TensorType({DT_FLOAT, DT_DOUBLE, \
         DT_FLOAT16, DT_COMPLEX64, DT_COMPLEX128}))
-    .ATTR(lower,Bool,true)
+    .ATTR(lower, Bool, true)
     .ATTR(adjoint, Bool, false)
     .OP_END_FACTORY_REG(BandedTriangularSolve)
 }  // namespace ge

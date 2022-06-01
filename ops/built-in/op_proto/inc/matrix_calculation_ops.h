@@ -1602,9 +1602,9 @@ REG_OP(Pinverse)
 * Three inputs, including:
 * @li input: Must be one of the following types:
 *       float16, float32, double, int32, uint8, int16, int8, complex64, int64,
-*       qint8, quint8, qint32, uint16, complex128, uint32, uint64. 
+*       qint8, quint8, qint32, uint16, complex128, uint32, uint64.
 * @li indices: Must be one of the following types:
-*       int32, int64. 
+*       int32, int64.
 * @li updates: Must have the same type as input. \n
 
 * @par Outputs:
@@ -1624,9 +1624,9 @@ REG_OP(TensorScatterMax)
 * Three inputs, including:
 * @li input: Must be one of the following types:
 *       float16, float32, double, int32, uint8, int16, int8, complex64, int64,
-*       qint8, quint8, qint32, uint16, complex128, uint32, uint64. 
+*       qint8, quint8, qint32, uint16, complex128, uint32, uint64.
 * @li indices: Must be one of the following types:
-*       int32, int64. 
+*       int32, int64.
 * @li updates: Must have the same type as input. \n
 
 * @par Outputs:
