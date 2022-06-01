@@ -168,6 +168,7 @@ set(local_host_kernels_src_files
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
     kernels/host/format_transfer/format_transfer_fractal_z.cc
     kernels/host/format_transfer/format_transfer_fractalz_3d.cc
+    kernels/host/format_transfer/format_transfer_ndc1hwc0.cc
     kernels/host/format_transfer/format_transfer_transpose.cc
     kernels/host/format_transfer/format_transfer_utils.cc
     kernels/host/format_transfer/register_format_transfer.cc

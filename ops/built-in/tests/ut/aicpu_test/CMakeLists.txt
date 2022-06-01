@@ -70,6 +70,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractalz_3d.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_ndc1hwc0.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_transpose.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
