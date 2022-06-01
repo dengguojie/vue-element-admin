@@ -1,0 +1,129 @@
+[
+  {
+    "op": "ApplyAdamWithAmsgradD",
+    "calc_expect_func_file":"test_apply_adam_with_amsgrad_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "param_type": "input",
+        "name": "var",
+        "type": "float32",
+        "typical_shape": [16,32]
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "param_type": "input",
+        "name": "m",
+        "type": "float32",
+        "typical_shape": [16,32]
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "param_type": "input",
+        "name": "v",
+        "type": "float32",
+        "typical_shape": [16,32]
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "param_type": "input",
+        "name": "vhat",
+        "type": "float32",
+        "typical_shape": [16,32]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "param_type": "input",
+        "name": "beta1_power",
+        "type": "float32",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "param_type": "input",
+        "name": "beta2_power",
+        "type": "float32",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "param_type": "input",
+        "name": "lr",
+        "type": "float32",
+        "typical_shape": [1]
+      },
+      {
+        "shape": [16,32],
+        "format": "ND",
+        "param_type": "input",
+        "name": "grad",
+        "type": "float32",
+        "typical_shape": [16,32]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16,32],
+        "format": "ND",
+        "param_type": "output",
+        "name": "var_output",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "m_output",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "v_output",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "vhat_output",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "beta1",
+        "type": "float",
+        "value": 0.9
+      },
+      {
+        "name": "beta2",
+        "type": "float",
+        "value": 0.999
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_ApplyAdamWithAmsgradD_000"
+  }
+]

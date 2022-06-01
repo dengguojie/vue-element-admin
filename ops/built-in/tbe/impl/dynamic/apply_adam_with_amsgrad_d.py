@@ -25,6 +25,17 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class ApplyAdamWithAmsgradDAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_BETA1 = OpAttr(0, "beta1", "Float")
+    ATTR_BETA2 = OpAttr(1, "beta2", "Float")
+    ATTR_EPSILON = OpAttr(2, "epsilon", "Float")
 
 
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
@@ -65,6 +76,9 @@ def apply_adam_with_amsgrad_d_compute(var,
 
     one = tvm.const(num_one, "float32")
     neg_one = tvm.const(num_n_one, "float32")
+    beta1 = get_attr_by_cls(beta1, ApplyAdamWithAmsgradDAttrInfo.ATTR_BETA1, "float32")
+    beta2 = get_attr_by_cls(beta2, ApplyAdamWithAmsgradDAttrInfo.ATTR_BETA2, "float32")
+    epsilon = get_attr_by_cls(epsilon, ApplyAdamWithAmsgradDAttrInfo.ATTR_EPSILON, "float32")
 
     beta1_power = tbe.broadcast(beta1_power, var.shape)
     beta2_power = tbe.broadcast(beta2_power, var.shape)
@@ -111,8 +125,8 @@ def apply_adam_with_amsgrad_d_compute(var,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_adam_with_amsgrad_d(var,
                               m,
                               v,
