@@ -214,7 +214,7 @@ TEST_F(barrier_infer_test, barrier_take_many_infer_test_3) {
   auto ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
 // attr[component_types] type difference

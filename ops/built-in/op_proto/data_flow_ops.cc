@@ -1869,17 +1869,6 @@ IMPLEMT_INFERFUNC(BarrierTakeMany, BarrierTakeManyInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  bool component_types_flag = true;
-  for (size_t i = 1; i < component_types.size(); ++i) {
-    if (component_types[i] != component_types[0]) {
-      component_types_flag = false;
-    }
-  }
-  if (component_types_flag == false) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
-        string("all menbers of attr[component_types] should be the same."));
-    return GRAPH_FAILED;
-  }
   graphStatus status;
   TensorDesc output_desc;
   // update ordinary outputs as unknown shape
