@@ -95,6 +95,14 @@ case12 = {"params": [{"shape": (8, 6, 546, 16, 16), "dtype": "float16", "format"
          "format_expect": [],
          "support_expect": True}
 
+case13 = {"params": [{"shape": (262144, 4, 1, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (262144, 4, 1, 4),"ori_format": "ND"},
+                    {"shape": (262144, 4, 1, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (262144, 4, 1, 4),"ori_format": "ND"},
+                    [-1]],
+         "case_name": "softmax_v2_op_select_format_13",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["all"], case1)
 ut_case.add_case(["all"], case2)
 ut_case.add_case(["all"], case3)
@@ -109,6 +117,10 @@ ut_case.add_case(["all"], case11)
 from te.platform.cce_conf import te_set_version
 te_set_version("Ascend710")
 ut_case.add_case(["Ascend710", "Ascend910A"], case12)
+
+from te.platform.cce_conf import te_set_version
+te_set_version("Ascend910")
+ut_case.add_case(["Ascend710", "Ascend910A"], case13)
 
 
 

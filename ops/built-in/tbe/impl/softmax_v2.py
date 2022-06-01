@@ -269,16 +269,24 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                         datatype="float16,float16,float16,float,float16,float",
                                                         format="NC1HWC0,NDC1HWC0,ND,ND,FRACTAL_NZ,FRACTAL_NZ")
         if tbe_product in ("Ascend910",) or tbe_platform.api_check_support("tik.vgatherb"):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                    datatype="float16,float16,float,float,\
-                                                                float16,float,float16,float",
-                                                    format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                            NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16,float,float,\
-                                                                float16,float,float16,float",
-                                                    format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                            NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+            if shape_x_ori[-2] < 5:
+                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                       datatype="float16,float16,float,float,float16,float",
+                                                       format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,float16,float,float,float16,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            else:
+                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                       datatype="float16,float16,float,float,\
+                                                                 float16,float,float16,float",
+                                                       format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                               NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,float16,float,float,\
+                                                                  float16,float,float16,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                                NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
@@ -371,7 +379,7 @@ def is_white_shape(shape):
     is_white_shape
     """
     white_list_shape = [[4096, 3, 49, 49], [1024, 6, 49, 49], [256, 12, 49, 49], [64, 24, 49, 49],
-                        [128, 8, 12, 12]]
+                        [128, 8, 12, 12], [262144, 4, 1, 4]]
     shape_t = list(shape)
     if shape_t in white_list_shape:
         return True
@@ -2789,10 +2797,10 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         context = tbe_context.op_context.get_context()
         if context is not None:
             context.set_op_mode("static")
-            dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+            dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name, impl_mode)
         else:
             with tbe_context.op_context.OpContext("static"):
-                dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+                dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name, impl_mode)
         return
 
     axic_is_c = False
