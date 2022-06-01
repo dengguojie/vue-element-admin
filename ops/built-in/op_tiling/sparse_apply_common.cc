@@ -62,16 +62,17 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
         }
     }
     int32_t need_core_num = core_num;
+    int32_t cols_per_core = 0;
+    int32_t cols_last_core = 0;
     if (num_indices < core_num and each_row_data_num > cache_threshold_col) {
         need_core_num = num_indices;
-        if (num_indices * 2 <= core_num and each_row_data_num >= 1024) {
+        // num_indices * 2 can ensure that a line can be split into at least 2 parts
+        // core num * 32, ensure that the least compute unit is larger than 32B
+        if (num_indices * 2 <= core_num and each_row_data_num >= 32 * core_num) {
+            int32_t partial_factor = core_num / num_indices;
+            cols_per_core = each_row_data_num / partial_factor;
+            cols_last_core = each_row_data_num - cols_per_core * (partial_factor - 1);
             need_core_num = core_num / num_indices * num_indices;
-            if (need_core_num > core_num) {
-                need_core_num = core_num;
-            }
-            if (need_core_num <= 0) {
-                need_core_num = 1;
-            }
         }
     }
     int32_t num_multi_rows = 32; // must be 32 factor for align
@@ -79,15 +80,14 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
         num_multi_rows = var_rows;
     }
     if (each_row_data_num <= cache_threshold_col) {
-        need_core_num = var_rows / num_multi_rows;
+      need_core_num = var_rows / num_multi_rows;
+      if (need_core_num > core_num) {
+        need_core_num = core_num;
+      }
+      if (need_core_num <= 0) {
+        need_core_num = 1;
+      }
     }
-
-    int32_t partial_factor = core_num / num_indices;
-    int32_t cols_per_core = 0;
-    int32_t cols_last_core = 0;
-
-    cols_per_core = each_row_data_num / partial_factor;
-    cols_last_core = each_row_data_num - cols_per_core * (partial_factor - 1);
 
     // set tiling data
     ByteBufferPut(run_info.tiling_data, var_rows);
@@ -162,10 +162,11 @@ bool SparseApplyAdagradTiling(const std::string& op_type, const TeOpParas& op_pa
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
         return false;
     }
-    if (op_paras.inputs.size() < PARAM_NUM_ADAGRAD || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
-    op_paras.inputs[INDEX_2].tensor.empty() || op_paras.inputs[INDEX_3].tensor.empty() || op_paras.inputs[INDEX_4].tensor.empty()) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
-        return false;
+    if (op_paras.inputs.size() < PARAM_NUM_ADAGRAD || op_paras.inputs[0].tensor.empty() ||
+        op_paras.inputs[1].tensor.empty() || op_paras.inputs[INDEX_2].tensor.empty() ||
+        op_paras.inputs[INDEX_3].tensor.empty() || op_paras.inputs[INDEX_4].tensor.empty()) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
+      return false;
     }
 
     std::vector<int64_t> var_shape = op_paras.inputs[0].tensor[0].shape;

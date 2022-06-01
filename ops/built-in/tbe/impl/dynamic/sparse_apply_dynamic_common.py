@@ -27,7 +27,7 @@ class Constant:
     """
     The class for constant
     """
-    MAX_INT32 = 2**31 - 1
+    MAX_INT32 = 2 ** 31 - 1
     GM_ALLOC_SHAPE = (MAX_INT32,)
     TILING_SHAPE = (16,)
     UB_2K_SIZE = 2 * 1024
@@ -42,6 +42,17 @@ def _exec_front_last_diff(tik_instance, num, part, fun, fun_tail):
     last = num - front * part
     with tik_instance.for_range(0, front, name="front") as i:
         fun(i * part, part)
+    with tik_instance.if_scope(last > 0):
+        fun_tail(front * part, last)
+
+
+def _exec_front_last_diff_scalar(tik_instance, num, part, fun, fun_tail):
+    front = num // part
+    last = num - front * part
+    part_scalar = tik_instance.Scalar(dtype="int64", name="part")
+    part_scalar.set_as(part)
+    with tik_instance.for_range(0, front, name="front") as i:
+        fun(i * part, part_scalar)
     with tik_instance.if_scope(last > 0):
         fun_tail(front * part, last)
 
@@ -506,9 +517,9 @@ class SparseApplyDynamic:
             self._calc_part(part_len)
             self._save_row_part_safely(var_idx, offset, part_len)
 
-        _exec_front_last_diff(self.tik_instance, self.each_row_data_num, self.cols_per_part,
-                              lambda offset, part_len: _do_calc(offset, part_len),
-                              lambda offset, part_len: _do_calc_tail(offset, part_len))
+        _exec_front_last_diff_scalar(self.tik_instance, self.each_row_data_num, self.cols_per_part,
+                                     lambda offset, part_len: _do_calc(offset, part_len),
+                                     lambda offset, part_len: _do_calc_tail(offset, part_len))
 
     def _travel_indices_batch(self, start, cnt):
         """
@@ -776,14 +787,16 @@ class SparseApplyDynamic:
             self._save_row_part_safely(var_idx, offset + core_start_offset, part_len)
 
         with self.tik_instance.if_scope(block_idx == (self.reg_row_start_core + 1) * self.partial_factor - 1):
-            _exec_front_last_diff(self.tik_instance, self.cols_last_core, self.cols_per_part,
-                                  lambda offset, part_len: _do_calc(offset, part_len),
-                                  lambda offset, part_len: _do_calc_tail(offset, part_len))
+            _exec_front_last_diff_scalar(self.tik_instance, self.cols_last_core, self.cols_per_part,
+                                         lambda offset, part_len: _do_calc(
+                                             offset, part_len),
+                                         lambda offset, part_len: _do_calc_tail(offset, part_len))
 
         with self.tik_instance.else_scope():
-            _exec_front_last_diff(self.tik_instance, self.cols_per_core, self.cols_per_part,
-                                  lambda offset, part_len: _do_calc(offset, part_len),
-                                  lambda offset, part_len: _do_calc_tail(offset, part_len))
+            _exec_front_last_diff_scalar(self.tik_instance, self.cols_per_core, self.cols_per_part,
+                                         lambda offset, part_len: _do_calc(
+                                             offset, part_len),
+                                         lambda offset, part_len: _do_calc_tail(offset, part_len))
 
     def _travel_partial_indices(self, block_idx):
         """

@@ -108,7 +108,7 @@ TEST_F(SparseApplyAdadeltaDTiling, sparseapplyadadeltad_tiling_0) {
 
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
-  EXPECT_EQ(to_string(runInfo.tiling_data), "12 12 512 12 12 256 256 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "12 12 512 12 12 0 0 ");
 }
 
 

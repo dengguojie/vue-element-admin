@@ -2186,6 +2186,9 @@ vector_D:
       - ops/built-in/op_tiling/bn_update_grad_tiling.cc
       - ops/built-in/tbe/impl/dynamic/bn_training_update.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_grad.py
+      - ops/built-in/tbe/impl/dynamic/sparse_apply_dynamic_common.py
+      - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad.py
+      - ops/built-in/op_tiling/sparse_apply_common.cc
     unrelease:
       - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
@@ -2301,7 +2304,6 @@ unkown:
       - ops/built-in/op_tiling/ifmr.cc
       - ops/built-in/op_tiling/strided_slice.h
       - ops/built-in/op_tiling/layer_norm_v1.h
-      - ops/built-in/op_tiling/sparse_apply_common.cc
       - ops/built-in/op_tiling/vector_tiling_profiling.h
       - ops/built-in/op_tiling/transpose.cc
       - ops/built-in/op_tiling/resize_common.h
@@ -3042,7 +3044,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/reverse_v2.py
       - ops/built-in/tbe/impl/dynamic/masked_fill.py
       - ops/built-in/tbe/impl/dynamic/sub.py
-      - ops/built-in/tbe/impl/dynamic/sparse_apply_dynamic_common.py
       - ops/built-in/tbe/impl/dynamic/non_zero.py
       - ops/built-in/tbe/impl/dynamic/acos.py
       - ops/built-in/tbe/impl/dynamic/ascend_dequant.py
@@ -3109,7 +3110,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/apply_power_sign_d.py
       - ops/built-in/tbe/impl/dynamic/prod_virial_se_a.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad_d.py
-      - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad.py
       - ops/built-in/tbe/impl/dynamic/ascend_requant.py
       - ops/built-in/tbe/impl/dynamic/apply_ftrl_d.py
       - ops/built-in/tbe/impl/dynamic/atan_grad.py
