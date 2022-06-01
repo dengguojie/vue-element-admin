@@ -40,6 +40,7 @@ static const char PATTERN_INPUTS1[] = "input1";
 static const char PATTERN_PADD[] = "pad";
 static const char PATTERN_CONV2D[] = "conv2d";
 static const char PADD[] = "Pad";
+static const char PADDV3[] = "PadV3";
 static const char PADDINGS[] = "paddings";
 static const char PADS[] = "pads";
 static const char PADDING[] = "padding";
@@ -59,7 +60,7 @@ vector<FusionPattern*> PadConv2dFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
 
-  pattern->AddOpDesc(PATTERN_PADD, {PADD})
+  pattern->AddOpDesc(PATTERN_PADD, {PADD, PADDV3})
       .AddOpDesc(PATTERN_CONV2D, {CONV2D})
       .AddOpDesc(PATTERN_INPUTS1)
       .SetInputs(PATTERN_CONV2D, {PATTERN_PADD, PATTERN_INPUTS1})
@@ -67,6 +68,17 @@ vector<FusionPattern*> PadConv2dFusionPass::DefinePatterns() {
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadConv2dFusionPass pattern end");
   return patterns;
+}
+
+bool CheckPadv3ConstantValue(const ge::NodePtr& padd_node) {
+    if (padd_node->GetType() == PADDV3) {
+        std::vector<int64_t> constant_value;
+            if (GetIntConstValue(padd_node, "constant_values", constant_value) &&
+                !constant_value.empty() && constant_value[0] != 0) {
+                return true;
+            }
+    }
+    return false;
 }
 
 Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
@@ -103,6 +115,10 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Padnode have multiple conv2d outputs, can not fusion."),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(dw_count > 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "Padnode have multiple dw outputs, can not fusion."),
+                    return NOT_CHANGED);
+
+  FUSION_PASS_CHECK(CheckPadv3ConstantValue(padd_node),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "constant values not 0, can not fusion."),
                     return NOT_CHANGED);
 
   std::vector<int64_t> pad_value;
