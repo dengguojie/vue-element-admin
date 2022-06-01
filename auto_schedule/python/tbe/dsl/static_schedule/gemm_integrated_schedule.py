@@ -611,7 +611,7 @@ class GemmSchedule:
         self._reorder_axis(self.status_controller.over_head_flag, a_run_once, b_run_once)
         self._do_compute_inline()
         self._mem_process()
-        self._set_continus_axis()
+        self._set_continuous_axis()
         self._set_var_range_for_dynamic()
         print_ir_matmul(self.DEBUG_IR, "finial", self.sch)
         self.tiling_work.tiling.clear()
@@ -5179,7 +5179,7 @@ class GemmSchedule:
             self._emit_insn_simplify_al1()
             self._emit_insn_simplify_bl1()
 
-    def _set_continus_axis(self):
+    def _set_continuous_axis(self):
         """ add pragma for pass to check whether or not the address is continus and combine cce orders
         """
         if self.cache_tiling:

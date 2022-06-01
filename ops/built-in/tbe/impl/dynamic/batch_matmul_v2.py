@@ -765,7 +765,6 @@ def _get_var_name(format_a: str, format_b: str, cache_tiling_flag: bool) -> list
     """
     Get the name of the variables
     """
-
     if format_a == "ND" and not cache_tiling_flag:
         m_var_name = "m_ori"
         k_var_name = "k_ori"
@@ -848,11 +847,12 @@ def _get_real_trans(format_a: str, format_b: str, trans_a: bool, trans_b: bool) 
     return [trans_a, trans_b]
 
 
-def get_none_range_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
+def get_cache_tiling_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
     """
-    config if none in range
+    config if cache_tiling
     """
-    if bias:
+    support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    if bias or support_l0c2out:
         return False
     if input_x1.get("range") and input_x2.get("range"):
         for dim_range_1, dim_range_2 in zip(input_x1.get("range"), input_x2.get("range")):
@@ -875,7 +875,7 @@ def _check_nd_in(input_x1: dict, input_x2: dict) -> bool:
 
 
 def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict) -> None:
-    if get_none_range_flag(input_x1, input_x2, bias):
+    if get_cache_tiling_flag(input_x1, input_x2, bias):
         operation.var("k")
         operation.var("batch_single_core")
         operation.var("m_single_core")
@@ -974,7 +974,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
 
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
-    cache_tiling_flag = get_none_range_flag(input_x1, input_x2, bias)
+    cache_tiling_flag = get_cache_tiling_flag(input_x1, input_x2, bias)
     m_var_name, k_var_name, n_var_name = _get_var_name(format_a, format_b, cache_tiling_flag)
 
     m_var = operation.var(m_var_name, m_range)
@@ -1160,7 +1160,7 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
     attr_cache_tiling = dict(res.get("op_res")[0].op.attrs.items()).get("cache_tiling", 0)
-    if get_none_range_flag(input_x1, input_x2, bias) and int(attr_cache_tiling) == 1:
+    if get_cache_tiling_flag(input_x1, input_x2, bias) and int(attr_cache_tiling) == 1:
         config.get("build_args")["predicate_realize_bound"] = False
         config.get("build_args")["enable_branch_eliminator_else_case"] = False
     tbe.build(sch, config)
