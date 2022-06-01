@@ -147,7 +147,7 @@ TEST_F(dynamic_augru_seqlength_fusion_test, dynamic_augru_seqlength_fusion_test_
   ge::Shape weightHiddenShape(weightHiddenVec);
   ge::TensorDesc weightHiddenDesc(weightHiddenShape, FORMAT_ND, DT_FLOAT16);
 
-  std::vector<int64_t> weightAttVec{tSize, batchSize};
+  std::vector<int64_t> weightAttVec{-1, batchSize};
   ge::Shape weightAttShape(weightAttVec);
   ge::TensorDesc weightAttDesc(weightAttShape, FORMAT_ND, DT_FLOAT16);
 
