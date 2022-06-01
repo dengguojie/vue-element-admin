@@ -28,7 +28,7 @@
 #include "graph/ge_tensor.h"
 #include "graph/utils/graph_utils.h"
 #include "register/op_impl_registry.h"
-#include "tests/depends/faker/kernel_run_context_facker.h"
+#include "kernel_run_context_facker.h"
 #include "runtime/storage_shape.h"
 #include "runtime/infer_shape_context.h"
 #include "runtime/tensor.h"

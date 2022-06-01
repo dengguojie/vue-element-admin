@@ -15,7 +15,7 @@
  */
 #include "register/op_impl_registry.h"
 #include <gtest/gtest.h>
-#include "tests/depends/faker/kernel_run_context_facker.h"
+#include "kernel_run_context_facker.h"
 #include "runtime/storage_shape.h"
 #include "runtime/infer_shape_context.h"
 #include "runtime/tiling_context.h"
