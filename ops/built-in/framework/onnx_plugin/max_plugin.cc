@@ -30,6 +30,7 @@ Status ParseParamsMaxCall(const Message* op_src, ge::Operator& op_dest) {
 
   int n = node->input_size();
   op_dest.SetAttr("N", n);
+  op_dest.SetAttr("name", node->name());
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", n);
   op_desc->AddDynamicOutputDesc("y", 1);
@@ -39,6 +40,12 @@ Status ParseParamsMaxCall(const Message* op_src, ge::Operator& op_dest) {
 
 
 Status ParseOpToGraphMax(const ge::Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int input_size = 0;
   op.GetAttr("N", input_size);
   std::vector<ge::Operator> inputs;
@@ -47,18 +54,20 @@ Status ParseOpToGraphMax(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "input_size must >= 1");
     return FAILED;
   } else if (input_size == 1) {
-    auto data_op = op::Data("data").set_attr_index(0);
-    auto identity_op = op::Identity("identity").set_input_x(data_op);
+    auto data_op = op::Data(ori_name + "_data_0").set_attr_index(0);
+    auto identity_op = op::Identity(ori_name + "_identity").set_input_x(data_op);
     inputs.push_back(data_op);
     output_indexs.emplace_back(identity_op, std::vector<size_t>{0});
   } else {
     for (int i = 0; i < input_size; ++i) {
-      auto data_op = op::Data().set_attr_index(i);
+      auto data_op = op::Data(ori_name + "_data_" + to_string(i)).set_attr_index(i);
       inputs.push_back(data_op);
     }
     ge::Operator& prefix_op = inputs[0];
     for (int i = 1; i < input_size; ++i) {
-      auto cur_op = op::Maximum().set_input_x1(prefix_op).set_input_x2(inputs[i]);
+      auto cur_op = op::Maximum(ori_name + "_Maximum_" + to_string(i))
+                        .set_input_x1(prefix_op)
+                        .set_input_x2(inputs[i]);
       prefix_op = cur_op;
     }
     output_indexs.emplace_back(prefix_op, std::vector<size_t>{0});
@@ -74,7 +83,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::Max",
                    "ai.onnx::11::Max",
                    "ai.onnx::12::Max",
-                   "ai.onnx::13::Max"})
+                   "ai.onnx::13::Max",
+                   "ai.onnx::14::Max",
+                   "ai.onnx::15::Max"})
     .ParseParamsFn(ParseParamsMaxCall)
     .ParseOpToGraphFn(ParseOpToGraphMax)
     .ImplyType(ImplyType::TVM);

@@ -141,6 +141,8 @@ Status ParseParamsLpPool(const Message* op_src, ge::Operator& op_dest) {
 
   op_dest.SetAttr("trans_2d", trans);
   op_dest.SetAttr("p", node_attr.p);
+  
+  op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
 
@@ -178,14 +180,14 @@ Status AvgUpdateTbeAttrFromOp(const Operator& op, AvgLpPoolTbeAttr& tbe_attr) {
 }
 
 void AvgLpPoolGenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t> strides, std::vector<int64_t> pads,
-                   std::string padding_mode, Operator& input) {
+                         std::string padding_mode, Operator& input, std::string ori_name) {
   // aicpu only supports format=NHWC, so add permute operator to adjust the input
   std::vector<int64_t> ksize_transpose = {ksize[0], ksize[2], ksize[3], ksize[1]};
   std::vector<int64_t> strides_transpose = {strides[0], strides[2], strides[3], strides[1]};
   std::vector<int32_t> perm = {0, 2, 3, 1};
   auto tensor = Vec2Tensor(perm, {4}, ge::DT_INT32);
-  auto const_perm = op::Const().set_attr_value(tensor);
-  auto transposeIn = op::Transpose("permuteIn").set_input_x(input).set_input_perm(const_perm);
+  auto const_perm = op::Const(ori_name + "_Const_0").set_attr_value(tensor);
+  auto transposeIn = op::Transpose(ori_name + "_permuteIn").set_input_x(input).set_input_perm(const_perm);
 
   std::vector<int32_t> pads_vector(8, 0);
   bool use_pad = false;
@@ -199,24 +201,26 @@ void AvgLpPoolGenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<i
     int64_t len = pads_vector.size();
     TensorDesc tensorDesc(ge::Shape({len}), ge::FORMAT_NHWC, ge::DT_INT32);
     ge::Tensor pads_tensor = Vec2Tensor(pads_vector, {len}, ge::DT_INT32, ge::FORMAT_NHWC);
-    auto paddings = op::Const("paddings").set_attr_value(pads_tensor);
+    auto paddings = op::Const(ori_name + "_paddings").set_attr_value(pads_tensor);
 
     float tmp_const = 0.0;
     TensorDesc valueDesc(ge::Shape({1}), ge::FORMAT_NHWC, ge::DT_FLOAT);
     ge::Tensor values_tensor = Scalar2Tensor(tmp_const, {1}, ge::DT_INT32, ge::FORMAT_NHWC);
-    auto constant_values = op::Const("constant_values").set_attr_value(values_tensor);
+    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(values_tensor);
 
-    auto padV2 =
-        op::PadV2().set_input_x(transposeIn).set_input_paddings(paddings).set_input_constant_values(constant_values);
+    auto padV2 = op::PadV2(ori_name + "_PadV2")
+                     .set_input_x(transposeIn)
+                     .set_input_paddings(paddings)
+                     .set_input_constant_values(constant_values);
 
-    op = op::AvgPool()
+    op = op::AvgPool(ori_name + "_AvgPool")
              .set_input_x(padV2)
              .set_attr_ksize(ksize_transpose)
              .set_attr_strides(strides_transpose)
              .set_attr_padding(padding_mode)
              .set_attr_data_format("NHWC");
   } else {
-    op = op::AvgPool()
+    op = op::AvgPool(ori_name + "_AvgPool")
              .set_input_x(transposeIn)
              .set_attr_ksize(ksize_transpose)
              .set_attr_strides(strides_transpose)
@@ -252,6 +256,12 @@ Status AvgLpPoolUpdateFormat(Operator& op, Format format) {
 }
 
 Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
+  std::string ori_name;
+  if (op.GetAttr("name", ori_name) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
+    return FAILED;
+  }
+
   int dims = 0;
   if (op.GetAttr("dims", dims) != SUCCESS) {
     ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get dims from op failed");
@@ -263,12 +273,16 @@ Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  ge::Operator data0 = op::Data("data0").set_attr_index(0);
+  ge::Operator data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
   
   float p_f = static_cast<float>(tbe_attr.p);
-  auto power = op::Power().set_input_x(data0).set_attr_power(p_f).set_attr_scale(1).set_attr_shift(0);
+  auto power = op::Power(ori_name + "_Power_0")
+                   .set_input_x(data0)
+                   .set_attr_power(p_f)
+                   .set_attr_scale(1)
+                   .set_attr_shift(0);
 
   float mul_kw = 0;
   Operator output_op;
@@ -277,23 +291,23 @@ Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
     Operator input = power;
     if (tbe_attr.trans_2d) {
       ge::Operator::OpListInt axes = {3};
-      input = op::Unsqueeze("UnsqueezeX").set_input_x(input).set_attr_axes(axes);
+      input = op::Unsqueeze(ori_name + "_UnsqueezeX").set_input_x(input).set_attr_axes(axes);
     }
 
     if (tbe_attr.ksize[2] * tbe_attr.ksize[3] > 255 || (tbe_attr.strides[2] > 63 || tbe_attr.strides[3] > 63)) {
       ge::Operator aicpu_op;
-      AvgLpPoolGenAicpuOp(aicpu_op, tbe_attr.ksize, tbe_attr.strides, tbe_attr.pads, "VALID", input);
+      AvgLpPoolGenAicpuOp(aicpu_op, tbe_attr.ksize, tbe_attr.strides, tbe_attr.pads, "VALID", input, ori_name);
 
       if (AvgLpPoolUpdateFormat(aicpu_op, ge::FORMAT_NHWC) != SUCCESS) {
         return FAILED;
       }
       std::vector<int32_t> perm = {0, 3, 1, 2};
       auto tensor = Vec2Tensor(perm, {4}, ge::DT_INT32);
-      auto const_perm = op::Const().set_attr_value(tensor);
-      output_op = op::Transpose("permuteOut").set_input_x(aicpu_op).set_input_perm(const_perm);
+      auto const_perm = op::Const(ori_name + "_Const_1").set_attr_value(tensor);
+      output_op = op::Transpose(ori_name + "_permuteOut").set_input_x(aicpu_op).set_input_perm(const_perm);
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
-        output_op = op::Squeeze("SqueezeTranspose").set_input_x(output_op).set_attr_axis(axis);
+        output_op = op::Squeeze(ori_name + "_SqueezeTranspose").set_input_x(output_op).set_attr_axis(axis);
       }
       // update output format
       auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(output_op);
@@ -306,7 +320,7 @@ Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
         return FAILED;
       }
     } else {
-      output_op = op::AvgPoolV2()
+      output_op = op::AvgPoolV2(ori_name + "_AvgPoolV2")
                       .set_input_x(input)
                       .set_attr_ksize(tbe_attr.ksize)
                       .set_attr_strides(tbe_attr.strides)
@@ -316,7 +330,7 @@ Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
                       .set_attr_data_format("NCHW");
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
-        output_op = op::Squeeze("SqueezeAvgpoolv2").set_input_x(output_op).set_attr_axis(axis);
+        output_op = op::Squeeze(ori_name + "_SqueezeAvgpoolv2").set_input_x(output_op).set_attr_axis(axis);
         if (AvgLpPoolUpdateFormat(output_op, ge::FORMAT_NCHW) != SUCCESS) {
           return FAILED;
         }
@@ -324,7 +338,7 @@ Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
     }
   } else {
     mul_kw = tbe_attr.ksize[0] * tbe_attr.ksize[1] * tbe_attr.ksize[2];
-    output_op = op::AvgPool3D()
+    output_op = op::AvgPool3D(ori_name + "_AvgPool3D")
                     .set_input_x(power)
                     .set_attr_ksize(tbe_attr.ksize)
                     .set_attr_strides(tbe_attr.strides)
@@ -335,9 +349,13 @@ Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
     }
   }
   
-  auto muls = op::Muls().set_input_x(output_op).set_attr_value(mul_kw);
+  auto muls = op::Muls(ori_name + "_Muls").set_input_x(output_op).set_attr_value(mul_kw);
   float p1 = 1 / p_f;
-  auto power1 = op::Power().set_input_x(muls).set_attr_power(p1).set_attr_scale(1).set_attr_shift(0);
+  auto power1 = op::Power(ori_name + "_Power_1")
+                    .set_input_x(muls)
+                    .set_attr_power(p1)
+                    .set_attr_scale(1)
+                    .set_attr_shift(0);
   outputs.emplace_back(power1, std::vector<std::size_t>{0});
   graph.SetInputs(inputs).SetOutputs(outputs);
   return SUCCESS;
@@ -349,7 +367,9 @@ REGISTER_CUSTOM_OP("PartitionedCall")
                    "ai.onnx::10::LpPool", 
                    "ai.onnx::11::LpPool",
                    "ai.onnx::12::LpPool", 
-                   "ai.onnx::13::LpPool"})
+                   "ai.onnx::13::LpPool",
+                   "ai.onnx::14::LpPool", 
+                   "ai.onnx::15::LpPool"})
     .ParseParamsFn(ParseParamsLpPool)
     .ParseOpToGraphFn(ParseOpToGraphLpPool)
     .ImplyType(ImplyType::TVM);
