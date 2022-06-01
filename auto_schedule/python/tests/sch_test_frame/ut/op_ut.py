@@ -963,6 +963,9 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if compile_stage_status.status != op_status.SUCCESS:
             return ut_report.OpUTCaseReport(case_trace)
 
+        if run_cfg.get("simulator_mode"):
+            return ut_report.OpUTCaseReport(case_trace)
+
         run_stage_status = self._run_model_run_stage(run_soc_version, case_info, run_cfg)
         case_trace.add_stage_result(run_stage_status)
         if run_stage_status.status != op_status.SUCCESS or not self._check_need_run_expect(run_cfg):
