@@ -1,0 +1,2 @@
+testcase_name,network_name,op_name,stc_input_dtypes,other_compilation_params,stc_inputs,output_dtypes,stc_outputs,output_formats,stc_input_as_list_distribution
+parallelconcat_aftersmoke310p_00010224,UNKNOWN,parallel_concat,"('float16',)","{'shape': (2, 11), 'num': 2}","((1, 11), (1, 11))","('float16',)","((2, 11),)","('NHWC',)","(2,)"

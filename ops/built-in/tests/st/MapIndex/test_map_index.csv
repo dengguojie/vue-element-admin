@@ -1,0 +1,3 @@
+testcase_name,network_name,op_name,stc_input_dtypes,stc_inputs,output_dtypes,stc_outputs,dyn_inputs,dyn_input_dtypes,dyn_outputs,dyn_input_ranges,dyn_output_ranges
+mapindex_aftersmoke310p_00002705,,map_index,"('int32',)","((1,), (32,), None)","('int32',)","((1,),)","((-1,), (-1,), None)","('int32',)","((-1,),)","(((1, None),), ((1, None),), None)","(((1, None),),)"
+mapindex_aftersmoke310p_00002706,,map_index,"('int32',)","((1,), (8,), None)","('int32',)","((1,),)","((-1,), (-1,), None)","('int32',)","((-1,),)","(((1, None),), ((1, None),), None)","(((1, None),),)"

@@ -1,0 +1,2 @@
+testcase_name,network_name,op_name,stc_input_dtypes,stc_inputs,output_dtypes,stc_outputs,output_formats,dyn_inputs,dyn_input_dtypes,dyn_outputs,dyn_input_formats,dyn_input_ori_formats,dyn_input_ranges,dyn_output_ranges
+matrixdiagpartd_aftersmoke310p_00009151,,matrix_diag_part_d,"('float16',)","((1024, 256), (1024, 256))","('float16',)","((256,),)","('NHWC',)","((-1, -1), (-1, -1))","('float16',)","((-1,),)","('NHWC',)","('NHWC',)","(((1, None), (1, None)),)","(((1, None),),)"
