@@ -238,7 +238,6 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
 
             self._calc_emit_insn()
             self._do_emit_insn()
-            self._add_compile_info()
         else:
             self._reduce_cut_schedule()
 
@@ -653,18 +652,6 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         if not self._tensor_space // self._max_dtype_bytes >= lower_bound:
             return False
         return True
-
-    def _add_compile_info(self):
-        cpt_compute = operation.get_context().get_current_compute()
-        cpt_schedule = cpt_compute.get_current_schedule()
-        if self._mode == CONST:
-            # const shape: one compute, one schedule
-            cpt_compute.add("const_block_dim", self._block_dims)
-        else:
-            cpt_schedule.add(CompileInfo.MAX_DTYPE, self._max_dtype_bytes)
-            cpt_schedule.add(CompileInfo.COEXISTING_QUANTITY, self._coexisting_quantity)
-            cpt_schedule.add(CompileInfo.UB_SIZE, self._ub_size)
-            cpt_schedule.add(CompileInfo.CORE_NUM, util.get_core_num())
 
     def __dfs_sub_graph(self, out, visited_tensors: set):
         for tensor_i in out.op.input_tensors:

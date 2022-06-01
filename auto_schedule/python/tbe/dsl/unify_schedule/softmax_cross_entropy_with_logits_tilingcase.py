@@ -48,8 +48,6 @@ def calc(outs, option=None):
     :param option:
     :return:
     """
-    # avoid pylint
-    len([option])
     # ###############TILING KEY RULE################
     # use int32, max value 2147483647
     # 0~1: dim len
@@ -83,7 +81,6 @@ def calc(outs, option=None):
 
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
 
-    a = _calc_general(outs, base_key)
     return _calc_general(outs, base_key)
 
 

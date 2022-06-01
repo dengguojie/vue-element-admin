@@ -40,12 +40,6 @@ static const size_t MAX_DTYPE_SIZE = 4;
 static const size_t FP16_BLOCK_SIZE = 16;
 static const size_t MAX_WORKSPACE_NUMS = 5;
 
-// compile info
-struct CompileInfo {
-  int32_t ub_size;
-  int32_t core_num;
-};
-
 // tiling info
 struct TilingInfo {
   int32_t key;
@@ -62,7 +56,7 @@ struct opInfo {
 };
 
 bool SoftmaxCrossEntropyWithLogitsParseFunc(const std::string& op_type, const nlohmann::json& compile_info,
-                                            opInfo& compile_value) {
+                                            opInfo& op_info) {
   using namespace nlohmann;
   auto common_info_iter = compile_info.find("common_info");
   OP_TILING_CHECK(
@@ -70,27 +64,24 @@ bool SoftmaxCrossEntropyWithLogitsParseFunc(const std::string& op_type, const nl
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get common_info error"),
       return false);
   const auto& sub_common_info = compile_info["common_info"];
-  OP_TILING_CHECK(!GetCompileValue(sub_common_info, "core_num", compile_value.core_num),
+  OP_TILING_CHECK(!GetCompileValue(sub_common_info, "core_num", op_info.core_num),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get core_num error"),
                   return false);
-  OP_TILING_CHECK(!GetCompileValue(sub_common_info, "ub_size", compile_value.ub_size),
+  OP_TILING_CHECK(!GetCompileValue(sub_common_info, "ub_size", op_info.ub_size),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get ub_size error"),
                   return false);
+  GELOGD("op [%s] GetPreCompileParams, core_num[%d].", op_type.c_str(), op_info.core_num);
+  GELOGD("op [%s] GetPreCompileParams, ub_size[%d].", op_type.c_str(), op_info.ub_size);
   OP_LOGI(op_type.c_str(), "GetCompileParams success.");
   return true;
 }
-int64_t GetDtypeSize(const ge::DataType& dtype) {
-  // element nums in one block
-  int32_t dtype_size = kDtypeSizeMap.at(dtype);
-  return dtype_size;
-}
 
-bool WriteTilingData(const std::string& op_type, const CompileInfo& compile_info,
+bool WriteTilingData(const std::string& op_type, const opInfo& op_info,
                      TilingInfo& tiling_info, utils::OpRunInfo& run_info,
                      ge::DataType& out_type, std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
                      const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
-  GELOGD("op [%s] tiling ub_size:%lld", op_type.c_str(), compile_info.ub_size);
-  GELOGD("op [%s] tiling core_num:%lld", op_type.c_str(), compile_info.core_num);
+  GELOGD("op [%s] tiling ub_size:%lld", op_type.c_str(), op_info.ub_size);
+  GELOGD("op [%s] tiling core_num:%lld", op_type.c_str(), op_info.core_num);
 
   GELOGD("op [%s] tiling key:%lld", op_type.c_str(), tiling_info.key);
 
@@ -103,7 +94,7 @@ bool WriteTilingData(const std::string& op_type, const CompileInfo& compile_info
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), tiling_info.block_axis);
   GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
 
-  int32_t dtype_size = GetDtypeSize(out_type);
+  int32_t dtype_size = kDtypeSizeMap.at(out_type);
   int64_t workspace_size = output_shape[0] * output_shape[1] * dtype_size;
   std::array<int64_t, MAX_WORKSPACE_NUMS> workspaces{workspace_size, workspace_size, workspace_size,
                                                      workspace_size, workspace_size};
@@ -217,7 +208,7 @@ void CalNdKey(const std::string& op_type, TilingInfo& tiling_info,
   GELOGD("op [%s] key[%d].", op_type.c_str(), key);
 }
 
-bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInfo& tiling_info,
+bool DoNdTiling(const std::string& op_type, const opInfo& op_info, TilingInfo& tiling_info,
                 ge::DataType& out_type, std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
                 const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGI("op [%s]: DoNdTiling func running", op_type.c_str());
@@ -227,22 +218,22 @@ bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInf
   int32_t ub_factor = output_shape[0];
   int32_t block_axis = 0;
   int32_t block_nparts = 1;
-  int32_t dtype_size = GetDtypeSize(out_type);
+  int32_t dtype_size = kDtypeSizeMap.at(out_type);
   GELOGD("op [%s] dtype_size = %d.", op_type.c_str(), dtype_size);
   OP_TILING_CHECK(dtype_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_size cannot be zero"), return false);
-  int32_t bound_size = compile_info.ub_size / MAX_DTYPE_SIZE / MAX_COEXIST_NUM / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
+  int32_t bound_size = op_info.ub_size / MAX_DTYPE_SIZE / MAX_COEXIST_NUM / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
   int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
   int32_t c_size_align = (c_size + FP16_BLOCK_SIZE - 1) / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
   GELOGD("op [%s] bound_size = %d.", op_type.c_str(), bound_size);
   if (c_size_align > bound_size) {
-    block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
-                    ? compile_info.core_num
+    block_nparts = (n_h_w * dtype_size) >= (op_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
+                    ? op_info.core_num
                     : max(n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK), 1);
     ub_factor = (c_size - bound_size) >= num_per_block ? bound_size : bound_size - num_per_block;
   } else if ((c_size_align * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
     // for open multi-core
-    block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
-                       ? compile_info.core_num
+    block_nparts = (n_h_w * dtype_size) >= (op_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
+                       ? op_info.core_num
                        : n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK);
     int32_t block_tiling_inner_loop = n_h_w / block_nparts;
     ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
@@ -262,17 +253,6 @@ bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInf
 
   CalNdKey(op_type, tiling_info, input_shapes, bound_size);
 
-  return true;
-}
-
-bool GetPreCompileParams(const std::string& op_type, const opInfo& op_info, CompileInfo& compile_info) {
-  // core num
-  compile_info.core_num = op_info.core_num;
-  // ub size
-  compile_info.ub_size = op_info.ub_size;
-
-  GELOGD("op [%s] GetPreCompileParams, core_num[%d].", op_type.c_str(), compile_info.core_num);
-  GELOGD("op [%s] GetPreCompileParams, ub_size[%d].", op_type.c_str(), compile_info.ub_size);
   return true;
 }
 
@@ -300,18 +280,12 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::O
   std::array<int64_t, MAX_DIM_LEN> output_shape;
   bool ret = CompletedShapes(input_shapes, output_shape, dim_len, op_type, op_paras);
   // not use pure template
-  CompileInfo compile_info = {1, 1};
-  TilingInfo tiling_info = {1, 1, 1, 1, 1};
-
-  ret = ret && GetPreCompileParams(op_type, op_info, compile_info);
-
-  int64_t key = 110000000;
-  tiling_info.key = key;
+  TilingInfo tiling_info;
 
   if (dim_len == ND_SHAPE_LEN) {
-    ret = ret && DoNdTiling(op_type, compile_info, tiling_info, out_type, input_shapes, output_shape);
+    ret = ret && DoNdTiling(op_type, op_info, tiling_info, out_type, input_shapes, output_shape);
   }
-  ret = ret && WriteTilingData(op_type, compile_info, tiling_info, run_info, out_type, input_shapes, output_shape);
+  ret = ret && WriteTilingData(op_type, op_info, tiling_info, run_info, out_type, input_shapes, output_shape);
   return ret;
 }
 REGISTER_OP_TILING_V3_CUSTOM(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsTiling,

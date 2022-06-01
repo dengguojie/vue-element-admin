@@ -35,109 +35,6 @@ class Constant:
     """
     # compute needed,scalar -1
     SCALAR_MINUS_ONE = -1
-    MAX_INT32_VALUE = 2147483647
-
-
-def _process_range(range0, range1):
-    dim00_range = range0[0]
-    dim01_range = range0[1]
-    dim10_range = range1[0]
-    dim11_range = range1[1]
-    if _range_to_int(dim00_range[0]) > 1 and _range_to_int(dim10_range[0]) > 1:
-        intersection_dim00_dim10_range = (max(_range_to_int(dim00_range[0]), _range_to_int(dim10_range[0])),
-                                          min(_range_to_int(dim00_range[1]), _range_to_int(dim10_range[1])))
-        dim00_range = intersection_dim00_dim10_range
-        dim10_range = intersection_dim00_dim10_range
-    else:
-        dim00_range = (_range_to_int(dim00_range[0]), _range_to_int(dim00_range[1]))
-        dim10_range = (_range_to_int(dim10_range[0]), _range_to_int(dim10_range[1]))
-
-    if _range_to_int(dim01_range[0]) > 1 and _range_to_int(dim11_range[0]) > 1:
-        intersection_dim01_dim11_range = (max(_range_to_int(dim01_range[0]), _range_to_int(dim11_range[0])),
-                                          min(_range_to_int(dim01_range[1]), _range_to_int(dim11_range[1])))
-        dim01_range = intersection_dim01_dim11_range
-        dim11_range = intersection_dim01_dim11_range
-    else:
-        dim01_range = (_range_to_int(dim01_range[0]), _range_to_int(dim01_range[1]))
-        dim11_range = (_range_to_int(dim11_range[0]), _range_to_int(dim11_range[1]))
-
-    range0 = [dim00_range, dim01_range]
-    range1 = [dim10_range, dim11_range]
-    return range0, range1
-
-
-def _range_to_int(range_val):
-    return Constant.MAX_INT32_VALUE if range_val is None else int(range_val)
-
-
-# 'pylint: disable=too-many-locals,too-many-statements
-def variable_shape(inputs: list, support_broadcast=False):
-    """
-    :param inputs: all inputs
-    :param support_broadcast: whether to support broadcast
-    :return:
-    """
-    def _fill(_inputs):
-        x_0, x_1 = _inputs
-        shape0, range0 = list(x_0["shape"]), list(x_0["range"])
-        shape1, range1 = list(x_1["shape"]), list(x_1["range"])
-
-        range0, range1 = _process_range(range0, range1)
-        swapped = False
-        if len(shape0) < len(shape1):
-            shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-            swapped = True
-        d_v = len(shape0) - len(shape1)
-        shape1 = [1] * d_v + shape1
-        range1 = [(1, 1)] * d_v + range1
-        if swapped:
-            shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-        return [shape0, shape1], [range0, range1]
-
-    def _maybe_broadcast():
-        for _r in ranges:
-            if _r[i][0] <= 1:
-                return True
-        return False
-
-    mode = inputs[0].get("mode")
-    if mode is None:
-        mode = para_check.ORIGINAL
-    operation.get_context().add("mode", mode)
-    current_compute = operation.get_context().get_current_compute()
-    if current_compute:
-        current_compute.add("_mode", mode)
-        ori_axis = inputs[0].get("ori_axis")
-        if ori_axis is not None:
-            current_compute.add("ori_axis", ori_axis)
-        axis_dtype = inputs[0].get("axis_dtype")
-        if axis_dtype is not None:
-            current_compute.add("axis_dtype", axis_dtype)
-    operation.get_context().add("support_broadcast", support_broadcast)
-
-    shapes, ranges = _fill(inputs)
-
-    d_shapes = [[] for _ in shapes]
-    for i in range(len(shapes[0])):
-        _var = None
-        need_two_vars = _maybe_broadcast() and "copy" not in mode
-        _suffix = 0
-        for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
-            if shape[i] == -1 and _range[i][0] == _range[i][1]:
-                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, Constant.MAX_INT32_VALUE))
-                d_shape.append(_range[i][0])
-            elif shape[i] == -1:
-                if _var is None or need_two_vars:
-                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
-                else:
-                    operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
-                d_shape.append(_var)
-            else:
-                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, Constant.MAX_INT32_VALUE))
-                d_shape.append(shape[i])
-            _suffix += 1
-
-    return d_shapes
 
 
 # 'pylint: disable=unused-argument,too-many-locals
@@ -290,9 +187,6 @@ def softmax_cross_entropy_with_logits(
         input_labels['range'] = [[1, 1], input_labels['range'][0]]
         input_labels['shape'] = shape_labels
 
-    input_features['range'], input_labels['range'] = _process_range(input_features['range'],
-                                                                    input_labels['range'])
-
     shape_util.compare_tensor_dict_key(input_features, input_labels, "dtype")
 
     check_list = ("float16", "float32")
@@ -304,8 +198,6 @@ def softmax_cross_entropy_with_logits(
 
     input_features["shape"] = shape_features
     input_labels["shape"] = shape_labels
-
-    operation.get_context().add("ub_size", tbe_platform.get_soc_spec("UB_SIZE"))
 
     ins = classify([input_features, input_labels], "softmax_cross_entropy_with_logits_with_reduce")
 
@@ -320,7 +212,7 @@ def softmax_cross_entropy_with_logits(
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe.compute():
-            shape_features, shape_labels = variable_shape([x1, x2], support_broadcast=True)
+            shape_features, shape_labels = shape_util.variable_shape([x1, x2], op_mode="softmax_norm")
             data_features = tvm.placeholder(shape_features, dtype=input_dtype, name="data_features")
             data_labels = tvm.placeholder(shape_labels, dtype=input_dtype, name="data_labels")
             res = softmax_cross_entropy_with_logits_compute(data_features, data_labels, output_loss, output_backprop,

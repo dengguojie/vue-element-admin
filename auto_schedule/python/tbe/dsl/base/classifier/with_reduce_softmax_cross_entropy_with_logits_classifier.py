@@ -21,7 +21,7 @@ import re
 from enum import Enum, auto
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
-
+from tbe.common.platform.platform_info import get_soc_spec
 from . import util
 
 ONE = "one"
@@ -205,12 +205,13 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
             range1 = [dim10_range, dim11_range]
             return range0, range1
 
+        self.f_ranges[0], self.f_ranges[1] = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
         [[(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)]] = self.f_ranges
         tail_not_broadcast = (r01_l > 1 and r11_l > 1) or (r01_l == r01_r == 1 and r11_l == r11_r == 1)
         tail_may_broadcast = not tail_not_broadcast
         batch_not_broadcast = (r00_l > 1 and r10_l > 1) or (r00_l == r00_r == 1 and r10_l == r10_r == 1)
         batch_may_broadcast = not batch_not_broadcast
-        ub_size = operation.get_context().get("ub_size")
+        ub_size = get_soc_spec("UB_SIZE")
         num_per_block = BLOCK_SIZE_BYTE // self.dtype_size
         bound_size = (ub_size // 4 // MAX_COEXIST_NUM) // 16 * 16
         range0, range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])

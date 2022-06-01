@@ -28,3 +28,4 @@ from . import split_variable_shape
 from . import transdata_variable_shape
 from . import transpose_variable_shape
 from . import tuple_reduce_variable_shape
+from . import softmax_norm_variable_shape
