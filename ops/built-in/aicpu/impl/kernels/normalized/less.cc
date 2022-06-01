@@ -209,7 +209,7 @@ uint32_t LessCpuKernel::BcastCompute(const CpuKernelContext &ctx, const Bcast &b
 }
 
 template <typename T>
-uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx) {
+uint32_t LessCpuKernel::LessCompute(const CpuKernelContext &ctx) {
   Tensor *input0_tensor = ctx.Input(0);
   auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
   int64_t input0_elements_nums = input0_tensor->NumElements();

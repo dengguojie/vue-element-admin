@@ -74,7 +74,7 @@ uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   return KERNEL_STATUS_PARAM_INVALID;
 }
 
-string AssertCpuKernel::SummarizeValue(const Tensor &t, int64_t max_entries, const bool print_v2) {
+string AssertCpuKernel::SummarizeValue(const Tensor &t, int64_t max_entries) {
   const int64_t num_elts = t.NumElements();
   if (max_entries < 0) {
     max_entries = num_elts;

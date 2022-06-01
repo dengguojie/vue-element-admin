@@ -41,7 +41,7 @@ class LessCpuKernel : public CpuKernel {
   uint32_t BcastCompute(const CpuKernelContext &ctx, const Bcast &bcast);
 
   template <typename T>
-  uint32_t LessCompute(CpuKernelContext &ctx);
+  uint32_t LessCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

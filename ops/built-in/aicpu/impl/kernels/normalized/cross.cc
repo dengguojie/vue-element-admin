@@ -42,7 +42,7 @@ const int64_t kThreeNum = 3;
 }  // namespace
 
 namespace aicpu {
-uint32_t CrossCpuKernel::GetDimAndCheck(CpuKernelContext &ctx) {
+uint32_t CrossCpuKernel::GetDimAndCheck(const CpuKernelContext &ctx) {
   auto input1_data_shape = ctx.Input(0)->GetTensorShape();
   auto input2_data_shape = ctx.Input(1)->GetTensorShape();
   AttrValue *dim_attr = ctx.GetAttr("dim");
@@ -95,7 +95,7 @@ uint32_t CrossCpuKernel::GetDimAndCheck(CpuKernelContext &ctx) {
 uint32_t CrossCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "Cross check input and output number failed.");
-  KERNEL_HANDLE_ERROR(GetDimAndCheck(ctx), 
+  KERNEL_HANDLE_ERROR(GetDimAndCheck(ctx),
                       "[%s] check params failed.", kCross);
   auto output_type = ctx.Output(0)->GetDataType();
   switch (output_type) {

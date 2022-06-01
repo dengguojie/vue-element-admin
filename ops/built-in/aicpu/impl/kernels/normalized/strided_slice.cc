@@ -272,7 +272,7 @@ uint32_t StridedSliceCpuKernel::Compute(CpuKernelContext &ctx) {
 #undef STRIDED_SLICE_CASE
 }
 
-uint32_t StridedSliceCpuKernel::ParseKernelParams(CpuKernelContext &ctx) {
+uint32_t StridedSliceCpuKernel::ParseKernelParams(const CpuKernelContext &ctx) {
   // get inputs
   Tensor *x_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(x_tensor, KERNEL_STATUS_PARAM_INVALID,

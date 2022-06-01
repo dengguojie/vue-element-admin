@@ -152,7 +152,7 @@ class StridedSliceCpuKernel : public CpuKernel {
    * @param ctx op context
    * @return status code
    */
-  uint32_t ParseKernelParams(CpuKernelContext &ctx);
+  uint32_t ParseKernelParams(const CpuKernelContext &ctx);
 
   uint32_t ParseIndexInput(const CpuKernelContext &ctx, uint32_t index,
                            std::vector<int64_t> &vec);
