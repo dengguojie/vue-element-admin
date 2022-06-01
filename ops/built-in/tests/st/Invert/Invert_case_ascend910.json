@@ -262,7 +262,7 @@
     "op": "Invert",
     "input_desc": [
       {
-        "format": [],
+        "format": ["ND"],
         "type": [
           "int16",
           "uint16"
@@ -282,7 +282,7 @@
     ],
     "output_desc": [
       {
-        "format": [],
+        "format": ["ND"],
         "type": [
           "int16",
           "uint16"
@@ -825,7 +825,7 @@
     "op": "Invert",
     "input_desc": [
       {
-        "format": [],
+        "format": ["ND"],
         "type": [
           "int16",
           "uint16"
@@ -845,7 +845,7 @@
     ],
     "output_desc": [
       {
-        "format": [],
+        "format": ["ND"],
         "type": [
           "int16",
           "uint16"
@@ -991,7 +991,7 @@
     "op": "Invert",
     "input_desc": [
       {
-        "format": [],
+        "format": ["ND"],
         "type": [
           "int16",
           "uint16"
@@ -1011,7 +1011,7 @@
     ],
     "output_desc": [
       {
-        "format": [],
+        "format": ["ND"],
         "type": [
           "int16",
           "uint16"
