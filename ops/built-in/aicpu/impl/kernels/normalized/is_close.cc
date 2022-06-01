@@ -69,7 +69,7 @@ uint32_t IsCloseCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t IsCloseCpuKernel::IsCloseParamCheck(const CpuKernelContext &ctx) {
+uint32_t IsCloseCpuKernel::IsCloseParamCheck(const CpuKernelContext &ctx) const{
   Tensor *input_0 = ctx.Input(0);
   Tensor *input_1 = ctx.Input(1);
   Tensor *output = ctx.Output(0);

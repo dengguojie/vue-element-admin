@@ -96,7 +96,7 @@ static void UpdateResult(
 }
 
 template <typename T>
-uint32_t EditDistanceTask(std::vector<Tensor *> &inputs, std::vector<Tensor *> &outputs, bool &normalize) {
+uint32_t EditDistanceTask(std::vector<Tensor *> &inputs, std::vector<Tensor *> &outputs, const bool &normalize) {
   if (inputs.size() == 0 || outputs.size() == 0) {
     KERNEL_LOG_ERROR("EditDistanceTask input or output is empty.");
     return KERNEL_STATUS_PARAM_INVALID;

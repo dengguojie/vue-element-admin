@@ -66,7 +66,7 @@ void RangeSliceWrite(int64_t start, int64_t end, const aicpu::Tensor *x,
 
 namespace aicpu {
 bool SliceWriteCpuKernel::CheckValueSupported(
-    const DataType input_x_type, const DataType input_value_type) const {
+    const DataType input_x_type) const {
   switch (input_x_type) {
     case DT_FLOAT16:
     case DT_FLOAT:
@@ -82,7 +82,7 @@ bool SliceWriteCpuKernel::CheckValueSupported(
 
 uint32_t SliceWriteCpuKernel::Check(const Tensor *x, const Tensor *value,
                                     int64_t row_offset, int64_t col_offset) {
-  if (!CheckValueSupported(x->GetDataType(), value->GetDataType())) {
+  if (!CheckValueSupported(x->GetDataType())) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 

@@ -28,7 +28,7 @@ class IsCloseCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t IsCloseParamCheck(const CpuKernelContext &ctx);
+  uint32_t IsCloseParamCheck(const CpuKernelContext &ctx) const;
 
   template <typename T>
   void SpecialCompute(BcastShapeType type, int64_t start, int64_t end,

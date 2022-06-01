@@ -20,7 +20,7 @@
 
 namespace aicpu {
 class SoftmaxV2CpuKernel final : public CpuKernel {
- public:
+public:
   std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu
