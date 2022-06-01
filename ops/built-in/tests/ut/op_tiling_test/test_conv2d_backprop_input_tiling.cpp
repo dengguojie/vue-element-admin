@@ -410,6 +410,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one) {
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 21210103);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 4 8 4 13 10 64 4 26 20 2 2 1 4 1 0 0 0 0 2 2 0 0 0 0 1 1 0 0 8 1 4 1 1 0 4 10 10 9 1 4 4 4 1 1 12800 16384 12800 ");
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one_m2_n2_large_x0) {
@@ -458,6 +459,8 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one_m2_n2_
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 12211023);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "288 32 128 32 7 7 512 32 14 14 3 3 1 32 1 0 1 0 1 2 2 0 0 0 0 2 2 0 0 32 1 1 4 0 1 32 10 7 13 1 8 4 18 4 1 106496 147456 71680 ");
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_equal_one) {
@@ -506,6 +509,8 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_equal_one) {
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 11210002);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 16 13 13 9 1 16 1 15 15 3 3 1 1 1 0 0 0 0 1 1 0 0 0 0 2 2 2 2 1 1 1 4 0 0 1 13 13 15 1 1 3 3 1 1 2816 2304 2816 ");
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_pads_equal_neg_one) {
@@ -554,6 +559,8 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_pads_equal_neg_one) {
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 11210002);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 256 12 20 144 16 256 16 12 20 3 3 1 16 1 1 1 1 1 1 1 0 0 0 0 1 1 1 1 16 2 1 1 0 0 16 6 20 15 1 8 4 36 1 1 61440 294912 32768 ");
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_dilations_invalid) {
@@ -659,6 +666,8 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_no_overlap_condition_4)
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 11210003);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 1 2 2 1 1 4 3 1 1 1 1 1 0 0 0 0 2 2 0 0 0 -1 0 0 0 0 1 1 1 1 0 0 1 4 2 1 1 1 1 1 1 1 256 256 256 ");
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_get_cin1_factor) {
@@ -716,4 +725,6 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_get_cin1_factor) {
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 22211223);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 64 16 64 28 28 512 32 56 56 2 2 1 32 1 0 0 0 0 2 2 0 0 0 0 1 1 0 0 16 1 2 1 1 1 32 2 28 8 1 16 4 4 8 2 143360 65536 57344 ");
 }

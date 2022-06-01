@@ -152,8 +152,7 @@ namespace optiling {
   * @param [out] run_info: runtime information
   * @return bool: success or not
   */
-  void SetRunInfoAubFusion(const DxParas &params, const Tiling &tiling,
-                           utils::OpRunInfo &run_info, RunInfoParaAubFusion &run) {
+  void SetRunInfoAubFusion(const DxParas &params, const Tiling &tiling, RunInfoParaAubFusion &run) {
     run.batch = params.batch;
     run.co = params.co;
     run.ho = params.ho;
@@ -202,11 +201,9 @@ namespace optiling {
     run.al1_bound = tiling.al1_bound;
     run.bl1_bound = tiling.bl1_bound;
     run.aub_bound = tiling.aub_bound;
-    run_info.AddTilingData(run);
   }
 
-  void SetRunInfoAubNoFusion(const DxParas &params, const Tiling &tiling, utils::OpRunInfo &run_info,
-                             RunInfoParaAubNoFusion &run) {
+  void SetRunInfoAubNoFusion(const DxParas &params, const Tiling &tiling, RunInfoParaAubNoFusion &run) {
     run.filter_cin1hw = params.filter_cin1hw;
     run.filter_cout1 = params.filter_cout1;
     run.batch = params.batch;
@@ -255,7 +252,6 @@ namespace optiling {
     run.al1_bound = tiling.al1_bound;
     run.bl1_bound = tiling.bl1_bound;
     run.aub_bound = tiling.aub_bound;
-    run_info.AddTilingData(run);
   }
 
   void SetRunInfo(const DxParas &params, const Tiling &tiling,
@@ -264,14 +260,17 @@ namespace optiling {
 
     if (params.binary_mode == 1) {
       RunInfoParaAubNoFusion run;
-      SetRunInfoAubNoFusion(params, tiling, run_info, run);
+      SetRunInfoAubNoFusion(params, tiling, run);
+      run_info.AddTilingData(run);
     } else if (params.binary_mode == kNumTwo) {
       if (stride_equal_one) {
         RunInfoParaAubFusion run;
-        SetRunInfoAubFusion(params, tiling, run_info, run);
+        SetRunInfoAubFusion(params, tiling, run);
+        run_info.AddTilingData(run);
       } else {
         RunInfoParaAubNoFusion run;
-        SetRunInfoAubNoFusion(params, tiling, run_info, run);
+        SetRunInfoAubNoFusion(params, tiling, run);
+        run_info.AddTilingData(run);
       }
     }
   }

@@ -97,6 +97,7 @@ set(_op_proto_srcs
   runtime/matmul_infer_fns.cc
   nn_batch_norm_ops.cc
   nn_calculation_ops.cc
+  runtime/conv2d_backprop_infer_fns.cc
   nn_detect_ops.cc
   nn_norm_ops.cc
   nn_ops.cc

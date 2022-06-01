@@ -1022,15 +1022,12 @@ uint64_t GEMMTilingSelect(bool is_batch_matmul_op, TilingContext *context, const
 ge::graphStatus TilingForGemm(TilingContext *context, bool is_batch_matmul_op) {
   auto shape_x1 = context->GetInputShape(0);
   auto shape_x2 = context->GetInputShape(1);
-  auto src_td = context->GetInputDesc(0);
-  if (shape_x1 == nullptr || shape_x2 == nullptr || src_td == nullptr) {
-    return ge::GRAPH_FAILED;
-  }
-
+  OP_TILING_CHECK(shape_x1 == nullptr || shape_x2 == nullptr,
+                  CUBE_INNER_ERR_REPORT(context->GetNodeName(), "shape_x1 or shape_x2 is null"),
+                  return ge::GRAPH_FAILED);
   auto compile_info = reinterpret_cast<const GemmCompileInfo *>(context->GetCompileInfo());
-  if (compile_info == nullptr) {
-    return ge::GRAPH_FAILED;
-  }
+  OP_TILING_CHECK(compile_info == nullptr, CUBE_INNER_ERR_REPORT(context->GetNodeName(), "compile_info is null"),
+                  return ge::GRAPH_FAILED);
 
   OP_LOGD(context->GetNodeName(), "%s", optiling::DebugTilingContext(context).c_str());
   uint64_t tiling_id = GEMMTilingSelect(is_batch_matmul_op, context, *compile_info);
@@ -1055,15 +1052,14 @@ ge::graphStatus TilingForBatchMatMul(TilingContext *context) {
 
 ge::graphStatus GemmParseFunc(KernelContext *context) {
   OP_TILING_CHECK(context == nullptr, CUBE_INNER_ERR_REPORT("MatMul", "context is null"), return ge::GRAPH_FAILED);
+  auto compute_node = reinterpret_cast<const ComputeNodeInfo *>(context->GetComputeNodeExtend());
+  OP_TILING_CHECK(compute_node == nullptr, CUBE_INNER_ERR_REPORT("MatMul", "compute_node is null"),
+                  return ge::GRAPH_FAILED);
+  auto op_name = compute_node->GetNodeName();
   auto compile_info = context->GetOutputPointer<GemmCompileInfo>(0);
   auto json_str = context->GetInputStrPointer(0);
   OP_TILING_CHECK(compile_info == nullptr || json_str == nullptr,
-                  CUBE_INNER_ERR_REPORT("nil", "compile_info or json is null"), return ge::GRAPH_FAILED);
-
-  auto compute_node = reinterpret_cast<const ComputeNodeInfo *>(context->GetComputeNodeExtend());
-  OP_TILING_CHECK(compute_node == nullptr, CUBE_INNER_ERR_REPORT("nil", "compute_node is null"),
-                  return ge::GRAPH_FAILED);
-  auto op_name = compute_node->GetNodeName();
+                  CUBE_INNER_ERR_REPORT(op_name, "compile_info or json is null"), return ge::GRAPH_FAILED);
   OP_TILING_CHECK(!compile_info->AnalyzeCompileInfo(op_name, json_str),
                   CUBE_INNER_ERR_REPORT(op_name, "failed to analyze compile info"), return ge::GRAPH_FAILED);
 

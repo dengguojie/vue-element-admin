@@ -112,7 +112,7 @@ ge::graphStatus InferShapeForMatMul(InferShapeContext *context, bool is_matmul_v
       }
     }
 
-    shape_bias = context->GetInputShape(kBatchMatMulBiasIdx);
+    shape_bias = context->GetOptionalInputShape(kBatchMatMulBiasIdx);
     OP_LOGD(op_name, "check the input shape length.");
     if (shape_x1_new.GetDimNum() != kMatmulV2MinShapeSize && shape_x1_new.GetDimNum() != kMatmulV2MaxShapeSize) {
       CUBE_INNER_ERR_REPORT(op_name, "first input dim num[%zu] is not 2 or 4!", shape_x1_new.GetDimNum());
@@ -166,7 +166,7 @@ class InferShapeBatchMatMul {
         trans_a(trans_a),
         trans_b(trans_b),
         shape_out(*(context->GetOutputShape(0))),
-        shape_bias(context->GetInputShape(kBatchMatMulBiasIdx)) {
+        shape_bias(context->GetOptionalInputShape(kBatchMatMulBiasIdx)) {
     num_dima = shape_a.GetDimNum();
     num_dimb = shape_b.GetDimNum();
     num_dim = std::max(num_dima, num_dimb);

@@ -22,6 +22,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include "cube_tiling_new.h"
+#include "cube_tiling_runtime.h"
 #include "graph/debug/ge_log.h"
 #include "graph/ge_tensor.h"
 #include "graph/compute_graph.h"
@@ -34,6 +35,15 @@
 #include "conv2d_bp_input_cache_tiling.h"
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
+#include "exe_graph/runtime/tiling_context.h"
+#include "register/op_impl_registry.h"
+
+using ge::FORMAT_NCHW;
+using ge::FORMAT_NHWC;
+using ge::FORMAT_HWCN;
+using ge::FORMAT_NC1HWC0;
+using ge::FORMAT_FRACTAL_Z;
 
 namespace optiling {
 const size_t kConv2dDxInputSizeLimit = 3;
@@ -626,4 +636,389 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
 // register tiling interface of the conv2d_backprop_input
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv2DBackpropInput, Conv2DBpInputTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(DepthwiseConv2DBackpropInput, Conv2DBpInputTiling);
+
+bool GetAttrFromOp(gert::TilingContext *context, DxParas &dx_paras, bool depthwise) {
+  auto attrs = context->GetAttrs();
+  OP_TILING_CHECK(attrs == nullptr, CUBE_INNER_ERR_REPORT(context->GetNodeName(), "failed to get runtime attrs"),
+                  return false);
+
+  const gert::ContinuousVector *strides_list = nullptr;
+  const gert::ContinuousVector *pads_list = nullptr;
+  const gert::ContinuousVector *dilations_list = nullptr;
+  const int64_t *groups = nullptr;
+
+  size_t idx = 0;
+  strides_list = attrs->GetAttrPointer<gert::ContinuousVector>(idx++);
+  if (depthwise) {
+    // DepthwiseConv2DBackpropInput attr: strides, dilations, pads, data_format
+    dilations_list = attrs->GetAttrPointer<gert::ContinuousVector>(idx++);
+    pads_list = attrs->GetAttrPointer<gert::ContinuousVector>(idx++);
+  } else {
+    // Conv2DBackpropInput attr: strides, pads, dilations, groups, data_format
+    pads_list = attrs->GetAttrPointer<gert::ContinuousVector>(idx++);
+    dilations_list = attrs->GetAttrPointer<gert::ContinuousVector>(idx++);
+    groups = attrs->GetAttrPointer<int64_t>(idx++);
+  }
+
+  uint32_t shift = 0;
+  uint32_t get_attr_success = ((strides_list == nullptr) << shift++);
+  get_attr_success += ((strides_list->GetSize() != kConv2dDimSizeLimit) << shift++);
+  get_attr_success += ((pads_list == nullptr) << shift++);
+  get_attr_success += ((pads_list->GetSize() != kConv2dDimSizeLimit) << shift++);
+  get_attr_success += ((dilations_list == nullptr) << shift++);
+  get_attr_success += ((dilations_list->GetSize() != kConv2dDimSizeLimit) << shift++);
+  if (!depthwise) {
+    get_attr_success += ((groups == nullptr) << shift++);
+  }
+  if (get_attr_success != 0) {
+    string error_info[shift++] = {
+        "get strides failed",   "strides is invalid",   "get pads failed",   "pads is invalid",
+        "get dilations failed", "dilations is invalid", "get groups failed",
+    };
+
+    uint64_t error_num = static_cast<uint64_t>(get_attr_success);
+    string error_flag = IntToBinary(error_num);
+    OutputErrorMsg(error_info, error_flag);
+    return false;
+  }
+
+  const int64_t *strides_list_data = reinterpret_cast<const int64_t *>(strides_list->GetData());
+  const int64_t *pads_list_data = reinterpret_cast<const int64_t *>(pads_list->GetData());
+  const int64_t *dilations_list_data = reinterpret_cast<const int64_t *>(dilations_list->GetData());
+
+  dx_paras.groups = depthwise ? static_cast<int32_t>(*groups) : 1;
+  auto y_ori_format = context->GetOutputDesc(0)->GetOriginFormat();
+  if (y_ori_format == ge::FORMAT_NCHW) {
+    dx_paras.stride_h = static_cast<int32_t>(strides_list_data[kHDimNCHWIdx]);
+    dx_paras.stride_w = static_cast<int32_t>(strides_list_data[kWDimNCHWIdx]);
+    dx_paras.dilations_n = static_cast<int32_t>(dilations_list_data[kNDimNCHWIdx]);
+    dx_paras.dilations_c = static_cast<int32_t>(dilations_list_data[kCDimNCHWIdx]);
+    dx_paras.dilations_h = static_cast<int32_t>(dilations_list_data[kHDimNCHWIdx]);
+    dx_paras.dilations_w = static_cast<int32_t>(dilations_list_data[kWDimNCHWIdx]);
+  } else {
+    dx_paras.stride_h = static_cast<int32_t>(strides_list_data[kHDimNHWCIdx]);
+    dx_paras.stride_w = static_cast<int32_t>(strides_list_data[kWDimNHWCIdx]);
+    dx_paras.dilations_n = static_cast<int32_t>(dilations_list_data[kNDimNHWCIdx]);
+    dx_paras.dilations_c = static_cast<int32_t>(dilations_list_data[kCDimNHWCIdx]);
+    dx_paras.dilations_h = static_cast<int32_t>(dilations_list_data[kHDimNHWCIdx]);
+    dx_paras.dilations_w = static_cast<int32_t>(dilations_list_data[kWDimNHWCIdx]);
+  }
+
+  dx_paras.padu = static_cast<int32_t>(pads_list_data[kConv2dPadUpIdx]);
+  dx_paras.padd = static_cast<int32_t>(pads_list_data[kConv2dPadDownIdx]);
+  dx_paras.padl = static_cast<int32_t>(pads_list_data[kConv2dPadLeftIdx]);
+  dx_paras.padr = static_cast<int32_t>(pads_list_data[kConv2dPadRightIdx]);
+  return true;
+}
+
+void CalShapeInfoFromDesc(gert::TilingContext *context, size_t filter_input_index, size_t out_backprop_input_index,
+                          DxParas &dx_paras) {
+  auto filter_desc = context->GetInputDesc(filter_input_index);
+  auto out_backprop_desc = context->GetInputDesc(out_backprop_input_index);
+  auto y_desc = context->GetOutputDesc(0);
+
+  auto filter_shape = context->GetInputShape(filter_input_index);
+  auto out_backprop_shape = context->GetInputShape(out_backprop_input_index);
+  auto y_shape = context->GetOutputShape(0);
+
+  dx_paras.batch = out_backprop_shape->GetStorageShape().GetDim(kNDimNC1HWC0Idx);
+  dx_paras.batch_o = y_shape->GetStorageShape().GetDim(kNDimNC1HWC0Idx);
+  dx_paras.ho = out_backprop_shape->GetStorageShape().GetDim(kHDimNC1HWC0Idx);
+  dx_paras.wo = out_backprop_shape->GetStorageShape().GetDim(kWDimNC1HWC0Idx);
+  dx_paras.filter_cin1hw = filter_shape->GetStorageShape().GetDim(0);
+  dx_paras.filter_cout1 = filter_shape->GetStorageShape().GetDim(1);
+  auto filter_ori_format = filter_desc->GetOriginFormat();
+  auto &filter_ori_shape = filter_shape->GetOriginShape();
+  if (filter_ori_format == ge::FORMAT_NCHW) {
+    dx_paras.kn = filter_ori_shape.GetDim(kNDimNCHWIdx);
+    dx_paras.kc = filter_ori_shape.GetDim(kCDimNCHWIdx);
+    dx_paras.kh = filter_ori_shape.GetDim(kHDimNCHWIdx);
+    dx_paras.kw = filter_ori_shape.GetDim(kWDimNCHWIdx);
+  } else if (filter_ori_format == ge::FORMAT_HWCN) {
+    dx_paras.kn = filter_ori_shape.GetDim(kNDimHWCNIdx);
+    dx_paras.kc = filter_ori_shape.GetDim(kCDimHWCNIdx);
+    dx_paras.kh = filter_ori_shape.GetDim(kHDimHWCNIdx);
+    dx_paras.kw = filter_ori_shape.GetDim(kWDimHWCNIdx);
+  } else {
+    dx_paras.kn = filter_ori_shape.GetDim(kNDimNHWCIdx);
+    dx_paras.kc = filter_ori_shape.GetDim(kCDimNHWCIdx);
+    dx_paras.kh = filter_ori_shape.GetDim(kHDimNHWCIdx);
+    dx_paras.kw = filter_ori_shape.GetDim(kWDimNHWCIdx);
+  }
+  if (y_desc->GetOriginFormat() == ge::FORMAT_NCHW) {
+    dx_paras.cin = y_shape->GetOriginShape().GetDim(kCDimNCHWIdx);
+  } else {
+    dx_paras.cin = y_shape->GetOriginShape().GetDim(kCDimNHWCIdx);
+  }
+  if (out_backprop_desc->GetOriginFormat() == ge::FORMAT_NCHW) {
+    dx_paras.co = out_backprop_shape->GetOriginShape().GetDim(kCDimNCHWIdx);
+  } else {
+    dx_paras.co = out_backprop_shape->GetOriginShape().GetDim(kCDimNHWCIdx);
+  }
+  dx_paras.c1 = (dx_paras.cin + kBlockSize - 1) / kBlockSize;
+  dx_paras.co1 = (dx_paras.co + kBlockSize - 1) / kBlockSize;
+  dx_paras.h = y_shape->GetStorageShape().GetDim(kHDimNC1HWC0Idx);
+  dx_paras.w = y_shape->GetStorageShape().GetDim(kWDimNC1HWC0Idx);
+}
+
+bool CalPadsAndGroups(gert::TilingContext *context, bool depthwise, DxParas &dx_paras) {
+  if (dx_paras.kc == 0 || dx_paras.cin % dx_paras.kc != 0) {
+    OP_LOGE(context->GetNodeName(), "fmap_channel(%d) %% filter_channel(%d) != 0", dx_paras.cin, dx_paras.kc);
+    return false;
+  }
+
+  int32_t groups = dx_paras.cin / dx_paras.kc;
+  if (dx_paras.groups == 1) {
+    dx_paras.groups = groups;
+  } else if (groups != dx_paras.groups) {
+    OP_LOGE(context->GetNodeName(), "fmap_channel(%d) / filter_channel(%d) != groups(%d)", dx_paras.cin, dx_paras.kc,
+            dx_paras.groups);
+    return false;
+  }
+
+  int32_t filter_h = (dx_paras.kh - 1) * dx_paras.dilations_h + 1;
+  int32_t filter_w = (dx_paras.kw - 1) * dx_paras.dilations_w + 1;
+  size_t padding_attr_idx = depthwise ? 4 : 5;  // DepthwiseConv2DBackpropInput: 4, Conv2DBackpropInput: 5
+  auto attrs = context->GetAttrs();
+  if (attrs->GetAttrNum() <= padding_attr_idx) {
+    OP_LOGD(context->GetNodeName(), "no padding attr, skip calc and check");
+    return true;
+  }
+  auto padding = attrs->GetAttrPointer<char>(padding_attr_idx);
+  if (padding != nullptr && (strcmp(padding, "SAME") == 0)) {
+    int32_t pad_h = max(Align(dx_paras.h, dx_paras.stride_h) - dx_paras.stride_h + filter_h - dx_paras.h, 0);
+    int32_t pad_up = (pad_h >> 1L);
+    int32_t pad_down = pad_h - pad_up;
+    int32_t pad_w = max(Align(dx_paras.w, dx_paras.stride_w) - dx_paras.stride_w + filter_w - dx_paras.w, 0);
+    int32_t pad_left = (pad_w >> 1L);
+    int32_t pad_right = pad_w - pad_left;
+    dx_paras.padu = pad_up;
+    dx_paras.padd = pad_down;
+    dx_paras.padl = pad_left;
+    dx_paras.padr = pad_right;
+  }
+
+  int32_t ho_expect = (dx_paras.h + dx_paras.padu + dx_paras.padd - filter_h) / dx_paras.stride_h + 1;
+  int32_t wo_expect = (dx_paras.w + dx_paras.padl + dx_paras.padr - filter_w) / dx_paras.stride_w + 1;
+  OP_TILING_CHECK(ho_expect != dx_paras.ho || wo_expect != dx_paras.wo,
+                  CUBE_INNER_ERR_REPORT(context->GetNodeName(),
+                                        "check pads attrs failed, ho: %d, wo: %d, ho_expect: %d, wo_expect: %d",
+                                        dx_paras.ho, dx_paras.wo, ho_expect, wo_expect),
+                  return false);
+  return true;
+}
+
+bool Conv2DBackpropInputParseFunc(gert::TilingContext *context, bool depthwise, DxParas &dx_paras) {
+  size_t out_backprop_input_index = static_cast<size_t>(kInputIndexTwo);
+  size_t filter_input_index = 1;
+  if (!GetAttrFromOp(context, dx_paras, depthwise)) {
+    OP_LOGE(context->GetNodeName(), "get attr from single op fail, try get attr from original fusion graph");
+    return false;
+  }
+
+  bool stride_equal_one = dx_paras.stride_h == 1 && dx_paras.stride_w == 1;
+  if (stride_equal_one && dx_paras.binary_mode == KBinaryModeNCHW) {
+    filter_input_index = kInputIndexTwo;
+    out_backprop_input_index = 0;
+  }
+
+  auto filter_desc = context->GetInputDesc(filter_input_index);
+  auto out_backprop_desc = context->GetInputDesc(out_backprop_input_index);
+  auto y_desc = context->GetOutputDesc(0);
+
+  auto filter_shape = context->GetInputShape(filter_input_index);
+  auto out_backprop_shape = context->GetInputShape(out_backprop_input_index);
+  auto y_shape = context->GetOutputShape(0);
+
+  auto filter_format = filter_desc->GetStorageFormat();
+  auto y_format = y_desc->GetStorageFormat();
+  auto out_backprop_format = out_backprop_desc->GetStorageFormat();
+  auto y_dim_num = y_shape->GetStorageShape().GetDimNum();
+  auto out_backprop_dim_num = out_backprop_shape->GetStorageShape().GetDimNum();
+  auto y_ori_format = y_desc->GetOriginFormat();
+  auto out_backprop_ori_format = out_backprop_desc->GetOriginFormat();
+  auto filter_ori_format = filter_desc->GetOriginFormat();
+  uint64_t shift = 0;
+  uint64_t error_num = ((filter_desc == nullptr || filter_shape == nullptr) << shift++);
+  error_num += ((out_backprop_desc == nullptr || out_backprop_shape == nullptr) << shift++);
+  error_num += ((y_desc == nullptr || y_shape == nullptr) << shift++);
+  if (dx_paras.binary_mode == KBinaryModeNC1HWC0) {
+    error_num += ((y_ori_format != FORMAT_NCHW && y_ori_format != FORMAT_NHWC) << shift++);
+    error_num += ((out_backprop_ori_format != FORMAT_NCHW && out_backprop_ori_format != FORMAT_NHWC) << shift++);
+  } else {
+    error_num += ((y_ori_format != FORMAT_NCHW) << shift++);
+    error_num += ((out_backprop_ori_format != FORMAT_NCHW) << shift++);
+  }
+  error_num += ((filter_format != FORMAT_FRACTAL_Z) << shift++);
+  error_num +=
+      ((filter_ori_format != FORMAT_NCHW && filter_ori_format != FORMAT_HWCN && filter_ori_format != FORMAT_NHWC)
+       << shift++);
+  error_num += ((y_format != FORMAT_NCHW && y_format != FORMAT_NC1HWC0) << shift++);
+  error_num += ((out_backprop_shape->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+  error_num += ((filter_shape->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+  error_num += ((filter_shape->GetStorageShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+  error_num += ((y_shape->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++);
+  error_num += ((y_dim_num != kConv2dNCHWSize && y_dim_num != kConv2dNC1HWC0Size) << shift++);
+  error_num += ((out_backprop_dim_num != kConv2dNCHWSize && out_backprop_dim_num != kConv2dNC1HWC0Size) << shift++);
+  if (stride_equal_one) {
+    dx_paras.stride_expand_flag = 0;
+    error_num += ((out_backprop_format != FORMAT_NCHW && out_backprop_format != FORMAT_NC1HWC0) << shift++);
+  } else {
+    dx_paras.stride_expand_flag = 1;
+    error_num += ((out_backprop_format != FORMAT_NC1HWC0) << shift++);
+  }
+  if (error_num != 0) {
+    string error_info[shift++] = {"tensor filter desc failed", "tensor out_backprop desc failed",
+                                  "tensor y desc failed", "y ori_format invalid", "out_backprop ori_format failed",
+                                  "filter format failed", "filter ori_format failed", "y format invalid",
+                                  "out_backprop ori_shape len is invalid", "filter ori_shape len is invalid",
+                                  "filter shape len is invalid", "y ori_shape len is invalid",
+                                  "y shape len is invalid", "out_backprop shape len is invalid",
+                                  "out_backprop format failed"};
+
+    string error_flag = IntToBinary(error_num);
+    OutputErrorMsg(error_info, error_flag);
+    return false;
+  }
+
+  CalShapeInfoFromDesc(context, filter_input_index, out_backprop_input_index, dx_paras);
+  OP_TILING_CHECK(!CalPadsAndGroups(context, depthwise, dx_paras),
+                  CUBE_INNER_ERR_REPORT(context->GetNodeName(), "failed to calc groups/pads"), return false);
+  CalShapeInfo(dx_paras);
+  return true;
+}
+
+bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling, int32_t tiling_id, gert::TilingContext *context) {
+  auto tiling_data = context->GetRawTilingData();
+  size_t capacity = tiling_data->GetCapacity();
+  bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
+  if (params.binary_mode == 1) {
+    OP_TILING_CHECK(capacity < sizeof(RunInfoParaAubNoFusion),
+                    CUBE_INNER_ERR_REPORT(context->GetNodeName(), "insufficient tiling data capacity %zu", capacity),
+                    return false);
+    auto run = reinterpret_cast<RunInfoParaAubNoFusion *>(tiling_data->GetData());
+    SetRunInfoAubNoFusion(params, tiling, *run);
+    tiling_data->SetDataSize(sizeof(RunInfoParaAubNoFusion));
+  } else if (params.binary_mode == kNumTwo) {
+    if (stride_equal_one) {
+      OP_TILING_CHECK(capacity < sizeof(RunInfoParaAubFusion),
+                      CUBE_INNER_ERR_REPORT(context->GetNodeName(), "insufficient tiling data capacity %zu", capacity),
+                      return false);
+      auto run = reinterpret_cast<RunInfoParaAubFusion *>(tiling_data->GetData());
+      SetRunInfoAubFusion(params, tiling, *run);
+      tiling_data->SetDataSize(sizeof(RunInfoParaAubFusion));
+    } else {
+      OP_TILING_CHECK(capacity < sizeof(RunInfoParaAubNoFusion),
+                      CUBE_INNER_ERR_REPORT(context->GetNodeName(), "insufficient tiling data capacity %zu", capacity),
+                      return false);
+      auto run = reinterpret_cast<RunInfoParaAubNoFusion *>(tiling_data->GetData());
+      SetRunInfoAubNoFusion(params, tiling, *run);
+      tiling_data->SetDataSize(sizeof(RunInfoParaAubNoFusion));
+    }
+  }
+
+  context->SetBlockDim(static_cast<uint32_t>(tiling.batch_dim * tiling.n_dim * tiling.m_dim));
+  context->SetTilingKey(static_cast<uint64_t>(tiling_id));
+  return true;
+}
+
+size_t InitVarsValues(uint32_t var_bit_flags, const gert::Shape &in_shape, const gert::Shape &out_shape,
+                      gert::Shape &var_value, int64_t *shape_for_range_match) {
+  if ((var_bit_flags & kVarBatchN) != 0) {
+    var_value.AppendDim(out_shape.GetDim(kConv2dNDim));
+  }
+
+  if ((var_bit_flags & kVarDxH) != 0) {
+    var_value.AppendDim(in_shape.GetDim(kConv2dHDim));
+    var_value.AppendDim(out_shape.GetDim(kConv2dHDim));
+  }
+
+  if ((var_bit_flags & kVarDxW) != 0) {
+    var_value.AppendDim(in_shape.GetDim(kConv2dWDim));
+    var_value.AppendDim(out_shape.GetDim(kConv2dWDim));
+  }
+
+  size_t idx = 0;
+  shape_for_range_match[idx++] = out_shape.GetDim(kConv2dNDim);
+  if (var_value.GetDimNum() > 1) {  // not only dynamic batch
+    shape_for_range_match[idx++] = out_shape.GetDim(kConv2dHDim);
+    shape_for_range_match[idx++] = out_shape.GetDim(kConv2dWDim);
+  }
+
+  return idx;
+}
+
+ge::graphStatus TilingForConv2DDx(gert::TilingContext *context, bool depthwise) {
+  auto compile_info = reinterpret_cast<const Conv2DBackPropCompileInfo *>(context->GetCompileInfo());
+  OP_TILING_CHECK(compile_info == nullptr, CUBE_INNER_ERR_REPORT(context->GetNodeName(), "compile_info is null"),
+                  return ge::GRAPH_FAILED);
+
+  if (compile_info->repo_binary_flag) {
+    DxParas dx_paras;
+    OP_TILING_CHECK(!Conv2DBackpropInputParseFunc(context, depthwise, dx_paras),
+                    CUBE_INNER_ERR_REPORT(context->GetNodeName(), "failed to parse context"), return ge::GRAPH_FAILED);
+    dx_paras.core_num = compile_info->core_num;
+    dx_paras.aub_num = compile_info->aub_num;
+    dx_paras.cub_num = compile_info->cub_num;
+    dx_paras.binary_mode = compile_info->binary_mode;
+    dx_paras.ub_size = compile_info->ub_size;
+
+    int32_t tiling_id;
+    Tiling tiling;
+    bool cache_tiling_invalid = !CheckParams(dx_paras) || !ConfigNoOverlapPara(dx_paras) ||
+                                !GenTiling(dx_paras, tiling, tiling_id) ||
+                                !UpdateRunInfoBinary(dx_paras, tiling, tiling_id, context);
+    if (cache_tiling_invalid) {
+      OP_LOGE(context->GetNodeName(), "binary mode failed");
+      return ge::GRAPH_FAILED;
+    }
+    return ge::GRAPH_SUCCESS;
+  }
+
+  auto tensor_in_desc = context->GetInputDesc(2);  // 2: out_backprop
+  auto tensor_out_desc = context->GetOutputDesc(0);
+  auto tensor_in_shape = context->GetInputShape(2);  // 2: out_backprop
+  auto tensor_out_shape = context->GetOutputShape(0);
+
+  OP_TILING_CHECK(tensor_in_desc == nullptr || tensor_out_desc == nullptr || tensor_in_shape == nullptr ||
+                      tensor_out_shape == nullptr,
+                  CUBE_INNER_ERR_REPORT(context->GetNodeName(), "failed to get input/output shape/tensor"),
+                  return ge::GRAPH_FAILED);
+
+  const auto &in_shape = tensor_in_shape->GetStorageShape();
+  const auto &out_shape = tensor_out_shape->GetStorageShape();
+  bool unvalid_size = context->GetComputeNodeInfo()->GetInputsNum() < kConv2dDxInputSizeLimit ||
+                      context->GetComputeNodeInfo()->GetOutputsNum() == 0 ||
+                      in_shape.GetDimNum() < kConv2dDimNumLimit || out_shape.GetDimNum() < kConv2dDimNumLimit;
+  OP_TILING_CHECK(unvalid_size, CUBE_INNER_ERR_REPORT(context->GetNodeName(), "the size is unvalid."),
+                  return ge::GRAPH_FAILED);
+  OP_LOGD(context->GetNodeName(), "Current format is %s, Ori format is %s",
+          ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetStorageFormat()).c_str(),
+          ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetOriginFormat()).c_str());
+
+  gert::Shape var_value;
+  int64_t shape_for_range_match[3];  // 3: nhw
+  size_t dim_num = InitVarsValues(compile_info->var_bit_flags, in_shape, out_shape, var_value, shape_for_range_match);
+  return CubeTiling(shape_for_range_match, dim_num, var_value, *compile_info, context);
+}
+
+ge::graphStatus TilingForConv2DBpInput(gert::TilingContext *context) {
+  OP_TILING_CHECK(context == nullptr, CUBE_INNER_ERR_REPORT("Conv2DBackpropInput", "context is null"),
+                  return ge::GRAPH_FAILED);
+  return TilingForConv2DDx(context, false);
+}
+
+ge::graphStatus TilingForDepthwiseConv2DBackpropInput(gert::TilingContext *context) {
+  OP_TILING_CHECK(context == nullptr, CUBE_INNER_ERR_REPORT("DepthwiseConv2DBackpropInput", "context is null"),
+                  return ge::GRAPH_FAILED);
+  return TilingForConv2DDx(context, true);
+}
+
+IMPL_OP(Conv2DBackpropInput)
+    .Tiling(TilingForConv2DBpInput)
+    .TilingParse<Conv2DBackPropCompileInfo>(ParseConv2DBackpropCompileInfo);
+
+IMPL_OP(DepthwiseConv2DBackpropInput)
+    .Tiling(TilingForDepthwiseConv2DBackpropInput)
+    .TilingParse<Conv2DBackPropCompileInfo>(ParseConv2DBackpropCompileInfo);
 }  // namespace optiling

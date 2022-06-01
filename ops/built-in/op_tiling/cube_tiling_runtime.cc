@@ -31,6 +31,11 @@ using std::string;
 using std::tuple;
 using std::vector;
 
+// dynamic batch
+const auto kIsShapeInRange1 = [](const int64_t *shape, const vector<int64_t> &range) -> bool {
+  return shape[0] >= range[0] && shape[0] <= range[1];
+};
+
 // batchmatmul/matmul mkn, dx/dw nhw
 const auto kIsShapeInRange3 = [](const int64_t *shape, const vector<int64_t> &range) -> bool {
   return shape[0] >= range[0] && shape[0] <= range[1] && shape[1] >= range[2] && shape[1] <= range[3] &&
@@ -48,43 +53,82 @@ const auto kCalcDist3 = [](const int64_t *shape, const vector<int64_t> &seeds) -
   return abs(shape[0] - seeds[0]) + abs(shape[1] - seeds[1]) + abs(shape[2] - seeds[2]);
 };
 
+// skip batch for conv
+const auto kConvCalcDist3 = [](const int64_t *shape, const vector<int64_t> &seeds) -> int64_t {
+  return abs(shape[1] - seeds[1]) + abs(shape[2] - seeds[2]);
+};
+
 // batchmatmul mkn batch, conv3d ndhw
 const auto kCalcDist4 = [](const int64_t *shape, const vector<int64_t> &seeds) -> int64_t {
   return abs(shape[0] - seeds[0]) + abs(shape[1] - seeds[1]) + abs(shape[2] - seeds[2]) + abs(shape[3] - seeds[3]);
 };
 
-#define CHECK_TILING_IN_REPO(tiling_id, is_shape_in_range, calc_dist) \
-  do {                                                                \
-    int64_t min_distance = std::numeric_limits<int64_t>::max();       \
-    size_t idx = 0;                                                   \
-    size_t tiling_id_idx = kInvalidTilingId;                          \
-    while (idx < repo_seeds.size() && idx < repo_range.size()) {      \
-      if (is_shape_in_range(shape, repo_range[idx])) {                \
-        int64_t dist = calc_dist(shape, repo_seeds[idx]);             \
-        if (dist < min_distance) {                                    \
-          min_distance = dist;                                        \
-          tiling_id_idx = idx;                                        \
-        }                                                             \
-      }                                                               \
-      ++idx;                                                          \
-    }                                                                 \
-    if (tiling_id_idx != kInvalidTilingId) {                          \
-      tiling_id = repo_tiling_ids[tiling_id_idx];                     \
-    }                                                                 \
-  } while (0)
-
-#define CHECK_TILING_IN_COST_MODEL(tiling_id, is_shape_in_range) \
-  do {                                                           \
-    for (size_t idx = 0; idx < cost_range.size(); ++idx) {       \
-      if (is_shape_in_range(shape, cost_range[idx])) {           \
-        tiling_id = cost_tiling_ids[idx];                        \
-        break;                                                   \
-      }                                                          \
-    }                                                            \
-  } while (0)
+// skip batch for conv
+const auto kConvCalcDist4 = [](const int64_t *shape, const vector<int64_t> &seeds) -> int64_t {
+  return abs(shape[1] - seeds[1]) + abs(shape[2] - seeds[2]) + abs(shape[3] - seeds[3]);
+};
 }  // namespace
 
 namespace optiling {
+template <class IsShapeInRange, class CalcDist>
+uint64_t MatchRepoTiling(const int64_t *shape, const vector<vector<int64_t>> &repo_seeds,
+                         const vector<vector<int64_t>> &repo_range, const IsShapeInRange &is_shape_in_range,
+                         const CalcDist &calc_dist) {
+  int64_t min_distance = std::numeric_limits<int64_t>::max();
+  size_t idx = 0;
+  size_t tiling_id_idx = kInvalidTilingId;
+  while (idx < repo_seeds.size() && idx < repo_range.size()) {
+    if (is_shape_in_range(shape, repo_range[idx])) {
+      int64_t dist = calc_dist(shape, repo_seeds[idx]);
+      if (dist < min_distance) {
+        min_distance = dist;
+        tiling_id_idx = idx;
+      }
+    }
+    ++idx;
+  }
+
+  return tiling_id_idx;
+}
+
+template <class IsShapeInRange>
+uint64_t MatchCostModelTiling(const int64_t *shape, const vector<vector<int64_t>> &cost_range,
+                              const vector<uint64_t> &tiling_ids, const IsShapeInRange &is_shape_in_range) {
+  for (size_t idx = 0; idx < cost_range.size(); ++idx) {
+    if (is_shape_in_range(shape, cost_range[idx])) {
+      return tiling_ids[idx];
+    }
+  }
+
+  return kInvalidTilingId;
+}
+
+CubeTilingType ParseTilingType(const json &compile_info) {
+  if (!compile_info.contains("tiling_type")) {
+    return CUBE_DYNAMIC_SHAPE_TILING;
+  }
+
+  const auto &tiling_type = compile_info["tiling_type"];
+  if (tiling_type == "default_tiling") {
+    return CUBE_DEFAULT_TILING;
+  }
+
+  if (tiling_type == "binary") {
+    return CUBE_BINARY_TILING;
+  }
+
+  return CUBE_DYNAMIC_SHAPE_TILING;
+}
+
+void GetVarFlagsFromCompileInfo(const nlohmann::json &compile_info, uint32_t &var_bit_flags) {
+  std::vector<std::string> vars = compile_info.at("_vars").begin().value().get<std::vector<std::string>>();
+  for (auto it = kVar2Flag.begin(); it != kVar2Flag.end(); ++it) {
+    if (std::find(vars.begin(), vars.end(), it->first) != vars.end()) {
+      var_bit_flags = var_bit_flags | it->second;
+    }
+  }
+}
+
 bool CubeCompileInfo::AnalyzeCompileInfo(const char *op_name, const char *compile_info_str) {
   OP_TILING_CHECK(compile_info_str == nullptr, CUBE_INNER_ERR_REPORT(op_name, "null compile info"), return false);
   OP_LOGD(op_name, "compile info: %s", compile_info_str);
@@ -107,9 +151,13 @@ bool CubeCompileInfo::AnalyzeCompileInfo(const char *op_name, const char *compil
   return true;
 }
 
-bool CubeCompileInfo::AnalyzeCommonCompileInfo(const nlohmann::json &compile_info) {
+bool CubeCompileInfo::AnalyzeCommonCompileInfo(const json &compile_info) {
   // json structure: {"repo_seeds": {"10114": [..]}, "repo_range": {"10114": [...]}, "cost_range": {"10115": [...]},
   //                  "block_dim": {"10114": 32, "10115": 32}}
+  correct_range_flag = compile_info.contains("correct_range_flag") && compile_info["correct_range_flag"].is_boolean() &&
+                       compile_info["correct_range_flag"];
+  tiling_type = ParseTilingType(compile_info);
+
   const auto &tmp_block_dim = compile_info["block_dim"].get<map<string, uint32_t>>();
   bool is_digit = true;
   auto is_digit_func = [&is_digit](char element) { is_digit = is_digit && isdigit(element) != 0;};
@@ -150,30 +198,60 @@ bool CubeCompileInfo::AnalyzeCommonCompileInfo(const nlohmann::json &compile_inf
     }
   }
 
+  // for dynamic batch
+  if (compile_info.contains("tiling_range")) {
+    const auto &tmp_tiling_range = compile_info["tiling_range"].get<map<string, vector<int64_t>>>();
+    // maybe in loop, can't reserve space here
+    for (auto it = tmp_tiling_range.begin(); it != tmp_tiling_range.end(); ++it) {
+      batch_range.emplace_back(it->second);
+      batch_tiling_ids.emplace_back(stoull(it->first));
+    }
+  }
+
+  if (compile_info.contains("default_range")) {
+    const auto &tmp_default_range = compile_info["default_range"].get<map<string, vector<int64_t>>>();
+    for (auto it = tmp_default_range.begin(); it != tmp_default_range.end(); ++it) {
+      default_range = it->second;
+      default_tiling_id = stoull(it->first);
+      break;
+    }
+  }
+
   return true;
 }
 
 bool CubeCompileInfo::CheckRangeSize(size_t shape_dim_num) const {
   // for security
-  auto check_range = [shape_dim_num](const vector<int64_t> &range) { return range.size() < (shape_dim_num << 1);};
-  auto check_seeds = [shape_dim_num](const vector<int64_t> &seeds) { return seeds.size() < shape_dim_num;};
+  auto check_range = [shape_dim_num](const vector<int64_t> &range) { return range.size() < (shape_dim_num << 1); };
+  auto check_seeds = [shape_dim_num](const vector<int64_t> &seeds) { return seeds.size() < shape_dim_num; };
+  auto check_batch_range = [](const vector<int64_t> &range) { return range.size() < 2; };  // range size 2 for dim num 1
 
   return std::find_if(repo_range.begin(), repo_range.end(), check_range) == repo_range.end() &&
          std::find_if(repo_seeds.begin(), repo_seeds.end(), check_seeds) == repo_seeds.end() &&
-         std::find_if(cost_range.begin(), cost_range.end(), check_range) == cost_range.end();
+         std::find_if(cost_range.begin(), cost_range.end(), check_range) == cost_range.end() &&
+         std::find_if(batch_range.begin(), batch_range.end(), check_batch_range) == batch_range.end();
 }
 
-uint64_t CubeCompileInfo::CheckTilingInRepo(const char *op_name, const int64_t *shape, size_t dim_num) const {
-  uint64_t tiling_id = kInvalidTilingId;
+uint64_t CubeCompileInfo::CheckTilingInRepo(const char *op_name, const int64_t *shape, size_t dim_num,
+                                            bool conv) const {
+  uint64_t tiling_id_idx = kInvalidTilingId;
   switch (dim_num) {
     case 3: {  // shape size 3
       // batchmatmul/matmul mkn, dx/dw nhw
-      CHECK_TILING_IN_REPO(tiling_id, kIsShapeInRange3, kCalcDist3);
+      if (conv) {
+        tiling_id_idx = MatchRepoTiling(shape, repo_seeds, repo_range, kIsShapeInRange3, kConvCalcDist3);
+      } else {
+        tiling_id_idx = MatchRepoTiling(shape, repo_seeds, repo_range, kIsShapeInRange3, kCalcDist3);
+      }
       break;
     }
     case 4: {  // shape size 4
       // batchmatmul mkn batch, conv3d ndhw
-      CHECK_TILING_IN_REPO(tiling_id, kIsShapeInRange4, kCalcDist4);
+      if (conv) {
+        tiling_id_idx = MatchRepoTiling(shape, repo_seeds, repo_range, kIsShapeInRange4, kConvCalcDist4);
+      } else {
+        tiling_id_idx = MatchRepoTiling(shape, repo_seeds, repo_range, kIsShapeInRange4, kCalcDist4);
+      }
       break;
     }
     default:
@@ -181,6 +259,7 @@ uint64_t CubeCompileInfo::CheckTilingInRepo(const char *op_name, const int64_t *
       break;
   }
 
+  uint64_t tiling_id = (tiling_id_idx != kInvalidTilingId) ? repo_tiling_ids[tiling_id_idx] : kInvalidTilingId;
   OP_LOGD(op_name, "get tiling_id %lu from repo range/seeds", tiling_id);
   return tiling_id;
 }
@@ -190,12 +269,12 @@ uint64_t CubeCompileInfo::CheckTilingInCostModel(const char *op_name, const int6
   switch (dim_num) {
     case 3: {  // shape size 3
       // batchmatmul/matmul mkn, dx/dw nhw
-      CHECK_TILING_IN_COST_MODEL(tiling_id, kIsShapeInRange3);
+      tiling_id = MatchCostModelTiling(shape, cost_range, cost_tiling_ids, kIsShapeInRange3);
       break;
     }
     case 4: {  // shape size 4
       // batchmatmul mkn batch, conv3d ndhw
-      CHECK_TILING_IN_COST_MODEL(tiling_id, kIsShapeInRange4);
+      tiling_id = MatchCostModelTiling(shape, cost_range, cost_tiling_ids, kIsShapeInRange4);
       break;
     }
     default:
@@ -205,6 +284,139 @@ uint64_t CubeCompileInfo::CheckTilingInCostModel(const char *op_name, const int6
 
   OP_LOGD(op_name, "get tiling_id %llu from cost_range", tiling_id);
   return tiling_id;
+}
+
+uint64_t CubeCompileInfo::CheckDefaultTiling(const char *op_name, const int64_t *shape, size_t dim_num) const {
+  uint64_t tiling_id = kInvalidTilingId;
+  switch (dim_num) {
+    case 1:
+      // dynamic batch for dx/dw
+      if (kIsShapeInRange1(shape, default_range)) {
+        tiling_id = default_tiling_id;
+      }
+      break;
+    case 3:  // shape size 3
+      // batchmatmul/matmul mkn, dx/dw nhw
+      if (kIsShapeInRange3(shape, default_range)) {
+        tiling_id = default_tiling_id;
+      }
+      break;
+    case 4:  // shape size 4
+      // batchmatmul mkn batch, conv3d ndhw
+      if (kIsShapeInRange4(shape, default_range)) {
+        tiling_id = default_tiling_id;
+      }
+      break;
+    default:
+      OP_LOGW(op_name, "not support check dim num %zu in default tiling", dim_num);
+      break;
+  }
+
+  OP_LOGD(op_name, "get tiling_id %llu from default tiling", tiling_id);
+  return tiling_id;
+}
+
+uint64_t CubeCompileInfo::CubeTilingBatch(const char *op_name, const int64_t *shape) const {
+  uint64_t tiling_id = kInvalidTilingId;
+  for (size_t idx = 0; idx < batch_range.size(); ++idx) {
+    if (kIsShapeInRange1(shape, batch_range[idx])) {
+      tiling_id = batch_tiling_ids[idx];
+    }
+  }
+
+  OP_LOGD(op_name, "get tiling_id %llu for dynamic batch", tiling_id);
+  return tiling_id;
+}
+
+bool Conv2DBackPropCompileInfo::AnalyzeExtendInfo(const json &compile_info) {
+  if (compile_info.contains("tiling_type") && compile_info["tiling_type"] == "binary") {
+    repo_binary_flag = true;
+    OP_TILING_CHECK(!compile_info.contains("block_dim"),
+                    CUBE_INNER_ERR_REPORT("Conv2DBackpropInput", "get block_dim failed"), return false);
+
+    OP_TILING_CHECK(!compile_info["block_dim"].contains("CORE_NUM"),
+                    CUBE_INNER_ERR_REPORT("Conv2DBackpropInput", "get core_num failed"), return false);
+
+    core_num = compile_info["block_dim"]["CORE_NUM"];
+    if (compile_info.contains("binary_mode")) {
+      binary_mode = compile_info["binary_mode"];
+    }
+    if (compile_info.contains("aub_num")) {
+      aub_num = compile_info["aub_num"];
+    }
+    if (compile_info.contains("cub_num")) {
+      cub_num = compile_info["cub_num"];
+    }
+    if (compile_info.contains("ub_size")) {
+      ub_size = compile_info["ub_size"];
+    }
+  } else {
+    GetVarFlagsFromCompileInfo(compile_info, var_bit_flags);
+  }
+
+  return true;
+}
+
+ge::graphStatus ParseConv2DBackpropCompileInfo(gert::KernelContext *context) {
+  OP_TILING_CHECK(context == nullptr, CUBE_INNER_ERR_REPORT("nil", "context is null"),
+                  return ge::GRAPH_FAILED);
+  auto compute_node = reinterpret_cast<const gert::ComputeNodeInfo *>(context->GetComputeNodeExtend());
+  OP_TILING_CHECK(compute_node == nullptr, CUBE_INNER_ERR_REPORT("nil", "compute_node is null"),
+                  return ge::GRAPH_FAILED);
+  auto op_name = compute_node->GetNodeName();
+  auto compile_info = context->GetOutputPointer<Conv2DBackPropCompileInfo>(0);
+  auto json_str = context->GetInputStrPointer(0);
+  OP_TILING_CHECK(compile_info == nullptr || json_str == nullptr,
+                  CUBE_INNER_ERR_REPORT(op_name, "compile_info or json is null"), return ge::GRAPH_FAILED);
+  OP_TILING_CHECK(!compile_info->AnalyzeCompileInfo(op_name, json_str),
+                  CUBE_INNER_ERR_REPORT(op_name, "failed to analyze compile info"), return ge::GRAPH_FAILED);
+
+  OP_TILING_CHECK(!compile_info->CheckRangeSize(3),  // 3: nhw
+                  CUBE_INNER_ERR_REPORT(op_name, "repo_range/repo_seeds/cost_range invalid"), return ge::GRAPH_FAILED);
+
+  return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus CubeTiling(const int64_t *input_shape, size_t intput_shape_dim_num, const gert::Shape &var_value,
+                           const CubeCompileInfo &compile_info, gert::TilingContext *context) {
+  const char *op_name = context->GetNodeName();
+  uint64_t tiling_id = kInvalidTilingId;
+
+  if (compile_info.tiling_type == CUBE_DEFAULT_TILING) {
+    tiling_id = compile_info.CheckDefaultTiling(op_name, input_shape, intput_shape_dim_num);
+  } else if (var_value.GetDimNum() != 1) {
+    tiling_id = compile_info.CheckTilingInRepo(op_name, input_shape, intput_shape_dim_num, true);
+    if (tiling_id == kInvalidTilingId) {
+      tiling_id = compile_info.CheckTilingInCostModel(op_name, input_shape, intput_shape_dim_num);
+    }
+  } else {
+    tiling_id = compile_info.CubeTilingBatch(op_name, input_shape);
+  }
+
+  if (tiling_id == kInvalidTilingId) {
+    if (compile_info.correct_range_flag) {
+      CUBE_INNER_ERR_REPORT(op_name,
+                            "The original range does not meet requirements,"
+                            "new range is generated during op compile, but the shape is not covered by new range");
+    }
+
+    CUBE_INNER_ERR_REPORT(op_name, "This shape is not covered by any tiling, please modify range and recompile");
+    return ge::GRAPH_FAILED;
+  }
+
+  auto it = compile_info.block_dim.find(tiling_id);
+  OP_TILING_CHECK(it == compile_info.block_dim.end(),
+                  CUBE_INNER_ERR_REPORT(op_name, "failed to get block dim for tiling id %lu", tiling_id),
+                  return ge::GRAPH_FAILED);
+
+  context->SetBlockDim(it->second);
+  context->SetTilingKey(tiling_id);
+  auto tiling_data = context->GetRawTilingData();
+  for (size_t idx = 0; idx < var_value.GetDimNum(); ++idx) {
+    tiling_data->Append(static_cast<int32_t>(var_value.GetDim(idx)));
+  }
+
+  return ge::GRAPH_SUCCESS;
 }
 
 string TensorDesc2String(const gert::StorageShape *shape, const gert::CompileTimeTensorDesc *tensor) {
