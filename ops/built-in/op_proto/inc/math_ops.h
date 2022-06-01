@@ -377,7 +377,7 @@ to each component of an element of this dataset.
 
 REG_OP(GetNext)
     .DYNAMIC_OUTPUT(y, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32, DT_INT64, DT_UINT32, DT_UINT64,
-                                        DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_BOOL}))
+                                   DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_BOOL}))
     .ATTR(output_types, ListType, {})
     .ATTR(output_shapes, ListListInt, {})
     .ATTR(output_num, Int, 1)

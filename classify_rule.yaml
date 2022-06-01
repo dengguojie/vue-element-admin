@@ -26,6 +26,8 @@ aicpu:
       - ops/built-in/aicpu/
       - ops/built-in/op_proto/ocr_ops.cc
       - ops/built-in/op_proto/array_ops.cc
+      - ops/built-in/op_proto/data_preprocess.cc
+      - ops/built-in/op_proto/data_preprocess.h
       - ops/built-in/op_proto/case_condition_ops.cc
       - ops/built-in/op_proto/coordinates_1d_to_2d_ops.cc
       - ops/built-in/op_proto/vector_search.cc
@@ -43,6 +45,7 @@ aicpu:
       - ops/built-in/op_proto/map_ops.cc
       - ops/built-in/op_proto/inc/map_ops.h
       - ops/built-in/op_proto/inc/math_ops.h
+      - ops/built-in/op_proto/inc/data_flow_ops.h
       - ops/built-in/op_proto/math_ops.cc
       - ops/built-in/op_proto/inc/stateless_random_ops.h
       - ops/built-in/op_proto/stateless_random_ops.cc
@@ -2426,7 +2429,6 @@ unkown:
       - ops/built-in/op_proto/inc/internal_ops.h
       - ops/built-in/op_proto/inc/stateful_random_ops.h
       - ops/built-in/op_proto/inc/quantize_ops.h
-      - ops/built-in/op_proto/inc/data_flow_ops.h
       - ops/built-in/op_proto/inc/ocr_ops.h
       - ops/built-in/op_proto/inc/audio_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
