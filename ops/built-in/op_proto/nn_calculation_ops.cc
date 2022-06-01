@@ -9295,8 +9295,7 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   std::vector<int64_t> x_sizes = op.GetInputDescByName("x").GetShape().GetDims();
   if (SetInputsizeListConv3dtranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes, input_format) ==
       false) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(),
-      "Conv3DTransposeD update pads list by padding failed or calculate input sizes failed.");
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "failed to update pads by padding or calculate input sizes.");
     return GRAPH_FAILED;
   }
   // get dtype for output from x
@@ -9307,7 +9306,7 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   // set shape of output desc, input_size should match the format of y
   std::vector<int32_t> dedx;
   if (op.GetAttr("dedx", dedx) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "get dedx list failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr dedx.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv3dTranspose";
     err_map["param_name"] = "dedx";
@@ -9317,7 +9316,7 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   }
 
   if (dedx.size() != kConv3dDimSizeLimit) {
-    OP_LOGE(op_name.GetString(), "dedx list should be 5d.");
+    OP_LOGE(op_name.GetString(), "dedx size is [%zu], which should be 5d.", dedx.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "dedx";
     err_map["op_name"] = "Conv3dTranspose";
@@ -9339,7 +9338,7 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
 
   // update output desc
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "update output desc failed.");
+    OP_LOGE(op_name.GetString(), "failed to update output desc of y.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv3dTranspose";
     err_map["param_name"] = "output y";
@@ -9353,8 +9352,9 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
 
 IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv3DTransposeD", "failed to get op_name"),
+        return GRAPH_FAILED);
   OP_LOGD(op_name.GetString(), "Enter Conv3DTransposeDInfereDataSlice.");
   graphStatus ret = InferConv3dTransposeDataSlice(op);
   return ret;
@@ -9382,10 +9382,12 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
                                             const std::vector<T2>& filter_sizes, Format filter_format,
                                             const std::vector<T3>& input_sizes, bool& isRun) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTranspose", "failed to get op_name"),
+        return false);
 
   if (filter_sizes.size() != kConv2dInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "filter_sizes is illegal.");
+    OP_LOGE(op_name.GetString(), "filter_sizes is [%zu], which should be 4d", filter_sizes.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "filter_size";
     err_map["op_name"] = "Conv2DTranspose";
@@ -9398,7 +9400,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
 
   std::vector<int32_t> stride_list;
   if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "op get strides failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr strides.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DTranspose";
     err_map["param_name"] = "strides";
@@ -9408,7 +9410,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
   }
 
   if (stride_list.size() != kConv2dInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "stride_list size is illegal.");
+    OP_LOGE(op_name.GetString(), "stride_list is [%zu], which should be 4d", stride_list.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = "Conv2DTranspose";
@@ -9421,7 +9423,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
 
   std::vector<int32_t> dilations_list;
   if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "op get dilation failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr dilations.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DTranspose";
     err_map["param_name"] = "dilations";
@@ -9431,7 +9433,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
   }
 
   if (dilations_list.size() != kConv2dInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "dilations_list size is illegal.");
+    OP_LOGE(op_name.GetString(), "dilations_list is [%zu], which should be 4d", dilations_list.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "dilations";
     err_map["op_name"] = "Conv2DTranspose";
@@ -9444,7 +9446,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
 
   std::vector<int32_t> output_padding_list;
   if (op.GetAttr("output_padding", output_padding_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "op get outputpadding failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr output_padding.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DTranspose";
     err_map["param_name"] = "output_padding";
@@ -9454,7 +9456,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
   }
 
   if (output_padding_list.size() != kConv2dInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "outputpadding size is illegal.");
+    OP_LOGE(op_name.GetString(), "output_padding_list is [%zu], which should be 4d", output_padding_list.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "output_padding";
     err_map["op_name"] = "Conv2DTranspose";
@@ -9503,7 +9505,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
 
   std::vector<int32_t> pads_list;
   if (op.GetAttr("pads", pads_list) == GRAPH_FAILED) {
-    OP_LOGE(op_name.GetString(), "op get pads failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr pads.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DTranspose";
     err_map["param_name"] = "pads";
@@ -9513,12 +9515,12 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
   }
   int32_t groups = 1;
   if (op.GetAttr("groups", groups) == GRAPH_FAILED) {
-    OP_LOGE(op_name.GetString(), "op get groups failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr groups.");
     ErrorManager::GetInstance().ReportErrMessage("E50030", {{"op_name", "Conv2DTranspose"}, {"param_name", "groups"}});
     return false;
   }
   if (pads_list.size() != kConv2dPadSizeLimit) {
-    OP_LOGE(op_name.GetString(), "op get pads_list failed.");
+    OP_LOGE(op_name.GetString(), "pads_list size is [%zu], which should be 4d", pads_list.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "output_padding";
     err_map["op_name"] = "Conv2DTranspose";
@@ -9594,7 +9596,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
 
 bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGW("Conv2DTranspose", "failed to get op_name"), return false);
 
   auto x_tensor = op.GetInputDescByName("x");
   auto w_tensor = op.GetInputDescByName("filter");
@@ -9607,32 +9609,17 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
 
   vector<int32_t> stride_list;
   if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "op get strides failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv2DTransposeD";
-    err_map["param_name"] = "strides";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    OP_LOGW(op_name.GetString(), "failed to get attr strides.");
     return false;
   }
   vector<int32_t> dilations_list;
   if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "op get dilation failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv2DTransposeD";
-    err_map["param_name"] = "dilations";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    OP_LOGW(op_name.GetString(), "failed to get attr dilations.");
     return false;
   }
   vector<int32_t> input_sizes;
   if (op.GetAttr("input_size", input_sizes) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "op get input_size failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv2DTransposeD";
-    err_map["param_name"] = "input_size";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    OP_LOGW(op_name.GetString(), "failed to get attr input_size.");
     return false;
   }
   CHECK_OP_FUNC(input_sizes.size() != kConv2dInputSizeLimit, return false, "Dim of input_size not 4");
@@ -9666,16 +9653,15 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
 
   bool invalid_stride_hw = (strh <= 0) || (strw <= 0);
   if (invalid_stride_hw) {
-    OP_LOGE(op_name.GetString(), "stride can not less than zero");
-    ErrorManager::GetInstance().ATCReportErrMessage("E50029",
-                                                    {"op_name", "param_name", "expected_value", "input_value"},
-                                                    {op_name.GetString(), "strides", "positive",
-                                                    std::to_string(strh) + ", " + std::to_string(strw)});
+    OP_LOGW(op_name.GetString(), "the value of attr stride can not less than zero");
     return false;
   }
   vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
-  CHECK_SIZE(pad_list.size() != kConv2dPadSizeLimit, return false, "pad is invalid");
+  if (pad_list.size() != kConv2dPadSizeLimit) {
+    OP_LOGW(op_name.GetString(), "the pad size is [%zu], which should be 4d", pad_list.size());
+    return false;
+  }
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
@@ -9691,7 +9677,8 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
 
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
+    OP_LOGD(op_name.GetString(),
+            "the data slice of output y is None, it is unnecessary to infer the data slice of input");
     return false;
   }
   for (size_t i = 0; i < y_data_slice.size(); i++) {
@@ -9703,7 +9690,8 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
                                               tensor_desc_w, tensor_desc_x, i) == GRAPH_SUCCESS;
     }
   }
-  OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
+  OP_LOGD(op_name.GetString(),
+          "the data slice of output y is empty, it is unnecessary to infer the data slice of input");
   return false;
 }
 
@@ -9734,7 +9722,7 @@ static bool SetDeDxAttrForConv2DTranspose(const OpDetailInfo& op_info, const GeS
   if (CheckShapeAllZero(y_shape) || y_shape.GetDimNum() != kConv2dInputSizeLimit) {
     int32_t groups = 1;
     if (!AttrUtils::GetInt(op_info.op_desc, "groups", groups)) {
-      OP_LOGW(op_info.op_name.GetString(), "op get groups failed, use default 1.");
+      OP_LOGD(op_info.op_name.GetString(), "failed to get attr groups, use default 1.");
     }
     std::vector<int32_t> output_shape_list;
     int64_t output_h = 0;
@@ -9764,7 +9752,9 @@ static bool SetDeDxAttrForConv2DTranspose(const OpDetailInfo& op_info, const GeS
     int64_t dx_w = y_shape.GetDim(y_format_pos.w_position);
     int64_t dy_h_new = (dx_h + attr_paras.h_attr.pads - attr_paras.h_attr.kernel) / attr_paras.h_attr.stride + 1;
     int64_t dy_w_new = (dx_w + attr_paras.w_attr.pads - attr_paras.w_attr.kernel) / attr_paras.w_attr.stride + 1;
-    CHECK(dy_h_new != dy_h || dy_w_new != dy_w, OP_LOGE(op_info.op_name.GetString(), "check pads attrs failed."),
+    CHECK(dy_h_new != dy_h || dy_w_new != dy_w,
+          OP_LOGE(op_info.op_name.GetString(),
+                  "the output h or w is not equal with the h or w which is calculated by input h, w and attr."),
           return false);
   }
   return true;
@@ -9772,12 +9762,16 @@ static bool SetDeDxAttrForConv2DTranspose(const OpDetailInfo& op_info, const GeS
 
 IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   OpDetailInfo op_info;
-  CHECK(op.GetName(op_info.op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_info.op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTranspose", "failed to get op_name"),
+        return GRAPH_FAILED);
   op_info.op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_info.op_desc, "op desc", return GRAPH_FAILED);
-  CHECK(op.GetOpType(op_info.op_type) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_type"), return GRAPH_FAILED);
+  CHECK(op.GetOpType(op_info.op_type) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTranspose", "failed to get op_type"),
+        return GRAPH_FAILED);
 
-  OP_LOGI(op_info.op_name.GetString(), "Enter Conv2DTranspose inferfunction!");
+  OP_LOGD(op_info.op_name.GetString(), "Enter Conv2DTranspose inferfunction!");
   std::vector<std::string> inputInferDepends = {"input_size"};
   op_info.op_desc->SetOpInferDepends(inputInferDepends);
 
@@ -9838,13 +9832,15 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   if (x_dtype == DT_INT8) {
     y_desc->SetDataType(DT_INT32);
   }
-  OP_LOGI(op_info.op_name.GetString(), "Leave Conv2DTranspose Infer.");
+  OP_LOGD(op_info.op_name.GetString(), "Leave Conv2DTranspose Infer.");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Conv2DTranspose, Conv2DTransposeVerify) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTranspose", "failed to get op_name"),
+        return GRAPH_FAILED);
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
 
@@ -9855,25 +9851,28 @@ IMPLEMT_VERIFIER(Conv2DTranspose, Conv2DTransposeVerify) {
   ConstGeTensorDescPtr x_desc = op_desc->GetInputDescPtr(1);
   CHECK_PTR_NULL(x_desc, "x desc", return GRAPH_FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter Conv2DTranspose verifyfunction!");
+  OP_LOGD(op_name.GetString(), "Enter Conv2DTranspose verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv2dbpCommon(op_name, op_desc, filter_desc, x_desc)) {
     return GRAPH_FAILED;
   }
   if (!VerifyConv2dbpOutputPadding(op_name, op_desc)) {
     return GRAPH_FAILED;
   }
-  OP_LOGI(op_name.GetString(), "Leave Conv2DTranspose verifyfunction!");
+  OP_LOGD(op_name.GetString(), "Leave Conv2DTranspose verifyfunction!");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFER_DATA_SLICE(Conv2DTranspose, Conv2DTransposeInferDataSlice) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGW("Conv2DTranspose", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   OP_LOGD(op_name.GetString(), "Enter Conv2DTranspose InferDataSlice.");
   if (!InferConv2DTransposeDataSlice(op)) {
     return GRAPH_FAILED;
   }
+  OP_LOGD(op_name.GetString(), "Leave Conv2DTranspose InferDataSlice.");
   return GRAPH_SUCCESS;
 }
 
@@ -9895,7 +9894,9 @@ template <typename T1, typename T2>
 static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Format x_format,
                             const std::vector<T2>& filter_sizes, Format filter_format) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTransposeD", "failed to get op_name"),
+        return);
 
   OP_LOGD(op_name.GetString(), "Enter ProcessOnnxAttr, process auto_pad and output_shape.");
 
@@ -10026,14 +10027,16 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
 
 IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTransposeD", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   OP_LOGD(op_name.GetString(), "Enter Conv2DTransposeD InferShape.");
 
   // get shape for output from input_size
   std::vector<int32_t> input_sizes;
   if (op.GetAttr("input_size", input_sizes) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "get input_size list failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr input_size.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DTranspose";
     err_map["param_name"] = "input_size";
@@ -10043,7 +10046,7 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
   }
 
   if (input_sizes.size() != kConv2dInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "input_size list should be 4d.");
+    OP_LOGE(op_name.GetString(), "input_sizes is [%zu], which should be 4d", input_sizes.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "input_size";
     err_map["op_name"] = "Conv2DTranspose";
@@ -10087,7 +10090,7 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
   // set shape of output desc, input_size should match the format of y
   std::vector<int32_t> dedx;
   if (op.GetAttr("dedx", dedx) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name.GetString(), "get dedx list failed.");
+    OP_LOGE(op_name.GetString(), "failed to get attr dedx.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DTranspose";
     err_map["param_name"] = "dedx";
@@ -10097,7 +10100,7 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
   }
 
   if (dedx.size() != kConv2dInputSizeLimit) {
-    OP_LOGE(op_name.GetString(), "dedx list should be 4d.");
+    OP_LOGE(op_name.GetString(), "dedx size is [%zu], which should be 4d", dedx.size());
     map<std::string, std::string> err_map;
     err_map["param_name"] = "dedx";
     err_map["op_name"] = "Conv2DTranspose";
@@ -10127,13 +10130,15 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-
+  OP_LOGD(op_name.GetString(), "Leave Conv2DTransposeD InferShape.");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Conv2DTransposeD, Conv2DTransposeDVerify) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, 
+        OP_LOGE("Conv2DTransposeD", "failed to get op_name"),
+        return GRAPH_FAILED);
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
 
@@ -10144,20 +10149,22 @@ IMPLEMT_VERIFIER(Conv2DTransposeD, Conv2DTransposeDVerify) {
   ConstGeTensorDescPtr x_desc = op_desc->GetInputDescPtr(0);
   CHECK_PTR_NULL(x_desc, "x desc", return GRAPH_FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter Conv2DTransposeD verifyfunction!");
+  OP_LOGD(op_name.GetString(), "Enter Conv2DTransposeD verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv2dbpCommon(op_name, op_desc, filter_desc, x_desc)) {
     return GRAPH_FAILED;
   }
   if (!VerifyConv2dbpOutputPadding(op_name, op_desc)) {
     return GRAPH_FAILED;
   }
-  OP_LOGI(op_name.GetString(), "Leave Conv2DTransposeD verifyfunction!");
+  OP_LOGD(op_name.GetString(), "Leave Conv2DTransposeD verifyfunction!");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFER_DATA_SLICE(Conv2DTransposeD, Conv2DTransposeDInferDataSlice) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DTransposeD", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   OP_LOGD(op_name.GetString(), "Enter Conv2DTransposeD InferDataSlice.");
   // process ONNX attr
@@ -10172,6 +10179,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DTransposeD, Conv2DTransposeDInferDataSlice) {
   if (!InferConv2DTransposeDataSlice(op)) {
     return GRAPH_FAILED;
   }
+  OP_LOGD(op_name.GetString(), "Leave Conv2DTransposeD InferDataSlice.");
   return GRAPH_SUCCESS;
 }
 
@@ -10182,7 +10190,9 @@ VERIFY_FUNC_REG(Conv2DTransposeD, Conv2DTransposeDVerify);
 // ----------------DeformableOffsets-------------------
 static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("DeformableOffsets", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   auto x_desc = op.GetInputDescByName("x");
   auto x_shape = x_desc.GetShape().GetDims();
@@ -10316,7 +10326,9 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
 
 IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("DeformableOffsets", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   auto x_desc = op.GetInputDescByName("x");
   auto offsets_desc = op.GetInputDescByName("offsets");
@@ -10501,7 +10513,9 @@ VERIFY_FUNC_REG(DeformableOffsets, DeformableOffsetsVerify);
 
 IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("DeformableOffsetsGrad", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   auto x_desc = op.GetInputDescByName("x");
   auto offsets_desc = op.GetInputDescByName("offsets");
@@ -10563,7 +10577,9 @@ IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
 
 IMPLEMT_VERIFIER(DeformableOffsetsGrad, DeformableOffsetsGradVerify) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("DeformableOffsetsGrad", "failed to get op_name"),
+        return GRAPH_FAILED);
 
   auto grad_desc = op.GetInputDescByName("grad");
   auto x_desc = op.GetInputDescByName("x");
@@ -10588,7 +10604,10 @@ VERIFY_FUNC_REG(DeformableOffsetsGrad, DeformableOffsetsGradVerify);
 IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
 {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Dilation", "failed to get op_name"),
+        return GRAPH_FAILED);
+  OP_LOGD(op_name.GetString(), "Enter Dilation InferShape.");
   int64_t h_position = 0;
   int64_t w_position = 0;
   auto x_desc = op.GetInputDescByName("x");
@@ -10619,14 +10638,17 @@ IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
   auto y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape(out_shape));
   (void)op.UpdateOutputDesc("y", y_desc);
+  OP_LOGD(op_name.GetString(), "Leave Dilation InferShape.");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Dilation, DilationVerify)
 {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Dilation", "failed to get op_name"),
+        return GRAPH_FAILED);
+  OP_LOGD(op_name.GetString(), "Enter Dilation Verify.");
   auto x_desc = op.GetInputDescByName("x");
   auto x_shape = x_desc.GetShape().GetDims();
   std::vector<int64_t> dilations;
@@ -10664,6 +10686,7 @@ IMPLEMT_VERIFIER(Dilation, DilationVerify)
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
+  OP_LOGD(op_name.GetString(), "Leave Dilation Verify.");
   return GRAPH_SUCCESS;
 }
 
@@ -10676,7 +10699,7 @@ IMPLEMT_COMMON_INFERFUNC(IsotonicRegressionInferShape) {
   Shape x_shape = op.GetInputDescByName("input").GetShape();
   DataType output_dtype = ge::DT_FLOAT;
   if (op.GetAttr("output_dtype", output_dtype) != GRAPH_SUCCESS) {
-    OP_LOGI(TbeGetName(op), "No output_dtype setting, use output_dtype as float32");
+    OP_LOGD(TbeGetName(op), "get attr output_dtype failed, use output_dtype as float32");
   }
   if (output_dtype != ge::DT_FLOAT16 && output_dtype != ge::DT_FLOAT && output_dtype != ge::DT_DOUBLE){
     std::string err_msg = 
