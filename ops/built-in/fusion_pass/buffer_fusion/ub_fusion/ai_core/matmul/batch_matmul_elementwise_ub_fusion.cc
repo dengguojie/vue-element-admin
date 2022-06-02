@@ -25,12 +25,13 @@
 
 #include "anchor_util.h"
 #include "common/lxfusion_json_util.h"
+#include "cube_broadcast_fusion_check_util.h"
+#include "fusion_pre_trans_func.h"
 #include "graph/utils/attr_utils.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "lx_fusion_func.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "fusion_pre_trans_func.h"
 
 namespace fe {
 namespace {
@@ -64,8 +65,10 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   // define pattern rules
   pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_BATCH_MATMUL})
       .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_ELEM}, TBE_OUTPUT_BRANCH_SINGLE, true)
       .SetOutputs(PATTERN_ELEM, {PATTERN_ELEM_1}, TBE_OUTPUT_BRANCH_SINGLE, true)
@@ -80,7 +83,8 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   // define pattern rules
   pattern1->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
                       TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_BATCH_MATMUL})
       .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_ELEM}, TBE_OUTPUT_BRANCH_SINGLE, true)
       .SetOutputs(PATTERN_ELEM, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
@@ -98,9 +102,12 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   // define pattern rules
   pattern2->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
                       TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_ELEM_2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM_2, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_OTHER_INPUT1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_OTHER_OUTPUT, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -265,6 +272,12 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   }
   FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, matmulNodes, FUSED_OP_TYPE),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the first elemwise node is not match."), return);
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes1, matmulNodes, FUSED_OP_TYPE),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the second elemwise node is not match."), return);
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes2, matmulNodes, FUSED_OP_TYPE),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the third elemwise node is not match."), return);
   vector<AxisSplitMap> split_maps_prev;
   vector<AxisSplitMap> split_maps_fusion_op;
   vector<AxisSplitMap>* ptr_split_maps_prev;

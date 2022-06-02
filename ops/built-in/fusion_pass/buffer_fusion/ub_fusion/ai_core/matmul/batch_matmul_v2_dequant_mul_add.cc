@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "cube_broadcast_fusion_check_util.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
@@ -57,8 +58,10 @@ vector<BufferFusionPattern *> BatchMatmulV2DequantMulAddFusionPass::DefinePatter
   // define pattern rules Matmul-->AcendDeQuant
   pattern->AddOpDesc(kPatternMatmul, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-          .AddOpDesc(kPatternEltwise1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-          .AddOpDesc(kPatternEltwise2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternEltwise1, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternEltwise2, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -89,21 +92,23 @@ Status BatchMatmulV2DequantMulAddFusionPass::GetFusionNodes(const BufferFusionMa
   vector<ge::NodePtr> batchMatmulNodes = GetMatchedNodesByDescName(kPatternMatmul, mapping);
   vector<ge::NodePtr> elemWiseNodes1 = GetMatchedNodesByDescName(kPatternEltwise1, mapping);
   vector<ge::NodePtr> elemWiseNodes2 = GetMatchedNodesByDescName(kPatternEltwise2, mapping);
-
-  bool isElemWiseValid = ((elemWiseNodes1.empty() || elemWiseNodes2.empty() || batchMatmulNodes.empty())
-                         || (elemWiseNodes1[0]->GetType() == "Mul" && elemWiseNodes2[0]->GetType() == "Add"));
-  if (!isElemWiseValid) {
-    OP_LOGD(kFusedOpType.c_str(), "Only support elemwise1 = Mul and elemwise2 = Add");
+  bool nodes_illegal = ((elemWiseNodes1.empty() || elemWiseNodes2.empty() || batchMatmulNodes.empty())
+                          || (elemWiseNodes1[0]->GetType() != "Mul" && elemWiseNodes2[0]->GetType() != "Add"));
+  if (nodes_illegal) {
+    OP_LOGD(kFusedOpType.c_str(),
+            "Only support elemwise and matmul nodes not empty, and elemwise1 = Mul and elemwise2 = Add");
     return SUCCESS;
   }
-
   FUSION_PASS_CHECK(elemWiseNodes1[0]->GetAllInDataAnchors().size() != 2,
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Mul input nodes must be two"), return SUCCESS);
   FUSION_PASS_CHECK(elemWiseNodes1[0]->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() != 1,
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Mul output nodes must be one"), return SUCCESS);
   FUSION_PASS_CHECK(elemWiseNodes2[0]->GetAllInDataAnchors().size() != 2,
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add input nodes must be two"), return SUCCESS);
-
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes1, batchMatmulNodes, kFusedOpType),
+                    OP_LOGW(kFusedOpType.c_str(), "The shape of mul node is not match."), return SUCCESS);
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes2, batchMatmulNodes, kFusedOpType),
+                    OP_LOGW(kFusedOpType.c_str(), "The shape of add node is not match."), return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused
   for (auto &item : mapping) {

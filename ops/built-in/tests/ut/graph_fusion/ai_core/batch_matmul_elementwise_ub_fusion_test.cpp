@@ -353,6 +353,7 @@ TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_mul_sigmoid_mul) {
                              .set_input_x2(data_b)
                              .set_attr_adj_x1(false)
                              .set_attr_adj_x2(false);
+  batch_matmul_op.update_output_desc_y(ge::TensorDesc(ge::Shape({77, 7, 128, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
 
   auto const_add = op::Const("scalar_for_mul0");
   Tensor const_add_tensor;
@@ -370,11 +371,11 @@ TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_mul_sigmoid_mul) {
   auto cast_op = op::Cast("input");                     // Note: op name used in construct BufferFusionMapping
   cast_op.set_input_x(const_add).set_attr_dst_type(1);  // dst_type 1: float16
   auto mul0 = op::Mul("mul0").set_input_x1(batch_matmul_op).set_input_x2(cast_op);
-
+  mul0.update_output_desc_y(ge::TensorDesc(ge::Shape({77, 7, 128, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
   auto sigmoid = op::Sigmoid("sigmoid").set_input_x(mul0);
-
+  sigmoid.update_output_desc_y(ge::TensorDesc(ge::Shape({77, 7, 128, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
   auto mul1 = op::Mul("mul1").set_input_x1(batch_matmul_op).set_input_x2(sigmoid);
-
+  mul1.update_output_desc_y(ge::TensorDesc(ge::Shape({77, 7, 128, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
   std::vector<Operator> inputs{data_a, data_b};
   std::vector<Operator> outputs{mul1};
 
@@ -438,15 +439,15 @@ TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_elem_elem) {
                              .set_attr_adj_x1(false)
                              .set_attr_adj_x2(false);
   batch_matmul_op.update_output_desc_y(
-      ge::TensorDesc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+      ge::TensorDesc(ge::Shape({77, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
 
-  auto data_c = CreateData("data_c", ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_c = CreateData("data_c", ge::Shape({77, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
   auto add_0_op = op::Add("add_0").set_input_x1(batch_matmul_op).set_input_x2(data_c);
-  add_0_op.update_output_desc_y(ge::TensorDesc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+  add_0_op.update_output_desc_y(ge::TensorDesc(ge::Shape({77, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
 
-  auto data_d = CreateData("data_d", ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_d = CreateData("data_d", ge::Shape({77, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
   auto add_1_op = op::Add("add_1").set_input_x1(add_0_op).set_input_x2(data_c);
-  add_1_op.update_output_desc_y(ge::TensorDesc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+  add_1_op.update_output_desc_y(ge::TensorDesc(ge::Shape({77, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
 
   std::vector<Operator> inputs{data_a, data_b};
   std::vector<Operator> outputs{add_1_op};

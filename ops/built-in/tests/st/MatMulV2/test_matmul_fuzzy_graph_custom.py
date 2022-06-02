@@ -8,6 +8,7 @@ from impl.dynamic.mat_mul import matmul_generalization
 from impl.mat_mul import mat_mul_compute
 from impl.mat_mul import mat_mul
 from impl.ascend_requant import ascend_requant_compute
+from impl.fix_pipe import fixpipe_compute
 from tbe.common.context import op_context
 from tbe.dsl import auto_schedule
 from te import tvm
@@ -205,6 +206,40 @@ def test_matmul_requant_bl1_bl0_status_ori_equal():
             output_y = {'shape': [2,2,16,16], 'ori_shape': [32,32], 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'dtype': 'float16'}
             mat_mul(input_x1, input_x2, bias, output_y=output_y)
 
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 524288,
+        ("L0C_SIZE", ): 131072,
+        ("Intrinsic_fix_pipe_l0c2out",): True,
+        ("Compiler_arch",): "dav-c220-cube",
+        ("AICORE_TYPE",): "AiCore",
+        ("Intrinsic_fix_pipe_unit_list",): True,
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        }
+
+def side_effects(*args):
+    return vals.get(args)
+
+def test_matmul_broadcast_elewise():
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            import tbe
+            with tbe.common.context.op_context.OpContext("pre-static"):
+                with cce():
+                    x1 = tvm.placeholder((4, 2, 16, 16), name="tensor_a", dtype="float16", attrs={"ori_shape": (32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+                    x2 = tvm.placeholder((2, 4, 16, 16), name="tensor_b", dtype="float16", attrs={"ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+                    output_y = {"shape": (2, 2, 16, 16), "dtype": "float32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+                    matmul_out = mat_mul_compute(x1, x2, None, None, output_y, False, False, 0)
+                    ele_input = tvm.placeholder((2, 2, 2, 16, 16), name="add_input1", dtype="float16", attrs={"ori_shape": (2, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+                    y = {"shape": (2, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+                    res = fixpipe_compute(matmul_out, ele_input, None, None, None, None, None, None, None, None, y, [], [], "")
+                    tensor_list = [x1, x2, y, res]
+                    sch = auto_schedule([matmul_out, res])
+
+
 if __name__ == '__main__':
     test_matmul_generalization_upper_bound_input1()
     test_matmul_generalization_unknown_rank()
@@ -216,3 +251,4 @@ if __name__ == '__main__':
     test_matmul_confusion_transpose_710()
     test_matmul_confusion_transpose_30_224_910B_False_True()
     test_matmul_confusion_transpose_30_256_910A_False_True()
+    test_matmul_broadcast_elewise()

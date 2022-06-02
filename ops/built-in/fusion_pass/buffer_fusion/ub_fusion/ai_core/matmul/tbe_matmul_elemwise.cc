@@ -22,9 +22,10 @@
 #include <string>
 #include <vector>
 #include "op_log.h"
+#include "common/lxfusion_json_util.h"
+#include "cube_broadcast_fusion_check_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
-#include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 #include "anchor_util.h"
@@ -55,7 +56,8 @@ vector<BufferFusionPattern*> TbeMatmulElemwiseFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
-  pattern->AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern->AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_GEMM}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_MATMUL})
       .SetOutputs(PATTERN_MATMUL, {PATTERN_ELTWISE});
@@ -68,7 +70,8 @@ vector<BufferFusionPattern*> TbeMatmulElemwiseFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
   // define pattern rules
-  pattern1->AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern1->AddOpDesc(PATTERN_ELTWISE, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_GEMM}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_OUTPUT, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_MATMUL})
@@ -90,7 +93,8 @@ void TbeMatmulElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping& mappin
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
     return;
   }
-
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, matmulNodes, FUSED_OP_TYPE),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of elewise node is not match."), return);
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
   OpL1FusionType fusion_type = L1FUSION_DISABLE;

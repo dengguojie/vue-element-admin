@@ -283,3 +283,15 @@ def test_matmul_sigmoid_multi_out():
         res = sigmoid_compute(matmul_out, y)
         tensor_list = [x1, x2, matmul_out, res]
         sch = auto_schedule([matmul_out, res])
+
+def test_matmul_broadcast_elewise():
+    with cce():
+        x1 = tvm.placeholder((4, 2, 16, 16), name="tensor_a", dtype="float16", attrs={"ori_shape": (32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((2, 4, 16, 16), name="tensor_b", dtype="float16", attrs={"ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        output_y = {"shape": (2, 2, 16, 16), "dtype": "float32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y, False, False, 0)
+        ele_input = tvm.placeholder((2, 2, 2, 16, 16), name="add_input1", dtype="float16", attrs={"ori_shape": (2, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        y = {"shape": (2, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        res = fixpipe_compute(matmul_out, ele_input, None, None, None, None, None, None, None, None, y, [], [], "")
+        tensor_list = [x1, x2, y, res]
+        sch = auto_schedule([matmul_out, res])

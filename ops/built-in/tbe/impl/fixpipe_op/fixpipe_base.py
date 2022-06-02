@@ -321,9 +321,9 @@ class FixpipeBase(object):
                 new_indice[i] = indice[i]
 
             return x2(*new_indice)
-        
+
         return lamda_func
-    
+
     def _x2_reform_generate_func(self, x2, input_shape):
         """
         x2 index reform
@@ -342,7 +342,7 @@ class FixpipeBase(object):
 
         fixpipe_op = tvm.compute(self.input_shape,
                                  lambda *indices:
-                                 tvm.fixpipe_op(self.x1(*indices),
+                                 tvm.fixpipe_op(self._x1_reform_generate_func(self.x1)(*indices),
                                                 self.output_dtype,
                                                 pre_conv_param=self.quant_scale_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.quant_scale_0_vector_flag else fixpipe_util.get_input_scalar_value(self.quant_scale_0),
                                                 pre_relu_param=self.relu_weight_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.relu_weight_0_vector_flag else fixpipe_util.get_input_scalar_value(self.relu_weight_0),
@@ -381,3 +381,10 @@ class FixpipeBase(object):
         fixpipe_reform = self.fixpipe_reform(fixpipe_op)
 
         return fixpipe_reform
+
+    def _x1_reform_generate_func(self, x1):
+        """
+        x1 index reform.
+        The parent class returns x1, the subclass returns self define function.
+        """
+        return x1

@@ -17,6 +17,7 @@
 """
 conv2d backprop input DSL interface.
 """
+import json
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
@@ -83,9 +84,6 @@ BIT_RATIO_DICT = {
 }
 # same as (2**63-1)
 DATA_SIZE_MAX = 9223372036854775807
-
-FIXPIPE_SUPPORT_OP_LIST = ["Conv2DBackpropInputD", "Deconvolution", "Conv2DTransposeD"]
-FIXPIPE_FUSION_FLAG = "in_fixpipe_fusion"
 SUPPORT_FIXPIPE_INTRINSIC = "Intrinsic_fix_pipe_l0c2out"
 
 
@@ -158,12 +156,10 @@ def _get_fixpipe_fusion_flag():
     context = op_context.get_context()
     if context is None:
         return False
-    op_infos = context.get_op_info()
-    for op_info in op_infos:
-        if op_info.op_type not in FIXPIPE_SUPPORT_OP_LIST:
-            continue
-        if FIXPIPE_FUSION_FLAG in op_info.extra_params:
-            return True
+    build_options = context.get_addition("build_options")
+    if build_options:
+        options = json.loads(build_options)
+        return options.get("fixpipe_fusion", False)
     return False
 
 

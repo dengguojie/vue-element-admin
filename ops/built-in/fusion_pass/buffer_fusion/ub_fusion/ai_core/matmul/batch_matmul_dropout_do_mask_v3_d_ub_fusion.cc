@@ -28,6 +28,7 @@
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 #include "anchor_util.h"
+#include "cube_broadcast_fusion_check_util.h"
 
 namespace fe {
 namespace {
@@ -61,7 +62,7 @@ vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatter
     .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
     .AddOpDesc(PATTERN_DROPOUTDOMASKV3D, {OP_PATTERN_DROPOUTDOMASKV3D})
     .AddOpDesc(PATTERN_OTHER_INPUT1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
-    .AddOpDesc(PATTERN_ADD, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+    .AddOpDesc(PATTERN_ADD, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
     .SetHead({PATTERN_BATCH_MATMUL})
     .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DROPOUTDOMASKV3D})
     .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_DROPOUTDOMASKV3D})
@@ -148,6 +149,11 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
   FUSION_PASS_CHECK(add_nodes.empty(),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Elemwise node is not matched."),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "matched BATCH_MATMUL+DROPOUTDOMASKV3D"));
+
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(add_nodes, batch_matmul_nodes, FUSED_OP_TYPE),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(),
+                    "The shape of elemwise node is not matched, matched BATCH_MATMUL+DROPOUTDOMASKV3D."),
+                    add_nodes.clear());
 
   // adjust control-edges to destroy the loop in BERT
   // "dropout_do_mask -> batch_matmul1 (control-node) -> fusion_transpose

@@ -14,14 +14,15 @@
 #include <vector>
 #include <cmath>
 #include "pattern_fusion_util.h"
-#include "op_log.h"
-#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
-#include "common/lxfusion_json_util.h"
-#include "graph/utils/attr_utils.h"
-#include "lx_fusion_func.h"
 #include "anchor_util.h"
 #include "common/util/platform_info.h"
+#include "common/lxfusion_json_util.h"
+#include "cube_broadcast_fusion_check_util.h"
 #include "fusion_pre_trans_func.h"
+#include "graph/utils/attr_utils.h"
+#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "lx_fusion_func.h"
+#include "op_log.h"
 
 namespace fe {
 static const string PATTERN_FC_MATMUL = "FullyConnection/MatMul/BatchMatmul";     // desc name
@@ -59,7 +60,8 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
   // define pattern rules
   pattern0->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
                       TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-           .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+           .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE, OP_PATTERN_BROAD_CAST},
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
            .AddOpDesc(PATTERN_OUTPUT, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
            .SetHead({PATTERN_FC_MATMUL})
            .SetOutputs(PATTERN_FC_MATMUL, {PATTERN_ELTWISE1, PATTERN_OUTPUT}, TBE_OUTPUT_BRANCH_MULTI);
@@ -445,7 +447,8 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
   vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
   vector<ge::NodePtr> quantNodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
-
+  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, fcNodes, FUSED_OP_TYPE),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of elewise node is not match."), return SUCCESS);
   // check whether the fc/matmul/batchmatmul op
   for (const auto &fcNode : fcNodes) {
     if (find(matmulWhiteList.begin(), matmulWhiteList.end(), fcNode->GetType()) == matmulWhiteList.end()) {

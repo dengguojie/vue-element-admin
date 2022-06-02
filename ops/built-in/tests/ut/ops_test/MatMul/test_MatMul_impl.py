@@ -594,12 +594,14 @@ def test_mock_cases(test_args):
                 test_matmul_fixpipe_1()
                 test_matmul_fixpipe_2()
                 test_matmul_sigmoid_multi_out()
+                test_matmul_broadcast_elewise()
                 vals.update({
                     ("Intrinsic_fix_pipe_l0c2ub"): True
                 })
                 test_matmul_add()
                 test_matmul_fixpipe_0()
                 test_matmul_sigmoid_multi_out()
+                test_matmul_broadcast_elewise()
                 test_matmul_ND2ND_int8_trans_b()
                 test_matmul_ND2ND_fp16_batch_2()
 

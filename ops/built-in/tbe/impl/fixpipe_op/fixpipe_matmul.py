@@ -24,12 +24,35 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe_platform
 from impl.util.util_common import ceil
 from tbe import tvm
+from tbe.common.utils import shape_to_list
 
 
 class FixpipeMatmul(FixpipeBase):
     """
     matmul Fixpipe
     """
+    @staticmethod
+    def _x_reform_generate_func_broadcast(x, input_shape):
+        """
+        Consider broadcasting x.shape to input_shape and get x index.
+
+        Paremeters:
+        -----------------------
+        x: input tensor.
+        input_shape: tuple or list, boradcast shape
+        """
+        x_shape = shape_to_list(x.shape)
+        dim_num = len(x_shape)
+
+        def lamda_func(*indice):
+            new_indice = [0] * dim_num
+            for i in range(dim_num):
+                if x_shape[-i - 1] == input_shape[-i - 1]:
+                    new_indice[-i - 1] = indice[-i - 1]
+
+            return x(*new_indice)
+        return lamda_func
+
     def fixpipe_reform(self, res):
         """
         shape or format transform for fixpipe_op
@@ -127,6 +150,19 @@ class FixpipeMatmul(FixpipeBase):
         """
         return self.output.get("format") in ("NHWC", "ND", "NC1HWC0")
 
+    def _get_input_shape(self):
+        """
+        get input tensor shape
+        """
+        shape_x1 = shape_to_list(self.x1.shape)
+        if self.x2 is None:
+            return shape_x1
+        else:
+            shape_x2 = shape_to_list(self.x2.shape)
+            _, _, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+                                                          param_name_input1="input_x1", param_name_input2="shape_x2")
+        return shape_max
+
     def _x2_reform_generate_func(self, x2, input_shape):
         """
         x2 index reform
@@ -144,7 +180,7 @@ class FixpipeMatmul(FixpipeBase):
             new description for elewise input
         """
         if not self._check_fc_nd_out():
-            return self._x2_reform_generate_func_default(x2, input_shape)
+            return self._x_reform_generate_func_broadcast(x2, input_shape)
         # (N,C1,H,W,C0) -> (C1HW,N1,N0,C0)
         x2_n, x2_c1, x2_h, x2_w, x2_c0 = shape_util.shape_to_list(x2.shape)
         x2_l1_shape = (x2_c1 * x2_h * x2_w,
@@ -163,4 +199,14 @@ class FixpipeMatmul(FixpipeBase):
                 ),
             name="fixpipe_trans_eltwise"
         )
-        return self._x2_reform_generate_func_default(x2_l1, input_shape)
+        return self._x_reform_generate_func_broadcast(x2_l1, input_shape)
+
+    def _x1_reform_generate_func(self, x1):
+        """
+        x1 index reform
+
+        Parameters:
+        -----------------------
+        x1: input tensor.
+        """
+        return self._x_reform_generate_func_broadcast(x1, self.input_shape)
