@@ -53,7 +53,7 @@ void ComputeInterpolationWeights(const size_t out_size, const size_t in_size,
   interpolation[out_size].lower = 0;
   interpolation[out_size].upper = 0;
   for (size_t i = 0; i <= out_size - 1; ++i) {
-    const float in = static_cast<float>(ScaleGrid(i, scale));
+    const float in = static_cast<float>(ScaleGrid(static_cast<int>(i), scale));
     const float in_f = std::floor(in);
     interpolation[i].lower =
         std::max(static_cast<size_t>(in_f), static_cast<size_t>(0));

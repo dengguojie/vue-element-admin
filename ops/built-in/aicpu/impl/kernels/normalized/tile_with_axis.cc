@@ -99,7 +99,7 @@ uint32_t TileWithAxisCpuKernel::TileComputeInDims(const CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t TileWithAxisCpuKernel::TileCompute(CpuKernelContext &ctx) {
+uint32_t TileWithAxisCpuKernel::TileCompute(const CpuKernelContext &ctx) {
   bool flag = AddrAlignedCheck(ctx.Input(kFirstInputIndex)->GetData());
   if (flag) {
     return TileComputeInDims<T, Eigen::Aligned>(ctx);

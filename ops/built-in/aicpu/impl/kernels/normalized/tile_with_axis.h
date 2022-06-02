@@ -26,7 +26,7 @@ class TileWithAxisCpuKernel : public CpuKernel {
   uint32_t TileComputeInDims(const CpuKernelContext &ctx);
 
   template <typename T>
-  uint32_t TileCompute(CpuKernelContext &ctx);
+  uint32_t TileCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_DEVICE_TILE_WITH_AXIS_H

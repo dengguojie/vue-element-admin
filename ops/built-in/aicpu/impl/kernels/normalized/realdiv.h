@@ -28,10 +28,10 @@ class RealDivKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t ComputeRealdiv(const Tensor *x, Tensor *y, const Tensor *z,
+  uint32_t ComputeRealdiv(const Tensor *x, const Tensor *y, const Tensor *z,
                           const CpuKernelContext &ctx);
 
-  uint32_t ComputeDiffType(const Tensor *x, Tensor *y, Tensor *z, DataType data_type,
+  uint32_t ComputeDiffType(const Tensor *x, const Tensor *y, const Tensor *z, DataType data_type,
                            const CpuKernelContext &ctx);
 
   template <typename T>

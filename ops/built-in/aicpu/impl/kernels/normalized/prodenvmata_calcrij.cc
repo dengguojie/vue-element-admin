@@ -44,7 +44,7 @@ namespace
 namespace aicpu
 {
   template <typename FPTYPE>
-  uint32_t ProdEnvMatACalcRijCpuKernel::DoProdEnvMatACalcRijCompute(CpuKernelContext &ctx) {
+  uint32_t ProdEnvMatACalcRijCpuKernel::DoProdEnvMatACalcRijCompute(const CpuKernelContext &ctx) {
     Tensor *coord_tensor = ctx.Input(kIndexZero);
     Tensor *natoms_tensor = ctx.Input(kIndexTwo);
     Tensor *rij_tensor = ctx.Output(kIndexZero);
@@ -227,7 +227,7 @@ namespace aicpu
 
           FPTYPE rr = dx * dx + dy * dy + dz * dz;
           if (rr < rcutsquared) {
-            selNeighbors[*(type + j_idx)].push_back(NeighborInfo(rr, j_idx));
+            selNeighbors[*(type + j_idx)].emplace_back(NeighborInfo(rr, j_idx));
           }
         }
 

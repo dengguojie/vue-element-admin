@@ -64,7 +64,7 @@ uint32_t RealDivKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t RealDivKernel::ComputeDiffType(const Tensor *x, Tensor *y, Tensor *z,
+uint32_t RealDivKernel::ComputeDiffType(const Tensor *x, const Tensor *y, const Tensor *z,
                                         DataType data_type,
                                         const CpuKernelContext &ctx) {
   switch (data_type) {
@@ -94,7 +94,7 @@ uint32_t RealDivKernel::ComputeDiffType(const Tensor *x, Tensor *y, Tensor *z,
 }
 
 template <typename T>
-uint32_t RealDivKernel::ComputeRealdiv(const Tensor *x, Tensor *y, const Tensor *z,
+uint32_t RealDivKernel::ComputeRealdiv(const Tensor *x, const Tensor *y, const Tensor *z,
                                        const CpuKernelContext &ctx) {
   auto x_addr = x->GetData();
   auto y_addr = y->GetData();

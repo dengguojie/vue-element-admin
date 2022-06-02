@@ -16,6 +16,9 @@
 #ifndef AICPU_KERNELS_NORMALIZED_PRODENVMATA_CALCRIJ_H
 #define AICPU_KERNELS_NORMALIZED_PRODENVMATA_CALCRIJ_H
 
+#include <cfloat>
+#include <cmath>
+
 #include "cpu_kernel.h"
 #include "cpu_kernel_utils.h"
 #include "status.h"
@@ -43,7 +46,7 @@ namespace aicpu {
 
         int32_t *nallmaptable;
 
-        InputNlist() : nlocnum(0), ilist(NULL), numneigh(NULL), firstneigh(NULL), nallmaptable(NULL){};
+        InputNlist() : nlocnum(0), ilist(nullptr), numneigh(nullptr), firstneigh(nullptr), nallmaptable(nullptr){};
         InputNlist(int32_t nlocnum_, int32_t *ilist_, int32_t *numneigh_,
                    int32_t (*firstneigh_)[1024], int32_t *nallmaptable_)
                    : nlocnum(nlocnum_),
@@ -61,7 +64,7 @@ namespace aicpu {
         NeighborInfo(float dd, int32_t ii)
                      : dist(dd), index(ii) {}
         bool operator<(const NeighborInfo &b) const {
-          return (dist < b.dist || (dist == b.dist && index < b.index));
+          return (((dist < b.dist) || (fabs(dist - b.dist) <= FLT_EPSILON)) && (index < b.index));
         }
       };
 
@@ -73,7 +76,7 @@ namespace aicpu {
 
       uint32_t DoCompute(CpuKernelContext &ctx);
       template <typename FPTYPE>
-      uint32_t DoProdEnvMatACalcRijCompute(CpuKernelContext &ctx);
+      uint32_t DoProdEnvMatACalcRijCompute(const CpuKernelContext &ctx);
       uint32_t GetInputAndCheck(const CpuKernelContext &ctx);
       void cum_sum(std::vector<int64_t> &sec, const std::vector<int64_t> &n_sel);
       template <typename FPTYPE>
