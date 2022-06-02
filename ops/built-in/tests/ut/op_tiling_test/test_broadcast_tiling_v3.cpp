@@ -1005,5 +1005,46 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
   ASSERT_TRUE(!outer_compile_info->DoTiling(op_paras, runInfo));
   }
 
+  TEST_F(BroadcastTilingV3, TilingTest26) {
+  std::vector<std::vector<int64_t>> inputs {{1, 40000, 10}};
+  std::vector<std::vector<int64_t>> outputs {{1, 40000, 10}};
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  v3::BroadcastCompileInfo actual_ptr;
+  actual_ptr.base_info_compile.first = false;
+  actual_ptr.base_info_compile.second = {};
+  actual_ptr.flag_info_compile = {false, true, true, false, false, false, false};
+  actual_ptr.ub_factor_align = 128;
+  actual_ptr.elewise_vars_compile.first = true;
+  actual_ptr.elewise_vars_compile.second = {{"100000000",{}}};
+  actual_ptr.const_block_dims_compile.first = true;
+  actual_ptr.const_block_dims_compile.second = {40};
+
+  actual_ptr.const_shapes_compile.first = true;
+  actual_ptr.const_shapes_compile.second = {{1, 40000, 10}};
+
+  actual_ptr.fusion_index_compile.first = true;
+  actual_ptr.fusion_index_compile.second = {{0},{1},{2}};
+
+  actual_ptr.broadcast_axis_compile.first = true;
+  actual_ptr.broadcast_axis_compile.second = {false, true};
+
+  actual_ptr.soc_version.first = true;
+  actual_ptr.soc_version.second = "Ascend920";
+
+
+  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  ASSERT_TRUE(broadcast.BroadcastTiling());
+}
+
 
 

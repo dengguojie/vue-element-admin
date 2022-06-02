@@ -120,8 +120,9 @@ def variable_shape(inputs):
         return False
 
     def _mode_process():
+        broadcast_unfold_max_num = 2
         if mode == para_check.CONST:
-            if support_broadcast:
+            if support_broadcast and len(inputs) == broadcast_unfold_max_num:
                 input1 = inputs[0]["const_shape"]
                 input2 = inputs[1]["const_shape"]
                 const_shape = [a & b for a, b in zip(input1, input2)]

@@ -254,16 +254,17 @@ class BaseBroadcastSchedule:
                     broadcast_num += 1
             return broadcast_num
 
-        def _pre_handle_placeholder(tensors):
-            for out in tensors:
+        def _pre_handle_placeholder():
+            for index, out in enumerate(self._outs):
                 if util.is_placeholder(out):
-                    self._copy_out_tensors.add(_copy_node(out))
-                    self._remove_out_tensors.add(out)
-            self._out_tensors.update(self._copy_out_tensors)
-            self._out_tensors = self._out_tensors - self._remove_out_tensors
+                    copy_out = _copy_node(out)
+                    self._outs[index] = copy_out
+                    self._copy_out_tensors.add(copy_out)
+                    self._out_tensors.add(copy_out)
+                    self._out_tensors.remove(out)
 
         self._out_tensors = set(self._outs)
-        _pre_handle_placeholder(self._out_tensors)
+        _pre_handle_placeholder()
 
         visited_tensors = set()
         for out in self._out_tensors:
@@ -898,11 +899,11 @@ class BaseBroadcastSchedule:
         u_idx = self._ub_split_axis
         for tensor_i in self._broadcast_store_predicate:
             input_tensors = tensor_i.op.input_tensors
-            is_pad_broadcast = len(input_tensors) > 0 and util.is_broadcast(input_tensors[0]) \
+            is_vreduce_tensor = len(input_tensors) > 0 and util.is_broadcast(input_tensors[0]) \
                                                       and tensor_i in self._remove_pad_cache_read_buffer
             if util.is_broadcast(tensor_i):
                 ub_split_src = tensor_i.op.input_tensors[0].shape[u_idx]
-            elif is_pad_broadcast:
+            elif is_vreduce_tensor:
                 ub_split_src = tensor_i.op.input_tensors[0].op.input_tensors[0].shape[u_idx]
             else:
                 ub_split_src = tensor_i.shape[u_idx]

@@ -219,16 +219,17 @@ class ElewiseSchedule(Schedule):
                 return True
             return False
 
-        def _pre_handle_placeholder(tensors):
-            for out in tensors:
+        def _pre_handle_placeholder():
+            for index, out in enumerate(self._outs):
                 if util.is_placeholder(out):
-                    self._copy_out_tensors.add(_copy_node(out))
-                    self._remove_out_tensors.add(out)
-            self._out_tensors.update(self._copy_out_tensors)
-            self._out_tensors = self._out_tensors - self._remove_out_tensors
+                    copy_out = _copy_node(out)
+                    self._outs[index] = copy_out
+                    self._copy_out_tensors.add(copy_out)
+                    self._out_tensors.add(copy_out)
+                    self._out_tensors.remove(out)
 
         self._out_tensors = set(self._outs)
-        _pre_handle_placeholder(self._out_tensors)
+        _pre_handle_placeholder()
 
         visited_tensors = set()
         for tensor_i in self._out_tensors:
@@ -542,9 +543,9 @@ class ElewiseSchedule(Schedule):
 
         def __get_ub_tensor(_input_tensor, _output_tensor):
             if _input_tensor in self._placeholder_tensor_map:
-                _input_tensor = self._placeholder_tensor_map[_input_tensor]
+                _input_tensor = self._placeholder_tensor_map.get(_input_tensor, None)
             if _output_tensor in self._cache_write_tensor_map:
-                _output_tensor = self._cache_write_tensor_map[_output_tensor]
+                _output_tensor = self._cache_write_tensor_map.get(_output_tensor, None)
             return _input_tensor, _output_tensor
 
         # one of the input of the ternary instruction must be reused with the output, refer to "ternary_reuse_map"

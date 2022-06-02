@@ -1473,16 +1473,22 @@ bool Broadcast::CalcConstKey(const bool is_support_broadcast) {
   size_t key_index = 0;
   bool ret = true;
   if (is_support_broadcast) {
-    const int64_t min_broacast_num = 2;
-    bool verify_input = input_num == min_broacast_num;
+    const int64_t max_broacast_infer_num = 2;
+    bool verify_input = input_num <= max_broacast_infer_num;
     V_OP_TILING_CHECK(verify_input,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const unfold only support 2 dims"),
-                      return false);
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const unfold only support Less than or equal to  2 dims"),
+                    return false);
     std::array<int64_t, B_MAX_DIM_LEN> input_shape_x = input_shapes[0];
     std::array<int64_t, B_MAX_DIM_LEN> input_shape_y = input_shapes[1];
     std::vector<int64_t> const_shapes(dim_len, 0);
-    for (size_t i = 0; i < dim_len; i++) {
-      const_shapes[i] = static_cast<uint64_t>(input_shape_x[i]) & static_cast<uint64_t>(input_shape_y[i]);
+    if (input_num == max_broacast_infer_num) {
+      for (size_t i = 0; i < dim_len; i++) {
+        const_shapes[i] = static_cast<int64_t>(input_shape_x[i]) & static_cast<int64_t>(input_shape_y[i]);
+      }
+    } else {
+      for (size_t i = 0; i < dim_len; i++) {
+        const_shapes[i] = static_cast<int64_t>(input_shapes[0][i]);
+      }
     }
     ret = MatchConstShape(const_shapes, key_index);
   }

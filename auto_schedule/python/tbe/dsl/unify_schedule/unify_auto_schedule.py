@@ -390,8 +390,10 @@ class Builder:
         real_outs = util.get_sch_additional_entry(sch, "real_outs")
 
         if original_outs != real_outs:
-            for tensor_i in original_outs:
-                real_sch_tensors.remove(tensor_i)
+            # replace all original_outs with real_outs
+            out_start_index = len(real_sch_tensors) - len(original_outs)
+            out_end_index = len(real_sch_tensors)
+            del real_sch_tensors[out_start_index: out_end_index]
             for tensor_i in real_outs:
                 real_sch_tensors.append(tensor_i)
         real_sch_tensors = check_dyn_quantfuse_doubleout(real_sch_tensors, real_outs)
