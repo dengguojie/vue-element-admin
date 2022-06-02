@@ -864,3 +864,28 @@ TEST_F(Conv3DProtoTest, conv3d_DataSlice_Test2){
     auto status = op_desc->InferDataSlice();
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+// Test Format_NCDHW_Padding_VALID_int8
+TEST_F(Conv3DProtoTest, conv3d_Format_NCDHW_Padding_VALID_int8){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {2, 32, 3, 18, 18}, ge::DT_INT8, ge::FORMAT_NCDHW,
+      {2, 32, 3, 18, 18}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 32, 2, 3, 3}, ge::DT_INT8, ge::FORMAT_NCDHW,
+      {16, 32, 2, 3, 3}, ge::FORMAT_NCDHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {2, 16, 3, 18, 18}, ge::DT_INT32, ge::FORMAT_NCDHW,
+      {2, 16, 3, 18, 18}, ge::FORMAT_NCDHW));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    auto output_desc = op.GetOutputDesc("y");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
+}

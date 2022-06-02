@@ -54,6 +54,7 @@ from tbe.dsl.static_schedule.gemm_integrated_schedule_util import BufferChecker
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import UbBufferReuser
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.dsl.static_schedule.util import CalculateMultiUB
 
 
 def gemm_schedule(res, sch_list, dynamic_para=None):
@@ -5367,112 +5368,6 @@ class GemmSchedule:
             if preload and (self.tiling_work.tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2):
                 for tensor in self.container.tensors_in_l0c:
                     self.sch[tensor].preload()
-
-
-class CalculateMultiUB:
-    """
-    calculate cub multi_fused_num
-    """
-    BYTES_DTYPE = {"uint64": 8, "float16": 2, "float32": 4, "int32": 4,
-                    "int16": 2, "uint16": 2, "int8": 1, "uint8": 1,
-                    "int4": 0.5, "bool": 1}
-    ALIGN_BYTE = 32
-    MASK_SIZE_RATIO = 100
-    DEFAULT_SIZE = 2
-
-    def __init__(self, start_tensor, end_tensor, not_count_list):
-        self.start_tensor = start_tensor
-        self.end_tensor = end_tensor
-        self.not_count_list = not_count_list
-        self.tensor_occur_times = {}
-        self.ub_res = 0
-        self.scalar_size = 0
-
-    @staticmethod
-    def _get_shape_value(shape_object):
-        shape_object_value = int(functools.reduce(lambda x, y: x*y, shape_object))
-        return shape_object.value if hasattr(shape_object, "value") else shape_object_value
-
-    def calculate_start(self):
-        """
-        the enter to calculate the need of multi ub
-        """
-        self._calculate_multi_ub_auto()
-        end_tensor_shape = self._get_shape_value(self.end_tensor.shape)
-        self.scalar_size = (self.scalar_size + self.ALIGN_BYTE - 1) // self.ALIGN_BYTE * self.ALIGN_BYTE * \
-                           self.MASK_SIZE_RATIO
-        self.scalar_size = math.ceil(self.scalar_size / \
-                                     (end_tensor_shape * self.BYTES_DTYPE.get(self.end_tensor.dtype, 2)))
-        return self.ub_res, self.scalar_size
-
-    def _calculate_multi_ub_auto(self):
-        tensor_q = Queue()
-        tensor_q.put(self.end_tensor)
-        while not tensor_q.empty():
-            tensor_out = tensor_q.get()
-            if tensor_out == self.start_tensor:
-                self._compute_result(tensor_out)
-                continue
-            merge_flag = False
-            input_tensors = list(tensor_out.op.input_tensors)
-            for tensor_in in input_tensors:
-                if tensor_in in self.tensor_occur_times.keys():
-                    continue
-                if tensor_in in self.not_count_list:
-                    if tensor_in != self.start_tensor:
-                        self._merge_compute_inline(tensor_in, input_tensors)
-                    continue
-                tensor_q.put(tensor_in)
-                self.tensor_occur_times[tensor_in] = 1
-                if merge_flag:
-                    continue
-                if self._can_merge(tensor_out, tensor_in):
-                    merge_flag = True
-            if not merge_flag:
-                self._compute_result(tensor_out)
-        return True
-
-    def _merge_compute_inline(self, tensor, input_tensors):
-        tensor_not_count_q = Queue()
-        tensor_not_count_q.put(tensor)
-        while not tensor_not_count_q.empty():
-            cur_tensor = tensor_not_count_q.get()
-            for next_tensor in list(cur_tensor.op.input_tensors):
-                if next_tensor in self.not_count_list:
-                    if next_tensor != self.start_tensor:
-                        tensor_not_count_q.put(next_tensor)
-                else:
-                    input_tensors.append(next_tensor)
-        return True
-
-    def _can_merge(self, tensor_out, tensor_in):
-        if tensor_out.op.attrs is not None and "not_reuse_pre_tensors" in tensor_out.op.attrs:
-            if tensor_out.op.attrs["not_reuse_pre_tensors"].value:
-                return False
-
-        tensor_out_dtype = tensor_out.dtype
-        tensor_out_shape = self._get_shape_value(tensor_out.shape)
-        tensor_in_dtype = tensor_in.dtype
-        tensor_in_shape = self._get_shape_value(tensor_in.shape)
-        if self._not_count(tensor_in):
-            return False
-        can_merge = (tensor_out_dtype == tensor_in_dtype) and (tensor_out_shape == tensor_in_shape)
-        return can_merge
-
-    def _compute_result(self, tensor):
-        if self._not_count(tensor):
-            return
-        self.ub_res += self.BYTES_DTYPE.get(tensor.dtype, self.DEFAULT_SIZE)
-        return
-
-    def _not_count(self, tensor):
-        if tensor in self.not_count_list:
-            return True
-        shape_size = self._get_shape_value(tensor.shape)
-        if shape_size == 1:
-            self.scalar_size += self.BYTES_DTYPE.get(tensor.dtype, 2)
-            return True
-        return False
 
 
 class ComputeTiling:

@@ -838,5 +838,6 @@ def test_conv3d_fuzz_build_tilingcase(test_arg):
 print("adding test_conv3d_fuzz_build_tilingcase testcase")
 ut_case.add_cust_test_func(support_soc=('Ascend910A'), test_func=test_conv3d_fuzz_build_tilingcase)
 
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

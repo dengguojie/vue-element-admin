@@ -6,6 +6,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "nn_calculation_ops.h"
+#include "nonlinear_fuc_ops.h"
 #define private public
 #define protected public
 #include "buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.h"
@@ -32,7 +33,7 @@ protected:
 
 namespace fe {
   static Status RunConv3dBufferFusionPass(string fusionPassName, BufferFusionPassType passType,
-                                                   ge::ComputeGraph &computeGraph) {
+                                          ge::ComputeGraph &computeGraph, vector<ge::NodePtr> &fusion_nodes) {
       std::map<string, BufferFusionPassRegistry::CreateFn> createFns =
               BufferFusionPassRegistry::GetInstance().GetCreateFnByType(passType);
       const auto &iter = createFns.find(fusionPassName);
@@ -60,9 +61,9 @@ namespace fe {
                 if (opDesc->GetType() == "Conv3D") {
                   conv3dNodes.push_back(i);
                 }
-                if (opDesc->GetType() == "Mul") {
-                  opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({1, 32, 1, 240, 352, 16}));
-                  opDesc->MutableInputDesc(1)->SetShape(ge::GeShape({1, 32, 1, 240, 352, 16}));
+                if (opDesc->GetType() == "Mul" or opDesc->GetType() == "Add") {
+                  elemNodes.push_back(i);
+                } else if (opDesc->GetType() == "Relu") {
                   elemNodes.push_back(i);
                 }
                 if (opDesc->GetType() == "AscendDequant") {
@@ -88,7 +89,6 @@ namespace fe {
                   mapping[i] = requant_nodes;
                 }
               }
-              vector<ge::NodePtr> fusion_nodes;
               InputSplitInfo input_split_info;
               vector<int64_t> axis = {0};
               int64_t idx = 0;
@@ -107,7 +107,7 @@ namespace fe {
               split_map.AddInputSplitInfo(input_split_info);
               split_map.AddOutputSplitInfo(output_split_info);
               vector<AxisSplitMap> split_map_vec = {split_map};
-              SetSplitMapMainNode(split_map_vec, conv3dNodes, "Conv3dBackpropOp");
+              SetSplitMapMainNode(split_map_vec, conv3dNodes, "Conv3dOp");
               BufferFusionPassBasePtr->GetFusionNodes(mapping, fusion_nodes);
               BufferFusionPassBasePtr->SetSplitInfo(mapping, fusion_nodes);
 
@@ -151,8 +151,8 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_elemwise_fusion_test_1) {
     auto x2_shape = vector<int64_t>({1, 32, 240, 352, 16});
     ge::TensorDesc x2_desc(ge::Shape(x2_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
     auto data_x2 = op::Data("data_x2");
-    data_x.update_input_desc_x(x_desc);
-    data_x.update_output_desc_y(x_desc);
+    data_x2.update_input_desc_x(x2_desc);
+    data_x2.update_output_desc_y(x2_desc);
 
     auto mul = op::Mul("mul")
         .set_input_x1(conv3d)
@@ -164,16 +164,258 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_elemwise_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, *compute_graph_ptr);
-
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
+    EXPECT_EQ(res, fe::SUCCESS);
     bool find_mul = false;
-    for (auto node: compute_graph_ptr->GetAllNodes()) {
+    for (auto node: fusion_nodes) {
         if (node->GetType() == "Mul") {
             find_mul = true;
         }
     }
-    EXPECT_EQ(find_mul, true);
+    EXPECT_EQ(find_mul, false);
 }
+
+
+TEST_F(conv3d_elemwise_fusion_test, conv3d_add_relu) {
+    ge::Graph graph("conv3d_add_relu");
+
+    auto x_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x_desc(ge::Shape(x_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x = op::Data("data_x");
+    data_x.update_input_desc_x(x_desc);
+    data_x.update_output_desc_y(x_desc);
+
+    TensorDesc filter_desc(ge::Shape({3,3,3,16,16}), FORMAT_DHWCN, DT_FLOAT16);
+    Tensor weighttensor1(filter_desc);
+    auto data_filter = op::Const().set_attr_value(weighttensor1);
+
+    auto conv3d = op::Conv3D("conv3d")
+        .set_input_x(data_x)
+        .set_input_filter(data_filter)
+        .set_attr_strides({1, 1, 1, 1, 1})
+        .set_attr_pads({1, 1, 1, 1, 1, 1})
+        .set_attr_dilations({1, 1, 1, 1, 1})
+        .set_attr_groups({1})
+        .set_attr_data_format("NDHWC");
+
+    TensorDesc conv3d_input_desc_x(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    TensorDesc conv3d_input_desc_filter(ge::Shape(), FORMAT_DHWCN, DT_FLOAT16);
+    TensorDesc conv3d_output_desc_y(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    conv3d.update_input_desc_x(conv3d_input_desc_x);
+    conv3d.update_input_desc_filter(conv3d_input_desc_filter);
+    conv3d.update_output_desc_y(conv3d_output_desc_y);
+
+    auto x2_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x2_desc(ge::Shape(x2_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x2 = op::Data("data_x2");
+    data_x2.update_input_desc_x(x2_desc);
+    data_x2.update_output_desc_y(x2_desc);
+
+    auto add = op::Add("add")
+        .set_input_x1(conv3d)
+        .set_input_x2(data_x2);
+    auto relu = op::Relu("relu")
+        .set_input_x(add);
+
+    std::vector<Operator> inputs{data_x, data_x2};
+    std::vector<Operator> outputs{relu};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
+    EXPECT_EQ(res, fe::SUCCESS);
+    bool find_add = false;
+    bool find_relu = false;
+    for (auto node: fusion_nodes) {
+        if (node->GetType() == "Add") {
+            find_add = true;
+        } else if (node->GetType() == "Relu") {
+            find_relu = true;
+        }
+    }
+    EXPECT_EQ(find_add, false);
+    EXPECT_EQ(find_relu, false);
+}
+
+
+TEST_F(conv3d_elemwise_fusion_test, conv3d_add) {
+    ge::Graph graph("conv3d_add");
+
+    auto x_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x_desc(ge::Shape(x_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x = op::Data("data_x");
+    data_x.update_input_desc_x(x_desc);
+    data_x.update_output_desc_y(x_desc);
+
+    TensorDesc filter_desc(ge::Shape({3,3,3,16,16}), FORMAT_DHWCN, DT_FLOAT16);
+    Tensor weighttensor1(filter_desc);
+    auto data_filter = op::Const().set_attr_value(weighttensor1);
+
+    auto conv3d = op::Conv3D("conv3d")
+        .set_input_x(data_x)
+        .set_input_filter(data_filter)
+        .set_attr_strides({1, 1, 1, 1, 1})
+        .set_attr_pads({1, 1, 1, 1, 1, 1})
+        .set_attr_dilations({1, 1, 1, 1, 1})
+        .set_attr_groups({1})
+        .set_attr_data_format("NDHWC");
+
+    TensorDesc conv3d_input_desc_x(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    TensorDesc conv3d_input_desc_filter(ge::Shape(), FORMAT_DHWCN, DT_FLOAT16);
+    TensorDesc conv3d_output_desc_y(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    conv3d.update_input_desc_x(conv3d_input_desc_x);
+    conv3d.update_input_desc_filter(conv3d_input_desc_filter);
+    conv3d.update_output_desc_y(conv3d_output_desc_y);
+
+    auto x2_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x2_desc(ge::Shape(x2_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x2 = op::Data("data_x2");
+    data_x2.update_input_desc_x(x2_desc);
+    data_x2.update_output_desc_y(x2_desc);
+
+    auto add = op::Add("add")
+        .set_input_x1(conv3d)
+        .set_input_x2(data_x2);
+
+    std::vector<Operator> inputs{data_x, data_x2};
+    std::vector<Operator> outputs{add};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
+    EXPECT_EQ(res, fe::SUCCESS);
+    bool find_add = false;
+    for (auto node: fusion_nodes) {
+        if (node->GetType() == "Add") {
+            find_add = true;
+        }
+    }
+    EXPECT_EQ(find_add, false);
+}
+
+
+TEST_F(conv3d_elemwise_fusion_test, conv3d_relu) {
+    ge::Graph graph("conv3d_relu");
+
+    auto x_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x_desc(ge::Shape(x_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x = op::Data("data_x");
+    data_x.update_input_desc_x(x_desc);
+    data_x.update_output_desc_y(x_desc);
+
+    TensorDesc filter_desc(ge::Shape({3,3,3,16,16}), FORMAT_DHWCN, DT_FLOAT16);
+    Tensor weighttensor1(filter_desc);
+    auto data_filter = op::Const().set_attr_value(weighttensor1);
+
+    auto conv3d = op::Conv3D("conv3d")
+        .set_input_x(data_x)
+        .set_input_filter(data_filter)
+        .set_attr_strides({1, 1, 1, 1, 1})
+        .set_attr_pads({1, 1, 1, 1, 1, 1})
+        .set_attr_dilations({1, 1, 1, 1, 1})
+        .set_attr_groups({1})
+        .set_attr_data_format("NDHWC");
+
+    TensorDesc conv3d_input_desc_x(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    TensorDesc conv3d_input_desc_filter(ge::Shape(), FORMAT_DHWCN, DT_FLOAT16);
+    TensorDesc conv3d_output_desc_y(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    conv3d.update_input_desc_x(conv3d_input_desc_x);
+    conv3d.update_input_desc_filter(conv3d_input_desc_filter);
+    conv3d.update_output_desc_y(conv3d_output_desc_y);
+
+    auto x2_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x2_desc(ge::Shape(x2_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x2 = op::Data("data_x2");
+    data_x.update_input_desc_x(x_desc);
+    data_x.update_output_desc_y(x_desc);
+
+    auto relu = op::Relu("relu")
+        .set_input_x(conv3d);
+
+    std::vector<Operator> inputs{data_x, data_x2};
+    std::vector<Operator> outputs{relu};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
+    EXPECT_EQ(res, fe::SUCCESS);
+    bool find_relu = false;
+    for (auto node: fusion_nodes) {
+        if (node->GetType() == "Relu") {
+            find_relu = true;
+        }
+    }
+    EXPECT_EQ(find_relu, true);
+}
+
+TEST_F(conv3d_elemwise_fusion_test, conv3d_dyn) {
+    ge::Graph graph("conv3d_dyn");
+
+    auto x_shape = vector<int64_t>({1, 32, -1, 352, 16});
+    ge::TensorDesc x_desc(ge::Shape(x_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x = op::Data("data_x");
+    data_x.update_input_desc_x(x_desc);
+    data_x.update_output_desc_y(x_desc);
+
+    TensorDesc filter_desc(ge::Shape({3,3,3,16,16}), FORMAT_DHWCN, DT_FLOAT16);
+    Tensor weighttensor1(filter_desc);
+    auto data_filter = op::Const().set_attr_value(weighttensor1);
+
+    auto conv3d = op::Conv3D("conv3d")
+        .set_input_x(data_x)
+        .set_input_filter(data_filter)
+        .set_attr_strides({1, 1, 1, 1, 1})
+        .set_attr_pads({1, 1, 1, 1, 1, 1})
+        .set_attr_dilations({1, 1, 1, 1, 1})
+        .set_attr_groups({1})
+        .set_attr_data_format("NDHWC");
+
+    TensorDesc conv3d_input_desc_x(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    TensorDesc conv3d_input_desc_filter(ge::Shape(), FORMAT_DHWCN, DT_FLOAT16);
+    TensorDesc conv3d_output_desc_y(ge::Shape(), FORMAT_NDHWC, DT_FLOAT16);
+    conv3d.update_input_desc_x(conv3d_input_desc_x);
+    conv3d.update_input_desc_filter(conv3d_input_desc_filter);
+    conv3d.update_output_desc_y(conv3d_output_desc_y);
+
+    auto x2_shape = vector<int64_t>({1, 32, 240, 352, 16});
+    ge::TensorDesc x2_desc(ge::Shape(x2_shape), ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    auto data_x2 = op::Data("data_x2");
+    data_x.update_input_desc_x(x_desc);
+    data_x.update_output_desc_y(x_desc);
+
+    auto relu = op::Relu("relu")
+        .set_input_x(conv3d);
+
+    std::vector<Operator> inputs{data_x, data_x2};
+    std::vector<Operator> outputs{relu};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
+    EXPECT_EQ(res, fe::SUCCESS);
+    bool find_relu = false;
+    for (auto node: fusion_nodes) {
+        if (node->GetType() == "Relu") {
+            find_relu = true;
+        }
+    }
+    EXPECT_EQ(find_relu, false);
+}
+
 
 TEST_F(conv3d_elemwise_fusion_test, conv3d_dequant_fusion_test) {
     ge::Graph graph("conv3d_dequant_fusion_test");
@@ -210,8 +452,14 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_dequant_fusion_test) {
     conv3d.update_input_desc_filter(conv3d_input_desc_filter);
     conv3d.update_output_desc_y(conv3d_output_desc_y);
 
+    TensorDesc deq_desc(ge::Shape({76}), FORMAT_NCDHW, DT_FLOAT);
+    float deqScale = 1.0;
+    Tensor deq_scale_tensor(deq_desc, reinterpret_cast<uint8_t*>(&deqScale), sizeof(float));
+    auto deq_scale = op::Const("deq_scale").set_attr_value(deq_scale_tensor);
+
     auto dequant_op = op::AscendDequant("dequant");
     dequant_op.set_input_x(conv3d);
+    dequant_op.set_input_deq_scale(deq_scale);
 
     std::vector<Operator> inputs{X1Data, X2Data};
     std::vector<Operator> outputs{dequant_op};
@@ -219,9 +467,17 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_dequant_fusion_test) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    Status res = fe::RunConv3dBufferFusionPass("TbeConv3dElemwisePass",
-                                               fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, *compute_graph_ptr);
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
     EXPECT_EQ(res, fe::SUCCESS);
+    bool find_dequant = false;
+    for (auto node: fusion_nodes) {
+        if (node->GetType() == "AscendDequant") {
+            find_dequant = true;
+        }
+    }
+    EXPECT_EQ(find_dequant, false);
 }
 
 TEST_F(conv3d_elemwise_fusion_test, conv3d_requant_fusion_test) {
@@ -259,8 +515,13 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_requant_fusion_test) {
     conv3d.update_input_desc_filter(conv3d_input_desc_filter);
     conv3d.update_output_desc_y(conv3d_output_desc_y);
 
+    TensorDesc req_desc(ge::Shape({76}), FORMAT_NCDHW, DT_UINT64);
+    Tensor req_scale_tensor(req_desc);
+    auto req_scale = op::Const().set_attr_value(req_scale_tensor);
+
     auto requant_op = op::AscendRequant("requant");
     requant_op.set_input_x(conv3d);
+    requant_op.set_input_req_scale(req_scale);
 
     std::vector<Operator> inputs{X1Data, X2Data};
     std::vector<Operator> outputs{requant_op};
@@ -268,7 +529,15 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_requant_fusion_test) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    Status res = fe::RunConv3dBufferFusionPass("TbeConv3dElemwisePass",
-                                               fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, *compute_graph_ptr);
+    vector<ge::NodePtr> fusion_nodes;
+    Status res = RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                           *compute_graph_ptr, fusion_nodes);
     EXPECT_EQ(res, fe::SUCCESS);
+    bool find_requant = false;
+    for (auto node: fusion_nodes) {
+        if (node->GetType() == "AscendRequant") {
+            find_requant = true;
+        }
+    }
+    EXPECT_EQ(find_requant, false);
 }

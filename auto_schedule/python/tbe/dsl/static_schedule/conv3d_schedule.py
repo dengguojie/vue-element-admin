@@ -924,6 +924,7 @@ class CceConv3dOp:
         stride_d = c_col.op.attrs['stride_d']
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         kernel_d = c_ub.op.attrs['kernel_d']
+
         def _al1_intrin_mapping():
             if cyclebuffer_flag and not self.var_map:
                 # Specifies AL1 memory
@@ -1362,6 +1363,7 @@ class CceConv3dOp:
         stride_w = c_ub.op.attrs['stride'][1]
         dilation_w = c_ub.op.attrs['dilation'][1]
         self._set_dhw()
+
         def _get_w_out():
             if "fmap_w" in self.var_map:
                 return self.var_map.get("w_out")

@@ -396,6 +396,63 @@ def test_conv3d_dequant_fusion_scene(test_args):
     tbe.build(sch, config)
 ut_case.add_cust_test_func(test_func=test_conv3d_dequant_fusion_scene)
 
+# test conv3d+dequant scene
+def test_conv3d_dequant_fusion_scale_scene(test_args):
+    from impl.util.platform_adapter import tvm
+    from impl.util.platform_adapter import tbe
+    from impl.conv3d import conv3d_fusion_compute
+    from impl.ascend_dequant import ascend_dequant_compute
+
+    shape_fmap = tvm.placeholder((3, 98, 1, 116, 67, 32),
+                                  name='params_0',
+                                  dtype='int8',
+                                  attrs={"ori_shape": (3, 98, 116, 67, 26),
+                                         "format": 'NDC1HWC0'})
+    shape_filter = tvm.placeholder((104, 1, 16, 32),
+                                  name='params_1',
+                                  dtype='int8',
+                                  attrs={"ori_shape": (1, 26, 1, 4, 26),
+                                         "ori_format": 'NDHWC'})
+
+    bias = tvm.placeholder((1,), name='params_2', attrs={'format': 'NCDHW', "ori_shape": (1,)}, dtype='int32')
+
+    output = {'ori_shape': (3, 1, 17, 6, 5), 'shape': (3, 17, 1, 6, 5, 16),
+              'ori_format': 'NCDHW', 'format': 'NDC1HWC0', 'dtype': 'int32'}
+
+    strides = [1, 1, 6, 22, 15]
+    pads = [12, 12, 0, 0, 0, 0]
+
+    res = conv3d_fusion_compute(shape_fmap,
+                          shape_filter,
+                          bias,
+                          offset_w=None,
+                          output=output,
+                          strides=strides,
+                          pads=pads,
+                          dilations=(1, 1, 1, 1, 1),
+                          groups=1,
+                          data_format="NDHWC",
+                          offset_x=127,
+                          kernel_name="conv3d")
+
+    shape_out = {"shape": (3, 17, 1, 6, 5, 16), "dtype": 'float16', "format": 'NDC1HWC0',
+                 "ori_shape": (3, 1, 17, 6, 5), "ori_format": 'NCDHW'}
+    deq_tensor = tvm.placeholder((1, 1, 1, 1, 1, 16), name='deq_tensor',
+                 attrs={'format': 'NCDHW', "ori_shape": (1,)}, dtype='float16')
+    out = ascend_dequant_compute(res, deq_tensor, shape_out, sqrt_mode=False, relu_flag=False, kernel_name='conv3d_dequant_scale')
+    tensor_list = [shape_fmap, shape_filter, bias, deq_tensor, out]
+
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(out)
+
+    config = {
+            "name": "test_conv3d_dequant_scale",
+            "tensor_list": tensor_list,
+        }
+    tbe.build(sch, config)
+ut_case.add_cust_test_func(test_func=test_conv3d_dequant_fusion_scale_scene)
+
+
 # test conv3d+requant scene
 def test_conv3d_requant_fusion_scene(test_args):
     from impl.util.platform_adapter import tvm
@@ -485,6 +542,7 @@ def test_conv3d_requant_fusion_scene(test_args):
     finally:
         TILING_INSTANCE.instance_refresh(tiling_type, tiling_params, {})
 ut_case.add_cust_test_func(test_func=test_conv3d_requant_fusion_scene)
+
 
 # test_conv3d_succ_d
 success_case1 = _run_api_end_with_d()
