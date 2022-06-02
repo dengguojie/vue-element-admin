@@ -1101,7 +1101,6 @@ class Argmin():
         tbe_context.get_context().add_compile_info("vars", {
             "ub_ele": self.ub_ele,
             "core_num": self.core_num,
-            "axis": self.axis,
         })
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.data_gm],

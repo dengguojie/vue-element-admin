@@ -1,0 +1,45 @@
+[
+  {
+    "case_name": "ArgMaxWithValue_rank_shape_case_000",
+    "calc_expect_func_file":"test_arg_max_with_value_golden.py:calc_expect_func",
+    "op": "ArgMaxWithValue",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16"],
+        "shape": [-2],
+        "data_distribute": ["uniform"],
+        "typical_shape": [5, 8,16,16],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["int32"],
+        "shape": [5,16,16],
+        "typical_shape": [5,16,16],
+        "name": "index"
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16"],
+        "shape": [5,16,16],
+        "typical_shape": [5,16,16],
+        "name": "value"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  }
+]

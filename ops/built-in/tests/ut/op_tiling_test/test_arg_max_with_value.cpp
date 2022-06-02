@@ -68,6 +68,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_0) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -85,6 +86,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_1) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -102,6 +104,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_2) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -119,6 +122,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_3) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -136,6 +140,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_4) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -153,6 +158,7 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -169,8 +175,41 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_6) {
 
   auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "9 3 5 521 5 128 9 0 0 0 0 0 128 128 0 0 9 128 119 ");
+}
+TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_7) {
+  std::string op_name = "ArgMaxWithValue";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
+
+  std::vector<int64_t> input = {35, 5, 128};
+
+  auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+}
+TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_8) {
+  std::string op_name = "ArgMaxWithValue";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
+
+  std::vector<int64_t> input = {35, 5, 126};
+
+  auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_ND, {});
+  opParas.SetAttr("dimension", 1);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }

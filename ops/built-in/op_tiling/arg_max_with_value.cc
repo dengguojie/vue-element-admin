@@ -36,7 +36,26 @@ using namespace ge;
 using namespace std;
 
 const int32_t MAX_SEGMENT_LEN = 2048 * 4;
-static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_ele", "core_num", "axis"};
+const int32_t DATA_EACH_BLOCK_FLOAT16 = 16;
+const int32_t DATA_EACH_VECTOR_FLOAT16 = 128;
+const int32_t MAX_AXIS_SIZE_ONE_TIME = 240;
+const int32_t DATA_1 = 1;
+const int32_t DATA_2 = 2;
+const int32_t DATA_4 = 4;
+const int32_t DATA_8 = 8;
+const int32_t TILING_MODE_3 = 3;
+const int32_t TILING_MODE_4 = 4;
+const int32_t TILING_MODE_5 = 5;
+const int32_t TILING_MODE_6 = 6;
+const int32_t TILING_MODE_7 = 7;
+const int32_t TILING_MODE_8 = 8;
+const int32_t TILING_MODE_9 = 9;
+const int32_t TILING_MODE_10 = 10;
+const int32_t TILING_MODE_11 = 11;
+const int32_t TILING_MODE_12 = 12;
+const int32_t MAX_AXIS_SIZE = 2048;
+const struct ops::AttrBase DIMENSION_DIMS_INFO(0, "dimension");
+static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_ele", "core_num"};
 
 struct TilingParam {
   int32_t tiling_mode;
@@ -122,8 +141,8 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
   int32_t data_each_vector = 64;
   int32_t segment = MAX_SEGMENT_LEN;  // for arg at last dim
   if (dtype == ge::DT_FLOAT16) {
-    data_each_block = 16;
-    data_each_vector = 128;
+    data_each_block = DATA_EACH_BLOCK_FLOAT16;
+    data_each_vector = DATA_EACH_VECTOR_FLOAT16;
     segment = MAX_SEGMENT_LEN * 2;  // for arg at last dim
   }
 
@@ -165,7 +184,7 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
     // select branch
     if (dtype == ge::DT_FLOAT16 && param.axis_size < MAX_SEGMENT_LEN) {
       param.tiling_mode = 0;  // compute_argxxx_last_axis_fp16_copy_one_time
-      if (param.axis_size <= data_each_vector * 2) {
+      if (param.axis_size <= data_each_vector * DATA_2) {
         param.align_num = GetAlignNum(param.axis_size, data_each_block);
         // calc axis size one time: the size one move can copy to ub at core_segment
         int32_t vector_size = 0;
@@ -177,8 +196,8 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
         } else {
           vector_size = GetCeilInt(param.axis_size, data_each_block) * data_each_block;
           axis_size_one_time = static_cast<int32_t>((segment / vector_size));
-          axis_size_one_time = ((axis_size_one_time > 240) || (param.align_num == 1))
-                                   ? 240
+          axis_size_one_time = ((axis_size_one_time > MAX_AXIS_SIZE_ONE_TIME) || (param.align_num == 1))
+                                   ? MAX_AXIS_SIZE_ONE_TIME
                                    : axis_size_one_time;  // 240: (int)(255 / 16) * 16
           axis_size_one_time = static_cast<int32_t>((axis_size_one_time * param.align_num / 240) * 240);
         }
@@ -188,23 +207,20 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
         param.one_core_segment_tail = param.one_core_ele % axis_size_one_time;
         param.last_core_segment_loop = param.last_core_ele / axis_size_one_time;
         param.last_core_segment_tail = param.last_core_ele % axis_size_one_time;
-        if (param.axis_size >= data_each_vector) {
-          param.tiling_mode = 1;  // compute_argxxx_last_axis_fp16_more_vector
-        } else {
-          param.tiling_mode = 2;  // compute_argxxx_last_axis_fp16_less_vector
-        }
+        // compute_argxxx_last_axis_fp16_vector
+        param.tiling_mode = (param.axis_size >= data_each_vector) ? DATA_1 : DATA_2;
       }
     } else {
       // tiling at last dim
       param.loop_times = param.axis_size / segment;
       param.tail_size = param.axis_size % segment;
       if (dtype == ge::DT_FLOAT) {
-        param.tiling_mode = 4;  // compute_argxxx_last_axis_fp32
+        param.tiling_mode = TILING_MODE_4;  // compute_argxxx_last_axis_fp32
         if (param.loop_times == 0) {
-          param.tiling_mode = 12;  // compute_argxxx_last_axis_fp32 for zero loop
+          param.tiling_mode = TILING_MODE_12;  // compute_argxxx_last_axis_fp32 for zero loop
         }
       } else {
-        param.tiling_mode = 3;  // compute_argxxx_last_axis_fp16
+        param.tiling_mode = TILING_MODE_3;  // compute_argxxx_last_axis_fp16
       }
     }
   } else {
@@ -252,15 +268,14 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
       }
       // select branch
       if (dtype == ge::DT_FLOAT) {
-        param.tiling_mode = 5;  // do_not_last
+        param.tiling_mode = TILING_MODE_5;  // do_not_last
+      } else if (param.axis_size <= MAX_AXIS_SIZE && param.last_dim_size % data_each_block == 0 &&
+                 param.last_dim_size / data_each_block <= DATA_4 * DATA_8) {
+        param.tiling_mode = TILING_MODE_7;
+      } else if (param.axis_size <= MAX_AXIS_SIZE) {
+        param.tiling_mode = TILING_MODE_6;
       } else {
-        param.tiling_mode = 10;  // do_not_last
-        if (param.axis_size <= 2048) {
-          param.tiling_mode = 6;  // do_not_last_fp16_default
-          if (param.last_dim_size % data_each_block == 0 && param.last_dim_size / data_each_block <= 4 * 8) {
-            param.tiling_mode = 7;  // do_not_last_fp16_aglin
-          }
-        }
+        param.tiling_mode = TILING_MODE_10;
       }
     } else {
       // calc core number at last_dim
@@ -294,12 +309,11 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
       }
       // select branch
       if (dtype == ge::DT_FLOAT) {
-        param.tiling_mode = 8;  // do_not_last
-      } else {
-        param.tiling_mode = 11;  // do_not_last
-        if (param.axis_size <= 2048) {
-          param.tiling_mode = 9;  // do_not_last_fp16_default
-        }
+        param.tiling_mode = TILING_MODE_8;  // do_not_last
+      } else if (param.axis_size <= MAX_AXIS_SIZE) {
+        param.tiling_mode = TILING_MODE_9;  // do_not_last_fp16_default
+      } else{
+        param.tiling_mode = TILING_MODE_11;  // do_not_last
       }
     }
   }
@@ -323,7 +337,10 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
 
   int32_t ub_ele = static_cast<int32_t>(op_info[0]);
   int32_t core_num = static_cast<int32_t>(op_info[1]);
-  int32_t axis = static_cast<int32_t>(op_info[2]);
+  int32_t axis = 0;
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, DIMENSION_DIMS_INFO, axis),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "GetCompileParams, get dimension failed."),
+                    return false);
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   // check axis value and set to positive value
   auto input_desc = operator_info->MutableInputDesc(0);
