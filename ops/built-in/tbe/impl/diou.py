@@ -142,7 +142,6 @@ class DIoU():
     def data_move_in_and_trans(self, mask, repeat_time, one_loop_shape, gm_offset, nbust):
         boxes_xy = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "boxes_xy")
         boxes_wh = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "boxes_wh")
-        self.tik_instance.vadd(mask, self.bboxes_y1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
 
         self.tik_instance.data_move(boxes_xy, self.gtboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
         self.tik_instance.data_move(boxes_wh, self.gtboxes_gm[gm_offset + self.bboxes_shape[1] * 2], 0, 1, nbust, 0, 0)
@@ -164,6 +163,7 @@ class DIoU():
         self.tik_instance.data_move(boxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
         self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
         self.tik_instance.vsub(mask, self.bboxes_y0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.bboxes_y1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
 
     def data_move_in(self, gm_offset, nbust):
         self.tik_instance.data_move(self.gtboxes_x0, self.gtboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
