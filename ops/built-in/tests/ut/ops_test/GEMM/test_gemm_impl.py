@@ -1129,6 +1129,7 @@ def test_gemm_error_vector_mul_vector(test_arg):
         func_name = 'test_gemm_error_vector_mul_vector'
         raise RuntimeError("Run {} fail.".format(func_name))
 
+
 ut_case.add_cust_test_func(test_func=test_gemm_shapa_a_and_b_dtype_not_equal)
 ut_case.add_cust_test_func(test_func=test_gemm_shapa_alpha_beta_dtype_not_equal)
 ut_case.add_cust_test_func(test_func=test_gemm_shapa_alpha_out_dtype_not_equal)

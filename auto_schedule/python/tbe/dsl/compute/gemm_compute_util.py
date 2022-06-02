@@ -401,7 +401,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         if trans:
             compute_params["trans"] = False
             res = self.fract_change_inner_axis(ori_tensor, compute_params)
@@ -412,7 +411,7 @@ class FormatCompute(object):
         shapes, lambda_expression_str = self._trans_pose(ori_tensor_shape, perm)
 
         res = tvm.compute(shapes, eval(lambda_expression_str, locals()), name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info})
+            attrs={"mode": mode_info})
         return res
 
     def fract_change_inner_axis(self, ori_tensor, compute_params):
@@ -427,7 +426,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         if trans:
             compute_params["trans"] = False
             res = self.fract_change_outer_axis(ori_tensor, compute_params)
@@ -437,7 +435,7 @@ class FormatCompute(object):
         shapes, lambda_expression_str = self._trans_pose(ori_tensor_shape, perm)
 
         res = tvm.compute(shapes, eval(lambda_expression_str, locals()), name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info})
+            attrs={"mode": mode_info})
         return res
 
     def fract_change_both_axis(self, ori_tensor, compute_params):
@@ -452,7 +450,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if trans:
             shapes = ori_tensor_shape
@@ -462,14 +459,8 @@ class FormatCompute(object):
             shapes, lambda_expression_str = self._trans_pose(ori_tensor_shape, perm)
             lambda_expression = eval(lambda_expression_str, locals())
 
-        if mode_info:
-            res = tvm.compute(
-                shapes,
-                lambda_expression,
-                name=tensor_name,
-                attrs={"mode": mode_info, "format_info": format_info})
-        else:
-            res = tvm.compute(shapes, lambda_expression, name=tensor_name)
+        compute_attrs = {"mode": mode_info} if mode_info else {}
+        res = tvm.compute(shapes, lambda_expression, name=tensor_name, attrs=compute_attrs)
         return res
 
     def compute_nd2zz_vnchwconv(self, ori_tensor, compute_params):
@@ -484,9 +475,8 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
-        mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         trans = compute_params.get("trans")
+        mode_info = compute_params.get("mode_info")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         tensor_fract_k_shape = ori_tensor_shape[:-2] + [
             int_ceil_div(ori_tensor_shape[-2], block_in),
@@ -522,7 +512,7 @@ class FormatCompute(object):
             tensor_matrix_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
         return res
 
@@ -538,7 +528,6 @@ class FormatCompute(object):
         block_in = compute_params.get("block_in")
         block_reduce = compute_params.get("block_reduce")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         ori_tensor_shape[-1], ori_tensor_shape[-2] = ori_tensor_shape[-2], ori_tensor_shape[-1]
         tensor_matrix_shape = ori_tensor_shape[:-2] + [
@@ -558,7 +547,7 @@ class FormatCompute(object):
             tensor_matrix_shape,
             lambda_expression,
             name="tensor_a_zz",
-            attrs={"mode": mode_info, "format_info": format_info})
+            attrs={"mode": mode_info})
 
         return res
 
@@ -575,7 +564,6 @@ class FormatCompute(object):
         block_reduce = compute_params.get("block_reduce")
         data_flow = compute_params.get("data_flow")
         mode_info = compute_params.get("mode_info", "none")
-        format_info = compute_params.get("format_info", "none")
         trans = compute_params.get("trans")
         int82int32_trans_flag = (data_flow == "int82int32") and trans
         if int82int32_trans_flag:
@@ -609,7 +597,7 @@ class FormatCompute(object):
             tensor_matrix_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
         return res
 
@@ -625,7 +613,6 @@ class FormatCompute(object):
         block_reduce = compute_params.get("block_reduce")
         data_flow = compute_params.get("data_flow")
         mode_info = compute_params.get("mode_info", "none")
-        format_info = compute_params.get("format_info", "none")
         trans = compute_params.get("trans")
         int82int32_trans_flag = (data_flow == "int82int32") and trans
         if int82int32_trans_flag:
@@ -653,13 +640,13 @@ class FormatCompute(object):
             tensor_matrix_shape,
             lambda_expression,
             name=compute_params.get("tensor_name"),
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
         res_matrix = tvm.compute(
             tensor_matrix_shape,
             lambda *indices: res_fract(*indices[:-4], 0, indices[-3], 0, indices[-1]),
             name="tensor_a_zz",
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
         return res_matrix
 
@@ -675,7 +662,6 @@ class FormatCompute(object):
         block_out = compute_params.get("block_out")
         block_reduce = compute_params.get("block_reduce")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         trans = compute_params.get("trans")
         data_flow = compute_params.get("data_flow")
         int82int32_no_trans_flag = (data_flow == "int82int32") and (not trans)
@@ -691,7 +677,7 @@ class FormatCompute(object):
             fract_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
 
         return res
@@ -708,7 +694,6 @@ class FormatCompute(object):
         block_out = compute_params.get("block_out")
         block_reduce = compute_params.get("block_reduce")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
 
         normalize_shape = [self._get_value(i) for i in ori_tensor.shape]
         normalize_shape[-1], normalize_shape[-2] = normalize_shape[-2], normalize_shape[-1]
@@ -729,7 +714,7 @@ class FormatCompute(object):
                                               indices[-3]*block_out + indices[-2],
                                               indices[-4]*block_reduce + indices[-1]),
             name="tensor_b_zn",
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
         return res
 
@@ -746,7 +731,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         block_out = compute_params.get("block_out")
         block_reduce = compute_params.get("block_reduce")
-        format_info = compute_params.get("format_info")
         trans = compute_params.get("trans")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         tensor_fract_shape = ori_tensor_shape[:-2] + [
@@ -783,7 +767,7 @@ class FormatCompute(object):
             tensor_matrix_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": "nd2Zn_vnchwconv", "format_info": format_info}
+            attrs={"mode": "nd2Zn_vnchwconv"}
         )
         return tensor_matrix
 
@@ -801,7 +785,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         if not trans:
             fract_shape, lambda_expression = self._lambda_nd2nz(ori_tensor, block_in, block_reduce)
         else:
@@ -811,7 +794,7 @@ class FormatCompute(object):
             fract_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
 
         return res
@@ -828,7 +811,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         ori_shape = [self._get_value(i) for i in ori_tensor.shape]
         if not trans:
             tensor_a_normalize_shape = ori_shape[:-4] + [
@@ -854,7 +836,7 @@ class FormatCompute(object):
             tensor_a_normalize_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
 
         return res
@@ -871,7 +853,6 @@ class FormatCompute(object):
         tensor_name = compute_params.get("tensor_name")
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
-        format_info = compute_params.get("format_info")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if not trans:
             tensor_normalize_shape = ori_tensor_shape[:-4] + [
@@ -897,7 +878,7 @@ class FormatCompute(object):
             tensor_normalize_shape,
             lambda_expression,
             name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info}
+            attrs={"mode": mode_info}
         )
 
         return res

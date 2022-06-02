@@ -71,9 +71,7 @@ def gemm(tensor_a, tensor_b, para_dict):
     para_dict["trans_b"] = trans_b
 
     gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
-    gemm_compute.calculate()
-    result = gemm_compute.res
-
+    result = gemm_compute.calculate()
     return result
 
 
@@ -107,21 +105,16 @@ class GEMMComputeParam:
         2: a is fractal b is ND
         3: a is ND b is fractal
         """
-        if (format_a == "ND" and format_b == "ND"):
-            op_type_flag = 0
-        elif (format_a != "ND" and format_b == "ND"):
-            op_type_flag = 2
-        elif (format_a == "ND" and format_b != "ND"):
-            op_type_flag = 3
-        else:
-            op_type_flag = 1
-        if mmad_mode == "gemv" and op_type_flag in (2, 3):
-            change_value_dict = {
-                2: 3,
-                3: 2
-            }
-            op_type_flag = change_value_dict.get(op_type_flag)
-
+        if mmad_mode == "gemv":
+            format_a, format_b = format_b, format_a
+        dict_op_type = {
+            "True_True": 0,
+            "False_False": 1,
+            "False_True": 2,
+            "True_False": 3
+        }
+        key_op_type = "{}_{}".format(str(format_a == "ND"), str(format_b == "ND"))
+        op_type_flag = dict_op_type.get(key_op_type)
         return op_type_flag
 
     @staticmethod
@@ -157,14 +150,14 @@ class GEMMComputeParam:
         """
         get trans flag inorder to get tiling
         """
-        trans_flag = 1
-        if transpose_a:
-            if transpose_b:
-                trans_flag = 4
-            else:
-                trans_flag = 2
-        elif transpose_b:
-            trans_flag = 3
+        dict_trans_flag = {
+            "False_False": 1,
+            "True_False": 2,
+            "False_True": 3,
+            "True_True": 4,
+        }
+        key_trans_flag = "{}_{}".format(bool(transpose_a), bool(transpose_b))
+        trans_flag = dict_trans_flag.get(key_trans_flag)
         return trans_flag
 
     @staticmethod
@@ -356,8 +349,8 @@ class GEMMCompute(FormatCompute):
         self.para_dict = para_dict
         self.tensor_a = tensor_a
         self.tensor_b = tensor_b
-        self.shape_a = [self._get_value(i) for i in tensor_a.shape]
-        self.shape_b = [self._get_value(i) for i in tensor_b.shape]
+        self.shape_a = shape_util.shape_to_list(tensor_a.shape)
+        self.shape_b = shape_util.shape_to_list(tensor_b.shape)
         self.alpha = para_dict.get("alpha")
         self.beta = para_dict.get("beta")
         self.trans_a = para_dict.get("trans_a", False)
@@ -451,11 +444,9 @@ class GEMMCompute(FormatCompute):
         offset_x = 0
         offset_w = None
         if cube_util.is_v200_version_new() and dtype_a in ("uint8", "int8", "int4"):
-            if attrs_dict.get("offset_a") is not None:
-                offset_x = attrs_dict.get("offset_a")
+            offset_x = attrs_dict.get("offset_a", 0)
             if dtype_b in ("int8", "int4"):
                 offset_w = attrs_dict.get("offset_b")
-
         return offset_x, offset_w
 
     @staticmethod
@@ -637,6 +628,7 @@ class GEMMCompute(FormatCompute):
         if in_dynamic():
             self._init_dynamic_base_params()
             self._init_dynamic_tiling_info_dict(tensor_a_zz, tensor_b_zn)
+        return self.res
 
     def _init_dynamic_base_params(self):
         """
@@ -719,7 +711,7 @@ class GEMMCompute(FormatCompute):
         shape_a = [self._get_value(i) for i in self.tensor_a.shape]
         shape_b = [self._get_value(i) for i in self.tensor_b.shape]
         # The op GEMM not use gevm/gemv now
-        if self._get_not_gevm_gemv_flag() or (self.alpha is not None) or in_dynamic():
+        if (self.alpha is not None) or in_dynamic():
             self.mmad_mode = "gemm"
             return
 
@@ -748,31 +740,24 @@ class GEMMCompute(FormatCompute):
         self.mmad_mode = mmad_mode
 
     def _get_gevm_flag(self, m0_shape_dict, trans_dict, shape_a, m_index):
+        only_use_gevm_gemv_flow = False
         if self.format_a != "ND":
             m0_index = m0_shape_dict.get(self.format_a)
             gevm_mode_flag = shape_a[m0_index] == tbe_platform.BLOCK_VECTOR
-            only_use_gevm_gemv_flow = False
         else:
-            if self.alpha is not None:
-                gevm_mode_flag = (shape_a[m_index] == 1
-                    and (shape_a[trans_dict.get(m_index)] % (self.block_in * self.block_reduce) == 0))
-                only_use_gevm_gemv_flow = False
-            else:
-                gevm_mode_flag = (shape_a[m_index] == 1)
-                only_use_gevm_gemv_flow = (shape_a[m_index] == 1
-                    and (shape_a[trans_dict.get(m_index)] % (self.block_in * self.block_reduce) != 0))
+            gevm_mode_flag = shape_a[m_index] == tbe_platform.BLOCK_VECTOR
+            k_multi_of_m0k0 = shape_a[trans_dict.get(m_index)] % (self.block_in * self.block_reduce) == 0
+            only_use_gevm_gemv_flow = gevm_mode_flag and not k_multi_of_m0k0
         return gevm_mode_flag, only_use_gevm_gemv_flow
 
     def _cancel_gevm_mode(self, gevm_mode_flag, shape_a_k, n_shape):
-        """The performance of gemm mode is better than gevm in some cases"""
+        # The performance of gemm mode is better than gevm in some cases
+        # not use gevm or gevm don't need to fill zero, keep origin flag
         if not gevm_mode_flag or self.only_use_gevm_gemv_flow:
             return gevm_mode_flag
-        multi_ka = 1
-        if self.format_a != "ND":
-            multi_ka = self.block_reduce
-        multi_nb = 1
-        if self.format_b != "ND":
-            multi_nb = self.block_out
+        # gevm and k is not multiple of m0k0, need to fill zero
+        multi_ka = 1 if self.format_a == "ND" else self.block_reduce
+        multi_nb = 1 if self.format_b == "ND" else self.block_out
         if (((shape_a_k * multi_ka) >= self.GEVM_MODE_K_DIM_LIMIT)
             or ((shape_a_k * multi_ka, n_shape * multi_nb) in self.GEVM_MODE_LIMIT_LIST)):
             gevm_mode_flag = False
@@ -783,16 +768,9 @@ class GEMMCompute(FormatCompute):
             n0_index = n0_shape_dict.get(self.format_b)
             gemv_mode_flag = shape_b[n0_index] == tbe_platform.BLOCK_VECTOR
         else:
-            gemv_mode_flag = (shape_b[n_index] == 1
+            gemv_mode_flag = (shape_b[n_index] == tbe_platform.BLOCK_VECTOR
                 and (shape_b[trans_dict.get(n_index)] % (self.block_out * self.block_reduce) == 0))
         return gemv_mode_flag
-
-    def _get_not_gevm_gemv_flag(self):
-        is_int82int32_nd = (self.ops_data_flow_mode == "int82int32"
-            and (self.format_a == "ND" or self.format_b == "ND"))
-        not_use_gevm_gemv_flag = (self.ops_data_flow_mode == "int82fp32" or is_int82int32_nd) \
-                                 and (self.alpha is not None)
-        return not_use_gevm_gemv_flag
 
     def _set_output_format(self):
         """
@@ -1337,122 +1315,92 @@ class GEMMCompute(FormatCompute):
         Return:
             the tensor format is Zz for mad
         """
-        need_check_align = (self.format_a in ("ND", "NC1HWC0")) and (self.mmad_mode != "gevm")
+        need_check_align = (self.format_a == "ND") and (self.mmad_mode != "gevm")
         not_pad_for_int8_nd = self.tensor_a.dtype in ("int8", "uint8") and \
                               self.format_a == "ND" and (self.alpha is None)
         self.int8_not_double_m = not_pad_for_int8_nd
-        if self.format_a in ("ND", "NC1HWC0"):
+        if self.format_a == "ND":
             tensor_a_aligned = self._do_align_nd_shape(self.tensor_a, "a", self.src_dtype, need_check_align)
         else:
             tensor_a_aligned = self.tensor_a
-        shape_a_aligned = [self._get_value(i) for i in tensor_a_aligned.shape]
 
-        # ------------------- GEVM(ND)/GEMV process ------------------- #
-        # not support int82fp32
         if self.mmad_mode == "gemv":
-            return self._get_tensor_a_zz_gemv(tensor_a_aligned)
-        elif self.mmad_mode == "gevm" and self.format_a in ("ND", "NC1HWC0"):
-            return self._get_tensor_a_zz_gevm(tensor_a_aligned)
-
-        # ------------------------------------------------------------ #
-        if self.ops_data_flow_mode == "int82fp32":
-            tensor_a_aligned = tvm.compute(
-                shape_a_aligned,
-                lambda *indices: shape_util.cast(tensor_a_aligned(*indices), "float16"),
-                name="tensor_a_s82f16"
-            )
-
-        if self.format_a in ("FRACTAL_Z", "FRACTAL_NZ"):
-            # ---------------------- fractal process --------------------- #
-            return self._get_tensor_a_frac2zz(tensor_a_aligned)
-        # ------------------------ ND process ------------------------ #
-        return self._get_tensor_a_nd2zz(tensor_a_aligned, not_pad_for_int8_nd)
+            tensor_a_zz = self._get_tensor_a_zz_gemv(tensor_a_aligned)
+        elif self.mmad_mode == "gevm":
+            tensor_a_zz = self._get_tensor_a_zz_gevm(tensor_a_aligned)
+        else:
+            tensor_a_zz = self._get_tensor_a_zz_gemm(tensor_a_aligned)
+        return tensor_a_zz
 
     def _get_tensor_a_zz_gemv(self, tensor_a_aligned):
         compute_params_gemv = {"tensor_name": "tensor_a_zz", "trans": self.trans_a}
         if self.format_a == "FRACTAL_NZ":
             compute_params_gemv["mode_info"] = "fractal_gemv"
-            compute_params_gemv["format_info"] = {
-                "format_in_a_l1": "Nz",
-                "format_in_a_ub": "none"
-            }
             tensor_a_zz = self.fract_change_inner_axis(tensor_a_aligned, compute_params_gemv)
         elif self.format_a == "FRACTAL_Z":
-            compute_params_gemv["tensor_name"] = "tensor_a_zz"
             compute_params_gemv["mode_info"] = "fractal_gemv"
-            compute_params_gemv["format_info"] = {
-                "format_in_a_l1": "Zz",
-                "format_in_a_ub": "none"
-            }
             tensor_a_zz = self.fract_change_outer_axis(tensor_a_aligned, compute_params_gemv)
         else:
-            compute_params_gemv["trans"] = False
             compute_params_gemv["block_in"] = self.block_in
             compute_params_gemv["block_reduce"] = self.block_reduce
+            compute_params_gemv["trans"] = False
             compute_params_gemv["tensor_name"] = "tensor_a_nd2zz"
             tensor_a_nd2zz = self.compute_nd2zz(tensor_a_aligned, compute_params_gemv)
             compute_params_gemv["trans"] = self.trans_a
-            compute_params_gemv["mode_info"] = "nd_gemv"
-            compute_params_gemv["format_info"] = {
-                "format_in_a_l1": "Zz",
-                "format_in_a_ub": "nd"
-            }
             compute_params_gemv["tensor_name"] = "tensor_a_zz"
+            compute_params_gemv["mode_info"] = "nd_gemv"
             tensor_a_zz = self.fract_change_outer_axis(tensor_a_nd2zz, compute_params_gemv)
         return tensor_a_zz
 
     def _get_tensor_a_zz_gevm(self, tensor_a_aligned):
-        compute_params_gemv = {"tensor_name": "tensor_a_zz", "trans": self.trans_a}
-        compute_params_gemv["trans"] = self.trans_a
-        compute_params_gemv["block_in"] = self.block_in
-        compute_params_gemv["block_reduce"] = self.block_reduce
-        compute_params_gemv["tensor_name"] = "tensor_a_nd2zz"
-        compute_params_gemv["mode_info"] = "nd_gevm"
-        compute_params_gemv["format_info"] = {
-            "format_in_a_l1": "Zz",
-            "format_in_a_ub": "nd"
-        }
-        tensor_a_zz = self.compute_nd2zz_gevm(tensor_a_aligned, compute_params_gemv)
+        if self.format_a == "ND":
+            compute_params_gemv = {"tensor_name": "tensor_a_nd2zz", "trans": self.trans_a,
+                                   "block_in": self.block_in, "block_reduce": self.block_reduce,
+                                   "mode_info": "nd_gevm"}
+            tensor_a_zz = self.compute_nd2zz_gevm(tensor_a_aligned, compute_params_gemv)
+        else:
+            # not support int82fp32
+            tensor_a_zz = self._get_tensor_a_frac2zz(tensor_a_aligned)
+        return tensor_a_zz
 
+    def _get_tensor_a_zz_gemm(self, tensor_a_aligned):
+        if self.ops_data_flow_mode == "int82fp32":
+            shape_a_aligned = shape_util.shape_to_list(tensor_a_aligned.shape)
+            tensor_a_aligned = tvm.compute(
+                shape_a_aligned,
+                lambda *indices: shape_util.cast(tensor_a_aligned(*indices), "float16"),
+                name="tensor_a_s82f16"
+            )
+            if self.format_a == "FRACTAL_NZ":
+                compute_params_fractal = {"tensor_name": "tensor_a_zz", "trans": self.trans_a,
+                                          "mode_info": "Nz2Zz_int82fp32"}
+                tensor_a_zz = self.compute_nz2zz_int82fp32(tensor_a_aligned, compute_params_fractal)
+                return tensor_a_zz
+        if self.format_a == "ND":
+            tensor_a_zz = self._get_tensor_a_nd2zz(tensor_a_aligned, self.int8_not_double_m)
+        else:
+            tensor_a_zz = self._get_tensor_a_frac2zz(tensor_a_aligned)
         return tensor_a_zz
 
     def _get_tensor_a_frac2zz(self, tensor_a_aligned):
         compute_params_fractal = {"tensor_name": "tensor_a_zz", "trans": self.trans_a}
-        # format_a is FRACTAL_Z
         if self.format_a == "FRACTAL_Z":
+            # format_a is FRACTAL_Z
             if self.trans_a:
                 compute_params_fractal["mode_info"] = "Zz_trans"
-                compute_params_fractal["format_info"] = {
-                    "format_in_a_l1": "Zz",
-                    "format_in_a_ub": "none"
-                }
                 compute_params_fractal["trans"] = False
-                tensor_a_aligned = self.fract_change_both_axis(tensor_a_aligned, compute_params_fractal)
-            return tensor_a_aligned
-        # format_a is FRACTAL_NZ
-        if self.ops_data_flow_mode == "int82fp32":
-            compute_params_fractal["mode_info"] = "Nz2Zz_int82fp32"
-            compute_params_fractal["format_info"] = {
-                "format_in_a_l1": "Zz",
-                "format_in_a_ub": "Nz"
-            }
-            tensor_a_zz = self.compute_nz2zz_int82fp32(tensor_a_aligned, compute_params_fractal)
+                tensor_a_zz = self.fract_change_both_axis(tensor_a_aligned, compute_params_fractal)
+            else:
+                tensor_a_zz = tensor_a_aligned
         else:
+            # format_a is FRACTAL_NZ
             compute_params_fractal["mode_info"] = "Nz2Zz"
-            compute_params_fractal["format_info"] = {
-                "format_in_a_l1": "Nz",
-                "format_in_a_ub": "none"
-            }
             tensor_a_zz = self.fract_change_outer_axis(tensor_a_aligned, compute_params_fractal)
             if "ori_batch_shape" in tensor_a_aligned.op.attrs:
                 tensor_a_zz.op.attrs["ori_batch_shape"] = tensor_a_aligned.op.attrs["ori_batch_shape"]
         return tensor_a_zz
 
     def _get_tensor_a_nd2zz(self, tensor_a_aligned, use_normal_func):
-        nd_to_zz_normal_flag = self.cube_vector_split or self.ops_data_flow_mode in ("int82int32", "int4int32") or \
-                               self.mmad_mode == "gevm" or use_normal_func or in_dynamic()
-        nd_to_zz_vnchwconv_flag = self.ops_data_flow_mode not in ("int82int32", "int4int32")
-
         compute_params = {
             "tensor_name": "tensor_a_zz",
             "block_in": self.block_in,
@@ -1460,23 +1408,13 @@ class GEMMCompute(FormatCompute):
             "data_flow": self.ops_data_flow_mode,
             "trans": self.trans_a
         }
-        if nd_to_zz_normal_flag:
+        if self.cube_vector_split or use_normal_func or in_dynamic() or \
+            self.ops_data_flow_mode in ("int82int32", "int4int32"):
             mode_info = "nd2Zz" if (self.ops_data_flow_mode != "int82int32") else "nd2Zz_int8"
             compute_params["mode_info"] = mode_info
-            format_in_a_l1 = "Zz"
-            if self.trans_a and (self.ops_data_flow_mode != "int82int32"):
-                format_in_a_l1 = "Nn"
-            compute_params["format_info"] = {
-                "format_in_a_l1": format_in_a_l1,
-                "format_in_a_ub": "nd"
-            }
             tensor_a_zz = self.compute_nd2zz(tensor_a_aligned, compute_params)
-        elif nd_to_zz_vnchwconv_flag:
+        else:
             compute_params["mode_info"] = "nd2Zz_vnchwconv"
-            compute_params["format_info"] = {
-                "format_in_a_l1": "three_axis",
-                "format_in_a_ub": "nd"
-            }
             tensor_a_zz = self.compute_nd2zz_vnchwconv(tensor_a_aligned, compute_params)
             if "ori_batch_shape" in tensor_a_aligned.op.attrs:
                 tensor_a_zz.op.attrs["ori_batch_shape"] = tensor_a_aligned.op.attrs["ori_batch_shape"]
@@ -1494,7 +1432,7 @@ class GEMMCompute(FormatCompute):
             self.format_b = "FRACTAL_Z"
             return tensor_b_zn
 
-        need_check_align = (self.format_b in ("ND", "NC1HWC0")) and (self.mmad_mode != "gemv")
+        need_check_align = (self.format_b == "ND") and (self.mmad_mode != "gemv")
         if self.format_b == "ND":
             tensor_b_aligned = self._do_align_nd_shape(tensor_b, "b", self.src_dtype, need_check_align)
         else:
@@ -1523,10 +1461,6 @@ class GEMMCompute(FormatCompute):
     def _get_tensor_b_zn_gemv(self, tensor_b_aligned):
         compute_params_gemv = {"tensor_name": "tensor_b_zn", "trans": self.trans_b}
         compute_params_gemv["mode_info"] = "fractal_gemv"
-        compute_params_gemv["format_info"] = {
-            "format_in_b_l1": "Zn",
-            "format_in_b_ub": "none"
-        }
         if self.format_b in ("FRACTAL_Z", "FRACTAL_NZ"):
             if self.format_b == "FRACTAL_NZ":
                 compute_params_gemv["format_info"] = {
@@ -1541,10 +1475,6 @@ class GEMMCompute(FormatCompute):
             compute_params_gemv["trans"] = False
             tensor_b_nd2zz = self.compute_nd2zz(tensor_b_aligned, compute_params_gemv)
             compute_params_gemv["mode_info"] = "nd_gemv"
-            compute_params_gemv["format_info"] = {
-                "format_in_b_l1": "Zz",
-                "format_in_b_ub": "nd"
-            }
             compute_params_gemv["trans"] = self.trans_b
             compute_params_gemv["tensor_name"] = "tensor_b_zn"
             tensor_b_zn = self.fract_change_both_axis(tensor_b_nd2zz, compute_params_gemv)
@@ -1557,17 +1487,9 @@ class GEMMCompute(FormatCompute):
         if self.format_b == "FRACTAL_Z":
             if self.ops_data_flow_mode == "int82fp32":
                 compute_params_fractal["mode_info"] = "Zn2Zn_int82fp32"
-                compute_params_fractal["format_info"] = {
-                    "format_in_b_l1": "Zn",
-                    "format_in_b_ub": "Zn"
-                }
                 tensor_b_zn = self.compute_zn2zn_int82fp32(tensor_b_aligned, compute_params_fractal)
             elif self.trans_b:
                 compute_params_fractal["mode_info"] = "Zn_trans"
-                compute_params_fractal["format_info"] = {
-                    "format_in_b_l1": "Zn",
-                    "format_in_b_ub": "none"
-                }
                 compute_params_fractal["trans"] = False
                 tensor_b_zn = self.fract_change_both_axis(tensor_b_aligned, compute_params_fractal)
             else:
@@ -1575,10 +1497,6 @@ class GEMMCompute(FormatCompute):
             return tensor_b_zn
         # format_b is FRACTAL_NZ
         compute_params_fractal["mode_info"] = "Nz2Zn"
-        compute_params_fractal["format_info"] = {
-            "format_in_b_l1": "Nz",
-            "format_in_b_ub": "none"
-        }
         tensor_b_zn = self.fract_change_both_axis(tensor_b_aligned, compute_params_fractal)
         if "ori_batch_shape" in tensor_b_aligned.op.attrs:
             tensor_b_zn.op.attrs["ori_batch_shape"] = tensor_b_aligned.op.attrs["ori_batch_shape"]
@@ -1598,20 +1516,9 @@ class GEMMCompute(FormatCompute):
         }
         if nd_to_zn_normal_flag:
             compute_params["mode_info"] = "nd2Zn" if self.ops_data_flow_mode != "int82int32" else "nd2Zn_int8"
-            format_in_b_l1 = "Zn"
-            if self.trans_b and (self.ops_data_flow_mode != "int82int32"):
-                format_in_b_l1 = "Nz"
-            compute_params["format_info"] = {
-                "format_in_b_l1": format_in_b_l1,
-                "format_in_b_ub": "nd"
-            }
             tensor_b_zn = self.compute_nd2zn(tensor_b_aligned, compute_params)
         elif nd_to_zn_vnchwconv_flag:
             compute_params["mode_info"] = "nd2Zn_vnchwconv"
-            compute_params["format_info"] = {
-                "format_in_b_l1": "three_axis",
-                "format_in_b_ub": "nd"
-            }
             tensor_b_zn = self.compute_nd2zn_vnchwconv(tensor_b_aligned, compute_params)
             if "ori_batch_shape" in tensor_b_aligned.op.attrs:
                 tensor_b_zn.op.attrs["ori_batch_shape"] = tensor_b_aligned.op.attrs["ori_batch_shape"]

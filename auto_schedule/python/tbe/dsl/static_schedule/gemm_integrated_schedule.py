@@ -289,8 +289,6 @@ class GemmSchedule:
         self.dynamic_m, self.dynamic_k, self.dynamic_n, self.dynamic_batch = 1, 1, 1, 1
         self.c_col_k0, self.c_col_k1 = 1, 1
         self.optmt_a, self.optmt_b, self.optmt_c = "float16", "float16", "float16"
-        self.format_info_a = {"format_in_a_l1": "Zz", "format_in_a_ub": "none"}
-        self.format_info_b = {"format_in_b_l1": "Zn", "format_in_b_ub": "none"}
         self.format_info = {"a": "ND", "b": "ND", "out": "ND"}
         self.ops_format = "ND"
         self.seed_shape = None
@@ -903,8 +901,6 @@ class GemmSchedule:
             self.sch[self.container.tensor_map.get("a_l0a")].set_scope(l0a_scope)
         if "mode" in self.container.tensor_map.get("a_l0a").op.attrs:
             self.get_a_matrix_mode = self.container.tensor_map.get("a_l0a").op.attrs["mode"]
-        if "format_info" in self.container.tensor_map.get("a_l0a").op.attrs:
-            self.format_info_a = self.container.tensor_map.get("a_l0a").op.attrs["format_info"]
 
         if self.status_controller.mmad_mode == "gemv":
             l0b_scope = tbe_platform_info.scope_ca
@@ -919,8 +915,6 @@ class GemmSchedule:
             self.sch[self.container.tensor_map.get("b_l0b")].set_scope(l0b_scope)
         if "mode" in self.container.tensor_map.get("b_l0b").op.attrs:
             self.get_b_matrix_mode = self.container.tensor_map.get("b_l0b").op.attrs["mode"]
-        if "format_info" in self.container.tensor_map.get("b_l0b").op.attrs:
-            self.format_info_b = self.container.tensor_map.get("b_l0b").op.attrs["format_info"]
 
         self.optmt_a = self.container.tensor_map.get("a_l0a").dtype
         self.optmt_b = self.container.tensor_map.get("b_l0b").dtype
