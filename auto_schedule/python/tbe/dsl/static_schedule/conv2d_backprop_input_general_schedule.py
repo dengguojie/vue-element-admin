@@ -2806,6 +2806,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         sch_agent.pre_apply()
         attach_dict = sch_agent.get_attach_dict()
         compute_path = sch_agent.get_compute_path()
+        attach_dict.update(attach_dict_b)
+        compute_path.update(compute_path_b)
         # l0c axes: g, batch, co1, m, co0
         _, _, l0c_n, l0c_m, _ = sch[c_col].op.axis
         # ddr axes: n, c1, hw, c0
@@ -3036,15 +3038,22 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         """
         g dimension only loads 1 each time
         """
+        attach_dict_b = {}
+        compute_path_b = {}
         if not tiling.get("BL1_shape") and g_after != 1 and not l0c_multi_group_flag:
             axs = sch_agent[c_ddr].get_active_scopes()
             ax_g, _, _, _, _ = axs
             _, bl1_at_inner = sch_agent[c_ddr].split(ax_g, factor=1)
             sch[b_l1].compute_at(sch[c_ddr], bl1_at_inner)
+            attach_dict_b[sch[b_l1]] = sch[c_ddr]
+            compute_path_b[sch[b_l1]] = bl1_at_inner
             if not tiling.get("BL0_matrix"):
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
+                attach_dict_b[sch[b_col]] = sch[c_ddr]
+                compute_path_b[sch[b_col]] = bl1_at_inner
+        return attach_dict_b, compute_path_b
 
-    _full_load_bl1_bl0()
+    attach_dict_b, compute_path_b = _full_load_bl1_bl0()
 
     if tiling.get('A_overhead_opt_flag') or tiling.get('B_overhead_opt_flag'):
         _allocate_apply()

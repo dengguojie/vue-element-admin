@@ -84,6 +84,20 @@ def tiling_mock2(*args):
                     'tbe_compile_para': 0}
     return tiling
 
+def tiling_mock3(*args):
+    tiling = {'AL0_matrix': [2, 2, 16, 16, 1, 1], 'AL1_shape': [],
+                    'AUB_channel_wise_flag': None, 'AUB_shape': None,
+                    'A_overhead_opt_flag': False, 'BL0_matrix': [2, 1, 16, 16, 1, 1],
+                    'BL1_shape': [], 'BUB_channel_wise_flag': None,
+                    'BUB_shape': None, 'B_overhead_opt_flag': True, 'CL0_matrix': [1, 2, 16, 16, 1, 1],
+                    'CUB_channel_wise_flag': False, 'CUB_matrix': [1, 2, 16, 16, 1, 1],
+                    'batch_bef_group_flag': 0, 'block_dim': [32, 1, 1, 1],
+                    'manual_pingpong_buffer': {'AL0_pbuffer': 2, 'AL1_pbuffer': 2, 'AUB_pbuffer': 1,
+                    'BL0_pbuffer': 2, 'BL1_pbuffer': 2, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2,
+                    'CUB_pbuffer': 2, 'UBG_pbuffer': 2}, 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0,
+                    'tbe_compile_para': 0}
+    return tiling
+
 def tiling_mock_preload_cl0c_al1(*args):
     tiling = {'AL0_matrix': [13, 3, 16, 16, 1, 1], 'AL1_shape': [2304, 1, 1, 1],
                     'AUB_channel_wise_flag': None, 'AUB_shape': None,
@@ -325,7 +339,7 @@ def _test_conv2d_bp_input_bf16_case_1(test_arg):
                 with cce():
                     x = tvm.placeholder((2, 7, 7, 32), name="x", dtype="bfloat16",
                                         attrs={
-                                            "ori_shape": (2, 7, 7, 32), "format": "NHWC", 
+                                            "ori_shape": (2, 7, 7, 32), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -348,7 +362,7 @@ def _test_conv2d_bp_input_fp32_case_1(test_arg):
                 with cce():
                     x = tvm.placeholder((16, 2, 2, 32), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC", 
+                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -371,7 +385,7 @@ def _test_conv2d_bp_input_fp32_case_2(test_arg):
                 with cce():
                     x = tvm.placeholder((2, 7, 7, 2048), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC", 
+                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -394,7 +408,7 @@ def _test_conv2d_bp_input_fp32_case_3(test_arg):
                 with cce():
                     x = tvm.placeholder((16, 2, 2, 32), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC", 
+                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -416,7 +430,7 @@ def _test_conv2d_bp_input_hf32_case_1(test_arg):
                 with cce():
                     x = tvm.placeholder((16, 2, 2, 32), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC", 
+                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -439,7 +453,7 @@ def _test_conv2d_bp_input_hf32_case_2(test_arg):
                 with cce():
                     x = tvm.placeholder((2, 7, 7, 2048), name="x", dtype="float32",
                                         attrs={
-                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC", 
+                                            "ori_shape": (2, 7, 7, 2048), "format": "NHWC",
                                             "ori_format": "NHWC"
                                         })
                     x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
@@ -491,6 +505,26 @@ def _test_conv2d_bp_input_allocate_at2(test_arg):
             config = {"name": "dx", "tensor_list":[weight, x_5hd, dx]}
             platform_adapter.tbe.build(sch, config)
 
+def _test_conv2d_bp_input_allocate_at3(test_arg):
+    with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock3)):
+        with cce():
+            # x is out/dy
+            x_5hd = tvm.placeholder((32, 128, 7, 7, 16), name="x", dtype="float16",
+                                    attrs={"ori_shape": (32, 7, 7, 2048),
+                                           "format": "NC1HWC0",
+                                           "ori_format": "NHWC"})
+            weight = tvm.placeholder((9*128, 4, 16, 16), name="filter", dtype="float16",
+                                     attrs={"ori_shape": (3, 3, 64, 2048),
+                                            "format": "FRACTAL_Z",
+                                            "ori_format": "HWCN"})
+            # y is fmap/dx
+            y = {"shape": (32, 128, 7, 7, 16), "ori_shape": (32, 7, 7, 2048), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+            dx = conv2d_backprop_input_d_compute(weight, x_5hd, y, (32, 7, 7, 2048), (1, 1), "SAME", (1, 1, 1, 1), groups=32)
+            with op_context.OpContext():
+                sch = auto_schedule(dx)
+            config = {"name": "dx", "tensor_list":[weight, x_5hd, dx]}
+            platform_adapter.tbe.build(sch, config)
+
 def _test_conv2d_bp_input_preload_cl0c_al1(test_arg):
     with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock_preload_cl0c_al1)):
         weight = {'shape': (144, 16, 16, 16), 'ori_shape': (3, 3, 256, 256), 'format': 'FRACTAL_Z', 'ori_format': 'HWCN', 'dtype': 'float16'}
@@ -517,6 +551,7 @@ ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_hf32_case_1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_hf32_case_2)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at2)
+ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at3)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_preload_cl0c_al1)
 
 if __name__ == "__main__":
