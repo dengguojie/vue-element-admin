@@ -25,7 +25,7 @@
 
 namespace domi {
 Status DenseImageWarpMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  (void)AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
     OP_LOGE(TbeGetName(op).c_str(), "Get op_dsc failed");

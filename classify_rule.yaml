@@ -72,6 +72,7 @@ aicpu:
       - ops/built-in/framework/tf_plugin/gather_point_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_plugin.cc
+      - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc
     unrelease:
   llt:
     ut_check: true
@@ -3402,7 +3403,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/in_top_k_plugin.cc
       - ops/built-in/framework/tf_plugin/adjust_contrast_plugin.cc
       - ops/built-in/framework/tf_plugin/hvd_all_gather_plugin.cc
-      - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc
       - ops/built-in/framework/tf_plugin/cumulative_logsumexp_plugin.cc
       - ops/built-in/framework/tf_plugin/ndtri_plugin.cc
       - ops/built-in/framework/tf_plugin/neg_plugin.cc
