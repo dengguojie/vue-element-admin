@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,7 +200,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
       resize = (longSize <= kLongSizeLow) ? kMinSize : ((longSize <= kLongSizeHigh) ? kMidSize : kMaxSize);
   } else {
       resize = UNKNOWN_DIM;
-      std::vector<std::pair<int64_t,int64_t>> resized_range;
+      std::vector<std::pair<int64_t, int64_t>> resized_range;
       if (pos_c == 0) {
         resized_range.push_back({image_shape[pos_c], image_shape[pos_c]});
       }
@@ -390,7 +390,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
   auto polys_size_index = op_desc->MutableInputDesc("polys_size");
   std::vector<std::pair<int64_t, int64_t>> dilated_polys_size_range;
   if (polys_size_shape.GetDims() == UNKNOWN_RANK || polys_size_shape.GetDims() == UNKNOWN_SHAPE) {
-    std::vector<std::pair<int64_t,int64_t>> polys_size_range;
+    std::vector<std::pair<int64_t, int64_t>> polys_size_range;
     polys_size_index->GetShapeRange(polys_size_range);
     int64_t polys_size_max = polys_size_range[0].second;
     std::pair<int64_t, int64_t> size_range({0, polys_size_max});
@@ -464,12 +464,12 @@ COMMON_INFER_FUNC_REG(OCRFindContours, OCRFindContoursInfer);
 IMPLEMT_COMMON_INFERFUNC(DequeueInferShape) {
     TensorDesc data_desc = op.GetOutputDescByName("data");
     std::vector<int64_t> output_shape;
-    (void)op.GetAttr("output_shape",output_shape);
+    (void)op.GetAttr("output_shape", output_shape);
     DataType dtype;
-    (void)op.GetAttr("output_type",dtype);
+    (void)op.GetAttr("output_type", dtype);
     data_desc.SetShape(Shape(output_shape));
     data_desc.SetDataType(dtype);
-    op.UpdateOutputDesc("data",data_desc);
+    op.UpdateOutputDesc("data", data_desc);
     return GRAPH_SUCCESS;
 }
 
@@ -495,7 +495,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer) {
                                  img_range[1].second *
                                  img_range[2].second;
         if (data_known_shape) {
-            data_range_max = input_img_dims[0] * input_img_dims[1] * input_img_dims[2]; 
+            data_range_max = input_img_dims[0] * input_img_dims[1] * input_img_dims[2];
         }
         if (data_range_max == 0) {
             std::string reason = "max shape range of img must be != 0";
@@ -518,7 +518,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer) {
     if ((!polys_offset_range.empty()) || size_known_shape) {
         int64_t size_range_max = polys_offset_range[0].second;
         if (size_known_shape) {
-            size_range_max = input_polys_offset_dims[0]; 
+            size_range_max = input_polys_offset_dims[0];
         }
 
         std::pair<int64_t, int64_t> imgs_offset_range({size_range_max, size_range_max});
@@ -591,7 +591,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer) {
     if ((!polys_data_range.empty()) || data_known_shape) {
         int64_t data_range_max = polys_data_range[0].second;
         if (data_known_shape) {
-            data_range_max = input_polys_data_dims[0]; 
+            data_range_max = input_polys_data_dims[0];
         }
         if (data_range_max == 0) {
             std::string reason = "max shape range of polys_data must be != 0";
@@ -614,7 +614,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer) {
     if ((!polys_offset_range.empty()) || size_known_shape) {
         int64_t size_range_max = polys_offset_range[0].second;
         if (size_known_shape) {
-            size_range_max = input_polys_offset_dims[0]; 
+            size_range_max = input_polys_offset_dims[0];
         }
 
         std::pair<int64_t, int64_t> clipped_polys_offset_range({0, size_range_max});

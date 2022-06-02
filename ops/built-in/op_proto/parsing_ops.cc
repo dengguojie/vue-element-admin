@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -128,7 +128,7 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
                                        string("get attr[num_sparse] failed"));
     return GRAPH_FAILED;
   }
-  if (num_sparse != static_cast<int32_t>(sparse_keys.size())){
+  if (num_sparse != static_cast<int32_t>(sparse_keys.size())) {
     std::string err_msg = GetAttrSizeErrMsg(
         "num_sparse", std::to_string(num_sparse),
         std::to_string(sparse_keys.size()));
@@ -138,7 +138,7 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
   
   for (int i = 0; i < num_sparse; ++i) {
     TensorDesc output_desc = op.GetDynamicOutputDesc("sparse_indices", i);
-    output_desc.SetShape(Shape({UNKNOWN_DIM,1}));
+    output_desc.SetShape(Shape({UNKNOWN_DIM, 1}));
     output_desc.SetDataType(DT_INT64);
     op.UpdateDynamicOutputDesc("sparse_indices", i, output_desc);
     

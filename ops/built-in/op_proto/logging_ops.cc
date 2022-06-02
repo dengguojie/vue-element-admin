@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ IMPLEMT_INFERFUNC(PrintV2, PrintV2Infer) {
 
 INFER_FUNC_REG(PrintV2, PrintV2Infer);
 
-//----------------PrintV3----------------
+// ----------------PrintV3----------------
 IMPLEMT_INFERFUNC(PrintV3, PrintV3Infer) {
   TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(op.GetInputDescByName("x").GetShape());
@@ -73,5 +73,5 @@ IMPLEMT_INFERFUNC(PrintV3, PrintV3Infer) {
 }
 
 INFER_FUNC_REG(PrintV3, PrintV3Infer);
-//----------------PrintV3End----------------
+// ----------------PrintV3End----------------
 }  // namespace ge

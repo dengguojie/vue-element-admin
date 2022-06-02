@@ -73,6 +73,30 @@ aicpu:
       - ops/built-in/framework/tf_plugin/group_point_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_plugin.cc
       - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc
+      - ops/built-in/op_proto/audio_ops.cc
+      - ops/built-in/op_proto/inc/audio_ops.h
+      - ops/built-in/op_proto/logging_ops.cc
+      - ops/built-in/op_proto/inc/logging_ops.h
+      - ops/built-in/op_proto/parsing_ops.cc
+      - ops/built-in/op_proto/inc/parsing_ops.h
+      - ops/built-in/op_proto/ragged_conversion_ops.cc
+      - ops/built-in/op_proto/inc/ragged_conversion_ops.h
+      - ops/built-in/op_proto/random_ops.cc
+      - ops/built-in/op_proto/inc/random_ops.h
+      - ops/built-in/op_proto/sdca_ops.cc
+      - ops/built-in/op_proto/inc/sdca_ops.h
+      - ops/built-in/op_proto/spectral_ops.cc
+      - ops/built-in/op_proto/inc/spectral_ops.h
+      - ops/built-in/op_proto/stateful_random_ops.cc
+      - ops/built-in/op_proto/inc/stateful_random_ops.h
+      - ops/built-in/op_proto/string_ops.cc
+      - ops/built-in/op_proto/inc/string_ops.h
+      - ops/built-in/op_proto/util/candidate_sampling_shape_fns.cc
+      - ops/built-in/op_proto/util/candidate_sampling_shape_fns.h
+      - ops/built-in/op_proto/util/linalg_ops_shape_fns.cc
+      - ops/built-in/op_proto/util/linalg_ops_shape_fns.h
+      - ops/built-in/op_proto/util/lookup_ops_shape_fns.cc
+      - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
     unrelease:
   llt:
     ut_check: true
@@ -2376,16 +2400,12 @@ unkown:
       - ops/built-in/op_tiling/pad_common.cc
       - ops/built-in/op_tiling/avg_poolv2.cc
       - ops/built-in/op_tiling/resize.cc
-      - ops/built-in/op_proto/sdca_ops.cc
       - ops/built-in/op_proto/batch_ops.cc
-      - ops/built-in/op_proto/audio_ops.cc
       - ops/built-in/op_proto/act_ulq_clamp_min_grad.cc
       - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
-      - ops/built-in/op_proto/string_ops.cc
       - ops/built-in/op_proto/acts_ulq.cc
-      - ops/built-in/op_proto/random_ops.cc
       - ops/built-in/op_proto/condtake_ops.cc
       - ops/built-in/op_proto/nn_ops.cc
       - ops/built-in/op_proto/hvd_ops.cc
@@ -2394,8 +2414,6 @@ unkown:
       - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
-      - ops/built-in/op_proto/stateful_random_ops.cc
-      - ops/built-in/op_proto/spectral_ops.cc
       - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
@@ -2403,11 +2421,8 @@ unkown:
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/ctc_ops.cc
       - ops/built-in/op_proto/pad_ops.cc
-      - ops/built-in/op_proto/ragged_conversion_ops.cc
       - ops/built-in/op_proto/set_ops.cc
-      - ops/built-in/op_proto/parsing_ops.cc
       - ops/built-in/op_proto/candidate_sampling_ops.cc
-      - ops/built-in/op_proto/logging_ops.cc
       - ops/built-in/op_proto/ragged_math_ops.cc
       - ops/built-in/op_proto/randomdsa_ops.cc
       - ops/built-in/op_proto/hcom_ops.cc
@@ -2418,7 +2433,6 @@ unkown:
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/nn_other_ops.cc
       - ops/built-in/op_proto/lookup_ops.cc
-      - ops/built-in/op_proto/inc/ragged_conversion_ops.h
       - ops/built-in/op_proto/inc/warp_perspective_ops.h
       - ops/built-in/op_proto/inc/save_ops.h
       - ops/built-in/op_proto/inc/swap_co_ops.h
@@ -2431,30 +2445,23 @@ unkown:
       - ops/built-in/op_proto/inc/candidate_sampling_ops.h
       - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
       - ops/built-in/op_proto/inc/ctc_ops.h
-      - ops/built-in/op_proto/inc/sdca_ops.h
       - ops/built-in/op_proto/inc/deep_md.h
       - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/inc/hvd_ops.h
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
-      - ops/built-in/op_proto/inc/spectral_ops.h
       - ops/built-in/op_proto/inc/nn_ops.h
       - ops/built-in/op_proto/inc/lookup_ops.h
-      - ops/built-in/op_proto/inc/logging_ops.h
       - ops/built-in/op_proto/inc/npu_loss_scale_ops.h
       - ops/built-in/op_proto/inc/hcom_ops.h
-      - ops/built-in/op_proto/inc/string_ops.h
       - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/inc/internal_ops.h
-      - ops/built-in/op_proto/inc/stateful_random_ops.h
       - ops/built-in/op_proto/inc/quantize_ops.h
       - ops/built-in/op_proto/inc/ocr_ops.h
-      - ops/built-in/op_proto/inc/audio_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
       - ops/built-in/op_proto/inc/list_ops.h
       - ops/built-in/op_proto/inc/avg_pool_1d_ops.h
       - ops/built-in/op_proto/inc/resource_variable_ops.h
       - ops/built-in/op_proto/inc/ragged_array_ops.h
-      - ops/built-in/op_proto/inc/parsing_ops.h
       - ops/built-in/op_proto/inc/no_op.h
       - ops/built-in/op_proto/inc/state_ops.h
       - ops/built-in/op_proto/inc/control_flow_ops.h
@@ -2462,18 +2469,14 @@ unkown:
       - ops/built-in/op_proto/inc/get_data_ops.h
       - ops/built-in/op_proto/inc/outfeed_ops.h
       - ops/built-in/op_proto/inc/batch_ops.h
-      - ops/built-in/op_proto/inc/random_ops.h
       - ops/built-in/op_proto/inc/pad_ops.h
       - ops/built-in/op_proto/inc/split_combination_ops.h
       - ops/built-in/op_proto/util/array_ops_shape_fns.h
-      - ops/built-in/op_proto/util/candidate_sampling_shape_fns.cc
-      - ops/built-in/op_proto/util/candidate_sampling_shape_fns.h
       - ops/built-in/op_proto/util/nn_shape_fns.cc
       - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
       - ops/built-in/op_proto/util/random_ops_shape_fns.cc
-      - ops/built-in/op_proto/util/linalg_ops_shape_fns.h
       - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_proto/util/common_shape_fns.cc
       - ops/built-in/op_proto/util/util.h
@@ -2483,14 +2486,11 @@ unkown:
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_proto/util/vector_proto_profiling.h
       - ops/built-in/op_proto/util/reduce_infer_util.cc
-      - ops/built-in/op_proto/util/linalg_ops_shape_fns.cc
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
-      - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/util/axis_util.cc
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.cc
-      - ops/built-in/op_proto/util/lookup_ops_shape_fns.cc
       - ops/built-in/tbe/impl/approximate_equal.py
       - ops/built-in/tbe/impl/clip_boxes_d.py
       - ops/built-in/tbe/impl/bn3d_training_update_grad.py
