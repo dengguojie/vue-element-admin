@@ -18,24 +18,25 @@
  * \file concat_dsl.h
  * \brief
  */
-#ifndef OPS_BUILT_IN_OP_TILING_CONCAT_DSL_H_
-#define OPS_BUILT_IN_OP_TILING_CONCAT_DSL_H_
+#ifndef OPS_BUILT_IN_OP_TILING_CONCAT_DSL_RT2_H_
+#define OPS_BUILT_IN_OP_TILING_CONCAT_DSL_RT2_H_
 
 #include <vector>
 #include <string>
 
 #include <nlohmann/json.hpp>
 #include "vector_tiling.h"
-#include "external/graph/operator.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
 namespace concat {
 constexpr size_t MAX_DIM_LEN = 8;
-constexpr int64_t BLOCK_SIZE = 32;
+constexpr int64_t BLOCK_SIZE_BYTES = 32;
 constexpr int64_t MAX_INPUT_NUM = 63;
 constexpr int64_t MAX_TILING_NUM = 256;
 
-struct CompileInfo {
+struct ConcatCompileInfo : AutoTilingCompileInfo {
   int64_t const_block_dims{1};
   int64_t core_num{0};
   int64_t ub_size{0};
@@ -45,19 +46,18 @@ struct CompileInfo {
   std::vector<std::vector<bool>> concat_vars;
   std::vector<size_t> align_vars;
 
-  CompileInfo() = default;
-  explicit CompileInfo(const nlohmann::json& _compile_info);
+  ConcatCompileInfo() = default;
+  explicit ConcatCompileInfo(const nlohmann::json& json_compile_info);
+  ~ConcatCompileInfo() override = default;
+  bool Parse(const char* op_type, const nlohmann::json& json_compile_info);
 };
 
+template <typename T>
 class Concat {
  public:
-  explicit Concat(const std::string& _op_type, const ge::Operator& _op_paras, const CompileInfo& _compile_info,
-                  const OpInfo& _op_info, utils::OpRunInfo& _run_info)
-      : op_type(_op_type),
-        op_paras(_op_paras),
-        c_info(_compile_info),
-        op_info(_op_info),
-        run_info(_run_info) {
+  explicit Concat(T* _context, const OpInfoImpl* _op_info)
+      : context(_context),
+        op_info(_op_info) {
   }
   ~Concat() = default;
   bool ConcatTiling();
@@ -83,15 +83,16 @@ class Concat {
   void CalcFactor();
   void CalcOffsets();
   void CalcKey();
-  void WriteConstTilingData();
+  bool WriteConstTilingData();
+  bool WriteVar(size_t& tiling_num);
+  bool WriteData(const size_t tiling_num);
   bool WriteTilingData();
 
  private:
-  const std::string& op_type;
-  const ge::Operator& op_paras;
-  const CompileInfo& c_info;
-  const OpInfo& op_info;
-  utils::OpRunInfo& run_info;
+  T* context;
+  const OpInfoImpl* op_info{nullptr};
+  std::string op_type;
+  const ConcatCompileInfo* c_info{nullptr};
   int64_t input_nums{0};
   int64_t max_available_ub{0};
   int64_t block_axis{-1};
@@ -120,43 +121,23 @@ class Concat {
   std::array<int64_t, MAX_INPUT_NUM> offsets{};
   std::array<int32_t, MAX_TILING_NUM> tiling_data{};
 };
+
+template class Concat<AutoTilingContext>;
+template class Concat<AutoTilingOp>;
 }  // namespace concat
-
-/*
- * @brief: tiling function of concat operator
- * @param [in] op_type: op_type of the concat operator
- * @param [in] op_paras: inputs/outputs/atts of the concat operator
- * @param [in] compile_info: compile time generated info of the concat operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const concat::CompileInfo& compile_info,
-               utils::OpRunInfo& run_info);
-
-/*
- * @brief: tiling function of concat operator
- * @param [in] op_type: op_type of the concat operator
- * @param [in] op_paras: inputs/outputs/atts of the concat operator
- * @param [in] compile_info: compile time generated info of the concat operator
- * @param [in] op_info: operator info, example shapes and axis
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const concat::CompileInfo& compile_info,
-               utils::OpRunInfo& run_info, const OpInfo& op_info);
 
 class ConcatDslTilingHandler : public AutoTilingHandler {
  public:
   ConcatDslTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
       : AutoTilingHandler(o, p), compile_info(c) {
   }
-  ~ConcatDslTilingHandler() = default;
+  ~ConcatDslTilingHandler() override = default;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
 
  private:
-  const concat::CompileInfo compile_info;
+  const concat::ConcatCompileInfo compile_info;
 };
 }  // namespace optiling
 
-#endif  // OPS_BUILT_IN_OP_TILING_CONCAT_DSL_H_
+#endif  // OPS_BUILT_IN_OP_TILING_CONCAT_DSL_RT2_H_

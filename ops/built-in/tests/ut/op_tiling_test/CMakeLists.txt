@@ -24,6 +24,7 @@ add_executable(ops_cpp_op_tiling_utest
 target_include_directories(ops_cpp_op_tiling_utest PRIVATE
         ${OPS_DIR}/built-in/utils
         ${OPS_DIR}/built-in/op_proto/inc
+        ${OPS_DIR}/built-in/op_tiling
         ${OPS_DIR}/built-in/op_tiling/runtime
         ${METADEF_INCLUDE}/graph
         ${METADEF_INCLUDE}/exe_graph

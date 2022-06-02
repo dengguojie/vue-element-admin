@@ -26,20 +26,28 @@
 
 #include <nlohmann/json.hpp>
 #include "vector_tiling.h"
-#include "external/graph/operator.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
 namespace transpose {
 constexpr size_t MAX_DIM_LEN = 8;
 
-struct CompileInfo {
+struct TransposeCompileInfo : AutoTilingCompileInfo {
   int64_t core_num{0};
   int64_t ub_size{0};
+  int32_t const_block_dims{1};
   bool only_const_tiling{false};
+  bool is_const{false};
   std::vector<int64_t> permute{};
   std::vector<int64_t> ori_permute{};
   std::vector<int64_t> mergeable{};
   std::vector<bool> transpose_vars{};
+
+  TransposeCompileInfo() = default;
+  explicit TransposeCompileInfo(const nlohmann::json& json_compile_info);
+  ~TransposeCompileInfo() override = default;
+  bool Parse(const char* op_type, const nlohmann::json& json_compile_info);
 };
 
 struct UbTilingParams {
@@ -69,31 +77,30 @@ struct AdjustTilingParams {
   int64_t input_index{0};
 };
 
+template <typename T>
 class Transpose {
  public:
-  explicit Transpose(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _compile_info,
-                     const OpInfo& _op_info, utils::OpRunInfo& _run_info)
-      : op_type(_op_type),
-        op_paras(_op_paras),
-        compile_info(_compile_info),
-        op_info(_op_info),
-        run_info(_run_info) {
+  explicit Transpose(T* _context, const OpInfoImpl* _op_info)
+      : context(_context),
+        op_info(_op_info) {
   }
   ~Transpose() = default;
   bool TransposeTiling();
 
  private:
-  bool ParseCompileInfo();
+  void Init();
   void GenerateShape(int64_t cur_dim_value, size_t cur_index, int64_t& real_index, bool& is_first_in);
   bool GenerateOutputShape();
   bool GenerateOutputShapeFromOp();
-  bool ProcessConst(bool& is_const) const;
+  void ProcessConst() const;
   bool DoTiling();
   bool CalcOutputSize();
   bool CalcTiling();
   bool DoBlockAndUbTiling();
   bool DoBlockTiling();
+  bool InitCrossUbTilingParams(CrossUbTilingParams& tilingParams);
   bool DoUbTilingNoCross();
+  bool InitUbTilingParams(UbTilingParams& ubTilingParams, int64_t available_ub);
   bool DoUbTiling(int64_t available_ub);
   void AdjustUbTiling();
   void DoStoreAlignBlockTiling();
@@ -115,12 +122,11 @@ class Transpose {
   bool WriteTilingData() const;
 
  private:
-  const std::string& op_type;
-  const ge::Operator& op_paras;
-  const nlohmann::json& compile_info;
-  const OpInfo& op_info;
-  utils::OpRunInfo& run_info;
-  transpose::CompileInfo c_info;
+  T* context;
+  const OpInfoImpl* op_info{nullptr};
+  const TransposeCompileInfo* c_info{nullptr};
+  std::string op_type;
+  int64_t core_num{0};
   int64_t max_available_ub{0};
   int64_t max_available_cross_ub{0};
   int64_t input_available_ub{1};
@@ -133,7 +139,7 @@ class Transpose {
   int64_t low_ub_factor{-1};
   int64_t high_ub_factor{-1};
   int64_t block_dims{1};
-  int64_t tiling_key{-1};
+  uint64_t tiling_key{0};
   int64_t max_dim_shape{-1};
   ge::DataType dtype{ge::DataType::DT_FLOAT16};
   bool is_last_transpose{false};
@@ -145,19 +151,13 @@ class Transpose {
   std::array<int64_t, transpose::MAX_DIM_LEN> input_shapes{};
   std::array<int64_t, transpose::MAX_DIM_LEN> output_shapes{};
   std::array<int64_t, transpose::MAX_DIM_LEN> have_splits{};
+  std::vector<int64_t> permute;
+  std::vector<int64_t> ori_permute;
 };
-}  // namespace transpose
 
-/*
- * @brief: tiling function of transpose operator
- * @param [in] op_type: op_type of the transpose operator
- * @param [in] op_paras: inputs/outputs/atts of the transpose operator
- * @param [in] op_info: compile time generated info of the transpose operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
-                  utils::OpRunInfo& run_info);
+template class Transpose<AutoTilingContext>;
+template class Transpose<AutoTilingOp>;
+}  // namespace transpose
 
 class TransposeDslTilingHandler : public AutoTilingHandler {
  public:
@@ -169,7 +169,7 @@ class TransposeDslTilingHandler : public AutoTilingHandler {
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
 
  private:
-  const nlohmann::json compile_info{};
+  const transpose::TransposeCompileInfo compile_info;
 };
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_TRANSPOSE_DSL_H_

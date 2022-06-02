@@ -146,6 +146,7 @@ class TilingContextFaker {
   TilingContextFaker &CompileInfo(void *compile_info);
   TilingContextFaker &TilingData(void *tiling_data);
   TilingContextFaker &Workspace(ContinuousVector *workspace);
+  TilingContextFaker &ConstInput(std::vector<std::pair<size_t, std::unique_ptr<uint8_t[]>>>& const_tensors);
 
   KernelRunContextHolder Build() const;
 

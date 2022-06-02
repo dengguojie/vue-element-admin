@@ -191,6 +191,23 @@ TilingContextFaker &TilingContextFaker::Workspace(ContinuousVector *workspace) {
   base_faker_.Outputs(outputs_);
   return *this;
 }
+TilingContextFaker &TilingContextFaker::ConstInput(std::vector<std::pair<size_t,
+                                                   std::unique_ptr<uint8_t[]>>>& const_tensors) {
+  std::vector<void *> inputs;
+  for (const auto input_shape : input_shapes_) {
+    inputs.push_back(input_shape);
+  }
+  for (size_t i = 0; i < const_tensors.size(); i++) {
+    inputs[const_tensors[i].first] = const_tensors[i].second.get();
+  }
+  for (const auto output_shape : output_shapes_) {
+    inputs.push_back(output_shape);
+  }
+  inputs.push_back(compile_info_);  // kInputsCompileInfo
+  inputs.push_back(nullptr);        // kInputsTilingFunc
+  base_faker_.Inputs(std::move(inputs));
+  return *this;
+}
 KernelRunContextHolder TilingContextFaker::Build() const {
   return base_faker_.Build();
 }

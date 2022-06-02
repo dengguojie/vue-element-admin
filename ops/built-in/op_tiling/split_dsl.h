@@ -26,16 +26,17 @@
 
 #include <nlohmann/json.hpp>
 #include "vector_tiling.h"
-#include "external/graph/operator.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
 namespace split {
 constexpr size_t MAX_DIM_LEN = 8;
-constexpr int64_t BLOCK_SIZE = 32;
+constexpr int64_t BLOCK_SIZE_BYTES = 32;
 constexpr int64_t MAX_INPUT_NUM = 63;
 constexpr int64_t MAX_TILING_NUM = 256;
 
-struct CompileInfo {
+struct SplitCompileInfo : AutoTilingCompileInfo {
   int64_t core_num{0};
   int64_t ub_size{0};
   int64_t ori_axis{-1};
@@ -46,19 +47,18 @@ struct CompileInfo {
   bool split_is_const{false};
   std::vector<bool> split_vars;
 
-  CompileInfo() = default;
-  explicit CompileInfo(const nlohmann::json& compile_info);
+  SplitCompileInfo() = default;
+  explicit SplitCompileInfo(const nlohmann::json& json_compile_info);
+  ~SplitCompileInfo() override = default;
+  bool Parse(const char* op_type, const nlohmann::json& json_compile_info);
 };
 
+template <typename T>
 class Split {
  public:
-  explicit Split(const std::string& _op_type, const ge::Operator& _op_paras, const CompileInfo& _compile_info,
-                 const OpInfo& _op_info, utils::OpRunInfo& _run_info)
-      : op_type(_op_type),
-        op_paras(_op_paras),
-        c_info(_compile_info),
-        op_info(_op_info),
-        run_info(_run_info) {
+  explicit Split(T* _context, const OpInfoImpl* _op_info)
+      : context(_context),
+        op_info(_op_info) {
   }
   ~Split() = default;
   bool SplitTiling();
@@ -66,7 +66,9 @@ class Split {
  private:
   void ProcessConst() const;
   bool DoTiling();
+  bool GenerateBaseInput(const OpShape& shape, int64_t& axis);
   bool GenerateOutputShape();
+  bool GenerateBaseInputFromOp(const std::vector<int64_t>& shape, int64_t& ori_axis);
   bool GenerateOutputShapeFromOp();
   bool IsAllAlign();
   bool CalcTiling();
@@ -78,17 +80,16 @@ class Split {
   void DoBlockTiling();
   void DoUbTiling();
   void CalcKey();
-  void WriteConstTilingData();
+  bool WriteConstTilingData();
   bool WriteTilingData();
-  void WriteCutData(int64_t& tiling_num);
-  void WriteShapeData(int64_t& tiling_num);
+  void WriteCutData(size_t& tiling_num);
+  void WriteShapeData(size_t& tiling_num);
 
  private:
-  const std::string& op_type;
-  const ge::Operator& op_paras;
-  const split::CompileInfo& c_info;
-  const OpInfo& op_info;
-  utils::OpRunInfo& run_info;
+  T* context;
+  const OpInfoImpl* op_info{nullptr};
+  std::string op_type;
+  const SplitCompileInfo* c_info{nullptr};
   ge::DataType dtype{ge::DataType::DT_FLOAT16};
   int64_t min_split_shape{INT64_MAX};
   int64_t output_nums{1};
@@ -115,29 +116,6 @@ class Split {
 };
 }  // namespace split
 
-/*
- * @brief: tiling function of split operator
- * @param [in] op_type: op_type of the split operator
- * @param [in] op_paras: inputs/outputs/atts of the split operator
- * @param [in] compile_info: compile time generated info of the split operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool SplitDsl(const std::string& op_type, const ge::Operator& op_paras, const split::CompileInfo& compile_info,
-              utils::OpRunInfo& run_info);
-
-/*
- * @brief: tiling function of split operator
- * @param [in] op_type: op_type of the split operator
- * @param [in] op_paras: inputs/outputs/atts of the split operator
- * @param [in] compile_info: compile time generated info of the split operator
- * @param [in] op_info: operator info, example shapes and axis
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool SplitDsl(const std::string& op_type, const ge::Operator& op_paras, const split::CompileInfo& compile_info,
-              utils::OpRunInfo& run_info, const OpInfo& op_info);
-
 class SplitDslTilingHandler : public AutoTilingHandler {
  public:
   SplitDslTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
@@ -148,7 +126,7 @@ class SplitDslTilingHandler : public AutoTilingHandler {
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
 
  private:
-  const split::CompileInfo compile_info;
+  const split::SplitCompileInfo compile_info;
 };
 }  // namespace optiling
 

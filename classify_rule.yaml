@@ -257,6 +257,15 @@ auto_schedule:
       - ops/built-in/op_tiling/tiling_handler.h
       - ops/built-in/op_tiling/split_dsl.cc
       - ops/built-in/op_tiling/split_dsl.h
+      - ops/built-in/op_tiling/auto_tiling_context.cc
+      - ops/built-in/op_tiling/auto_tiling_context.h
+      - ops/built-in/op_tiling/auto_tiling_register.h
+      - ops/built-in/op_tiling/auto_tiling_rt2.cc
+      - ops/built-in/op_tiling/auto_tiling_rt2.h
+      - ops/built-in/op_tiling/vector_op_info.cc
+      - ops/built-in/op_tiling/vector_op_info.h
+      - ops/built-in/op_tiling/vector_tiling_rt2.cc
+      - ops/built-in/op_tiling/vector_tiling_rt2.h
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/
       - auto_schedule/python/tbe/common/utils/varshape/__init__.py
       - auto_schedule/python/tbe/common/utils/varshape/variable_shape.py

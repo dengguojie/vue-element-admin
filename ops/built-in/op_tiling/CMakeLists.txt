@@ -41,6 +41,10 @@ set(_optiling_files
   binary_cross_entropy_grad.cc
   broadcast_to.cc
   assign.cc
+  auto_tiling_rt2.cc
+  auto_tiling_context.cc
+  vector_op_info.cc
+  vector_tiling_rt2.cc
   auto_tiling.cc
   avg_pool.cc
   avg_poolv2.cc

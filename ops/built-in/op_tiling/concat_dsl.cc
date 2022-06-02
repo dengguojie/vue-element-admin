@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@
 #include "graph/utils/op_desc_utils.h"
 #include "vector_tiling.h"
 #include "tiling_handler.h"
+#include "auto_tiling_register.h"
+#include "vector_tiling_rt2.h"
 
 namespace optiling {
 namespace concat {
@@ -75,34 +77,48 @@ static const int64_t GetElementByType(const ge::DataType& dtype) {
   return element_in_block;
 }
 
-CompileInfo::CompileInfo(const nlohmann::json& _compile_info) {
-  is_const = _compile_info.at("_is_const");
-  if (is_const) {
-    const_block_dims = _compile_info.at("_const_dims");
-  }
-  core_num = _compile_info.at("_core_num");
-  ub_size = _compile_info.at("_ub_size");
-  ori_axis = _compile_info.at("_ori_axis");
-  only_const_tiling = _compile_info.at("_only_const_tiling");
-  if (!only_const_tiling) {
-    concat_vars = _compile_info.at("_concat_vars").get<std::vector<std::vector<bool>>>();
-  }
-  if (_compile_info.contains("_align_vars")) {
-    align_vars = _compile_info.at("_align_vars").get<std::vector<size_t>>();
-  }
+ConcatCompileInfo::ConcatCompileInfo(const nlohmann::json& json_compile_info) {
+  Parse("ConcatDsl", json_compile_info);
 }
 
-bool Concat::GenerateOutputShape() {
-  const auto& op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
-  dtype = op_desc->MutableOutputDesc(0)->GetDataType();
+bool ConcatCompileInfo::Parse(const char* op_type, const nlohmann::json& json_compile_info) {
+  try {
+    is_const = json_compile_info.at("_is_const");
+    if (is_const) {
+      const_block_dims = json_compile_info.at("_const_dims");
+    }
+    core_num = json_compile_info.at("_core_num");
+    ub_size = json_compile_info.at("_ub_size");
+    ori_axis = json_compile_info.at("_ori_axis");
+    only_const_tiling = json_compile_info.at("_only_const_tiling");
+    if (!only_const_tiling) {
+      concat_vars = json_compile_info.at("_concat_vars").get<std::vector<std::vector<bool>>>();
+    }
+    if (json_compile_info.contains("_align_vars")) {
+      align_vars = json_compile_info.at("_align_vars").get<std::vector<size_t>>();
+    }
+  } catch (...) {
+    OP_LOGE(op_type, "Unknown Exception encountered when parsing Compile Info of op_type %s", op_type);
+    return false;
+  }
+  return true;
+}
+
+template <typename T>
+bool Concat<T>::GenerateOutputShape() {
+  V_OP_TILING_CHECK(context->GetOutputDataType(0, dtype),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get inpute dtype error"),
+                    return false);
   int64_t output_m = 0;
   int64_t output_n = 0;
-  input_nums = op_desc->GetAllInputsSize();
+  input_nums = context->GetInputNums();
   V_OP_TILING_CHECK((input_nums <= MAX_INPUT_NUM), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input tensor is too much"),
                     return false);
-  int64_t axis = input_nums == 1 ? 0 : c_info.ori_axis;
+  int64_t axis = input_nums == 1 ? 0 : c_info->ori_axis;
   for (int64_t i = 0; i < input_nums; i++) {
-    const ge::GeShape& shape = op_desc->MutableInputDesc(i)->GetShape();
+    const OpShape& shape = context->GetInputShape(i);
+    V_OP_TILING_CHECK((!shape.Empty()), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape error"),
+                      return false);
     auto dim_len = static_cast<int64_t>(shape.GetDimNum());
     if (i == 0) {
       axis = axis < 0 ? axis + dim_len : axis;
@@ -136,21 +152,28 @@ bool Concat::GenerateOutputShape() {
   return true;
 }
 
-bool Concat::GenerateOutputShapeFromOp() {
-  dtype = op_info.GetInType();
+template <typename T>
+bool Concat<T>::GenerateOutputShapeFromOp() {
+  V_OP_TILING_CHECK(context->GetInputDataType(op_info, dtype),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get inpute dtype error"),
+                    return false);
   int64_t output_m = 0;
   int64_t output_n = 0;
-  const std::vector<std::vector<int64_t>>& op_input_shapes = op_info.GetInputShape();
-  input_nums = op_input_shapes.size();
+  input_nums = context->GetInputNums(op_info);
+  OP_LOGD(op_type, "Concat input number is %lld:", input_nums);
   V_OP_TILING_CHECK((input_nums <= MAX_INPUT_NUM), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input tensor is too much"),
                     return false);
-  const std::vector<std::vector<int32_t>>& axes = op_info.GetReduceAxes();
-  V_OP_TILING_CHECK((!axes.empty() && !axes[0].empty()),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input tensor is too much"), return false);
-  int64_t axis = input_nums == 1 ? 0 : axes[0][0];
-  for (int64_t i = 0; i < input_nums; i++) {
-    const std::vector<int64_t>& shape = op_input_shapes[i];
-    int64_t dim_len = shape.size();
+  const std::vector<int64_t>* axes = op_info->GetAxes();
+  V_OP_TILING_CHECK((axes != nullptr && !axes->empty()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "concat axis is empty"), return false);
+  int64_t axis = input_nums == 1 ? 0 : axes->at(0);
+  OP_LOGD(op_type, "Concat axis is %lld:", axis);
+  const auto inputs = op_info->GetInputShape();
+  V_OP_TILING_CHECK((inputs != nullptr),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape is empty"), return false);
+  for (size_t i = 0; i < inputs->size(); i++) {
+    const std::vector<int64_t>& shape = inputs->at(i);
+    auto dim_len = static_cast<int64_t>(shape.size());
     if (i == 0) {
       axis = axis < 0 ? axis + dim_len : axis;
       is_concat_zero = axis == 0;
@@ -183,13 +206,14 @@ bool Concat::GenerateOutputShapeFromOp() {
   return true;
 }
 
-bool Concat::CalcTiling() {
+template <typename T>
+bool Concat<T>::CalcTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
-  int64_t bytes = BLOCK_SIZE / ele_in_block;
+  int64_t bytes = BLOCK_SIZE_BYTES / ele_in_block;
   if (output_shapes[0] == 1) {
     is_one_concat = true;
     need_multi_core = true;
-    max_available_ub = (c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / bytes / ele_in_block * ele_in_block;
+    max_available_ub = (c_info->ub_size - BLOCK_SIZE_BYTES * (input_nums + 1)) / bytes / ele_in_block * ele_in_block;
   } else {
     int64_t row_limit = ROW_ALIGN_FACTOR;
     int64_t col_limit = ele_in_block == bytes ? COL_SPLIT_LIMIT_B8 : COL_SPLIT_LIMIT;
@@ -197,24 +221,25 @@ bool Concat::CalcTiling() {
       need_multi_core = true;
     }
     int64_t coexisting_quantity = GENERAL_NODE_NUMBERS;
-    max_available_ub = c_info.ub_size / coexisting_quantity / bytes / ele_in_block * ele_in_block;
+    max_available_ub = c_info->ub_size / coexisting_quantity / bytes / ele_in_block * ele_in_block;
   }
   return true;
 }
 
-void Concat::DoBlockTiling() {
+template <typename T>
+void Concat<T>::DoBlockTiling() {
   if (is_one_concat) {
     block_axis = 1;
-    block_factor = (output_shapes[1] + c_info.core_num - 1) / c_info.core_num;
+    block_factor = (output_shapes[1] + c_info->core_num - 1) / c_info->core_num;
     block_dims *= (output_shapes[1] + block_factor - 1) / block_factor;
     return;
   }
-  bool must_cut_zero_axis = output_shapes[0] >= c_info.core_num || no_align || read_align_no_ub;
+  bool must_cut_zero_axis = output_shapes[0] >= c_info->core_num || no_align || read_align_no_ub;
   if (must_cut_zero_axis) {
     block_axis = 0;
-    block_factor = (output_shapes[0] + c_info.core_num - 1) / c_info.core_num;
+    block_factor = (output_shapes[0] + c_info->core_num - 1) / c_info->core_num;
     block_dims = (output_shapes[0] + block_factor - 1) / block_factor;
-  } else if (output_shapes[0] > (c_info.core_num / HALF)) {
+  } else if (output_shapes[0] > (c_info->core_num / HALF)) {
     block_axis = 0;
     block_factor = 1;
     block_dims = output_shapes[0];
@@ -223,13 +248,14 @@ void Concat::DoBlockTiling() {
   }
   if (block_axis != 0) {
     block_axis = 1;
-    int64_t left_core = c_info.core_num / block_dims;
+    int64_t left_core = c_info->core_num / block_dims;
     block_factor = (output_shapes[1] + left_core - 1) / left_core;
     block_dims *= (output_shapes[1] + block_factor - 1) / block_factor;
   }
 }
 
-void Concat::DoUbTiling() {
+template <typename T>
+void Concat<T>::DoUbTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t row_limit = ROW_ALIGN_FACTOR;
   int64_t col_limit = max_available_ub / (row_limit * ele_in_block) - HALF * ele_in_block;
@@ -255,7 +281,7 @@ void Concat::DoUbTiling() {
     factor_col *= (ele_in_block / HALF);
     real_factor_n = max_available_ub / (row_limit * HALF);
   }
-  use_one_concat = (output_shapes[1] / factor_col >= output_shapes[0] / c_info.core_num) && ge_factor_n >= lt_factor_n;
+  use_one_concat = (output_shapes[1] / factor_col >= output_shapes[0] / c_info->core_num) && ge_factor_n >= lt_factor_n;
   if (is_one_concat || use_one_concat) {
     all_half_align = false;
     DoOneConcatUbTiling();
@@ -268,7 +294,8 @@ void Concat::DoUbTiling() {
   }
 }
 
-void Concat::CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& lt_factor_n) {
+template <typename T>
+void Concat<T>::CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& lt_factor_n) {
   ge_factor_n = 0;
   lt_factor_n = 0;
   int64_t ele_in_block = GetElementByType(dtype);
@@ -290,7 +317,8 @@ void Concat::CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& 
   }
 }
 
-void Concat::DoGeneralUbTiling(int64_t factor_n) {
+template <typename T>
+void Concat<T>::DoGeneralUbTiling(int64_t factor_n) {
   V_OP_TILING_CHECK((factor_n != 0), VECTOR_INNER_ERR_REPORT_TILIING("Concat", "factor_n cannot be zero."), return);
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t row_limit = ROW_ALIGN_FACTOR;
@@ -327,7 +355,8 @@ void Concat::DoGeneralUbTiling(int64_t factor_n) {
   DoUbSplitZeroAxis(factor_m);
 }
 
-void Concat::DoNoAlignUbTiling(int64_t factor_n) {
+template <typename T>
+void Concat<T>::DoNoAlignUbTiling(int64_t factor_n) {
   no_align = true;
   all_one_concat = input_nums == output_shapes[1];
   int64_t ele_in_block = GetElementByType(dtype);
@@ -336,7 +365,7 @@ void Concat::DoNoAlignUbTiling(int64_t factor_n) {
   int64_t factor_m = row_limit * align_factor * (factor_n / output_shapes[1]);
   if (all_one_concat) {
     factor_m = max_available_ub / output_shapes[1];
-    if (ele_in_block == BLOCK_SIZE) {
+    if (ele_in_block == BLOCK_SIZE_BYTES) {
       factor_m = factor_m / (ele_in_block * ele_in_block) * (ele_in_block * ele_in_block);
     } else {
       factor_m = factor_m / (row_limit * ele_in_block) * (row_limit * ele_in_block);
@@ -346,7 +375,8 @@ void Concat::DoNoAlignUbTiling(int64_t factor_n) {
   DoUbSplitZeroAxis(factor_m);
 }
 
-void Concat::DoUbSplitZeroAxis(int64_t factor_m) {
+template <typename T>
+void Concat<T>::DoUbSplitZeroAxis(int64_t factor_m) {
   int64_t ele_in_block = GetElementByType(dtype);
   if (output_shapes[0] > factor_m) {
     low_ub_factor = factor_m;
@@ -356,13 +386,14 @@ void Concat::DoUbSplitZeroAxis(int64_t factor_m) {
   output_shapes[0] = (output_shapes[0] + low_ub_factor - 1) / low_ub_factor;
 }
 
-void Concat::DoOneConcatUbTiling() {
+template <typename T>
+void Concat<T>::DoOneConcatUbTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
-  int64_t dtype_len = BLOCK_SIZE / ele_in_block;
-  max_available_ub = (c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / dtype_len / ele_in_block * ele_in_block;
+  int64_t dtype_len = BLOCK_SIZE_BYTES / ele_in_block;
+  max_available_ub = (c_info->ub_size - BLOCK_SIZE_BYTES * (input_nums + 1)) / dtype_len / ele_in_block * ele_in_block;
   int64_t core_size = 1;
-  if (output_shapes[0] >= 1 && output_shapes[0] <= c_info.core_num / HALF) {
-    core_size = c_info.core_num / output_shapes[0];
+  if (output_shapes[0] >= 1 && output_shapes[0] <= c_info->core_num / HALF) {
+    core_size = c_info->core_num / output_shapes[0];
   }
   V_OP_TILING_CHECK((max_available_ub != 0),
                     VECTOR_INNER_ERR_REPORT_TILIING("Concat", "max_available_ub cannot be zero."), return);
@@ -376,21 +407,22 @@ void Concat::DoOneConcatUbTiling() {
   output_shapes[1] = (output_shapes[1] + high_ub_factor - 1) / high_ub_factor;
 }
 
-void Concat::DoAllAlignUbTiling() {
+template <typename T>
+void Concat<T>::DoAllAlignUbTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
-  int64_t dtype_len = BLOCK_SIZE / ele_in_block;
+  int64_t dtype_len = BLOCK_SIZE_BYTES / ele_in_block;
   if (is_concat_zero) {
-    max_available_ub = c_info.ub_size / dtype_len / ele_in_block * ele_in_block;
+    max_available_ub = c_info->ub_size / dtype_len / ele_in_block * ele_in_block;
   } else {
-    max_available_ub = c_info.ub_size / HALF / dtype_len / ele_in_block * ele_in_block;
+    max_available_ub = c_info->ub_size / HALF / dtype_len / ele_in_block * ele_in_block;
   }
   if (output_shapes[1] <= max_available_ub && !is_one_concat) {
     read_align_no_ub = true;
     max_available_ub /= output_shapes[1];
     int64_t base_size = MULTI_CORE_EXPERIENCE * ONE_K_BYTES / dtype_len / output_shapes[1];
-    int64_t max_core = c_info.core_num;
+    int64_t max_core = c_info->core_num;
     if (base_size > 1) {
-      max_core = (c_info.core_num + base_size - 1) / base_size;
+      max_core = (c_info->core_num + base_size - 1) / base_size;
     }
     low_ub_factor = min((output_shapes[0] + max_core - 1) / max_core, max_available_ub);
     output_shapes[1] = 1;
@@ -404,8 +436,8 @@ void Concat::DoAllAlignUbTiling() {
     }
     output_shapes[0] = (output_shapes[0] + low_ub_factor - 1) / low_ub_factor;
     int64_t core_size = 1;
-    if (output_shapes[0] >= 1 && output_shapes[0] <= c_info.core_num / HALF) {
-      core_size = c_info.core_num / output_shapes[0];
+    if (output_shapes[0] >= 1 && output_shapes[0] <= c_info->core_num / HALF) {
+      core_size = c_info->core_num / output_shapes[0];
     }
     int64_t col_factor = (output_shapes[1] + core_size - 1) / core_size;
     col_factor = (col_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
@@ -416,7 +448,8 @@ void Concat::DoAllAlignUbTiling() {
   is_one_concat = false;
 }
 
-void Concat::CalcFactor() {
+template <typename T>
+void Concat<T>::CalcFactor() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t cur_sum = 0;
   for (int64_t i = 0; i < input_nums - 1; i++) {
@@ -438,7 +471,8 @@ void Concat::CalcFactor() {
   }
 }
 
-void Concat::CalcOffsets() {
+template <typename T>
+void Concat<T>::CalcOffsets() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t cur_sum = 0;
   int64_t offset = 0;
@@ -462,7 +496,8 @@ void Concat::CalcOffsets() {
   }
 }
 
-void Concat::CalcKey() {
+template <typename T>
+void Concat<T>::CalcKey() {
   if (is_one_concat) {
     tiling_key = ONE_CONCAT_BASE_KEY;
     return;
@@ -495,7 +530,8 @@ void Concat::CalcKey() {
   }
 }
 
-void Concat::UpdateTiling() {
+template <typename T>
+void Concat<T>::UpdateTiling() {
   if (is_one_concat) {
     block_dims = 1;
     block_axis = 1;
@@ -515,7 +551,8 @@ void Concat::UpdateTiling() {
   }
 }
 
-bool Concat::CheckZeroBlockTiling() const {
+template <typename T>
+bool Concat<T>::CheckZeroBlockTiling() const {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t cur_output = 0;
   for (int64_t i = input_nums - 1; i >= 0; i--) {
@@ -530,7 +567,8 @@ bool Concat::CheckZeroBlockTiling() const {
   return false;
 }
 
-bool Concat::CheckOneBlockTiling() const {
+template <typename T>
+bool Concat<T>::CheckOneBlockTiling() const {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t block_inner_size = high_ub_factor * block_factor;
   int64_t cur_output = 0;
@@ -560,7 +598,8 @@ bool Concat::CheckOneBlockTiling() const {
   return false;
 }
 
-void Concat::CheckAndUpdateTiling() {
+template <typename T>
+void Concat<T>::CheckAndUpdateTiling() {
   if (block_dims <= 1 || !(is_one_concat || use_one_concat)) {
     return;
   }
@@ -575,10 +614,10 @@ void Concat::CheckAndUpdateTiling() {
   }
 }
 
-bool Concat::DoTiling() {
-  bool has_op_info = !op_info.GetInputShape().empty();
-  bool ret;
-  if (has_op_info) {
+template <typename T>
+bool Concat<T>::DoTiling() {
+  bool ret = true;
+  if (op_info != nullptr) {
     ret = GenerateOutputShapeFromOp();
   } else {
     ret = GenerateOutputShape();
@@ -594,11 +633,11 @@ bool Concat::DoTiling() {
     DoBlockTiling();
     CheckAndUpdateTiling();
     bool is_need_calc_factor =
-        !(is_one_concat || use_one_concat || c_info.only_const_tiling || no_align || all_concat_align);
+        !(is_one_concat || use_one_concat || c_info->only_const_tiling || no_align || all_concat_align);
     if (is_need_calc_factor) {
       CalcFactor();
     }
-    bool is_need_calc_offset = !(c_info.only_const_tiling || no_align || read_align_no_ub);
+    bool is_need_calc_offset = !(c_info->only_const_tiling || no_align || read_align_no_ub);
     if (is_need_calc_offset) {
       CalcOffsets();
     }
@@ -609,12 +648,13 @@ bool Concat::DoTiling() {
   return ret;
 }
 
-void Concat::WriteConstTilingData() {
+template <typename T>
+bool Concat<T>::WriteConstTilingData() {
   int64_t last_align_factor = GetElementByType(dtype);
   if (all_half_align) {
     last_align_factor /= HALF;
   }
-  int64_t tiling_num = 0;
+  size_t tiling_num = 0;
   tiling_data[tiling_num++] = static_cast<int32_t>(need_multi_core);
   tiling_data[tiling_num++] = static_cast<int32_t>(is_one_concat || use_one_concat);
   tiling_data[tiling_num++] = static_cast<int32_t>(all_concat_align);
@@ -623,10 +663,42 @@ void Concat::WriteConstTilingData() {
   tiling_data[tiling_num++] = static_cast<int32_t>(block_factor);
   tiling_data[tiling_num++] = static_cast<int32_t>(low_ub_factor);
   tiling_data[tiling_num++] = static_cast<int32_t>(high_ub_factor);
-  run_info.AddTilingData((char*)(&tiling_data[0]), sizeof(int32_t) * tiling_num);
+
+  for (size_t i = 0; i < tiling_num; i++) {
+    if (!context->Append(tiling_data[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
-bool Concat::WriteTilingData() {
+template <typename T>
+bool Concat<T>::WriteVar(size_t& tiling_num) {
+  for (size_t i = 0; i < c_info->concat_vars.size(); i++) {
+    V_OP_TILING_CHECK((c_info->concat_vars[i].size() == CONCAT_DIM_LEN),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "concat variable error"), return false);
+    if (c_info->concat_vars[i][0]) {
+      tiling_data[tiling_num++] = static_cast<int32_t>(input_shapes[i][0]);
+    }
+    if (c_info->concat_vars[i][1]) {
+      tiling_data[tiling_num++] = static_cast<int32_t>(input_shapes[i][1]);
+    }
+  }
+  return true;
+}
+
+template <typename T>
+bool Concat<T>::WriteData(const size_t tiling_num) {
+  for (size_t i = 0; i < tiling_num; i++) {
+    if (!context->Append(tiling_data[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename T>
+bool Concat<T>::WriteTilingData() {
   OP_LOGD(op_type.c_str(), "tiling key:%ld", tiling_key);
   OP_LOGD(op_type.c_str(), "tiling block_dims:%ld", block_dims);
   OP_LOGD(op_type.c_str(), "tiling block_factor:%ld", block_factor);
@@ -634,25 +706,17 @@ bool Concat::WriteTilingData() {
   OP_LOGD(op_type.c_str(), "tiling high_ub_factor:%ld", high_ub_factor);
   OP_LOGD(op_type.c_str(), "tiling block_axis:%ld", block_axis);
 
-  run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
-  if (c_info.only_const_tiling) {
-    WriteConstTilingData();
-    return true;
+  context->SetBlockDim(static_cast<uint32_t>(block_dims));
+  if (c_info->only_const_tiling) {
+    return WriteConstTilingData();
   }
-  run_info.SetTilingKey(tiling_key);
+  context->SetTilingKey(tiling_key);
   if (is_empty) {
     return true;
   }
-  int64_t tiling_num = 0;
-  for (size_t i = 0; i < c_info.concat_vars.size(); i++) {
-    V_OP_TILING_CHECK((c_info.concat_vars[i].size() == CONCAT_DIM_LEN),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "concat variable error"), return false);
-    if (c_info.concat_vars[i][0]) {
-      tiling_data[tiling_num++] = static_cast<int32_t>(input_shapes[i][0]);
-    }
-    if (c_info.concat_vars[i][1]) {
-      tiling_data[tiling_num++] = static_cast<int32_t>(input_shapes[i][1]);
-    }
+  size_t tiling_num = 0;
+  if (!WriteVar(tiling_num)) {
+    return false;
   }
   if (need_multi_core) {
     tiling_data[tiling_num++] = static_cast<int32_t>(block_factor);
@@ -662,13 +726,12 @@ bool Concat::WriteTilingData() {
     }
     bool unnecessary_factor_offset = no_align || read_align_no_ub;
     if (unnecessary_factor_offset) {
-      run_info.AddTilingData((char*)(&tiling_data[0]), sizeof(int32_t) * tiling_num);
-      return true;
+      return WriteData(tiling_num);
     }
     tiling_data[tiling_num++] = static_cast<int32_t>(high_ub_factor);
     bool need_align_factor = !(one_concat || all_concat_align);
     if (need_align_factor) {
-      for (const auto& align_var : c_info.align_vars) {
+      for (const auto& align_var : c_info->align_vars) {
         V_OP_TILING_CHECK((align_var < MAX_INPUT_NUM),
                           VECTOR_INNER_ERR_REPORT_TILIING(op_type, "concat factor error, input numbers too much"),
                           return false);
@@ -679,17 +742,20 @@ bool Concat::WriteTilingData() {
       tiling_data[tiling_num++] = static_cast<int32_t>(offsets[i]);
     }
   }
-  run_info.AddTilingData((char*)(&tiling_data[0]), sizeof(int32_t) * tiling_num);
-  return true;
+  return WriteData(tiling_num);
 }
 
-void Concat::ProcessConst() const {
-  run_info.SetTilingKey(CONST_TILING_KEY);
-  run_info.SetBlockDim(static_cast<uint32_t>(c_info.const_block_dims));
+template <typename T>
+void Concat<T>::ProcessConst() const {
+  context->SetTilingKey(CONST_TILING_KEY);
+  context->SetBlockDim(static_cast<uint32_t>(c_info->const_block_dims));
 }
 
-bool Concat::ConcatTiling() {
-  if (c_info.is_const) {
+template <typename T>
+bool Concat<T>::ConcatTiling() {
+  op_type = context->GetOpType();
+  c_info = dynamic_cast<const ConcatCompileInfo *>(context->GetCompileInfo());
+  if (c_info->is_const) {
     ProcessConst();
     return true;
   }
@@ -699,33 +765,43 @@ bool Concat::ConcatTiling() {
 }
 }  // namespace concat
 
-bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const concat::CompileInfo& compile_info,
-               utils::OpRunInfo& run_info) {
-  OP_LOGD(op_type.c_str(), "enter ConcatDsl");
-  static std::vector<std::vector<int64_t>> dummy_input_shapes{};
-  static OpInfo dummy_op_info(dummy_input_shapes, ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
-  concat::Concat concat(op_type, op_paras, compile_info, dummy_op_info, run_info);
+bool CreateConcatDslTiling(gert::TilingContext* context, const OpInfoImpl* op_info) {
+  OP_LOGD("ConcatDsl", "enter ConcatDsl");
+  AutoTilingContext auto_tiling_context(context);
+  if (op_info) {
+    auto_tiling_context.SetCompileInfo(op_info->GetCompileInfo());
+  }
+  concat::Concat<AutoTilingContext> concat(&auto_tiling_context, op_info);
   return concat.ConcatTiling();
 }
 
-bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const concat::CompileInfo& compile_info,
-               utils::OpRunInfo& run_info, const OpInfo& op_info) {
-  OP_LOGD(op_type.c_str(), "enter ConcatDsl");
-  concat::Concat concat(op_type, op_paras, compile_info, op_info, run_info);
-  return concat.ConcatTiling();
+AutoTilingCompileInfo* CreateConcatDslParser(const char* op_type, const nlohmann::json& json_compile_info) {
+  auto compile_info = new concat::ConcatCompileInfo();
+  if (!compile_info->Parse(op_type, json_compile_info)) {
+    return nullptr;
+  }
+  return compile_info;
 }
 
 bool ConcatDslTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
-  return ConcatDsl(op_type, op_paras, compile_info, run_info);
+  OP_LOGD("ConcatDsl", "enter ConcatDsl");
+  AutoTilingOp auto_tiling_op(op_type.c_str(), &op_paras, &compile_info, &run_info);
+  concat::Concat<AutoTilingOp> concat(&auto_tiling_op, nullptr);
+  return concat.ConcatTiling();
 }
 
 bool ConcatDslTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
                                       const OpInfo& op_info) const {
-  return ConcatDsl(op_type, op_paras, compile_info, run_info, op_info);
+  OP_LOGD("ConcatDsl", "enter ConcatDsl for OpInfo");
+  AutoTilingOp auto_tiling_op(op_type.c_str(), &op_paras, &compile_info, &run_info);
+  concat::Concat<AutoTilingOp> concat(&auto_tiling_op, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  return concat.ConcatTiling();
 }
 
 std::shared_ptr<AutoTilingHandler> CreateConcatDslTilingHandler(const std::string& op_type, const std::string& pattern,
                                                                 const nlohmann::json& parsed_compile_info) {
   return std::make_shared<ConcatDslTilingHandler>(op_type, pattern, parsed_compile_info);
 }
+
+REGISTER_AUTO_TILING(SchPattern::CONCAT, CreateConcatDslTiling, CreateConcatDslParser)
 }  // namespace optiling

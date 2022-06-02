@@ -27,7 +27,6 @@ namespace {
   constexpr int32_t VAR_ATTR_MODE_CONSISTENT = 0;
   constexpr int32_t VAR_ATTR_MODE_INDEPENDENT = 1;
 }
-const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
                                                            const nlohmann::json& parsed_compile_info) {
