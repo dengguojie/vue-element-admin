@@ -97,6 +97,16 @@ aicpu:
       - ops/built-in/op_proto/util/linalg_ops_shape_fns.h
       - ops/built-in/op_proto/util/lookup_ops_shape_fns.cc
       - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
+      - ops/built-in/op_proto/batch_ops.cc
+      - ops/built-in/op_proto/candidate_sampling_ops.cc
+      - ops/built-in/op_proto/condtake_ops.cc
+      - ops/built-in/op_proto/list_ops.cc
+      - ops/built-in/op_proto/util/random_ops_shape_fns.h
+      - ops/built-in/op_proto/util/random_ops_shape_fns.cc
+      - ops/built-in/framework/tf_plugin/dynamic_get_next_plugin.cc
+      - ops/built-in/framework/tf_plugin/crop_and_resize_grad_boxes_plugin.cc
+      - ops/built-in/op_proto/internal_ops.cc
+      - ops/built-in/op_proto/lookup_ops.cc
     unrelease:
   llt:
     ut_check: true
@@ -2405,29 +2415,24 @@ unkown:
       - ops/built-in/op_tiling/pad_common.cc
       - ops/built-in/op_tiling/avg_poolv2.cc
       - ops/built-in/op_tiling/resize.cc
-      - ops/built-in/op_proto/batch_ops.cc
       - ops/built-in/op_proto/act_ulq_clamp_min_grad.cc
       - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/acts_ulq.cc
-      - ops/built-in/op_proto/condtake_ops.cc
       - ops/built-in/op_proto/nn_ops.cc
       - ops/built-in/op_proto/hvd_ops.cc
       - ops/built-in/op_proto/image_ops.cc
-      - ops/built-in/op_proto/internal_ops.cc
       - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
-      - ops/built-in/op_proto/list_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/ctc_ops.cc
       - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/set_ops.cc
-      - ops/built-in/op_proto/candidate_sampling_ops.cc
       - ops/built-in/op_proto/ragged_math_ops.cc
       - ops/built-in/op_proto/randomdsa_ops.cc
       - ops/built-in/op_proto/hcom_ops.cc
@@ -2437,7 +2442,6 @@ unkown:
       - ops/built-in/op_proto/outfeed_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/nn_other_ops.cc
-      - ops/built-in/op_proto/lookup_ops.cc
       - ops/built-in/op_proto/inc/warp_perspective_ops.h
       - ops/built-in/op_proto/inc/save_ops.h
       - ops/built-in/op_proto/inc/swap_co_ops.h
@@ -2481,12 +2485,10 @@ unkown:
       - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
-      - ops/built-in/op_proto/util/random_ops_shape_fns.cc
       - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_proto/util/common_shape_fns.cc
       - ops/built-in/op_proto/util/util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
-      - ops/built-in/op_proto/util/random_ops_shape_fns.h
       - ops/built-in/op_proto/util/op_common_util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_proto/util/vector_proto_profiling.h
@@ -3355,7 +3357,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/block_lstm_plugin.cc
       - ops/built-in/framework/tf_plugin/prod_force_se_a_plugin.cc
       - ops/built-in/framework/tf_plugin/prod_env_mat_a_plugin.cc
-      - ops/built-in/framework/tf_plugin/dynamic_get_next_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_remote_ref_read_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_all_to_all_v_plugin.cc
       - ops/built-in/framework/tf_plugin/relu_plugin.cc
@@ -3384,7 +3385,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/sparse_apply_rms_prop.cc
       - ops/built-in/framework/tf_plugin/tensor_scatter_update_plugin.cc
       - ops/built-in/framework/tf_plugin/zeros_like_plugin.cc
-      - ops/built-in/framework/tf_plugin/crop_and_resize_grad_boxes_plugin.cc
       - ops/built-in/framework/tf_plugin/less_plugin.cc
       - ops/built-in/framework/tf_plugin/euclidean_norm_plugin.cc
       - ops/built-in/framework/tf_plugin/ascend_antiquant_plugin.cc
