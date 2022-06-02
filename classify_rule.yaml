@@ -1520,7 +1520,6 @@ vector_B:
       - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/sparse_apply_rms_prop_d.py
       - ops/built-in/op_proto/avg_pool_1d_ops.cc
-      - ops/built-in/op_proto/nn_training_ops.cc
       - ops/built-in/op_proto/npu_loss_scale_ops.cc
       - ops/built-in/op_proto/sparse_ops.cc
       - ops/built-in/tbe/impl/im2col_common_func.py
@@ -2342,6 +2341,7 @@ ops_pub:
       - ops/built-in/op_proto/inc/transformation_ops.h
       - ops/built-in/op_proto/inc/nn_norm_ops.h
       - ops/built-in/op_proto/nn_norm_ops.cc
+      - ops/built-in/op_proto/nn_training_ops.cc
     unrelease:
 
 

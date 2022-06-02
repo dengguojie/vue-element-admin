@@ -46,5 +46,95 @@ ut_case.add_case("all", {
     "expect": "success"
 })
 
+ut_case.add_case("all", {
+    "params": [
+        {'shape': (1, 20), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'}],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [
+        {'shape': (11, 12, 1, 1, 16, 15), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'}],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [
+        {'shape': (11, 16), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'}],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [
+        {'shape': (2,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 1, 1, 16, 16),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'}],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [
+        {'shape': (16, 16), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (16, 16),
+         'ori_format': 'ND'},
+        {'shape': (16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (16, 16),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'}],
+    "expect": "success"
+})
+
+ut_case.add_case("all", {
+    "params": [
+        {'shape': (0, 0), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (0, 0),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 1, 1, 16, 16),
+         'ori_format': 'ND'},
+        {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+         'ori_format': 'ND'},
+        {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+         'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+         'ori_format': 'ND'}],
+    "expect": RuntimeError
+})
+
 if __name__ == '__main__':
     ut_case.run("Ascend910")
