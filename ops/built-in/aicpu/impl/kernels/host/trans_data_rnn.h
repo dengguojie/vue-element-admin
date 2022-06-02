@@ -28,11 +28,11 @@ class TransDataRNNCpuKernel : public CpuKernel {
 
  private:
   uint32_t GenDataNdRnnBias(std::vector<int64_t> &dims, int32_t hiddenSize,
-                            const Tensor *srcTensor, Tensor *dstTensor);
+                            const Tensor *srcTensor, const Tensor *dstTensor);
   uint32_t GenDataFractalZnCase1(std::vector<int64_t> &dims, int32_t hiddenSize, int32_t inputSize,
-                                 int32_t stateSize, const Tensor *srcTensor, Tensor *dstTensor);
+                                 int32_t stateSize, const Tensor *srcTensor, const Tensor *dstTensor);
   uint32_t GenDataFractalZnCase2(std::vector<int64_t> &dims, int32_t hiddenSize,
-                                 const Tensor *srcTensor, Tensor *dstTensor);
+                                 const Tensor *srcTensor, const Tensor *dstTensor);
   uint32_t GenDataFractalZn(std::vector<int64_t> &dims, int32_t hiddenSize, int32_t inputSize, int32_t stateSize,
                             const Tensor *srcTensor, Tensor *dstTensor);
   uint32_t GetInputAttrs(CpuKernelContext &ctx, int32_t &inputSize, int32_t &hiddenSize, int32_t &stateSize, 

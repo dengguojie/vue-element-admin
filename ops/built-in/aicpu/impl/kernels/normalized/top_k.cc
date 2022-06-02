@@ -565,8 +565,8 @@ void TopKCpuKernel::TopKForNVector(size_t start, size_t end) {
   auto value = reinterpret_cast<T *>(output_values_->GetData());
   auto indice = reinterpret_cast<int32_t *>(output_indices_->GetData());
   for (size_t i = start; i < end; i++) {
-    int32_t head = static_cast<int32_t>(i / tail_);
-    int32_t tail = static_cast<int32_t>(i % tail_);
+    int32_t head = static_cast<int32_t>(static_cast<int32_t>(i) / tail_);
+    int32_t tail = static_cast<int32_t>(static_cast<int32_t>(i) % tail_);
     if (largest_) {
       TopKMax::GetValueAndSelect(input + head * n_ * tail_ + tail,
                                  value + head * k_ * tail_ + tail,

@@ -32,7 +32,7 @@ class TransDataCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t DealData(T *input_Data, T *output_data, Tensor *input_tensor,
+  uint32_t DealData(const T *input_Data, T *output_data, const Tensor *input_tensor,
                     Tensor *out_put_tensor, int64_t group);
   uint32_t FormatTransferHwcnToFZC04(TransArgs &args, uint8_t *output_addr,
                                      uint64_t length);

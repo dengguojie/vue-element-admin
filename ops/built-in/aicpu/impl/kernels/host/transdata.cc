@@ -240,8 +240,8 @@ uint32_t TransDataCpuKernel::NewCompute(const CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
-                                      Tensor *input_tensor,
+uint32_t TransDataCpuKernel::DealData(const T *input_data, T *output_data,
+                                      const Tensor *input_tensor,
                                       Tensor *output_tensor, int64_t group) {
   DataType dt = static_cast<DataType>(input_tensor->GetDataType());
   // if cube_k equals to DT_INT8, and let its values 32 else if equals to
@@ -327,8 +327,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   int64_t dim_cin = cin_opt / cube_k;
   int64_t size_output_data =
       g_dim * d_dim * dim_cin * h_dim * w_dim * cout_opt * cube_k;
-  (void)memset_s(output_data, sizeof(T) * size_output_data, 0,
-                 sizeof(T) * size_output_data);
+  (void)memset_s(output_data, static_cast<int64_t>(sizeof(T)) * size_output_data, 0,
+                 static_cast<int64_t>(sizeof(T)) * size_output_data);
   for (int64_t g = 0; g < group; g++) {
     for (int64_t d = 0; d < d_dim; d++) {
       for (int64_t c = 0; c < c_dim; c++) {
@@ -404,7 +404,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_PARAM_INVALID;
     }
     uint64_t data_type_size = output_tensor->GetDataSize();
-    uint64_t data_byte_size = GetSizeByDataType(data_type) * data_type_size;
+    uint64_t data_byte_size = static_cast<uint64_t>(GetSizeByDataType(data_type)) * data_type_size;
     TransArgs args = {reinterpret_cast<uint8_t *>(input_tensor->GetData()),
                       input_tensor->GetTensorShape()->GetDimSizes(),
                       output_tensor->GetTensorShape()->GetDimSizes(),
@@ -516,9 +516,9 @@ uint32_t TransDataCpuKernel::FormatTransferHwcnToFZC04(TransArgs &args,
   if (ret != KERNEL_STATUS_OK) {
     return ret;
   }
-  ret = memcpy_s(
+  ret = static_cast<uint32_t>(memcpy_s(
       output_addr, length, args.data,
-      VectorToNum(args.src_shape) * GetSizeByDataType(args.src_data_type));
+      VectorToNum(args.src_shape) * GetSizeByDataType(args.src_data_type)));
   if (ret != 0) {
     KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret);
     return KERNEL_STATUS_INNER_ERROR;
@@ -595,7 +595,7 @@ uint32_t TransDataCpuKernel::PaddingTwo(TransArgs &args,
     KERNEL_LOG_ERROR("New Memory failed!");
     return KERNEL_STATUS_INNER_ERROR;
   }
-  auto ret_mem = memset_s(dst.get(), dst_byte_size, 0, dst_byte_size);
+  auto ret_mem = static_cast<int64_t>(memset_s(dst.get(), dst_byte_size, 0, dst_byte_size));
   if (ret_mem != 0) {
     KERNEL_LOG_ERROR("Memst failed, ret is [%d]", ret_mem);
     return KERNEL_STATUS_INNER_ERROR;
@@ -686,9 +686,9 @@ uint32_t TransDataCpuKernel::Transpose(TransArgs &args,
   while (dst_index < dst_ele_num) {
     auto src_index = static_cast<int32_t>(GetSrcIndex(dst_index, src_shape, dst_shape,
                                                       src_shape_head, dst_shape_head, index_map));
-    auto ret = memcpy_s(dst.get() + dst_index * data_size,
-                        dst_size - dst_index * data_size,
-                        args.data + src_index * data_size, data_size);
+    auto ret = static_cast<long>(memcpy_s(dst.get() + dst_index * data_size,
+                                          dst_size - dst_index * data_size,
+                                          args.data + src_index * data_size, data_size));
     if (ret != 0) {
       KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret);
       return KERNEL_STATUS_INNER_ERROR;

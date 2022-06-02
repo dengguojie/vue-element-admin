@@ -34,9 +34,10 @@ namespace aicpu {
 TransDataRNNCpuKernel::TransDataRNNCpuKernel() {}
 
 template <typename T>
-static uint32_t DealBiasData(T *outputData, T *inputData, int32_t dstLen,
+static uint32_t DealBiasData(T *outputData, const T *inputData, int32_t dstLen,
                              int32_t hiddenSize, int32_t hiddenCnt, int32_t hiddenSizeAlign) {
-  auto retMem = memset_s(outputData, dstLen * sizeof(T), 0, dstLen * sizeof(T));
+  auto retMem = memset_s(outputData, dstLen * static_cast<int32_t>(sizeof(T)),
+                         0, dstLen * static_cast<int32_t>(sizeof(T)));
   if (retMem != 0) {
     KERNEL_LOG_ERROR("TransDataRNN, GenDataNdRnnBias, memset_s failed");
     return KERNEL_STATUS_INNER_ERROR;
@@ -55,7 +56,7 @@ static uint32_t DealBiasData(T *outputData, T *inputData, int32_t dstLen,
 }
 
 uint32_t TransDataRNNCpuKernel::GenDataNdRnnBias(std::vector<int64_t> &dims, int32_t hiddenSize,
-                                                 const Tensor *srcTensor, Tensor *dstTensor) {
+                                                 const Tensor *srcTensor, const Tensor *dstTensor) {
   if (dims.size() != 1) {
     KERNEL_LOG_ERROR("TransDataRNN, dst_format is ND_RNN_BIAS, rank of src shape must be 1!");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -93,8 +94,9 @@ uint32_t TransDataRNNCpuKernel::GenDataNdRnnBias(std::vector<int64_t> &dims, int
   return ret;
 }
 
-uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims, int32_t hiddenSize, int32_t inputSize,
-                                                      int32_t stateSize, const Tensor *srcTensor, Tensor *dstTensor) {
+uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(
+    std::vector<int64_t> &dims, int32_t hiddenSize, int32_t inputSize,
+    int32_t stateSize, const Tensor *srcTensor, const Tensor *dstTensor) {
   int32_t shape1 = (int32_t)dims[1];
   int32_t hiddenCnt = shape1 / hiddenSize;
   int32_t hiddenSizeAlign = (hiddenSize + (ALIGN_16 - 1)) / ALIGN_16 * ALIGN_16;
@@ -125,7 +127,8 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
   }
 
   Eigen::half *dstData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(dstTensor->GetData()));
-  auto ret_mem = memset_s(dstData, sizeof(Eigen::half) * dstLen, 0, sizeof(Eigen::half) * dstLen);
+  auto ret_mem = memset_s(dstData, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen,
+                          0, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen);
   if (ret_mem != 0) {
     KERNEL_LOG_ERROR("memset dstData failed, ret is [%d]", ret_mem);
     return KERNEL_STATUS_INNER_ERROR;
@@ -147,7 +150,7 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
 }
 
 uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase2(std::vector<int64_t> &dims, int32_t hiddenSize,
-                                                      const Tensor *srcTensor, Tensor *dstTensor) {
+                                                      const Tensor *srcTensor, const Tensor *dstTensor) {
   int32_t shape0 = (int32_t)dims[0];
   int32_t shape1 = (int32_t)dims[1];
   int32_t hiddenCnt = shape1 / hiddenSize;
@@ -171,7 +174,8 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase2(std::vector<int64_t> &dims
   }
 
   Eigen::half *dstData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(dstTensor->GetData()));
-  auto ret_mem = memset_s(dstData, sizeof(Eigen::half) * dstLen, 0, sizeof(Eigen::half) * dstLen);
+  auto ret_mem = memset_s(dstData, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen, 
+                          0, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen);
   if (ret_mem != 0) {
     KERNEL_LOG_ERROR("memset dstData failed, ret is [%d]", ret_mem);
     return KERNEL_STATUS_INNER_ERROR;

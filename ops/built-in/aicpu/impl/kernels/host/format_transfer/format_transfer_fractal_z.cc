@@ -27,7 +27,7 @@ using namespace std;
 namespace aicpu {
 namespace formats {
 namespace {
-bool CheckDataTypeSupport(DataType data_type) {
+KernelStatus CheckDataTypeSupport(DataType data_type) {
   return GetSizeByDataType(data_type) > 0 ? KERNEL_STATUS_OK
                                           : KERNEL_STATUS_PARAM_INVALID;
 }
