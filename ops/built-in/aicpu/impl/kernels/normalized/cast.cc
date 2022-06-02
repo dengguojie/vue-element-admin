@@ -266,7 +266,7 @@ uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   SetMap();
   uint32_t result = aicpu::CpuKernelUtils::ParallelFor(
-      ctx, x_data_size_, x_data_size_ / max_core_num,
+      ctx, static_cast<int64_t>(x_data_size_), static_cast<int64_t>(x_data_size_ / max_core_num),
       [this](int64_t start, int64_t end) {
         uint32_t result = TransferType(start, end);
         if (result == KERNEL_STATUS_PARAM_INVALID) {

@@ -89,7 +89,7 @@ uint32_t CeilCpuKernel::ComputeCeil(Tensor *x, Tensor *y, uint64_t data_size,
   };
   // the minimum unit of segmentation is 1
   uint32_t ret =
-      CpuKernelUtils::ParallelFor(ctx, data_size / sizeof(T), 1, shard_ceil);
+      CpuKernelUtils::ParallelFor(ctx, static_cast<int64_t>(data_size / sizeof(T)), 1, shard_ceil);
   if (ret != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed");
     return KERNEL_STATUS_INNER_ERROR;

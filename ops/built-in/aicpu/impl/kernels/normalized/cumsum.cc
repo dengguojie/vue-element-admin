@@ -160,7 +160,7 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
     }
   }
   int64_t data_num = ctx.Input(kFirstInputIndex)->NumElements();
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   if (data_size <= paralled_data_size) {
     for (int64_t outer_index = 0; outer_index < outer; ++outer_index) {
       int64_t outer_index_adj;
@@ -284,7 +284,7 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
     input_data_real[i] = input_data[i].real();
     input_data_imag[i] = input_data[i].imag();
   }
-  int64_t data_size = data_num * sizeof(T);
+  int64_t data_size = data_num * static_cast<int64_t>(sizeof(T));
   if (data_size <= paralled_data_size) {
     for (int64_t outer_index = 0; outer_index < outer; ++outer_index) {
       int64_t outer_index_adj;

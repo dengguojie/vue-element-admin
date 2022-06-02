@@ -29,7 +29,7 @@
 namespace {
 const std::uint32_t kAtan2InputNum{2u};
 const std::uint32_t kAtan2OutputNum{1u};
-const char *kAtan2{"Atan2"};
+const char *const kAtan2{"Atan2"};
 const std::int64_t kAtan2ParallelNum{64 * 1024};
 }  // namespace
 

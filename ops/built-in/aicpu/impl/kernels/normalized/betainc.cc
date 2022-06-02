@@ -89,7 +89,7 @@ uint32_t BetaincCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t SwitchParallel(const std::function<void(int64_t, int64_t)> &func,
-                        int64_t end_num, CpuKernelContext &ctx,
+                        int64_t end_num, const CpuKernelContext &ctx,
                         int64_t max_core_num, int64_t data_num) {
   if (data_num <= kParallelDataNums) {
     func(0, end_num);
@@ -102,7 +102,7 @@ uint32_t SwitchParallel(const std::function<void(int64_t, int64_t)> &func,
 }
 
 template <typename T>
-uint32_t RunParallel(CpuKernelContext &ctx, std::vector<T *> data_pointers,
+uint32_t RunParallel(const CpuKernelContext &ctx, std::vector<T *> data_pointers,
                      int data_num) {
   uint32_t min_core_num = 1;
   int64_t max_core_num = std::max(
@@ -158,19 +158,19 @@ uint32_t BetaincCpuKernel::BetaincCompute(CpuKernelContext &ctx) {
 
     if (a_shape.empty()) {
       a_data = new T[bcast_size];
-      std::fill_n(a_data, bcast_size, *input_a);
+      (void)std::fill_n(a_data, bcast_size, *input_a);
       data_pointers[0] = a_data;
     }
 
     if (b_shape.empty()) {
       b_data = new T[bcast_size];
-      std::fill_n(b_data, bcast_size, *input_b);
+      (void)std::fill_n(b_data, bcast_size, *input_b);
       data_pointers[1] = b_data;
     }
 
     if (x_shape.empty()) {
       x_data = new T[bcast_size];
-      std::fill_n(x_data, bcast_size, *input_x);
+      (void)std::fill_n(x_data, bcast_size, *input_x);
       data_pointers[2] = x_data;
     }
   } else {

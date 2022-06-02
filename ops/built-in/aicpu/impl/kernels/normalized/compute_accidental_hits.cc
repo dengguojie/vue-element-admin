@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include "compute_accidental_hits.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace {
 const char *const kComputeAccidentalHits = "ComputeAccidentalHits";

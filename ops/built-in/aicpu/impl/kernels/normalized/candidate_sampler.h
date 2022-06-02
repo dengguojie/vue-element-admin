@@ -61,7 +61,6 @@ class LogUniformCandidateSamplerMsCpuKernel
       : CandidateSamplerMsCpuKernel(){};
   ~LogUniformCandidateSamplerMsCpuKernel() = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 };
 

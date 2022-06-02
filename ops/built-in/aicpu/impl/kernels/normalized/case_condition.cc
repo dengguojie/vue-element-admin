@@ -22,7 +22,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-const char *kCaseCondition = "CaseCondition";
+const char *const kCaseCondition = "CaseCondition";
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
 const uint32_t kElementNumbers = 3;

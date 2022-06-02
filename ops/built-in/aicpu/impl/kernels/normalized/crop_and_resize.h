@@ -55,7 +55,6 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
 
   template <typename T>
   struct CropAndResize {
-
     // We assume that the tensor sizes are correct.
     bool operator()(typename TTypes<T, 4>::Tensor image,
                     typename TTypes<float, 2>::Tensor boxes,

@@ -173,7 +173,7 @@ uint32_t AddCpuKernel::AddCalculate(BCalcInfo &calcInfo) {
   Eigen::array<Eigen::DenseIndex, RANK> bcast0;
   Eigen::array<Eigen::DenseIndex, RANK> bcast1;
 
-  for (int32_t i = 0; i < RANK; i++) {
+  for (Eigen::DenseIndex i = 0; i < RANK; i++) {
     reshape0[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.reshape_0[i]);
     reshape1[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.reshape_1[i]);
     shape_out[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.shape_out[i]);

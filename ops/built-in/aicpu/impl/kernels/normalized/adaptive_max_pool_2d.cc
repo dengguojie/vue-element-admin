@@ -86,14 +86,14 @@ void AdaptiveMaxPool2dSingleOutFrame(const CpuKernelContext& ctx, AdaptiveCalcAr
           // compute local max:
           int64_t ih = 0;
           int64_t iw = 0;
-          INDICES_T max_index = (ih + in_start_h) * args.in_size_w + (iw + in_start_w);
+          INDICES_T max_index = static_cast<INDICES_T>((ih + in_start_h) * args.in_size_w + (iw + in_start_w));
           SCALAR_T max_val = -std::numeric_limits<SCALAR_T>::infinity();
           for (ih = 0; ih < step_h; ih++) {
             for (iw = 0; iw < step_w; iw++) {
               SCALAR_T val = *(in_point + ih * args.in_stride_h + iw * args.in_stride_w);
               if ((val > max_val) || std::isnan(static_cast<double>(val))) {
                 max_val = val;
-                max_index = (ih + in_start_h) * args.in_size_w + (iw + in_start_w);
+                max_index = static_cast<INDICES_T>((ih + in_start_h) * args.in_size_w + (iw + in_start_w));
               }
             }
           }
@@ -110,7 +110,7 @@ void AdaptiveMaxPool2dSingleOutFrame(const CpuKernelContext& ctx, AdaptiveCalcAr
 }
 
 template <typename SCALAR_T, typename INDICES_T>
-void AdaptiveMaxPool2dOutFrame(CpuKernelContext& ctx, AdaptiveCalcArgs<SCALAR_T, INDICES_T> args) {
+void AdaptiveMaxPool2dOutFrame(const CpuKernelContext& ctx, AdaptiveCalcArgs<SCALAR_T, INDICES_T> args) {
   CpuKernelUtils::ParallelFor(ctx, args.in_size_b, 1, [&](int64_t start, int64_t end) {
     for (auto b = start; b < end; b++) {
       AdaptiveCalcArgs<SCALAR_T, INDICES_T> sub_args = args;
@@ -169,7 +169,7 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
   }
 
   // These multiplications do not overflow
-  uint64_t output_data_num = args.out_size_h * args.out_size_w;
+  uint64_t output_data_num = static_cast<uint64_t>(args.out_size_h * args.out_size_w);
   uint64_t output0_data_size = output_data_num * sizeof(SCALAR_T);
   if (output0_data_size > ctx.Output(kFirstOutputIndex)->GetDataSize()) {
     KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 0 size must big then [%llu], now size is [%llu].", output0_data_size,

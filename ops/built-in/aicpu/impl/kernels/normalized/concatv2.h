@@ -185,7 +185,7 @@ class ConcatV2CpuKernel : public CpuKernel {
           }
           size = std::min(size, out_end - out);
           KERNEL_CHECK_FALSE_EXEC((size > 0), break)
-          size_t copy_size = size * sizeof(T);
+          size_t copy_size = static_cast<size_t>(size) * sizeof(T);
           auto mem_ret = memcpy_s(out, copy_size, inp, copy_size);
           if (mem_ret != EOK) {
             KERNEL_LOG_ERROR(
@@ -215,7 +215,7 @@ class ConcatV2CpuKernel : public CpuKernel {
       for (int64_t i = skipped_rows; i < dim0; ++i) {
         for (size_t j = 0; j < num_inputs; ++j) {
           ptrdiff_t size = std::min(sizes[j], out_end - out);
-          size_t copy_size = size * sizeof(T);
+          size_t copy_size = static_cast<size_t>(size) * sizeof(T);
           auto mem_ret = memcpy_s(out, copy_size, inp[j], copy_size);
           if (mem_ret != EOK) {
             KERNEL_LOG_ERROR(
@@ -230,7 +230,8 @@ class ConcatV2CpuKernel : public CpuKernel {
         }
       }
     };
-    uint32_t result = CpuKernelUtils::ParallelFor(ctx, output->size(), sizeof(T), work);
+    uint32_t result = CpuKernelUtils::ParallelFor(ctx, static_cast<int64_t>(output->size()),
+                                                  static_cast<int64_t>(sizeof(T)), work);
     KERNEL_CHECK_FALSE((ret == KERNEL_STATUS_OK), KERNEL_STATUS_INNER_ERROR,
                        "ConcatV2CpuKernel failed.");
     KERNEL_LOG_INFO("ConcatV2CpuKernel success.");

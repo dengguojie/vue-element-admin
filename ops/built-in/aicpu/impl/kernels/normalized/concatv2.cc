@@ -41,7 +41,7 @@ uint32_t ConcatV2CpuKernel::CheckAndInitParams(const CpuKernelContext &ctx) {
                      "but got input num[%u]",
                      n_, input_num);
 
-  Tensor *concat_dim_ptr = ctx.Input(static_cast<int64_t>(n_));
+  Tensor *concat_dim_ptr = ctx.Input(static_cast<uint32_t>(n_));
   KERNEL_CHECK_NULLPTR(concat_dim_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get input concat_dim failed.");
   auto concat_dim_shape_ptr = concat_dim_ptr->GetTensorShape();

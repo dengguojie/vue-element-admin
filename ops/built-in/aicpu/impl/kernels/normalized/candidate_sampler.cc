@@ -127,9 +127,9 @@ uint32_t CandidateSamplerMsCpuKernel::DoComputeForEachType() {
   KERNEL_CHECK_FALSE((sample_ret == KERNEL_STATUS_OK), sample_ret,
                      "Sampler failed!");
 
-  size_t true_count_size = kBatchSize * num_true_ * sizeof(float);
+  size_t true_count_size = static_cast<size_t>(kBatchSize * num_true_) * sizeof(float);
   int ret = memcpy_s(reinterpret_cast<void *>(ioAddrs_[1]),
-                     static_cast<size_t>(num_sampled_ * sizeof(int64_t)),
+                     static_cast<size_t>(num_sampled_) * sizeof(int64_t),
                      reinterpret_cast<void *>(&sampled_candidate.front()),
                      sampled_candidate.size() * sizeof(int64_t));
   KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,
@@ -141,7 +141,7 @@ uint32_t CandidateSamplerMsCpuKernel::DoComputeForEachType() {
   KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,
                      "Memcpy failed, result = [%d].", ret);
   ret = memcpy_s(reinterpret_cast<void *>(ioAddrs_[3]),
-                 static_cast<size_t>(num_sampled_ * sizeof(float)),
+                 static_cast<size_t>(num_sampled_) * sizeof(float),
                  reinterpret_cast<void *>(&sampled_expected_count.front()),
                  sampled_expected_count.size() * sizeof(float));
   KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_PARAM_INVALID,

@@ -71,7 +71,7 @@ uint32_t ConjCpuKernel::ConjCompute(const CpuKernelContext &ctx) const {
   auto inputX = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto outputY = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t dataNum = ctx.Input(0)->NumElements();
-  int64_t dataSize = dataNum * sizeof(T);
+  int64_t dataSize = dataNum * static_cast<int64_t>(sizeof(T));
   if (dataSize <= kParallelDataNums) {
     for (int64_t i = 0; i < dataNum; i++) {
       *(outputY + i) = std::conj(*(inputX + i));
