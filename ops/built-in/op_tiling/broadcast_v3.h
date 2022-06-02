@@ -28,6 +28,7 @@
 #include "op_tiling.h"
 #include "vector_tiling.h"
 #include "elewise_v3.h"
+#include "rl_tune.h"
 
 #include "external/graph/operator.h"
 
@@ -51,6 +52,9 @@ struct BroadcastCompileInfo {
   std::pair<bool, std::vector<std::vector<size_t>>> fusion_index_compile;
   std::pair<bool, std::vector<bool>> broadcast_axis_compile;
   std::pair<bool, std::string> soc_version;
+
+  // rl bank info
+  std::pair<bool, std::vector<std::pair<rl::RlPattern, std::vector<rl::RlBankInfo>>>> bank_info_pair;
 
   BroadcastCompileInfo() = default;
   BroadcastCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
@@ -125,6 +129,14 @@ class Broadcast {
     bool DoTiling();
     bool WriteTilingData() const;
 
+    bool TryMatchRlBank();
+    bool WriteRlTilingData(const rl::RlBankInfo& rl_bank_info);
+    bool DoRlUbTiling(const rl::RlBankInfo& rl_bank_info, 
+                      const int64_t rl_ub_split_axis, const int64_t rl_block_split_axis,
+                      std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN>& fused_output_shape,
+                      int64_t& under_ub_split_shape);
+    bool DoRlTiling(const rl::RlBankInfo& rl_bank_info);
+
   private:
     const std::string& op_type;
     const ge::Operator& op_paras;
@@ -168,6 +180,13 @@ class Broadcast {
     bool use_special_pattern_compile{false};
     bool is_unknown_rank_compile{false};
     bool has_all_unknown_compile{false};
+
+    // rl
+    bool hit_rl_bank{false};
+    int64_t rl_ub_factor{1};
+    int64_t rl_block_factor{1};
+    int64_t rl_block_dim{1};
+    std::array<int32_t, rl::RL_MAX_VARS_NUM> rl_tiling_data{};
 };
 } // namespace v3
 class BroadcastTilingHandler: public AutoTilingHandler {

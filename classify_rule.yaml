@@ -231,6 +231,8 @@ auto_schedule:
       - ops/built-in/op_tiling/broadcast_v3.h
       - ops/built-in/op_tiling/elewise_v3.cc
       - ops/built-in/op_tiling/elewise_v3.h
+      - ops/built-in/op_tiling/rl_tune.cc
+      - ops/built-in/op_tiling/rl_tune.h
       - ops/built-in/op_tiling/lock.cc
       - ops/built-in/op_tiling/lock.h
       - ops/built-in/op_tiling/norm.cc

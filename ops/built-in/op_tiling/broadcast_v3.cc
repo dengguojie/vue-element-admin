@@ -27,6 +27,7 @@
 #include "vector_tiling.h"
 #include "error_log.h"
 #include "tiling_handler.h"
+#include "rl_tune.h"
 
 namespace optiling {
 namespace v3 {
@@ -1091,10 +1092,203 @@ bool Broadcast::IsNeedDoubleBuffer() const {
        s_pattern == Pattern::COMMON);
 }
 
+bool Broadcast::WriteRlTilingData(const rl::RlBankInfo& rl_bank_info) {
+  OP_LOGD(op_type.c_str(), "broadcast rl tiling rl_block_dim is:%lld", rl_block_dim);
+  OP_LOGD(op_type.c_str(), "broadcast rl tiling rl_kernel_key is:%lld", rl_bank_info.rl_kernel_key);
+  OP_LOGD(op_type.c_str(), "broadcast rl tiling rl_block_factor is:%lld", rl_block_factor);
+  OP_LOGD(op_type.c_str(), "broadcast rl tiling rl_ub_factor is:%lld", rl_ub_factor);
+
+  run_info.SetBlockDim(static_cast<uint32_t>(rl_block_dim));
+  run_info.SetTilingKey(rl_bank_info.rl_kernel_key);
+
+  int64_t vars_cnt = 0;
+  for (const auto& var_num : rl_bank_info.rl_sch_vars) {
+    if (var_num >= MIN_UB_CUT_INDEX) {
+      rl_tiling_data[vars_cnt++] = static_cast<int32_t>(rl_ub_factor);
+    } else if (var_num >= MIN_BLOCK_CUT_INDEX) {
+      rl_tiling_data[vars_cnt++] = static_cast<int32_t>(rl_block_factor);
+    } else {
+      int64_t var_value = var_num;
+      size_t input_index = var_value % NUM_ONE_HUNDRED;
+      var_value /= NUM_ONE_HUNDRED;
+      size_t dim_index = var_value % NUM_ONE_HUNDRED;
+      rl_tiling_data[vars_cnt++] = static_cast<int32_t>(fusion_shapes[input_index][dim_index]);
+    }
+  }
+  run_info.AddTilingData((char*)(&rl_tiling_data[0]), sizeof(int32_t) * vars_cnt);
+  return true;
+}
+
+bool Broadcast::DoRlUbTiling(const rl::RlBankInfo& rl_bank_info,
+    const int64_t rl_ub_split_axis, const int64_t rl_block_split_axis,
+    std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN>& fused_output_shape, int64_t& under_ub_split_shape) {
+  // calc fused output shape
+  for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
+    int64_t max_output = 1;
+    for (size_t j = 0; j < input_num; j++) {
+      if (fusion_shapes[j][i] > max_output) {
+        max_output = fusion_shapes[j][i];
+      }
+    }
+    fused_output_shape[i] = max_output;
+  }
+  // ub tiling
+  for (const auto& axis : rl_bank_info.rl_ub_tiling_infos[0].ub_calc_axes) {
+    if (axis == rl_ub_split_axis) {
+      continue;
+    }
+    under_ub_split_shape *= fused_output_shape[axis];
+  }
+  V_OP_TILING_CHECK((under_ub_split_shape != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "under_ub_split_shape cannot be zero."),
+                    return false);
+  // broadcast only has one time ub split
+  rl_ub_factor = std::min(rl_bank_info.rl_ub_tiling_infos[0].ub_count / under_ub_split_shape,
+                          fused_output_shape[rl_ub_split_axis]);
+  // Adjust the UB factor to avoid tail block less than 32 bytes
+  int64_t ele_in_block = BGetElementByType(out_type);
+  V_OP_TILING_CHECK((rl_ub_factor != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "rl_ub_factor cannot be zero."),
+                    return false);
+  int64_t ub_tail = fused_output_shape[rl_ub_split_axis] % rl_ub_factor;
+  if (ub_tail > 0 && under_ub_split_shape * ub_tail < ele_in_block) {
+    int64_t need_tail = std::ceil(ele_in_block * 1.0 / under_ub_split_shape);
+    int64_t ub_gap = std::ceil((need_tail - ub_tail) * 1.0 / (fused_output_shape[rl_ub_split_axis] / ub_factor));
+    rl_ub_factor -= ub_gap;
+  }
+  // equalization adjust
+  if (rl_block_split_axis == rl_ub_split_axis) {
+    int64_t ub_for_num = std::ceil(fused_output_shape[rl_ub_split_axis] * 1.0 / rl_ub_factor);
+    V_OP_TILING_CHECK((ub_for_num != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_for_num cannot be zero."),
+                      return false);
+    rl_ub_factor = std::ceil(fused_output_shape[rl_ub_split_axis] * 1.0 / ub_for_num);
+  }
+  return true;
+}
+
+bool Broadcast::DoRlTiling(const rl::RlBankInfo& rl_bank_info) {
+  OP_LOGD(op_type.c_str(), "Enter into broadcast rl tiling.");
+  bool ret = true;
+  // ub tiling
+  std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN> fused_output_shape{};
+  int64_t under_ub_split_shape = 1;
+  int64_t rl_ub_split_axis = rl_bank_info.rl_ub_tiling_infos[0].ub_split_axis;
+  int64_t rl_block_split_axis = rl_bank_info.rl_block_tiling_info.block_split_axis;
+  ret = ret && DoRlUbTiling(rl_bank_info, rl_ub_split_axis,
+                            rl_block_split_axis, fused_output_shape, under_ub_split_shape);
+  // block tiling
+  int64_t ele_in_block = BGetElementByType(out_type);
+  // not need to do block split, and no rl_block_factor
+  if (rl_bank_info.rl_block_tiling_info.block_factor_name.empty()) {
+    if (under_ub_split_shape * fused_output_shape[rl_ub_split_axis] <=
+        rl_bank_info.rl_block_tiling_info.core_num * ele_in_block) {
+        // shape is less than core_num*ele_in_block_size, only enable single core
+        rl_block_dim = 1;
+        rl_ub_factor = fused_output_shape[rl_ub_split_axis];
+    } else {
+      // all bind axes to participate in multi_core calc, but rl_ub_split_axis need to use split_outer
+      for (const auto& bind_axis : rl_bank_info.rl_block_tiling_info.bind_axes) {
+        if (bind_axis == rl_ub_split_axis) {
+          rl_block_dim *= std::ceil(fused_output_shape[rl_ub_split_axis] * 1.0 / rl_ub_factor);
+        } else {
+          rl_block_dim *= fused_output_shape[bind_axis];
+        }
+      }
+    }
+  } else {  // need to do block split
+    // calc shape multi value before block split axis
+    int64_t before_block_split_shape = 1;
+    for (const auto& bind_axis : rl_bank_info.rl_block_tiling_info.bind_axes) {
+      if (bind_axis == rl_block_split_axis) {
+        continue;
+      }
+      before_block_split_shape *= fused_output_shape[bind_axis];
+    }
+    int64_t split_axis_left_value = rl_block_split_axis != rl_ub_split_axis ?
+                                    fused_output_shape[rl_block_split_axis] : 
+                                    std::ceil(fused_output_shape[rl_ub_split_axis] * 1.0 / rl_ub_factor);
+    int64_t tmp_outer = std::ceil(rl_bank_info.rl_block_tiling_info.core_num * 1.0 / before_block_split_shape);
+    V_OP_TILING_CHECK((tmp_outer != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tmp_outer cannot be zero."),
+                      return false);
+    rl_block_factor = std::ceil(split_axis_left_value * 1.0 / tmp_outer);
+    V_OP_TILING_CHECK((rl_block_factor != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "rl_block_factor cannot be zero."),
+                      return false);
+    rl_block_dim = std::ceil(split_axis_left_value * 1.0 / rl_block_factor) * before_block_split_shape;
+  }
+  return ret;
+}
+
+bool Broadcast::TryMatchRlBank() {
+  bool ret = true;
+  // hit bank_info
+  if (!broadcast_compile_info.bank_info_pair.first) {
+    return ret;
+  }
+  // hit compute_pattern
+  // get shape and attr to calc cpt_pattern
+  int loc = 0;
+  std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN> broadcast_all_shape{};
+  for (size_t i = 0; i < input_num; i++) {
+    for (size_t j = 0; j < fusion_shapes[i].size(); j++) {
+      broadcast_all_shape[loc++] = fusion_shapes[i][j];
+    }
+  }
+  int broadcast_all_shape_size = loc;
+  loc = 0;
+  std::array<int64_t, rl::RL_MAX_ATTR_SIZE> broadcast_axis_attr{};
+  size_t fusion_len = fusion_shapes[0].size();
+  for (size_t dim = 0; dim < fusion_len; dim++) {
+    if (broadcast_axis[dim]) {
+      broadcast_axis_attr[loc++] = dim;
+    }
+  }
+  int64_t pattern_id = -1;
+  for (size_t p_id = 0; p_id < broadcast_compile_info.bank_info_pair.second.size(); p_id++) {
+    if (rl::PatternMatch(
+        broadcast_compile_info.bank_info_pair.second[p_id].first, broadcast_all_shape, broadcast_all_shape_size,
+        broadcast_axis_attr, loc)) {
+      pattern_id = p_id;
+      break;
+    }
+  }
+  if (pattern_id < 0) {
+    return ret;
+  }
+  // hit target range
+  // calc vars_value by dynamic_axis_loc
+  std::array<int64_t, rl::DYNC_AXIS_MAX_NUM> vars_value{};
+  loc = 0;
+  for (const auto& dync_axis_loc :
+    broadcast_compile_info.bank_info_pair.second[pattern_id].second[0].dynamic_axis_loc) {
+    vars_value[loc++] = fusion_shapes[dync_axis_loc.first][dync_axis_loc.second];
+  }
+  for (const auto& rl_bank_info : broadcast_compile_info.bank_info_pair.second[pattern_id].second) {
+    if (rl::CalcExpr(rl_bank_info.range_info, vars_value)) {
+      OP_LOGD(op_type.c_str(), "Hit rl bank.");
+      // do rl tiling
+      ret = ret && DoRlTiling(rl_bank_info);
+      // write rl tiling_data
+      WriteRlTilingData(rl_bank_info);
+      hit_rl_bank = true;
+      return ret;
+    }
+  }
+  return ret;
+}
+
 bool Broadcast::DoTiling() {
   OP_LOGI(op_type.c_str(), "tiling running");
   bool ret = Init();
   ret = ret && GenerateOutputShape();
+
+  // try to match rl bank
+  if (TryMatchRlBank() && hit_rl_bank) {
+    return ret;
+  }
+
   ret = ret && CalcTiling();
   if (need_tiling_cut) {
     // cut block
@@ -1168,7 +1362,7 @@ bool Broadcast::CompletedShapes() {
                return false);
     for (size_t i = 0; i < input_num; i++) {
         const ge::GeShape& shape = ge::OpDescUtils::GetOpDescFromOperator(
-          op_paras)->MutableInputDesc(i)->MutableShape();
+            op_paras)->MutableInputDesc(i)->MutableShape();
         size_t cur_dim_len = shape.GetDimNum();
         size_t start_index = dim_len - cur_dim_len;
         for (size_t j = 0; j < cur_dim_len; j++) {
@@ -1403,6 +1597,7 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   }
   // pure elewise compile info parser
   ParseElewiseInfos(op_type, outer_compile_info);
+  rl::ParseRlBankInfo(outer_compile_info, bank_info_pair);
 }
 
 bool Broadcast::BroadcastTiling() {
@@ -1456,6 +1651,9 @@ bool Broadcast::BroadcastTiling() {
     return ret && elewise.DoTiling(custom_op_info);
   } else {
     ret = ret && DoTiling();
+    if (hit_rl_bank) {
+      return ret;
+    }
     ret = ret && WriteTilingData();
   }
   return ret;

@@ -81,6 +81,61 @@ static bool CompareMap(const std::unordered_map<T1, T2>& map1, const std::unorde
   return true;
 }
 
+TEST_F(BroadcastTilingV3, RlTilingTest01) {
+  // mul(-1,-1,-1,-1,-1,-1) hit rl bank
+  std::vector<std::vector<int64_t>> inputs {{320, 1, 10, 1, 256}, {1, 2, 1, 2, 1}};
+  std::vector<std::vector<int64_t>> outputs {{320, 2, 10, 2, 256}};
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "Broadcast", "_fusion_index": [[0],[1],[2],[3],[4]], "_flag_info": [false, false, true, true, true, false, true],
+                                "_base_info": {}, "_elewise_vars": {},
+                                "_bank_info": {"-1_-1_-1_-1_-1_-1_-1_-1_-1_-1&0_1_2_3_4": [[[[[0], [2], [2,4,6,8], [4], [6], [8], [1,3,5,7,9]], [-1,-1,8,-1,-1,-1,-1], [4,2,2,2,2,2,2], [[32,2147483647], [10, 10], [0,0], [256,256], [2,2], [2,2], [1,1]]],
+                                ["dim_0_0","dim_1_0","dim_2_0","dim_3_0","dim_4_0","dim_0_1","dim_1_1","dim_2_1","dim_3_1","dim_4_1"],
+                                [[0, [0], "_block_factor_0", 32, 32], [0, [0,1,2,3,4], 10240], []], 9223372037640311976, [10000, 10100,10200,10300,10400,10001,10101,10201,10301,10401,30000,20000]]]}})";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = 
+    CreateBroadcastTilingHandler(this->test_info_->name(),
+                                 "autotiling",
+                                 nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetTilingKey()), "9223372037640311976");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "320 1 10 1 256 1 2 1 2 1 1 10 ");
+}
+
+TEST_F(BroadcastTilingV3, RlTilingTest02) {
+  // mul(-1,-1,-1,-1,-1,-1) not hit rl bank -> not hit range
+  std::vector<std::vector<int64_t>> inputs {{2, 1, 2, 1, 2}, {1, 2, 1, 2, 1}};
+  std::vector<std::vector<int64_t>> outputs {{2, 2, 2, 2, 2}};
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "Broadcast", "_fusion_index": [[0],[1],[2],[3],[4]], "_flag_info": [false, false, true, true, true, false, true],
+                                "_base_info": {}, "_elewise_vars": {},
+                                "_bank_info": {"-1_-1_-1_-1_-1_-1_-1_-1_-1_-1&0_1_2_3_4": [[[[[0], [2], [2,4,6,8], [4], [6], [8], [1,3,5,7,9]], [-1,-1,8,-1,-1,-1,-1], [4,2,2,2,2,2,2], [[32,2147483647], [10, 10], [0,0], [256,256], [2,2], [2,2], [1,1]]],
+                                ["dim_0_0","dim_1_0","dim_2_0","dim_3_0","dim_4_0","dim_0_1","dim_1_1","dim_2_1","dim_3_1","dim_4_1"],
+                                [[0, [0], "_block_factor_0", 32, 32], [0, [0,1,2,3,4], 10240], []], 9223372037640311976, [10000, 10100,10200,10300,10400,10001,10101,10201,10301,10401,30000,20000]]]}})";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = 
+    CreateBroadcastTilingHandler(this->test_info_->name(),
+                                 "autotiling",
+                                 nlohmann::json::parse(compileInfo));
+  ASSERT_FALSE(outer_compile_info->DoTiling(op_paras, runInfo));
+}
+
 TEST_F(BroadcastTilingV3, TilingTest1) {
   std::vector<std::vector<int64_t>> inputs {{64,}, {64,},{1,}};
   std::vector<std::vector<int64_t>> outputs {{64,}};;

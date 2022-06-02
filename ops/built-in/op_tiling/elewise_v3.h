@@ -26,6 +26,7 @@
 #include <unordered_set>
 #include "vector_tiling.h"
 #include "external/graph/operator.h"
+#include "rl_tune.h"
 
 namespace optiling {
 namespace v3 {
@@ -47,6 +48,8 @@ struct ElewiseCompileInfo {
   std::pair<bool, std::vector<int64_t>> const_block_dims;
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars;
   VarAttrWrap varAttrWrap;
+  // rl bank info
+  std::pair<bool, std::vector<std::pair<rl::RlPattern, std::vector<rl::RlBankInfo>>>> bank_info_pair;
 
  private:
   // required compile info parser functions
@@ -104,6 +107,9 @@ class Elewise {
   void CalcTilingKey();
   bool WriteTilingData() const;
   bool SpecialModeTiling();
+  bool WriteRlTilingData(const rl::RlBankInfo& rl_bank_info) const;
+  bool DoRlTiling(const rl::RlBankInfo& rl_bank_info);
+  bool TryMatchRlBank();
 
  private:
   const std::string& op_type;
@@ -131,6 +137,11 @@ class Elewise {
   int64_t ub_factor{1};
   bool broadcast_dispatch{false};
   ElewisePattern classify_pattern{ElewisePattern::UNKNOWN};
+  // rl
+  bool hit_rl_bank{false};
+  int64_t rl_ub_factor{1};
+  int64_t rl_block_factor{1};
+  int64_t rl_block_dim{1};
 };
 
 ElewisePattern GetDispatchPattern(std::vector<std::vector<int64_t>> elewise_inputs, const uint32_t& classify_nums);

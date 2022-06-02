@@ -21,6 +21,7 @@ corresponding schedule template for user's compute
 import copy
 import functools
 from typing import Any, Callable
+from typing import Union
 from typing import Dict
 from typing import List
 
@@ -30,9 +31,11 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import get_op_compute
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils import log
-from tbe.common.rl_bank import bank_manager
-from tbe.common.rl_bank import rl_bank
+from tbe.common.rl_bank.bank import bank_manager
+from tbe.common.rl_bank.bank.bank import query_rl_bank
+from tbe.common.buildcfg import get_current_build_config
 from tbe.dsl.base import operation
+from tbe.dsl.base.context import OperatorContext
 from tbe.dsl.base.var import AttrVarDesc
 from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
@@ -58,6 +61,26 @@ def is_true(expr, dict_args):
     """
     if not expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def try_match_rl_bank(context: Union[OperatorContext, None], original_outs: List, op_mode: str) -> List:
+    """
+    try to match rl bank
+    :param context: OperatorContext
+    :param original_outs: outs
+    :param op_mode: op_mode
+    :return: rl_schs
+    """
+    rl_schs = []
+    if context is not None:
+        try:
+            _, rl_schs = query_rl_bank(original_outs, op_mode=op_mode)
+        except Exception as e:
+            log.warn("rl bank switch exception: %s, pass!", e)
+            rl_schs = []
+        finally:
+            pass
+    return rl_schs
 
 
 def _prolong_compute_context(func):
@@ -98,7 +121,6 @@ def schedule_cce(outs, option=None):
     # rl set op res
     bank_manager.set_op_res(outs)
 
-    from tbe.common.buildcfg import get_current_build_config
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     original_outs = reget_tensor_list(original_outs)
     pattern = pattern_parser.get_pattern(outs)
@@ -107,6 +129,7 @@ def schedule_cce(outs, option=None):
     # set compute pattern
     operation.get_context().get_current_compute().set_pattern(pattern)
 
+    schedules = []
     if get_current_build_config("enable_op_prebuild"):
         # prebuild
         op_type = operation.get_context().get_op_type()
@@ -122,23 +145,19 @@ def schedule_cce(outs, option=None):
         if not get_soc_spec("CUBE_VECTOR_SPLIT"):
             return None
     else:
-        # try to use rl bank
-        try:
-            context = operation.get_context()
-            if context is not None and context.get_mode() in ("static",):
-                ret, rl_sch = rl_bank.query_rl_bank(outs, op_info=None)
-                if ret and isinstance(rl_sch, tvm.schedule.Schedule):
-                    with operation.schedule() as sch_context:
-                        rl_sch.tiling_key = rl_bank.RL_STATIC_TILING_KEY
-                        util.add_sch_additional_entry(rl_sch, "context", sch_context)
-                    return [rl_sch]
-        except Exception as e:
-            log.warn("rl bank switch exception: %s, pass!", e)
+        # try to match rl bank
+        context = operation.get_context()
+        op_mode = context.get_mode()
+        rl_schs = try_match_rl_bank(context, original_outs, op_mode)
+        if rl_schs and op_mode == "static":
+            context.add("hit_static_rl_bank", True)
+            return rl_schs
+        elif rl_schs and op_mode == "dynamic":
+            schedules.extend(rl_schs)
 
     tiling_case_func = operation.get_tiling_case(pattern)
     tiling_case_ret = tiling_case_func(original_outs, option)
 
-    schedules = []
     schedule_func = operation.get_schedule(pattern)
     for i, tiling_case in enumerate(tiling_case_ret):
         param_outs = original_outs.copy()
@@ -171,7 +190,6 @@ def build(schedules_list, config_map=None):
     :param config_map:
     :return:
     """
-    from tbe.common.buildcfg import get_current_build_config
     # if CUBE_VECTOR_SPLIT is not empty, the prebuild process goes to the pass side
     if get_current_build_config("enable_op_prebuild") and \
             not get_soc_spec("CUBE_VECTOR_SPLIT"):
@@ -201,6 +219,10 @@ def build(schedules_list, config_map=None):
     operation.get_context().set_pattern(pattern)
     operation.add_compile_info_inner(CompileInfo.PATTERN, pattern)
 
+    if operation.get_context().get("hit_static_rl_bank"):
+        _build(schedules_list, config_map)
+        return
+
     pointcut_func = operation.get_build_pointcut(pattern)
     if pointcut_func is not None:
         pointcut_func(_build, schedules_list, config_map)
@@ -223,6 +245,8 @@ class Builder:
 
         self.schedules = self._normalize_schedules()
         self.tensors = self._normalize_tensors()
+
+        self.bank_info = {}
 
         self.te_vars_list = None
         self.ebv_list = None
@@ -275,7 +299,10 @@ class Builder:
 
         # 'ebv' means 'exclude bound vars'
         te_vars_list, ebv_list, attr_vars_desc_list, sch_tensors_list = [], [], [], []
+        bank_info = {}
         for i, cpt in enumerate(op_context.get_computes()):
+            if cpt.get("_bank_info") is not None:
+                bank_info.update(cpt.get("_bank_info"))
             cpt_vars = cpt.get_vars()
             cpt_ebv = cpt.get_exclude_bound_vars()
             cpt_attr_vars_desc = cpt.get_attr_vars_desc()
@@ -297,6 +324,7 @@ class Builder:
                                    "they are [%s]." % lens
                  })
 
+        self.bank_info = bank_info
         self.te_vars_list = te_vars_list
         self.ebv_list = ebv_list
         self.attr_vars_desc_list = attr_vars_desc_list
@@ -475,10 +503,20 @@ class Builder:
             value = {k: [x.get_name() for x in v] for k, v in self.compile_custom_vars.items()}
             operation.add_compile_info_inner(CompileInfo.CUSTOM_VARS, value)
 
+        def add_bank_info():
+            """
+            for dynamic rl tune, add bank_info into compile_info
+            :return:
+            """
+            if self.bank_info:
+                # key: '_bank_info', value: rl tune info
+                operation.add_compile_info_inner(CompileInfo.RL_BANK_INFO, self.bank_info)
+
         add_vars()
         add_normal_vars()
         add_attr_vars()
         add_custom_vars()
+        add_bank_info()
 
     def _handle_addition(self):
         operation.get_context().add("_tiling_keys", self.tiling_keys)

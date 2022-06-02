@@ -278,6 +278,70 @@ TEST_F(ElewiseTilingV3, elewise_set_attr_case1) {
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, run_info));
 }
 
+TEST_F(ElewiseTilingV3, rl_hit_second_cpt_no_blocktiling) {
+  // rl hit -1_-1 cpt: second target -> no block tiling
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{65540}, {65540}};
+  std::vector<std::vector<int64_t>> out_shapes = {{65540}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+
+  optiling::utils::OpRunInfo runInfo;
+
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "Broadcast",
+                                "_fusion_index": [[0],[1],[2]],
+                                "_classify_inputs_num": 2,
+                                "_flag_info": [false, false, true, true, true, false, true],
+                                "_base_info": {}, "_elewise_vars": {},
+                                "_bank_info": {"-1_-1":
+                                [[[[[0]], [-1], [4],[[67584, 2147483647]]], ["dim_0_0"], [[0, [0], "_block_factor_0", 32, 32], [0, [0], 9400], []], 9223372038164746484, [10000, 30000, 20000]],
+                                 [[[[0]], [-1], [4], [[256,65540]]], ["dim_0_0"], [[0, [0],"",32,16], [0, [0], 4152], []], 9223372040192759146, [10000, 30000]]]}
+                                })";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateElewiseTilingHandler(this->test_info_->name(),
+                               "autotiling",
+                               nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetTilingKey()), "9223372040192759146");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "65540 2056 ");
+}
+
+TEST_F(ElewiseTilingV3, rl_hit_second_cpt_blocktiling) {
+  // rl hit -1_-1 cpt: second target -> block tiling
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{655400}, {655400}};
+  std::vector<std::vector<int64_t>> out_shapes = {{655400}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+
+  optiling::utils::OpRunInfo runInfo;
+
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "Broadcast",
+                                "_fusion_index": [[0],[1],[2]],
+                                "_classify_inputs_num": 2,
+                                "_flag_info": [false, false, true, true, true, false, true],
+                                "_base_info": {}, "_elewise_vars": {},
+                                "_bank_info": {"-1_-1":
+                                [[[[[0]], [-1], [4],[[67584, 2147483647]]], ["dim_0_0"], [[0, [0], "_block_factor_0", 32, 32], [0, [0], 9400], []], 9223372038164746484, [10000, 30000, 20000]],
+                                 [[[[0]], [-1], [4], [[256,65540]]], ["dim_0_0"], [[0, [0],"",32,16], [0, [0], 4152], []], 9223372040192759146, [10000, 30000]]]}
+                                })";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateElewiseTilingHandler(this->test_info_->name(),
+                               "autotiling",
+                               nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetTilingKey()), "9223372038164746484");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "655400 9400 3 ");
+}
+
 TEST_F(ElewiseTilingV3, empty_mode_none_custom_tiling) {
   // Construct op_paras
   std::vector<std::vector<int64_t>> in_shapes = {{2, 0, 2}};

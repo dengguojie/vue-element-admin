@@ -203,6 +203,7 @@ class CompileInfo:
     BROADCAST_AXIS = "_broadcast_axis"
     OUTS_UINT1 = "_outs_uint1"
     SOC_VERSION = "_soc_version"
+    RL_BANK_INFO = "_bank_info"
     CONTAINS_ELEWISE_SCH = "_contains_elewise_sch"
     UB_FACTOR_ALIGN = "_ub_factor_align"
     CLASSIFY_INPUTS_NUM = "_classify_inputs_num"

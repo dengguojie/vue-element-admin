@@ -25,6 +25,7 @@
 #include "tiling_handler.h"
 #include "graph/op_desc.h"
 #include "graph/utils/op_desc_utils.h"
+#include "rl_tune.h"
 
 namespace optiling {
 namespace v3 {
@@ -397,9 +398,9 @@ bool Elewise::DoUbTiling() {
   }
   if (limit < ub_factor) {
     int64_t ub_factor_align_size = compile_info.ub_factor_align;
-    V_CHECK_GT(limit, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit must be greater than zero, but it is [%ld]", limit),
-               return false);
+    V_OP_TILING_CHECK((limit > 0),
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit must be greater than zero, but it is [%ld]", limit),
+        return false);
     int64_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
     int64_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
     int64_t align_factor = std::ceil(adjust_factor * 1.0 / ub_factor_align_size);
@@ -478,6 +479,119 @@ bool Elewise::SpecialModeTiling() {
   return ret;
 }
 
+bool Elewise::WriteRlTilingData(const rl::RlBankInfo& rl_bank_info) const {
+  OP_LOGD(op_type.c_str(), "elewise rl tiling rl_block_dim is:%lld", rl_block_dim);
+  OP_LOGD(op_type.c_str(), "elewise rl tiling rl_kernel_key is:%lld", rl_bank_info.rl_kernel_key);
+  OP_LOGD(op_type.c_str(), "elewise rl tiling rl_block_factor is:%lld", rl_block_factor);
+  OP_LOGD(op_type.c_str(), "elewise rl tiling rl_ub_factor is:%lld", rl_ub_factor);
+
+  run_info.SetBlockDim(static_cast<uint32_t>(rl_block_dim));
+  run_info.SetTilingKey(rl_bank_info.rl_kernel_key);
+
+  for (const auto& var_num : rl_bank_info.rl_sch_vars) {
+    if (var_num >= MIN_UB_CUT_INDEX) {
+      run_info.AddTilingData(static_cast<int32_t>(rl_ub_factor));
+    } else if (var_num >= MIN_BLOCK_CUT_INDEX) {
+      run_info.AddTilingData(static_cast<int32_t>(rl_block_factor));
+    } else {
+      run_info.AddTilingData(static_cast<int32_t>(out_shape));
+    }
+  }
+  return true;
+}
+
+bool Elewise::DoRlTiling(const rl::RlBankInfo& rl_bank_info) {
+  OP_LOGD(op_type.c_str(), "Enter into elewise rl tiling.");
+  bool ret = true;
+  // ub tiling
+  // elewise only has one time ub split
+  rl_ub_factor = rl_bank_info.rl_ub_tiling_infos[0].ub_count;
+  // elewise factor need to align
+  int64_t ele_in_block = GetElementByType(out_dtype);
+  V_OP_TILING_CHECK((ele_in_block != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                    return false);
+  int64_t align_rl_ub_factor = std::floor(rl_ub_factor * 1.0 / ele_in_block) * ele_in_block;
+  rl_ub_factor = std::max(ele_in_block, align_rl_ub_factor);
+  V_OP_TILING_CHECK((rl_ub_factor != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "rl_ub_factor cannot be zero."),
+                    return false);
+  // Adjust the UB factor to avoid tail block less than 32 bytes
+  int64_t ub_tail = out_shape % rl_ub_factor;
+  if (ub_tail > 0 && ub_tail < ele_in_block) {
+    int64_t ub_num = out_shape / rl_ub_factor;
+    V_OP_TILING_CHECK((ub_num != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_num cannot be zero."),
+                      return false);
+    int64_t ub_gap = std::ceil((ele_in_block - ub_tail) * 1.0 / ub_num);
+    rl_ub_factor -= ub_gap;
+  }
+  // block tiling
+  // not need to do block split, and no rl_block_factor
+  if (rl_bank_info.rl_block_tiling_info.block_factor_name.empty()) {
+    if (out_shape <= rl_bank_info.rl_block_tiling_info.core_num * ele_in_block) {
+      // shape is less than core_num*ele_in_block_size, only enable single core
+      rl_block_dim = 1;
+      rl_ub_factor = out_shape;
+    } else {
+      int64_t ub_factor_max = rl_ub_factor;
+      // try to enable all core, and next to do full split
+      rl_ub_factor = std::ceil(out_shape * 1.0 / rl_bank_info.rl_block_tiling_info.core_num);
+      // 32B align, and less equal ub_factor_max
+      int64_t align_rl_ub_factor = std::ceil(rl_ub_factor * 1.0 / ele_in_block) * ele_in_block;
+      rl_ub_factor = std::min(ub_factor_max, align_rl_ub_factor);
+      rl_block_dim = std::ceil(out_shape * 1.0 / rl_ub_factor);
+    }
+  } else {  // need to do block split
+    int64_t outer = std::ceil(out_shape * 1.0 / rl_ub_factor);
+    rl_block_factor = std::ceil(outer * 1.0 / rl_bank_info.rl_block_tiling_info.core_num);
+    V_OP_TILING_CHECK((rl_block_factor != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "rl_block_factor cannot be zero."),
+                      return false);
+    rl_block_dim = std::ceil(outer * 1.0 / rl_block_factor);
+  }
+  return ret;
+}
+
+bool Elewise::TryMatchRlBank() {
+  bool ret = true;
+  // hit bank_info
+  if (!compile_info.bank_info_pair.first) {
+    return ret;
+  }
+  // hit compute_pattern
+  // get shape and attr to calc cpt_pattern
+  std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN> inputs_shape{};
+  for (uint32_t i = 0; i < input_num; i++) {
+    inputs_shape[i] = out_shape;
+  }
+  int64_t pattern_id = -1;
+  for (size_t j = 0; j < compile_info.bank_info_pair.second.size(); j++) {
+    if (rl::PatternMatch(compile_info.bank_info_pair.second[j].first, inputs_shape, input_num, {}, 0)) {
+      pattern_id = j;
+      break;
+    }
+  }
+  if (pattern_id < 0) {
+    return ret;
+  }
+  // hit target range
+  // calc vars_value by dynamic_axis_loc, elewise only have one dynamic axis
+  std::array<int64_t, rl::DYNC_AXIS_MAX_NUM> vars_value{out_shape};
+  for (const auto& rl_bank_info : compile_info.bank_info_pair.second[pattern_id].second) {
+    if (rl::CalcExpr(rl_bank_info.range_info, vars_value)) {
+      OP_LOGD(op_type.c_str(), "Hit rl bank.");
+      // do rl tiling
+      ret = ret && DoRlTiling(rl_bank_info);
+      // write rl tiling_data
+      WriteRlTilingData(rl_bank_info);
+      hit_rl_bank = true;
+      return ret;
+    }
+  }
+  return ret;
+}
+
 bool Elewise::DoTiling() {
   bool ret = CheckCompileInfo();
   GetOutputDtype();
@@ -488,6 +602,10 @@ bool Elewise::DoTiling() {
     return ret;
   }
   GetOutputDtype();
+  // try to match rl bank
+  if (TryMatchRlBank() && hit_rl_bank) {
+    return ret;
+  }
   // tiling distribute to different classify mode
   if (compile_info.classify_const_mode) {
     ret = ConstModeTiling();
@@ -506,6 +624,10 @@ bool Elewise::DoTiling(const OpInfo& op_info) {
   ret = ret && GetInOutShapes(op_info);
   if (!ret) {
     OP_LOGE(op_type.c_str(), "elewise custom tiling input infos get failed.");
+    return ret;
+  }
+  // try to match rl bank
+  if (TryMatchRlBank() && hit_rl_bank) {
     return ret;
   }
   // tiling dispatch to different classify mode
@@ -598,6 +720,7 @@ ElewiseCompileInfo::ElewiseCompileInfo(const std::string& op_type, const nlohman
   OP_LOGD(op_type.c_str(), "elewise compile info parse running");
   ParseRequiredCompileInfo(outer_compile_info);
   ParseOptionalCompileInfo(outer_compile_info);
+  rl::ParseRlBankInfo(outer_compile_info, bank_info_pair);
 }
 }  // namespace v3
 

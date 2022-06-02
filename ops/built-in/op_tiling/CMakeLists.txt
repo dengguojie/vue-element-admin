@@ -120,6 +120,7 @@ set(_optiling_files
   reflection_pad_v3.cc
   prelu.cc
   reverse.cc
+  rl_tune.cc
   reduce_tiling_v3.cc
   norm.cc
   tuple_reduce.cc

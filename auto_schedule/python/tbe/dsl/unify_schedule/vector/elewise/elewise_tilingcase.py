@@ -227,11 +227,13 @@ def _pre_build(schedules_list):
             cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []
             for sch_context in cpt.get_schedules():
                 sch_vars = sch_context.get_vars()
+                te_vars_list.append(op_vars + cpt_vars + sch_vars)
+                if sch_context.get("sch_pattern") == "rl_sch":
+                    continue
                 cpt_ub_sizes.append(sch_context.get(CompileInfo.UB_SIZE))
                 cpt_max_dtypes.append(sch_context.get(CompileInfo.MAX_DTYPE))
                 cpt_coexisting_quantitys.append(sch_context.get(CompileInfo.COEXISTING_QUANTITY))
                 cores.append(sch_context.get(CompileInfo.CORE_NUM))
-                te_vars_list.append(op_vars + cpt_vars + sch_vars)
                 tiling_key = sch_context.get("_tiling_key")
 
             pattern_key = _get_pattern_key(tiling_key)

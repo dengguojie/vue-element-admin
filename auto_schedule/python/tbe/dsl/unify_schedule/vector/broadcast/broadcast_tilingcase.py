@@ -265,6 +265,8 @@ def _pre_build():
             cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []
             tiling_key = -1
             for sch_context in cpt.get_schedules():
+                if sch_context.get("sch_pattern") == "rl_sch":
+                    continue
                 cpt_ub_sizes.append(sch_context.get(CompileInfo.UB_SIZE))
                 cpt_max_dtypes.append(sch_context.get(CompileInfo.MAX_DTYPE))
                 cpt_coexisting_quantitys.append(sch_context.get(CompileInfo.COEXISTING_QUANTITY))
