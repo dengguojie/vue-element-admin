@@ -273,9 +273,11 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     schedules, tensors = [], []
 
     _, fmap_h, fmap_w, fmap_c = shape_input_4d
-    if fmap_h * fmap_w * fmap_c == -1:
+    if fmap_h == -1:
         fmap_h = Constant.BLOCK_SIZE_INT8
+    if fmap_w == -1:
         fmap_w = Constant.BLOCK_SIZE_INT8
+    if fmap_c == -1:
         fmap_c = Constant.DMA_SPLIT_THRESHOLD // Constant.BLOCK_SIZE_INT8 // Constant.BLOCK_SIZE_INT8
     fmap_c1 = (fmap_c + align_block_size - 1) // align_block_size
     fmap_c0 = align_block_size

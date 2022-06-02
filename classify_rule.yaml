@@ -1272,6 +1272,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bias.py
       - ops/built-in/tbe/impl/dynamic/bn_training_reduce_grad.py
       - ops/built-in/tbe/impl/dynamic/fill.py
+      - ops/built-in/tbe/impl/dynamic/extract_image_patches.py
       - ops/built-in/tbe/impl/dynamic/kl_div.py
       - ops/built-in/tbe/impl/dynamic/select.py
       - ops/built-in/tbe/impl/dynamic/zeros_like.py
@@ -2345,6 +2346,7 @@ ops_pub:
       - ops/built-in/op_proto/inc/nn_norm_ops.h
       - ops/built-in/op_proto/nn_norm_ops.cc
       - ops/built-in/op_proto/nn_training_ops.cc
+      - ops/built-in/op_proto/util/util.cc
     unrelease:
 
 
@@ -2486,7 +2488,6 @@ unkown:
       - ops/built-in/op_proto/inc/split_combination_ops.h
       - ops/built-in/op_proto/util/array_ops_shape_fns.h
       - ops/built-in/op_proto/util/nn_shape_fns.cc
-      - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
       - ops/built-in/op_proto/util/reduce_infer_util.h
@@ -3121,7 +3122,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/pad_not_align.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_tik.py
-      - ops/built-in/tbe/impl/dynamic/extract_image_patches.py
       - ops/built-in/tbe/impl/dynamic/index_fill_d.py
       - ops/built-in/tbe/impl/dynamic/real_div.py
       - ops/built-in/tbe/impl/dynamic/prod_force_se_a.py

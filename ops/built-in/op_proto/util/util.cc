@@ -57,7 +57,11 @@ bool CheckInputDtypeAndShape(const Operator& op, const std::map<std::string, std
     }
     auto dims = input_desc.GetShape().GetDims();
     if (dims != first_shape_dims) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("the op shape of param ", iter->first, " must equal with param ", first_name)));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                          OtherErrMsg(ConcatString("the op shape of param ",
+                                                                   iter->first,
+                                                                   " must equal with param ",
+                                                                   first_name)));
       return false;
     }
   }
@@ -84,7 +88,9 @@ bool CheckInputDataType(const Operator& op, const std::string& input_name,
   } while (0);
 
   if (!valid) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("The op do not support the dtype", ge::TypeUtils::DataTypeToSerialString(input_type))));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                        OtherErrMsg(ConcatString("The op do not support the dtype",
+                                                                 ge::TypeUtils::DataTypeToSerialString(input_type))));
     return false;
   }
 
@@ -94,13 +100,17 @@ bool CheckInputDataType(const Operator& op, const std::string& input_name,
 bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const string& input_name2) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_desc == nullptr || op_desc->MutableInputDesc(input_name1) == nullptr ||
-      op_desc->MutableInputDesc(input_name2) == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
-      return false);
+        op_desc->MutableInputDesc(input_name2) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
+        return false);
 
   DataType input_type_x1 = op_desc->MutableInputDesc(input_name1)->GetDataType();
   DataType input_type_x2 = op_desc->MutableInputDesc(input_name2)->GetDataType();
   if (input_type_x1 != input_type_x2) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("The ", TbeGetName(op), " op dtype is not same, type1:", ge::TypeUtils::DataTypeToSerialString(input_type_x1), ", type2:", ge::TypeUtils::DataTypeToSerialString(input_type_x2))));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+      OtherErrMsg(ConcatString("The ", TbeGetName(op), " op dtype is not same, type1:",
+                               ge::TypeUtils::DataTypeToSerialString(input_type_x1), ", type2:",
+                               ge::TypeUtils::DataTypeToSerialString(input_type_x2))));
     return false;
   }
 
@@ -114,7 +124,11 @@ bool CheckInputDtypeSame(const Operator& op, std::vector<std::string>& input_ten
     const TensorDesc input_desc = op.GetInputDescByName(input_name.c_str());
     auto input_dtype = input_desc.GetDataType();
     if (input_dtype != first_input_dtype) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("the op type of param ", input_name, " must equal with param ", (*first_name))));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                          OtherErrMsg(ConcatString("the op type of param ",
+                                                                   input_name,
+                                                                   " must equal with param ",
+                                                                   (*first_name))));
       return false;
     }
   }
@@ -158,7 +172,13 @@ bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& di
   }
   for (size_t i = 0; i < dimVec.size(); i++) {
     CHECK((dimVec[i] != dims[i]) && (dimVec[i] != 1) && (dims[i] != 1) && (dimVec[i] != -1) && (dims[i] != -1),
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("The ", TbeGetName(op), "'s dimensions does not match the broadcast rule(", dimVec[i], dims[i], ")."))),
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                        OtherErrMsg(ConcatString("The ",
+                                                                 TbeGetName(op),
+                                                                 "'s dimensions does not match the broadcast rule(",
+                                                                 dimVec[i],
+                                                                 dims[i],
+                                                                 ")."))),
     return false);
   }
   dimVec = TwoBroadcastShape(dimVec, dims);
@@ -225,7 +245,7 @@ std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const 
 std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
               const std::vector<int64_t>& dims_out,
               const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
-              std::vector<std::pair<int64_t, int64_t>>& shape_range_y){
+              std::vector<std::pair<int64_t, int64_t>>& shape_range_y) {
   size_t size_shape_out = dims_out.size();
   std::vector<std::pair<int64_t, int64_t>> out_range;
   if (!IsUnknownRankShape(dims_out)) {
@@ -428,7 +448,13 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   // dynamic case
   for (size_t i = 0; i < dimsX.size(); i++) {
     CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("The ", TbeGetName(op), "'s dimensions does not match the broadcast rule(", dimsX[i], dimsY[i], ")."))),
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                          OtherErrMsg(ConcatString("The ",
+                                                                   TbeGetName(op),
+                                                                   "'s dimensions does not match the broadcast rule(",
+                                                                   dimsX[i],
+                                                                   dimsY[i],
+                                                                   ")."))),
       return false);
 
     if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
@@ -440,14 +466,14 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
         dimVec.push_back(dims);
         dimVec[i] = -1;
       } else if ((dimsY[i] == 0) || (dimsX[i] == 0)) {
-        dimVec.push_back(0);
+        dimVec.push_back(-1);
       }
     } else if ((dimsX[i] != -1) && (dimsY[i] == -1)) {
       if (dimsX[i] > 1) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
       } else if (dimsX[i] == 0) {
-        dimVec.push_back(0);
+        dimVec.push_back(-1);
       } else if (dimsX[i] == 1) {
         int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
         dimVec.push_back(dims);
@@ -514,7 +540,9 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
     tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
     tensordesc_output->SetDataType(input_dtype);
-    OP_LOGI(TbeGetName(op).c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
+    OP_LOGI(TbeGetName(op).c_str(),
+            "output shape is: %s, output dtype is:%d.",
+            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
             input_dtype);
     return true;
   }
@@ -529,7 +557,13 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 
   for (size_t i = 0; i < dimsX.size(); i++) {
     CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("The ", TbeGetName(op), "'s dimensions does not match the broadcast rule(", dimsX[i], dimsY[i], ")."))),
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                          OtherErrMsg(ConcatString("The ",
+                                                                   TbeGetName(op),
+                                                                   "'s dimensions does not match the broadcast rule(",
+                                                                   dimsX[i],
+                                                                   dimsY[i],
+                                                                   ")."))),
       return false);
 
     if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
@@ -699,7 +733,7 @@ bool InferShapeAndTypeBroadcast(Operator& op, std::vector<int64_t> input_idxs, c
       is_dynamic = true;
     }
     OP_LOGI(TbeGetName(op), "shape_%ld: %s.", i, to_string(shape).c_str());
-    if (!BroadCastShapeToOutShape(shape, shape_output) ) {
+    if (!BroadCastShapeToOutShape(shape, shape_output)) {
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("BroadCastShapeToOutShape error."));
       return false;
     }
@@ -1077,21 +1111,26 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
   size = const_tensor.GetSize() / sizeof(uint64_t);
   for (size_t i = 0; i < size; ++i) {
     const_data.push_back((uint64_t)(*(const_data_ptr + i)));
-    OP_LOGD(TbeGetName(op).c_str(), "const data uint64 fusion pass, const_data[%llu]", (uint64_t)(*(const_data_ptr + i)));
+    OP_LOGD(TbeGetName(op).c_str(),
+            "const data uint64 fusion pass, const_data[%llu]",
+            (uint64_t)(*(const_data_ptr + i)));
   }
   return true;
 }
 
 bool GetConstValue(const Operator& op, const GeTensor* const_tensor,
-                          const DataType& dtype, std::vector<int64_t>& const_data) {
+                   const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();
   void* data_ptr = (void*)const_tensor->GetData().GetData();
-  CHECK(data_ptr == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("data is null.")), return false);
+  CHECK(data_ptr == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                            OtherErrMsg("data is null.")),
+                                            return false);
 
   CHECK(dtype != ge::DT_INT32 && dtype != ge::DT_INT64,
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("const not support this type")),
         return false);
-  if (dtype == ge::DT_INT32){
+  if (dtype == ge::DT_INT32) {
     int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
     size = size / sizeof(int32_t);
     for (size_t i=0; i < size; i++) {
@@ -1227,9 +1266,10 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
       continue;
     } else {
       ShapeTransferAccordingToFormat* global_object = new (std::nothrow) ShapeTransferAccordingToFormat();
-      CHECK(global_object == nullptr, 
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
-      return false);
+      CHECK(global_object == nullptr,
+            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                                OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
+            return false);
       global_object->GetShapeAccordingToFormat(shapeAndFormatInfoInput);
 
       // print some info
@@ -1267,7 +1307,7 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
       continue;
     } else {
       ShapeTransferAccordingToFormat* global_object = new(std::nothrow) ShapeTransferAccordingToFormat();
-      CHECK(global_object == nullptr, 
+      CHECK(global_object == nullptr,
             VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
             return false);
       global_object->GetShapeAccordingToFormat(shapeAndFormatInfoOutput);
@@ -1295,8 +1335,9 @@ bool IsEmptyTensor(const std::vector<int64_t>& dims) {
 
 bool IsUnknownRank(const Operator& op, const std::string& tensor_name, const std::string& types) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK(op_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")), return false);
-  GeTensorDescPtr tensor_desc;
+  CHECK(op_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")), return false);
+        GeTensorDescPtr tensor_desc;
   if (types == "input") {
     tensor_desc = op_desc->MutableInputDesc(tensor_name);
   } else if (types == "output") {
@@ -1413,9 +1454,15 @@ bool OneInOneOutDynamicInfer(const Operator& op,
   // get input desc
   PROFILING_PROTO_INIT(TbeGetName(op).c_str());
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK(op_info == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")), return false);
+  CHECK(op_info == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                            OtherErrMsg("invalid OpDesc.")),
+        return false);
   auto input_desc = op_info->MutableInputDesc(input_name);
-  CHECK(input_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid input_desc")), return false);
+  CHECK(input_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                            OtherErrMsg("invalid input_desc")),
+        return false);
   vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
   DataType input_dtype = input_desc->GetDataType();
 
@@ -1425,7 +1472,9 @@ bool OneInOneOutDynamicInfer(const Operator& op,
     MakeUpShapeRange(input_shape, input_range);
 
     auto output_desc = op_info->MutableOutputDesc(0);
-    CHECK(output_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid output_desc")), return false);
+    CHECK(output_desc == nullptr,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid output_desc")),
+          return false);
     for (const string& output_name : output_name_list) {
       output_desc = op_info->MutableOutputDesc(output_name);
       output_desc->SetShape(GeShape(input_shape));
@@ -1435,7 +1484,9 @@ bool OneInOneOutDynamicInfer(const Operator& op,
     }
   } else {
     auto output_desc = op_info->MutableOutputDesc(0);
-    CHECK(output_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid output_desc")), return false);
+    CHECK(output_desc == nullptr,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid output_desc")),
+          return false);
     PROFILING_PROTO_AFTER_GET_SHAPE_REG();
     PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
     for (const string& output_name : output_name_list) {
@@ -1552,8 +1603,8 @@ bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
   // get input1 desc
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_info == nullptr || op_info->MutableInputDesc(input1_name) == nullptr ||
-            op_info->MutableInputDesc(input2_name) == nullptr, 
-            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
+        op_info->MutableInputDesc(input2_name) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
         return false);
   auto input1_desc = op_info->MutableInputDesc(input1_name);
   vector<int64_t> input1_shape = input1_desc->MutableShape().GetDims();
@@ -1592,7 +1643,10 @@ bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
   return true;
 }
 
-bool SetScalarOutputDesc(const string& input, const string& output, OpDescPtr op_desc, GeShape& output_shape) {
+bool SetScalarOutputDesc(const string& input,
+                         const string& output,
+                         OpDescPtr op_desc,
+                         GeShape& output_shape) {
   if (output_shape.IsScalar()) {
     auto td = op_desc->MutableOutputDesc(output);
     td->SetShape(output_shape);
@@ -1723,7 +1777,7 @@ int64_t CalcMaxElementsCount(const Operator &op, const std::vector<std::pair<int
 }
 
 void GenerateWorstYShapeAndYShapeRange(int64_t y_rank, int64_t max_elements_count,
-                                      std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape) {
+                                       std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape) {
   y_shape = GeShape(std::vector<int64_t>(y_rank, UNKNOWN_DIM));
   y_shape_range.clear();
   for (int64_t i = 0; i < y_rank; ++i) {
