@@ -169,8 +169,8 @@ uint32_t CalSearchSorted(bool right, const Tensor *sequence_t, const Tensor *val
         task_flag.store(false);
         KERNEL_LOG_ERROR("Indices of input[0] is out of range: [%u].", sequence_len);
       }
-      output[i] = right ? std::upper_bound(seq_start, seq_start + search_len,
-                            values[i]) - seq_start : bound.second - seq_start;
+      output[i] = right ? static_cast<T>(std::upper_bound(seq_start, seq_start + search_len,
+                            values[i]) - seq_start) : static_cast<T>(bound.second - seq_start);
     }
   };
 
