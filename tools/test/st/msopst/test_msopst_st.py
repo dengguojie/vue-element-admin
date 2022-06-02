@@ -71,6 +71,8 @@ ST_GOLDEN_OP_CASE_JSON_INPUT = './st/msopst/golden/base_case/input' \
                                '/Pooling_case_20210225145706.json'
 ST_GOLDEN_ACL_PROJECT_OUTPUT_TESTCASE = './st/msopst/golden/base_case/golden_output' \
                                    '/gen_optional_acl_prj/Pooling/src/testcase.cpp'
+ST_GOLDEN_ACL_PROJECT_ORIGIN_OUTPUT_TESTCASE = './st/msopst/golden/base_case/golden_output' \
+                                   '/gen_optional_acl_prj/Pooling/src/testcase_ori.cpp'
 ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN = './st/msopst/golden/base_case/golden_output' \
                                    '/gen_optional_acl_prj/Pooling/run/out'\
                                    '/test_data/config/'
@@ -739,7 +741,7 @@ class TestUtilsMethods(unittest.TestCase):
                     msopst.main()
         op_output_testcase = os.path.join(ST_OUTPUT, 'src/testcase.cpp')
         self.assertTrue(compare_context(
-            op_output_testcase, ST_GOLDEN_ACL_PROJECT_OUTPUT_TESTCASE))
+            op_output_testcase, ST_GOLDEN_ACL_PROJECT_ORIGIN_OUTPUT_TESTCASE))
 
     # ------------------------parse aicpu head file----------------
     def test_create_cmd_for_aicpu_parse_head_file(self):

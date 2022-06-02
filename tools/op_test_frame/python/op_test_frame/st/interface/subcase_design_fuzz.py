@@ -333,10 +333,21 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                                                                  fuzz_dict,
                                                                  ConstManager.OUTPUT_DESC)
                 attr_list = self._check_attr_valid(ori_json, fuzz_dict)
+                if len(output_desc_list) == 0:
+                    suffix = ''
+                elif ori_json.get(ConstManager.ST_MODE) == "ms_python_train":
+                    type_str = output_desc_list[0].get('type')
+                    suffix_list = ['', type_str]
+                    suffix = '_'.join(suffix_list)
+                else:
+                    type_str = output_desc_list[0].get('type')
+                    format_str = output_desc_list[0].get('format')
+                    suffix_list = ['', format_str, type_str]
+                    suffix = '_'.join(suffix_list)
                 case = {ConstManager.OP: ori_json[ConstManager.OP],
                         ConstManager.INPUT_DESC: input_desc_list,
                         ConstManager.OUTPUT_DESC: output_desc_list,
-                        'case_name': prefix + '%03d' % self.case_idx}
+                        'case_name': prefix + '%03d' % self.case_idx + suffix}
                 if ori_json.get(ConstManager.ST_MODE) == "ms_python_train":
                     case[ConstManager.ST_MODE] = "ms_python_train"
                 if len(attr_list) > 0:

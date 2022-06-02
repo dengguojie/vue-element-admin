@@ -13,7 +13,7 @@
 using namespace OpTest;
 
 
-OP_TEST(TestOp, Test_Op_001_case_001)
+OP_TEST(TestOp, Test_Op_001_case_001_ND_float16)
 {
     
     std::string opType = "TestOp";
@@ -22,13 +22,13 @@ OP_TEST(TestOp, Test_Op_001_case_001)
     opTestDesc.inputShape = {{1}};
     opTestDesc.inputDataType = {ACL_INT64};
     opTestDesc.inputFormat = {(aclFormat)2};
-    opTestDesc.inputFilePath = {"test_data/data/Test_Op_001_case_001_input_0"};
+    opTestDesc.inputFilePath = {"test_data/data/Test_Op_001_case_001_ND_float16_input_0"};
     opTestDesc.inputConst = {true};
     // output parameter init
     opTestDesc.outputShape = {{1}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
     opTestDesc.outputFormat = {(aclFormat)2};
-    opTestDesc.outputFilePath = {"result_files/Test_Op_001_case_001_output_0"};
+    opTestDesc.outputFilePath = {"result_files/Test_Op_001_case_001_ND_float16_output_0"};
     // attr parameter init
         OpTestAttr attr0 = {OP_DTYPE, "dtype"};
     attr0.dtypeAttr = ACL_FLOAT16;
@@ -42,7 +42,7 @@ OP_TEST(TestOp, Test_Op_001_case_001)
 
     // set deviceId
     const uint32_t deviceId = 0;
-    EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc, deviceId), opTestDesc, "Test_Op_001_case_001");
+    EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc, deviceId), opTestDesc, "Test_Op_001_case_001_ND_float16");
 
 }
 

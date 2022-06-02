@@ -337,12 +337,10 @@ class SubCaseDesignCross(SD.SubCaseDesign):
             if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
                 case = {ConstManager.OP: self.json_obj[ConstManager.OP],
                         ConstManager.ST_MODE: self.json_obj[ConstManager.ST_MODE],
-                        ConstManager.INPUT_DESC: [], ConstManager.OUTPUT_DESC: [],
-                        'case_name': prefix + '%d' % self.case_idx}
+                        ConstManager.INPUT_DESC: [], ConstManager.OUTPUT_DESC: []}
             else:
                 case = {ConstManager.OP: self.json_obj[ConstManager.OP],
-                        ConstManager.INPUT_DESC: [], ConstManager.OUTPUT_DESC: [],
-                        'case_name': prefix + '%03d' % self.case_idx}
+                        ConstManager.INPUT_DESC: [], ConstManager.OUTPUT_DESC: []}
             if len(attr_list) > 0:
                 case[ConstManager.ATTR] = attr_list
             self._append_input_desc_to_case(self.json_obj, index,
@@ -356,6 +354,23 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                         self.json_obj[ConstManager.OUTPUT_DESC][out_index].get('name')
                     output_case[index].update({'name': output_name})
                 case[ConstManager.OUTPUT_DESC].append(output_case[output_index])
+            if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
+                if len(case[ConstManager.OUTPUT_DESC]) == 0:
+                    suffix = ''
+                else:
+                    type_str = case[ConstManager.OUTPUT_DESC][0].get('type')
+                    suffix_list = ['', type_str]
+                    suffix = '_'.join(suffix_list)
+                case['case_name'] = prefix + '%d' % self.case_idx + suffix
+            else:
+                if len(case[ConstManager.OUTPUT_DESC]) == 0:
+                    suffix = ''
+                else:
+                    type_str = case[ConstManager.OUTPUT_DESC][0].get('type')
+                    format_str = case[ConstManager.OUTPUT_DESC][0].get('format')
+                    suffix_list = ['', format_str, type_str]
+                    suffix = '_'.join(suffix_list)
+                case['case_name'] = prefix + '%03d' % self.case_idx + suffix
             self.case_idx, self.total_case_list = self._add_case_to_total_case(
                 case, self.case_idx, [pyfile, function], self.total_case_list)
         utils.print_info_log('Create %d sub test cases for %s.'

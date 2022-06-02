@@ -13,7 +13,7 @@
 using namespace OpTest;
 
 
-OP_TEST(Pooling, Test_Pooling_001_case_001_NC1HWC0_float16)
+OP_TEST(Pooling, Test_Pooling_001_case_001)
 {
     
     std::string opType = "Pooling";
@@ -22,13 +22,13 @@ OP_TEST(Pooling, Test_Pooling_001_case_001_NC1HWC0_float16)
     opTestDesc.inputShape = {{1, 2, 64, 64, 16}, {}, {}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_DT_UNDEFINED};
     opTestDesc.inputFormat = {(aclFormat)3, (aclFormat)-1, (aclFormat)-1};
-    opTestDesc.inputFilePath = {"test_data/data/Test_Pooling_001_case_001_NC1HWC0_float16_input_0", "", ""};
+    opTestDesc.inputFilePath = {"test_data/data/Test_Pooling_001_case_001_input_0", "", ""};
     opTestDesc.inputConst = {false, false, false};
     // output parameter init
     opTestDesc.outputShape = {{1, 2, 64, 64, 16}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
     opTestDesc.outputFormat = {(aclFormat)3};
-    opTestDesc.outputFilePath = {"result_files/Test_Pooling_001_case_001_NC1HWC0_float16_output_0"};
+    opTestDesc.outputFilePath = {"result_files/Test_Pooling_001_case_001_output_0"};
     // attr parameter init
         OpTestAttr attr0 = {OP_LIST_INT, "window"};
     attr0.listIntAttr = {3, 3};
@@ -57,7 +57,7 @@ OP_TEST(Pooling, Test_Pooling_001_case_001_NC1HWC0_float16)
 
     // set deviceId
     const uint32_t deviceId = 0;
-    EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc, deviceId), opTestDesc, "Test_Pooling_001_case_001_NC1HWC0_float16");
+    EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc, deviceId), opTestDesc, "Test_Pooling_001_case_001");
 
 }
 
