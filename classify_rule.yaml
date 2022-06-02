@@ -1011,6 +1011,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_preprocess_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
@@ -3658,7 +3659,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_max_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/keras_momentum_lossscale_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_preprocess_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unpack_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_sum_fusion_pass.h

@@ -106,7 +106,11 @@ Status BatchNormPreprocessFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
     }
   }
 
-  OpDescPtr const_op_desc = std::make_shared<ge::OpDesc>("Constant", "Constant");
+  OpDescPtr const_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (const_op_desc = std::make_shared<ge::OpDesc>(new_bn_desc->GetName() + "_constant", "Constant")),
+      const_op_desc = nullptr;
+      return FAILED);
   
   vector<int64_t> dims{1};
   GeShape shape(dims);
