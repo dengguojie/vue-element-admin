@@ -29,15 +29,15 @@ Status ParserParamLog(const Message* op_src, ge::Operator& op) {
   }
   const std::string log_attr_base = "base";
   const float default_base_value = -1.0;
-  op.SetAttr(log_attr_base, static_cast<float>(default_base_value));
+  (void)op.SetAttr(log_attr_base, static_cast<float>(default_base_value));
 
   const std::string log_attr_scale = "scale";
   const float default_scale_value = 1.0;
-  op.SetAttr(log_attr_scale, static_cast<float>(default_scale_value));
+  (void)op.SetAttr(log_attr_scale, static_cast<float>(default_scale_value));
 
   const std::string log_attr_shift = "shift";
   const float default_shift_value = 0.0;
-  op.SetAttr(log_attr_shift, static_cast<float>(default_shift_value));
+  (void)op.SetAttr(log_attr_shift, static_cast<float>(default_shift_value));
 
   return SUCCESS;
 }

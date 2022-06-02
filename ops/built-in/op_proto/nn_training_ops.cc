@@ -1199,7 +1199,7 @@ bool ApplyAdamSetNd(Operator& op, std::string& input) {
   tensor_desc.SetOriginFormat(ge::FORMAT_ND);
   tensor_desc.SetFormat(ge::FORMAT_ND);
 
-  (void)op.UpdateInputDesc(input, tensor_desc);
+  (void)op.UpdateInputDesc(input.c_str(), tensor_desc);
   return true;
 }
 

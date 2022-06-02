@@ -25,16 +25,16 @@
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 namespace fe {
 
-Status ApplyRmsPropPreCheck(ge::NodePtr node);
-Status FusedMulApplyMomentumPreCheck(ge::NodePtr node);
-Status FusedMulApplyMomentumExternPreCheck(ge::NodePtr node);
-Status FusedMulApplyKerasMomentumPreCheck(ge::NodePtr node);
-Status ApplyAdagradV2PreCheck(ge::NodePtr node);
-Status ApplyKerasMomentumPreCheck(ge::NodePtr node);
-Status SparseApplyFtrlPreCheck(ge::NodePtr node);
-Status SparseApplyFtrlV2PreCheck(ge::NodePtr node);
-Status SparseApplyAdagradV2PreCheck(ge::NodePtr node);
-Status SparseApplyRmsPropPreCheck(ge::NodePtr node);
-Status SparseApplyAdadeltaPreCheck(ge::NodePtr node);
+Status ApplyRmsPropPreCheck(const ge::NodePtr& node);
+Status FusedMulApplyMomentumPreCheck(const ge::NodePtr& node);
+Status FusedMulApplyMomentumExternPreCheck(const ge::NodePtr& node);
+Status FusedMulApplyKerasMomentumPreCheck(const ge::NodePtr& node);
+Status ApplyAdagradV2PreCheck(const ge::NodePtr& node);
+Status ApplyKerasMomentumPreCheck(const ge::NodePtr& node);
+Status SparseApplyFtrlPreCheck(const ge::NodePtr& node);
+Status SparseApplyFtrlV2PreCheck(const ge::NodePtr& node);
+Status SparseApplyAdagradV2PreCheck(const ge::NodePtr& node);
+Status SparseApplyRmsPropPreCheck(const ge::NodePtr& node);
+Status SparseApplyAdadeltaPreCheck(const ge::NodePtr& node);
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_COMMON_FUSION_PRECHECK_FUNC_H_

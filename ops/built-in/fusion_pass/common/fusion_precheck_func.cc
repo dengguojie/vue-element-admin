@@ -22,7 +22,7 @@
 #include "op_log.h"
 
 namespace fe {
-Status ApplyRmsPropPreCheck(ge::NodePtr node) {
+Status ApplyRmsPropPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr apply_rms_prop_op = node->GetOpDesc();
 
@@ -33,7 +33,7 @@ Status ApplyRmsPropPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status FusedMulApplyMomentumPreCheck(ge::NodePtr node) {
+Status FusedMulApplyMomentumPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr fused_mul_apply_momentum_op = node->GetOpDesc();
 
@@ -44,7 +44,7 @@ Status FusedMulApplyMomentumPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status FusedMulApplyMomentumExternPreCheck(ge::NodePtr node) {
+Status FusedMulApplyMomentumExternPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr fused_mul_apply_momentum_extern_op = node->GetOpDesc();
 
@@ -54,7 +54,7 @@ Status FusedMulApplyMomentumExternPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status FusedMulApplyKerasMomentumPreCheck(ge::NodePtr node) {
+Status FusedMulApplyKerasMomentumPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr fused_mul_apply_keras_momentum_op = node->GetOpDesc();
 
@@ -64,7 +64,7 @@ Status FusedMulApplyKerasMomentumPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status SparseApplyRmsPropPreCheck(ge::NodePtr node) {
+Status SparseApplyRmsPropPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr apply_rms_prop_op = node->GetOpDesc();
 
@@ -75,7 +75,7 @@ Status SparseApplyRmsPropPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status ApplyAdagradV2PreCheck(ge::NodePtr node) {
+Status ApplyAdagradV2PreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr apply_adagradv2_op = node->GetOpDesc();
 
@@ -86,7 +86,7 @@ Status ApplyAdagradV2PreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status ApplyKerasMomentumPreCheck(ge::NodePtr node) {
+Status ApplyKerasMomentumPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr current_op = node->GetOpDesc();
 
@@ -97,7 +97,7 @@ Status ApplyKerasMomentumPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status SparseApplyFtrlPreCheck(ge::NodePtr node) {
+Status SparseApplyFtrlPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr ftrl_op = node->GetOpDesc();
 
@@ -107,7 +107,7 @@ Status SparseApplyFtrlPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status SparseApplyFtrlV2PreCheck(ge::NodePtr node) {
+Status SparseApplyFtrlV2PreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr ftrlv2_op = node->GetOpDesc();
 
@@ -117,7 +117,7 @@ Status SparseApplyFtrlV2PreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status SparseApplyAdagradV2PreCheck(ge::NodePtr node) {
+Status SparseApplyAdagradV2PreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr adagradv2_op = node->GetOpDesc();
 
@@ -127,7 +127,7 @@ Status SparseApplyAdagradV2PreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
-Status SparseApplyAdadeltaPreCheck(ge::NodePtr node) {
+Status SparseApplyAdadeltaPreCheck(const ge::NodePtr& node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr adadelta_op = node->GetOpDesc();
 

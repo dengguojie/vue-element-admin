@@ -957,6 +957,7 @@ vector_B:
       - ops/common/inc/error_util.h
       - ops/common/src/error_util.cc
       - ops/built-in/CMakeLists.txt
+      - ops/built-in/framework/tf_plugin/avg_pool3d.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
       - ops/built-in/framework/tf_plugin/cast_plugin.cc
@@ -971,6 +972,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/split_plugin.cc
       - ops/built-in/framework/tf_plugin/instance_norm_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/instance_norm_plugin.cc
+      - ops/built-in/framework/tf_plugin/log_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
@@ -978,6 +980,9 @@ vector_B:
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/top_k_plugin.cc
+      - ops/built-in/fusion_pass/common/fusion_precheck_func.cc
+      - ops/built-in/fusion_pass/common/fusion_precheck_func.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
@@ -3335,7 +3340,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/relu6_plugin.cc
       - ops/built-in/framework/tf_plugin/depth_to_space_plugin.cc
       - ops/built-in/framework/tf_plugin/bn_training_update_v2_plugin.cc
-      - ops/built-in/framework/tf_plugin/log_plugin.cc
       - ops/built-in/framework/tf_plugin/strided_slice_assign_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_remote_write_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_apply_ftrl_v2_plugin.cc
@@ -3426,7 +3430,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/matrix_diag_part_d_plugin.cc
       - ops/built-in/framework/tf_plugin/scatter_add_plugin.cc
       - ops/built-in/framework/tf_plugin/for_plugin.cc
-      - ops/built-in/framework/tf_plugin/top_k_plugin.cc
       - ops/built-in/framework/tf_plugin/non_max_suppression_with_overlaps_plugin.cc
       - ops/built-in/framework/tf_plugin/reduce_prod_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_augru_grad_plugin.cc
@@ -3441,7 +3444,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/sign_plugin.cc
       - ops/built-in/framework/tf_plugin/confusion_matrix_plugin.cc
       - ops/built-in/framework/tf_plugin/scatter_mul_plugin.cc
-      - ops/built-in/framework/tf_plugin/avg_pool3d.cc
       - ops/built-in/framework/tf_plugin/relu6_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/floor_div_plugin.cc
       - ops/built-in/framework/tf_plugin/data_format_dim_map_plugin.cc
@@ -3608,13 +3610,11 @@ unkown:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_transdata_ub_fusion.h
       - ops/built-in/fusion_pass/common/fusion_addoutput_registry.cc
       - ops/built-in/fusion_pass/common/quant_host_cpu_op_common.cc
-      - ops/built-in/fusion_pass/common/fusion_precheck_func.cc
       - ops/built-in/fusion_pass/common/fusion_removenode_registry.h
       - ops/built-in/fusion_pass/common/fusion_removenode_registry.cc
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.cc
       - ops/built-in/fusion_pass/common/quant_host_cpu_op_common.h
       - ops/built-in/fusion_pass/common/fusion_addoutput_registry.h
-      - ops/built-in/fusion_pass/common/fusion_precheck_func.h
       - ops/built-in/fusion_pass/common/fp16_t.cc
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pass_through_second_fusion_pass.cc

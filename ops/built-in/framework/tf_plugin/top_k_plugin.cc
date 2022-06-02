@@ -28,9 +28,9 @@ Status TopKMappingFn(const Message* op_src, ge::Operator& op) {
     return FAILED;
   }
   int32_t dim = -1;
-  op.SetAttr("dim", dim);
+  (void)op.SetAttr("dim", dim);
   bool largest = true;
-  op.SetAttr("largest", largest);
+  (void)op.SetAttr("largest", largest);
   return SUCCESS;
 }
 

@@ -36,8 +36,8 @@ Status ParseParamsAvgPool3D(const ge::Operator& op_src, ge::Operator& op) {
 
   // Escape GE require attr [pads] check here
   std::vector<int32_t> padList = {0, 0, 0, 0, 0, 0};
-  op.SetAttr("pads", padList);
-  op.SetAttr("count_include_pad", false);
+  (void)op.SetAttr("pads", padList);
+  (void)op.SetAttr("count_include_pad", false);
   return SUCCESS;
 }
 
