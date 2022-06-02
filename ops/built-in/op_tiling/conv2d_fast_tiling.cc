@@ -891,8 +891,10 @@ void FastTiling::GetUBTilingRange(const Tiling& tiling)
 
     // get UB mAub range
     vector<uint32_t> mAubVector;
-    CalcCommFactor(tiling.mAL1Value, tiling.mAL1Value, mAubVector);
-    tilingRangeUB_.mAub.assign(mAubVector.begin(), mAubVector.end());
+    CalcCommFactor(tiling.mAL1, tiling.mAL1, mAubVector);
+    for (auto it : mAubVector) {
+        tilingRangeUB_.mAub.push_back(it * tiling.mA);
+    }
 
     // get UB ncFactor range
     vector<uint32_t> ncFactorVector;
@@ -933,7 +935,7 @@ bool FastTiling::GetUBTiling(Tiling& tiling)
     // set Ub tiling decision
     // kAub means actual size, which multiply the hk, wk, c0 [=> reduceK].
     tiling.kAub = tilingRangeUB_.kAub.at(ubData_.kAubIndex) * reduceKAxisAL1_KhDilKwDilCi0_;
-    tiling.mAub = tilingRangeUB_.mAub.at(ubData_.mAubIndex);
+    tiling.mAub = tilingRangeUB_.mAub.at(ubData_.mAubIndex) / tiling.mA;
     tiling.nCFactor = tilingRangeUB_.ncFactor.at(ubData_.ncFactorIndex);
     tiling.mCFactor = tiling.mC;
     return true;
