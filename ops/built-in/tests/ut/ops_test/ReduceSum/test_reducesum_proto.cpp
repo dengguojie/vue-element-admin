@@ -61,7 +61,7 @@ TEST_F(ReduceSum, ReduceSum_const_infer_1) {
   // run InferShapeAndType
   test_op.InferShapeAndType();
   vector<bool> input_const = {false, true};
-  CommonInferShapeOperator2(test_op, input_const, {"keep_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"keep_dims"}, {expected_output_shape});
 
   // cmp the result
   auto output_desc = test_op.GetOutputDesc(0);
@@ -96,7 +96,7 @@ TEST_F(ReduceSum, ReduceSum_const_infer_2) {
   test_op.InferShapeAndType();
   test_op.InferShapeAndType();
   vector<bool> input_const = {false, true};
-  CommonInferShapeOperator2(test_op, input_const, {"keep_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"keep_dims"}, {expected_output_shape});
 
   // cmp the result
   auto output_desc = test_op.GetOutputDesc(0);
@@ -128,7 +128,7 @@ TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true) {
   // run InferShapeAndType
   test_op.InferShapeAndType();
   vector<bool> input_const = {false, true};
-  CommonInferShapeOperator2(test_op, input_const, {"keep_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"keep_dims"}, {expected_output_shape});
 
   // cmp the result
   auto output_desc = test_op.GetOutputDesc(0);

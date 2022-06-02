@@ -86,5 +86,5 @@ TEST_F(trans_data, trans_data_infer_rt2) {
   op.UpdateInputDesc("src", tensor_desc);
   op.UpdateOutputDesc("dst", tensor_desc_out);
   std::vector<int64_t> expected_output_shape = {16, 16, 16, 16};
-  CommonInferShapeOperator(op, {expected_output_shape});
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
 }

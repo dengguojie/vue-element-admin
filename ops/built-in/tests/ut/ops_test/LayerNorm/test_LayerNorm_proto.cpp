@@ -86,7 +86,7 @@ TEST_F(LayerNormTest, layer_norm_test_2) {
   EXPECT_EQ(output_var_desc.GetShape().GetDims(), expected_mv_shape);
 
   // rt2.0 infershape check
-  CommonInferShapeOperator(op, {expected_y_shape, expected_mv_shape, expected_mv_shape});
+  CommonInferShapeOperator(op, {"begin_norm_axis", "begin_params_axis", "epsilon"}, {expected_y_shape, expected_mv_shape, expected_mv_shape});
 }
 
 TEST_F(LayerNormTest, layer_norm_data_slice_test_001) {

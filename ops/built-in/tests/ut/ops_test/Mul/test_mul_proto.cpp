@@ -108,7 +108,7 @@ TEST_F(mul, mul_infershape_diff_test_8) {
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-1,2};
-  CommonInferShapeOperator(op, {expected_output_shape});
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,8}, {2,2}};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;

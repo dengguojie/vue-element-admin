@@ -50,7 +50,8 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl(optype), nullptr);                   \
   auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl(optype)->infer_shape;  \
   ASSERT_NE(infer_shape_func, nullptr);                                                        \
-  ASSERT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), expect)
+  ASSERT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), expect);           \
+  for(uint8_t* tensor : const_tensors) { delete []tensor; }
 
 #define VERIFY_OUTPUT_SHAPE(holder, index, expect_dims)                                        \
    ASSERT_NE(holder.GetContext<gert::InferShapeContext>(), nullptr);                           \
@@ -73,15 +74,17 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   std::vector<gert::StorageShape> input_shapes(input_size);                         \
   std::vector<void *> input_shapes_ref(input_size);                                 \
   std::vector<uint32_t> irnum(input_size, 0);                                       \
-  std::unique_ptr<uint8_t[]> input_tensor_holder;                                   \
+  uint8_t* input_tensor_holder;                                                     \
   if (input_size > 0) {                                                             \
     auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                    \
     ASSERT_NE(operator_info, nullptr);                                              \
     size_t count = 0;                                                               \
     for (size_t i = 0; i < input_const.size(); ++i) {                               \
       if (input_const[i]) {                                                         \
-        input_shapes_ref[count] = GetConstTensor(op, i, input_tensor_holder);       \
-        if (input_shapes_ref[count] == nullptr) continue;                           \
+        input_tensor_holder = GetConstTensor(op, i);                                \
+        if (input_tensor_holder == nullptr) continue;                               \
+        input_shapes_ref[count] = input_tensor_holder;                              \
+        const_tensors.push_back(input_tensor_holder);                               \
       } else {                                                                      \
         auto input_desc = operator_info->MutableInputDesc(i);                       \
         if (input_desc == nullptr) continue;                                        \
@@ -170,6 +173,7 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   auto faker = gert::InferShapeContextFaker()                               \
                     .NodeIoNum(input_size, output_size);                    \
   vector<bool> input_const(input_size, false);                              \
+  vector<uint8_t*> const_tensors;                                           \
   ATTACH_INPUTS_TO_FAKER(faker, op, input_size, input_const);               \
   ATTACH_OUTPUTS_TO_FAKER(faker, output_size);                              \
   ATTACH_ATTRS_TO_FAKER(faker, op, attrs_name);                             \
@@ -180,57 +184,55 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   size_t output_size = op.GetOutputsSize();                                           \
   auto faker = gert::InferShapeContextFaker()                                         \
                     .NodeIoNum(input_size, output_size);                              \
+  vector<uint8_t*> const_tensors;                                                     \
   ATTACH_INPUTS_TO_FAKER(faker, op, input_size, input_const);                         \
   ATTACH_OUTPUTS_TO_FAKER(faker, output_size);                                        \
   ATTACH_ATTRS_TO_FAKER(faker, op, attrs_name);                                       \
   auto holder = faker.Build();
 
-#define ATTACH_OPERATOR_TO_HOLDER3(holder, op, irnum, attrs_name)           \
-  size_t input_size = op.GetInputsSize();                                   \
-  size_t output_size = op.GetOutputsSize();                                 \
-  auto faker = gert::InferShapeContextFaker()                               \
-                    .NodeIoNum(input_size, output_size);                    \
-  ATTACH_INPUTS_TO_FAKER_IRNUM(faker, op, input_size, irnum);               \
-  ATTACH_OUTPUTS_TO_FAKER(faker, output_size);                              \
-  ATTACH_ATTRS_TO_FAKER(faker, op, attrs_name);                             \
+#define ATTACH_OPERATOR_TO_HOLDER_WITH_IRNUM(holder, op, irnum, attrs_name)           \
+  size_t input_size = op.GetInputsSize();                                             \
+  size_t output_size = op.GetOutputsSize();                                           \
+  auto faker = gert::InferShapeContextFaker()                                         \
+                    .NodeIoNum(input_size, output_size);                              \
+  vector<uint8_t*> const_tensors;                                                     \
+  ATTACH_INPUTS_TO_FAKER_IRNUM(faker, op, input_size, irnum);                         \
+  ATTACH_OUTPUTS_TO_FAKER(faker, output_size);                                        \
+  ATTACH_ATTRS_TO_FAKER(faker, op, attrs_name);                                       \
   auto holder = faker.Build();
 
-static gert::Tensor *GetConstTensor(ge::Operator& op, const size_t index,
-                                    std::unique_ptr<uint8_t[]>& input_tensor_holder) {
-  std::vector<int64_t> values;
-  if (!reduce_ops::GetConstData(op, index, values)) return nullptr;
+static uint8_t* GetConstTensor(ge::Operator& op, const size_t index) {
+  ge::Tensor const_tensor;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  DataType const_dtype = op_desc->MutableInputDesc(index)->GetDataType();
-  int64_t value_size = values.size();
-  input_tensor_holder = std::unique_ptr<uint8_t[]>(
-    new uint8_t[sizeof(gert::Tensor) + sizeof(int64_t) * value_size]);
-  auto input_tensor = reinterpret_cast<gert::Tensor *>(input_tensor_holder.get());
-  *input_tensor = {
-      {{value_size}, {value_size}},      // storage shape
-      {ge::FORMAT_ND, ge::FORMAT_ND, {}},  // storage format
-      gert::kFollowing,                    // placement
-      const_dtype,                        // data type
-      0,                                   // address
-  };
-  if (ge::DT_INT64 == const_dtype) {
-    auto tensor_data = reinterpret_cast<int64_t *>(input_tensor + 1);
-    for (size_t j = 0; j < values.size(); j++) tensor_data[j] = values[j];
-    input_tensor->SetData(gert::TensorData(tensor_data, nullptr));
-  } else {
-    auto tensor_data = reinterpret_cast<int32_t *>(input_tensor + 1);
-    for (size_t j = 0; j < values.size(); j++) tensor_data[j] = values[j];
-    input_tensor->SetData(gert::TensorData(tensor_data, nullptr));
+  auto input_name = op_desc->GetInputNameByIndex(index);
+  if (op.GetInputConstData(input_name.c_str(), const_tensor) != ge::GRAPH_SUCCESS) {
+    return nullptr;
   }
-  return input_tensor;
+  auto size = const_tensor.GetSize();
+  auto data = const_tensor.GetData();
+  ge::DataType const_dtype = op_desc->MutableInputDesc(index)->GetDataType();
+  std::cout << "const_dtype=" << const_dtype << std::endl;
+  uint8_t* input_tensor_holder = new uint8_t[sizeof(gert::Tensor) + size];
+  auto input_tensor = reinterpret_cast<gert::Tensor *>(input_tensor_holder);
+  std::memcpy(input_tensor + 1, data, size);
+  int64_t value_size = (const_dtype == ge::DT_INT64 || const_dtype == ge::DT_UINT64) ? 
+                      size / sizeof(int64_t) : size / sizeof(int32_t);
+  gert::Tensor tensor({{value_size}, {value_size}},              // shape
+                      {ge::FORMAT_ND, ge::FORMAT_ND, {}},        // format
+                      gert::kFollowing,                          // placement
+                      const_dtype,                               //dt
+                      nullptr);
+  std::memcpy(input_tensor, &tensor, sizeof(gert::Tensor));
+  return input_tensor_holder;
 }
 
-void CommonInferShapeOperator(ge::Operator& op, std::vector<std::vector<int64_t>> expect_shapes);
-void CommonInferShapeOperatorFail(ge::Operator& op);
+void CommonInferShapeOperator(ge::Operator& op, vector<string> attrs, vector<vector<int64_t>> expect_shapes);
+void CommonInferShapeOperatorFail(ge::Operator& op, vector<string> attrs);
 
-void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const,
-                               vector<string> attrs, vector<vector<int64_t>> expect_shapes);
-void CommonInferShapeOperator2Fail(ge::Operator& op, vector<bool> input_const,
-                                   vector<string> attrs);
+void CommonInferShapeOperatorWithConst(ge::Operator& op, vector<bool> input_const,
+                                       vector<string> attrs, vector<vector<int64_t>> expect_shapes);
+void CommonInferShapeOperatorWithConstFail(ge::Operator& op, vector<bool> input_const,
+                                           vector<string> attrs);
 
 void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
                                        vector<string> attrs, vector<vector<int64_t>> expect_shapes);

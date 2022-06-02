@@ -166,13 +166,12 @@ private:
   std::unique_ptr<uint8_t[]> input_tensor_holder = std::unique_ptr<uint8_t[]>(new uint8_t[sizeof(gert::Tensor) + sizeof(T) * data_size]);
   auto input_tensor = reinterpret_cast<gert::Tensor *>(input_tensor_holder.get());
   static int64_t offset = 0;
-  *input_tensor = {
-      {{data_size}, {data_size}},                          // storage shape
-      {ge::FORMAT_ND, ge::FORMAT_ND, {}},  // storage format
-      gert::kFollowing,                    // placement
-      dtype,                        // data type
-      0,                                   // address
-  };
+  gert::Tensor tensor({{data_size}, {data_size}},               // shape
+                      {ge::FORMAT_ND, ge::FORMAT_ND, {}},        // format
+                      gert::kFollowing,                          // placement
+                      dtype,                                     //dt
+                      nullptr);
+  std::memcpy(input_tensor, &tensor, sizeof(gert::Tensor));
   offset += sizeof(T) * data_size;
   auto tensor_data = reinterpret_cast<T *>(input_tensor + 1);
   for(int64_t i =0; i < data_size; i++) {

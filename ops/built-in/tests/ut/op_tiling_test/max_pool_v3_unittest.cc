@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 #include "kernel_run_context_facker.h"
 #include "runtime/storage_shape.h"
-#include "runtime/infer_shape_context.h"
 #include "runtime/tiling_context.h"
 #include "runtime/kernel_context.h"
 #include "runtime/tiling_data.h"
@@ -29,7 +28,7 @@ TEST_F(MaxPoolV3UT, TilingOk) {
   gert::StorageShape x_shape = {{1, 4, 56, 56, 16}, {1, 4, 56, 56, 16}};
 
   std::vector<gert::StorageShape> output_shapes(1);
-  std::vector<gert::StorageShape *> output_shapes_ref(1);
+  std::vector<void *> output_shapes_ref(1);
   for (size_t i = 0; i < output_shapes.size(); ++i) {
     output_shapes_ref[i] = &output_shapes[i];
   }

@@ -52,7 +52,7 @@ TEST_F(Transpose, Transpose_const_infer_int32) {
 
   // cmp the result with runtime op
   vector<bool> input_const = {false, true};
-  CommonInferShapeOperator2(test_op, input_const, {}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {}, {expected_output_shape});
 
   // cmp the result with old op
   test_op.InferShapeAndType();
@@ -80,7 +80,7 @@ TEST_F(Transpose, Transpose_const_infer_int64) {
 
   // cmp the result with runtime op
   vector<bool> input_const = {false, true};
-  CommonInferShapeOperator2(test_op, input_const, {}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {}, {expected_output_shape});
 
   // cmp the result with old op
   test_op.InferShapeAndType();

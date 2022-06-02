@@ -71,7 +71,7 @@ TEST_F(expand, expand_infershape_const_1) {
     vector<bool> input_const = {false, true};
     std::vector<vector<int64_t>> expect_shapes_vector = {{1, 1, 2, 4}};
 
-    CommonInferShapeOperator2(expand_op, input_const, {}, expect_shapes_vector);
+    CommonInferShapeOperatorWithConst(expand_op, input_const, {}, expect_shapes_vector);
 }
 
 TEST_F(expand, expand_infershape_const_2) {
@@ -105,7 +105,7 @@ TEST_F(expand, expand_infershape_const_2) {
     vector<bool> input_const = {false, true};
     std::vector<vector<int64_t>> expect_shapes_vector = {{1, 1, 2, 4}};
 
-    CommonInferShapeOperator2(expand_op, input_const, {}, expect_shapes_vector);
+    CommonInferShapeOperatorWithConst(expand_op, input_const, {}, expect_shapes_vector);
 }
 
 

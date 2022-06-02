@@ -45,7 +45,7 @@ TEST_F(gather_v2, gather_v2_infershape_runtime_test_1) {
   // run InferShapeAndType
   test_op.InferShapeAndType();
   vector<bool> input_const = {false,false, true};
-  CommonInferShapeOperator2(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"batch_dims"}, {expected_output_shape});
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -74,7 +74,7 @@ TEST_F(gather_v2, gather_v2_infershape_runtime_test_2) {
   // run InferShapeAndType
   test_op.InferShapeAndType();
   vector<bool> input_const = {false,false, true};
-  CommonInferShapeOperator2(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"batch_dims"}, {expected_output_shape});
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -103,7 +103,7 @@ TEST_F(gather_v2, gather_v2_infershape_runtime_test_3) {
   // run InferShapeAndType
   test_op.InferShapeAndType();
   vector<bool> input_const = {false,false, true};
-  CommonInferShapeOperator2(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"batch_dims"}, {expected_output_shape});
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

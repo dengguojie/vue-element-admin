@@ -63,8 +63,8 @@ void AutoTilingTest::GenFaker(const std::vector<std::vector<int64_t>>& ori_input
   store_input_shapes.resize(input_size);
   store_output_shapes.resize(output_size);
 
-  std::vector<gert::StorageShape*> input_shapes_ref(input_size);
-  std::vector<gert::StorageShape*> output_shapes_ref(output_size);
+  std::vector<void*> input_shapes_ref(input_size);
+  std::vector<void*> output_shapes_ref(output_size);
   for (size_t i = 0; i < input_size; i++) {
     for (int64_t dim : ori_input_shapes[i]) {
       store_input_shapes[i].MutableOriginShape().AppendDim(dim);

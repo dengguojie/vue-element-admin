@@ -39,13 +39,12 @@ class StridedSliceV3UT : public testing::Test {
     int64_t value_size = const_value.size();
     auto input_tensor_holder = std::unique_ptr<uint8_t[]>(new uint8_t[sizeof(gert::Tensor) + sizeof(T) * value_size]);
     auto input_tensor = reinterpret_cast<gert::Tensor *>(input_tensor_holder.get());
-    *input_tensor = {
-        {{value_size}, {value_size}},        // storage shape
-        {ge::FORMAT_ND, ge::FORMAT_ND, {}},  // storage format
-        gert::kFollowing,                    // placement
-        const_dtype,                         // data type
-        0,                                   // address
-    };
+    gert::Tensor tensor({{value_size}, {value_size}},              // shape
+                        {ge::FORMAT_ND, ge::FORMAT_ND, {}},        // format
+                        gert::kFollowing,                          // placement
+                        const_dtype,                               //dt
+                        nullptr);
+    std::memcpy(input_tensor, &tensor, sizeof(gert::Tensor));
     auto tensor_data = reinterpret_cast<T *>(input_tensor + 1);
     for (size_t j = 0; j < value_size; j++) {
       tensor_data[j] = const_value[j];

@@ -29,7 +29,7 @@ TEST_F(Neg, Neg_infershape_test_0) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
-  CommonInferShapeOperator(op, {expected_output_shape});
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
 }
 
 TEST_F(Neg, Neg_infershape_test_1) {
@@ -45,7 +45,7 @@ TEST_F(Neg, Neg_infershape_test_1) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
-  CommonInferShapeOperator(op, {expected_output_shape});
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
 }
 
 TEST_F(Neg, Neg_infershape_test_2) {
@@ -61,7 +61,7 @@ TEST_F(Neg, Neg_infershape_test_2) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
-  CommonInferShapeOperator(op, {expected_output_shape});
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
 }
 
 TEST_F(Neg, Neg_infershape_test_3) {
@@ -77,5 +77,5 @@ TEST_F(Neg, Neg_infershape_test_3) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
-  CommonInferShapeOperator(op, {expected_output_shape});
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
 }

@@ -97,7 +97,7 @@ static std::unique_ptr<uint8_t[]> InitListIntAttr(const std::vector<int32_t> &li
   gert::StorageShape filter_shape = {param.filter_origin_shape, param.filter_shape};
   gert::StorageShape out_backprop_shape = {param.out_backprop_origin_shape, param.out_backprop_shape};
   std::vector<gert::StorageShape> output_shapes(1, {param.y_origin_shape, param.y_shape});
-  std::vector<gert::StorageShape *> output_shapes_ref(1);
+  std::vector<void *> output_shapes_ref(1);
 
   for (size_t i = 0; i < output_shapes.size(); ++i) {
     output_shapes_ref[i] = &output_shapes[i];

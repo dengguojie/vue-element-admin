@@ -15,32 +15,8 @@
  */
 #include "common/utils/ut_op_common.h"
 
-static std::map<std::string, std::vector<std::vector<std::string>>> operator_info_map = {
-    {"Add", {{"x1", "x2"}, {"y"}, {}}},
-    {"Flatten", {{"x"}, {"y"}, {"axis"}}},
-    {"Neg", {{"x"}, {"y"}, {}}},
-    {"MovingSumWithSigmoid", {{"alpha", "energy", "offset"}, {"y"}, {"ksize"}}},
-    {"DynSeqOuter", {{"x1", "x2", "seq_len1", "seq_len2"}, {"y"}, {}}},
-    {"Expand", {{"x", "shape"}, {"y"}, {}}},
-    {"GatherV2", {{"x","indices","axis"}, {"y"}, {"batch_dims"}}},
-    {"LayerNorm",
-     {{"x", "gamma", "beta"}, {"y", "mean", "variance"}, {"begin_norm_axis", "begin_params_axis", "epsilon"}}},
-    {"Mul", {{"x1", "x2"}, {"y"}, {}}},
-    {"ReduceSum", {{"x", "axes"}, {"y"}, {"keep_dims"}}},
-    {"MaxPoolV3",
-     {{"x"}, {"y"}, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}}},
-    {"Flatten", {{"x"}, {"y"}, {"axis"}}},
-    {"Cast", {{"x"}, {"y"}, {"dst_type"}}},
-    {"DynamicRNNV3",
-     {{"x", "w", "b", "seq_length", "init_h", "init_c", "wci", "wcf", "wco", "mask", "real_mask", "project"},
-      {"y", "output_h", "output_c", "i", "j", "f", "o", "tanhc"},
-      {"cell_type", "direction", "cell_depth", "use_peephole", "keep_prob", "cell_clip",
-       "num_proj", "time_major", "activation", "forget_bias", "is_training"}}},
-    {"TransData", {{"src"}, {"dst"}, {}}}
-};
-
-void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vector<string> attrs,
-                               vector<vector<int64_t>> expect_shapes) {
+void CommonInferShapeOperatorWithConst(ge::Operator& op, vector<bool> input_const, vector<string> attrs,
+                                       vector<vector<int64_t>> expect_shapes) {
   ATTACH_OPERATOR_TO_HOLDER_WITH_CONST(holder, op, input_const, attrs);
 
   std::string optype = op.GetOpType();
@@ -52,8 +28,8 @@ void CommonInferShapeOperator2(ge::Operator& op, vector<bool> input_const, vecto
   }
 }
 
-void CommonInferShapeOperator2Fail(ge::Operator& op, vector<bool> input_const,
-                                   vector<string> attrs) {
+void CommonInferShapeOperatorWithConstFail(ge::Operator& op, vector<bool> input_const,
+                                           vector<string> attrs) {
   ATTACH_OPERATOR_TO_HOLDER_WITH_CONST(holder, op, input_const, attrs);
 
   std::string optype = op.GetOpType();
@@ -62,7 +38,7 @@ void CommonInferShapeOperator2Fail(ge::Operator& op, vector<bool> input_const,
 
 void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
                                        vector<string> attrs, vector<vector<int64_t>> expect_shapes) {
-  ATTACH_OPERATOR_TO_HOLDER3(holder, op, irnum, attrs);
+  ATTACH_OPERATOR_TO_HOLDER_WITH_IRNUM(holder, op, irnum, attrs);
 
   std::string optype = op.GetOpType();
   HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_SUCCESS);
@@ -75,19 +51,16 @@ void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
 
 void CommonInferShapeOperatorWithIrNumFail(ge::Operator& op, vector<uint32_t> irnum,
                                            vector<string> attrs) {
-  ATTACH_OPERATOR_TO_HOLDER3(holder, op, irnum, attrs);
+  ATTACH_OPERATOR_TO_HOLDER_WITH_IRNUM(holder, op, irnum, attrs);
 
   std::string optype = op.GetOpType();
   HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_FAILED);
 }
 
-void CommonInferShapeOperator(ge::Operator& op, std::vector<std::vector<int64_t>> expect_shapes) {
+void CommonInferShapeOperator(ge::Operator& op, vector<string> attrs, std::vector<std::vector<int64_t>> expect_shapes) {
   std::string optype = op.GetOpType();
-  auto find_it = operator_info_map.find(optype);
-  ASSERT_NE(find_it, operator_info_map.end());
-  auto input_output_attr = find_it->second;
 
-  ATTACH_OPERATOR_TO_HOLDER(holder, op, input_output_attr[2]);
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
 
   HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_SUCCESS);
 
@@ -97,13 +70,10 @@ void CommonInferShapeOperator(ge::Operator& op, std::vector<std::vector<int64_t>
   }
 }
 
-void CommonInferShapeOperatorFail(ge::Operator& op) {
+void CommonInferShapeOperatorFail(ge::Operator& op, vector<string> attrs) {
   std::string optype = op.GetOpType();
-  auto find_it = operator_info_map.find(optype);
-  ASSERT_NE(find_it, operator_info_map.end());
-  auto input_output_attr = find_it->second;
 
-  ATTACH_OPERATOR_TO_HOLDER(holder, op, input_output_attr[2]);
+  ATTACH_OPERATOR_TO_HOLDER(holder, op, attrs);
 
   HOLDER_DO_INFER_SHAPE(holder, optype, GRAPH_FAILED);
 }
