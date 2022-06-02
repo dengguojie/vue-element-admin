@@ -316,7 +316,7 @@
     ]
   },
   {
-    "case_name": "BNInferGrad_dynamic_shape_BNInferGrad_2_ascend910a",
+    "case_name": "BNInferGrad_dynamic_shape_BNInferGrad_2_ascend910a_1",
     "op": "BNInferGrad",
     "input_desc": [
       {
