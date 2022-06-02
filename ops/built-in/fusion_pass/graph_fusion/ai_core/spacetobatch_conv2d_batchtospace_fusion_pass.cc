@@ -78,7 +78,7 @@ constexpr int32_t KERNEL_SIZE_MAX = 255;
 
 std::vector<FusionPattern*> SpacetobatchConv2dBatchtospacePass::DefinePatterns()
 {
-    OP_LOGI(fusedOpType_.c_str(), "SpacetobatchConv2dBatchtospacePass define patterns start.");
+    OP_LOGD(fusedOpType_.c_str(), "SpacetobatchConv2dBatchtospacePass define patterns start.");
     std::vector<FusionPattern*> patterns;
     FusionPattern* pattern = new(std::nothrow)FusionPattern("SpacetobatchConv2dBatchtospace");
     FUSION_PASS_CHECK(pattern == nullptr,
@@ -92,7 +92,7 @@ std::vector<FusionPattern*> SpacetobatchConv2dBatchtospacePass::DefinePatterns()
         .SetOutput(PATTERN_BATCHTOSPACE);
     patterns.push_back(pattern);
 
-    OP_LOGI(fusedOpType_.c_str(), "SpacetobatchConv2dBatchtospacePass define patterns end.");
+    OP_LOGD(fusedOpType_.c_str(), "SpacetobatchConv2dBatchtospacePass define patterns end.");
     return patterns;
 }
 
