@@ -2,7 +2,7 @@
   "op_type": "SigmoidGrad",
   "op_list": [
     {
-      "bin_filename": "SigmoidGrad_0",
+      "bin_filename": "SigmoidGrad_d2db1a80c523e7e59a032c95969880af",
       "inputs": [
         {
           "name": "y",
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "bin_filename": "SigmoidGrad_1",
+      "bin_filename": "SigmoidGrad_5c5e58e043224cccf51a06108010ae13",
       "inputs": [
         {
           "name": "y",

@@ -2,7 +2,44 @@
   "op_type": "EluGrad",
   "op_list": [
     {
-      "bin_filename": "EluGrad_0",
+      "bin_filename": "EluGrad_5b5b506b9f83c99011ce6c0ddd55cd49",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float16",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "activations",
+          "index": 1,
+          "dtype": "float16",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "EluGrad_81a6f0ef4b295377c410d2038c926050",
       "inputs": [
         {
           "name": "grads",
@@ -39,7 +76,7 @@
       ]
     },
     {
-      "bin_filename": "EluGrad_1",
+      "bin_filename": "EluGrad_937d7f005eea1ee373d7c50ee798a8a6",
       "inputs": [
         {
           "name": "grads",
@@ -76,7 +113,44 @@
       ]
     },
     {
-      "bin_filename": "EluGrad_2",
+      "bin_filename": "EluGrad_d2db1a80c523e7e59a032c95969880af",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "activations",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "EluGrad_d219192db4c156b462dc0225fd84e04a",
       "inputs": [
         {
           "name": "grads",
@@ -113,118 +187,7 @@
       ]
     },
     {
-      "bin_filename": "EluGrad_3",
-      "inputs": [
-        {
-          "name": "grads",
-          "index": 0,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "activations",
-          "index": 1,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "EluGrad_4",
-      "inputs": [
-        {
-          "name": "grads",
-          "index": 0,
-          "dtype": "float32",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "activations",
-          "index": 1,
-          "dtype": "float32",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float32",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "EluGrad_5",
-      "inputs": [
-        {
-          "name": "grads",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "activations",
-          "index": 1,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "EluGrad_6",
+      "bin_filename": "EluGrad_de22a20e2ba239f30e547411172e4799",
       "inputs": [
         {
           "name": "grads",
@@ -261,13 +224,13 @@
       ]
     },
     {
-      "bin_filename": "EluGrad_7",
+      "bin_filename": "EluGrad_02a818c660c932603b2a0842c433ce84",
       "inputs": [
         {
           "name": "grads",
           "index": 0,
-          "dtype": "float16",
-          "format": "C1HWNCoC0",
+          "dtype": "float32",
+          "format": "NC1HWC0",
           "paramType": "required",
           "shape": [
             -2
@@ -276,8 +239,8 @@
         {
           "name": "activations",
           "index": 1,
-          "dtype": "float16",
-          "format": "C1HWNCoC0",
+          "dtype": "float32",
+          "format": "NC1HWC0",
           "paramType": "required",
           "shape": [
             -2
@@ -288,8 +251,45 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
-          "format": "C1HWNCoC0",
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "EluGrad_5c5e58e043224cccf51a06108010ae13",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "activations",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
           "paramType": "required",
           "shape": [
             -2

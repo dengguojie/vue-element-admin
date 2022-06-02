@@ -2,7 +2,7 @@
   "op_type": "Sigmoid",
   "op_list": [
     {
-      "bin_filename": "Sigmoid_0",
+      "bin_filename": "Sigmoid_e5785018658dffe9787ec85108c29851",
       "inputs": [
         {
           "name": "x",
@@ -31,7 +31,7 @@
       ]
     },
     {
-      "bin_filename": "Sigmoid_1",
+      "bin_filename": "Sigmoid_ded454bb24ee75ab163f0270f46319a4",
       "inputs": [
         {
           "name": "x",

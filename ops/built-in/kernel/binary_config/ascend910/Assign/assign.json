@@ -2,167 +2,7 @@
   "op_type": "Assign",
   "op_list": [
     {
-      "bin_filename": "Assign_0",
-      "inputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "value",
-          "index": 1,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Assign_1",
-      "inputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "uint16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "value",
-          "index": 1,
-          "dtype": "uint16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "uint16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Assign_2",
-      "inputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "uint64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "value",
-          "index": 1,
-          "dtype": "uint64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "uint64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Assign_3",
-      "inputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "value",
-          "index": 1,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Assign_4",
+      "bin_filename": "Assign_c5fb21ce50d8471d9b8df5001b9dc9a5",
       "inputs": [
         {
           "name": "ref",
@@ -202,47 +42,7 @@
       ]
     },
     {
-      "bin_filename": "Assign_5",
-      "inputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "value",
-          "index": 1,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Assign_6",
+      "bin_filename": "Assign_d2db1a80c523e7e59a032c95969880af",
       "inputs": [
         {
           "name": "ref",
@@ -282,12 +82,12 @@
       ]
     },
     {
-      "bin_filename": "Assign_7",
+      "bin_filename": "Assign_5c5e58e043224cccf51a06108010ae13",
       "inputs": [
         {
           "name": "ref",
           "index": 0,
-          "dtype": "uint32",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -298,7 +98,7 @@
         {
           "name": "value",
           "index": 1,
-          "dtype": "uint32",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -311,7 +111,7 @@
         {
           "name": "ref",
           "index": 0,
-          "dtype": "uint32",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -322,47 +122,7 @@
       ]
     },
     {
-      "bin_filename": "Assign_8",
-      "inputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "value",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "ref",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Assign_9",
+      "bin_filename": "Assign_df11d48f8de6e91ff319613e8e50dd12",
       "inputs": [
         {
           "name": "ref",
@@ -402,12 +162,12 @@
       ]
     },
     {
-      "bin_filename": "Assign_10",
+      "bin_filename": "Assign_8098b79498645e9c0da095babdeaf862",
       "inputs": [
         {
           "name": "ref",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -418,7 +178,7 @@
         {
           "name": "value",
           "index": 1,
-          "dtype": "float32",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -431,7 +191,247 @@
         {
           "name": "ref",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Assign_1d2fd313763487259859439d7e9b41cf",
+      "inputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "value",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Assign_2060cf8d69781f9a7462e2f67555909f",
+      "inputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "value",
+          "index": 1,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Assign_da1011a90f0ae0a873652f2951642af5",
+      "inputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "value",
+          "index": 1,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Assign_b50acd350310e9714879d278fca09451",
+      "inputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "value",
+          "index": 1,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Assign_7ee555384dd8c3a2436a17e22a505124",
+      "inputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "value",
+          "index": 1,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Assign_209e1e3c807895591394a370155f4fc6",
+      "inputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "value",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ref",
+          "index": 0,
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [

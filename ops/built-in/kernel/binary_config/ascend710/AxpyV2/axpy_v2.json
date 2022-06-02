@@ -2,31 +2,29 @@
   "op_type": "AxpyV2",
   "op_list": [
     {
-      "bin_filename": "AxpyV2_0",
+      "bin_filename": "AxpyV2_48cb9800f8884395f8eaa6fc95262184",
       "inputs": [
         {
           "name": "x1",
           "index": 0,
           "dtype": "float16",
-          "format": "ND",
+          "format": "C1HWNCoC0",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         },
         {
           "name": "x2",
           "index": 1,
           "dtype": "float16",
-          "format": "ND",
+          "format": "C1HWNCoC0",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         },
-		{
+        {
           "name": "alpha",
           "index": 2,
           "dtype": "float16",
@@ -34,8 +32,7 @@
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         }
       ],
       "outputs": [
@@ -43,68 +40,392 @@
           "name": "y",
           "index": 0,
           "dtype": "float16",
-          "format": "ND",
+          "format": "C1HWNCoC0",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         }
       ]
     },
     {
-      "bin_filename": "AxpyV2_1",
+      "bin_filename": "AxpyV2_bf695d72ca2696e7f36fa40f83b139d1",
       "inputs": [
         {
           "name": "x1",
           "index": 0,
-          "dtype": "int32",
-          "format": "ND",
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         },
         {
           "name": "x2",
           "index": 1,
-          "dtype": "int32",
-          "format": "ND",
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         },
-		{
+        {
           "name": "alpha",
           "index": 2,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         }
       ],
       "outputs": [
         {
           "name": "y",
           "index": 0,
-          "dtype": "int32",
-          "format": "ND",
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         }
       ]
     },
     {
-      "bin_filename": "AxpyV2_2",
+      "bin_filename": "AxpyV2_bbeeb12ff90d0703fbf8892e2503a775",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_d386556c83d116471b120624de8331f0",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_93b3f8e9594b4018902b635fff3a83c5",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_b3c4f177ca2a1636010d3eb654e2041b",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_6174e902233d56973ddd44d0966d1bb5",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_b937bd6d0dd32d3cd8ee44b930593d81",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_dbba8b1867b6ba46ed3bcb9025e0361e",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_ee98c6628030785f610b924ab1557b31",
       "inputs": [
         {
           "name": "x1",
@@ -114,8 +435,7 @@
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         },
         {
           "name": "x2",
@@ -125,10 +445,9 @@
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         },
-		{
+        {
           "name": "alpha",
           "index": 2,
           "dtype": "float32",
@@ -136,8 +455,7 @@
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
         }
       ],
       "outputs": [
@@ -149,8 +467,242 @@
           "paramType": "required",
           "shape": [
             -2
-          ],
-          "format_match_mode": "FormatAgnostic"
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_d84169fb511ecaec08ce59b2bfe0464d",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_8b905bedc15700a454839b08145cbbbb",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_0cfaf79e5185f7ec106e9eadb7ab399e",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "FRACTAL_Z",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_48cfb2c4be15578f554c8f3192647e47",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "AxpyV2_9342884c99c006e21fc9d5d9260b8bef",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "alpha",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
         }
       ]
     }

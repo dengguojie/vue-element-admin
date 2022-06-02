@@ -2,7 +2,7 @@
   "op_type": "SoftmaxV2",
   "op_list": [
     {
-      "bin_filename": "SoftmaxV2_0",
+      "bin_filename": "SoftmaxV2_a361dd616916039e9cbcc4be357ba2e8",
       "inputs": [
         {
           "name": "x",
@@ -36,7 +36,7 @@
       ]
     },
     {
-      "bin_filename": "SoftmaxV2_1",
+      "bin_filename": "SoftmaxV2_df3465d1aa4ff030729a668199c7378a",
       "inputs": [
         {
           "name": "x",

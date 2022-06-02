@@ -2,87 +2,7 @@
   "op_type": "RsqrtGrad",
   "op_list": [
     {
-      "bin_filename": "RsqrtGrad_0",
-      "inputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "dy",
-          "index": 1,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "z",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "RsqrtGrad_1",
-      "inputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        },
-        {
-          "name": "dy",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "z",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "format_match_mode": "FormatAgnostic"
-        }
-      ]
-    },
-    {
-      "bin_filename": "RsqrtGrad_2",
+      "bin_filename": "RsqrtGrad_d2db1a80c523e7e59a032c95969880af",
       "inputs": [
         {
           "name": "y",
@@ -122,7 +42,7 @@
       ]
     },
     {
-      "bin_filename": "RsqrtGrad_3",
+      "bin_filename": "RsqrtGrad_5c5e58e043224cccf51a06108010ae13",
       "inputs": [
         {
           "name": "y",
@@ -152,6 +72,86 @@
           "name": "z",
           "index": 0,
           "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "RsqrtGrad_8098b79498645e9c0da095babdeaf862",
+      "inputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "dy",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "z",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ]
+    },
+    {
+      "bin_filename": "RsqrtGrad_2060cf8d69781f9a7462e2f67555909f",
+      "inputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        },
+        {
+          "name": "dy",
+          "index": 1,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "z",
+          "index": 0,
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [

@@ -2,12 +2,12 @@
   "op_type": "Sub",
   "op_list": [
     {
-      "bin_filename": "Sub_0",
+      "bin_filename": "Sub_d2db1a80c523e7e59a032c95969880af",
       "inputs": [
         {
           "name": "x1",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -18,7 +18,7 @@
         {
           "name": "x2",
           "index": 1,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -31,7 +31,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "bin_filename": "Sub_1",
+      "bin_filename": "Sub_5c5e58e043224cccf51a06108010ae13",
       "inputs": [
         {
           "name": "x1",
@@ -82,12 +82,12 @@
       ]
     },
     {
-      "bin_filename": "Sub_2",
+      "bin_filename": "Sub_8098b79498645e9c0da095babdeaf862",
       "inputs": [
         {
           "name": "x1",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -98,7 +98,7 @@
         {
           "name": "x2",
           "index": 1,
-          "dtype": "float16",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -111,7 +111,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [

@@ -2,7 +2,7 @@
   "op_type": "AssignSub",
   "op_list": [
     {
-      "bin_filename": "AssignSub_0",
+      "bin_filename": "AssignSub_d2db1a80c523e7e59a032c95969880af",
       "inputs": [
         {
           "name": "var",
@@ -42,12 +42,12 @@
       ]
     },
     {
-      "bin_filename": "AssignSub_1",
+      "bin_filename": "AssignSub_5c5e58e043224cccf51a06108010ae13",
       "inputs": [
         {
           "name": "var",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -58,7 +58,7 @@
         {
           "name": "value",
           "index": 1,
-          "dtype": "int8",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -71,7 +71,7 @@
         {
           "name": "var",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -82,7 +82,7 @@
       ]
     },
     {
-      "bin_filename": "AssignSub_2",
+      "bin_filename": "AssignSub_8098b79498645e9c0da095babdeaf862",
       "inputs": [
         {
           "name": "var",
@@ -122,12 +122,12 @@
       ]
     },
     {
-      "bin_filename": "AssignSub_3",
+      "bin_filename": "AssignSub_2060cf8d69781f9a7462e2f67555909f",
       "inputs": [
         {
           "name": "var",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -138,7 +138,7 @@
         {
           "name": "value",
           "index": 1,
-          "dtype": "uint8",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -151,7 +151,7 @@
         {
           "name": "var",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -162,12 +162,12 @@
       ]
     },
     {
-      "bin_filename": "AssignSub_4",
+      "bin_filename": "AssignSub_209e1e3c807895591394a370155f4fc6",
       "inputs": [
         {
           "name": "var",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -178,7 +178,7 @@
         {
           "name": "value",
           "index": 1,
-          "dtype": "float32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -191,7 +191,7 @@
         {
           "name": "var",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [

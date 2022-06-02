@@ -719,7 +719,7 @@ class BinaryBase:
         if self.one_binary_case_info is None:
             self.init_binary_case()
         if tensor is None:
-            bin_filename = bin_filename.append("TensorNone")
+            bin_filename.append("TensorNone")
         else:
             name_dype = tensor.get("dtype")
             name_shape = str(tensor.get("shape"))

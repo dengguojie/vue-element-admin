@@ -2,95 +2,7 @@
   "op_type": "ReduceSum",
   "op_list": [
     {
-      "bin_filename": "ReduceSum_0",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "axes",
-          "index": 1,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "keep_dims",
-          "dtype": "bool",
-          "value": null
-        }
-      ]
-    },
-    {
-      "bin_filename": "ReduceSum_1",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "axes",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "keep_dims",
-          "dtype": "bool",
-          "value": null
-        }
-      ]
-    },
-    {
-      "bin_filename": "ReduceSum_2",
+      "bin_filename": "ReduceSum_190ba98903fff611153f0bf94697b304",
       "inputs": [
         {
           "name": "x",
@@ -134,7 +46,7 @@
       ]
     },
     {
-      "bin_filename": "ReduceSum_3",
+      "bin_filename": "ReduceSum_6861515b35da2404bc73d75458768a80",
       "inputs": [
         {
           "name": "x",
@@ -162,6 +74,94 @@
           "name": "y",
           "index": 0,
           "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReduceSum_f5adc6eec859fba24c87ef45958ded66",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "axes",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReduceSum_c6738f795430c3c6f09cdc8d52a1b43d",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "axes",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [

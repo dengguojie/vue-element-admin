@@ -2,148 +2,7 @@
   "op_type": "ThresholdV2",
   "op_list": [
     {
-      "bin_filename": "ThresholdV2_0",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "threshold",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "value",
-          "index": 2,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "optional",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "ThresholdV2_1",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "threshold",
-          "index": 1,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "value",
-          "index": 2,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "optional",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "ThresholdV2_2",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "threshold",
-          "index": 1,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "value",
-          "index": 2,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "optional",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "ThresholdV2_3",
+      "bin_filename": "ThresholdV2_27cc51f21ab7faf0367048e60a10e411",
       "inputs": [
         {
           "name": "x",
@@ -181,45 +40,7 @@
       ]
     },
     {
-      "bin_filename": "ThresholdV2_4",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "threshold",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        null
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "ThresholdV2_5",
+      "bin_filename": "ThresholdV2_93b3f8e9594b4018902b635fff3a83c5",
       "inputs": [
         {
           "name": "x",
@@ -266,7 +87,7 @@
       ]
     },
     {
-      "bin_filename": "ThresholdV2_6",
+      "bin_filename": "ThresholdV2_65f1842604c48918078813c7e9d9e261",
       "inputs": [
         {
           "name": "x",
@@ -304,45 +125,7 @@
       ]
     },
     {
-      "bin_filename": "ThresholdV2_7",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "threshold",
-          "index": 1,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        null
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "ThresholdV2_8",
+      "bin_filename": "ThresholdV2_ee98c6628030785f610b924ab1557b31",
       "inputs": [
         {
           "name": "x",
@@ -389,7 +172,177 @@
       ]
     },
     {
-      "bin_filename": "ThresholdV2_9",
+      "bin_filename": "ThresholdV2_98c1538da90ebb4d0b9ed7536625e4ae",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "threshold",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ThresholdV2_9342884c99c006e21fc9d5d9260b8bef",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "threshold",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "value",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ThresholdV2_529b36d5607b5a6d6a7145686859a692",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "threshold",
+          "index": 1,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ThresholdV2_ee91e1da47a6324737df0865c55d5b5f",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "threshold",
+          "index": 1,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "value",
+          "index": 2,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ThresholdV2_7001e28d70e4fb98f1bb42d9e33c05e9",
       "inputs": [
         {
           "name": "x",
@@ -412,6 +365,53 @@
           ]
         },
         null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ThresholdV2_dbb43ab56c1dcaffa05616abcf1124fe",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "threshold",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "value",
+          "index": 2,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
       ],
       "outputs": [
         {

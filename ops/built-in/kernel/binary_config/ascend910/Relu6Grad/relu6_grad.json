@@ -2,155 +2,7 @@
   "op_type": "Relu6Grad",
   "op_list": [
     {
-      "bin_filename": "Relu6Grad_0",
-      "inputs": [
-        {
-          "name": "gradients",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "features",
-          "index": 1,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "backprops",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "Relu6Grad_1",
-      "inputs": [
-        {
-          "name": "gradients",
-          "index": 0,
-          "dtype": "float32",
-          "format": "C1HWNCoC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "features",
-          "index": 1,
-          "dtype": "float32",
-          "format": "C1HWNCoC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "backprops",
-          "index": 0,
-          "dtype": "float32",
-          "format": "C1HWNCoC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "Relu6Grad_2",
-      "inputs": [
-        {
-          "name": "gradients",
-          "index": 0,
-          "dtype": "float32",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "features",
-          "index": 1,
-          "dtype": "float32",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "backprops",
-          "index": 0,
-          "dtype": "float32",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "Relu6Grad_3",
-      "inputs": [
-        {
-          "name": "gradients",
-          "index": 0,
-          "dtype": "float16",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "features",
-          "index": 1,
-          "dtype": "float16",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "backprops",
-          "index": 0,
-          "dtype": "float16",
-          "format": "NC1HWC0",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "Relu6Grad_4",
+      "bin_filename": "Relu6Grad_5b5b506b9f83c99011ce6c0ddd55cd49",
       "inputs": [
         {
           "name": "gradients",
@@ -187,7 +39,7 @@
       ]
     },
     {
-      "bin_filename": "Relu6Grad_5",
+      "bin_filename": "Relu6Grad_14d87de854a14eef04b0a43da58f36f8",
       "inputs": [
         {
           "name": "gradients",
@@ -224,12 +76,49 @@
       ]
     },
     {
-      "bin_filename": "Relu6Grad_6",
+      "bin_filename": "Relu6Grad_937d7f005eea1ee373d7c50ee798a8a6",
       "inputs": [
         {
           "name": "gradients",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "features",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "Relu6Grad_d2db1a80c523e7e59a032c95969880af",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -239,7 +128,7 @@
         {
           "name": "features",
           "index": 1,
-          "dtype": "float32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -251,7 +140,7 @@
         {
           "name": "backprops",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -261,7 +150,44 @@
       ]
     },
     {
-      "bin_filename": "Relu6Grad_7",
+      "bin_filename": "Relu6Grad_d219192db4c156b462dc0225fd84e04a",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "float32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "features",
+          "index": 1,
+          "dtype": "float32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "float32",
+          "format": "C1HWNCoC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "Relu6Grad_ee66ca3648271715ba9863e2f94be41e",
       "inputs": [
         {
           "name": "gradients",
@@ -290,6 +216,80 @@
           "index": 0,
           "dtype": "float32",
           "format": "FRACTAL_NZ",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "Relu6Grad_02a818c660c932603b2a0842c433ce84",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "features",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "Relu6Grad_5c5e58e043224cccf51a06108010ae13",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "features",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
           "paramType": "required",
           "shape": [
             -2

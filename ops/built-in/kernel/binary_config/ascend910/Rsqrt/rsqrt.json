@@ -2,7 +2,7 @@
   "op_type": "Rsqrt",
   "op_list": [
     {
-      "bin_filename": "Rsqrt_0",
+      "bin_filename": "Rsqrt_e5785018658dffe9787ec85108c29851",
       "inputs": [
         {
           "name": "x",
@@ -29,7 +29,7 @@
       ]
     },
     {
-      "bin_filename": "Rsqrt_1",
+      "bin_filename": "Rsqrt_ded454bb24ee75ab163f0270f46319a4",
       "inputs": [
         {
           "name": "x",

@@ -2,7 +2,7 @@
   "op_type": "Neg",
   "op_list": [
     {
-      "bin_filename": "Neg_0",
+      "bin_filename": "Neg_e5785018658dffe9787ec85108c29851",
       "inputs": [
         {
           "name": "x",
@@ -29,12 +29,12 @@
       ]
     },
     {
-      "bin_filename": "Neg_1",
+      "bin_filename": "Neg_ded454bb24ee75ab163f0270f46319a4",
       "inputs": [
         {
           "name": "x",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -46,7 +46,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -56,7 +56,7 @@
       ]
     },
     {
-      "bin_filename": "Neg_2",
+      "bin_filename": "Neg_10f221e28fd08dee9977262d2fb6c36e",
       "inputs": [
         {
           "name": "x",
@@ -83,12 +83,12 @@
       ]
     },
     {
-      "bin_filename": "Neg_3",
+      "bin_filename": "Neg_4842f86893bb7f23efbfe2dc5f5f6c06",
       "inputs": [
         {
           "name": "x",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -100,7 +100,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [

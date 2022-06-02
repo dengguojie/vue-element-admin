@@ -2,7 +2,51 @@
   "op_type": "BiasAdd",
   "op_list": [
     {
-      "bin_filename": "BiasAdd_0",
+      "bin_filename": "BiasAdd_a8d63cbe8795eef99c620173d4757e59",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "bias",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "BiasAdd_291664ae3e88b38b8b46c2efbbea27c9",
       "inputs": [
         {
           "name": "x",
@@ -46,7 +90,7 @@
       ]
     },
     {
-      "bin_filename": "BiasAdd_1",
+      "bin_filename": "BiasAdd_0854f89cee60514394027c604748081e",
       "inputs": [
         {
           "name": "x",
@@ -74,50 +118,6 @@
           "name": "y",
           "index": 0,
           "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "data_format",
-          "dtype": "string",
-          "value": null
-        }
-      ]
-    },
-    {
-      "bin_filename": "BiasAdd_2",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "bias",
-          "index": 1,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [

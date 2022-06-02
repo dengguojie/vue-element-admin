@@ -2,7 +2,7 @@
   "op_type": "Select",
   "op_list": [
     {
-      "bin_filename": "Select_0",
+      "bin_filename": "Select_71854198a6af5b0d1b6800b84007766b",
       "inputs": [
         {
           "name": "condition",
@@ -17,7 +17,7 @@
         {
           "name": "x1",
           "index": 1,
-          "dtype": "int8",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -27,7 +27,7 @@
         {
           "name": "x2",
           "index": 2,
-          "dtype": "int8",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -39,7 +39,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -49,101 +49,7 @@
       ]
     },
     {
-      "bin_filename": "Select_1",
-      "inputs": [
-        {
-          "name": "condition",
-          "index": 0,
-          "dtype": "bool",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "x1",
-          "index": 1,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "x2",
-          "index": 2,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "uint8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "Select_2",
-      "inputs": [
-        {
-          "name": "condition",
-          "index": 0,
-          "dtype": "bool",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "x1",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "x2",
-          "index": 2,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ]
-    },
-    {
-      "bin_filename": "Select_3",
+      "bin_filename": "Select_835bcb8989ca7628eb3d730b92b0a37c",
       "inputs": [
         {
           "name": "condition",
@@ -190,7 +96,7 @@
       ]
     },
     {
-      "bin_filename": "Select_4",
+      "bin_filename": "Select_3d9a14e2e2726850c8071c5166847a69",
       "inputs": [
         {
           "name": "condition",
@@ -205,7 +111,7 @@
         {
           "name": "x1",
           "index": 1,
-          "dtype": "float16",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -215,7 +121,7 @@
         {
           "name": "x2",
           "index": 2,
-          "dtype": "float16",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -227,7 +133,101 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "Select_6b82b75598631e06a92ee907bbf2330c",
+      "inputs": [
+        {
+          "name": "condition",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x1",
+          "index": 1,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 2,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "Select_41c8a54ca26cf3fe1d6ea69454e3a3e6",
+      "inputs": [
+        {
+          "name": "condition",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x1",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 2,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [

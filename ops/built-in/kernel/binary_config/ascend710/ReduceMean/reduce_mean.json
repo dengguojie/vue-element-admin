@@ -2,7 +2,203 @@
   "op_type": "ReduceMean",
   "op_list": [
     {
-      "bin_filename": "ReduceMean_0",
+      "bin_filename": "ReduceMean_d89967b78d0d5f20cfcf40be16e5866e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "axes",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReduceMean_0fa590ca6689c069dced51c122f48460",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "axes",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReduceMean_d92ee8d8428fef20c0b8ad19e40c69ec",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "axes",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReduceMean_11cb26eee3b33e7769d73251e9989801",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "axes",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "keep_dims",
+          "dtype": "bool",
+          "value": null
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReduceMean_18d4422b111f0acc00885813a5ff6715",
       "inputs": [
         {
           "name": "x",
@@ -51,7 +247,7 @@
       ]
     },
     {
-      "bin_filename": "ReduceMean_1",
+      "bin_filename": "ReduceMean_e91281564bf88b936d66d6be573631b1",
       "inputs": [
         {
           "name": "x",
@@ -100,105 +296,7 @@
       ]
     },
     {
-      "bin_filename": "ReduceMean_2",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "axes",
-          "index": 1,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "keep_dims",
-          "dtype": "bool",
-          "value": null
-        },
-        {
-          "name": "noop_with_empty_axes",
-          "dtype": "bool",
-          "value": false
-        }
-      ]
-    },
-    {
-      "bin_filename": "ReduceMean_3",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "axes",
-          "index": 1,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "keep_dims",
-          "dtype": "bool",
-          "value": null
-        },
-        {
-          "name": "noop_with_empty_axes",
-          "dtype": "bool",
-          "value": true
-        }
-      ]
-    },
-    {
-      "bin_filename": "ReduceMean_4",
+      "bin_filename": "ReduceMean_9dd0e02b82997ae21a2a7372b03fcb75",
       "inputs": [
         {
           "name": "x",
@@ -247,7 +345,7 @@
       ]
     },
     {
-      "bin_filename": "ReduceMean_5",
+      "bin_filename": "ReduceMean_0b62194ec19f64d5b7d7176f7b18a962",
       "inputs": [
         {
           "name": "x",
@@ -275,104 +373,6 @@
           "name": "y",
           "index": 0,
           "dtype": "float32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "keep_dims",
-          "dtype": "bool",
-          "value": null
-        },
-        {
-          "name": "noop_with_empty_axes",
-          "dtype": "bool",
-          "value": true
-        }
-      ]
-    },
-    {
-      "bin_filename": "ReduceMean_6",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "axes",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "attrs": [
-        {
-          "name": "keep_dims",
-          "dtype": "bool",
-          "value": null
-        },
-        {
-          "name": "noop_with_empty_axes",
-          "dtype": "bool",
-          "value": false
-        }
-      ]
-    },
-    {
-      "bin_filename": "ReduceMean_7",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "float16",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        },
-        {
-          "name": "axes",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [

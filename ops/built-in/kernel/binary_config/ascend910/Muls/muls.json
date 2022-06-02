@@ -2,7 +2,7 @@
   "op_type": "Muls",
   "op_list": [
     {
-      "bin_filename": "Muls_0",
+      "bin_filename": "Muls_a361dd616916039e9cbcc4be357ba2e8",
       "inputs": [
         {
           "name": "x",
@@ -36,7 +36,7 @@
       ]
     },
     {
-      "bin_filename": "Muls_1",
+      "bin_filename": "Muls_df3465d1aa4ff030729a668199c7378a",
       "inputs": [
         {
           "name": "x",
@@ -70,7 +70,7 @@
       ]
     },
     {
-      "bin_filename": "Muls_2",
+      "bin_filename": "Muls_d0f5db4a80a0050fd835356359aa94ca",
       "inputs": [
         {
           "name": "x",

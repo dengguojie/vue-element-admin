@@ -2,85 +2,7 @@
   "op_type": "Transpose",
   "op_list": [
     {
-      "bin_filename": "Transpose_0",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "dtype_match_mode": "DtypeByte"
-        },
-        {
-          "name": "perm",
-          "index": 1,
-          "dtype": "int32",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "dtype_match_mode": "DtypeByte"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Transpose_1",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "dtype_match_mode": "DtypeByte"
-        },
-        {
-          "name": "perm",
-          "index": 1,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "dtype_match_mode": "DtypeByte"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Transpose_2",
+      "bin_filename": "Transpose_3a4f27f417f663bd4652251eb5b5b651",
       "inputs": [
         {
           "name": "x",
@@ -119,7 +41,46 @@
       ]
     },
     {
-      "bin_filename": "Transpose_3",
+      "bin_filename": "Transpose_bc5cf444592b20be060ce8af4eb55c56",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "perm",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Transpose_22835ccded1e4869e14df9d649467b5e",
       "inputs": [
         {
           "name": "x",
@@ -158,7 +119,7 @@
       ]
     },
     {
-      "bin_filename": "Transpose_4",
+      "bin_filename": "Transpose_f3780183a9611019cb56bfe7365d2656",
       "inputs": [
         {
           "name": "x",
@@ -197,46 +158,7 @@
       ]
     },
     {
-      "bin_filename": "Transpose_5",
-      "inputs": [
-        {
-          "name": "x",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "dtype_match_mode": "DtypeByte"
-        },
-        {
-          "name": "perm",
-          "index": 1,
-          "dtype": "int64",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "name": "y",
-          "index": 0,
-          "dtype": "int8",
-          "format": "ND",
-          "paramType": "required",
-          "shape": [
-            -2
-          ],
-          "dtype_match_mode": "DtypeByte"
-        }
-      ]
-    },
-    {
-      "bin_filename": "Transpose_6",
+      "bin_filename": "Transpose_0dba260480ea5fee503c5c9bbed9a3fa",
       "inputs": [
         {
           "name": "x",
@@ -275,12 +197,12 @@
       ]
     },
     {
-      "bin_filename": "Transpose_7",
+      "bin_filename": "Transpose_1d2fd313763487259859439d7e9b41cf",
       "inputs": [
         {
           "name": "x",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int64",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -303,7 +225,85 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Transpose_11c87f222c24e3f858d0b8f43f3948fc",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "perm",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ]
+    },
+    {
+      "bin_filename": "Transpose_85c462bfa6972c1b16ac1e744a08d196",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "perm",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [

@@ -2,7 +2,7 @@
   "op_type": "ReduceAll",
   "op_list": [
     {
-      "bin_filename": "ReduceAll_0",
+      "bin_filename": "ReduceAll_a9b7af94359fc7c19da07ad0790f065c",
       "inputs": [
         {
           "name": "x",
@@ -46,7 +46,7 @@
       ]
     },
     {
-      "bin_filename": "ReduceAll_1",
+      "bin_filename": "ReduceAll_bbb33f17aca2fbbf645166c6cba610fc",
       "inputs": [
         {
           "name": "x",
