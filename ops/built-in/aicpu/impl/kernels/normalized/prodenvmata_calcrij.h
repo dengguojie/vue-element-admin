@@ -74,7 +74,7 @@ namespace aicpu {
         std::vector<int32_t> fmt_nlist_a;
       };
 
-      uint32_t DoCompute(CpuKernelContext &ctx);
+      uint32_t DoCompute(const CpuKernelContext &ctx);
       template <typename FPTYPE>
       uint32_t DoProdEnvMatACalcRijCompute(const CpuKernelContext &ctx);
       uint32_t GetInputAndCheck(const CpuKernelContext &ctx);

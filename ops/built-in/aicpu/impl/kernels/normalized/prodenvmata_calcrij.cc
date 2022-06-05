@@ -70,7 +70,7 @@ namespace aicpu
     return KERNEL_STATUS_OK;
   }
 
-  uint32_t ProdEnvMatACalcRijCpuKernel::DoCompute(CpuKernelContext &ctx) {
+  uint32_t ProdEnvMatACalcRijCpuKernel::DoCompute(const CpuKernelContext &ctx) {
     DataType params_type = ctx.Input(0)->GetDataType();
     if (params_type == DT_FLOAT) {
       return DoProdEnvMatACalcRijCompute<float>(ctx);
