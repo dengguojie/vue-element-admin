@@ -1230,14 +1230,6 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformV2, StatelessRandomUniformV2Infer) {
   std::string error_msg;
   // alg-start
   Shape alg;
-  Tensor alg_tensor;
-  if (op.GetInputConstData("alg", alg_tensor) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("failed to get input[alg] const data."));
-    return GRAPH_FAILED;
-  }
-  int32_t* const_data_ptr = reinterpret_cast<int32_t*>(alg_tensor.GetData());
-  int32_t alg_value = *(const_data_ptr);
-
   TensorDesc alg_desc = op.GetInputDescByName("alg");
   if (WithRank(alg_desc, 0, alg, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     error_msg = ConcatString("the rank of alg must be 0, but get ", alg_desc.GetShape().GetDimNum());
@@ -1254,36 +1246,23 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformV2, StatelessRandomUniformV2Infer) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
-  if (alg_value == 2 && counter.GetDim(0) != 1) {
-    error_msg = ConcatString("the input counter dim[0] must be 1, real value is ", counter.GetDim(0));
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
-    return GRAPH_FAILED;
-  }
-  if (alg_value == 1 && counter.GetDim(0) != 2) {
-    error_msg = ConcatString("the input counter dim[0] must be 2, real value is ", counter.GetDim(0));
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
-    return GRAPH_FAILED;
-  }
   // counter-end
-
-  Shape shape;
-  Tensor shape_tensor;
-  if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("failed to get input[shape] const data."));
+  GeShape shape;
+  if (MakeShapeFromShapeTensor(op, "shape", shape,
+                               TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString(
+        "failed to call MakeShapeFromShapeTensor function to make shape from "
+        "input[shape]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("failed to call MakeShapeFromShapeTensor func."));
-    return GRAPH_FAILED;
-  }
-
-  TensorDesc outputDesc = op.GetOutputDescByName("y");
   DataType output_type = DT_FLOAT;
   op.GetAttr("dtype", output_type);
- 
-  outputDesc.SetDataType(output_type);
-  outputDesc.SetShape(shape);
-  return op.UpdateOutputDesc("y", outputDesc);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto outputDesc = op_desc->MutableOutputDesc(0);
+  outputDesc->SetDataType(output_type);
+  outputDesc->SetShape(shape);
+  return GRAPH_SUCCESS;
 }
 IMPLEMT_VERIFIER(StatelessRandomUniformV2, StatelessRandomUniformV2Verify) {
   std::string error_msg;
