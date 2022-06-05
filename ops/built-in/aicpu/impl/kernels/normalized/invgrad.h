@@ -38,7 +38,7 @@ class InvGradCpuKernel : public CpuKernel {
   uint32_t NoBcastCompute(const CpuKernelContext &ctx) const;
 
   template <typename T>
-  uint32_t InvGradCompute(CpuKernelContext &ctx) const;
+  uint32_t InvGradCompute(const CpuKernelContext &ctx) const;
 };
 }  // namespace aicpu
 #endif

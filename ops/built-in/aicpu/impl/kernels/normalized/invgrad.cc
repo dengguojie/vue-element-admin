@@ -143,7 +143,7 @@ uint32_t InvGradCpuKernel::NoBcastCompute(const CpuKernelContext &ctx) const {
 }
 
 template <typename T>
-uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) const {
+uint32_t InvGradCpuKernel::InvGradCompute(const CpuKernelContext &ctx) const {
   Tensor *input0_tensor = ctx.Input(0);
   int64_t input0_elements_nums = input0_tensor->NumElements();
 
