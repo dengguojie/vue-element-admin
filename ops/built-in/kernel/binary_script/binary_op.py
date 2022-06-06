@@ -226,6 +226,23 @@ def set_attr(attr_list):
     return res_list
 
 
+def gen_filename_of_tensor(tensor):
+    """gen_filename_of_tensor
+    """
+    if tensor is None:
+        return "TensorNone"
+
+    name_dype = tensor.get("dtype")
+    name_shape = str(tensor.get("shape"))
+    name_format = tensor.get("format")
+    name_ori_shape = str(tensor.get("ori_shape", name_shape))
+    name_ori_format = tensor.get("ori_format", name_format)
+    name_list = [name_dype, name_shape, name_format, name_ori_shape, name_ori_format]
+    name_str = "_".join(name_list)
+
+    return name_str
+
+
 class PATH:
     """
     path
@@ -602,7 +619,7 @@ class BinaryBase:
                 if i < self.input_num:
                     bin_filename = self.add_input_tensor(tensor, bin_filename)
                 else:
-                    self.add_output_tensor(tensor)
+                    bin_filename = self.add_output_tensor(tensor, bin_filename)
             bin_filename = self.add_attr(attr_list, bin_filename)
             self.add_bin_file_name(bin_filename)
             self.add_binary_case()
@@ -718,19 +735,11 @@ class BinaryBase:
         """
         if self.one_binary_case_info is None:
             self.init_binary_case()
-        if tensor is None:
-            bin_filename.append("TensorNone")
-        else:
-            name_dype = tensor.get("dtype")
-            name_shape = str(tensor.get("shape"))
-            name_format = tensor.get("format")
-            name_ori_shape = str(tensor.get("ori_shape", name_shape))
-            name_ori_format = tensor.get("ori_format", name_format)
-            name_list = [name_dype, name_shape, name_format, name_ori_shape, name_ori_format]
-            name_list = "_".join(name_list)
-            bin_filename.append(name_list)
 
         self.one_binary_case_info.get("inputs").append(tensor)
+
+        bin_filename.append(gen_filename_of_tensor(tensor))
+
         return bin_filename
 
     def get_input_tensor(self, tensor_key):
@@ -747,7 +756,7 @@ class BinaryBase:
                 return tensor
         return None
 
-    def add_output_tensor(self, tensor):
+    def add_output_tensor(self, tensor, bin_filename):
         """
         add_output_tensor
 
@@ -762,7 +771,12 @@ class BinaryBase:
         """
         if self.one_binary_case_info is None:
             self.init_binary_case()
+
         self.one_binary_case_info.get("outputs").append(tensor)
+
+        bin_filename.append(gen_filename_of_tensor(tensor))
+
+        return bin_filename
 
     def get_output_tensor(self, tensor_key):
         """
