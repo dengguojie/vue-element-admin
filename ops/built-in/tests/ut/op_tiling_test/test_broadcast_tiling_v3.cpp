@@ -138,7 +138,7 @@ TEST_F(BroadcastTilingV3, RlTilingTest02) {
 
 TEST_F(BroadcastTilingV3, TilingTest1) {
   std::vector<std::vector<int64_t>> inputs {{64,}, {64,},{1,}};
-  std::vector<std::vector<int64_t>> outputs {{64,}};;
+  std::vector<std::vector<int64_t>> outputs {{64,}};
   ge::DataType dtype = ge::DT_FLOAT;
   ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
   for (std::size_t i = 0; i < inputs.size(); i++) {
@@ -173,7 +173,8 @@ TEST_F(BroadcastTilingV3, TilingTest1) {
   actual_ptr.soc_version.first = false;
   actual_ptr.soc_version.second = "";
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
@@ -214,7 +215,8 @@ TEST_F(BroadcastTilingV3, TilingTest2) {
   actual_ptr.soc_version.first = false;
   actual_ptr.soc_version.second = "";
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 25);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5824 2 2 ");
@@ -257,7 +259,8 @@ TEST_F(BroadcastTilingV3, TilingTest3) {
   actual_ptr.soc_version.second = "";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(!broadcast.BroadcastTiling());
 }
 
@@ -298,7 +301,8 @@ TEST_F(BroadcastTilingV3, TilingTest4) {
   actual_ptr.soc_version.second = "";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(!broadcast.BroadcastTiling());
 }
 
@@ -339,8 +343,9 @@ TEST_F(BroadcastTilingV3, TilingTest5) {
   actual_ptr.soc_version.second = "";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest6) {
@@ -380,8 +385,9 @@ TEST_F(BroadcastTilingV3, TilingTest6) {
   actual_ptr.soc_version.second = "";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest7) {
@@ -421,7 +427,8 @@ TEST_F(BroadcastTilingV3, TilingTest7) {
   actual_ptr.soc_version.second = "";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
@@ -462,7 +469,8 @@ TEST_F(BroadcastTilingV3, TilingTest8) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
@@ -503,7 +511,8 @@ TEST_F(BroadcastTilingV3, TilingTest9) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 
 }
@@ -545,7 +554,8 @@ TEST_F(BroadcastTilingV3, TilingTest10) {
   actual_ptr.soc_version.second = "";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
@@ -588,7 +598,8 @@ TEST_F(BroadcastTilingV3, TilingTest11) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
@@ -629,7 +640,8 @@ TEST_F(BroadcastTilingV3, TilingTest12) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
 }
@@ -694,7 +706,8 @@ TEST_F(BroadcastTilingV3, TilingTest14) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
@@ -735,12 +748,14 @@ TEST_F(BroadcastTilingV3, TilingTest15) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  optiling::OpInfo custom_op_info(inputs, ge::DT_FLOAT);
-  const std::pair<bool, optiling::OpInfo> op_custom(true, custom_op_info);
-
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-  ASSERT_TRUE(broadcast.BroadcastTiling(custom_op_info));
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::OpInfoImpl opInfoImpl(&actual_ptr);
+  opInfoImpl.SetInputShape(&inputs);
+  opInfoImpl.SetInputType(&dtype);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, &opInfoImpl);
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
+
 
 TEST_F(BroadcastTilingV3, TilingTest16) {
   std::vector<std::vector<int64_t>> inputs {{1, 1, 5824}, {32, 100, 1}, {32, 100, 1}};
@@ -801,11 +816,12 @@ TEST_F(BroadcastTilingV3, TilingTest17) {
   actual_ptr.soc_version.first = true;
   actual_ptr.soc_version.second = "Ascend910B";
 
-
-  optiling::OpInfo custom_op_info(inputs, ge::DT_FLOAT);
-  const std::pair<bool, optiling::OpInfo> op_custom(true, custom_op_info);
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-  ASSERT_TRUE(broadcast.BroadcastTiling(custom_op_info));
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::OpInfoImpl opInfoImpl(&actual_ptr);
+  opInfoImpl.SetInputShape(&inputs);
+  opInfoImpl.SetInputType(&dtype);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, &opInfoImpl);
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest18) {
@@ -955,7 +971,8 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
   actual_ptr.soc_version.second = "Ascend910B";
 
 
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  optiling::AutoTilingOp oldTlingop("autotiling", &op_paras, &actual_ptr, &runInfo);
+  optiling::v3::Broadcast<AutoTilingOp> broadcast(&oldTlingop, nullptr);
   ASSERT_TRUE(broadcast.BroadcastTiling());
   }
 
@@ -1004,47 +1021,3 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
                               nlohmann::json::parse(compileInfo));
   ASSERT_TRUE(!outer_compile_info->DoTiling(op_paras, runInfo));
   }
-
-  TEST_F(BroadcastTilingV3, TilingTest26) {
-  std::vector<std::vector<int64_t>> inputs {{1, 40000, 10}};
-  std::vector<std::vector<int64_t>> outputs {{1, 40000, 10}};
-  ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
-
-  v3::BroadcastCompileInfo actual_ptr;
-  actual_ptr.base_info_compile.first = false;
-  actual_ptr.base_info_compile.second = {};
-  actual_ptr.flag_info_compile = {false, true, true, false, false, false, false};
-  actual_ptr.ub_factor_align = 128;
-  actual_ptr.elewise_vars_compile.first = true;
-  actual_ptr.elewise_vars_compile.second = {{"100000000",{}}};
-  actual_ptr.const_block_dims_compile.first = true;
-  actual_ptr.const_block_dims_compile.second = {40};
-
-  actual_ptr.const_shapes_compile.first = true;
-  actual_ptr.const_shapes_compile.second = {{1, 40000, 10}};
-
-  actual_ptr.fusion_index_compile.first = true;
-  actual_ptr.fusion_index_compile.second = {{0},{1},{2}};
-
-  actual_ptr.broadcast_axis_compile.first = true;
-  actual_ptr.broadcast_axis_compile.second = {false, true};
-
-  actual_ptr.soc_version.first = true;
-  actual_ptr.soc_version.second = "Ascend920";
-
-
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-  ASSERT_TRUE(broadcast.BroadcastTiling());
-}
-
-
-

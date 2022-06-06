@@ -31,13 +31,18 @@
 #include "rl_tune.h"
 
 #include "external/graph/operator.h"
+#include "exe_graph/runtime/tiling_context.h"
+#include "exe_graph/runtime/kernel_run_context.h"
+
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
 namespace v3 {
 constexpr size_t B_MAX_DIM_LEN = 16;
 constexpr size_t B_MAX_INPUT_NUMS = 70;
 
-struct BroadcastCompileInfo {
+struct BroadcastCompileInfo : AutoTilingCompileInfo{
   ElewiseCompileInfo pure_elewise_compile_info;
 
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> base_info_compile;
@@ -45,9 +50,8 @@ struct BroadcastCompileInfo {
   int64_t ub_factor_align {-1};
   bool contains_elewise_sch {false};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
-  VarAttrWrap varAttrWrap;
   std::pair<bool, std::vector<int64_t>> const_block_dims_compile;
-
+  VarAttrWrap varAttrWrap;
   std::pair<bool, std::vector<std::vector<int64_t>>> const_shapes_compile;
   std::pair<bool, std::vector<std::vector<size_t>>> fusion_index_compile;
   std::pair<bool, std::vector<bool>> broadcast_axis_compile;
@@ -57,10 +61,12 @@ struct BroadcastCompileInfo {
   std::pair<bool, std::vector<std::pair<rl::RlPattern, std::vector<rl::RlBankInfo>>>> bank_info_pair;
 
   BroadcastCompileInfo() = default;
+  ~BroadcastCompileInfo() override = default;
   BroadcastCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
 
  private:
-  void ParseElewiseInfos(const std::string& op_type, const nlohmann::json& outer_compile_info);
+  void ParseElewiseInfos(const nlohmann::json& outer_compile_info);
+  bool Parse(const nlohmann::json& outer_compile_info);
 };
 
 enum class Pattern {
@@ -75,19 +81,19 @@ enum class Pattern {
   UNKNWON_UNKNOWN = 999
 };
 
+template <typename T>
 class Broadcast {
   public:
-    explicit Broadcast(const std::string& op_type,
-                   const ge::Operator& op_paras,
-                   const BroadcastCompileInfo& broadcast_compile_info,
-                   utils::OpRunInfo& run_info)
-    : op_type(op_type), op_paras(op_paras), broadcast_compile_info(broadcast_compile_info), run_info(run_info) {}
+    explicit Broadcast(T* _context, const OpInfoImpl* _op_info)
+        : context(_context),op_info(_op_info) {}
     ~Broadcast() = default;
     bool BroadcastTiling();
     bool BroadcastTiling(const OpInfo& op_info);
 
   private:
     bool Init();
+    bool InitCompileInfo();
+    bool InitOpInOutInfo();
     bool GenerateOutputShape();
     bool TryMatchAllUnknown();
     void TrySwitchToElewise();
@@ -118,7 +124,6 @@ class Broadcast {
     bool CompletedShapes();
     bool CompletedShapes(const std::vector<std::vector<int64_t>>& op_input_shapes);
     bool GetOutputType();
-    bool GetType();
     bool CheckInputs();
     bool MatchConstShape(const std::vector<int64_t>& const_shapes,size_t& key_index);
     bool CalcConstKey(const bool is_support_broadcast);
@@ -138,9 +143,10 @@ class Broadcast {
     bool DoRlTiling(const rl::RlBankInfo& rl_bank_info);
 
   private:
-    const std::string& op_type;
-    const ge::Operator& op_paras;
-    const BroadcastCompileInfo& broadcast_compile_info;
+    T* context;
+    const OpInfoImpl* op_info{nullptr};
+    const char* op_type;
+    const BroadcastCompileInfo* broadcast_compile_info;
     ge::DataType in_type{ge::DataType::DT_FLOAT16};
     ge::DataType out_type{ge::DataType::DT_FLOAT16};
     size_t max_output_shape_size{1};
@@ -171,7 +177,6 @@ class Broadcast {
     bool need_double_buffer{false};
     bool need_block_align{false};
     bool is_milan_soc{false};
-    utils::OpRunInfo& run_info;
 
     int64_t max_dtype_compile{0};
     int64_t core_num_compile{0};
@@ -188,6 +193,8 @@ class Broadcast {
     int64_t rl_block_dim{1};
     std::array<int32_t, rl::RL_MAX_VARS_NUM> rl_tiling_data{};
 };
+template class Broadcast<AutoTilingContext>;
+template class Broadcast<AutoTilingOp>;
 } // namespace v3
 class BroadcastTilingHandler: public AutoTilingHandler {
   public:

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,16 +24,21 @@
 #include <vector>
 #include <string>
 #include <unordered_set>
+#include <nlohmann/json.hpp>
 #include "vector_tiling.h"
-#include "external/graph/operator.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 #include "rl_tune.h"
 
 namespace optiling {
 namespace v3 {
 
-struct ElewiseCompileInfo {
+struct ElewiseCompileInfo : AutoTilingCompileInfo{
   ElewiseCompileInfo() = default;
   ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
+  ~ElewiseCompileInfo() override = default;
+
+  bool Parse(const char* op_type, const nlohmann::json& json_compile_info);
 
   // required compile_info
   uint32_t classify_inputs_num{0};
@@ -74,27 +79,25 @@ enum class ElewisePattern {
   UNKNOWN = 666
 };
 
+template <typename T>
 class Elewise {
  public:
-  explicit Elewise(const std::string& op_type,
-                   const ge::Operator& op_paras,
-                   const ElewiseCompileInfo& compile_info,
-                   utils::OpRunInfo& run_info)
-      : op_type(op_type), op_paras(op_paras), compile_info(compile_info), run_info(run_info) {}
+  explicit Elewise(T* _context, const OpInfoImpl* _op_info)
+      : context(_context),
+        op_info(_op_info) {
+  }
   ~Elewise() = default;
   bool DoTiling();
   bool DoTiling(const OpInfo& op_info);
   void SetBroadcastPattern(const ElewisePattern& pattern);
 
  private:
-  bool CheckCompileInfo();
   void GetOutputDtype();
+  bool CheckCompileInfo();
   void GetCheckInputs(std::vector<uint32_t>& check_list);
-  void GetCheckInputs(std::vector<uint32_t>& check_list, const OpInfo& op_info);
+  bool GetShapeUnderCheckCustom(std::vector<uint32_t>& check_list);
   bool GetShapeUnderCheck(std::vector<uint32_t>& check_list);
-  bool GetShapeUnderCheck(std::vector<uint32_t>& check_list, const OpInfo& op_info);
   bool GetInOutShapes();
-  bool GetInOutShapes(const OpInfo& op_info);
   bool WriteKnownData();
   bool CalcConstKey();
   bool ConstModeTiling();
@@ -112,10 +115,10 @@ class Elewise {
   bool TryMatchRlBank();
 
  private:
-  const std::string& op_type;
-  const ge::Operator& op_paras;
-  const ElewiseCompileInfo& compile_info;
-  utils::OpRunInfo& run_info;
+  T* context;
+  const OpInfoImpl* op_info{nullptr};
+  const char* op_type;
+  const ElewiseCompileInfo* compile_info;
   // input infos
   uint32_t input_num{0};
   std::vector<int64_t> input_fuse_shapes{};
@@ -145,6 +148,9 @@ class Elewise {
 };
 
 ElewisePattern GetDispatchPattern(std::vector<std::vector<int64_t>> elewise_inputs, const uint32_t& classify_nums);
+
+template class Elewise<AutoTilingContext>;
+template class Elewise<AutoTilingOp>;
 }  // namespace v3
 
 class ElewiseTilingHandler: public AutoTilingHandler {

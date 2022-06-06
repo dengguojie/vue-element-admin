@@ -247,19 +247,18 @@ TEST_F(ElewiseTilingV3, compile_tiling_info_compare) {
 
 TEST_F(ElewiseTilingV3, elewise_set_attr_case1) {
   // Construct op_paras
-  std::vector<std::vector<int64_t>> in_shapes = {{1, 33, 1089}};
-  std::vector<std::vector<int64_t>> out_shapes = {{1, 33, 1089}};
+  std::vector<std::vector<int64_t>> in_shapes = {{128, 128, 128, 128}};
+  std::vector<std::vector<int64_t>> out_shapes = {{128, 128, 128, 128}};
   std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
-  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
   std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
   ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
-                                           out_dtypes, in_formats, out_formats);
-  op_paras.SetAttr("alpha", 123);
+                                                 out_dtypes, in_formats, out_formats);
   optiling::utils::OpRunInfo run_info;
-
-  std::string compile_info_in = R"({"_classify_inputs_num": 1,
-                                    "_ub_factor_align": 128,
+  op_paras.SetAttr("alpha", 123);
+  std::string compile_info_in = R"({"_ub_factor_align": 128,
+                                    "_classify_inputs_num": 1,
                                     "_pattern": "ElemWise",
                                     "_flag_info": [false, false, false, true, false, false],
                                     "_base_info": {"100": [32, 4, 16384, 8192]},
@@ -276,6 +275,9 @@ TEST_F(ElewiseTilingV3, elewise_set_attr_case1) {
   std::shared_ptr<AutoTilingHandler> outer_compile_info =
     CreateElewiseTilingHandler(this->test_info_->name(), "autotiling", nlohmann::json::parse(compile_info_in));
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, run_info));
+
+  EXPECT_EQ(run_info.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "268435456 8388608 8192 123 ");
 }
 
 TEST_F(ElewiseTilingV3, rl_hit_second_cpt_no_blocktiling) {
@@ -292,10 +294,9 @@ TEST_F(ElewiseTilingV3, rl_hit_second_cpt_no_blocktiling) {
 
   optiling::utils::OpRunInfo runInfo;
 
-  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "Broadcast",
-                                "_fusion_index": [[0],[1],[2]],
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "ElemWise",
                                 "_classify_inputs_num": 2,
-                                "_flag_info": [false, false, true, true, true, false, true],
+                                "_flag_info": [false, false, true, true, true, false],
                                 "_base_info": {}, "_elewise_vars": {},
                                 "_bank_info": {"-1_-1":
                                 [[[[[0]], [-1], [4],[[67584, 2147483647]]], ["dim_0_0"], [[0, [0], "_block_factor_0", 32, 32], [0, [0], 9400], []], 9223372038164746484, [10000, 30000, 20000]],
@@ -324,10 +325,9 @@ TEST_F(ElewiseTilingV3, rl_hit_second_cpt_blocktiling) {
 
   optiling::utils::OpRunInfo runInfo;
 
-  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "Broadcast",
-                                "_fusion_index": [[0],[1],[2]],
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pattern": "ElemWise",
                                 "_classify_inputs_num": 2,
-                                "_flag_info": [false, false, true, true, true, false, true],
+                                "_flag_info": [false, false, true, true, true, false],
                                 "_base_info": {}, "_elewise_vars": {},
                                 "_bank_info": {"-1_-1":
                                 [[[[[0]], [-1], [4],[[67584, 2147483647]]], ["dim_0_0"], [[0, [0], "_block_factor_0", 32, 32], [0, [0], 9400], []], 9223372038164746484, [10000, 30000, 20000]],
@@ -350,7 +350,7 @@ TEST_F(ElewiseTilingV3, empty_mode_none_custom_tiling) {
   std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT16};
   std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
   std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
-  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+  ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo expect_compile_info;
   // required compile info
@@ -366,7 +366,8 @@ TEST_F(ElewiseTilingV3, empty_mode_none_custom_tiling) {
   expect_compile_info.base_info.first = false;
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  AutoTilingOp auto_tiling_op("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&auto_tiling_op, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 1);
   EXPECT_EQ(run_info.GetTilingKey(), 2147483647);
@@ -398,8 +399,9 @@ TEST_F(ElewiseTilingV3, empty_mode_custom_tiling) {
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  AutoTilingOp auto_tiling_op("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&auto_tiling_op, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 1);
   EXPECT_EQ(run_info.GetTilingKey(), 2147483647);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
@@ -432,7 +434,8 @@ TEST_F(ElewiseTilingV3, common_none_custom_tiling_multicore) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
                                              {"210010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  AutoTilingOp auto_tiling_op("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&auto_tiling_op, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 210010000);
@@ -467,8 +470,9 @@ TEST_F(ElewiseTilingV3, common_custom_tiling_multicore) {
                                              {"210010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 210010000);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "268435456 8388608 8192 ");
@@ -507,7 +511,8 @@ TEST_F(ElewiseTilingV3, common_none_custom_tiling_single_core) {
                                              {"232000000", {10000, 20000, 30000 }},
                                              {"232010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 1);
   EXPECT_EQ(run_info.GetTilingKey(), 210000000);
@@ -548,8 +553,9 @@ TEST_F(ElewiseTilingV3, common_custom_tiling_single_core) {
                                              {"232010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 1);
   EXPECT_EQ(run_info.GetTilingKey(), 210000000);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "256 256 256 ");
@@ -580,7 +586,8 @@ TEST_F(ElewiseTilingV3, only_const_tiling_none_custom_tiling) {
   expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1 0 128 0 128 0 ");
@@ -604,7 +611,6 @@ TEST_F(ElewiseTilingV3, only_const_tiling_custom_tiling) {
   expect_compile_info.ub_factor_align = 128;
   // optional compile info
   expect_compile_info.classify_const_mode = false;
-  
   expect_compile_info.const_block_dims.first = false;
   expect_compile_info.support_broadcast = false;
   expect_compile_info.absorbable_broadcast = false;
@@ -613,8 +619,9 @@ TEST_F(ElewiseTilingV3, only_const_tiling_custom_tiling) {
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1 0 128 0 128 0 ");
 }
@@ -644,7 +651,8 @@ TEST_F(ElewiseTilingV3, const_pattern_none_custom_tiling) {
   expect_compile_info.base_info.first = false;
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(run_info.GetTilingKey(), 100000001);
@@ -677,8 +685,9 @@ TEST_F(ElewiseTilingV3, const_pattern_custom_tiling) {
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(run_info.GetTilingKey(), 100000001);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
@@ -711,7 +720,8 @@ TEST_F(ElewiseTilingV3, common_relu_fp32) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
                                              {"210010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 210010000);
@@ -748,8 +758,9 @@ TEST_F(ElewiseTilingV3, broadcast_scalar_custom_tiling_pattern) {
                                              {"223010000", {10000, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 223010000);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1441792 45056 15104 ");
@@ -784,7 +795,8 @@ TEST_F(ElewiseTilingV3, scalar_broadcast_none_custom_tiling_pattern) {
                                              {"232000000", {10001, 20000, 30000 }},
                                              {"232010000", {10001, 20000, 30000 }}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 31);
   EXPECT_EQ(run_info.GetTilingKey(), 232000000);
@@ -818,7 +830,8 @@ TEST_F(ElewiseTilingV3, broadcast_addcmul_tiling) {
   expect_compile_info.elewise_vars.second = {{"220000000", {10000, 10002, 10003, 20000, 30000}},
                                              {"220010000", {10000, 10002, 10003, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 220010000);
@@ -857,7 +870,8 @@ TEST_F(ElewiseTilingV3, apply_adam_d_tiling) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 210010000);
@@ -891,7 +905,8 @@ TEST_F(ElewiseTilingV3, fuse_mul_add_n_tiling) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 210000000);
@@ -925,7 +940,8 @@ TEST_F(ElewiseTilingV3, ub_bound_limit_check) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210000000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_FALSE(elewise.DoTiling());
 }
 
@@ -956,7 +972,8 @@ TEST_F(ElewiseTilingV3, elewise_var_key_check) {
   expect_compile_info.elewise_vars.second = {{"210000001", {10000, 20000, 30000}},
                                              {"210000002", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_FALSE(elewise.DoTiling());
 }
 
@@ -987,7 +1004,8 @@ TEST_F(ElewiseTilingV3, low_shape_same_none_custom_check) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_FALSE(elewise.DoTiling());
 }
 
@@ -1018,9 +1036,9 @@ TEST_F(ElewiseTilingV3, low_shape_same_custom_check) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
+  ASSERT_FALSE(elewise.DoTiling());
 }
 
 TEST_F(ElewiseTilingV3, diff_lens_higher_shape_all_one_none_custom_check) {
@@ -1056,7 +1074,8 @@ TEST_F(ElewiseTilingV3, diff_lens_higher_shape_all_one_none_custom_check) {
                                              {"232000000", {10000, 20000, 30000}},
                                              {"232010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_FALSE(elewise.DoTiling());
 }
 
@@ -1093,9 +1112,9 @@ TEST_F(ElewiseTilingV3, diff_lens_higher_shape_all_one_custom_check) {
                                              {"232000000", {10000, 20000, 30000}},
                                              {"232010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_FALSE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
+  ASSERT_FALSE(elewise.DoTiling());
 }
 
 TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_fail_case) {
@@ -1125,7 +1144,9 @@ TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_fail_case) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210000000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 1);
   EXPECT_EQ(run_info.GetTilingKey(), 210000000);
@@ -1157,10 +1178,43 @@ TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_tiling) {
   expect_compile_info.base_info.first = false;
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
   ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
-  EXPECT_EQ(run_info.GetTilingKey(), 100000001);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
+}
+
+TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_custom_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 1024}, {1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND, ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo expect_compile_info;
+    // required compile info
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = true;
+  expect_compile_info.support_broadcast = true;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = true;
+  expect_compile_info.const_block_dims.second = {8, 8};
+  expect_compile_info.base_info.first = false;
+  expect_compile_info.elewise_vars.first = false;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  ASSERT_TRUE(elewise.DoTiling());
+  EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
 }
 
@@ -1191,9 +1245,9 @@ TEST_F(ElewiseTilingV3, dynamic_cast_s32_to_s64_tiling) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  optiling::AutoTilingOp oldTlingop("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&oldTlingop, nullptr);
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 4);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 256 256 ");
 }
@@ -1225,9 +1279,9 @@ TEST_F(ElewiseTilingV3, dynamic_cast_s64_to_s32_tiling) {
   expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000}},
                                              {"210010000", {10000, 20000, 30000}}};
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  AutoTilingOp auto_tiling_op("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&auto_tiling_op, nullptr);
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(run_info.GetTilingKey(), 210000000);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 128 128 ");
@@ -1258,9 +1312,9 @@ TEST_F(ElewiseTilingV3, const_vcmp_support_b64_case) {
   expect_compile_info.base_info.first = false;
   expect_compile_info.elewise_vars.first = false;
   optiling::utils::OpRunInfo run_info;
-  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
-  Elewise elewise("ElemWise", op_paras, expect_compile_info, run_info);
-  ASSERT_TRUE(elewise.DoTiling(op_info));
+  AutoTilingOp auto_tiling_op("ElemWise", &op_paras, &expect_compile_info, &run_info);
+  v3::Elewise<AutoTilingOp> elewise(&auto_tiling_op, nullptr);
+  ASSERT_TRUE(elewise.DoTiling());
   EXPECT_EQ(run_info.GetBlockDim(), 32);
   EXPECT_EQ(run_info.GetTilingKey(), 100000001);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "");
