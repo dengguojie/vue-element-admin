@@ -1665,4 +1665,98 @@ IMPLEMT_COMMON_INFERFUNC(RaggedCountSparseOutputInferShape) {
 
 COMMON_INFER_FUNC_REG(RaggedCountSparseOutput, RaggedCountSparseOutputInferShape);
 // ----------------RaggedCountSparseOutput End----------------------------
+
+// ----------------------SignBitsUnpack Start----------------------
+IMPLEMT_VERIFIER(SignBitsUnpack, SignBitsUnpackVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(SignBitsUnpackInferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_info == nullptr) {
+    OP_LOGE(TbeGetName(op).c_str(), "Get op_info failed.");
+    return GRAPH_FAILED;
+  }
+  auto x_desc = op_info->MutableInputDesc("x");
+  auto x_mutable_shape = x_desc->MutableShape();
+  std::vector<int64_t> x_dims = x_mutable_shape.GetDims();
+  int64_t x_shape = x_dims[0];  
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  x_desc->GetShapeRange(x_range);
+  auto y_desc = op_info->MutableOutputDesc("y");
+
+  int32_t dim;
+  if (op.GetAttr("size", dim) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (dim <= 0) {
+    std::string err_msg = "dim size must be larger than zero!";
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  int32_t dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("dtype");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  DataType y_dtype;
+  if (dtype == 0) {
+    y_dtype = DT_FLOAT;
+  } else if (dtype == 1) {
+    y_dtype = DT_FLOAT16;
+  } else {
+    std::string err_msg = "dtype must be DT_FLOAT(0) or DT_FLOAT16(1)!";
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  int64_t pack_rate = 8;
+  int64_t y_shape = 0;
+  std::pair<int64_t, int64_t> y_dim_range;
+  if (x_shape != -1) {
+    y_shape = x_shape * pack_rate / dim;
+    y_dim_range = std::pair<int64_t, int64_t>{y_shape / dim, y_shape / dim};
+  } else {
+    y_shape = -1;
+    int64_t first_range = 0;
+    int64_t second_range = 0;
+    if (x_range[0].first == 1) {
+      first_range = 1;
+    } else {
+      first_range = x_range[0].first * pack_rate / dim;
+    }
+    if (x_range[0].second == -1) {
+      second_range = -1;
+    } else {
+      second_range = x_range[0].second * pack_rate / dim;
+    }
+    y_dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+
+  std::vector<int64_t> y_dims;
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  y_dims.push_back(dim);
+  y_dims.push_back(y_shape);
+
+  y_range.push_back(std::pair<int64_t, int64_t>{dim, dim});
+  y_range.push_back(y_dim_range);
+
+  y_desc->SetShape(GeShape(y_dims));
+  y_desc->SetShapeRange(y_range);
+  y_desc->SetDataType(y_dtype);
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(SignBitsUnpack, SignBitsUnpackInferShape);
+
+// Registered verify function
+VERIFY_FUNC_REG(SignBitsUnpack, SignBitsUnpackVerify);
+// ----------------------SignBitsUnpack End----------------------
 }  // namespace ge

@@ -1250,6 +1250,27 @@ REG_OP(RaggedCountSparseOutput)
     .ATTR(maxlength, Int, -1)
     .REQUIRED_ATTR(binary_output, Bool)
     .OP_END_FACTORY_REG(RaggedCountSparseOutput)
+
+/**
+* @brief SignBitsUnpack.
+
+* @par Inputs:
+* one input, including:
+* @li x: A 1D Tensor of uint8.
+
+* @par Attributes:
+* @li size: dim of out put tensor, defaults to 1.
+* @li dtype: dtype of out put tensor: DT_FLOAT(0) or DT_FLOAT16(1).
+
+* @par Outputs:
+* @li y: A 2D Tensor of type float32 (float16) with shape (size, (x.shape * 8) / size),
+*/
+REG_OP(SignBitsUnpack)
+    .INPUT(x, TensorType({DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(size, Int)
+    .REQUIRED_ATTR(dtype, Type)
+    .OP_END_FACTORY_REG(SignBitsUnpack)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

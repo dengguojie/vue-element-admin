@@ -4084,6 +4084,7 @@ pytorch:
       - ops/built-in/op_proto/runtime/expand.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
       - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc
+      - ops/built-in/op_tiling/sign_bits_unpack.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_pass.cc
@@ -4146,6 +4147,7 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/hardtanh_grad.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv2.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
+      - ops/built-in/tbe/impl/dynamic/sign_bits_unpack.py
       - ops/built-in/tbe/impl/diou.py
       - ops/built-in/tbe/impl/dynamic/elu_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression.py
