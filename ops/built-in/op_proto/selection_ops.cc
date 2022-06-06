@@ -4229,8 +4229,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
 
   // check the ranks and get the len of final end list len start 
   /* shape must be same with input ranks */
-  size_t rank_num = shape.GetDims().size();
-  // begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
+  int64_t rank_num = static_cast<int64_t>(shape.GetDims().size());
   /* read the axes values from const tensor */
 
   // check the ranks and get the len of final end list len end
@@ -4323,13 +4322,13 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     std::vector<int64_t> processed_stride(rank_num, 1);
     // fill the begin end accoring to the axes values 
     for (size_t i = 0; i < axes_list.size(); ++i){
-      int64_t axes_index = axes_list[i];
+      int64_t& axes_index = axes_list[i];
       // negative axes index
-      if(axes_index < 0){
-        axes_list[i] = axes_index + rank_num;
+      if(axes_index < 0) {
+        axes_index = axes_index + rank_num;
       }
       // axes out of boundary
-      if(static_cast<size_t>(axes_index) >= rank_num){
+      if(axes_index >= rank_num) {
         axes_index = rank_num - 1;
         OP_LOGD(TbeGetName(op).c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(axes_list).c_str());
       }
@@ -4823,7 +4822,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
 
   // check the ranks and get the len of final end list len start 
   /* shape must be same with input ranks */
-  size_t rank_num = shape.GetDims().size();
+  int64_t rank_num = static_cast<int64_t>(shape.GetDims().size());
 
   // Get 'begin_list','end_list', 'axis_list', 'stride_list' from const node, if exist.
   struct SliceParameters slice_params = {};
@@ -4909,13 +4908,13 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     std::vector<int64_t> processed_stride(rank_num, 1);
     // fill the begin end accoring to the axes values 
     for (size_t i = 0; i < input_axes_values.size(); ++i){
-      int64_t axes_index = input_axes_values[i];
+      int64_t& axes_index = input_axes_values[i];
       // negative axes index
-      if(axes_index < 0){
-        input_axes_values[i] = axes_index + rank_num;
+      if(axes_index < 0) {
+        axes_index = axes_index + rank_num;
       }
       // axes out of boundary
-      if(axes_index >= static_cast<int64_t>(rank_num)){
+      if(axes_index >= rank_num) {
         axes_index = rank_num - 1;
         OP_LOGD(TbeGetName(op).c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
       }

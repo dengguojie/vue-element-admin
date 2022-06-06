@@ -159,14 +159,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_ends_out_of_range) {
 }
 
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_strides) {
-  gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
+  gert::StorageShape x_shape = {{20, 10, 5, 100}, {20, 10, 5, 100}};
   gert::StorageShape y_shape = {{}, {}};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0, 3}},
       {"end", {20, 10, 4}},
       {"axis", {0, 1, 2}},
       {"stride", {}}};
-  std::vector<int64_t> expected_output_shape = {20, 10, 1};
+  std::vector<int64_t> expected_output_shape = {20, 10, 1, 100};
 
   ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
@@ -176,14 +176,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_strides) {
 }
 
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_axes) {
-  gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
+  gert::StorageShape x_shape = {{20, 10, 5, 100}, {20, 10, 5, 100}};
   gert::StorageShape y_shape = {{}, {}};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0, 3}},
       {"end", {20, 10, 4}},
       {"axis", {}},
       {"stride", {2, 3, 4}}};
-  std::vector<int64_t> expected_output_shape = {10, 4, 1};
+  std::vector<int64_t> expected_output_shape = {10, 4, 1, 100};
 
   ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
