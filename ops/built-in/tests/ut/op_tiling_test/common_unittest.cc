@@ -33,7 +33,7 @@
 using namespace std;
 using namespace ge;
 
-void TestTilingParse(const std::string optype, std::string json_str, void *compile_info) {
+void TestTilingParse(const std::string optype, std::string json_str, void *compile_info, ge::graphStatus result) {
   ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl(optype), nullptr);
   auto tiling_prepare_func = gert::OpImplRegistry::GetInstance().GetOpImpl(optype)->tiling_parse;
   ASSERT_NE(tiling_prepare_func, nullptr);
@@ -45,7 +45,7 @@ void TestTilingParse(const std::string optype, std::string json_str, void *compi
                     .Inputs({js_buf})
                     .Outputs({compile_info})
                     .Build();
-  ASSERT_EQ(tiling_prepare_func(holder.GetContext<gert::KernelContext>()), ge::GRAPH_SUCCESS);
+  ASSERT_EQ(tiling_prepare_func(holder.GetContext<gert::KernelContext>()), result);
   delete[] js_buf;
 }
 typedef std::string (*BufToString)(void *, size_t);
@@ -88,7 +88,7 @@ void CommonTilingOperator(ge::Operator& op, std::string& compile_info, void *inf
                     .NodeIoNum(input_size, output_size)
                     .TilingData(param.get());
   if (info_base != nullptr) {
-    TestTilingParse(optype, compile_info, info_base);
+    TestTilingParse(optype, compile_info, info_base, ge::GRAPH_SUCCESS);
     faker = faker.CompileInfo(info_base);
   }
   std::vector<gert::StorageShape> input_shapes(input_size);

@@ -30,7 +30,7 @@ using namespace std;
 using namespace ge;
 
 typedef std::string (*BufToString)(void *, size_t);
-void TestTilingParse(const std::string optype, std::string json_str, void *compile_info);
+void TestTilingParse(const std::string optype, std::string json_str, void *compile_info, ge::graphStatus result);
 
 template <typename T>
 string to_string(void *buf, size_t size) {
@@ -79,14 +79,6 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   {"VT_LIST_LIST_INT", ge::AnyValue::ValueType::VT_LIST_LIST_INT},
 };
 
-#define ADD_ATTR_CASE(vttype, datetype)                              \
-  case ge::AnyValue::ValueType::vttype: {                            \
-    datetype value;                                                  \
-    ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);               \
-    p.second = ge::AnyValue::CreateFrom<datetype>(value);            \
-  }                                                                  \
-  break
-
 #define ATTACH_ATTRS_TO_FAKER(faker, op, attrs_name)                                \
   auto op_attrs_map = op.GetAllAttrNamesAndTypes();                                 \
   std::vector<std::pair<std::string, ge::AnyValue>> keys_to_value;                  \
@@ -99,13 +91,48 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
         auto type_it = kAttrTypesMap.find(attr_it->second);                         \
         if (type_it != kAttrTypesMap.end()) {                                       \
           switch (type_it->second) {                                                \
-            ADD_ATTR_CASE(VT_BOOL, bool);                                           \
-            ADD_ATTR_CASE(VT_INT, int64_t);                                         \
-            ADD_ATTR_CASE(VT_FLOAT, float32_t);                                     \
-            ADD_ATTR_CASE(VT_STRING, std::string);                                  \
-            ADD_ATTR_CASE(VT_LIST_INT, std::vector<int64_t>);                       \
-            ADD_ATTR_CASE(VT_LIST_BOOL, std::vector<bool>);                         \
-            ADD_ATTR_CASE(VT_LIST_LIST_INT, std::vector<std::vector<int64_t>>);     \
+            case ge::AnyValue::ValueType::VT_BOOL: {                                \
+              bool value;                                                           \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<bool>(value);                     \
+            }                                                                       \
+            break;                                                                  \
+            case ge::AnyValue::ValueType::VT_INT: {                                 \
+              int64_t value;                                                        \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<int64_t>(value);                  \
+            }                                                                       \
+            break;                                                                  \
+            case ge::AnyValue::ValueType::VT_FLOAT: {                               \
+              float32_t value;                                                      \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<float32_t>(value);                \
+            }                                                                       \
+            break;                                                                  \
+            case ge::AnyValue::ValueType::VT_STRING: {                              \
+              string value;                                                         \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<string>(value);                   \
+            }                                                                       \
+            break;                                                                  \
+            case ge::AnyValue::ValueType::VT_LIST_INT: {                            \
+              vector<int64_t> value;                                                \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<vector<int64_t>>(value);          \
+            }                                                                       \
+            break;                                                                  \
+            case ge::AnyValue::ValueType::VT_LIST_BOOL: {                           \
+              vector<bool> value;                                                   \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<vector<bool>>(value);             \
+            }                                                                       \
+            break;                                                                  \
+            case ge::AnyValue::ValueType::VT_LIST_LIST_INT: {                       \
+              vector<vector<int64_t>> value;                                        \
+              ASSERT_EQ(op.GetAttr(item, value), GRAPH_SUCCESS);                    \
+              p.second = ge::AnyValue::CreateFrom<vector<vector<int64_t>>>(value);  \
+            }                                                                       \
+            break;                                                                  \
           }                                                                         \
         }                                                                           \
       }                                                                             \
@@ -115,7 +142,9 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   }
 
 #define TILING_PARSE_JSON_TO_COMPILEINFO(optype, json, compile_info) \
-  TestTilingParse(optype, json, &compile_info)
+  TestTilingParse(optype, json, &compile_info, ge::GRAPH_SUCCESS)
+#define TILING_PARSE_JSON_TO_COMPILEINFO_ERROR(optype, json, compile_info) \
+  TestTilingParse(optype, json, &compile_info, ge::GRAPH_FAILED)
 
 #define ATTACH_OPERATOR_TO_HOLDER(holder, op, tiling_len, compile_info)          \
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                   \
