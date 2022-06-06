@@ -1554,6 +1554,7 @@ vector_B:
       - ops/built-in/op_proto/runtime/concat_d.cc
       - ops/built-in/op_proto/runtime/elewise.cc
       - ops/built-in/op_proto/runtime/trans_data.cc
+      - ops/built-in/op_proto/runtime/tile.cc
       - ops/built-in/op_tiling/runtime/trans_data.cc
       - ops/built-in/op_tiling/runtime/trans_data.h
       - ops/built-in/op_tiling/runtime/trans_data_negative_target_ntc.cc
