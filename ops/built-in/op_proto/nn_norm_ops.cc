@@ -1352,58 +1352,59 @@ COMMON_INFER_FUNC_REG(LRN, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------LRN END-----------------
 
 // ------------------------GroupNorm--------------------------
-IMPLEMT_VERIFIER(GroupNorm, GroupNormVerify) {
-  if (!CheckTwoInputDtypeSame(op, "scale", "offset")) {
+IMPLEMT_COMMON_INFERFUNC(GroupNormInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x = op_desc->MutableInputDesc(0);
+  auto output_y = op_desc->MutableOutputDesc(0);
+  auto output_mean = op_desc->MutableOutputDesc(1);
+  auto output_var = op_desc->MutableOutputDesc(2);
+  vector<int64_t> input_dims = input_x->MutableShape().GetDims();
+
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  // check whether is -2 case
+  bool is_unkown_rank = input_dims == UNKNOWN_RANK ? true : false;
+  if (is_unkown_rank) {
+    OP_LOGW(TbeGetName(op).c_str(), "the input is unkown rank, will set the input -1, -1, -1 , -1");
+    input_dims = {-1, -1, -1, -1};
+  } else {
+    input_x->GetShapeRange(input_range);
+  }
+  MakeUpShapeRange(input_dims, input_range);
+
+  int64_t num_groups = 0;
+  if(GRAPH_SUCCESS != op.GetAttr("num_groups", num_groups)){
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to get the value of num_groups.");
     return GRAPH_FAILED;
   }
-  return GRAPH_SUCCESS;
-}
 
-IMPLEMT_COMMON_INFERFUNC(GroupNormInferShape) {
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
-    if (data_format != "NHWC" && data_format != "NCHW") {
-      OP_LOGE(TbeGetName(op).c_str(),
-              "data_format only "
-              "support 'NHWC' and 'NCHW'.");
-      return GRAPH_FAILED;
-    }
+  std::vector<int64_t> mean_dims;
+  std::vector<std::pair<int64_t, int64_t>> mean_range;
+
+  int64_t input_n = input_dims[0];
+  if (input_n == -1) {
+    mean_dims.push_back(-1);
+    mean_range.push_back(std::pair<int64_t, int64_t>{1, -1});
+  } else {
+    mean_dims.push_back(input_n * num_groups);
+    mean_range.push_back(std::pair<int64_t, int64_t>{input_n * num_groups, input_n * num_groups});
   }
-  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDescByName("y");
-  y_desc.SetShape(ge::Shape(x_shape));
-  y_desc.SetDataType(x_dtype);
-  (void)op.UpdateOutputDesc("y", y_desc);
+  // set the output dtype
+  output_y->SetDataType(input_x->GetDataType());
+  output_y->SetShape(GeShape(input_dims));
+  output_y->SetShapeRange(input_range);
 
-  auto scale_shape = op.GetInputDescByName("scale").GetShape().GetDims();
-  DataType scale_dtype = op.GetInputDescByName("scale").GetDataType();
+  output_mean->SetDataType(input_x->GetDataType());
+  output_mean->SetShape(GeShape(mean_dims));
+  output_mean->SetShapeRange(mean_range);
 
-  TensorDesc batch_mean_desc = op.GetOutputDescByName("batch_mean");
-  batch_mean_desc.SetShape(ge::Shape(scale_shape));
-  batch_mean_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
-
-  TensorDesc batch_variance_desc = op.GetOutputDescByName("batch_variance");
-  batch_variance_desc.SetShape(ge::Shape(scale_shape));
-  batch_variance_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
-
-  TensorDesc reserve_space_1_desc = op.GetOutputDescByName("reserve_space_1");
-  reserve_space_1_desc.SetShape(ge::Shape(scale_shape));
-  reserve_space_1_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("reserve_space_1", reserve_space_1_desc);
-
-  TensorDesc reserve_space_2_desc = op.GetOutputDescByName("reserve_space_2");
-  reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
-  reserve_space_2_desc.SetDataType(scale_dtype);
-  (void)op.UpdateOutputDesc("reserve_space_2", reserve_space_2_desc);
+  output_var->SetDataType(input_x->GetDataType());
+  output_var->SetShape(GeShape(mean_dims));
+  output_var->SetShapeRange(mean_range);
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(GroupNorm, GroupNormInferShape);
-VERIFY_FUNC_REG(GroupNorm, GroupNormVerify);
 // ----------------------GroupNorm END--------------------------
 
 // ------------------------InstanceNormV2--------------------------

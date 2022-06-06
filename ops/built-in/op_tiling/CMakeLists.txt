@@ -226,6 +226,7 @@ set(_optiling_files
   dyn_seq_outer.cc
   resize.cc
   runtime/strided_slice_v3.cc
+  group_norm.cc
 )
 
 set(_op_tiling_include
