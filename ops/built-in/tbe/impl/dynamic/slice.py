@@ -31,7 +31,7 @@ from impl.util.platform_adapter import tik
 from impl.util.util_common import ceil
 from impl.util.util_common import get_fused_str
 from impl.util.util_common import is_support_fractal_z_input
-from impl.util.util_common import is_unknown
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_common import update_shape_base_other_format
 from .strided_slice import StridedSlice
 
@@ -63,8 +63,13 @@ def check_support_hd_and_fz(x, offsets, size):
         # `info: condition:
         # one: C dim in start is c0 align
         # two: C dim in size is c0 align or size_c = shape_c - start_c(means will slice all remain data from start_c)
+        # three: C Dim in start is 0, C Dim in size == C Dim in shape(means will slice without c)
         if begin_c_align_flag and is_size_c_support:
             is_support_hd = True
+
+        is_slice_without_c = dict_zip_begin["C"] == 0 and (dict_zip_size["C"] == -1 or
+                                                           dict_zip_size["C"] == dict_zip_shape["C"])
+        is_support_hd = is_support_hd or is_slice_without_c
 
         is_size_n_support = \
             dict_zip_size["N"] % fz_format_n0 == 0 or dict_zip_shape["N"] == dict_zip_size["N"] + dict_zip_begin["N"]
@@ -100,9 +105,9 @@ def check_support_nz(ori_shape, offsets, size):
     return is_support_nz
 
 
-def get_known_shape_dtype_and_format(x, offsets, size, dtype_x_out, format_x_out):
+def get_dtype_and_format(x, offsets, size, dtype_x_out, format_x_out):
     """
-    get_known_shape_dtype_and_format
+    get_dtype_and_format
     """
     input_ori_shape = x.get("ori_shape")
     # update size the size = -1
@@ -110,10 +115,10 @@ def get_known_shape_dtype_and_format(x, offsets, size, dtype_x_out, format_x_out
     if not (len(input_ori_shape) == len(offsets) and len(input_ori_shape) == len(size)):
         expected_value = "must be equal to shape!"
         real_value = "not equal to shape!"
-        error_manager_vector.raise_err_input_value_invalid("slice", "length of offsets and size",
-                                                           expected_value, real_value)
+        error_manager_vector.raise_err_input_value_invalid("slice", "length of offsets and size", expected_value,
+                                                           real_value)
     for i, item in enumerate(size):
-        if item == -1:
+        if item == -1 and input_ori_shape[i] >= 0:
             size[i] = input_ori_shape[i] - offsets[i]
 
     is_support_hd, is_support_fz = check_support_hd_and_fz(x, offsets, size)
@@ -138,62 +143,104 @@ def get_known_shape_dtype_and_format(x, offsets, size, dtype_x_out, format_x_out
 
 # 'pylint: disable=unused-argument,invalid-name
 def op_select_format(x, offsets, size, y, kernel_name="slice"):
-    """1.when x'shape is unknown, the Op Select can support ND.
-
-    2.when x'shape is known, and value of offsets/size is const, and
-    length of input x's ori_shape is equal to length of
-    input x's ori_format, and ori_shape in ["NCHW", "NDCHW"], and
-    the dim C can be divisible by 16. the Op Select can support
-    ND, NC1HWC0 and NDC1HWC0.
-
-        for example:
-        x : Tensor of (shape=(16, 16), "ND")
-        the Op Select can process with NC1HWC0:
-        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
-
-    3.when when x'shape is known, and value of offsets/size is const, and
-    x's ori_format dim C and dim N can be divisible by 16.
-    the Op Select can support ND, FRACTAL_Z and FRACTAL_Z_3D.
-
-        for example:
-        x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
     """
-    base_x_type = ("float", "float16", "int8", "int16", "int32", "int64",
-                   "uint8", "uint16", "uint32", "uint64", "bool")
+    define the op_select_format for Slice Op
+
+    dtype_support:
+          "float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool"
+
+    format_support:
+        1. when both offsets and size are not const, the Op Select can support ND.
+
+        2. when both offsets and size are const,
+           slice can support 5HD by meeting any of the following conditions.
+            conditions as follows:
+                2.1: C dim in start is c0 align and C dim in size is c0 align
+                    or size_c = shape_c - start_c(means will slice all remain data from start_c)
+                2.2: C Dim in start is 0, C Dim in size == C Dim in shape(means will slice without c)
+
+            for example:
+                inputs: 
+                    x : Tensor of (shape=(-1, 128, -1, -1), "NCHW")
+                    begin: value is [2, 16, 4, 7]  C begin is 16
+                    size: value is [-1, -1, -1, -1]  C size is -1
+                the Op Select can process with NC1HWC0:
+                    x : Tensor of (shape=(-1, 8, -1, -1, 16), "NC1HWC0")
+                    y : Tensor of (shape=(-1, 7, -1, -1, 16), "NC1HWC0")
+
+        3. when both offsets and size are const,
+           slice can support FRACTAL_Z and FRACTAL_Z_3D by meeting any of the following conditions.
+            conditions as follows:
+                3.1: C/N dim in start is c0 align and
+                    C/N dim in size is c0 align or size_c/size_n = shape_c/shape_n - start_c/start_n
+                    means will slice all remain data from start_c/start_n
+
+            for example:
+                    inputs: 
+                        x : Tensor of (shape=(128, 128, -1, -1), "NCHW")
+                        begin: value is [0, 16, 4, 7]  C begin is 16
+                        size: value is [-1, -1, -1, -1]  C size is -1
+                    the Op Select can process with NC1HWC0:
+                        x : Tensor of (shape=(-1, -1, 8, 8, 16, 16), "FRACTAL_Z")
+                        y : Tensor of (shape=(-1, -1, 8, 7, 16, 16), "FRACTAL_Z")
+        
+        4. when both offsets and size are const,
+           slice can support FRACTAL_NZ by meeting any of the following conditions.
+            conditions as follows:
+                3.1: last two dims in start is c0 align and
+                     (last two dimss in size is c0 align or
+                        size of last two dims = shape of last two dims - start of last two dims)
+                      means will slice all remain data from last two dims
+
+            for example:
+                    inputs: 
+                        x : Tensor of (shape=(128, 128, 128), "NCHW")
+                        begin: value is [120, 16, 0]  C begin is 16
+                        size: value is [-1, -1, -1]  C size is -1
+                    the Op Select can process with NC1HWC0:
+                        x : Tensor of (shape=(128, 8, 8, 16, 16), "FRACTAL_NZ")
+                        y : Tensor of (shape=(8, 7, 8, 16, 16), "FRACTAL_NZ")
+    """
+    base_x_type = ("float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool")
     dtype_x_out = list(base_x_type)
     format_x_out = ["ND"] * len(base_x_type)
 
     offsets_value = offsets.get("const_value")
     size_value = size.get("const_value")
-    if offsets_value and size_value and not is_unknown(x):
-        dtype_x_out, format_x_out = get_known_shape_dtype_and_format(x, offsets_value, size_value,
-                                                                     dtype_x_out, format_x_out)
-    
+    if offsets_value and size_value and not is_unknown_rank_input(x):
+        dtype_x_out, format_x_out = get_dtype_and_format(x, offsets_value, size_value, dtype_x_out, format_x_out)
+
     base_format_len = len(format_x_out)
     dtype_x_out = dtype_x_out * 2
     format_x_out = format_x_out * 2
-    unknown_format_out = ["ND"] * base_format_len * 2
     other_input_type = ["int32"] * base_format_len + ["int64"] * base_format_len
     other_input_format_type = ["ND"] * base_format_len * 2
 
     x_dtype_str = ','.join(dtype_x_out)
     x_format_str = ','.join(format_x_out)
-    x_unknown_format_str = ','.join(unknown_format_out)
     other_input_dtype_str = ','.join(other_input_type)
     other_input_format_str = ','.join(other_input_format_type)
 
-    input0 = util_select_op_base.gen_param(
-        classify="input0", name="x", datatype=x_dtype_str, format=x_format_str,
-        unknownshape_format=x_unknown_format_str)
-    input1 = util_select_op_base.gen_param(
-        classify="input1", name="offsets", datatype=other_input_dtype_str, format=other_input_format_str,
-        unknownshape_format=other_input_format_str)
-    input2 = util_select_op_base.gen_param(
-        classify="input2", name="size", datatype=other_input_dtype_str, format=other_input_format_str,
-        unknownshape_format=other_input_format_str)
-    output0 = util_select_op_base.gen_param(
-        classify="output0", name="y", datatype=x_dtype_str, format=x_format_str,
-        unknownshape_format=x_unknown_format_str)
+    input0 = util_select_op_base.gen_param(classify="input0",
+                                           name="x",
+                                           datatype=x_dtype_str,
+                                           format=x_format_str,
+                                           unknownshape_format=x_format_str)
+    input1 = util_select_op_base.gen_param(classify="input1",
+                                           name="offsets",
+                                           datatype=other_input_dtype_str,
+                                           format=other_input_format_str,
+                                           unknownshape_format=other_input_format_str)
+    input2 = util_select_op_base.gen_param(classify="input2",
+                                           name="size",
+                                           datatype=other_input_dtype_str,
+                                           format=other_input_format_str,
+                                           unknownshape_format=other_input_format_str)
+    output0 = util_select_op_base.gen_param(classify="output0",
+                                            name="y",
+                                            datatype=x_dtype_str,
+                                            format=x_format_str,
+                                            unknownshape_format=x_format_str)
     param_list = [input0, input1, input2, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
@@ -230,7 +277,7 @@ def update_params_for_other_format(shape, begin, size, input_format, ori_format)
     # modify size base size value if value = -1 size = shape - begin
     size_new = []
     for i, item in enumerate(size):
-        if item != -1:
+        if item != -1 or shape[i] <= 0:
             size_new.append(item)
         else:
             size_new.append(shape[i] - begin[i])
@@ -243,10 +290,14 @@ def update_params_for_other_format(shape, begin, size, input_format, ori_format)
         # when FRACTAL_Z or FRACTAL_Z_3D will update the C1 and C0 and N1 and N0
         # ex: begin [N, D, C, H, W] -> [D, C // 16, H, W, N // 16, 0, 0]
         #     size  [N, D, C, H, W] -> [D, (C + 15) // 16, H, W, (N + 15) // 16, 0, 0]
-        begin_nchw = [begin[ori_format.index("N")], begin[ori_format.index("C")],
-                      begin[ori_format.index("H")], begin[ori_format.index("W")]]
-        size_nchw = [size[ori_format.index("N")], size[ori_format.index("C")],
-                     size[ori_format.index("H")], size[ori_format.index("W")]]
+        begin_nchw = [
+            begin[ori_format.index("N")], begin[ori_format.index("C")], begin[ori_format.index("H")],
+            begin[ori_format.index("W")]
+        ]
+        size_nchw = [
+            size[ori_format.index("N")], size[ori_format.index("C")], size[ori_format.index("H")],
+            size[ori_format.index("W")]
+        ]
         begin_c1 = begin_nchw[1] // C0_SIZE
         begin_c0 = 0
         begin_n1 = begin_nchw[0] // C0_SIZE
@@ -258,14 +309,14 @@ def update_params_for_other_format(shape, begin, size, input_format, ori_format)
 
         if input_format == "NDC1HWC0":
             begin_new = [begin_nchw[0], begin[ori_format.index("D")], begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
-            size_new = [size_nchw[0], size[ori_format.index("D")],
-                        size_c1, size_nchw[2], size_nchw[3], size_c0]
+            size_new = [size_nchw[0], size[ori_format.index("D")], size_c1, size_nchw[2], size_nchw[3], size_c0]
         elif input_format == "NC1HWC0":
             begin_new = [begin_nchw[0], begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
             size_new = [size_nchw[0], size_c1, size_nchw[2], size_nchw[3], size_c0]
         elif input_format == "FRACTAL_Z_3D":
-            begin_new = [begin[ori_format.index("D")],
-                         begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0]
+            begin_new = [
+                begin[ori_format.index("D")], begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0
+            ]
             size_new = [size[ori_format.index("D")], size_c1, size_nchw[2], size_nchw[3], size_n1, size_n0, size_c0]
         else:
             begin_new = [begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0]
@@ -289,10 +340,12 @@ def update_params_for_other_format(shape, begin, size, input_format, ori_format)
         size_second_last_dim_one = ceil(size[-2], C0_SIZE)
         size_second_last_dim_two = -1
 
-        begin_new = list(begin[0:-2]) + [begin_fisrt_last_dim_one, begin_second_last_dim_one,
-                                         begin_second_last_dim_two, begin_fisrt_last_dim_two]
-        size_new = size[0:-2] + [size_fisrt_last_dim_one, size_second_last_dim_one,
-                                 size_second_last_dim_two, size_fisrt_last_dim_two]
+        begin_new = list(begin[0:-2]) + [
+            begin_fisrt_last_dim_one, begin_second_last_dim_one, begin_second_last_dim_two, begin_fisrt_last_dim_two
+        ]
+        size_new = size[0:-2] + [
+            size_fisrt_last_dim_one, size_second_last_dim_one, size_second_last_dim_two, size_fisrt_last_dim_two
+        ]
 
         return begin_new, size_new
 
@@ -308,7 +361,7 @@ def update_input_params(x, offsets, size):
     offsets_value = offsets.get("const_value")
     size_value = size.get("const_value")
 
-    if not is_unknown([x]) and offsets_value and size_value and \
+    if not is_unknown_rank_input([x]) and offsets_value and size_value and \
         input_format in ("NDC1HWC0", "NC1HWC0", "FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_Z_3D"):
         # reshape (C1HW)NiNoC0/(DC1HW)NiNoC0 to C1HWNiNoC0/DC1HWNiNoC0
         x = update_shape_base_other_format(x)
@@ -328,7 +381,7 @@ def slice_dsl(x, offsets, size, y, kernel_name="slice"):
     """
     update_input_params(x, offsets, size)
 
-    ins = classify([x, offsets, size], "slice", {"end_mode":"size"})
+    ins = classify([x, offsets, size], "slice", {"end_mode": "size"})
     schedules, tensors = [], []
     for shape_x, shape_offsets, shape_size in ins:
         with tbe.compute():
@@ -355,13 +408,14 @@ def slice_tik(x, offsets, size, y, kernel_name="slice"):
     strided_slice_instance.strided_slice()
     inst = strided_slice_instance.tik_instance
     opt_config = {"out_of_bound_sync_check": True}
-    tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num,
-                                                        "ub_size": tik.Dprofile().get_unified_buffer_size()})
+    tbe_context.get_context().add_compile_info("vars", {
+        "block_dim": strided_slice_instance.aicore_num,
+        "ub_size": tik.Dprofile().get_unified_buffer_size()
+    })
     # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
     tbe_context.get_context().add_compile_info("is_tik", True)
     inst.BuildCCE(kernel_name=strided_slice_instance.kernel_name,
-                  inputs=(strided_slice_instance.input_gm,
-                          strided_slice_instance.begin_gm,
+                  inputs=(strided_slice_instance.input_gm, strided_slice_instance.begin_gm,
                           strided_slice_instance.end_gm),
                   outputs=(strided_slice_instance.output_gm,),
                   flowtable=[strided_slice_instance.tiling_param.tiling_gm],
@@ -374,8 +428,8 @@ def slice_tik(x, offsets, size, y, kernel_name="slice"):
 # 'pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
 # 'pylint: disable=unused-argument,too-many-locals,redefined-builtin
 @register_operator("Slice")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def slice(x, offsets, size, y, kernel_name="slice"):
     """
     algorithm: slice
