@@ -3,23 +3,25 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "graph/utils/op_desc_utils.h"
 #include "op_tiling/vector_tiling.h"
 #include "op_tiling/norm.h"
-#include "graph/utils/op_desc_utils.h"
 #include "op_tiling/tiling_handler.h"
+//#include "op_tiling/vector_tiling_rt2.h"
+#include "common_autotiling_util.h"
 
 using namespace std;
 using namespace ge;
 using namespace optiling;
 
-class NormTilingTest : public testing::Test {
+class NormTilingRt2Test : public testing::Test {
 protected:
     static void SetUpTestCase() {
-      std::cout << "NormTilingTest SetUp" << std::endl;
+      std::cout << "NormTilingRt2Test SetUp" << std::endl;
     }
 
     static void TearDownTestCase() {
-      std::cout << "NormTilingTest TearDown" << std::endl;
+      std::cout << "NormTilingRt2Test TearDown" << std::endl;
     }
 };
 
@@ -134,34 +136,33 @@ static bool compare_norm_struct(const NormCompileInfo& actual_struct,
   if (!compare_map(actual_struct.block_size_map, expect_struct.block_size_map)) {
     return false;
   }
+
   return true;
 }
 
-TEST_F(NormTilingTest, ParseFailTest1) {
-  std::string compileInfo = R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})";
-  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+TEST_F(NormTilingRt2Test, ParseFailTest1) {
+  std::string compileInfo = R"({"_pattern": "Norm", "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})";
 
-  auto parse_ptr = 
-      std::static_pointer_cast<NormTilingHandler>(CreateNormTilingHandler("ParseFailTest1", "Norm", op_info));
-  bool is_success = parse_ptr ? true : false;
-  ASSERT_FALSE(is_success);
+  AutoTilingTest test;
+  NormCompileInfo op_compile_info;
+  ASSERT_FALSE(test.TestParse(compileInfo, &op_compile_info));
+
 }
 
-TEST_F(NormTilingTest, ParseSuccessTest1) {
+TEST_F(NormTilingRt2Test, ParseSuccessTest1) {
   std::string compileInfo = R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"400400000": [32]}, "_norm_vars": {"400400000": [20000, 20001, 30000, 40000]}})";
-  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
 
-  auto parse_ptr = 
-      std::static_pointer_cast<NormTilingHandler>(CreateNormTilingHandler("ParseSuccessTest1", "Norm", op_info));
-  bool is_success = parse_ptr ? true : false;
-  ASSERT_TRUE(is_success);
+  AutoTilingTest test;
+  NormCompileInfo op_compile_info;
+  ASSERT_TRUE(test.TestParse(compileInfo, &op_compile_info));
 }
 
-TEST_F(NormTilingTest, ParseTest1) {
-  std::string compileInfo = R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_block_size": {"4000": 16}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})";
-  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+TEST_F(NormTilingRt2Test, ParseTest1) {
+  std::string compileInfo = R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_exist_workspace_after_reduce": false, "_block_size": {"4000": 16}, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})";
+  NormCompileInfo actual_struct;
+  AutoTilingTest test;
+  bool ret = test.TestParse(compileInfo, &actual_struct);
 
-  NormCompileInfo actual_struct("norm", op_info);
   NormCompileInfo expect_struct;
   expect_struct.input_type = {0};
   expect_struct.ori_reduce_axis = {2};
@@ -175,14 +176,16 @@ TEST_F(NormTilingTest, ParseTest1) {
   expect_struct.workspace_info = {{200400000, {32}}};
   expect_struct.norm_vars = {{200400000, {20000, 20001, 30000, 40000}}};
   expect_struct.is_fuse_axis = true;
+  ASSERT_TRUE(ret);
   ASSERT_TRUE(compare_norm_struct(actual_struct, expect_struct));
 }
 
-TEST_F(NormTilingTest, ParseTest2) {
+TEST_F(NormTilingRt2Test, ParseTest2) {
   std::string compileInfo = R"({ "_fuse_axis": false, "_input_type": [0], "_ori_reduce_axis": [1], "_ori_broadcast_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_is_const": true, "_const_shape_post": false, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false})";
-  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+  NormCompileInfo actual_struct;
+  AutoTilingTest test;
+  bool ret = test.TestParse(compileInfo, &actual_struct);
 
-  NormCompileInfo actual_struct("norm", op_info);
   NormCompileInfo expect_struct;
   expect_struct.input_type = {0};
   expect_struct.ori_reduce_axis = {1};
@@ -197,14 +200,16 @@ TEST_F(NormTilingTest, ParseTest2) {
   expect_struct.is_fuse_axis = false;
   expect_struct.is_const = true;
   expect_struct.is_const_post = false;
+  ASSERT_TRUE(ret);
   ASSERT_TRUE(compare_norm_struct(actual_struct, expect_struct));
 }
 
-TEST_F(NormTilingTest, ParseTest3) {
+TEST_F(NormTilingRt2Test, ParseTest3) {
   std::string compileInfo = R"({"_exist_vc_unsupported_type": false, "reduce_axis_attr_name": "axis", "reduce_axis_attr_dtype": "ListInt", "_reduce_axis_type": 9, "_broadcast_axis_type_list": [1, 2], "_fuse_axis": false, "_input_type": [0], "_ori_reduce_axis": [1], "_ori_broadcast_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_is_const": true, "_const_shape_post": true, "_const_block_dims": {"4000": 25}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false})";
-  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+  NormCompileInfo actual_struct;
+  AutoTilingTest test;
+  bool ret = test.TestParse(compileInfo, &actual_struct);
 
-  NormCompileInfo actual_struct("norm", op_info);
   NormCompileInfo expect_struct;
   expect_struct.reduce_attr_name = "axis";
   expect_struct.is_reduce_attr_is_int = false;
@@ -224,10 +229,11 @@ TEST_F(NormTilingTest, ParseTest3) {
   expect_struct.is_const = true;
   expect_struct.is_const_post = true;
   expect_struct.const_block_dims = {{4000, 25}};
+  ASSERT_TRUE(ret);
   ASSERT_TRUE(compare_norm_struct(actual_struct, expect_struct));
 }
 
-TEST_F(NormTilingTest, TilingTest1) {
+TEST_F(NormTilingRt2Test, TilingTest1) {
   std::vector<std::vector<int64_t>> inputs {
     {2, 10496, 41}
   };
@@ -235,17 +241,9 @@ TEST_F(NormTilingTest, TilingTest1) {
     {2, 10496, 41}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {2};
   op_compile_info.core_num = 32;
@@ -259,15 +257,16 @@ TEST_F(NormTilingTest, TilingTest1) {
   op_compile_info.norm_vars = {{400400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "20992 41 656 328 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "20992, 41, 656, 328";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest2) {
+TEST_F(NormTilingRt2Test, TilingTest2) {
   std::vector<std::vector<int64_t>> inputs {
     {16, 5, 30000}
   };
@@ -275,17 +274,9 @@ TEST_F(NormTilingTest, TilingTest2) {
     {16, 5, 30000}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {2};
   op_compile_info.core_num = 32;
@@ -299,15 +290,16 @@ TEST_F(NormTilingTest, TilingTest2) {
   op_compile_info.norm_vars = {{400001, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 27);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "80 30000 3 15000 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "80, 30000, 3, 15000";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 27);
 }
 
-TEST_F(NormTilingTest, TilingTest3) {
+TEST_F(NormTilingRt2Test, TilingTest3) {
   std::vector<std::vector<int64_t>> inputs {
     {16, 5, 15003}
   };
@@ -315,17 +307,9 @@ TEST_F(NormTilingTest, TilingTest3) {
     {16, 5, 15003}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1};
   op_compile_info.core_num = 32;
@@ -339,15 +323,16 @@ TEST_F(NormTilingTest, TilingTest3) {
   op_compile_info.norm_vars = {{900022, {20000, 20001, 20002, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 5 15003 7504 3752 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "16, 5, 15003, 7504, 3752";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest4) {
+TEST_F(NormTilingRt2Test, TilingTest4) {
   std::vector<std::vector<int64_t>> inputs {
     {10, 1, 7}
   };
@@ -355,17 +340,9 @@ TEST_F(NormTilingTest, TilingTest4) {
     {10, 1, 7}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {2};
   op_compile_info.core_num = 32;
@@ -379,15 +356,16 @@ TEST_F(NormTilingTest, TilingTest4) {
   op_compile_info.norm_vars = {{400400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 5);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10 7 2 2 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "10, 7, 2, 2";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 5);
 }
 
-TEST_F(NormTilingTest, TilingTest5) {
+TEST_F(NormTilingRt2Test, TilingTest5) {
   std::vector<std::vector<int64_t>> inputs {
     {1968, 3, 3}
   };
@@ -395,17 +373,9 @@ TEST_F(NormTilingTest, TilingTest5) {
     {1968, 3, 3}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {0, 2};
   op_compile_info.core_num = 32;
@@ -419,15 +389,16 @@ TEST_F(NormTilingTest, TilingTest5) {
   op_compile_info.norm_vars = {{101200010, {20000, 20001, 20002, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 1);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1968 3 3 3 541 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "1968, 3, 3, 3, 541";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 1);
 }
 
-TEST_F(NormTilingTest, TilingTest6) {
+TEST_F(NormTilingRt2Test, TilingTest6) {
   std::vector<std::vector<int64_t>> inputs {
     {7, 543, 76}
   };
@@ -435,17 +406,9 @@ TEST_F(NormTilingTest, TilingTest6) {
     {7, 543, 76}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1};
   op_compile_info.core_num = 32;
@@ -459,13 +422,13 @@ TEST_F(NormTilingTest, TilingTest6) {
   op_compile_info.is_const = true;
   op_compile_info.is_const_post = false;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(test.Test(), true);
 }
 
-TEST_F(NormTilingTest, TilingTest7) {
+TEST_F(NormTilingRt2Test, TilingTest7) {
   std::vector<std::vector<int64_t>> inputs {
     {7, 543, 76}
   };
@@ -473,17 +436,9 @@ TEST_F(NormTilingTest, TilingTest7) {
     {7, 543, 76}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1};
   op_compile_info.core_num = 32;
@@ -499,14 +454,14 @@ TEST_F(NormTilingTest, TilingTest7) {
   op_compile_info.const_block_dims = {{9000, 28}};
   op_compile_info.workspace_info = {{9000, {4}}};
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 28);
+  EXPECT_EQ(test.Test(), true);
+  EXPECT_EQ(test.GetBlockDims(), 28);
 }
 
-TEST_F(NormTilingTest, TilingTest8) {
+TEST_F(NormTilingRt2Test, TilingTest8) {
   std::vector<std::vector<int64_t>> inputs {
     {2, 3}
   };
@@ -514,17 +469,9 @@ TEST_F(NormTilingTest, TilingTest8) {
     {2, 3}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1};
   op_compile_info.core_num = 32;
@@ -538,15 +485,16 @@ TEST_F(NormTilingTest, TilingTest8) {
   op_compile_info.norm_vars = {{400400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 1);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 3 2 2 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "2, 3, 2, 2";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 1);
 }
 
-TEST_F(NormTilingTest, TilingTest9) {
+TEST_F(NormTilingRt2Test, TilingTest9) {
   std::vector<std::vector<int64_t>> inputs {
     {32, 32, 32}
   };
@@ -554,17 +502,9 @@ TEST_F(NormTilingTest, TilingTest9) {
     {32, 32, 32}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {0, 1, 2};
   op_compile_info.core_num = 32;
@@ -578,15 +518,16 @@ TEST_F(NormTilingTest, TilingTest9) {
   op_compile_info.norm_vars = {{1400090, {20000, 20001, 20002, 40000}}};
   op_compile_info.is_fuse_axis = false;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 32 32 11 ");
-  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "32, 32, 32, 11";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 1);
 }
 
-TEST_F(NormTilingTest, TilingTest10) {
+TEST_F(NormTilingRt2Test, TilingTest10) {
   std::vector<std::vector<int64_t>> inputs {
     {1000, 1}
   };
@@ -594,17 +535,9 @@ TEST_F(NormTilingTest, TilingTest10) {
     {1000, 1}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1};
   op_compile_info.core_num = 32;
@@ -618,15 +551,16 @@ TEST_F(NormTilingTest, TilingTest10) {
   op_compile_info.norm_vars = {{500011, {20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1000 32 32 ");
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "1000, 32, 32";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest11) {
+TEST_F(NormTilingRt2Test, TilingTest11) {
   std::vector<std::vector<int64_t>> inputs {
     {1000, 1}, {1, 2000}
   };
@@ -634,17 +568,9 @@ TEST_F(NormTilingTest, TilingTest11) {
     {1000, 1}, {1000, 2000}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {1, 2};
   op_compile_info.ori_reduce_axis = {1};
   op_compile_info.core_num = 32;
@@ -658,15 +584,16 @@ TEST_F(NormTilingTest, TilingTest11) {
   op_compile_info.norm_vars = {{401201, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1000 2000 32 2000 ");
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "1000, 2000, 32, 2000";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest12) {
+TEST_F(NormTilingRt2Test, TilingTest12) {
   std::vector<std::vector<int64_t>> inputs {
     {3, 1968, 3, 3}
   };
@@ -674,17 +601,9 @@ TEST_F(NormTilingTest, TilingTest12) {
     {3, 1968, 3, 3}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1, 3};
   op_compile_info.core_num = 32;
@@ -698,15 +617,16 @@ TEST_F(NormTilingTest, TilingTest12) {
   op_compile_info.norm_vars = {{102000001, {20000, 20001, 20002, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 3);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 1968 3 3 1 541 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "3, 1968, 3, 3, 1, 541";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 3);
 }
 
-TEST_F(NormTilingTest, TilingTest13) {
+TEST_F(NormTilingRt2Test, TilingTest13) {
   std::vector<std::vector<int64_t>> inputs {
     {1968, 32, 512}, {512}, {512}
   };
@@ -714,17 +634,9 @@ TEST_F(NormTilingTest, TilingTest13) {
     {1968, 32, 512}, {1968, 32, 1}, {1968, 32, 1}
   };
   ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0, 1, 1};
   op_compile_info.ori_reduce_axis = {2};
   op_compile_info.ori_broadcast_axis = {0, 1};
@@ -740,15 +652,16 @@ TEST_F(NormTilingTest, TilingTest13) {
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "62976 512 1968 41 ");
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "62976, 512, 1968, 41";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest14) {
+TEST_F(NormTilingRt2Test, TilingTest14) {
   std::vector<std::vector<int64_t>> inputs {
     {95, 10, 1, 87, 16}
   };
@@ -756,17 +669,9 @@ TEST_F(NormTilingTest, TilingTest14) {
     {95, 10, 1, 87, 16}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
   op_compile_info.ori_reduce_axis = {1, 3, 4};
   op_compile_info.ori_disable_fuse_axes = {1, 4};
@@ -781,15 +686,16 @@ TEST_F(NormTilingTest, TilingTest14) {
   op_compile_info.norm_vars = {{304200000, {20000, 20003, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "95 87 3 1 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "95, 87, 3, 1";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest15) {
+TEST_F(NormTilingRt2Test, TilingTest15) {
   std::vector<std::vector<int64_t>> inputs {
     {1, 23, 512}, {1, 23, 512}, {1, 23, 1}, {1, 23, 1}, {512}
   };
@@ -797,17 +703,9 @@ TEST_F(NormTilingTest, TilingTest15) {
     {1, 23, 512}, {1, 23, 512}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0, 0, 1, 1, 2};
   op_compile_info.ori_reduce_axis = {2};
   op_compile_info.core_num = 32;
@@ -821,15 +719,16 @@ TEST_F(NormTilingTest, TilingTest15) {
   op_compile_info.norm_vars = {{300401200, {20000, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 23);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "23 1 1 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "23, 1, 1";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 23);
 }
 
-TEST_F(NormTilingTest, TilingTest16) {
+TEST_F(NormTilingRt2Test, TilingTest16) {
   std::vector<std::vector<int64_t>> inputs {
     {21, 93, 143}, {21, 93, 143}, {21, 1, 1}, {21, 1, 1}, {143}
   };
@@ -837,17 +736,9 @@ TEST_F(NormTilingTest, TilingTest16) {
     {21, 93, 143}, {21, 93, 143}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0, 0, 1, 1, 2};
   op_compile_info.ori_reduce_axis = {1, 2};
   op_compile_info.core_num = 32;
@@ -861,15 +752,16 @@ TEST_F(NormTilingTest, TilingTest16) {
   op_compile_info.norm_vars = {{1004401, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 21);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "21 93 1 47 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "21, 93, 1, 47";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 21);
 }
 
-TEST_F(NormTilingTest, TilingTest17) {
+TEST_F(NormTilingRt2Test, TilingTest17) {
   std::vector<std::vector<int64_t>> inputs {
     {11, 20, 512}, {11, 20, 1}, {11, 20, 1}, {512}, {512}
   };
@@ -877,18 +769,11 @@ TEST_F(NormTilingTest, TilingTest17) {
     {11, 20, 512}, {11, 20, 512}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
-  std::vector<std::vector<int32_t>> reduce_axis{{-1}};
-  OpInfo op_info(inputs, dtype, reduce_axis);
+
+  std::vector<int64_t> reduce_axis{-1};
+
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0, 0, 1, 1, 2};
   op_compile_info.reduce_axis_type = 3;
   op_compile_info.broadcast_axis_type = {1, 2};
@@ -902,14 +787,19 @@ TEST_F(NormTilingTest, TilingTest17) {
   op_compile_info.workspace_info = {{300401200, {32, 32}}};
   op_compile_info.norm_vars = {{300401200, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "220 512 7 7 ");
+
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
+  OpInfo op_info(&op_compile_info);
+  op_info.SetAxes(&reduce_axis);
+
+  EXPECT_EQ(test.Test(&op_info), true);
+  std::string expect_tiling_data = "220, 512, 7, 7";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest18) {
+TEST_F(NormTilingRt2Test, TilingTest18) {
   std::vector<std::vector<int64_t>> inputs {
     {11, 20, 512}, {512}, {512}
   };
@@ -930,6 +820,7 @@ TEST_F(NormTilingTest, TilingTest18) {
   optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.reduce_attr_name = "axis";
   op_compile_info.is_reduce_attr_is_int = true;
   op_compile_info.input_type = {0, 1, 1};
@@ -948,15 +839,18 @@ TEST_F(NormTilingTest, TilingTest18) {
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
+  std::vector<std::pair<std::string, int64_t>> reduce_attr = {{"int", -1}};
+  test.SetAttrs<int64_t>(reduce_attr);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "220 512 16 16 ");
-  EXPECT_EQ(runInfo.GetBlockDim(), 14);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "220, 512, 16, 16";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 14);
 }
 
-TEST_F(NormTilingTest, TilingTest19) {
+TEST_F(NormTilingRt2Test, TilingTest19) {
   std::vector<std::vector<int64_t>> inputs {
     {11, 20, 512}
   };
@@ -964,19 +858,11 @@ TEST_F(NormTilingTest, TilingTest19) {
     {11, 20, 512}
   };
   ge::DataType dtype = ge::DT_FLOAT16;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  op_paras.SetAttr("axis", {-1});
-  optiling::utils::OpRunInfo runInfo;
 
   NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
   op_compile_info.input_type = {0};
+  op_compile_info.reduce_attr_index = 0;
   op_compile_info.reduce_attr_name = "axis";
   op_compile_info.is_reduce_attr_is_int = false;
   op_compile_info.reduce_axis_type = 9;
@@ -991,71 +877,65 @@ TEST_F(NormTilingTest, TilingTest19) {
   op_compile_info.norm_vars = {{300400000, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
 
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  test.SetCompileInfo(&op_compile_info);
+  std::vector<std::pair<std::string, std::vector<int64_t>>> reduce_attr = {{"list_int", {-1}}};
+  test.SetAttrs<std::vector<int64_t>>(reduce_attr);
 
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "220 512 7 7 ");
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "220, 512, 7, 7";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-TEST_F(NormTilingTest, TilingTest20) {
-  std::vector<std::vector<int64_t>> inputs {
-    {1968, 32, 512}, {512}, {512}
-  };
-  std::vector<std::vector<int64_t>> outputs {
-    {1968, 32, 512}, {1968, 32, 1}, {1968, 32, 1}
-  };
-  ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
+// TEST_F(NormTilingRt2Test, TilingTest20) {
+//   std::vector<std::vector<int64_t>> inputs {
+//     {1968, 32, 512}, {512}, {512}
+//   };
+//   std::vector<std::vector<int64_t>> outputs {
+//     {1968, 32, 512}, {1968, 32, 1}, {1968, 32, 1}
+//   };
+//   ge::DataType dtype = ge::DT_FLOAT;
 
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
-  op_paras.SetAttr("alpha", 2);
+//   NormCompileInfo op_compile_info;
+//   op_compile_info.pattern = SchPattern::NORM;
+//   op_compile_info.input_type = {0, 1, 1};
+//   op_compile_info.ori_reduce_axis = {2};
+//   op_compile_info.reduce_axis_type = 3;
+//   op_compile_info.ori_broadcast_axis = {0, 1};
+//   op_compile_info.is_broadcast_axis_known = true;
+//   op_compile_info.core_num = 32;
+//   op_compile_info.min_block_size = 8;
+//   op_compile_info.transpose_max_entire_size = 128;
+//   op_compile_info.exist_output_after_reduce = true;
+//   op_compile_info.exist_workspace_after_reduce = false;
+//   op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864, 15864}}};
+//   op_compile_info.block_size_map = {{4005, 8}};
+//   op_compile_info.workspace_info = {{1300400500, {32}}};
+//   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
+//   op_compile_info.is_fuse_axis = true;
+//   std::string var_attr_list_compileInfo = R"(
+//     {
+//       "_var_attr_mode":0,
+//       "_var_attrs": [
+//         {
+//           "length":1,
+//           "name":"alpha",
+//           "index":0,
+//           "type":"int32",
+//           "src_type":"int64"
+//         }
+//       ]
+//     }
+//   )";
+//   op_compile_info.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
+//   AutoTilingTest test(inputs, outputs, dtype, dtype);
+//   test.SetCompileInfo(&op_compile_info);
+//   std::vector<std::pair<std::string, int64_t>> common_attr = {{"int64", {2}}};
+//   test.SetAttrs<int64_t>(common_attr);
 
-  NormCompileInfo op_compile_info;
-  op_compile_info.input_type = {0, 1, 1};
-  op_compile_info.ori_reduce_axis = {2};
-  op_compile_info.reduce_axis_type = 3;
-  op_compile_info.ori_broadcast_axis = {0, 1};
-  op_compile_info.is_broadcast_axis_known = true;
-  op_compile_info.core_num = 32;
-  op_compile_info.min_block_size = 8;
-  op_compile_info.transpose_max_entire_size = 128;
-  op_compile_info.exist_output_after_reduce = true;
-  op_compile_info.exist_workspace_after_reduce = false;
-  op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864, 15864}}};
-  op_compile_info.block_size_map = {{4005, 8}};
-  op_compile_info.workspace_info = {{1300400500, {32}}};
-  op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
-  op_compile_info.is_fuse_axis = true;
-  std::vector<VarAttr> var_attr_list;
-  std::string var_attr_list_compileInfo = R"(
-    {
-      "_var_attr_mode":0,
-      "_var_attrs": [
-        {
-          "length":1,
-          "name":"alpha",
-          "index":0,
-          "type":"int32",
-          "src_type":"int32"
-        }
-      ]
-    }
-  )";
-  op_compile_info.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
-
-  AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
-  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
-
-  ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "62976 512 1968 41 2 ");
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-}
+//   EXPECT_EQ(test.Test(), true);
+//   std::string expect_tiling_data = "62976, 512, 1968, 41, 2";
+//   EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+//   EXPECT_EQ(test.GetBlockDims(), 32);
+// }

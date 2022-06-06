@@ -24,6 +24,7 @@
 
 #include "error_log.h"
 #include "tiling_handler.h"
+#include "auto_tiling_register.h"
 
 namespace optiling {
 namespace {
@@ -118,25 +119,38 @@ namespace {
   }
 }
 
-bool Norm::CheckInputNum() const {
-  const auto& input_num = op_paras.GetInputsSize();
+template <typename T>
+bool Norm<T>::CheckInputNum() const {
+  const auto& input_num = context->GetInputNums();
   V_OP_TILING_CHECK((input_num > 0 && input_num <= NORM_MAX_INPUT_NUMS),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input num is %zu that should be in (0, %zu)",
                                                     input_num, NORM_MAX_INPUT_NUMS),
                     return false);
-  V_OP_TILING_CHECK((compileInfo.input_type.size() == input_num),
+  V_OP_TILING_CHECK((compileInfo->input_type.size() == input_num),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                                     "size of input type %zu should be equal to input num %zu",
-                                                    compileInfo.input_type.size(), input_num),
+                                                    compileInfo->input_type.size(), input_num),
                     return false);
 
   return true;
 }
 
-bool Norm::GetMaxDimLen(const ge::OpDescPtr& op_desc) {
+template <typename T>
+bool Norm<T>::Init() {
+  op_type = context->GetOpType();
+  compileInfo = dynamic_cast<const NormCompileInfo *>(context->GetCompileInfo());
+
+  return true;
+}
+
+template <typename T>
+bool Norm<T>::GetMaxDimLen() {
   // obtain max dim len
-  for (std::size_t i = 0; i < compileInfo.input_type.size(); i++) {
-    const auto& cur_input_shape = op_desc->MutableInputDesc(i)->GetShape();
+  for (std::size_t i = 0; i < compileInfo->input_type.size(); i++) {
+    const auto& cur_input_shape = context->GetInputShape(i);
+    V_OP_TILING_CHECK((!cur_input_shape.Empty()),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get input shape"),
+                      return false);
     std::size_t cur_dim_len = cur_input_shape.GetDimNum();
     if (cur_dim_len > dim_len_ori) {
       dim_len_ori = cur_dim_len;
@@ -150,24 +164,24 @@ bool Norm::GetMaxDimLen(const ge::OpDescPtr& op_desc) {
   return true;
 }
 
-bool Norm::GetInput() {
+template <typename T>
+bool Norm<T>::GetInput() {
   std::array<bool, NORM_MAX_INPUT_NUMS> input_flag{false};
   std::array<int64_t, NORM_MAX_INPUT_NUMS> max_shape{1};
-  const ge::OpDescPtr& op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
 
-  if (!CheckInputNum() || !GetMaxDimLen(op_desc)) {
+  if (!CheckInputNum() || !GetMaxDimLen()) {
     return false;
   }
 
   // get before broadcast input (input type is not 0)
   // max dim len = after broadcast shape len
-  for (std::size_t i = 0; i < compileInfo.input_type.size(); i++) {
-    const int32_t& single_input_type = compileInfo.input_type[i];
+  for (std::size_t i = 0; i < compileInfo->input_type.size(); i++) {
+    const int32_t& single_input_type = compileInfo->input_type[i];
     // this input type has been recorded
     if (input_flag[single_input_type]) {
       continue;
     }
-    const auto& cur_input_shape = op_desc->MutableInputDesc(i)->GetShape();
+    const auto& cur_input_shape = context->GetInputShape(i);
     std::size_t cur_dim_len = cur_input_shape.GetDimNum();
     input_flag[single_input_type] = true;
     if (single_input_type == 0) {
@@ -210,40 +224,55 @@ bool Norm::GetInput() {
   return true;
 }
 
-bool Norm::InitReduce() {
-  // init reduce axis
-  if (!compileInfo.ori_reduce_axis.empty()) {
-    if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
-      int32_t single_reduce_axis = compileInfo.ori_reduce_axis[0];
-      if (single_reduce_axis < 0) {
-        single_reduce_axis = dim_len_ori + single_reduce_axis;
-      }
-      for (int32_t i = single_reduce_axis; i < static_cast<int32_t>(dim_len_ori); i++) {
-        reduce_axis_ori[i - single_reduce_axis] = i;
-      }
-      reduce_axis_len_ori = dim_len_ori - single_reduce_axis;
-      return true;
-    }
-    // reduce axis is assigned in compile
-    return NormalizeAxis(compileInfo.ori_reduce_axis, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
+template <typename T>
+bool Norm<T>::InitReduceFromOpInfo() {
+  OP_LOGD(op_type, "Init reduce according to op_info");
+  if (!op_info->GetAxes()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get reduce axes from op_info failed");
+    return false;
   }
+  const auto& reduce_axis = *(op_info->GetAxes());
+  return NormalizeAxis(reduce_axis, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
+}
+
+template <typename T>
+bool Norm<T>::InitReduceFromCompileInfo() {
+  OP_LOGD(op_type, "Init reduce according to compile info");
+  if (compileInfo->reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
+    int32_t single_reduce_axis = compileInfo->ori_reduce_axis[0];
+    if (single_reduce_axis < 0) {
+      single_reduce_axis = dim_len_ori + single_reduce_axis;
+    }
+    for (int32_t i = single_reduce_axis; i < static_cast<int32_t>(dim_len_ori); i++) {
+      reduce_axis_ori[i - single_reduce_axis] = i;
+    }
+    reduce_axis_len_ori = dim_len_ori - single_reduce_axis;
+    return true;
+  }
+  // reduce axis is assigned in compile
+  return NormalizeAxis(compileInfo->ori_reduce_axis, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
+}
+
+template <typename T>
+bool Norm<T>::InitReduceFromAttr() {
+  OP_LOGD(op_type, "Init reduce according to attr");
   // reduce axis is variable in compile
   std::vector<int64_t> reduce_axis_list;
-  if (compileInfo.is_reduce_attr_is_int) {
+  if (compileInfo->is_reduce_attr_is_int) {
     int64_t single_reduce_axis{0};
-    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(compileInfo.reduce_attr_name.c_str(),
-                                                             single_reduce_axis)),
+    V_OP_TILING_CHECK((context->GetAttr(compileInfo->reduce_attr_name.c_str(), compileInfo->reduce_attr_index,
+                                        single_reduce_axis)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s",
-                                                      compileInfo.reduce_attr_name.c_str()),
+                                                      compileInfo->reduce_attr_name.c_str()),
                       return false);
     if (single_reduce_axis < 0) {
       single_reduce_axis = dim_len_ori + single_reduce_axis;
     }
-    if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
+    if (compileInfo->reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
       for (int64_t i = single_reduce_axis; i < static_cast<int64_t>(dim_len_ori); i++) {
         reduce_axis_list.push_back(i);
       }
-    } else if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::BEFORE)) {
+    } else if (compileInfo->reduce_axis_type == static_cast<int32_t>(NormAxisType::BEFORE)) {
       for (int64_t i = 0; i < single_reduce_axis; i++) {
         reduce_axis_list.push_back(i);
       }
@@ -251,41 +280,45 @@ bool Norm::InitReduce() {
       reduce_axis_list.push_back(single_reduce_axis);
     }
   } else {
-    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(compileInfo.reduce_attr_name.c_str(),
-                                                             reduce_axis_list)),
+    V_OP_TILING_CHECK((context->GetAttr(compileInfo->reduce_attr_name.c_str(), compileInfo->reduce_attr_index,
+                                        reduce_axis_list)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s",
-                                                      compileInfo.reduce_attr_name.c_str()),
+                                                      compileInfo->reduce_attr_name.c_str()),
                       return false);
   }
 
   return NormalizeAxis(reduce_axis_list, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
 }
 
-bool Norm::InitReduce(const OpInfo& op_info) {
+template <typename T>
+bool Norm<T>::InitReduce() {
+  if (op_info && !op_info->GetAxes()->empty()) {
+     return InitReduceFromOpInfo();
+  }
   // init reduce axis
-  if (op_info.GetReduceAxes().empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get reduce axis from op_info");
-    return false;
+  if (!compileInfo->ori_reduce_axis.empty()) {
+     return InitReduceFromCompileInfo();
   }
 
-  return NormalizeAxis(op_info.GetReduceAxes()[0], reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
+  return InitReduceFromAttr();
 }
 
-bool Norm::InitBroadcast() {
+template <typename T>
+bool Norm<T>::InitBroadcast() {
   // init broadcast axis
-  if (!compileInfo.is_broadcast_axis_known) {
+  if (!compileInfo->is_broadcast_axis_known) {
     // compile broadcast axes are not the same
     broadcast_axis_len_ori = 0;
     return true;
   }
 
-  if (compileInfo.broadcast_axis_type.empty()) {
+  if (compileInfo->broadcast_axis_type.empty()) {
     // broadcast axis is assigned in compile
-    return NormalizeAxis(compileInfo.ori_broadcast_axis, broadcast_axis_ori, dim_len_ori, broadcast_axis_len_ori);
+    return NormalizeAxis(compileInfo->ori_broadcast_axis, broadcast_axis_ori, dim_len_ori, broadcast_axis_len_ori);
   }
 
   // broadcast axis is variable in compile
-  int32_t single_broadcast_axis_type = compileInfo.broadcast_axis_type[0];
+  int32_t single_broadcast_axis_type = compileInfo->broadcast_axis_type[0];
   if (single_broadcast_axis_type == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
     int32_t count = 0;
     for (int32_t i = 0; i < static_cast<int32_t>(dim_len_ori); i++) {
@@ -303,10 +336,11 @@ bool Norm::InitBroadcast() {
   return true;
 }
 
-bool Norm::Init() {
+template <typename T>
+bool Norm<T>::InitAxis() {
   bool ret = InitBroadcast();
 
-  for (const auto& i : compileInfo.ori_disable_fuse_axes) {
+  for (const auto& i : compileInfo->ori_disable_fuse_axes) {
     // check disable fuse axes value
     V_OP_TILING_CHECK((i < static_cast<int32_t>(dim_len_ori)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of disable fuse axes %d is illegal", i),
@@ -316,13 +350,14 @@ bool Norm::Init() {
   std::sort(reduce_axis_ori.begin(), reduce_axis_ori.begin() + reduce_axis_len_ori);
   std::sort(broadcast_axis_ori.begin(), broadcast_axis_ori.begin() + broadcast_axis_len_ori);
 
-  block_size = compileInfo.min_block_size;
+  block_size = compileInfo->min_block_size;
 
   return ret;
 }
 
-NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t,
-                                                            NORM_MAX_DIM_LEN>& before_broadcast_shape) const {
+template <typename T>
+NormBroadcastMode Norm<T>::JudgeBroadcastMode(const std::array<int64_t,
+                                                               NORM_MAX_DIM_LEN>& before_broadcast_shape) const {
   bool is_no_broadcast = true;
   bool is_same_reduce = true;
   bool is_opposite_reduce = true;
@@ -375,13 +410,14 @@ NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t,
   return NormBroadcastMode::OTHERS;
 }
 
-int32_t Norm::CalcMinEliminateOneIndex() const {
+template <typename T>
+int32_t Norm<T>::CalcMinEliminateOneIndex() const {
   for (int32_t i = static_cast<int32_t>(dim_len_ori) - 1 - 1; i >= 0; i--) {
     if (IsElementInArray(reduce_axis_ori, i, reduce_axis_len_ori) !=
           IsElementInArray(reduce_axis_ori, i + 1, reduce_axis_len_ori)) {
       return i + 1;
     }
-    if (compileInfo.is_broadcast_axis_known) {
+    if (compileInfo->is_broadcast_axis_known) {
       if (IsElementInArray(broadcast_axis_ori, i, broadcast_axis_len_ori) !=
             IsElementInArray(broadcast_axis_ori, i + 1, broadcast_axis_len_ori)) {
         return i + 1;
@@ -392,19 +428,20 @@ int32_t Norm::CalcMinEliminateOneIndex() const {
   return 0;
 }
 
-bool Norm::EliminateOne() {
+template <typename T>
+bool Norm<T>::EliminateOne() {
   // back is not 1
   if (input_shape_ori[dim_len_ori - 1] != 1) {
     return true;
   }
   // no fuse case
-  bool is_no_fuse_axis = !compileInfo.is_fuse_axis;
+  bool is_no_fuse_axis = !compileInfo->is_fuse_axis;
   // dont have after broadcast input
-  bool is_no_after_broadcast_axis = before_broadcast_input_num == compileInfo.input_type.size();
+  bool is_no_after_broadcast_axis = before_broadcast_input_num == compileInfo->input_type.size();
   // have before broadcast input but unify broadcast axis is unknown
-  bool is_unify_broadcast_axis_unknown = before_broadcast_input_num > 0 && !compileInfo.is_broadcast_axis_known;
+  bool is_unify_broadcast_axis_unknown = before_broadcast_input_num > 0 && !compileInfo->is_broadcast_axis_known;
   // disable fuse axes
-  bool is_disable_fuse_axes = !compileInfo.ori_disable_fuse_axes.empty();
+  bool is_disable_fuse_axes = !compileInfo->ori_disable_fuse_axes.empty();
 
   bool is_cannot_eliminate_one = is_no_fuse_axis || is_no_after_broadcast_axis ||
                                  is_unify_broadcast_axis_unknown || is_disable_fuse_axes;
@@ -429,7 +466,7 @@ bool Norm::EliminateOne() {
     if (reduce_axis_ori[reduce_axis_len_ori - 1] == i) {
       reduce_axis_len_ori--;
     }
-    if (compileInfo.is_broadcast_axis_known) {
+    if (compileInfo->is_broadcast_axis_known) {
       if (broadcast_axis_len_ori == 0) {
         ori_broadcast_axis_is_empty = true;
       } else if (broadcast_axis_ori[broadcast_axis_len_ori - 1] == i) {
@@ -449,7 +486,7 @@ bool Norm::EliminateOne() {
     for (std::size_t i = 0; i < broadcast_axis_len_ori; i++) {
       broadcast_axis_ori[i]++;
     }
-    bool is_broadcast_insert_zero = compileInfo.is_broadcast_axis_known && !ori_broadcast_axis_is_empty;
+    bool is_broadcast_insert_zero = compileInfo->is_broadcast_axis_known && !ori_broadcast_axis_is_empty;
     if (is_broadcast_insert_zero) {
       ArrayInsertToFront(broadcast_axis_ori, broadcast_axis_len_ori, 0);
     }
@@ -458,8 +495,9 @@ bool Norm::EliminateOne() {
   return true;
 }
 
-void Norm::InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& reduce_flag,
-                            const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const {
+template <typename T>
+void Norm<T>::InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& reduce_flag,
+                               const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const {
   for (std::size_t i = 0; i < reduce_axis_len_ori; i++) {
     flags[reduce_axis_ori[i]] = reduce_flag;
   }
@@ -474,7 +512,8 @@ void Norm::InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const 
   }
 }
 
-bool Norm::FusedAxis() {
+template <typename T>
+bool Norm<T>::FusedAxis() {
   // fuse axes of the same type
   // 0 means common axis
   // 1 means only reduce axis
@@ -489,7 +528,7 @@ bool Norm::FusedAxis() {
 
   int32_t modulo = 10;
   int32_t cnt = 1;
-  for (const auto& idx: compileInfo.ori_disable_fuse_axes) {
+  for (const auto& idx: compileInfo->ori_disable_fuse_axes) {
     flags[idx] += modulo * (cnt++);
   }
 
@@ -535,7 +574,8 @@ bool Norm::FusedAxis() {
   return true;
 }
 
-bool Norm::GetNormPatternCommon() {
+template <typename T>
+bool Norm<T>::GetNormPatternCommon() {
   broadcast_pattern = CalcPattern(broadcast_axis, broadcast_axis_len, dim_len);
   reduce_pattern = CalcPattern(reduce_axis, reduce_axis_len, dim_len);
   norm_pattern = reduce_pattern * NORM_REDUCE_PATTERN_WEIGHT + broadcast_pattern;
@@ -543,15 +583,16 @@ bool Norm::GetNormPatternCommon() {
   return true;
 }
 
-bool Norm::GetNormPattern() {
-  if (compileInfo.is_broadcast_axis_known) {
+template <typename T>
+bool Norm<T>::GetNormPattern() {
+  if (compileInfo->is_broadcast_axis_known) {
     return GetNormPatternCommon();
   }
 
   int32_t weight = 10;
   // if there is only one norm pattern, norm pattern is no need to calculate
-  if (compileInfo.available_ub_size.size() == 1) {
-    norm_pattern = compileInfo.available_ub_size.begin()->first;
+  if (compileInfo->available_ub_size.size() == 1) {
+    norm_pattern = compileInfo->available_ub_size.begin()->first;
     int32_t local_broadcast_pattern = norm_pattern % NORM_REDUCE_PATTERN_WEIGHT;
     while (local_broadcast_pattern != 0) {
       int32_t single_pattern = local_broadcast_pattern % weight;
@@ -567,10 +608,10 @@ bool Norm::GetNormPattern() {
 
   for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
     NormBroadcastMode single_mode;
-    if (i < compileInfo.broadcast_axis_type.size()) {
-      if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
+    if (i < compileInfo->broadcast_axis_type.size()) {
+      if (compileInfo->broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
         single_mode = NormBroadcastMode::OPPOSITE_REDUCE;
-      } else if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::SAME_REDUCE)) {
+      } else if (compileInfo->broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::SAME_REDUCE)) {
         single_mode = NormBroadcastMode::SAME_REDUCE;
       } else {
         single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
@@ -597,9 +638,10 @@ bool Norm::GetNormPattern() {
   return true;
 }
 
-bool Norm::GetUbSizeInfo() {
+template <typename T>
+bool Norm<T>::GetUbSizeInfo() {
   try {
-    const auto& available_ub_size_vec = compileInfo.available_ub_size.at(norm_pattern);
+    const auto& available_ub_size_vec = compileInfo->available_ub_size.at(norm_pattern);
     std::size_t expect_vec_len = 4;
     V_OP_TILING_CHECK((available_ub_size_vec.size() == expect_vec_len),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of available_ub_size_vec is %zu that is illegal",
@@ -637,15 +679,17 @@ bool Norm::GetUbSizeInfo() {
   return true;
 }
 
-bool Norm::GetBlockSize() {
-  if (compileInfo.block_size_map.count(norm_pattern) != 0) {
-    block_size = compileInfo.block_size_map.at(norm_pattern);
+template <typename T>
+bool Norm<T>::GetBlockSize() {
+  if (compileInfo->block_size_map.count(norm_pattern) != 0) {
+    block_size = compileInfo->block_size_map.at(norm_pattern);
   }
 
   return true;
 }
 
-bool Norm::CalcInputAlignShape() {
+template <typename T>
+bool Norm<T>::CalcInputAlignShape() {
   for (std::size_t i = 0; i < dim_len; i++) {
     if (i == dim_len - 1) {
       input_align_shape[i] = (input_shape[i] + block_size - 1) / block_size * block_size;
@@ -657,7 +701,8 @@ bool Norm::CalcInputAlignShape() {
   return true;
 }
 
-bool Norm::IsNeedPartialReorder() {
+template <typename T>
+bool Norm<T>::IsNeedPartialReorder() {
   if (reduce_axis_len <= 1) {
     return false;
   }
@@ -676,8 +721,8 @@ bool Norm::IsNeedPartialReorder() {
   return is_discontinuous_reduce_axis && input_shape[dim_len - 1] < block_size;
 }
 
-
-bool Norm::IsNeedWorkspace() const {
+template <typename T>
+bool Norm<T>::IsNeedWorkspace() const {
   int64_t nlast_common_product = 1;
   for (std::size_t i = last_r_axis_index + 1; i < dim_len; i++) {
     nlast_common_product = nlast_common_product * input_align_shape[i];
@@ -687,7 +732,8 @@ bool Norm::IsNeedWorkspace() const {
   return reduce_align_product * nlast_common_product > common_max_ub_count;
 }
 
-bool Norm::IsNeedReduceTranspose() const {
+template <typename T>
+bool Norm<T>::IsNeedReduceTranspose() const {
   // AR pattern
   bool is_ar_pattern = dim_len == 2 && first_a_axis_index == 0 && last_r_axis_index == 1;
   if (!is_ar_pattern) {
@@ -696,7 +742,7 @@ bool Norm::IsNeedReduceTranspose() const {
 
   // last dim of input_shape should be small enough
   const auto& last_dim = input_shape[dim_len - 1];
-  if (reduce_trans_max_ub_count / compileInfo.transpose_max_entire_size < last_dim) {
+  if (reduce_trans_max_ub_count / compileInfo->transpose_max_entire_size < last_dim) {
     return false;
   }
 
@@ -709,7 +755,7 @@ bool Norm::IsNeedReduceTranspose() const {
     return false;
   }
 
-  if (!compileInfo.exist_vc_unsupported_type && last_dim % block_size == 0) {
+  if (!compileInfo->exist_vc_unsupported_type && last_dim % block_size == 0) {
     return false;
   }
 
@@ -717,7 +763,8 @@ bool Norm::IsNeedReduceTranspose() const {
   return reduce_align_product <= reduce_trans_max_ub_count;
 }
 
-bool Norm::IsNeedAlignedInUb() const {
+template <typename T>
+bool Norm<T>::IsNeedAlignedInUb() const {
   if (is_reduce_transpose) {
     return false;
   }
@@ -733,7 +780,7 @@ bool Norm::IsNeedAlignedInUb() const {
   }
 
   // last dim of input_align_shape should be small enough
-  if (pad_max_ub_count / compileInfo.transpose_max_entire_size < input_align_shape[dim_len - 1]) {
+  if (pad_max_ub_count / compileInfo->transpose_max_entire_size < input_align_shape[dim_len - 1]) {
     return false;
   }
 
@@ -753,12 +800,13 @@ bool Norm::IsNeedAlignedInUb() const {
   return reduce_align_product <= pad_max_ub_count;
 }
 
-bool Norm::JudgePartialReorderZeroDimSplitBlock(const int64_t& right_product, const int64_t& right_align_product,
-                                                const std::size_t& index) {
+template <typename T>
+bool Norm<T>::JudgePartialReorderZeroDimSplitBlock(const int64_t& right_product, const int64_t& right_align_product,
+                                                   const std::size_t& index) {
   int64_t max_block_factor = ub_size / (right_align_product / input_align_shape[index]);
-  int32_t start_core_num = compileInfo.core_num < input_shape[index] ? compileInfo.core_num : input_shape[index];
+  int32_t start_core_num = compileInfo->core_num < input_shape[index] ? compileInfo->core_num : input_shape[index];
   for (int32_t tilling_core_num = start_core_num; tilling_core_num <= input_shape[index];
-       tilling_core_num += compileInfo.core_num) {
+       tilling_core_num += compileInfo->core_num) {
     int64_t cur_min_block_factor = (input_shape[index] + tilling_core_num - 1) / tilling_core_num;
     if (cur_min_block_factor > max_block_factor) {
       continue;
@@ -782,7 +830,8 @@ bool Norm::JudgePartialReorderZeroDimSplitBlock(const int64_t& right_product, co
   return false;
 }
 
-bool Norm::GetPartialReorderBlockTilingInfo() {
+template <typename T>
+bool Norm<T>::GetPartialReorderBlockTilingInfo() {
   is_need_workspace = true;
   sch_type = NORM_PARTIAL_REORDER_SCH_TYPE;
   ub_size = workspace_max_ub_count;
@@ -821,7 +870,8 @@ bool Norm::GetPartialReorderBlockTilingInfo() {
   return false;
 }
 
-bool Norm::JudgeCurDimSplitBlock(const int64_t& right_product, const std::size_t& index) {
+template <typename T>
+bool Norm<T>::JudgeCurDimSplitBlock(const int64_t& right_product, const std::size_t& index) {
   int64_t remaining_product = right_product / input_shape[index];
   V_OP_TILING_CHECK((remaining_product > 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "remaining_product is %ld that is illegal",
@@ -850,10 +900,11 @@ bool Norm::JudgeCurDimSplitBlock(const int64_t& right_product, const std::size_t
   return false;
 }
 
-bool Norm::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& right_product,
-                                 const std::size_t& index, const int64_t& max_block_factor) {
-  for (int32_t tilling_core_num = compileInfo.core_num; tilling_core_num <= left_product * input_shape[index];
-       tilling_core_num += compileInfo.core_num) {
+template <typename T>
+bool Norm<T>::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& right_product,
+                                    const std::size_t& index, const int64_t& max_block_factor) {
+  for (int32_t tilling_core_num = compileInfo->core_num; tilling_core_num <= left_product * input_shape[index];
+       tilling_core_num += compileInfo->core_num) {
     if (left_product > tilling_core_num) {
       continue;
     }
@@ -900,11 +951,8 @@ bool Norm::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& rig
                                         (actual_block_factor * post_right_product < block_size) ?
                                         (block_size + post_right_product - 1) / post_right_product:
                                         actual_block_factor;
-      if (max_block_factor == 0) {
-        return true;
-      }
       // storage align last axis but align block factor is larger than max_block_factor
-      bool is_illegal_cut = index == dim_len - 1 &&
+      bool is_illegal_cut = max_block_factor != 0 && index == dim_len - 1 &&
         (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size > max_block_factor;
       if (!is_illegal_cut) {
         return true;
@@ -915,14 +963,15 @@ bool Norm::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& rig
   return false;
 }
 
-bool Norm::GetWorkspaceBlockTilingInfo() {
+template <typename T>
+bool Norm<T>::GetWorkspaceBlockTilingInfo() {
   // left product: calc core num
   // right_product: mte3 element num >= block
   // right_align_product: ub can put in A axis after block_inner
   int64_t left_product = 1;
   int64_t right_align_product = after_reduce_align_shape_product;
   int64_t right_product = after_reduce_shape_product;
-  bool exist_after_reduce_tensor = compileInfo.exist_output_after_reduce || compileInfo.exist_workspace_after_reduce;
+  bool exist_after_reduce_tensor = compileInfo->exist_output_after_reduce || compileInfo->exist_workspace_after_reduce;
   right_product = exist_after_reduce_tensor ? right_product : right_product * reduce_product;
 
   // if right_product < block_size, block_dim = 1
@@ -952,11 +1001,11 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
       continue;
     }
 
-    if (post_right_product <= block_size && post_left_product < compileInfo.core_num) {
+    if (post_right_product <= block_size && post_left_product < compileInfo->core_num) {
       if (JudgeCurDimSplitBlock(right_product, i)) {
         return true;
       }
-    } else if (post_right_product <= block_size || post_left_product >= compileInfo.core_num) {
+    } else if (post_right_product <= block_size || post_left_product >= compileInfo->core_num) {
       // max_block_factor: ub can put in A axis after block_inner
       int64_t max_block_factor = ub_size / post_right_align_product;
       if (JudgeCurDimSplitBlock(left_product, right_product, i, max_block_factor)) {
@@ -964,7 +1013,7 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
       }
     }
 
-    // all right_product > block_size and left_product < compileInfo.core_num
+    // all right_product > block_size and left_product < compileInfo->core_num
     // split last a and factor is 1
     if (a_axis_count == dim_len - reduce_axis_len) {
       tilingInfo.block_tiling_axis = i;
@@ -980,15 +1029,23 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
   return false;
 }
 
-bool Norm::GetBlockTilingInfo() {
+template <typename T>
+bool Norm<T>::GetPartialReorderBlockDim() {
+  // partial reorder sch enables multi_core if and only if the block_tiling_axis is 0
+  if (tilingInfo.block_tiling_axis == 0) {
+    tilingInfo.block_dim = GetBlockDim(tilingInfo.block_tiling_axis, tilingInfo.block_tiling_factor);
+  } else {
+    tilingInfo.block_dim = 1;
+  }
+
+  return true;
+}
+
+template <typename T>
+bool Norm<T>::GetBlockTilingInfo() {
   if (is_partial_reorder) {
     bool ret = GetPartialReorderBlockTilingInfo();
-    // partial reorder sch enables multi_core if and only if the block_tiling_axis is 0
-    if (tilingInfo.block_tiling_axis == 0) {
-      tilingInfo.block_dim = GetBlockDim(tilingInfo.block_tiling_axis, tilingInfo.block_tiling_factor);
-    } else {
-      tilingInfo.block_dim = 1;
-    }
+    ret = ret && GetPartialReorderBlockDim();
     return ret;
   }
 
@@ -1000,7 +1057,7 @@ bool Norm::GetBlockTilingInfo() {
   // right_product: mte3 element num >= block
   int64_t left_product = 1;
   int64_t right_product = after_reduce_shape_product;
-  right_product = compileInfo.exist_output_after_reduce ? right_product : right_product * reduce_product;
+  right_product = compileInfo->exist_output_after_reduce ? right_product : right_product * reduce_product;
 
   // if after shape product < block_size, block_dim = 1
   if (right_product < block_size) {
@@ -1013,23 +1070,23 @@ bool Norm::GetBlockTilingInfo() {
   for (std::size_t i = 0; i < dim_len; i++) {
     // block split A
     if (IsElementInArray(reduce_axis, i, reduce_axis_len)) {
-      right_product = compileInfo.exist_output_after_reduce ? right_product : right_product / input_shape[i];
+      right_product = compileInfo->exist_output_after_reduce ? right_product : right_product / input_shape[i];
       continue;
     }
     a_axis_count++;
     int64_t post_left_product = left_product * input_shape[i];
     int64_t post_right_product = right_product / input_shape[i];
 
-    if (post_right_product <= block_size && post_left_product < compileInfo.core_num) {
+    if (post_right_product <= block_size && post_left_product < compileInfo->core_num) {
       if (JudgeCurDimSplitBlock(right_product, i)) {
         return true;
       }
-    } else if (post_right_product <= block_size || post_left_product >= compileInfo.core_num) {
+    } else if (post_right_product <= block_size || post_left_product >= compileInfo->core_num) {
       if (JudgeCurDimSplitBlock(left_product, right_product, i)) {
         return true;
       }
     }
-    // all right_product > block_size and left_product < compileInfo.core_num
+    // all right_product > block_size and left_product < compileInfo->core_num
     // split last a and factor is 1
     if (a_axis_count == dim_len - reduce_axis_len) {
       tilingInfo.block_tiling_axis = i;
@@ -1043,7 +1100,8 @@ bool Norm::GetBlockTilingInfo() {
   return false;
 }
 
-int32_t Norm::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) const {
+template <typename T>
+int32_t Norm<T>::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) const {
   int32_t block_dim = 1;
   for (int32_t i = 0; i <= tiling_axis; i++) {
     if (IsElementInArray(reduce_axis, i, reduce_axis_len)) {
@@ -1060,7 +1118,8 @@ int32_t Norm::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) const {
   return block_dim;
 }
 
-bool Norm::ProcessReorderAxis() {
+template <typename T>
+bool Norm<T>::ProcessReorderAxis() {
   /* InputShape: a0,r0,a1,r1,a2,r2,r3,a3
    *                    |---> block_tiling_axis
    *                    |---> core = a0*a1
@@ -1115,7 +1174,8 @@ bool Norm::ProcessReorderAxis() {
   return true;
 }
 
-int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis) const {
+template <typename T>
+int64_t Norm<T>::CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis) const {
   int64_t result = 1;
   for (int32_t i = axis_index + 1; i < static_cast<int32_t>(dim_len); i++) {
     if (exclude_reduce_axis) {
@@ -1138,7 +1198,8 @@ int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_ax
   return result;
 }
 
-int64_t Norm::CalcReorderAlignShapeProduct(int32_t axis_index) const {
+template <typename T>
+int64_t Norm<T>::CalcReorderAlignShapeProduct(int32_t axis_index) const {
   int64_t result = 1;
   for (int32_t i = axis_index + 1; i < static_cast<int32_t>(dim_len); i++) {
     if (IsElementInArray(reorderInfo.fused_block_tiling_axis, i, reorderInfo.fused_block_tiling_axis_len)) {
@@ -1167,7 +1228,8 @@ int64_t Norm::CalcReorderAlignShapeProduct(int32_t axis_index) const {
   return result;
 }
 
-bool Norm::GetPartialReorderUbTilingInfo() {
+template <typename T>
+bool Norm<T>::GetPartialReorderUbTilingInfo() {
   for (std::size_t i = 0; i < dim_len; i++) {
     if (!IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       continue;
@@ -1188,8 +1250,9 @@ bool Norm::GetPartialReorderUbTilingInfo() {
   return false;
 }
 
-bool Norm::CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& cur_dim,
-                                  const int64_t& cur_dim_tail, const int64_t& right_product) const {
+template <typename T>
+bool Norm<T>::CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& cur_dim,
+                                     const int64_t& cur_dim_tail, const int64_t& right_product) const {
   V_OP_TILING_CHECK((cur_ub_factor > 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "cur_ub_factor is %ld that is illegal", cur_ub_factor),
                     return false);
@@ -1218,8 +1281,9 @@ bool Norm::CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& c
          tail_tail_ub_elem_count >= block_size;
 }
 
-bool Norm::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_t& cur_ub_factor,
-                                       const int64_t& cur_dim) const {
+template <typename T>
+bool Norm<T>::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_t& cur_ub_factor,
+                                          const int64_t& cur_dim) const {
   bool is_nlast_split_last_a = !is_last_axis_reduce && index == dim_len - 1;
   bool is_factor_not_align = cur_ub_factor > block_size + block_size && cur_ub_factor % block_size != 0;
   if (is_nlast_split_last_a && is_factor_not_align) {
@@ -1229,7 +1293,7 @@ bool Norm::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_t& 
   bool is_last_split_last_a = is_last_axis_reduce && index == dim_len - reduce_axis_len - 1;
   bool is_factor_not_eight_align = cur_ub_factor > NORM_CONSTANT_EIGHT + NORM_CONSTANT_EIGHT &&
     cur_ub_factor % NORM_CONSTANT_EIGHT != 0;
-  if (compileInfo.is_const && is_last_split_last_a && is_discontinuous_reduce_axis) {
+  if (compileInfo->is_const && is_last_split_last_a && is_discontinuous_reduce_axis) {
     if (cur_ub_factor == cur_dim) {
         return false;
     }
@@ -1241,14 +1305,15 @@ bool Norm::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_t& 
   return false;
 }
 
-bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
+template <typename T>
+bool Norm<T>::JudgeNormalCurDimSplitUb(const std::size_t& index) {
   // right_align_product: ub can put in A axis after block_inner
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
   if (right_product_align > ub_size) {
     return false;
   }
   // right_product: mte3 element num >= block
-  int64_t right_product = CalcReorderShapeProduct(index, compileInfo.exist_output_after_reduce);
+  int64_t right_product = CalcReorderShapeProduct(index, compileInfo->exist_output_after_reduce);
   int64_t current_dim = (static_cast<int32_t>(index) == block_tiling_axis_index_in_reorder) ?
                         tilingInfo.block_tiling_factor:
                         reorderInfo.reorder_input_shape[index];
@@ -1303,7 +1368,8 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
   return false;
 }
 
-bool Norm::JudgeWorkspaceCurDimSplitUb(const std::size_t& index) {
+template <typename T>
+bool Norm<T>::JudgeWorkspaceCurDimSplitUb(const std::size_t& index) {
   // right_align_product: ub can put in A axis after block_inner
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
   if (right_product_align > ub_size) {
@@ -1341,7 +1407,8 @@ bool Norm::JudgeWorkspaceCurDimSplitUb(const std::size_t& index) {
   return false;
 }
 
-bool Norm::GetUbTilingInfo() {
+template <typename T>
+bool Norm<T>::GetUbTilingInfo() {
   if (is_partial_reorder) {
     return GetPartialReorderUbTilingInfo();
   }
@@ -1384,7 +1451,8 @@ bool Norm::GetUbTilingInfo() {
   return false;
 }
 
-bool Norm::NeedRefineBlockTiling() {
+template <typename T>
+bool Norm<T>::NeedRefineBlockTiling() {
   // block split last common axis, block factor can refine to align
   if (is_last_axis_reduce || tilingInfo.block_tiling_axis != static_cast<int32_t>(dim_len) - 1) {
     return false;
@@ -1411,7 +1479,8 @@ bool Norm::NeedRefineBlockTiling() {
   return tail_dim >= block_size;
 }
 
-bool Norm::ProcessBlockTilingAndReorder() {
+template <typename T>
+bool Norm<T>::ProcessBlockTilingAndReorder() {
   bool ret = true;
   // has A axis
   if (reduce_axis_len != dim_len) {
@@ -1434,7 +1503,8 @@ bool Norm::ProcessBlockTilingAndReorder() {
   return ret;
 }
 
-bool Norm::ProcessTiling() {
+template <typename T>
+bool Norm<T>::ProcessTiling() {
   bool ret = ProcessBlockTilingAndReorder();
   if (!ret) {
     return false;
@@ -1460,14 +1530,15 @@ bool Norm::ProcessTiling() {
   return true;
 }
 
-bool Norm::CalcTilingKey() {
+template <typename T>
+bool Norm<T>::CalcTilingKey() {
   int64_t db_weight = 2000000000;
   int64_t is_broadcast_axis_known_weight = 1000000000;
   int64_t sch_type_weight = 100000000;
   int64_t norm_pattern_weight = 100;
   int64_t block_axis_weight = 10;
 
-  tiling_key = db * db_weight + compileInfo.is_broadcast_axis_known * is_broadcast_axis_known_weight +
+  tiling_key = db * db_weight + compileInfo->is_broadcast_axis_known * is_broadcast_axis_known_weight +
                sch_type * sch_type_weight + norm_pattern * norm_pattern_weight;
 
   int32_t block_key = (tilingInfo.block_tiling_axis == -1) ? NORM_NONE_SPLIT_KEY : tilingInfo.block_tiling_axis;
@@ -1478,14 +1549,15 @@ bool Norm::CalcTilingKey() {
   return true;
 }
 
-bool Norm::CalcWorkspace() {
-  if (compileInfo.is_const && !compileInfo.is_const_post) {
+template <typename T>
+bool Norm<T>::CalcWorkspace() {
+  if (compileInfo->is_const && !compileInfo->is_const_post) {
     workspace_len = 0;
     return true;
   }
 
   try {
-    const auto& workspace_info = compileInfo.workspace_info.at(tiling_key);
+    const auto& workspace_info = compileInfo->workspace_info.at(tiling_key);
     workspace_len = workspace_info.size();
 
     for (std::size_t i = 0; i < workspace_len; i++) {
@@ -1508,9 +1580,10 @@ bool Norm::CalcWorkspace() {
   return true;
 }
 
-bool Norm::GetVarValue() {
+template <typename T>
+bool Norm<T>::GetVarValue() {
   var_value_len = 0;
-  if (compileInfo.is_const) {
+  if (compileInfo->is_const) {
     return true;
   }
 
@@ -1521,7 +1594,7 @@ bool Norm::GetVarValue() {
     int32_t known_broadcast_encode = 20000;
     int32_t unknown_broadcast_encode = 10000;
     int32_t dim_encode = 100;
-    const auto& var_pattern = compileInfo.norm_vars.at(tiling_key);
+    const auto& var_pattern = compileInfo->norm_vars.at(tiling_key);
     for (const auto& var : var_pattern) {
       if (var >= ub_tiling_factor_encode) {
         var_value[var_value_len] = static_cast<int32_t>(tilingInfo.ub_tiling_factor);
@@ -1546,7 +1619,8 @@ bool Norm::GetVarValue() {
   return true;
 }
 
-bool Norm::ConstPostCalcTiling() {
+template <typename T>
+bool Norm<T>::ConstPostCalcTiling() {
   bool ret = EliminateOne();
   ret = ret && FusedAxis();
   ret = ret && GetNormPattern();
@@ -1561,7 +1635,8 @@ bool Norm::ConstPostCalcTiling() {
   return ret;
 }
 
-bool Norm::CalcNormInfo() {
+template <typename T>
+bool Norm<T>::CalcNormInfo() {
   auto product_pair = CalcShapeProduct(input_shape, reduce_axis, dim_len, reduce_axis_len);
   reduce_product = product_pair.first;
   after_reduce_shape_product = product_pair.second;
@@ -1606,7 +1681,8 @@ bool Norm::CalcNormInfo() {
   return true;
 }
 
-bool Norm::CalcTiling() {
+template <typename T>
+bool Norm<T>::CalcTiling() {
   /* Situations of CalcTiling include:
      1. input(known):
         status of compile: do others except FusedAxis
@@ -1614,20 +1690,20 @@ bool Norm::CalcTiling() {
      2. input(unknown):
         do all process
   */
-  bool ret = Init();
+  bool ret = InitAxis();
 
-  if (compileInfo.is_const) {
+  if (compileInfo->is_const) {
     // input(known)
     // invoking the tiling interface during runtime
     // is_const_post: "true"->runtime, "false"->compile
-    if (compileInfo.is_const_post) {
+    if (compileInfo->is_const_post) {
       return ConstPostCalcTiling();
     } else {
       CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
       CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
       CopyArrayValue(broadcast_axis_ori, broadcast_axis, broadcast_axis_len_ori, broadcast_axis_len);
     }
-  } else if (!compileInfo.is_fuse_axis) {
+  } else if (!compileInfo->is_fuse_axis) {
     CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
     CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
     CopyArrayValue(broadcast_axis_ori, broadcast_axis, broadcast_axis_len_ori, broadcast_axis_len);
@@ -1656,16 +1732,18 @@ bool Norm::CalcTiling() {
   return ret;
 }
 
-bool Norm::ConstPostWriteTilingData() {
+template <typename T>
+bool Norm<T>::ConstPostWriteTilingData() {
   // runtime
   try {
-    run_info.SetBlockDim(compileInfo.const_block_dims.at(tiling_key));
-    run_info.SetTilingKey(tiling_key);
-    for (std::size_t i = 0; i < workspace_len; i++) {
-      run_info.AddWorkspace(workspace[i]);
-    }
+    context->SetBlockDim(static_cast<uint32_t>(compileInfo->const_block_dims.at(tiling_key)));
+    context->SetTilingKey(static_cast<int64_t>(tiling_key));
+    context->AddWorkspace(workspace.begin(), workspace_len);
     auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-    return compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
+    if (typeid(*context) == typeid(AutoTilingOp)) {
+      return compileInfo->varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type,
+                                                    *context->GetOpParas(), *context->GetRunInfo());
+    }
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ConstPostWriteTilingData error. Error message: %s", e.what());
     return false;
@@ -1674,60 +1752,57 @@ bool Norm::ConstPostWriteTilingData() {
   return true;
 }
 
-bool Norm::WriteTilingData() {
-  if (compileInfo.is_const_post) {
+template <typename T>
+bool Norm<T>::WriteTilingData() {
+  if (compileInfo->is_const_post) {
     // runtime
     return ConstPostWriteTilingData();
   }
 
-  if (compileInfo.is_const) {
+  if (compileInfo->is_const) {
     // compile
     // if split block
     if (tilingInfo.block_tiling_axis != -1) {
-      run_info.AddTilingData(static_cast<int32_t>(tilingInfo.block_tiling_axis));
-      run_info.AddTilingData(static_cast<int32_t>(tilingInfo.block_tiling_factor));
+      context->Append(static_cast<int32_t>(tilingInfo.block_tiling_axis));
+      context->Append(static_cast<int32_t>(tilingInfo.block_tiling_factor));
     }
     // if split ub
     if (tilingInfo.ub_tiling_axis != -1) {
-      run_info.AddTilingData(static_cast<int32_t>(tilingInfo.ub_tiling_axis));
-      run_info.AddTilingData(static_cast<int32_t>(tilingInfo.ub_tiling_factor));
+      context->Append(static_cast<int32_t>(tilingInfo.ub_tiling_axis));
+      context->Append(static_cast<int32_t>(tilingInfo.ub_tiling_factor));
     }
-    run_info.SetBlockDim(tilingInfo.block_dim);
+    context->SetBlockDim(static_cast<uint32_t>(tilingInfo.block_dim));
     return true;
   }
 
-  run_info.SetTilingKey(tiling_key);
-  run_info.SetBlockDim(tilingInfo.block_dim);
-
-  for (std::size_t i = 0; i < workspace_len; i++) {
-    run_info.AddWorkspace(workspace[i]);
-  }
+  context->SetTilingKey(static_cast<int64_t>(tiling_key));
+  context->SetBlockDim(static_cast<uint32_t>(tilingInfo.block_dim));
+  context->AddWorkspace(workspace.begin(), workspace_len);
 
   for (std::size_t i = 0; i < var_value_len; i++) {
-    run_info.AddTilingData(var_value[i]);
+    context->Append(static_cast<int32_t>(var_value[i]));
   }
 
   auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-  return compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
+  if (typeid(*context) == typeid(AutoTilingOp)) {
+    return compileInfo->varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type,
+                                                  *context->GetOpParas(), *context->GetRunInfo());
+  }
+
+  return true;
 }
 
-bool Norm::DoTiling() {
-  bool ret = GetInput();
+template <typename T>
+bool Norm<T>::DoTiling() {
+  bool ret = Init();
+  ret = ret && GetInput();
   ret = ret && InitReduce();
   ret = ret && CalcTiling();
   ret = ret && WriteTilingData();
   return ret;
 }
 
-bool Norm::DoTiling(const OpInfo& op_info) {
-  bool ret = GetInput();
-  ret = ret && InitReduce(op_info);
-  ret = ret && CalcTiling();
-  ret = ret && WriteTilingData();
-  return ret;
-}
-
-bool NormCompileInfo::Check(const std::string& op_type) const {
+bool NormCompileInfo::Check(const char* op_type) const {
   for (const auto& single_input_type : input_type) {
     V_OP_TILING_CHECK((single_input_type >= 0 && single_input_type <= static_cast<int32_t>(NORM_MAX_INPUT_NUMS)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input type is %d that is illegal",
@@ -1751,6 +1826,9 @@ bool NormCompileInfo::Check(const std::string& op_type) const {
 
 void NormCompileInfo::ParseAxisInfo(const nlohmann::json& parsed_json_obj) {
   // reduce and broadcast axis
+  if (parsed_json_obj.contains("reduce_axis_attr_index")) {
+    reduce_attr_index = parsed_json_obj.at("reduce_axis_attr_index").get<int32_t>();
+  }
   if (parsed_json_obj.contains("reduce_axis_attr_name")) {
     reduce_attr_name = parsed_json_obj.at("reduce_axis_attr_name").get<std::string>();
   }
@@ -1844,12 +1922,11 @@ void NormCompileInfo::ParseOtherInfo(const nlohmann::json& parsed_json_obj) {
       norm_vars[std::stoi(single_item.first)] = single_item.second;
     }
   }
-
   check_success = check_success && varAttrWrap.ParseVarAttr(parsed_json_obj);
 }
 
-NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::json& parsed_json_obj) {
-  OP_LOGD(op_type.c_str(), "norm compile info construct func running");
+NormCompileInfo::NormCompileInfo(const char* op_type, const nlohmann::json& parsed_json_obj) {
+  OP_LOGD(op_type, "Norm compile info construct func running");
   ParseAxisInfo(parsed_json_obj);
   ParseGraphInfo(parsed_json_obj);
   ParseCommonInfo(parsed_json_obj);
@@ -1857,17 +1934,39 @@ NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::jso
   check_success = check_success && Check(op_type);
 }
 
+bool CreateNormDslTiling(gert::TilingContext* context, const OpInfoImpl* op_info) {
+  OP_LOGD(context->GetNodeType(), "Norm rt2 tiling running");
+  AutoTilingContext auto_tiling_context(context);
+  if (op_info) {
+    OP_LOGD(context->GetNodeType(), "Norm rt2 tiling with op_info running");
+    auto_tiling_context.SetCompileInfo(op_info->GetCompileInfo());
+  }
+  Norm<AutoTilingContext> norm(&auto_tiling_context, op_info);
+  return norm.DoTiling();
+}
+
+AutoTilingCompileInfo* CreateNormDslParser(const char* op_type, const nlohmann::json& json_compile_info) {
+  NormCompileInfo* norm_compile_info = new NormCompileInfo(op_type, json_compile_info);
+  if (!norm_compile_info->check_success) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Norm parse compile info failed");
+    return nullptr;
+  }
+  return norm_compile_info;
+}
+
 bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
   OP_LOGD(op_type.c_str(), "Norm tiling running");
-  Norm norm(op_type, op_paras, norm_compile_info, run_info);
+  AutoTilingOp auto_tiling_op(op_type.c_str(), &op_paras, &norm_compile_info, &run_info);
+  Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);
   return norm.DoTiling();
 }
 
 bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
                                  const OpInfo& op_info) const {
   OP_LOGD(op_type.c_str(), "Norm tiling with op_info running");
-  Norm norm(op_type, op_paras, norm_compile_info, run_info);
-  return norm.DoTiling(op_info);
+  AutoTilingOp auto_tiling_op(op_type.c_str(), &op_paras, &norm_compile_info, &run_info);
+  Norm<AutoTilingOp> norm(&auto_tiling_op, OpInfoImplGetter::GetOpInfoImpl(&op_info).get());
+  return norm.DoTiling();
 }
 
 std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
@@ -1881,4 +1980,6 @@ std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op
 
   return compile_info_ptr;
 }
+
+REGISTER_AUTO_TILING(SchPattern::NORM, CreateNormDslTiling, CreateNormDslParser)
 }  // namespace optiling

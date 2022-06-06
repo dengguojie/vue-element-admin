@@ -26,8 +26,12 @@
 #include <cmath>
 #include <vector>
 
-#include "graph/utils/op_desc_utils.h"
+#include "exe_graph/runtime/tiling_context.h"
+#include "exe_graph/runtime/kernel_run_context.h"
+
 #include "vector_tiling.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
 constexpr std::size_t NORM_MAX_DIM_LEN = 8;
@@ -47,15 +51,17 @@ constexpr int32_t NORM_REDUCE_TRANSPOSE_THRESHOLD = 128;
 constexpr int32_t NORM_BLOCKS_NUMBER = 8;
 constexpr int32_t NORM_CONSTANT_EIGHT = 8;
 
-struct NormCompileInfo {
+struct NormCompileInfo : AutoTilingCompileInfo {
   // construct func
   NormCompileInfo() = default;
-  NormCompileInfo(const std::string& op_type, const nlohmann::json &compile_info);
+  NormCompileInfo(const char* op_type, const nlohmann::json &compile_info);
+  ~NormCompileInfo() override = default;
   // check value
-  bool Check(const std::string& op_type) const;
+  bool Check(const char* op_type) const;
 
   bool check_success{true};
   // reduce and broadcast axis
+  int32_t reduce_attr_index{0};
   std::string reduce_attr_name;
   bool is_reduce_attr_is_int{true};
   int32_t reduce_axis_type{0};
@@ -127,24 +133,25 @@ enum class NormAxisType {
   OTHERS = 5
 };
 
+template <typename T>
 class Norm {
   public:
-    explicit Norm(const std::string& op_type, const ge::Operator& op_paras,
-                  const NormCompileInfo& compileInfo, utils::OpRunInfo& run_info)
-        : op_type(op_type), op_paras(op_paras), compileInfo(compileInfo), run_info(run_info) {
-    }
+    explicit Norm(T* _context, const OpInfoImpl* _op_info) : context(_context), op_info(_op_info) {}
+
     ~Norm() = default;
     bool DoTiling();
-    bool DoTiling(const OpInfo& op_info);
 
   private:
+    bool Init();
     bool CheckInputNum() const;
-    bool GetMaxDimLen(const ge::OpDescPtr& op_desc);
+    bool GetMaxDimLen();
     bool GetInput();
     bool InitReduce();
-    bool InitReduce(const OpInfo& op_info);
+    bool InitReduceFromOpInfo();
+    bool InitReduceFromCompileInfo();
+    bool InitReduceFromAttr();
     bool InitBroadcast();
-    bool Init();
+    bool InitAxis();
     bool GetNormPatternCommon();
     bool GetNormPattern();
     bool EliminateOne();
@@ -162,6 +169,7 @@ class Norm {
                                const std::size_t& index, const int64_t& max_block_factor = 0);
     bool GetPartialReorderBlockTilingInfo();
     bool GetWorkspaceBlockTilingInfo();
+    bool GetPartialReorderBlockDim();
     bool GetBlockTilingInfo();
     bool ProcessReorderAxis();
     bool GetPartialReorderUbTilingInfo();
@@ -193,10 +201,11 @@ class Norm {
     int64_t CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis) const;
     int64_t CalcReorderAlignShapeProduct(int32_t axis_index) const;
 
-    const std::string& op_type;
-    const ge::Operator& op_paras;
-    const NormCompileInfo& compileInfo;
-    utils::OpRunInfo& run_info;
+    T* context;
+    const OpInfoImpl* op_info{nullptr};
+    const char* op_type;
+    const NormCompileInfo* compileInfo;
+
     NormTilingInfo tilingInfo;
     NormReorderInfo reorderInfo;
 
@@ -258,10 +267,13 @@ class Norm {
     int32_t reduce_trans_max_ub_count{-1};
 };
 
+template class Norm<AutoTilingContext>;
+template class Norm<AutoTilingOp>;
+
 class NormTilingHandler: public AutoTilingHandler {
   public:
     NormTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
-      : AutoTilingHandler(o, p), norm_compile_info(o, c) {}
+      : AutoTilingHandler(o, p), norm_compile_info(o.c_str(), c) {}
     ~NormTilingHandler() = default;
     bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
     bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
