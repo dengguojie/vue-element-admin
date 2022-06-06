@@ -934,7 +934,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     }
   }
 
-  OP_LOGI(op_name.GetString(), "leave op_proto inferfunction!");
+  OP_LOGD(op_name.GetString(), "leave op_proto inferfunction!");
   PROFILING_PROTO_END()
   return GRAPH_SUCCESS;
 }
@@ -946,35 +946,33 @@ COMMON_INFER_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DInferShape);
 VERIFY_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DVerify);
 
 static graphStatus VerifyDepthwiseConv2DbpPadding(ge::Operator& op) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   std::string pad;
   if (op.GetAttr("padding", pad) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   if (pad.compare("SAME") != 0 && pad.compare("VALID") != 0) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "padding must be SAME or VALID. actual is: %s", pad.c_str());
+    CUBE_INNER_ERR_REPORT(op_name, "padding must be SAME or VALID. actual is: %s", pad.c_str());
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
 static graphStatus VerifyDepthwiseConv2DbpPads(ge::Operator& op) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   std::vector<int64_t> pads;
   if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   if (pads.size() < kConv2dPadSizeLimit) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "op pads's size is illegal,pads.size:%zu", pads.size());
+    CUBE_INNER_ERR_REPORT(op_name, "op pads's size is illegal,pads.size:%zu", pads.size());
     return GRAPH_FAILED;
   }
-  OP_LOGI(op_name.GetString(), "op pads: [top, bottom, left, right] is %s", ops::to_string(pads).c_str());
+  OP_LOGD(op_name, "op pads: [top, bottom, left, right] is %s", ops::to_string(pads).c_str());
   if (std::any_of(pads.begin(), pads.end(), [](int64_t val) {return val < 0;})) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "op get pads is illegal");
+    CUBE_INNER_ERR_REPORT(op_name, "op get pads is illegal");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -983,49 +981,48 @@ static graphStatus VerifyDepthwiseConv2DbpPads(ge::Operator& op) {
 // ----------------DepthwiseConv2DBackpropInputD Op-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInputD, DepthwiseConv2DBackpropInputDVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   std::vector<int64_t> input_size;
   input_size = GetAttrValue(op, "input_size");
-  if (!CheckListEmpty(string(op_name.GetString()), input_size, "input_size")) {
+  if (!CheckListEmpty(op_name, input_size, "input_size")) {
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(string(op_name.GetString()), strides, "strides")) {
+  if (!CheckListEmpty(op_name, strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "strides must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "strides must be NCHW!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dilations;
   dilations = GetAttrValue(op, "dilations");
-  if (!CheckListEmpty(string(op_name.GetString()), dilations, "dilations")) {
+  if (!CheckListEmpty(op_name, dilations, "dilations")) {
     return GRAPH_FAILED;
   }
   if (dilations.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "dilations must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "dilations must be NCHW!");
     return GRAPH_FAILED;
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS == op.GetAttr("data_format", data_format)) {
     if (data_format != "NCHW" && data_format != "NHWC") {
-      CUBE_INNER_ERR_REPORT(op_name.GetString(), "attr data_format(%s) only support NCHW and NHWC",
+      CUBE_INNER_ERR_REPORT(op_name, "attr data_format(%s) only support NCHW and NHWC",
         data_format.c_str());
       return GRAPH_FAILED;
     }
   }
   if (GRAPH_SUCCESS != VerifyDepthwiseConv2DbpPads(op)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get pads failed.");
+    CUBE_INNER_ERR_REPORT(op_name, "get pads failed.");
     return GRAPH_FAILED;
   }
 
   if (op.GetInputDesc(0).GetDataType() != op.GetInputDesc(1).GetDataType()) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "The type of filter and out_backprop must be same!");
+    CUBE_INNER_ERR_REPORT(op_name, "The type of filter and out_backprop must be same!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1033,10 +1030,9 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInputD, DepthwiseConv2DBackpropInputDVer
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
-  OP_LOGI(op_name.GetString(), "Enter DepthwiseConv2DBackpropInputD inferfunction!");
+  OP_LOGD(op_name, "Enter DepthwiseConv2DBackpropInputD inferfunction!");
   std::vector<int64_t> input_size;
   input_size = GetAttrValue(op, "input_size");
 
@@ -1048,21 +1044,21 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(string(op_name.GetString()), strides, "strides")) {
+  if (!CheckListEmpty(op_name, strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "strides must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "strides must be NCHW!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dilations;
   dilations = GetAttrValue(op, "dilations");
-  if (!CheckListEmpty(string(op_name.GetString()), dilations, "dilations")) {
+  if (!CheckListEmpty(op_name, dilations, "dilations")) {
     return GRAPH_FAILED;
   }
   if (dilations.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "dilations must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "dilations must be NCHW!");
     return GRAPH_FAILED;
   }
 
@@ -1096,16 +1092,16 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
 
   Format filterFormat = tensorDescW.GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "H", fhPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "H", fhPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "W", fwPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "W", fwPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "C", fcPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "C", fcPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "N", fnPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "N", fnPosition)) {
     return GRAPH_FAILED;
   }
 
@@ -1113,13 +1109,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
   filterW = shapeW.GetDim(fwPosition);
   filterC = shapeW.GetDim(fcPosition);
 
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "H", hPosition)) {
+  if (!GetDimInFormat(op_name, dataFormat, "H", hPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "W", wPosition)) {
+  if (!GetDimInFormat(op_name, dataFormat, "W", wPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "C", cPosition)) {
+  if (!GetDimInFormat(op_name, dataFormat, "C", cPosition)) {
     return GRAPH_FAILED;
   }
 
@@ -1245,12 +1241,11 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, std::str
                                                       ge::GeTensorDescPtr& y_desc, ge::GeTensorDescPtr& x_desc,
                                                       const int64_t& groups,
                                                       bool& unknown_rank, const std::vector<int64_t>& attr_params) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  string op_name = TbeGetName(op);
 
   bool dy_range_invalid = dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank;
   if (dy_range_invalid) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(),
+    CUBE_INNER_ERR_REPORT(op_name,
                           "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
                           dy_range.size(), dy_sizes.size());
     return false;
@@ -1298,15 +1293,15 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, std::str
       dx_range[c_input_position].second = cin;
     }
     CHECK_OP_FUNC((y_desc->SetShapeRange(dx_range)) != GRAPH_SUCCESS, return false, "do set dx range failed.");
-    OP_LOGD(op_name.GetString(), "get value_range success from GE.");
+    OP_LOGD(op_name, "get value_range success from GE.");
   } else {
     std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
     bool dx_sizes_invalid = dx_sizes.empty() || dx_sizes.size() != kConv2dDimSizeLimit;
     if (dx_sizes_invalid) {
-      OP_LOGE(op_name.GetString(), "dx_sizes list should be 4D. actual is: %lu.", dx_sizes.size());
+      OP_LOGE(op_name, "dx_sizes list should be 4D. actual is: %lu.", dx_sizes.size());
       map<string, string> err_map;
       err_map["param_name"] = "dx_sizes";
-      err_map["op_name"] = op_name.GetString();
+      err_map["op_name"] = op_name;
       err_map["expected_value"] = "4D";
       err_map["input_value"] = std::to_string(dx_sizes.size()) + "D.";
       std::string report_error_code = "E50029";
@@ -1367,8 +1362,7 @@ static bool check_conv2d_backprop_input_pads(ge::Operator& op,
                                              const std::vector<int64_t>& filter_sizes, Format filter_format,
                                              const std::vector<int64_t>& dx_sizes, Format dx_format,
                                              const std::vector<int64_t>& attr_params) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  string op_name = TbeGetName(op);
 
   std::string pad_str;
   if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
@@ -1429,8 +1423,7 @@ static bool check_conv2d_backprop_input_pads(ge::Operator& op,
 static void reset_conv2d_backprop_input_out_shape(const ge::Operator& op, const std::vector<int64_t>&dy_sizes,
                                                   Format dy_format, std::vector<int64_t>& input_sizes,
                                                   Format input_format) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return);
+  string op_name = TbeGetName(op);
 
   CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return);
   std::string dx_format_str = format2str[input_format];
@@ -1448,7 +1441,7 @@ static void reset_conv2d_backprop_input_out_shape(const ge::Operator& op, const 
     input_sizes[n_input_position] = -1;
   }
   if (dy_sizes[c_dy_position] == -1) {
-    OP_LOGW(op_name.GetString(), "input x channel is unknow, fixed channel = %d.", (int)input_sizes[c_input_position]);
+    OP_LOGW(op_name, "input x channel is unknow, fixed channel = %d.", (int)input_sizes[c_input_position]);
   }
   if (dy_sizes[h_dy_position] == -1) {
     input_sizes[h_input_position] = -1;
@@ -1460,8 +1453,7 @@ static void reset_conv2d_backprop_input_out_shape(const ge::Operator& op, const 
 
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   TensorDesc tensordesc_input = op.GetInputDescByName("out_backprop");
   auto input_grad_shape = tensordesc_input.GetShape().GetDims();
@@ -1470,40 +1462,40 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(string(op_name.GetString()), strides, "strides")) {
+  if (!CheckListEmpty(op_name, strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "strides must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "strides must be NCHW!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dilations;
   dilations = GetAttrValue(op, "dilations");
-  if (!CheckListEmpty(string(op_name.GetString()), dilations, "dilations")) {
+  if (!CheckListEmpty(op_name, dilations, "dilations")) {
     return GRAPH_FAILED;
   }
   if (dilations.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "dilations must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "dilations must be NCHW!");
     return GRAPH_FAILED;
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS == op.GetAttr("data_format", data_format)) {
     if (data_format != "NCHW" && data_format != "NHWC") {
-      CUBE_INNER_ERR_REPORT(op_name.GetString(), "attr data_format(%s) only support NCHW and NHWC",
+      CUBE_INNER_ERR_REPORT(op_name, "attr data_format(%s) only support NCHW and NHWC",
         data_format.c_str());
       return GRAPH_FAILED;
     }
   }
 
   if (VerifyDepthwiseConv2DbpPadding(op) != GRAPH_SUCCESS && VerifyDepthwiseConv2DbpPads(op) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get padding and pads both failed.");
+    CUBE_INNER_ERR_REPORT(op_name, "get padding and pads both failed.");
     return GRAPH_FAILED;
   }
 
   // filter idx is 1 and out_backprop idx is 2
   if (op.GetInputDesc(1).GetDataType() != op.GetInputDesc(2).GetDataType()) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "The type of filter and out_backprop must be same!");
+    CUBE_INNER_ERR_REPORT(op_name, "The type of filter and out_backprop must be same!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1511,10 +1503,9 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
-  OP_LOGI(op_name.GetString(), "Enter DepthwiseConv2DBackpropInput inferfunction!");
+  OP_LOGD(op_name, "Enter DepthwiseConv2DBackpropInput inferfunction!");
   int64_t groups = 0;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
@@ -1586,10 +1577,10 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   auto shapeW = tensorDescW.GetShape();
   Format filterFormat = tensorDescW.GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
-  bool filter_format_invalid = !GetDimInFormat(string(op_name.GetString()), filterFormatStr, "H", fh_position) ||
-                               !GetDimInFormat(string(op_name.GetString()), filterFormatStr, "W", fw_position) ||
-                               !GetDimInFormat(string(op_name.GetString()), filterFormatStr, "C", fc_position) ||
-                               !GetDimInFormat(string(op_name.GetString()), filterFormatStr, "N", fn_position);
+  bool filter_format_invalid = !GetDimInFormat(op_name, filterFormatStr, "H", fh_position) ||
+                               !GetDimInFormat(op_name, filterFormatStr, "W", fw_position) ||
+                               !GetDimInFormat(op_name, filterFormatStr, "C", fc_position) ||
+                               !GetDimInFormat(op_name, filterFormatStr, "N", fn_position);
   if (filter_format_invalid) {
     return GRAPH_FAILED;
   }
@@ -1598,8 +1589,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   filter_w = shapeW.GetDim(fw_position);
   filter_c = shapeW.GetDim(fc_position);
 
-  bool data_format_invalid = !GetDimInFormat(string(op_name.GetString()), dataFormat, "H", h_position) ||
-                             !GetDimInFormat(string(op_name.GetString()), dataFormat, "W", w_position);
+  bool data_format_invalid = !GetDimInFormat(op_name, dataFormat, "H", h_position) ||
+                             !GetDimInFormat(op_name, dataFormat, "W", w_position);
   if (data_format_invalid) {
     return GRAPH_FAILED;
   }
@@ -1654,7 +1645,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   if (input_sizes.size() == kConv2dDimSizeLimit) {
     y_desc->SetShape(GeShape(input_sizes));
   }
-  OP_LOGI(op_name.GetString(), "Leaving DepthwiseConv2dBackpropInput inferfunction!");
+  OP_LOGD(op_name, "Leaving DepthwiseConv2dBackpropInput inferfunction!");
 
   return GRAPH_SUCCESS;
 }
@@ -1667,53 +1658,52 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerify
 // ----------------DepthwiseConv2DBackpropFilterD Op-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
-  if (!CheckListEmpty(string(op_name.GetString()), filter_size, "filter_size")) {
+  if (!CheckListEmpty(op_name, filter_size, "filter_size")) {
     return GRAPH_FAILED;
   }
   if (filter_size.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "Filter_size's dim must be 4!");
+    CUBE_INNER_ERR_REPORT(op_name, "Filter_size's dim must be 4!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(string(op_name.GetString()), strides, "strides")) {
+  if (!CheckListEmpty(op_name, strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "strides must be 4!");
+    CUBE_INNER_ERR_REPORT(op_name, "strides'dim must be 4!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dilations;
   dilations = GetAttrValue(op, "dilations");
-  if (!CheckListEmpty(string(op_name.GetString()), dilations, "dilations")) {
+  if (!CheckListEmpty(op_name, dilations, "dilations")) {
     return GRAPH_FAILED;
   }
   if (dilations.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "dilations must be 4!");
+    CUBE_INNER_ERR_REPORT(op_name, "dilations must be 4!");
     return GRAPH_FAILED;
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS == op.GetAttr("data_format", data_format)) {
     if (data_format != "NCHW" && data_format != "NHWC") {
-      CUBE_INNER_ERR_REPORT(op_name.GetString(),
+      CUBE_INNER_ERR_REPORT(op_name,
                             "attr data_format(%s) only support NCHW and NHWC", data_format.c_str());
       return GRAPH_FAILED;
     }
   }
   if (GRAPH_SUCCESS != VerifyDepthwiseConv2DbpPads(op)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get pads failed.");
+    CUBE_INNER_ERR_REPORT(op_name, "get pads failed.");
     return GRAPH_FAILED;
   }
 
   if (op.GetInputDesc(0).GetDataType() != op.GetInputDesc(1).GetDataType()) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "The type of input and out_backprop must be same!");
+    CUBE_INNER_ERR_REPORT(op_name, "The type of input and out_backprop must be same!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1721,8 +1711,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDV
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
@@ -1734,21 +1723,21 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(string(op_name.GetString()), strides, "strides")) {
+  if (!CheckListEmpty(op_name, strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "strides must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "strides must be NCHW!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dilations;
   dilations = GetAttrValue(op, "dilations");
-  if (!CheckListEmpty(string(op_name.GetString()), dilations, "dilations")) {
+  if (!CheckListEmpty(op_name, dilations, "dilations")) {
     return GRAPH_FAILED;
   }
   if (dilations.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "dilations must be NCHW!");
+    CUBE_INNER_ERR_REPORT(op_name, "dilations must be NCHW!");
     return GRAPH_FAILED;
   }
 
@@ -1778,13 +1767,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
 
   Format filterFormat = tensordesc_output.GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "H", fhPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "H", fhPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "W", fwPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "W", fwPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "C", fcPosition)) {
+  if (!GetDimInFormat(op_name, filterFormatStr, "C", fcPosition)) {
     return GRAPH_FAILED;
   }
   filterH = filter_size[fhPosition];
@@ -1794,13 +1783,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   auto tensorDescIn = op.GetInputDesc(0);
   auto shapeIn = tensorDescIn.GetShape();
 
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "H", hPosition)) {
+  if (!GetDimInFormat(op_name, dataFormat, "H", hPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "W", wPosition)) {
+  if (!GetDimInFormat(op_name, dataFormat, "W", wPosition)) {
     return GRAPH_FAILED;
   }
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "C", cPosition)) {
+  if (!GetDimInFormat(op_name, dataFormat, "C", cPosition)) {
     return GRAPH_FAILED;
   }
 
@@ -1830,41 +1819,40 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDVe
 // ----------------DepthwiseConv2DBackpropFilter Op-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
   Tensor filter_size_tensor;
   std::vector<int64_t> filter_size;
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
-  if (!CheckListEmpty(string(op_name.GetString()), strides, "strides")) {
+  if (!CheckListEmpty(op_name, strides, "strides")) {
     return GRAPH_FAILED;
   }
   if (strides.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "strides must be 4!");
+    CUBE_INNER_ERR_REPORT(op_name, "strides must be 4!");
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dilations;
   dilations = GetAttrValue(op, "dilations");
-  if (!CheckListEmpty(string(op_name.GetString()), dilations, "dilations")) {
+  if (!CheckListEmpty(op_name, dilations, "dilations")) {
     return GRAPH_FAILED;
   }
   if (dilations.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "dilations must be 4!");
+    CUBE_INNER_ERR_REPORT(op_name, "dilations must be 4!");
     return GRAPH_FAILED;
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS == op.GetAttr("data_format", data_format)) {
     if (data_format != "NCHW" && data_format != "NHWC") {
-      CUBE_INNER_ERR_REPORT(op_name.GetString(), "attr data_format(%s) only support NCHW and NHWC",
+      CUBE_INNER_ERR_REPORT(op_name, "attr data_format(%s) only support NCHW and NHWC",
         data_format.c_str());
       return GRAPH_FAILED;
     }
   }
   if (VerifyDepthwiseConv2DbpPadding(op) != GRAPH_SUCCESS && VerifyDepthwiseConv2DbpPads(op) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get padding and pads both failed.");
+    CUBE_INNER_ERR_REPORT(op_name, "get padding and pads both failed.");
     return GRAPH_FAILED;
   }
 
@@ -1876,10 +1864,9 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVer
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
 
-  OP_LOGD(op_name.GetString(), "Enter DepthwiseConv2DBackpropFilter inferfunction!");
+  OP_LOGD(op_name, "Enter DepthwiseConv2DBackpropFilter inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   std::vector<std::string> input_infer_depends = {"filter_size"};
@@ -1961,10 +1948,10 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   int64_t padleft = 0;
   int64_t padright = 0;
 
-  bool filter_format_invalid = !GetDimInFormat(string(op_name.GetString()), filter_format_str, "H", fh_position) ||
-                               !GetDimInFormat(string(op_name.GetString()), filter_format_str, "W", fw_position) ||
-                               !GetDimInFormat(string(op_name.GetString()), filter_format_str, "C", fc_position) ||
-                               !GetDimInFormat(string(op_name.GetString()), filter_format_str, "N", fn_position);
+  bool filter_format_invalid = !GetDimInFormat(op_name, filter_format_str, "H", fh_position) ||
+                               !GetDimInFormat(op_name, filter_format_str, "W", fw_position) ||
+                               !GetDimInFormat(op_name, filter_format_str, "C", fc_position) ||
+                               !GetDimInFormat(op_name, filter_format_str, "N", fn_position);
   if (filter_format_invalid) {
     return GRAPH_FAILED;
   }
@@ -1977,8 +1964,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   auto tensorDescIn = op.GetInputDesc(0);
   auto shapeIn = tensorDescIn.GetShape();
 
-  bool data_format_invalid = !GetDimInFormat(string(op_name.GetString()), data_format, "H", h_position) ||
-                             !GetDimInFormat(string(op_name.GetString()), data_format, "W", w_position);
+  bool data_format_invalid = !GetDimInFormat(op_name, data_format, "H", h_position) ||
+                             !GetDimInFormat(op_name, data_format, "W", w_position);
   if (data_format_invalid) {
     return GRAPH_FAILED;
   }
@@ -2010,14 +1997,14 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
     if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
       if (pad_str == "SAME") {
         op.SetAttr("pads", {-1, -1, -1, -1});
-        OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+        OP_LOGD(op_name, "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
       } else if (pad_str == "VALID") {
         op.SetAttr("pads", {0, 0, 0, 0});
-        OP_LOGD(op_name.GetString(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
+        OP_LOGD(op_name, "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
       }
     }
   }
-  OP_LOGD(op_name.GetString(), "Leaving DepthwiseConv2DBackpropFilter inferfunction!");
+  OP_LOGD(op_name, "Leaving DepthwiseConv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
 
@@ -2105,15 +2092,14 @@ static inline int32_t align_conv2dbp(int32_t x1, int32_t x2) {
 
 static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& stride_w, int32_t& dilation_h,
                                 int32_t& dilation_w) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  string op_name = TbeGetName(op);
 
   std::string dataFormat = "";
   int32_t hPosition = 0;
   int32_t wPosition = 0;
   if (ge::GRAPH_SUCCESS == op.GetAttr("data_format", dataFormat)) {
     if (dataFormat != "NCHW" && dataFormat != "NHWC") {
-      OP_LOGE(op_name.GetString(), "conv2DBackprop's dataFormat error, should be HCHW OR NHWC!");
+      OP_LOGE(op_name, "conv2DBackprop's dataFormat error, should be HCHW OR NHWC!");
       map<string, string> err_map;
       err_map["param"] = "data_Format";
       err_map["op_name"] = "conv2Dbp";
@@ -2124,7 +2110,7 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
       return false;
     }
   } else {
-    OP_LOGE(op_name.GetString(), "GetOpAttr dataFormat failed!");
+    OP_LOGE(op_name, "GetOpAttr dataFormat failed!");
     map<string, string> err_map;
     err_map["op_name"] = "conv2Dbp";
     err_map["param_name"] = "data_Format";
@@ -2139,7 +2125,7 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
   std::vector<int32_t> strideList;
   if (GRAPH_SUCCESS == op.GetAttr("strides", strideList)) {
     if (strideList.empty()) {
-      OP_LOGE(op_name.GetString(), "strideList from op is empty!");
+      OP_LOGE(op_name, "strideList from op is empty!");
       map<string, string> err_map;
       err_map["op_name"] = "conv2Dbp";
       err_map["param_name"] = "stride_List";
@@ -2150,7 +2136,7 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
     stride_h = strideList[hPosition];
     stride_w = strideList[wPosition];
   } else {
-    OP_LOGE(op_name.GetString(), "Get strides list failed!");
+    OP_LOGE(op_name, "Get strides list failed!");
     map<string, string> err_map;
     err_map["op_name"] = "conv2Dbp";
     err_map["param_name"] = "stride_List";
@@ -2162,7 +2148,7 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
   std::vector<int32_t> dilationsList;
   if (GRAPH_SUCCESS == op.GetAttr("dilations", dilationsList)) {
     if (dilationsList.size() != kConv2dDimSizeLimit) {
-      OP_LOGE(op_name.GetString(), "dilationsList list should be 4d");
+      OP_LOGE(op_name, "dilationsList list should be 4d");
       map<string, string> err_map;
       err_map["op_name"] = "Conv2DBackpropInput";
       err_map["param_name"] = "dilationsList";
@@ -2175,7 +2161,7 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
     dilation_h = dilationsList[hPosition];
     dilation_w = dilationsList[wPosition];
   } else {
-    OP_LOGE(op_name.GetString(), "get dilations list failed.");
+    OP_LOGE(op_name, "get dilations list failed.");
     map<string, string> err_map;
     err_map["op_name"] = "Conv2DBackpropInput";
     err_map["param_name"] = "dilations";
@@ -2189,10 +2175,9 @@ static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& st
 template <typename T1, typename T2>
 static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& inputSizes, Format inputFormat,
                                         std::vector<T2>& filterSizes, Format filterFormat) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  string op_name = TbeGetName(op);
 
-  OP_LOGI(op_name.GetString(), "SetPadListByPaddingConv2dbp begin.");
+  OP_LOGD(op_name, "SetPadListByPaddingConv2dbp begin.");
   CHECK_OP_FUNC(FORMAT_RESERVED == inputFormat, return false, "get format failed: %d", inputFormat);
   CHECK_OP_FUNC(FORMAT_RESERVED == filterFormat, return false, "get format failed: %d", filterFormat);
 
@@ -2201,7 +2186,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
   int32_t dilation_h = 0;
   int32_t dilation_w = 0;
   if (!getStrideDilationHW(op, stride_h, stride_w, dilation_h, dilation_w)) {
-    OP_LOGE(op_name.GetString(), "op get strides failed.");
+    OP_LOGE(op_name, "op get strides failed.");
     map<string, string> err_map;
     err_map["op_name"] = "conv2Dbp";
     err_map["param_name"] = "stridet";
@@ -2255,7 +2240,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
 
   if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
     if (pads.size() < kConv2dPadSizeLimit) {
-      OP_LOGE(op_name.GetString(), "op pads's size is illegal.");
+      OP_LOGE(op_name, "op pads's size is illegal.");
       map<string, string> err_map;
       err_map["op_name"] = "conv2Dbp";
       err_map["param_name"] = "pads";
@@ -2266,7 +2251,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
       return false;
     }
     if (std::any_of(pads.begin(), pads.end(), [](int32_t val){ return val < 0;})) {
-      OP_LOGE(op_name.GetString(), "op get pads is illegal");
+      OP_LOGE(op_name, "op get pads is illegal");
       map<string, string> err_map;
       err_map["op_name"] = "conv2Dbp";
       err_map["param_name"] = "pads";
@@ -2277,7 +2262,7 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
       return false;
     }
   } else {
-    OP_LOGE(op_name.GetString(), "op get pads failed.");
+    OP_LOGE(op_name, "op get pads failed.");
     map<string, string> err_map;
     err_map["op_name"] = "conv2Dbp";
     err_map["param_name"] = "pads";
@@ -2285,17 +2270,16 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
-  OP_LOGI(op_name.GetString(), "op set pads succ.");
+  OP_LOGD(op_name, "op set pads succ.");
   return true;
 }
 
 template <typename T1, typename T2>
 static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format input_format,
                           std::vector<T2>& filter_sizes, Format filter_format) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  string op_name = TbeGetName(op);
 
-  OP_LOGI(op_name.GetString(), "Setgroups begin.");
+  OP_LOGD(op_name, "Setgroups begin.");
 
   CHECK_OP_FUNC(FORMAT_RESERVED == input_format, return false, "get format failed: %d", input_format);
   CHECK_OP_FUNC(FORMAT_RESERVED == filter_format, return false, "get format failed: %d", filter_format);
@@ -2306,9 +2290,9 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
 
   size_t format_len = input_format_str.length();
   if (filter_sizes.size() < format_len || input_sizes.size() < format_len) {
-    OP_LOGE(op_name.GetString(), "filter_sizes or input_sizes is illegal");
+    OP_LOGE(op_name, "filter_sizes or input_sizes is illegal");
     map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
+    err_map["op_name"] = op_name;
     err_map["param_name"] = "filter_sizes and input_sizes";
     err_map["expected_length"] = std::to_string(format_len);
     err_map["length"] = std::to_string(filter_sizes.size()) + " and " + std::to_string(input_sizes.size());
@@ -2323,17 +2307,17 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
   int32_t w_c = filter_sizes[w_position];
   int32_t groups = 1;
   if (w_c == 0) {
-    OP_LOGE(op_name.GetString(), "channel of filter can not be 0.");
+    OP_LOGE(op_name, "channel of filter can not be 0.");
     map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
+    err_map["op_name"] = op_name;
     err_map["description"] = "channel of filter can not be 0.";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   } else if (x_c % w_c != 0) {
-    OP_LOGE(op_name.GetString(), "fmap_channel %% filter_channel != 0");
+    OP_LOGE(op_name, "fmap_channel %% filter_channel != 0");
     map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
+    err_map["op_name"] = op_name;
     err_map["description"] = "fmap_channel % filter_channel != 0";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -2345,12 +2329,12 @@ static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format
   op.GetAttr("groups", groups_ori);
   if (groups_ori == 1) {
     op.SetAttr("groups", groups);
-    OP_LOGI(op_name.GetString(), "op set groups succ.");
+    OP_LOGD(op_name, "op set groups succ.");
     return true;
   } else if (groups_ori != groups) {
-    OP_LOGE(op_name.GetString(), "fmap_channel / filter_channel != groups");
+    OP_LOGE(op_name, "fmap_channel / filter_channel != groups");
     map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
+    err_map["op_name"] = op_name;
     err_map["description"] = "fmap_channel / filter_channel != groups";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -10090,7 +10074,7 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
 
 IMPLEMT_VERIFIER(Conv2DTransposeD, Conv2DTransposeDVerify) {
   AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, 
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
         OP_LOGE("Conv2DTransposeD", "failed to get op_name"),
         return GRAPH_FAILED);
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
