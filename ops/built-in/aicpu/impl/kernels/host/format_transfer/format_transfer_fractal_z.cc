@@ -302,7 +302,7 @@ uint32_t FormatTransferFractalZ::TransShape(
   }
 
   if (src_format == FORMAT_NHWC &&
-      GetPrimaryFormat(dst_format) == FORMAT_FRACTAL_Z) {
+      GetPrimaryFormat(static_cast<int32_t>(dst_format)) == FORMAT_FRACTAL_Z) {
     return TransShapeNhwcToFzWithGroups(src_shape, data_type, dst_shape,
                                         groups);
   }

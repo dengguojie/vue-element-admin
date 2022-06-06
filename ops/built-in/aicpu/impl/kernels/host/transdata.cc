@@ -404,7 +404,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_PARAM_INVALID;
     }
     uint64_t data_type_size = output_tensor->GetDataSize();
-    uint64_t data_byte_size = static_cast<uint64_t>(GetSizeByDataType(data_type)) * data_type_size;
+    uint64_t data_byte_size = static_cast<uint64_t>(GetSizeByDataType(data_type) * data_type_size);
     TransArgs args = {reinterpret_cast<uint8_t *>(input_tensor->GetData()),
                       input_tensor->GetTensorShape()->GetDimSizes(),
                       output_tensor->GetTensorShape()->GetDimSizes(),
@@ -595,7 +595,7 @@ uint32_t TransDataCpuKernel::PaddingTwo(TransArgs &args,
     KERNEL_LOG_ERROR("New Memory failed!");
     return KERNEL_STATUS_INNER_ERROR;
   }
-  auto ret_mem = static_cast<int64_t>(memset_s(dst.get(), dst_byte_size, 0, dst_byte_size));
+  auto ret_mem = memset_s(dst.get(), dst_byte_size, 0, dst_byte_size);
   if (ret_mem != 0) {
     KERNEL_LOG_ERROR("Memst failed, ret is [%d]", ret_mem);
     return KERNEL_STATUS_INNER_ERROR;
@@ -684,11 +684,11 @@ uint32_t TransDataCpuKernel::Transpose(TransArgs &args,
   std::map<int32_t, int32_t> index_map;
   GetIndexMap(perm_arg, index_map);
   while (dst_index < dst_ele_num) {
-    auto src_index = static_cast<int32_t>(GetSrcIndex(dst_index, src_shape, dst_shape,
-                                                      src_shape_head, dst_shape_head, index_map));
-    auto ret = static_cast<long>(memcpy_s(dst.get() + dst_index * data_size,
-                                          dst_size - dst_index * data_size,
-                                          args.data + src_index * data_size, data_size));
+    auto src_index = GetSrcIndex(dst_index, src_shape, dst_shape,
+                                 src_shape_head, dst_shape_head, index_map);
+    auto ret = memcpy_s(dst.get() + dst_index * data_size,
+                        dst_size - dst_index * data_size,
+                        args.data + src_index * data_size, data_size);
     if (ret != 0) {
       KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret);
       return KERNEL_STATUS_INNER_ERROR;

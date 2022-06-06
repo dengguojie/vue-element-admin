@@ -618,7 +618,7 @@ uint32_t TopKCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx) {
   }
   input_rank_ = input_rank;
   AttrValue *dim = ctx.GetAttr("dim");
-  dim_ = static_cast<int32_t>(dim == nullptr) ? -1 : (dim->GetInt());
+  dim_ = static_cast<int32_t>(dim == nullptr ? -1 : (dim->GetInt()));
   dim_ = dim_ < 0 ? (input_rank + dim_) : dim_;
   KERNEL_CHECK_FALSE(((dim_ >= 0) && (dim_ < input_rank)),
                      KERNEL_STATUS_PARAM_INVALID,

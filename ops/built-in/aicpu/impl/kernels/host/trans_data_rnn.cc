@@ -174,7 +174,7 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase2(std::vector<int64_t> &dims
   }
 
   Eigen::half *dstData = const_cast<Eigen::half *>(reinterpret_cast<const Eigen::half *>(dstTensor->GetData()));
-  auto ret_mem = memset_s(dstData, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen, 
+  auto ret_mem = memset_s(dstData, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen,
                           0, static_cast<int32_t>(sizeof(Eigen::half)) * dstLen);
   if (ret_mem != 0) {
     KERNEL_LOG_ERROR("memset dstData failed, ret is [%d]", ret_mem);
@@ -197,7 +197,7 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase2(std::vector<int64_t> &dims
 }
 
 uint32_t TransDataRNNCpuKernel::GenDataFractalZn(std::vector<int64_t> &dims, int32_t hiddenSize, int32_t inputSize,
-                                                 int32_t stateSize, const Tensor *srcTensor, Tensor *dstTensor) {
+                                                 int32_t stateSize, const Tensor *srcTensor, const Tensor *dstTensor) {
   if (dims.size() != 2) {
     KERNEL_LOG_ERROR("TransdataRNN, dst_format is FRACTAL_ZN_RNN, rank of src shape must be 2!");
     return KERNEL_STATUS_PARAM_INVALID;
