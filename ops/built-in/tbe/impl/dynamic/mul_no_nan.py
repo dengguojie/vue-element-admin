@@ -22,6 +22,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator_compute
 
 
@@ -62,7 +63,22 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
 
     zero = tvm.const(0, dtype=src_dtype)
     zeros = tbe.broadcast(zero, shape_max)
+    cast_flag = False
+    if not tbe_platform.api_check_support("tbe.dsl.vcmpsel", src_dtype):
+        if tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32"):
+            cast_flag = True
+            input_x2 = tbe.cast_to(input_x2, "float32")
+            zeros = tbe.cast_to(zeros, "float32")
+            mul_res = tbe.cast_to(mul_res, "float32")
+        else:
+            cast_flag = True
+            input_x2 = tbe.cast_to(input_x2, "float16")
+            zeros = tbe.cast_to(zeros, "float16")
+            mul_res = tbe.cast_to(mul_res, "float16")
+
     res = tbe.vcmpsel(input_x2, zeros, operation='eq', slhs=zeros, srhs=mul_res)
+    if cast_flag:
+        res = tbe.cast_to(res, src_dtype)
 
     return res
 

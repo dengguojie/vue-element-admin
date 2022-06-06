@@ -1298,6 +1298,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bninference_d.py
       - ops/built-in/tbe/impl/dynamic/broadcast_to.py
       - ops/built-in/tbe/impl/dynamic/ceil.py
+      - ops/built-in/tbe/impl/dynamic/mul_no_nan.py
       - ops/built-in/tbe/impl/dynamic/clip_by_norm_no_div_sum.py
       - ops/built-in/tbe/impl/dynamic/clip_by_value.py
       - ops/built-in/tbe/impl/dynamic/cos.py
@@ -3125,7 +3126,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/index_fill_d.py
       - ops/built-in/tbe/impl/dynamic/real_div.py
       - ops/built-in/tbe/impl/dynamic/prod_force_se_a.py
-      - ops/built-in/tbe/impl/dynamic/mul_no_nan.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_d.py
       - ops/built-in/tbe/impl/dynamic/tabulate_fusion_grad.py
       - ops/built-in/tbe/impl/dynamic/l2_loss.py
