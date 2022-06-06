@@ -38,6 +38,7 @@ from tbe.dsl.base import operation
 from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
+from tbe.dsl.base.operation import get_op_context
 from tbe.dsl.base.operation import register_build_pointcut
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
@@ -164,6 +165,7 @@ class CalcReduceTilingCase(Computation):
                 possible_case_list = []
                 possible_case_list += _calculate_tiling_cases(single_reduce_info)
                 possible_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+                possible_case_list += _calculate_group_reduce_tiling_cases(single_reduce_info)
                 for _case in possible_case_list:
                     if _case.is_reduce_transpose_case:
                         ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case,
@@ -189,6 +191,7 @@ class CalcReduceTilingCase(Computation):
             def _calc_dynamic_case(dynamic_tiling_case_list):
                 dynamic_tiling_case_list += _calculate_tiling_cases(single_reduce_info)
                 dynamic_tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+                dynamic_tiling_case_list += _calculate_group_reduce_tiling_cases(single_reduce_info)
                 for tiling_case in dynamic_tiling_case_list:
                     _calc_tiling_key(single_reduce_info, tiling_case)
                 # Empty schedule will always be there in the tiling_case_list
@@ -339,6 +342,7 @@ class ReduceTilingCase(TilingCaseBase):
         """
         NORMAL_REDUCE = "NORMAL"
         ATOMIC_REDUCE = "ATOMIC"
+        GROUP_REDUCE = "GROUP"
         EMPTY = "EMPTY"
 
     def __init__(self):
@@ -484,7 +488,34 @@ def build_pointcut(func, *args, **kwargs):
         dict_args = {"errCode": "E90003", "detailed_cause": "Can not find placeholder_op"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
+    def _add_fake_workspace(_args):
+        schedule_list, _ = _args
+        parameter_length_set = set()
+        for same_compute_schs in schedule_list:
+            for single_sch in same_compute_schs:
+                parameter_length_set.add(len(util.get_sch_additional_entry(single_sch, "real_outs")))
+
+        parameter_max_length, parameter_min_length = max(parameter_length_set), min(parameter_length_set)
+        if parameter_max_length == parameter_min_length:
+            return
+
+        for same_compute_schs in schedule_list:
+            for single_sch in same_compute_schs:
+                ori_real_outs = util.get_sch_additional_entry(single_sch, "real_outs")
+                if len(ori_real_outs) == parameter_max_length:
+                    continue
+
+                for index in range(parameter_max_length - parameter_min_length + 1):
+                    fake_workspace = tvm.placeholder([], dtype="uint8", name="fake_workspace_" + str(index))
+                    ori_real_outs.append(fake_workspace)
+
+                util.add_sch_additional_entry(single_sch, "real_outs", ori_real_outs)
+        add_compile_info_inner("_workspace_size", parameter_max_length - parameter_min_length + 1)
+
+        return
+
     _find_idx_in_tensor_list()
+    _add_fake_workspace(args)
     func(*args, **kwargs)
 
 
@@ -495,6 +526,7 @@ def apply_common_compile_info(graph_info, reduce_info):
     # Common_Info: message from ori computation that only attach once
     pre_compile_info = get_compile_info()
     if pre_compile_info:
+        reduce_tensor_dtype_byte = DTYPE_BYTE_MAPPING.get(reduce_info.reduce_tensor.dtype)
         if "_common_info" not in pre_compile_info.keys():
             atomic = 0
             if check_atomic_add_support(reduce_info):
@@ -506,9 +538,17 @@ def apply_common_compile_info(graph_info, reduce_info):
             support_transpose = 0
             if reduce_info.reduce_tensor.op.tag in REDUCE_EMITSN_SUPPORT_TRANSPOSE:
                 support_transpose = 1
+            support_group_reduce = get_soc_spec(SOC_VERSION) != ASCEND_910B
             common_info = [core_num, keep_dims, min_block_size, atomic, graph_info.coef,
-                           graph_info.pad_max_entire_size, support_transpose]
+                           graph_info.pad_max_entire_size, support_transpose, reduce_tensor_dtype_byte,
+                           support_group_reduce]
             add_compile_info_inner("_common_info", common_info)
+        else:
+            # update reduce_tensor_dtype_byte
+            cur_common_info = pre_compile_info.get("_common_info")
+            reduce_tensor_dtype_byte_index = 7
+            cur_common_info[reduce_tensor_dtype_byte_index] = max(cur_common_info[reduce_tensor_dtype_byte_index],
+                                                                  reduce_tensor_dtype_byte)
     else:
         raise RuntimeError("pre_compile_info is Null")
 
@@ -656,12 +696,16 @@ def _calc_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling
         add_compile_info_inner(CompileInfo.ATOMIC_FLAGS, atomic_flags)
     atomic_flags[str(const_tiling_case.tiling_key)] = run_info["clear_atomic"]
 
+    if const_tiling_case.type == const_tiling_case.Type.GROUP_REDUCE:
+        _add_workspace_info_in_json(single_reduce_info, compute_graph_info,
+                                    const_tiling_case.block_split_axis_index, run_info.get("block_dim"))
+
 
 def _gen_const_tiling_case(single_reduce_info, const_tiling_case, run_info):
     shape_before_reduce = shape_to_list(single_reduce_info.shape_before_reduce)
     tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int",
                      "tensor_ub_size_before_reduce": "int", "tensor_ub_size_after_reduce": "int",
-                     "sch_type": "int"}
+                     "sch_type": "int", "is_group_reduce": "int"}
 
     tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
     const_tiling_case.block_split_axis_index = tiling_data["block_axis"]
@@ -670,8 +714,13 @@ def _gen_const_tiling_case(single_reduce_info, const_tiling_case, run_info):
     const_tiling_case.ub_factor = tiling_data["ub_factor"]
     const_tiling_case.tensor_ub_size_before_reduce = tiling_data["tensor_ub_size_before_reduce"]
     const_tiling_case.tensor_ub_size_after_reduce = tiling_data["tensor_ub_size_after_reduce"]
-    const_tiling_case.type = \
-        const_tiling_case.Type.ATOMIC_REDUCE if run_info["clear_atomic"] else const_tiling_case.Type.NORMAL_REDUCE
+    if run_info.get("clear_atomic"):
+        if tiling_data.get("is_group_reduce"):
+            const_tiling_case.type = const_tiling_case.Type.GROUP_REDUCE
+        else:
+            const_tiling_case.type = const_tiling_case.Type.ATOMIC_REDUCE
+    else:
+        const_tiling_case.type = const_tiling_case.Type.NORMAL_REDUCE
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
     const_tiling_case.is_reduce_pad_case = True if tiling_data.get("sch_type") == 1 else False
     const_tiling_case.is_reduce_transpose_case = True if tiling_data.get("sch_type") == 2 else False
@@ -687,6 +736,25 @@ def _gen_const_tiling_case(single_reduce_info, const_tiling_case, run_info):
                 const_tiling_case.is_reduce_pad_case = False
     _calc_const_pad_case()
     _calc_tiling_key(single_reduce_info, const_tiling_case)
+
+
+def _add_workspace_info_in_json(single_reduce_info, compute_graph_info, block_tiling_index, block_dims):
+    block_size = get_block_size(compute_graph_info.min_type)
+    after_reduce_align_shape = util.shape_to_list(single_reduce_info.shape_after_reduce)[:]
+    after_reduce_align_shape[-1] = (after_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
+    after_reduce_product = 1
+    for index, value in enumerate(after_reduce_align_shape):
+        if index >= block_tiling_index:
+            after_reduce_product *= value
+    reduce_tensor = single_reduce_info.reduce_tensor
+    workspace_size = after_reduce_product * DTYPE_BYTE_MAPPING.get(reduce_tensor.dtype) * block_dims
+    # sync tensor has been processed in pass
+    workspace_dict_in_json = {
+        "num": 1,
+        "size": [workspace_size],
+        "type": [0]
+    }
+    get_op_context().add_build_json_result("workspace", workspace_dict_in_json)
 
 
 def _gen_zero_tiling_case():
@@ -731,6 +799,46 @@ def _calculate_atomic_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingC
     return tiling_case_list
 
 
+def _calculate_group_reduce_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingCase]:
+    tiling_case_list = []
+
+    if check_atomic_add_support(info):
+        return tiling_case_list
+    if get_soc_spec(SOC_VERSION) == ASCEND_910B or get_soc_spec("CORE_NUM") == 1:
+        return tiling_case_list
+    # not ARA
+    if len(info.reduce_axis_indexes) > 1 or info.is_reduce_last_axis():
+        return tiling_case_list
+
+    is_none_reduce = True
+    for reduce_axis in info.reduce_axis_indexes:
+        if not util.expr_equal(info.shape_before_reduce[reduce_axis], 1):
+            is_none_reduce = False
+            break
+    if is_none_reduce:
+        return tiling_case_list
+
+    for block_split_axis in range(len(info.shape_before_reduce)):
+        if block_split_axis not in info.reduce_axis_indexes:
+            continue
+        for ub_split_axis in range(len(info.shape_before_reduce)):
+            if ub_split_axis < block_split_axis:
+                continue
+            tiling_case = ReduceTilingCase()
+            tiling_case.type = ReduceTilingCase.Type.GROUP_REDUCE
+            tiling_case.block_split_axis_index = block_split_axis
+            tiling_case.ub_split_axis_index = ub_split_axis
+            tiling_case.multi_core = True
+            tiling_case_list.append(tiling_case)
+
+            tiling_case_pad = _calc_pad_case(info.shape_before_reduce, block_split_axis, ub_split_axis,
+                                             ReduceTilingCase.Type.GROUP_REDUCE)
+            if tiling_case_pad is not None:
+                tiling_case_list.append(tiling_case_pad)
+
+    return tiling_case_list
+
+
 def check_atomic_add_support(reduce_info: SingleReduceInfo):
     """
     check if current tiling case support atomic
@@ -759,23 +867,23 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     return True
 
 
-def _gen_reduce_case(block_split_axis_index, ub_split_axis_index, is_atomic):
+def _gen_reduce_case(block_split_axis_index, ub_split_axis_index, case_type):
     tiling_case = ReduceTilingCase()
     tiling_case.block_split_axis_index = block_split_axis_index
     tiling_case.ub_split_axis_index = ub_split_axis_index
     tiling_case.multi_core = True
-    tiling_case.type = tiling_case.Type.ATOMIC_REDUCE if is_atomic else tiling_case.Type.NORMAL_REDUCE
+    tiling_case.type = case_type
     return tiling_case
 
 
-def _gen_pad_case(block_split_axis_index, ub_split_axis_index, is_atomic):
-    tiling_case = _gen_reduce_case(block_split_axis_index, ub_split_axis_index, is_atomic)
+def _gen_pad_case(block_split_axis_index, ub_split_axis_index, case_type):
+    tiling_case = _gen_reduce_case(block_split_axis_index, ub_split_axis_index, case_type)
     tiling_case.is_reduce_pad_case = True
     return tiling_case
 
 
-def _gen_reduce_transpose_case(block_split_axis_index, ub_split_axis_index, is_atomic):
-    tiling_case = _gen_reduce_case(block_split_axis_index, ub_split_axis_index, is_atomic)
+def _gen_reduce_transpose_case(block_split_axis_index, ub_split_axis_index, case_type):
+    tiling_case = _gen_reduce_case(block_split_axis_index, ub_split_axis_index, case_type)
     tiling_case.is_reduce_transpose_case = True
     return tiling_case
 
@@ -804,12 +912,13 @@ def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: Lis
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
 
-                tiling_case_pad = _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, False)
+                tiling_case_pad = _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis,
+                                                 ReduceTilingCase.Type.NORMAL_REDUCE)
                 if tiling_case_pad is not None:
                     tiling_case_list.append(tiling_case_pad)
 
 
-def _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, is_atomic):
+def _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, case_type):
     # for pure move case don't need do pad
     first_dim_is_one = util.expr_equal(shape_before_reduce[0], 1)
     if first_dim_is_one and len(shape_before_reduce) == REDUCE_CASE_LENGTH_TWO:
@@ -818,13 +927,13 @@ def _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, is_atom
     split_axis_info = str(block_split_axis) + "_" + str(ub_split_axis)
     support_pattern = REDUCE_SUPPORT_PAD.get(len(shape_before_reduce))
     if support_pattern is not None and split_axis_info in support_pattern:
-        tiling_case_pad = _gen_pad_case(block_split_axis, ub_split_axis, is_atomic)
+        tiling_case_pad = _gen_pad_case(block_split_axis, ub_split_axis, case_type)
         tiling_case_pad.need_remove_pad = support_pattern.get(split_axis_info)
         return tiling_case_pad
     return None
 
 
-def _calc_transpose_case(shape_before_reduce, block_split_axis, ub_split_axis, is_atomic):
+def _calc_transpose_case(shape_before_reduce, block_split_axis, ub_split_axis, case_type):
     # for pure move case don't need do pad
     first_dim_is_one = util.expr_equal(shape_before_reduce[0], 1)
     if first_dim_is_one and len(shape_before_reduce) == REDUCE_CASE_LENGTH_TWO:
@@ -833,7 +942,7 @@ def _calc_transpose_case(shape_before_reduce, block_split_axis, ub_split_axis, i
     split_axis_info = str(block_split_axis) + "_" + str(ub_split_axis)
     support_pattern = REDUCE_SUPPORT_TRANSPOSE.get(len(shape_before_reduce))
     if support_pattern is not None and split_axis_info in support_pattern:
-        tiling_case_transpose = _gen_reduce_transpose_case(block_split_axis, ub_split_axis, is_atomic)
+        tiling_case_transpose = _gen_reduce_transpose_case(block_split_axis, ub_split_axis, case_type)
         return tiling_case_transpose
     return None
 
@@ -859,13 +968,14 @@ def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[Re
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
 
-                tiling_case_pad = _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, False)
+                tiling_case_pad = _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis,
+                                                 ReduceTilingCase.Type.NORMAL_REDUCE)
                 if tiling_case_pad is not None:
                     tiling_case_list.append(tiling_case_pad)
 
                 if info.reduce_tensor.op.tag in REDUCE_EMITSN_SUPPORT_TRANSPOSE:
                     tiling_case_transpose = _calc_transpose_case(shape_before_reduce, block_split_axis,
-                                                                 ub_split_axis, False)
+                                                                 ub_split_axis, ReduceTilingCase.Type.NORMAL_REDUCE)
                     if tiling_case_transpose is not None:
                         tiling_case_list.append(tiling_case_transpose)
 
@@ -907,7 +1017,8 @@ def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
 
-                tiling_case_pad = _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis, True)
+                tiling_case_pad = _calc_pad_case(shape_before_reduce, block_split_axis, ub_split_axis,
+                                                 ReduceTilingCase.Type.ATOMIC_REDUCE)
                 if tiling_case_pad is not None:
                     tiling_case_list.append(tiling_case_pad)
     return tiling_case_list

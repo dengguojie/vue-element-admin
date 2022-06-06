@@ -54,6 +54,9 @@ struct ReduceCompileInfo {
     int32_t coef{-1};
     int32_t pad_max_entire_size{-1};
     bool support_transpose{false};
+    int32_t reduce_dtype_byte{-1};
+    bool group_reduce{false};
+    int32_t workspace_size{0};
     std::vector<int32_t> pattern_info;
     std::vector<int32_t> ub_info_rf;
     std::vector<int32_t> ub_info;
@@ -85,6 +88,7 @@ struct ReduceTilingInfo {
   uint32_t const_block_dims{0};
   bool const_atomic_flag{false};
   bool atomic{false};
+  bool group_reduce{false};
   int64_t max_ub_count{-1};
   uint idx{0};
 };
@@ -126,21 +130,26 @@ class Reduce {
   bool DoConstRunTimeBranch();
   bool DoReduceTiling();
   bool DoReduceTiling(const OpInfo& op_info);
+  bool WriteWorkspace();
   bool WriteTilingData();
   bool WriteConstTilingData();
   bool WriteDynamicTilingData();
   void FusedReduceAxis();
   void ChooseAtomic();
+  bool ChooseGroupAxis();
   void ChooseUBInfo();
   void GetReduceShapeCommonInfo();
 
   bool TilingProcess();
   bool ProcessAtomicTiling();
   bool ProcessNormalTiling();
+  bool ProcessGroupTiling();
   bool FineTuning();
 
   void ProcessReorderAxis(int32_t fused_type);
   bool GetUbTilingInfo();
+  bool GetGroupBlockTilingInfo();
+  bool GetGroupUbTilingInfo();
   bool GetAtomicBlockTilingInfo();
   bool GetAtomicBlockDim();
 

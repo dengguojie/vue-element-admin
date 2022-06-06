@@ -38,6 +38,7 @@ from ...constants import ReducePattern
 from ...constants import Pattern
 from ...constants import ReduceCategory
 from .reduce_atomic_schedule import ReduceAtomicSchedule
+from .reduce_group_schedule import ReduceGroupSchedule
 from .reduce_tilingcase import Dim
 from .reduce_tilingcase import R
 from .reduce_tilingcase import A
@@ -102,6 +103,9 @@ class EntryReduceSchedule(Schedule):
                 reduce_sch._reduce_case = ReduceCategory.NOT_LAST_REDUCE
             else:
                 reduce_sch._reduce_case = ReduceCategory.LAST_REDUCE
+            real_schedule = reduce_sch.do_schedule(outs, tiling_case)
+        elif tiling_case.type == tiling_case.Type.GROUP_REDUCE:
+            reduce_sch: ReduceSchedule = ReduceGroupSchedule(graph_info, single_reduce_info)
             real_schedule = reduce_sch.do_schedule(outs, tiling_case)
         elif tiling_case.type == tiling_case.Type.NORMAL_REDUCE:
             reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)

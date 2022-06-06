@@ -48,6 +48,8 @@ namespace {
   constexpr int32_t LEAST_LENGTH_OF_COMMON_FIVE = 5;
   constexpr int32_t LENGTH_OF_COMMON_SIX = 6;
   constexpr int32_t LENGTH_OF_COMMON_SEVEN = 7;
+  constexpr int32_t LENGTH_OF_COMMON_EIGHT = 8;
+  constexpr int32_t LENGTH_OF_COMMON_NINE = 9;
   constexpr int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
   constexpr int32_t MIN_NOT_ONE_AXIS_NUM = 2;
   constexpr int32_t SHAPE_LENGTH_TWO = 2;
@@ -57,6 +59,11 @@ namespace {
   constexpr int32_t REDUCE_TRANSPOSE_SCH_TYPE = 2;
   constexpr int32_t TRANSPOSE_THRESHOLD_VALUE = 64;
   constexpr int32_t REDUCE_AXES_TYPE_ALL = 0;
+  constexpr int32_t REDUCE_PRODUCT_COEFFICIENT = 64;
+  constexpr int32_t FAKE_WORKSPACE_SIZE = 32;
+  constexpr int32_t ALIGN_BYTES = 32;
+  // each core need 32 + 4 int64_t size
+  constexpr int32_t SINGLE_SYNC_CORE_BYTES = 288;
 }
 
 namespace v3 {
@@ -93,6 +100,10 @@ bool ReduceCompileInfo::GetCompileInfoForProcessControl(const nlohmann::json& js
 
   if (json_info.count("_reduce_axes_type") > 0) {
     reduce_axes_type = json_info.at("_reduce_axes_type").get<std::int32_t>();
+  }
+
+  if (json_info.count("_workspace_size") > 0) {
+    workspace_size = json_info.at("_workspace_size").get<std::int32_t>();
   }
   return true;
 }
@@ -133,6 +144,18 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
 
     if (common_info.size() >= LENGTH_OF_COMMON_SEVEN) {
       support_transpose = (bool)common_info[ARRAY_INDEX_6];
+    }
+
+    if (common_info.size() >= LENGTH_OF_COMMON_EIGHT) {
+      reduce_dtype_byte = common_info[LENGTH_OF_COMMON_EIGHT - 1];
+      if (reduce_dtype_byte <= 0) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "reduce dtype byte is %d that is illegal.", reduce_dtype_byte);
+        return false;
+      }
+    }
+
+    if (common_info.size() >= LENGTH_OF_COMMON_NINE) {
+      group_reduce = (bool)common_info[LENGTH_OF_COMMON_NINE - 1];
     }
   }
 
@@ -450,6 +473,7 @@ void Reduce::GetReduceShapeCommonInfo() {
     }
   }
   block_size = compileInfo.min_block_size;
+  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 }
 
 void Reduce::ChooseAtomic() {
@@ -490,6 +514,47 @@ void Reduce::ChooseAtomic() {
   reduceTilingInfo.atomic = reduceTilingInfo.atomic || (shape_limitation && is_outermost_nlast_reduce);
   // Final
   reduceTilingInfo.atomic = reduceTilingInfo.atomic && atomic_available;
+}
+
+bool Reduce::ChooseGroupAxis() {
+  // dont support group reduce
+  if (!compileInfo.group_reduce) {
+    return false;
+  }
+  // ARA
+  if (is_last_axis_reduce || reduce_axis.size() != 1) {
+    return false;
+  }
+  // can not enable atomic
+  if (compileInfo.atomic) {
+    return false;
+  }
+  // don't exist 0 shape
+  if (exit_zero_axis) {
+    return false;
+  }
+
+  int64_t reduce_product = 1;
+  int64_t common_product_except_last_a = 1;
+  for (std::size_t i = 0; i < input_shape.size(); i++) {
+    if (IsInVector(reduce_axis, static_cast<int32_t>(i))) {
+      reduce_product *= input_shape[i];
+    } else if (i != input_shape.size() - 1) {
+      common_product_except_last_a *= input_shape[i];
+    }
+  }
+
+  int64_t last_dim_a = is_last_axis_reduce ? 1 : input_shape.back();
+  // common product(except last a) is small enough
+  if (common_product_except_last_a >= compileInfo.core_num / BASE_2) {
+    return false;
+  }
+  // reduce product is large enough
+  if (reduce_product < compileInfo.core_num * REDUCE_PRODUCT_COEFFICIENT) {
+    return false;
+  }
+  // second step don't split ub
+  return compileInfo.core_num * last_dim_a <= compileInfo.ub_info[reduceTilingInfo.idx];
 }
 
 bool Reduce::IsReduceTransposeCase() {
@@ -587,6 +652,10 @@ bool Reduce::IsReducePadCase() const {
 }
 
 bool Reduce::IsEnableReducePad() const {
+  // group reduce can enable align pad
+  if (reduceTilingInfo.group_reduce) {
+    return true;
+  }
   int32_t input_shape_size = input_shape.size();
   int32_t core_num = compileInfo.core_num;
   int32_t pad_max_entire_size = compileInfo.pad_max_entire_size;
@@ -604,9 +673,7 @@ bool Reduce::IsEnableReducePad() const {
   return false;
 }
 
-
 void Reduce::ChooseUBInfo() {
-  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
   // UB_SPACE of ub_info is more than ub_info_rf, Atomic selected the former.
   // nodes after reduce(include reduce) have same space(ubSizeA)
   // nodes before reduce have same space(ubSizeB)
@@ -952,6 +1019,61 @@ bool Reduce::ProcessAtomicTiling() {
   return GetUbTilingInfo();
 }
 
+bool Reduce::ProcessGroupTiling() {
+  bool ret = GetGroupBlockTilingInfo();
+  ret = ret && GetGroupUbTilingInfo();
+
+  return ret;
+}
+
+bool Reduce::GetGroupBlockTilingInfo() {
+  int64_t left_product = 1;
+  for (int32_t i = 0; i < static_cast<int32_t>(input_shape.size()); i++) {
+    // block split R
+    if (!IsInVector(reduce_axis, i)) {
+      left_product *= input_shape[i];
+      continue;
+    }
+    if (left_product < compileInfo.core_num && left_product * input_shape[i] >= compileInfo.core_num) {
+      reduceTilingInfo.block_tiling_axis = i;
+      int64_t need_block_outer = compileInfo.core_num / left_product;
+      reduceTilingInfo.block_tiling_factor = (input_shape[i] + need_block_outer - 1) / need_block_outer;
+      reduceTilingInfo.block_dim = (input_shape[i] + reduceTilingInfo.block_tiling_factor - 1) /
+        reduceTilingInfo.block_tiling_factor * left_product;
+      return true;
+    } else {
+      left_product *= input_shape[i];
+    }
+  }
+
+  return false;
+}
+
+bool Reduce::GetGroupUbTilingInfo() {
+  int64_t right_product = 1;
+  for (int32_t i = static_cast<int32_t>(input_shape.size()) - 1; i >= 0; i--) {
+    if (right_product < ubSizeB && right_product * input_shape[i] >= ubSizeB) {
+      // find ub split axis
+      reduceTilingInfo.ub_tiling_axis = i;
+      reduceTilingInfo.ub_tiling_factor = ubSizeB / right_product;
+      return true;
+    } else if (i == reduceTilingInfo.block_tiling_axis) {
+      // first optional axis is block_tiling_axis
+      reduceTilingInfo.ub_tiling_axis = i;
+      reduceTilingInfo.ub_tiling_factor = reduceTilingInfo.block_tiling_factor;
+      return true;
+    } else {
+      if (i == static_cast<int32_t>(input_shape.size()) - 1) {
+        right_product = (input_shape[i] + block_size - 1) / block_size * block_size * right_product;
+      } else {
+        right_product = input_shape[i] * right_product;
+      }
+    }
+  }
+
+  return false;
+}
+
 bool Reduce::ProcessNormalTiling() {
   // init
   reduceTilingInfo.block_dim = 1;
@@ -1128,12 +1250,43 @@ bool Reduce::DoConstRunTimeBranch() {
   return true;
 }
 
-bool Reduce::WriteTilingData() {
-  if (reduceTilingInfo.atomic) {
-    run_info.SetClearAtomic(true);
-  } else {
-    run_info.SetClearAtomic(false);
+bool Reduce::WriteWorkspace() {
+  if (compileInfo.workspace_size == 0) {
+    return true;
   }
+  if (reduceTilingInfo.group_reduce) {
+    int64_t right_product = 1;
+    for (int32_t i = static_cast<int32_t>(input_shape.size()) - 1; i >= 0; i--) {
+      if (i == reduceTilingInfo.block_tiling_axis) {
+        break;
+      }
+      if (i == static_cast<int32_t>(input_shape.size()) - 1) {
+        right_product = (input_shape[i] + block_size - 1) / block_size * block_size * right_product;
+      } else {
+        right_product = input_shape[i] * right_product;
+      }
+    }
+    int32_t actual_reduce_type_bytes = compileInfo.reduce_dtype_byte == -1 ?
+                                       ALIGN_BYTES / block_size :
+                                       compileInfo.reduce_dtype_byte;
+    // workspace tensor
+    run_info.AddWorkspace(right_product * actual_reduce_type_bytes * compileInfo.core_num);
+    if (compileInfo.workspace_size > 1) {
+      // sync tensor
+      run_info.AddWorkspace(SINGLE_SYNC_CORE_BYTES * compileInfo.core_num);
+    }
+  } else {
+    // fake workspace
+    for (int32_t i = 0; i < compileInfo.workspace_size; ++i) {
+      run_info.AddWorkspace(FAKE_WORKSPACE_SIZE);
+    }
+  }
+
+  return true;
+}
+
+bool Reduce::WriteTilingData() {
+  run_info.SetClearAtomic(reduceTilingInfo.atomic || reduceTilingInfo.group_reduce);
 
   if (exit_zero_axis) {
     run_info.AddTilingData((int32_t)fusion_dim_value);
@@ -1152,7 +1305,7 @@ bool Reduce::WriteTilingData() {
     uint32_t pattern_uint = static_cast<uint32_t>(pattern);
     run_info.SetTilingKey(pattern_uint);
 
-    return compileInfo.varAttrWrap.WriteVarAttrs(pattern_uint, op_type, op_paras, run_info);
+    return WriteWorkspace() && compileInfo.varAttrWrap.WriteVarAttrs(pattern_uint, op_type, op_paras, run_info);
   }
 
   if (compileInfo.is_const) {
@@ -1172,6 +1325,7 @@ bool Reduce::WriteConstTilingData() {
     run_info.AddTilingData(static_cast<int32_t>(ubSizeB));
     run_info.AddTilingData(static_cast<int32_t>(ubSizeA));
     run_info.AddTilingData(reduceTilingInfo.sch_type);
+    run_info.AddTilingData(static_cast<int32_t>(reduceTilingInfo.group_reduce));
     run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
     return true;
 }
@@ -1200,7 +1354,7 @@ bool Reduce::WriteDynamicTilingData() {
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", reduceTilingInfo.ub_tiling_axis);
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling factor:%d", reduceTilingInfo.ub_tiling_factor);
 
-  return compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
+  return WriteWorkspace() && compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
 }
 
 bool Reduce::CheckCompileInfoForCalculate() {
@@ -1284,6 +1438,8 @@ bool Reduce::MatchPattern() {
 bool Reduce::TilingProcess() {
   if (reduceTilingInfo.atomic) {
     return ProcessAtomicTiling();
+  } else if (reduceTilingInfo.group_reduce) {
+    return ProcessGroupTiling();
   } else {
     return ProcessNormalTiling();
   }
@@ -1338,6 +1494,7 @@ bool Reduce::DoReduceTiling() {
                     return false);
   GetReduceShapeCommonInfo();
   ChooseAtomic();
+  reduceTilingInfo.group_reduce = ChooseGroupAxis();
   ChooseUBInfo();
   V_OP_TILING_CHECK(TilingProcess(),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TilingProcess Failed"),
@@ -1461,6 +1618,7 @@ bool Reduce::DoReduceTiling(const OpInfo& op_info) {
   V_OP_TILING_CHECK(MatchPattern(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "MatchPattern Failed"), return false);
   GetReduceShapeCommonInfo();
   ChooseAtomic();
+  reduceTilingInfo.group_reduce = ChooseGroupAxis();
   ChooseUBInfo();
   V_OP_TILING_CHECK(TilingProcess(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TilingProcess Failed"), return false);
   V_OP_TILING_CHECK(FineTuning(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "FineTuning Failed"), return false);
