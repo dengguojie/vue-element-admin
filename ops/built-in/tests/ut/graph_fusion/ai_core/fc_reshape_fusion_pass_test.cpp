@@ -67,3 +67,4 @@ TEST_F(fc_reshape_fusion_pass_test, fc_reshape_fusion_pass_test_1) {
     }
     ASSERT_EQ(expected, actual);
 }
+

@@ -92,9 +92,8 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
               "node[FullyConnection]'s axis is not 1, not support fusion, FullyConnectionReshapePass fusion end"),
       return fe::NOT_CHANGED);
   ge::OpDescPtr reshapeDesc = reshapeNode->GetOpDesc();
-  FUSION_PASS_CHECK(reshapeDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeNode's OpDesc is null."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(reshapeDesc == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "ReshapeNode's OpDesc is null."),
+                    return NOT_CHANGED);
 
   // reshape input shape dim0 need same with reshape output shape dim0 or dim0 is zero
   ge::GeTensorDesc reshapeInput0Desc = reshapeDesc->GetInputDesc(0);
@@ -103,47 +102,48 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::GeShape reshapeOutputShape = reshapeOutput0Desc.GetShape();
   int64_t reshapeInputDim0Value = reshapeInputShape.GetDim(0);
   int64_t reshapeOutputDim0Value = reshapeOutputShape.GetDim(0);
-  if (PatternFusionUtil::IsUnknownShape(reshapeInputDim0Value) ||
-      PatternFusionUtil::IsUnknownShape(reshapeOutputDim0Value)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                   "FullyConnectionReshapePass cannot be applied for unknown shape.");
-    return NOT_CHANGED;
-  }
-  if ((reshapeInputDim0Value != reshapeOutputDim0Value) && (reshapeInputDim0Value != 0)) {
-    OP_LOGI(
-        FUSED_OP_TYPE.c_str(),
-        "reshapeInputDim0Value is not same with reshapeOutputDim0Value fusion, FullyConnectionReshapePass fusion end");
-    return SUCCESS;
-  }
-
-  // refesh the fullyConnection input desc
-  FUSION_PASS_CHECK(fullyConnectionDesc->UpdateInputDesc(0, reshapeInput0Desc) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "refesh the fullyConnection input failed"),
-                    return FAILED);
-  // adjust weights shape
+  // get and check reshapeInputDim0Value, reshapeOutputDim0Value
+  FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(reshapeInputDim0Value) ||
+                        PatternFusionUtil::IsUnknownShape(reshapeOutputDim0Value),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "FullyConnectionReshapePass cannot be applied for unknown shape."),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(reshapeInputDim0Value != reshapeOutputDim0Value && reshapeInputDim0Value != 0,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(),
+                            "ReshapeInputDim0Value is different from reshapeOutputDim0Value, "
+                            "and fullyConnectionReshapePass fusion end."),
+                    return NOT_CHANGED);
+  // get and check transposeAttr
   bool transposeAttr = false;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(fullyConnectionNode->GetOpDesc(), "transpose", transposeAttr),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Get node[%s]'s transpose attr not success.",
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Failed to get node[%s]'s transpose attr.",
                             fullyConnectionNode->GetName().c_str()),
-                    return PARAM_INVALID);
+                    return NOT_CHANGED);
+  // get and check xShape
   auto xShape = reshapeInputShape.GetDims();
   FUSION_PASS_CHECK(xShape.size() <= 1,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "size of [%ld] input shape of reshape must > 1.", xShape.size()),
-                    return PARAM_INVALID);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Size of input shape must > 1, while it is [%zu].", xShape.size()),
+                    return NOT_CHANGED);
+  // get and check wShape
+  ge::GeTensorDesc fullyConnectionWeightDesc = fullyConnectionDesc->GetInputDesc(1);
+  auto wShape = fullyConnectionWeightDesc.GetShape().GetDims();
+  FUSION_PASS_CHECK(
+      wShape.size() < kDimNumTwo,
+      OP_LOGW(FUSED_OP_TYPE.c_str(),
+              "Node[FullyConnection]'s weight size is less than 2, and fullyConnectionReshapePass fusion end"),
+      return NOT_CHANGED);
+
+  // begin to change the graph
+  // refesh the fullyConnection input desc
+  FUSION_PASS_CHECK(
+      fullyConnectionDesc->UpdateInputDesc(0, reshapeInput0Desc) != ge::GRAPH_SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to refesh the inputdesc of fullyConnection's input node."),
+      return FAILED);
+  // adjust weights shape
   if (xShape.size() == kDimNumTwo) {
     xShape.push_back(1);
     xShape.push_back(1);
   } else if (xShape.size() == kDimNumThree) {
     xShape.push_back(1);
-  }
-
-  ge::GeTensorDesc fullyConnectionWeightDesc = fullyConnectionDesc->GetInputDesc(1);
-  auto wShape = fullyConnectionWeightDesc.GetShape().GetDims();
-  if (wShape.size() < kDimNumTwo) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "node[FullyConnection]'s weigth sizeis less 2, FullyConnectionReshapePass fusion end");
-    return PARAM_INVALID;
   }
   vector<int64_t> changedWeightShape;
   if (!transposeAttr) {
@@ -157,19 +157,18 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     changedWeightShape.push_back(xShape[kDimNumThree]);
     changedWeightShape.push_back(wShape[kDimNumOne]);
   }
-
   fullyConnectionWeightDesc.SetShape(ge::GeShape(changedWeightShape));
   fullyConnectionWeightDesc.SetOriginShape(ge::GeShape(changedWeightShape));
-
   // refesh the fullyConnection weight desc
-  FUSION_PASS_CHECK(fullyConnectionDesc->UpdateInputDesc(1, fullyConnectionWeightDesc) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "refesh the fullyConnection weight failed"),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      fullyConnectionDesc->UpdateInputDesc(1, fullyConnectionWeightDesc) != ge::GRAPH_SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to refesh the inputDesc of fullyConnection's weight node."),
+      return FAILED);
   // delete reshape node, it will add edge automaticlly
   FUSION_PASS_CHECK(graph.RemoveNode(reshapeNode) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove the reshape node."), return FAILED);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "FullyConnectionReshapePass fusion success");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Do FullyConnectionReshapePass success.");
   return SUCCESS;
 }
 

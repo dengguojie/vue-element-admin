@@ -47,11 +47,7 @@ static const char FUSED_OP_TYPE[] = "GEMM";
 vector<FusionPattern*> GemmToMatmulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("GemmToMatmulFusionPass");
-  FUSION_PASS_CHECK(
-    pattern == nullptr,
-    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE, "new a pattern object failed."),
-    return patterns
-  );
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(FUSED_OP_TYPE, "Failed to new a pattern object."), return patterns);
 
   pattern->AddOpDesc(PATTERN_GEMM, {GEMM}).SetOutput(PATTERN_GEMM);
   patterns.push_back(pattern);
@@ -59,27 +55,20 @@ vector<FusionPattern*> GemmToMatmulFusionPass::DefinePatterns() {
 }
 
 Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGI(FUSED_OP_TYPE, "Enter GemmToMatmulFusionPass.");
-
   // check whech gemm change to matmul
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
   FUSION_PASS_CHECK(
-    PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "Get platform_info failed."),
-    return FAILED
-  );
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
+      OP_LOGW(FUSED_OP_TYPE, "Failed to get platform_info."), return NOT_CHANGED);
   map<string, vector<string>> intrinsic_map = platform_info.ai_core_intrinsic_dtype_map;
   if (intrinsic_map.size() == 0 || intrinsic_map.find("Intrinsic_fix_pipe_l0c2out") == intrinsic_map.end()) {
-    OP_LOGI(FUSED_OP_TYPE, "this version no need change gemm to matmul");
+    OP_LOGD(FUSED_OP_TYPE, "Don't need change gemm to matmul in this soc version.");
     return NOT_CHANGED;
   }
   ge::NodePtr gemm_node = GetNodeFromMapping(PATTERN_GEMM, mapping);
-  FUSION_PASS_CHECK(
-    gemm_node == nullptr,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "gemm_node is null, fusion failed."),
-    return PARAM_INVALID
-  );
+  FUSION_PASS_CHECK(gemm_node == nullptr, OP_LOGW(FUSED_OP_TYPE, "Failed to do fusion because gemm_node is null."),
+                    return NOT_CHANGED);
 
   int a_anchor = 0;
   int b_anchor = 1;
@@ -94,7 +83,7 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(gemm_node);
   if (op.GetAttr("transpose_a", transpose_a) != GRAPH_SUCCESS or
       op.GetAttr("transpose_b", transpose_b) != GRAPH_SUCCESS) {
-    OP_LOGI(FUSED_OP_TYPE, "op gemm get transflag failed");
+    OP_LOGW(FUSED_OP_TYPE, "Failed to get gemm's transpose flag.");
   }
 
   // get out/in anchor of input/out node, and the input/output node
@@ -105,12 +94,9 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   auto beta_anchor_ptr = GetPeerOutAnchorWithInDataAnchor(gemm_node, beta_anchor);
   auto gemm_out_ptr = gemm_node->GetOutDataAnchor(y_anchor);
   auto y_anchor_ptr = GetPeerInAnchorByOutDataAnchor(gemm_out_ptr, 0);
-  FUSION_PASS_CHECK(
-    a_anchor_ptr == nullptr || b_anchor_ptr == nullptr || c_anchor_ptr == nullptr ||
-    alpha_anchor_ptr == nullptr || beta_anchor_ptr == nullptr || y_anchor_ptr == nullptr,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "anchor is null, fusion failed."),
-    return PARAM_INVALID
-  );
+  FUSION_PASS_CHECK(a_anchor_ptr == nullptr || b_anchor_ptr == nullptr || c_anchor_ptr == nullptr ||
+                        alpha_anchor_ptr == nullptr || beta_anchor_ptr == nullptr || y_anchor_ptr == nullptr,
+                    OP_LOGW(FUSED_OP_TYPE, "Failed to do fusion because anchor is null."), return NOT_CHANGED);
   vector<InDataAnchorPtr> y_anchors_ptr;
   for (auto in_data_anchor : gemm_out_ptr->GetPeerInDataAnchors()) {
     y_anchors_ptr.push_back(in_data_anchor);
@@ -122,12 +108,9 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   auto alpha_node = alpha_anchor_ptr->GetOwnerNode();
   auto beta_node = beta_anchor_ptr->GetOwnerNode();
   auto y_node = y_anchor_ptr->GetOwnerNode();
-  FUSION_PASS_CHECK(
-    a_node == nullptr || b_node == nullptr || c_node == nullptr ||
-    alpha_node == nullptr || beta_node == nullptr || y_node == nullptr,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "input or output is null, fusion failed."),
-    return PARAM_INVALID
-  );
+  FUSION_PASS_CHECK(a_node == nullptr || b_node == nullptr || c_node == nullptr || alpha_node == nullptr ||
+                        beta_node == nullptr || y_node == nullptr,
+                    OP_LOGW(FUSED_OP_TYPE, "Failed to do fusion because input or output is null."), return NOT_CHANGED);
 
   int a_idx = a_anchor_ptr->GetIdx();
   int b_idx = b_anchor_ptr->GetIdx();
@@ -151,73 +134,37 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   fusion_nodes.clear();
   // matmul node
   ge::OpDescPtr matmul_desc;
-  FUSION_PASS_MAKE_SHARED(
-    matmul_desc = std::make_shared<ge::OpDesc>("gemm_to_matmul", "MatMulV2"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    matmul_desc->AddInputDesc("x1", gemm_a_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to matmul x1 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    matmul_desc->AddInputDesc("x2", gemm_b_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to matmul x2 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    matmul_desc->AddOutputDesc("y", gemm_out_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add out desc to matmul failed"),
-    return FAILED
-  );
+  FUSION_PASS_MAKE_SHARED(matmul_desc = std::make_shared<ge::OpDesc>("gemm_to_matmul", "MatMulV2"), return FAILED);
+  FUSION_PASS_CHECK(matmul_desc->AddInputDesc("x1", gemm_a_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to matmul x1."), return FAILED);
+  FUSION_PASS_CHECK(matmul_desc->AddInputDesc("x2", gemm_b_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to matmul x2."), return FAILED);
+  FUSION_PASS_CHECK(matmul_desc->AddOutputDesc("y", gemm_out_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add out desc to matmul."), return FAILED);
   ge::AttrUtils::SetBool(matmul_desc, "transpose_x1", transpose_a);
   ge::AttrUtils::SetBool(matmul_desc, "transpose_x2", transpose_b);
   matmul_node = graph.AddNode(matmul_desc);
   fusion_nodes.push_back(matmul_node);
   // mul1 node
   ge::OpDescPtr matmul_mul_desc;
-  FUSION_PASS_MAKE_SHARED(
-    matmul_mul_desc = std::make_shared<ge::OpDesc>("matmul_mul1_1", "Mul"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    matmul_mul_desc->AddInputDesc("x1", gemm_out_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to mul1 x1 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    matmul_mul_desc->AddInputDesc("x2", gemm_alpha_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to mul1 x2 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    matmul_mul_desc->AddOutputDesc("y", gemm_out_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add out desc to mul1 failed"),
-    return FAILED
-  );
+  FUSION_PASS_MAKE_SHARED(matmul_mul_desc = std::make_shared<ge::OpDesc>("matmul_mul1_1", "Mul"), return FAILED);
+  FUSION_PASS_CHECK(matmul_mul_desc->AddInputDesc("x1", gemm_out_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to mul1 x1."), return FAILED);
+  FUSION_PASS_CHECK(matmul_mul_desc->AddInputDesc("x2", gemm_alpha_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to mul1 x2."), return FAILED);
+  FUSION_PASS_CHECK(matmul_mul_desc->AddOutputDesc("y", gemm_out_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add out desc to mul1."), return FAILED);
   matmul_mul_node = graph.AddNode(matmul_mul_desc);
   fusion_nodes.push_back(matmul_mul_node);
   // mul2 node
   ge::OpDescPtr c_mul_desc;
-  FUSION_PASS_MAKE_SHARED(
-    c_mul_desc = std::make_shared<ge::OpDesc>("matmul_mul1_2", "Mul"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    c_mul_desc->AddInputDesc("x1", gemm_c_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to mul2 x1 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    c_mul_desc->AddInputDesc("x2", gemm_beta_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to mul2 x2 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    c_mul_desc->AddOutputDesc("y", gemm_c_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add out desc to mul2 failed"),
-    return FAILED
-  );
+  FUSION_PASS_MAKE_SHARED(c_mul_desc = std::make_shared<ge::OpDesc>("matmul_mul1_2", "Mul"), return FAILED);
+  FUSION_PASS_CHECK(c_mul_desc->AddInputDesc("x1", gemm_c_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to mul2 x1."), return FAILED);
+  FUSION_PASS_CHECK(c_mul_desc->AddInputDesc("x2", gemm_beta_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to mul2 x2."), return FAILED);
+  FUSION_PASS_CHECK(c_mul_desc->AddOutputDesc("y", gemm_c_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add out desc to mul2."), return FAILED);
   c_mul_node = graph.AddNode(c_mul_desc);
   fusion_nodes.push_back(c_mul_node);
   // add node
@@ -226,115 +173,76 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     add_desc = std::make_shared<ge::OpDesc>("matmul_add", "Add"),
     return FAILED
   );
-  FUSION_PASS_CHECK(
-    add_desc->AddInputDesc("x1", gemm_out_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to add x1 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    add_desc->AddInputDesc("x2", gemm_c_in_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add input desc to add x2 failed"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    add_desc->AddOutputDesc("y", gemm_out_desc) != GRAPH_SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "add out desc to add failed"),
-    return FAILED
-  );
+  FUSION_PASS_CHECK(add_desc->AddInputDesc("x1", gemm_out_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to add x1."), return FAILED);
+  FUSION_PASS_CHECK(add_desc->AddInputDesc("x2", gemm_c_in_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add input desc to add x2."), return FAILED);
+  FUSION_PASS_CHECK(add_desc->AddOutputDesc("y", gemm_out_desc) != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add out desc to add node."), return FAILED);
   add_node = graph.AddNode(add_desc);
   fusion_nodes.push_back(add_node);
 
   // remove the node with gemm_node
   FUSION_PASS_CHECK(
-    ge::GraphUtils::RemoveEdge(a_node->GetOutDataAnchor(a_idx), gemm_node->GetInDataAnchor(a_anchor)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove edge between a_node and gemm_node"),
-    return FAILED
-  );
+      ge::GraphUtils::RemoveEdge(a_node->GetOutDataAnchor(a_idx), gemm_node->GetInDataAnchor(a_anchor)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove edge between a_node and gemm_node."), return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::RemoveEdge(b_node->GetOutDataAnchor(b_idx), gemm_node->GetInDataAnchor(b_anchor)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove edge between b_node and gemm_node"),
-    return FAILED
-  );
+      ge::GraphUtils::RemoveEdge(b_node->GetOutDataAnchor(b_idx), gemm_node->GetInDataAnchor(b_anchor)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove edge between b_node and gemm_node."), return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::RemoveEdge(c_node->GetOutDataAnchor(c_idx), gemm_node->GetInDataAnchor(c_anchor)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove edge between a_node and gemm_node"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    ge::GraphUtils::RemoveEdge(alpha_node->GetOutDataAnchor(alpha_idx),
-                               gemm_node->GetInDataAnchor(alpha_anchor)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove edge between alpha_node and gemm_node"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    ge::GraphUtils::RemoveEdge(beta_node->GetOutDataAnchor(beta_idx),
-                               gemm_node->GetInDataAnchor(beta_anchor)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove edge between beta_node and gemm_node"),
-    return FAILED
-  );
+      ge::GraphUtils::RemoveEdge(c_node->GetOutDataAnchor(c_idx), gemm_node->GetInDataAnchor(c_anchor)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove edge between a_node and gemm_node."), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(alpha_node->GetOutDataAnchor(alpha_idx),
+                                               gemm_node->GetInDataAnchor(alpha_anchor)) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove edge between alpha_node and gemm_node."),
+                    return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(beta_node->GetOutDataAnchor(beta_idx),
+                                               gemm_node->GetInDataAnchor(beta_anchor)) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove edge between beta_node and gemm_node."),
+                    return FAILED);
   for (auto input_data_anchor : y_anchors_ptr) {
-    FUSION_PASS_CHECK(
-      ge::GraphUtils::RemoveEdge(gemm_node->GetOutDataAnchor(y_anchor), input_data_anchor) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove edge between gemm_node and y_node"),
-      return FAILED
-    );
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(gemm_node->GetOutDataAnchor(y_anchor), input_data_anchor) != SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove edge between gemm_node and y_node."),
+                      return FAILED);
   }
 
   // add node with matmul, mul, add
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(a_node->GetOutDataAnchor(a_idx), matmul_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between a_node and matmul_node"),
-    return FAILED
-  );
+      ge::GraphUtils::AddEdge(a_node->GetOutDataAnchor(a_idx), matmul_node->GetInDataAnchor(0)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between a_node and matmul_node."), return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(b_node->GetOutDataAnchor(b_idx), matmul_node->GetInDataAnchor(1)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between b_node and matmul_node"),
-    return FAILED
-  );
+      ge::GraphUtils::AddEdge(b_node->GetOutDataAnchor(b_idx), matmul_node->GetInDataAnchor(1)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between b_node and matmul_node."), return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), matmul_mul_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between matmul_node and matmul_mul_node"),
-    return FAILED
-  );
+      ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), matmul_mul_node->GetInDataAnchor(0)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between matmul_node and matmul_mul_node."),
+      return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(alpha_node->GetOutDataAnchor(alpha_idx), matmul_mul_node->GetInDataAnchor(1)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between matmul_node and matmul_mul_node"),
-    return FAILED
-  );
+      ge::GraphUtils::AddEdge(alpha_node->GetOutDataAnchor(alpha_idx), matmul_mul_node->GetInDataAnchor(1)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between matmul_node and matmul_mul_node."),
+      return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(c_node->GetOutDataAnchor(c_idx), c_mul_node->GetInDataAnchor(0)) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between c_node and c_mul_node."),
+                    return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(c_node->GetOutDataAnchor(c_idx), c_mul_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between c_node and c_mul_node"),
-    return FAILED
-  );
+      ge::GraphUtils::AddEdge(beta_node->GetOutDataAnchor(beta_idx), c_mul_node->GetInDataAnchor(1)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between beta_node and c_mul_node."), return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(beta_node->GetOutDataAnchor(beta_idx), c_mul_node->GetInDataAnchor(1)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between beta_node and c_mul_node"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(matmul_mul_node->GetOutDataAnchor(0), add_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between matmul_mul_node and add_node"),
-    return FAILED
-  );
-  FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(c_mul_node->GetOutDataAnchor(0), add_node->GetInDataAnchor(1)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add edge between c_mul_node and add_node"),
-    return FAILED
-  );
+      ge::GraphUtils::AddEdge(matmul_mul_node->GetOutDataAnchor(0), add_node->GetInDataAnchor(0)) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between matmul_mul_node and add_node."), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(c_mul_node->GetOutDataAnchor(0), add_node->GetInDataAnchor(1)) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add edge between c_mul_node and add_node."),
+                    return FAILED);
   for (auto input_data_anchor : y_anchors_ptr) {
-    FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(add_node->GetOutDataAnchor(0), input_data_anchor) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to add the edge between add_node and y_node"),
-      return FAILED
-    );
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(add_node->GetOutDataAnchor(0), input_data_anchor) != SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to add the edge between add_node and y_node."),
+                      return FAILED);
   }
 
   // RemoveNode(gemm_node)
-  FUSION_PASS_CHECK(
-    graph.RemoveNode(gemm_node),
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE, "fail to remove gemm_node"),
-    return FAILED);
-  OP_LOGI(FUSED_OP_TYPE, "remove gemm_node");
+  FUSION_PASS_CHECK(graph.RemoveNode(gemm_node), CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE, "Failed to remove gemm_node."),
+                    return FAILED);
+  OP_LOGI(FUSED_OP_TYPE, "Do GemmToMatmulFusionPass success.");
   return SUCCESS;
 }
 

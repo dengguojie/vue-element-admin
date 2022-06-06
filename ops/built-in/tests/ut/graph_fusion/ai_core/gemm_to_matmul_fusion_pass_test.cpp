@@ -107,3 +107,4 @@ TEST_F(gemm_to_matmul_fusion_pass_test, gemm_to_matmul_fusion_pass_test_1) {
     }
     EXPECT_EQ(find_matmul, true);
 }
+

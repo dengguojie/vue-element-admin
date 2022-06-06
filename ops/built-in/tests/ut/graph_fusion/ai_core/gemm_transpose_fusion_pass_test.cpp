@@ -9,6 +9,10 @@
 #include "transformation_ops.h"
 #include "fusion_pass_test_utils.h"
 
+#define private public
+#include "common/util/platform_info.h"
+
+using namespace fe;
 using namespace ge;
 using namespace op;
 
@@ -83,10 +87,23 @@ TEST_F(gemm_transpose_fusion_pass_test, gemm_transpose_fusion_pass_test_1) {
     std::vector<Operator> inputs{data_a, data_b, data_c, data_alpha, data_beta};
     std::vector<Operator> outputs{gemm};
 
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    std::map<string, vector<string>> intrinsic_map = {};
+    platform_info.ai_core_intrinsic_dtype_map = intrinsic_map;
+    opti_compilation_info.soc_version = "soc_version";
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::RunGraphFusionPass("GemmTransFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
+    // clear soc info
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+
     bool find_mul = false;
     EXPECT_EQ(find_mul, false);
 }
+
