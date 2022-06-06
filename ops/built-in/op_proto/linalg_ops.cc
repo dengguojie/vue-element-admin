@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,24 +79,24 @@ IMPLEMT_VERIFIER(Ger, GerVerify) {
   if (x1_type != DT_FLOAT16 && x1_type != DT_FLOAT) {
     std::string err_msg;
     err_msg = ConcatString(
-      "Op Ger first input x1's data type should be fp16 or fp32,but this type is ", 
-      x1_type, ".");
+        "Op Ger first input x1's data type should be fp16 or fp32,but this type is ",
+        x1_type, ".");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (x2_type != DT_FLOAT16 && x2_type != DT_FLOAT) {
     std::string err_msg;
     err_msg = ConcatString(
-      "Op Ger first input x1's data type should be fp16 or fp32,but this type is ", 
-      x2_type, ".");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg); 
+        "Op Ger first input x1's data type should be fp16 or fp32,but this type is ",
+        x2_type, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (x1_type != x2_type) {
     std::string err_msg;
     err_msg = ConcatString(
-      "Op Ger two inputs' data type doesn't match,but first input x1's data type  is " ,
-      x1_type, "and the second input x1's data type is", x2_type, ".");
+        "Op Ger two inputs' data type doesn't match,but first input x1's data type  is ",
+        x1_type, "and the second input x1's data type is", x2_type, ".");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -108,12 +108,12 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
   Shape x1_shape = op.GetInputDescByName("x1").GetShape();
   Shape x2_shape = op.GetInputDescByName("x2").GetShape();
   if (x1_shape.GetDims().size() != 1 || x2_shape.GetDims().size() != 1) {
-    std::string err_msg; 
+    std::string err_msg;
     err_msg= ConcatString(
-      "The rank of both input should be one dimensional, ",
-      "the first input hape dimensional is ",
-      x1_shape.GetDims().size()," and the second input shape dimensional is ",
-      x2_shape.GetDims().size(), " not same.");
+        "The rank of both input should be one dimensional, ",
+        "the first input hape dimensional is ",
+        x1_shape.GetDims().size()," and the second input shape dimensional is ",
+        x2_shape.GetDims().size(), " not same.");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -140,13 +140,14 @@ IMPLEMT_INFERFUNC(LogMatrixDeterminant, LogMatrixDeterminantInfer) {
   if (size_num < 2) {
     string err_msg = ConcatString(
         "the rank of input[x] should be greater than 2, but get ", size_num, ".");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);                                   
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (x_shape[size_num - 1] != x_shape[size_num - 2]) {
     string err_msg = ConcatString(
-        "the last two dimension of input[x] should be equal, but get ", x_shape[size_num - 1], " and ", x_shape[size_num - 2], ".");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg); 
+        "the last two dimension of input[x] should be equal, but get ",
+        x_shape[size_num - 1], " and ", x_shape[size_num - 2], ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -370,9 +371,9 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
   std::string error_msg;
   if (MakeBatchSquareMatrix(op.get_input_desc_x(), input, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     error_msg = ConcatString("failed to call MakeBatchSquareMatrix function, ",
-      "Op SelfAdjointEig first input[x] tensor make batch square matrix failed ",
-      "the input[x] dim is ",
-      op.get_input_desc_x().GetShape().GetDimNum(), ".");
+        "Op SelfAdjointEig first input[x] tensor make batch square matrix failed ",
+        "the input[x] dim is ",
+        op.get_input_desc_x().GetShape().GetDimNum(), ".");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
@@ -818,7 +819,7 @@ IMPLEMT_VERIFIER(BandedTriangularSolve, BandedTriangularSolveVerify) {
   DataType input_type_bands = op.GetInputDescByName("bands").GetDataType();
   DataType input_type_rhs = op.GetInputDescByName("rhs").GetDataType();
   if (input_type_bands != input_type_rhs) {
-    error_msg = ConcatString("failed to match datatype of banks and rhs",".");
+    error_msg = ConcatString("failed to match datatype of banks and rhs", ".");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
@@ -831,16 +832,17 @@ IMPLEMT_VERIFIER(BandedTriangularSolve, BandedTriangularSolveVerify) {
   auto rhs_n = shape_rhs.GetDimNum();
   Shape shape_output = op.GetOutputDescByName("output").GetShape();
   if (bands_dims[bands_n-1] != rhs_dims[rhs_n-2]) {
-    error_msg = ConcatString("the dim[0] of banks should be equal to the dim[1] of rhs, ","but get bands_dims[0] is",bands_dims[0]," and rhs_dims[1] is ", rhs_dims[1],".");
+    error_msg = ConcatString("the dim[0] of banks should be equal to the dim[1] of rhs, ",
+        "but get bands_dims[0] is", bands_dims[0], " and rhs_dims[1] is ", rhs_dims[1], ".");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
-  } 
+  }
   for (size_t i=1; i<bands_n; i++) {
     if (rhs_dims[i-1] > bands_dims[i]) {
       return GRAPH_FAILED;
     }
   }
-  if(shape_rhs.GetDims() != shape_output.GetDims()) {
+  if (shape_rhs.GetDims() != shape_output.GetDims()) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,8 @@ graphStatus SetShapeAndType(Operator& op, Shape element_shape, DataType element_
   return GRAPH_SUCCESS;
 }
 
-graphStatus GetShapeAndType(Operator& op, ShapeAndType& out, bool& is_shape_and_type_empty, InferenceContextPtr infer_context) {
+graphStatus GetShapeAndType(Operator& op, ShapeAndType& out,
+    bool& is_shape_and_type_empty, InferenceContextPtr infer_context) {
   const char *op_name = TbeGetName(op).c_str();
   ShapeAndRange shape_and_range_out;
   std::vector<AscendString> marks;
@@ -59,7 +60,7 @@ graphStatus GetShapeAndType(Operator& op, ShapeAndType& out, bool& is_shape_and_
   }
   if (!geted) {
     OP_LOGE(op_name, "GetShapeAndType: GetShapeAndRange failed, marks is empty.");
-    return GRAPH_FAILED; 
+    return GRAPH_FAILED;
   }
   out.SetShape(shape_and_range_out.shape_);
   out.SetType(shape_and_range_out.shape_type_);
@@ -107,10 +108,10 @@ graphStatus TensorListConcatShapeInference(
   }
   TensorDesc output_tensor_desc = op.GetOutputDesc(0);
   TensorDesc output_length_desc = op.GetOutputDesc(1);
-  if(RankKnown(element_shape)) {
+  if (RankKnown(element_shape)) {
     Shape result;
-    if(SubShape(element_shape, 1, std::numeric_limits<int64_t>::max(),
-                1, result, op_name) != GRAPH_SUCCESS) {
+    if (SubShape(element_shape, 1, std::numeric_limits<int64_t>::max(),
+                 1, result, op_name) != GRAPH_SUCCESS) {
       OP_LOGE(op_name, "SubShape of element_shape failed.");
       return GRAPH_FAILED;
     }
@@ -367,11 +368,11 @@ IMPLEMT_INFERFUNC(TensorListPopBack, TensorListPopBackInfer) {
     return GRAPH_FAILED;
   }
   auto handle_data = shapes_and_types[0];
-  if ((!shapes_and_types.empty()) && (handle_data.size() > 1)){
+  if ((!shapes_and_types.empty()) && (handle_data.size() > 1)) {
     OP_LOGE(op_name, "Trying to read from list with invalid variant data.");
     return GRAPH_FAILED;
   }
-  if ((!shapes_and_types.empty()) && (handle_data.size() == 1)){
+  if ((!shapes_and_types.empty()) && (handle_data.size() == 1)) {
     const ShapeAndType& list_shape_type = handle_data[0];
     if (list_shape_type.GetDataType() != element_dtype) {
       OP_LOGE(op_name,
@@ -917,7 +918,7 @@ IMPLEMT_INFERFUNC(TensorListSplit, TensorListSplitInfer) {
   }
 
   Shape element_shape_from_tensor_shape;
-  if(SubShape(tensor_shape, 1, std::numeric_limits<int64_t>::max(),
+  if (SubShape(tensor_shape, 1, std::numeric_limits<int64_t>::max(),
               1, element_shape_from_tensor_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "SubShape of input tensor failed.");
     return GRAPH_FAILED;
@@ -991,7 +992,7 @@ IMPLEMT_INFERFUNC(TensorListFromTensor, TensorListFromTensorInfer) {
   Shape tensor_shape = op.GetInputDesc(0).GetShape();
   Shape tensor_shape_except_first_dim;
 
-  if(SubShape(tensor_shape, 1, std::numeric_limits<int64_t>::max(),
+  if (SubShape(tensor_shape, 1, std::numeric_limits<int64_t>::max(),
               1, tensor_shape_except_first_dim, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "SubShape of input tensor failed.");
     return GRAPH_FAILED;

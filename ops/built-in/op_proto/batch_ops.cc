@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,9 +85,10 @@ IMPLEMT_INFERFUNC(UnbatchGrad, UnbatchGradInfer) {
   auto grad_tensor = op.GetInputDesc(2);
   auto grad_rank = grad_tensor.GetShape().GetDimNum();
   if (x_input_tensor.GetDataType() != grad_tensor.GetDataType()) {
-    string err_msg = ConcatString("data type of input[x_input] is not equal to input[grad], data type of input[x_input] is ",
-                                  DTypeStr(x_input_tensor.GetDataType()), ", data type of input[grad] is ",
-                                  DTypeStr(grad_tensor.GetDataType()));
+    string err_msg = ConcatString(
+        "data type of input[x_input] is not equal to input[grad], data type of input[x_input] is ",
+        DTypeStr(x_input_tensor.GetDataType()), ", data type of input[grad] is ",
+        DTypeStr(grad_tensor.GetDataType()));
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }

@@ -25,7 +25,7 @@
 
 namespace domi {
 Status ParseCropAndResizeGradBoxes(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  (void)AutoMappingFn(op_src, op);
 
   ge::TensorDesc input_tensor0 = op.GetInputDesc("grads");
   input_tensor0.SetOriginFormat(ge::FORMAT_NHWC);
