@@ -1,0 +1,1954 @@
+[
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_512B",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_1K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_4K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_8K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_16K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_32K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [64, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [64, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_64K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [128, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [128, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_128K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [256, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [256, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_256K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [512, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [512, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_512K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1024, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1024, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_1M",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2048, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2048, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_2M",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [4096, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [4096, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int64_8M",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16384, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16384, 64],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [400000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [400000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_512B",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_1K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_4K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [8, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_8K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [16, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_16K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [32, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_32K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [64, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [64, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_64K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [128, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [128, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_128K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [256, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [256, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_256K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [512, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [512, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_512K",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1024, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1024, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_1M",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2048, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2048, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_2M",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [4096, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [4096, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [200000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [200000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Test_DenseCountSparseOutput_int32_8M",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [16384, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16384, 128],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Example_1",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Example_2",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": 1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": 10
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": false
+            }
+        ]
+    },
+    {
+        "case_name":"Example_3",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": 10
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Example_4",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": 1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": 10
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name":"Example_5",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": false
+            }
+        ]
+    },
+    {
+        "case_name":"Example_6",
+        "op": "DenseCountSparseOutput",
+        "input_desc": [
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32,32],
+                "data_distribute": ["uniform"],
+                "value_range": [[0, 10]]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2],
+                "typical_shape": [10, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000],
+                "typical_shape": [10]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": 1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": false
+            }
+        ]
+    }
+]

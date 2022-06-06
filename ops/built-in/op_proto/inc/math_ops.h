@@ -1185,6 +1185,71 @@ REG_OP(RaggedBincount)
     .ATTR(binary_output, Bool, false)
     .OP_END_FACTORY_REG(RaggedBincount)
 
+/**
+ * @brief Count the number of occurrences of each value in the input dense integer array,
+ * and output it according to the sparse matrix. \n
+
+ * @par Inputs:
+ * @li values: A 1D or 2D tensor of type int32 or int64.
+ * @li weights: A tensor of type int32 or int64 or float or double. \n
+
+ * @par Attributes:
+ * @li minlength: An optional int >=-1. Defaults to -1.
+ * @li maxlength: An optional int >=-1. Defaults to -1.
+ * @li binary_output: A required bool. \n
+
+ * @par Outputs:
+ * output_indices: A tensor of type int64.
+ * output_values: A tensor of the same type as "weights".
+ * output_dense_shape: A tensor of type int64. \n
+
+ * @par Third-party framework compatibility
+ * Compatible with the TensorFlow operator DenseCountSparseOutput. \n
+ */
+REG_OP(DenseCountSparseOutput)
+    .INPUT(values, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(weights, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output_indices, TensorType({DT_INT64}))
+    .OUTPUT(output_values, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output_dense_shape, TensorType({DT_INT64}))
+    .ATTR(minlength, Int, -1)
+    .ATTR(maxlength, Int, -1)
+    .REQUIRED_ATTR(binary_output, Bool)
+    .OP_END_FACTORY_REG(DenseCountSparseOutput)
+
+/**
+ * @brief Count the number of occurrences of each value in the input ragged integer array,
+ * and output it according to the sparse matrix. \n
+
+ * @par Inputs:
+ * @li splits: A 1D tensor of type int64.
+ * @li values: A 1D or 2D tensor of type int32 or int64.
+ * @li weights: A tensor of type int32 or int64 or float or double. \n
+
+ * @par Attributes:
+ * @li minlength: An optional int >=-1. Defaults to -1.
+ * @li maxlength: An optional int >=-1. Defaults to -1.
+ * @li binary_output: A required bool. \n
+
+ * @par Outputs:
+ * output_indices: A tensor of type int64.
+ * output_values: A tensor of the same type as "weights".
+ * output_dense_shape: A tensor of type int64. \n
+
+ * @par Third-party framework compatibility
+ * Compatible with the TensorFlow operator RaggedCountSparseOutput. \n
+ */
+REG_OP(RaggedCountSparseOutput)
+    .INPUT(splits, TensorType({DT_INT64}))
+    .INPUT(values, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(weights, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output_indices, TensorType({DT_INT64}))
+    .OUTPUT(output_values, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output_dense_shape, TensorType({DT_INT64}))
+    .ATTR(minlength, Int, -1)
+    .ATTR(maxlength, Int, -1)
+    .REQUIRED_ATTR(binary_output, Bool)
+    .OP_END_FACTORY_REG(RaggedCountSparseOutput)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

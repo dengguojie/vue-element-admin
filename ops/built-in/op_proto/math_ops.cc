@@ -1533,4 +1533,136 @@ IMPLEMT_VERIFIER(RaggedBincount, RaggedBincountVerify) {
 COMMON_INFER_FUNC_REG(RaggedBincount, RaggedBincountInferShape);
 VERIFY_FUNC_REG(RaggedBincount, RaggedBincountVerify);
 // ----------------RaggedBincount END---------------------------------
+
+// ----------------DenseCountSparseOutput Begin--------------------------
+IMPLEMT_COMMON_INFERFUNC(DenseCountSparseOutputInferShape) {
+    TensorDesc output_indices_desc = op.GetOutputDescByName("output_indices");
+    TensorDesc output_values = op.GetOutputDescByName("output_values");
+    TensorDesc output_dense_shape_desc = op.GetOutputDescByName("output_dense_shape");
+
+    Format values_format = op.GetInputDescByName("values").GetFormat();
+    ge::Shape values_shape = op.GetInputDescByName("values").GetShape();
+    ge::Shape weights_shape = op.GetInputDescByName("weights").GetShape();
+    DataType values_datatype = op.GetInputDescByName("values").GetDataType();
+    DataType weights_datatype = op.GetInputDescByName("weights").GetDataType();
+
+    ge::Shape output;
+    if ((RankKnown(weights_shape) == true) && (weights_shape.GetDimNum() == 0)) {
+      output = values_shape;
+    } else {
+      if (Merge(weights_shape, values_shape, output, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(
+          TbeGetName(op),
+          string("failed to call Merge function for shape of weights and values."));
+        return GRAPH_FAILED;
+      }
+    }
+
+    if (values_datatype != DT_INT32 && values_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'values' should have dtype int32 or int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (weights_datatype != DT_FLOAT && weights_datatype != DT_DOUBLE &&
+        weights_datatype != DT_INT32 && weights_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'weights' should have dtype float, double, int32 or int64.");
+      return GRAPH_FAILED;
+    }
+
+    if ((values_shape.GetDimNum() != 1) && (values_shape.GetDimNum() != 2)) {
+      OP_LOGE(TbeGetName(op).c_str(), "'values' must be a 1D or 2D tensor.");
+      return GRAPH_FAILED;
+    }
+
+    int32_t dim = output.GetDimNum();
+    std::vector<int64_t> output_indices_dims = { ge::UNKNOWN_DIM, dim };
+    std::vector<int64_t> output_values_dims = { ge::UNKNOWN_DIM };
+    std::vector<int64_t> output_dense_shape_dims = { dim };
+
+    output_indices_desc.SetShape(Shape(output_indices_dims));
+    output_values.SetShape(Shape(output_values_dims));
+    output_dense_shape_desc.SetShape(Shape(output_dense_shape_dims));
+
+    output_indices_desc.SetDataType(DT_INT64);
+    output_values.SetDataType(weights_datatype);
+    output_dense_shape_desc.SetDataType(DT_INT64);
+
+    output_indices_desc.SetFormat(values_format);
+    output_values.SetFormat(values_format);
+    output_dense_shape_desc.SetFormat(values_format);
+
+    op.UpdateOutputDesc("output_indices", output_indices_desc);
+    op.UpdateOutputDesc("output_values", output_values);
+    op.UpdateOutputDesc("output_dense_shape", output_dense_shape_desc);
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(DenseCountSparseOutput, DenseCountSparseOutputInferShape);
+// ----------------DenseCountSparseOutput End----------------------------
+
+// ----------------RaggedCountSparseOutput Begin--------------------------
+IMPLEMT_COMMON_INFERFUNC(RaggedCountSparseOutputInferShape) {
+    TensorDesc output_indices_desc = op.GetOutputDescByName("output_indices");
+    TensorDesc output_values = op.GetOutputDescByName("output_values");
+    TensorDesc output_dense_shape_desc = op.GetOutputDescByName("output_dense_shape");
+
+    Format values_format = op.GetInputDescByName("values").GetFormat();
+    ge::Shape splits_shape = op.GetInputDescByName("splits").GetShape();
+    ge::Shape values_shape = op.GetInputDescByName("values").GetShape();
+    ge::Shape weights_shape = op.GetInputDescByName("weights").GetShape();
+    DataType splits_datatype = op.GetInputDescByName("splits").GetDataType();
+    DataType values_datatype = op.GetInputDescByName("values").GetDataType();
+    DataType weights_datatype = op.GetInputDescByName("weights").GetDataType();
+
+    if (splits_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'splits' should have dtype int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (values_datatype != DT_INT32 && values_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'values' should have dtype int32 or int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (weights_datatype != DT_FLOAT && weights_datatype != DT_DOUBLE &&
+        weights_datatype != DT_INT32 && weights_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'weights' should have dtype float, double, int32 or int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (splits_shape.GetDimNum() != 1) {
+      OP_LOGE(TbeGetName(op).c_str(), "'splits' must be a 1D tensor.");
+      return GRAPH_FAILED;
+    }
+
+    if ((values_shape.GetDimNum() != 1) && (values_shape.GetDimNum() != 2)) {
+      OP_LOGE(TbeGetName(op).c_str(), "'values' must be a 1D or 2D tensor.");
+      return GRAPH_FAILED;
+    }
+
+    int32_t dim = values_shape.GetDimNum();
+    std::vector<int64_t> output_indices_dims = { ge::UNKNOWN_DIM, dim + 1 };
+    std::vector<int64_t> output_values_dims = { ge::UNKNOWN_DIM };
+    std::vector<int64_t> output_dense_shape_dims = { dim + 1 };
+
+    output_indices_desc.SetShape(Shape(output_indices_dims));
+    output_values.SetShape(Shape(output_values_dims));
+    output_dense_shape_desc.SetShape(Shape(output_dense_shape_dims));
+
+    output_indices_desc.SetDataType(DT_INT64);
+    output_values.SetDataType(weights_datatype);
+    output_dense_shape_desc.SetDataType(DT_INT64);
+
+    output_indices_desc.SetFormat(values_format);
+    output_values.SetFormat(values_format);
+    output_dense_shape_desc.SetFormat(values_format);
+
+    op.UpdateOutputDesc("output_indices", output_indices_desc);
+    op.UpdateOutputDesc("output_values", output_values);
+    op.UpdateOutputDesc("output_dense_shape", output_dense_shape_desc);
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(RaggedCountSparseOutput, RaggedCountSparseOutputInferShape);
+// ----------------RaggedCountSparseOutput End----------------------------
 }  // namespace ge

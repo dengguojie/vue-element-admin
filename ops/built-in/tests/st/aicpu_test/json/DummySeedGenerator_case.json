@@ -1,0 +1,11 @@
+[
+    {
+        "case_name": "Test_DummySeedGenerator_001",
+        "op": "DummySeedGenerator",
+        "output_desc": [
+            {
+                "type": ["resource"]
+            }
+        ]
+    }
+]

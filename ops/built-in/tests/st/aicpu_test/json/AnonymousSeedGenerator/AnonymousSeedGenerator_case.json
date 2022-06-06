@@ -1,0 +1,160 @@
+[
+    {
+        "case_name": "AnonymousSeedGenerator_int64_t_001",
+        "op": "AnonymousSeedGenerator",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[1,80]]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[1,8]]                
+            },
+            {
+                "format": ["ND"],
+                "type": ["bool"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value": [[true]]                
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["resource"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["variant"],
+                "shape": [1]
+            }
+        ]        
+    },
+    {
+        "case_name": "AnonymousSeedGenerator_int64_t_002",
+        "op": "AnonymousSeedGenerator",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[1,8]]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[1,8]]      
+            },
+            {
+                "format": ["ND"],
+                "type": ["bool"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value": [[true]]     
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["resource"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["variant"],
+                "shape": [1]
+            }
+        ]        
+    },
+    {
+        "case_name": "AnonymousSeedGenerator_int64_t_003",
+        "op": "AnonymousSeedGenerator",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[-1,80]]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[-1,8]]                
+            },
+            {
+                "format": ["ND"],
+                "type": ["bool"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value": [[false]] 
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["resource"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["variant"],
+                "shape": [1]
+            }
+        ]        
+    },
+    {
+        "case_name": "AnonymousSeedGenerator_int64_t_004",
+        "op": "AnonymousSeedGenerator",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[-100,80]]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int64","int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [[-100,8]]
+                
+            },
+            {
+                "format": ["ND"],
+                "type": ["bool"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value": [[false]]
+                
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["resource"],
+                "shape": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["variant"],
+                "shape": [1]
+            }
+        ]        
+    }
+]

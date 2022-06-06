@@ -47,6 +47,7 @@ set(_tf_plugins
   adp_get_next.cc
   aicpu_parser.cc
   get_next_v2.cc
+  anonymous_seed_generator_plugin.cc
   apply_adadelta_plugin.cc
   apply_adagrad_da_plugin.cc
   apply_adagrad_plugin.cc
@@ -152,10 +153,12 @@ set(_tf_plugins
   div_no_nan_plugin.cc
   div_plugin.cc
   decode_jpeg_plugin.cc
+  delete_seed_generator_plugin.cc
   dense_image_warp_plugin.cc
   draw_bounding_boxes_plugin.cc
   drop_out_do_mask_plugin.cc
   drop_out_do_mask_v3_plugin.cc
+  dummy_seed_generator_plugin.cc
   dynamic_get_next_plugin.cc
   dynamic_lstm_plugin.cc
   dynamic_plugin.cc

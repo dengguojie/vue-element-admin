@@ -1,0 +1,25 @@
+[
+    {
+        "case_name": "Test_DeleteSeedGenerator_001",
+        "op": "DeleteSeedGenerator",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["resource"],
+                "shape": [1],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["variant"],
+                "shape": [1],
+                "data_distribute": [
+                    "uniform"
+                ]
+            }
+
+        ]
+    }
+]

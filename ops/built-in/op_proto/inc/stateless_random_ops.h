@@ -470,5 +470,61 @@ REG_OP(StatelessRandomUniformV2)
     .ATTR(dtype, Type, DT_FLOAT)
     .OP_END_FACTORY_REG(StatelessRandomUniformV2)
 
+/**
+* @brief Create a random number seed generator . \n
+
+* @par Inputs:
+* include:
+* @li seed:1-D Tensor,the seed to generate random.
+* Must be one of the types:int32 or int64.
+* @li seed2:1-D Tensor,the seed to generate random.
+* Must be one of the types:int32 or int64.
+* @li reshuffle:1-D Tensor.Seed selection, True:random seed, False:fixed seed.
+* Must be one of the types:bool.  \n
+
+* @par Outputs:
+* handle:Handle to the random number generator.
+* deleter:Handle to the remover.
+* Used when deleting the random number seed generator \n
+
+* @see AnonymousSeedGenerator()
+
+* @par Third-party framework compatibility
+* compatible with AnonymousSeedGenerator op of tensorflow
+*/
+REG_OP(AnonymousSeedGenerator)
+    .INPUT(seed, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(seed2, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(reshuffle, TensorType({DT_BOOL}))
+    .OUTPUT(handle, TensorType({DT_RESOURSE}))
+    .OUTPUT(deleter, TensorType({DT_VARIANT}))
+    .OP_END_FACTORY_REG(AnonymousSeedGenerator)
+
+/**
+* @brief DeleteSeedGenerator . \n
+
+* @par Inputs:
+* @li handle:   A Tensor of type resource.
+* @li deleter: A Tensor of type variant.
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow DeleteSeedGenerator operator.
+*/
+REG_OP(DeleteSeedGenerator)
+    .INPUT(handle, TensorType({DT_RESOURCE}))
+    .INPUT(deleter, TensorType({DT_VARIANT}))
+    .OP_END_FACTORY_REG(DeleteSeedGenerator)
+
+/**
+* @brief Create a placeholder handle to rewrite and pass
+* to use during the graph compilation phase. \n
+
+* @par Outputs:
+* handle:Output random number . \n
+*/
+REG_OP(DummySeedGenerator)
+    .OUTPUT(handle, TensorType({ DT_RESOURCE }))
+    .OP_END_FACTORY_REG(DummySeedGenerator)
+
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_STATELESS_RANDOM_OPS_H_

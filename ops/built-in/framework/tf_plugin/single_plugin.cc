@@ -1656,4 +1656,25 @@ REGISTER_CUSTOM_OP("StatelessRandomUniformV2")
     .OriginOpType("StatelessRandomUniformV2")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register LookupTableRemove op to GE
+REGISTER_CUSTOM_OP("LookupTableRemove")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("LookupTableRemoveV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register DenseCountSparseOutput op to GE
+REGISTER_CUSTOM_OP("DenseCountSparseOutput")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DenseCountSparseOutput")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register RaggedCountSparseOutput op to GE
+REGISTER_CUSTOM_OP("RaggedCountSparseOutput")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("RaggedCountSparseOutput")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

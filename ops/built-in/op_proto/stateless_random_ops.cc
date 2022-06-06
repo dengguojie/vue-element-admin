@@ -1289,4 +1289,115 @@ INFER_FUNC_REG(StatelessRandomUniformV2, StatelessRandomUniformV2Infer);
 VERIFY_FUNC_REG(StatelessRandomUniformV2, StatelessRandomUniformV2Verify);
 // ----------------StatelessRandomUniformV2 End--------------------------
 
+// ----------------AnonymousSeedGenerator Begin--------------------------
+IMPLEMT_VERIFIER(AnonymousSeedGenerator, AnonymousSeedGeneratorVerify)
+{
+  Shape unused;
+  std::string error_msg;
+  DataType seed_dtype = op.GetInputDescByName("seed").GetDataType();
+  TensorDesc seedTensor = op.GetInputDescByName("seed");
+  if (WithRank(seedTensor, 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[seed] must be 0, but get ",
+        seedTensor.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  DataType seed2_dtype = op.GetInputDescByName("seed2").GetDataType();
+  TensorDesc seed2Tensor = op.GetInputDescByName("seed2");
+  if (WithRank(seed2Tensor, 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[seed2] must be 0, but get ",
+        seed2Tensor.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (!(seed_dtype == DT_INT32 || seed_dtype == DT_INT64)) {
+    error_msg = ConcatString("the dtype of input[seed] must be DT_INT32 or DT_INT64,",
+        " but get ", DTypeStr(seed_dtype), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (!(seed2_dtype == DT_INT32 || seed2_dtype == DT_INT64)) {
+    error_msg = ConcatString("the dtype of input[seed2] must be DT_INT32 or DT_INT64,",
+        " but get ", DTypeStr(seed2_dtype), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  DataType reshuffle_dtype = op.GetInputDescByName("reshuffle").GetDataType();
+  if (reshuffle_dtype != DT_BOOL) {
+    error_msg = ConcatString("the dtype of input[reshuffle] must be DT_BOOL,",
+        " but get ", DTypeStr(reshuffle_dtype), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(AnonymousSeedGeneratorInfer)
+{
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  TensorDesc outputDesc1 = op.GetOutputDescByName("handle");
+  DataType output_type1;
+  output_type1 = DT_RESOURCE;
+  outputDesc1.SetDataType(output_type1);
+  outputDesc1.SetShape(scalarShape);
+  (void)op.UpdateOutputDesc("handle",outputDesc1);
+
+  TensorDesc outputDesc2 = op.GetOutputDescByName("deleter");
+  DataType output_type2;
+  output_type2 = DT_VARIANT;
+  outputDesc2.SetDataType(output_type2);
+  outputDesc2.SetShape(scalarShape);
+  (void)op.UpdateOutputDesc("deleter",outputDesc2);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(AnonymousSeedGenerator,AnonymousSeedGeneratorInfer);
+VERIFY_FUNC_REG(AnonymousSeedGenerator,AnonymousSeedGeneratorVerify);
+// ----------------AnonymousSeedGenerator End-------------------------
+
+// ----------------DeleteSeedGenerator Begin--------------------------
+IMPLEMT_VERIFIER(DeleteSeedGenerator,DeleteSeedGeneratorVerify) {
+  std::string error_msg;
+
+  DataType handle_dtype = op.GetInputDescByName("handle").GetDataType();
+  if (handle_dtype != DT_RESOURCE) {
+    error_msg = ConcatString("the dtype of input[handle] must be DT_RESOURCE,",
+        " but get ", DTypeStr(handle_dtype), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+
+  DataType deleter_dtype = op.GetInputDescByName("deleter").GetDataType();
+  if (deleter_dtype != DT_VARIANT) {
+    error_msg = ConcatString("the dtype of input[deleter] must be DT_VARIANT,",
+        " but get ", DTypeStr(deleter_dtype), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), error_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+VERIFY_FUNC_REG(DeleteSeedGenerator, DeleteSeedGeneratorVerify);
+// ----------------DeleteSeedGenerator End-----------------------------
+
+// ----------------DummySeedGenerator Begin----------------------------
+IMPLEMT_COMMON_INFERFUNC(DummySeedGeneratorInfer) {
+  TensorDesc out_desc = op.GetOutputDescByName("handle");
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  DataType type1 = DT_RESOURCE;
+  out_desc.SetDataType(type1);
+  out_desc.SetShape(scalarShape);
+  return op.UpdateOutputDesc("handle", out_desc);
+}
+COMMON_INFER_FUNC_REG(DummySeedGenerator, DummySeedGeneratorInfer);
+// ----------------DummySeedGenerator End-----------------------------
+
 }  // namespace ge
+

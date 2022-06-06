@@ -486,4 +486,18 @@ IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
 
 INFER_FUNC_REG(MutableHashTable, MutableHashTableInfer);
 
+IMPLEMT_INFERFUNC(LookupTableRemove, LookupTableRemoveInfer) {
+  Shape shape;
+  if (WithRank(op.GetInputDesc(0), 0, shape, TbeGetName(op).c_str()) !=
+      GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(
+        0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    err_msg = std::string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(LookupTableRemove, LookupTableRemoveInfer);
+
 }  // namespace ge
