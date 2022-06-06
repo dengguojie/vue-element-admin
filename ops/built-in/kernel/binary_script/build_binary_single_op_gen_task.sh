@@ -37,7 +37,7 @@ main() {
   opc_info_csv=""
   is_need_gen_opc_info=TRUE
   python_arg=${HI_PYTHON}
-  if [ "${python_args}" = "" ]; then
+  if [ "${python_arg}" = "" ]; then
     python_arg="python3.7"
   fi
   if [ $# -gt 5 ]; then

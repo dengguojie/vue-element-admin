@@ -48,7 +48,7 @@ main() {
     exit 1
   fi
   python_arg=${HI_PYTHON}
-  if [ "${python_args}" = "" ]; then
+  if [ "${python_arg}" = "" ]; then
     python_arg="python3.7"
   fi
   parer_cmd="${python_arg} ${parer_python_file} ${ini_file} ${output_file}"
