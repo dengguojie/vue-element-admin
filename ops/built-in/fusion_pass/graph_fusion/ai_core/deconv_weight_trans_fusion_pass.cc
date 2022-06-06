@@ -631,28 +631,22 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
         reverse_node->GetOpDesc()->GetOutputDesc(0);
 
     // 5. anti-fusion height*weight
-    FUSION_PASS_CHECK(
-        GenerateReshapeNode(graph, reverse_out_desc, weight_in_desc,
-                            reshape_out, reshape_out_node, "reshape_out",
-                            basename) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
-        return FAILED);
+    FUSION_PASS_CHECK(GenerateReshapeNode(graph, reverse_out_desc, weight_in_desc, reshape_out, reshape_out_node,
+                                          "reshape_out", basename) != SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"), return FAILED);
   } else {
-    FUSION_PASS_CHECK(
-        GenerateReshapeNode(graph, reformat_desc, weight_in_desc,
-                            reshape_out, reshape_out_node, "reshape_out",
-                            basename) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
-        return FAILED);
+    FUSION_PASS_CHECK(GenerateReshapeNode(graph, reformat_desc, weight_in_desc, reshape_out, reshape_out_node,
+                                          "reshape_out", basename) != SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"), return FAILED);
   }
   FUSION_PASS_CHECK(
       Relink(filter_node, dim_comp_node, transpose_node, reformat_node,
              reshape_in_node, reverse_node, reshape_out_node, filter_next_node, filter_anchor) != SUCCESS,
-      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
   if (with_quant) {
     FUSION_PASS_CHECK(
         UpdateWeightQuantShape(reshape_out, quant_node) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update quant and deconv node"), return FAILED);
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to update quant and deconv node"), return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "End DeconvWeightTransFusionPass.");

@@ -75,9 +75,9 @@ ge::OpDescPtr DepthwiseDwMulFusionPass::CreateTranspose(const string& node_name,
   FUSION_PASS_MAKE_SHARED(transpose_desc = std::make_shared<ge::OpDesc>(node_name + "/TransposeD", "TransposeD"),
                           return nullptr);
   FUSION_PASS_CHECK(transpose_desc->AddInputDesc("x", input_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to transposed."), return nullptr);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add input desc x to transposed."), return nullptr);
   FUSION_PASS_CHECK(transpose_desc->AddOutputDesc("y", output_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc y to transposed."), return nullptr);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add input desc y to transposed."), return nullptr);
   ge::AttrUtils::SetListInt(transpose_desc, "perm", kTransposePerm);
   return transpose_desc;
 }
@@ -86,7 +86,7 @@ vector<FusionPattern*> DepthwiseDwMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DepthwiseDwMulFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_DEPTHWISEDW, {DEPTHWISEDW_DYN, DEPTHWISEDW}).SetOutput(PATTERN_DEPTHWISEDW);
@@ -100,11 +100,13 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   OP_LOGI("Enter DepthwiseDwMulFusionPass Fusion");
   ge::NodePtr depthwise_dw_node = GetNodeFromMapping(PATTERN_DEPTHWISEDW, mapping);
   FUSION_PASS_CHECK(depthwise_dw_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "depthwise_dw_node is null, fusion failed."), return PARAM_INVALID);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "%s is null, fusion failed.", depthwise_dw_node->GetName().c_str()),
+                    return NOT_CHANGED);
   ge::OpDescPtr depthwise_dw_desc = depthwise_dw_node->GetOpDesc();
-  FUSION_PASS_CHECK(depthwise_dw_desc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "depthwise_dw_node's OpDesc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      depthwise_dw_desc == nullptr,
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "%s's OpDesc is null, fusion failed.", depthwise_dw_node->GetName().c_str()),
+      return NOT_CHANGED);
 
   ge::GeTensorDesc dedy_input_tensor = depthwise_dw_node->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc dedw_output_tensor = depthwise_dw_node->GetOpDesc()->GetOutputDesc(0);
@@ -129,15 +131,15 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
 
   int groups = 0;
   ge::AttrUtils::GetInt(depthwise_dw_node->GetOpDesc(), "groups", groups);
-  FUSION_PASS_CHECK(groups <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "groups should not less or equal with 0."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(groups <= 0, OP_LOGW(FUSED_OP_TYPE.c_str(), "groups should not less or equal with 0."),
+                    return NOT_CHANGED);
 
   vector<int64_t> filter_size_reset;
   vector<int64_t> fractal_shape_reset;
   const ge::Format filter_ori_format = dedw_output_tensor.GetOriginFormat();
   FUSION_PASS_CHECK(!ConvFusionPassUtils::GetResizeDepthwiseFilter(filter_size, filter_ori_format, groups,
                                                                    filter_size_reset, fractal_shape_reset),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get filter resize shape failed."), return PARAM_INVALID);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "get filter resize shape failed."), return NOT_CHANGED);
   dedw_output_tensor.SetShape(ge::GeShape(fractal_shape_reset));
   dedw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
 
@@ -146,42 +148,42 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   if (filter_ori_format == ge::FORMAT_NCHW) {
     ge::OpDescPtr transpose_desc = CreateTranspose(depthwise_dw_node->GetName(), dedw_output_old_tensor);
     back_node = graph.AddNode(transpose_desc);
-    FUSION_PASS_CHECK(back_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape node into graph."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(back_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add reshape node into graph."),
+                      return NOT_CHANGED);
 
     ge::OpDescPtr reshape_desc_ptr = ConvFusionPassUtils::CreateReshape(
         depthwise_dw_node->GetName(), dedw_output_tensor, transpose_desc->GetInputDesc(0));
     reshape_node = graph.AddNode(reshape_desc_ptr);
     FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                       "failed to add reshape node into graph."),
-                      return PARAM_INVALID);
+                      return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), back_node->GetInDataAnchor(0)) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.", reshape_node->GetName().c_str(),
                 back_node->GetName().c_str()),
-                return PARAM_INVALID);
+                return FAILED);
   } else {
     ge::OpDescPtr reshape_desc_ptr = ConvFusionPassUtils::CreateReshape(depthwise_dw_node->GetName(),
                                                                         dedw_output_tensor, dedw_output_old_tensor);
     reshape_node = graph.AddNode(reshape_desc_ptr);
-    FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
-                      "failed to add reshape node into graph."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add reshape node into graph."),
+                      return NOT_CHANGED);
     back_node = reshape_node;
   }
   FUSION_PASS_CHECK(!ConvFusionPassUtils::ReplaceOutputAnchor(depthwise_dw_node, 0, back_node, 0),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to replace dw output anchor to reshape."),
-                    return PARAM_INVALID);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to replace %s's output anchor to reshape.",
+                            depthwise_dw_node->GetName().c_str()),
+                    return FAILED);
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(depthwise_dw_node->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(0)) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s and node %s failed.",
               depthwise_dw_node->GetName().c_str(), reshape_node->GetName().c_str()),
-      return PARAM_INVALID);
+      return FAILED);
 
   // when static op or dynamic op phase_running, is_dynamic = false
   ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
   depthwise_dw_desc->UpdateOutputDesc(0, dedw_output_tensor);
-  OP_LOGI("Leave DepthwiseDwMulFusionPass Fusion");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Leave DepthwiseDwMulFusionPass Fusion");
   return SUCCESS;
 }
 REGISTER_PASS("DepthwiseDwMulFusionPass", BUILT_IN_GRAPH_PASS, DepthwiseDwMulFusionPass);

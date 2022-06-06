@@ -117,7 +117,7 @@ std::unordered_map<std::string, EinsumPass::ProcFunc> EinsumPass::dynamicShapePr
 vector<FusionPattern *> EinsumPass::DefinePatterns() {
   vector<FusionPattern *> patterns;
   FusionPattern *pattern = new (nothrow) FusionPattern("EinsumPass");
-  FUSION_PASS_CHECK(pattern == nullptr, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(kFusedOpType.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(kPatternFusedNode, {kEinsum}).SetOutput(kPatternFusedNode);
   patterns.push_back(pattern);
@@ -149,9 +149,9 @@ bool EinsumPass::SetTransposePerm(bool unknown_shape, const std::vector<int32_t>
     FUSION_PASS_MAKE_SHARED(out_tensor = std::make_shared<ge::GeTensor>(perm_input_desc), return false);
     out_tensor->SetData(reinterpret_cast<const uint8_t *>(perm.data()), perm.size() * sizeof(int32_t));
     ge::OpDescPtr out_op_desc = ge::OpDescUtils::CreateConstOp(out_tensor);
-    FUSION_PASS_CHECK(out_op_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "out_op_desc is null"), return false);
+    FUSION_PASS_CHECK(out_op_desc == nullptr, OP_LOGW(kFusedOpType.c_str(), "out_op_desc is null"), return false);
     auto const_node = graph.AddNode(out_op_desc);
-    FUSION_PASS_CHECK(const_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "const_node is null"), return false);
+    FUSION_PASS_CHECK(const_node == nullptr, OP_LOGW(kFusedOpType.c_str(), "const_node is null"), return false);
     FUSION_PASS_CHECK(transpose_node->AddLinkFrom("perm", const_node) != SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Failed to add perm."), return false);
 
@@ -184,7 +184,7 @@ NodePtr EinsumPass::CreateReshapeNode(const std::vector<int64_t> &dims, ge::Comp
     AttrUtils::SetInt(reshape_desc, "axis", axis);
     AttrUtils::SetInt(reshape_desc, "end_axis", end_axis);
     auto reshape_node = graph.AddNode(reshape_desc);
-    FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_node is null"), return nullptr);
+    FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGW(kFusedOpType.c_str(), "reshape_node is null"), return nullptr);
     FUSION_PASS_CHECK(reshape_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "FlattenV2 infershape failed."), return nullptr);
 
@@ -306,7 +306,7 @@ Status EinsumPass::HandleDynamicABCxCDE2ABDE(ComputeGraph &graph, NodePtr &node)
   bool x1_is_unknown_shape = x1_desc.MutableShape().IsUnknownShape();
 
   FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
-                    OP_LOGI(kFusedOpType.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
+                    OP_LOGW(kFusedOpType.c_str(), "Input dims size of x0 and x1 must be 3."), return NOT_CHANGED);
 
   // common vars
   std::vector<int64_t> tmp_dims;
@@ -333,7 +333,7 @@ Status EinsumPass::HandleDynamicABCxCDE2ABDE(ComputeGraph &graph, NodePtr &node)
   gatherShapes_desc->AddInputDesc("x1", x1_desc);
   const std::vector<std::vector<int64_t>> axes = {{0, 0}, {0, 1}, {1, 1}, {1, 2}};
   FUSION_PASS_CHECK(AttrUtils::SetListListInt(gatherShapes_desc, "axes", axes) == false,
-                    OP_LOGE(kFusedOpType.c_str(), "set gatherShapes axes failed."), return FAILED);
+                    OP_LOGW(kFusedOpType.c_str(), "set gatherShapes axes failed."), return NOT_CHANGED);
 
   reshape_1_desc->AddInputDesc("x", x0_desc);
   tmp_dims.assign({GetDimMulValue(x0_dims[0], x0_dims[1]), x0_dims[2]});
@@ -359,10 +359,8 @@ Status EinsumPass::HandleDynamicABCxCDE2ABDE(ComputeGraph &graph, NodePtr &node)
   NodePtr gatherShapes_node = graph.AddNode(gatherShapes_desc);
   FUSION_PASS_CHECK(gatherShapes_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "gatherShapes_node is null"),
                     return FAILED);
-  if (gatherShapes_node->InferShapeAndType() != ge::GRAPH_SUCCESS) {
-    OP_LOGE(kFusedOpType.c_str(), "gatherShapes infershape failed.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(gatherShapes_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "gatherShapes infershape failed."), return FAILED);
 
   // create matmul op desc
   std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
@@ -378,10 +376,8 @@ Status EinsumPass::HandleDynamicABCxCDE2ABDE(ComputeGraph &graph, NodePtr &node)
   AttrUtils::SetBool(matmul_desc, "transpose_x2", false);
   NodePtr matmul_node = graph.AddNode(matmul_desc);
   FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "matmul_node is null"), return FAILED);
-  if (matmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS) {
-    OP_LOGE(kFusedOpType.c_str(), "matmul infershape failed.");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(matmul_node->InferShapeAndType()  != ge::GRAPH_SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "matmul infershape failed."), return FAILED);
 
   // create reshape op desc
   std::shared_ptr<ge::OpDesc> reshape_3_desc = nullptr;
@@ -470,7 +466,7 @@ Status EinsumPass::HandleABCDxAECD2ACEB(ComputeGraph &graph, NodePtr &node) {
   std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose2");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
-                    OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
+                    OP_LOGW(kFusedOpType.c_str(), "Input dims size of x0 and x1 must be 4."), return NOT_CHANGED);
 
   // set op attr
   AttrUtils::SetBool(batchmatmul_desc, "adj_x1", false);
@@ -486,7 +482,7 @@ Status EinsumPass::HandleABCDxAECD2ACEB(ComputeGraph &graph, NodePtr &node) {
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
   SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_2_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
+                    OP_LOGW(kFusedOpType.c_str(), "transpose infershape failed."), return NOT_CHANGED);
 
   transpose_1_desc->AddInputDesc("x", x0_desc);
   tmp_dims.assign({x0_dims[0], x0_dims[2], x0_dims[1], x0_dims[3]});
@@ -541,7 +537,7 @@ Status EinsumPass::HandleABCDxADBE2ACBE(ComputeGraph &graph, NodePtr &node) {
   std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose1");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
-                    OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
+                    OP_LOGW(kFusedOpType.c_str(), "Input dims size of x0 and x1 must be 4."), return NOT_CHANGED);
 
   // set op attr
   AttrUtils::SetBool(batchmatmul_desc, "adj_x1", false);
@@ -558,7 +554,7 @@ Status EinsumPass::HandleABCDxADBE2ACBE(ComputeGraph &graph, NodePtr &node) {
   NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
   SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_1_desc, transpose_1_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_1_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
+                    OP_LOGW(kFusedOpType.c_str(), "transpose infershape failed."), return NOT_CHANGED);
 
   batchmatmul_desc->AddInputDesc("x2", *(transpose_1_desc->MutableOutputDesc(0)));
   tmp_dims.assign({x0_dims[0], x0_dims[1], x0_dims[2], x1_dims[3]});
@@ -568,7 +564,7 @@ Status EinsumPass::HandleABCDxADBE2ACBE(ComputeGraph &graph, NodePtr &node) {
   NodePtr batchmatmul_node = graph.AddNode(batchmatmul_desc);
   FUSION_PASS_CHECK((x0_is_unknown_shape || transpose_1_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape()) &&
                         batchmatmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "batchmatmul infershape failed."), return FAILED);
+                    OP_LOGW(kFusedOpType.c_str(), "batchmatmul infershape failed."), return NOT_CHANGED);
 
   bool is_unknown_shape = batchmatmul_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape();
   std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(is_unknown_shape, node, "/Transpose2");
@@ -629,8 +625,10 @@ Status EinsumPass::HandleABCDxCDE2ABE(ComputeGraph &graph, NodePtr &node) {
   std::shared_ptr<ge::OpDesc> reshape_1_desc = CreateReshapeOpDesc(x0_is_unknown_shape, node, 1);
   std::shared_ptr<ge::OpDesc> reshape_2_desc = CreateReshapeOpDesc(x1_is_unknown_shape, node, 2);
 
-  FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
-                    OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
+  FUSION_PASS_CHECK(
+      (x0_dims.size() != 4) && (x1_dims.size() != 3),
+      OP_LOGW(kFusedOpType.c_str(), "The input dims size of x0 must be 4, and the input dims size of x1 must be 3."),
+      return NOT_CHANGED);
 
   // add input and output desc
   reshape_1_desc->AddInputDesc("x", x0_desc);
@@ -660,8 +658,10 @@ Status EinsumPass::HandleABCDxCDE2ABE(ComputeGraph &graph, NodePtr &node) {
                     OP_LOGE(kFusedOpType.c_str(), "failed to relink reshape/batchmatmul"), return FAILED);
 
   // remove node
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "remove einsum node failed"), return FAILED);
+  FUSION_PASS_CHECK(
+      ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "remove einsum node %s failed", node->GetName().c_str()),
+      return FAILED);
   return SUCCESS;
 }
 
