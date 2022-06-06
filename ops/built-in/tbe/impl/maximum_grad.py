@@ -19,6 +19,11 @@ from te.utils import para_check
 from impl import fused_minimum_or_maximum_grad
 
 
+def check_supported(grads, x1, x2, y1, y2, grad_x=True, grad_y=True, kernel_name="maximum_grad"):
+    
+    return True
+
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,arguments-out-of-order
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

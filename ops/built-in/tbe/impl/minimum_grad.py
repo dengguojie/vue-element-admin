@@ -23,6 +23,12 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 
 
+
+def check_supported(grads, x1, x2, y1, y2, grad_x=True, grad_y=True, kernel_name="maximum_grad"):
+    
+    return True
+
+
 def _compare_value_int32(data_x, data_y, shape_dz):
     """
     The input data type of this function only support int32;

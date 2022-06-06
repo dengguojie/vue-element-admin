@@ -1448,6 +1448,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/xlogy.py
       - ops/built-in/tbe/impl/dynamic/fill_d.py
       - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression.py
+      - ops/built-in/tbe/impl/maximum_grad.py
       - ops/built-in/tbe/impl/elu.py
       - ops/built-in/tbe/impl/equal.py
       - ops/built-in/tbe/impl/exp.py
@@ -2922,7 +2923,6 @@ unkown:
       - ops/built-in/tbe/impl/batch_norm_grad_ext2.py
       - ops/built-in/tbe/impl/dropout_v2.py
       - ops/built-in/tbe/impl/drop_out_do_mask.py
-      - ops/built-in/tbe/impl/maximum_grad.py
       - ops/built-in/tbe/impl/pooling.py
       - ops/built-in/tbe/impl/gelu.py
       - ops/built-in/tbe/impl/hwc_2_chw.py

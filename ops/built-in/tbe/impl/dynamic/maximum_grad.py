@@ -15,6 +15,7 @@
 """
 maximum_grad
 """
+from impl.util import util_common
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe
@@ -24,6 +25,19 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
+
+def check_supported(grads, x1, x2, y1, y2, grad_x=True, grad_y=True, kernel_name="maximum_grad"):
+    if util_common.is_unknown([grads, x1, x2]):
+        return True
+
+    if grads["shape"] != x2["shape"] and grad_y:
+        return False
+
+    if grads["shape"] != x1["shape"] and grad_x:
+        return False
+
+    return True
 
 
 def _compare_value_int32(data_x, data_y, shape_dz):
