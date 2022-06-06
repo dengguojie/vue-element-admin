@@ -4,7 +4,7 @@ from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
 
-ut_case = OpUT("AxpyV2", None, None)
+ut_case = OpUT("AxpyV2", "impl.axpy_v2", "axpy_v2")
 
 ut_case.add_case("all", {
     "params": [{'shape': (13, 15, 17, 16), 'dtype': 'int32', 'format': 'ND',
@@ -126,4 +126,4 @@ ut_case.add_cust_test_func(test_func=test_axpy_v2)
 ut_case.add_cust_test_func(test_func=test_infer_shape)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A", simulator_mode="pv", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
+    ut_case.run("Ascend910A")
