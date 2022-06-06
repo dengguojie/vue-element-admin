@@ -40,6 +40,69 @@ T* MutableCompileInfo(gert::TilingParseContext* context) {
 }
 
 /*
+ * @brief: Calculate reduce cof value
+ * @param [in] input_shape: gert::Shape, the input shape for reduce
+ * @param [in] reduce_axis: const std::vector<int32_t>, the reduce axes num
+ * @param [out] reduce_mean_cof: the result of reduce cof value
+ * @return bool: true or false;
+ */
+template <typename T>
+bool CalcReduceMeanCof(const gert::Shape& input_shape, const std::vector<T>& reduce_axis,
+                       float& reduce_mean_cof) {
+  const size_t dim_len = input_shape.GetDimNum();
+  const size_t ori_reduce_axis_len = reduce_axis.size();
+  // init reduce_mean_cof is 1.0
+  reduce_mean_cof = 1.0;
+  for (size_t i = 0; i < ori_reduce_axis_len; i++) {
+    OP_TILING_CHECK(
+        !ops::IsDimValid(dim_len, reduce_axis[i]),
+        VECTOR_INNER_ERR_REPORT_TILIING("CalcReduceMeanCof", "%s",
+                                        ops::GenInvalidDimMsg("reduce_axis", i, dim_len, reduce_axis[i]).c_str()),
+        return false);
+
+    // convert reduce axis (like: -1 -> (dim_len - 1))
+    T single_reduce_axis = reduce_axis[i] < 0 ? reduce_axis[i] + dim_len : reduce_axis[i];
+
+    int64_t reduce_dim = input_shape.GetDim(single_reduce_axis);
+    OP_TILING_CHECK(reduce_dim == 0, OP_LOGI("CalcReduceMeanCof", "the reduce dim is 0, will ignore reduce_mean_cof"),
+                    return true);
+    reduce_mean_cof = reduce_mean_cof / reduce_dim;
+  }
+  OP_LOGD("CalcReduceMeanCof", "CalcReduceMeanCof cof is %1f", reduce_mean_cof);
+
+  return true;
+}
+
+/*
+ * @brief: add reduce cof value after the tiling data
+ * @param [in] input_shape: gert::Shape, the input shape for reduce
+ * @param [in] input_dtype: ge::DataType,  the input dtype for reduce
+ * @param [in] reduce_axis: const std::vector<int32_t>, the reduce axes num
+ * @param [out] tiling_data: gert::TilingData, the tiling data, will add the cof value to th lasy TilingData
+ * @return bool: true or false;
+ */
+template <typename T>
+bool AddReduceMeanCof(const gert::Shape& input_shape, const ge::DataType input_dtype,
+                      const std::vector<T>& reduce_axis, gert::TilingData* tiling_data) {
+  float reduce_mean_cof = 1.0;
+  bool calcu_flag = CalcReduceMeanCof(input_shape, reduce_axis, reduce_mean_cof);
+  OP_LOGD("AddReduceMeanCof", "AddReduceMeanCof dtype is %s", ops::ToString(input_dtype).c_str());
+  switch (input_dtype) {
+    case ge::DT_FLOAT:
+      tiling_data->Append((float)reduce_mean_cof);
+      return calcu_flag;
+    case ge::DT_FLOAT16:
+      tiling_data->Append((fe::fp16_t)reduce_mean_cof);
+      tiling_data->Append((uint16_t)0);
+      return calcu_flag;
+    default:
+      OP_LOGW("AddReduceMeanCof", "Only support [DT_FLOAT, DT_FLOAT16], but is [%s]",
+              ops::ToString(input_dtype).c_str());
+      return false;
+  }
+}
+
+/*
  * @brief: get the json class of compile info from context
  * @param [in] context: gert::TilingContext
  * @return bool: std::unique_ptr<nlohmann::json>;
@@ -79,17 +142,6 @@ int64_t GetRemainder(int64_t u_value, int64_t d_value);
  * @return int64: the total shape size for begin to end
  */
 int64_t GetPartShapeSize(const gert::Shape& shape, size_t begin, size_t end);
-
-/*
- * @brief: add reduce cof value after the tiling data
- * @param [in] input_shape: gert::Shape, the input shape for reduce
- * @param [in] input_dtype: ge::DataType,  the input dtype for reduce
- * @param [in] reduce_axis: const std::vector<int32_t>, the reduce axes num
- * @param [out] tiling_data: gert::TilingData, the tiling data, will add the cof value to th lasy TilingData
- * @return bool: true or false;
- */
-bool AddReducMeanCof(const gert::Shape& input_shape, const ge::DataType input_dtype,
-                     const std::vector<int32_t>& reduce_axis, gert::TilingData* tiling_data);
 
 /*
  * @brief: for debug print runtime2 tiling data
