@@ -30,9 +30,6 @@ def concat(input_values, output_data, axis, kernel_name="concat"):
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.dsl.build(schedules, config)
-    compile_info = tbe.dsl.base.operation.get_compile_info()
-    import json
-    print(json.dumps(compile_info))
 
 
 ut_case = OpUT("UT_Concat", "concat.test_dynamic_concat_impl", "concat")
@@ -293,6 +290,54 @@ ut_case.add_case(["Ascend910A", "Ascend710"], case10)
 ut_case.add_case(["Ascend910A", "Ascend710"], case11)
 ut_case.add_case(["Ascend910A", "Ascend710"], case12)
 
+
+@register_operator("UT_Pack")
+def pack(input_values, output_data, axis, kernel_name="pack"):
+    dtype_x = input_values[0].get("dtype")
+
+    extra_params = {"axis": axis, "same_input": True}
+    ins = classify([input_values], "concat", extra_params)
+    schedules, tensors = [], []
+    for (input_x_, axis_) in ins:
+        with tbe.dsl.compute():
+            shape_x = shape_util.variable_shape([input_x_], "concat")
+            input_tensors = []
+            for index, shape in enumerate(shape_x):
+                data = tvm.placeholder(shape, dtype=dtype_x, name=f"data_{index}")
+                input_tensors.append(data)
+            res = tbe.dsl.concat(input_tensors, axis_)
+
+            tensors.append([*input_tensors, res])
+        with tvm.target.cce():
+            sch = tbe.dsl.auto_schedule(res)
+        schedules.append(sch)
+
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.dsl.build(schedules, config)
+
+
+ut_case1 = OpUT("UT_Pack", "concat.test_dynamic_concat_impl", "pack")
+
+case10 = {
+    "params": [[{
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }] * 2, {
+        "shape": (-1, ) * 2,
+        "dtype": "float16",
+        "range": [(1, None)] * 2
+    }, 1],
+    "case_name":
+    "test_dynamic_pack_0",
+    "expect":
+    "success",
+    "support_expect":
+    True
+}
+ut_case1.add_case(["Ascend910A", "Ascend710"], case10)
+
+
 if __name__ == '__main__':
     import os
     from pathlib import Path
@@ -301,3 +346,4 @@ if __name__ == '__main__':
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
     ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case1.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

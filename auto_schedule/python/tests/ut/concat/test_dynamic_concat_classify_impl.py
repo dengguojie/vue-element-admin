@@ -4,6 +4,7 @@ import warnings
 from tbe.dsl.base.classifier import classify_concat
 from tbe.common.context import op_context
 from tbe.dsl.base.operation import get_compile_info
+from tbe.dsl.base.operation import get_context
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("concat_classify", "concat.test_dynamic_concat_classify_impl")
@@ -117,7 +118,7 @@ def test_one_axis_part_const_concat(_):
         input_s = [[input_0, input_1, input_2]]
         extra_params = {"axis": 1}
         ins = classify_concat(input_s, extra_params)
-        except_ins = [[[{'shape': [99, 1000], 'range': [(99, 99), (1, None)], 'mode': 'concat'}, {'shape': [99, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [99, -1], 'range': [(99, 99), (1, None)], 'mode': 'concat'}], 1]]
+        except_ins = [[[{'shape': [99, 1000], 'range': [(99, 99), (1000, 1000)], 'mode': 'concat'}, {'shape': [99, -1], 'range': [(99, 99), (10, None)], 'mode': 'concat'}, {'shape': [99, -1], 'range': [(99, 99), (10, None)], 'mode': 'concat'}], 1]]
     return ins == except_ins
 
 
@@ -154,15 +155,15 @@ def test_concat_axis_zero_shape_concat(_):
         input_s = [[input_0, input_1, input_2]]
         extra_params = {"axis": 2}
         ins = classify_concat(input_s, extra_params)
-        except_ins = [[[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, 0], 'range': [(1, None), (1, None)], 'mode': 'concat'}], 1]]
+        except_ins = [[[{'shape': [-1, -1], 'range': [(10, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(10, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, 0], 'range': [(10, None), (0, 0)], 'mode': 'concat'}], 1]]
     return ins == except_ins
 
 
 def test_no_concat_axis_zero_range_concat(_):
     with op_context.OpContext("dynamic"):
-        input_0 = {"shape": (-1, -1, -1), "dtype": "float32", "range": [(1, None), (1, None), (0, None)]}
+        input_0 = {"shape": (-1, -1, -1), "dtype": "float32", "range": [(1, None), (0, None), (0, None)]}
         input_1 = {"shape": (-1, -1, 88), "dtype": "float32", "range": [(1, None), (0, None), (88, 88)]}
-        input_2 = {"shape": (-1, -1, -1), "dtype": "float32", "range": [(1, None), (1, None), (1, None)]}
+        input_2 = {"shape": (-1, -1, -1), "dtype": "float32", "range": [(1, None), (0, None), (1, None)]}
         input_s = [[input_0, input_1, input_2]]
         extra_params = {"axis": 2}
         ins = classify_concat(input_s, extra_params)
@@ -178,7 +179,7 @@ def test_concat_axis_zero_range_concat(_):
         input_s = [[input_0, input_1, input_2]]
         extra_params = {"axis": 2}
         ins = classify_concat(input_s, extra_params)
-        except_ins = [[[{'shape': [-1, -1], 'range': [(1, None), (0, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(99, None), (0, 88)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (0, None)], 'mode': 'concat'}], 1], [[{'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}, {'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}, {'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}], 0]]
+        except_ins = [[[{'shape': [-1, -1], 'range': [(99, None), (0, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(99, None), (0, 88)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(99, None), (0, None)], 'mode': 'concat'}], 1], [[{'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}, {'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}, {'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}], 0]]
     return ins == except_ins
 
 
@@ -201,8 +202,6 @@ def test_one_axis_all_dynamic_concat_neg_axis(_):
         ins = classify_concat(input_s, extra_params)
         compile_info = get_compile_info()
         except_compile_info = {"_ori_axis": -2}
-        import json
-        print(json.dumps(compile_info))
         except_ins = [[[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}], 1]]
     return ins == except_ins and compile_info == except_compile_info
 
@@ -258,6 +257,62 @@ def test_unknown_rank_single_input(_):
     return ins == except_ins and compile_info == except_compile_info
 
 
+def test_same_input_var(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-1, -1), "dtype": "float32", "range": [(1, None), (1, None)]}
+        input_s = [[input_0] * 3]
+        extra_params = {"axis": -1, "same_input": True}
+        ins = classify_concat(input_s, extra_params)
+        exect_context_same_input = True
+        context_same_input = get_context().get("_is_same_input")
+        except_ins = [[[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}, {'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'concat'}], 1]]
+    return ins == except_ins and context_same_input == exect_context_same_input
+
+
+def test_same_input_var_diff_range_error(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-1, -1), "dtype": "float32", "range": [(1, None), (1, None)]}
+        input_1 = {"shape": (-1, -1), "dtype": "float32", "range": [(10, 10), (201, 400)]}
+        input_2 = {"shape": (-1, -1), "dtype": "float32", "range": [(1, None), (100, 200)]}
+        input_s = [[input_0, input_1, input_2]]
+        extra_params = {"axis": -1, "same_input": True}
+        try:
+            ins = classify_concat(input_s, extra_params)
+        except RuntimeError as e:
+            error_message = {'errCode': 'E90001',
+                             'detailed_cause': 'concat input range error, lower range > upper range'}
+            return error_message == e.args[0]
+    return False
+
+
+def test_same_input_var_diff_range(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-1, -1), "dtype": "float32", "range": [(1, None), (1, None)]}
+        input_1 = {"shape": (-1, -1), "dtype": "float32", "range": [(10, 10), (1, None)]}
+        input_2 = {"shape": (-1, -1), "dtype": "float32", "range": [(1, None), (100, None)]}
+        input_s = [[input_0, input_1, input_2]]
+        extra_params = {"axis": -1, "same_input": True}
+        ins = classify_concat(input_s, extra_params)
+        exect_context_same_input = True
+        context_same_input = get_context().get("_is_same_input")
+        except_ins = [[[{'shape': [10, -1], 'range': [(10, 10), (100, None)], 'mode': 'concat'}, {'shape': [10, -1], 'range': [(10, 10), (100, None)], 'mode': 'concat'}, {'shape': [10, -1], 'range': [(10, 10), (100, None)], 'mode': 'concat'}], 1]]
+    return ins == except_ins and context_same_input == exect_context_same_input
+
+
+def test_same_input_const(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-1, -1), "dtype": "float32", "range": [(1, None), (1, None)]}
+        input_1 = {"shape": (10, -1), "dtype": "float32", "range": [(10, 10), (1, None)]}
+        input_2 = {"shape": (-1, 100), "dtype": "float32", "range": [(1, None), (100, 100)]}
+        input_s = [[input_0, input_1, input_2]]
+        extra_params = {"axis": -1, "same_input": True}
+        ins = classify_concat(input_s, extra_params)
+        exect_context_same_input = True
+        context_same_input = get_context().get("_is_same_input")
+        except_ins = [[[{'shape': [10, 100], 'range': [(10, 10), (100, 100)], 'mode': 'concat'}, {'shape': [10, 100], 'range': [(10, 10), (100, 100)], 'mode': 'concat'}, {'shape': [10, 100], 'range': [(10, 10), (100, 100)], 'mode': 'concat'}], 1]]
+    return ins == except_ins and context_same_input == exect_context_same_input
+
+
 test_func_list = [
     test_max_inputs,
     test_min_inputs,
@@ -277,7 +332,11 @@ test_func_list = [
     test_one_input_concat_neg_axis,
     test_unknown_rank_1_axis,
     test_unknown_rank_3_axis,
-    test_unknown_rank_single_input
+    test_unknown_rank_single_input,
+    test_same_input_var,
+    test_same_input_var_diff_range_error,
+    test_same_input_var_diff_range,
+    test_same_input_const,
 ]
 
 

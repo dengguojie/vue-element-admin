@@ -197,6 +197,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/constants.py
       - auto_schedule/python/tbe/dsl/base/classifier/util.py
       - auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py
       - auto_schedule/python/tbe/dsl/base/context.py
       - auto_schedule/python/tbe/dsl/base/expr_compare.py
       - auto_schedule/python/tbe/dsl/base/__init__.py
@@ -4014,7 +4015,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/static_schedule/depthwise_conv2d_schedule.py
       - auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/__init__.py

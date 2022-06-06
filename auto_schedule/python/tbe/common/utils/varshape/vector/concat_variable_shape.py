@@ -48,6 +48,7 @@ def variable_shape(inputs):
     is_first_in = True
     shape_out = []
     first_var = -1
+    is_same_input = operation.get_context().get("_is_same_input") or False
     for index, x in enumerate(inputs[0]):
         shape_x = x.get("shape")
         range_x = x.get("range")
@@ -56,6 +57,10 @@ def variable_shape(inputs):
         if len(shape_x) > 1:
             add_one_axis_var()
         shape_out.append(cur_shape)
+        if is_same_input:
+            break
+    if is_same_input:
+        shape_out = [shape_out[0] for _ in inputs[0]]
     current_compute = operation.get_context().get_current_compute()
     mode = inputs[0][0].get("mode")
     current_compute.add("_mode", mode)

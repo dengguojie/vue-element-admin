@@ -798,6 +798,7 @@ class ConcatSchedule(Schedule):
             operation.add_compile_info_inner("_is_const", False)
         shape_is_var = []
         is_first = True
+        is_same_input = operation.get_context().get("_is_same_input") or False
         for i, tensor_i in enumerate(self._input_tensors):
             shape = util.shape_to_list(tensor_i.shape)
             cur_shape = []
@@ -811,6 +812,8 @@ class ConcatSchedule(Schedule):
                     else:
                         cur_shape.append(False)
             shape_is_var.append(cur_shape)
+            if is_same_input:
+                break
         operation.add_compile_info_inner("_concat_vars", shape_is_var)
 
     def _check_tiling_case(self):
