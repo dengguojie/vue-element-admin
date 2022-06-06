@@ -1131,17 +1131,28 @@ VERIFY_FUNC_REG(HardSigmoidGrad, HardSigmoidGradVerify);
 
 // ----------------Shrink Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(ShrinkInferShape) {
-  const char* input_x = "input_x";
-  const char* output_y = "output_y";
-  TensorDesc output_desc = op.GetOutputDescByName(output_y);
-  DataType predict_dtype = op.GetInputDescByName(input_x).GetDataType();
-  Format predict_format = op.GetInputDescByName(input_x).GetFormat();
-  ge::Shape output_shape = op.GetInputDescByName(input_x).GetShape();
-  output_desc.SetDataType(predict_dtype);
-  output_desc.SetFormat(predict_format);
-  output_desc.SetShape(output_shape);
-  (void)op.UpdateOutputDesc(output_y, output_desc);
-      return GRAPH_SUCCESS;
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS,
+        OP_LOGE("Shrink", "Failed to get op name of Shrink"), return GRAPH_FAILED);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  const int64_t input_x_id = 0;
+  const int64_t output_y_id = 0;
+  float lambda = 0.5;
+  auto x_desc = op_desc->MutableInputDesc(input_x_id);
+  auto y_desc = op_desc->MutableInputDesc(output_y_id);
+  const GeShape &x_shape = x_desc->MutableShape();
+  auto x_dtype = x_desc->GetDataType();
+  auto x_format = x_desc->GetFormat();
+  if (op.GetAttr("lambd", lambda) == ge::GRAPH_SUCCESS) {
+    if (lambda < 0) {
+      OP_LOGE(op_name.GetString(), "Only support attr lambda >= 0.");
+      return GRAPH_FAILED;
+    }
+  }
+  y_desc->SetShape(x_shape);
+  y_desc->SetFormat(x_format);
+  y_desc->SetDataType(x_dtype);
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Shrink, ShrinkVerify) {

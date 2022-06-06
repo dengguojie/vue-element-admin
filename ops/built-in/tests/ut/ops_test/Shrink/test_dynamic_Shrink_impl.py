@@ -93,6 +93,14 @@ case7 = {"params": [
             "expect": "success",
             "support_expect": True
         }
+
+# 'pylint: disable=unused-argument
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+    importlib.reload(sys.modules.get("impl.util.util_attr_common"))
+
 # add case
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -101,6 +109,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_cust_test_func(test_func=test_import_lib)
 
 
 

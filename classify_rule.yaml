@@ -4124,6 +4124,7 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/reduce_std_with_mean.py
       - ops/built-in/tbe/impl/dynamic/embedding_dense_grad.py
       - ops/built-in/tbe/impl/dynamic/threshold_v2.py
+      - ops/built-in/tbe/impl/dynamic/shrink.py
       - ops/built-in/tbe/impl/fill_v2_d.py
       - ops/built-in/tbe/impl/ldpc.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.cc

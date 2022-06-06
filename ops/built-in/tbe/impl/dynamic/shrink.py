@@ -24,6 +24,8 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import ShrinkAttrInfo
+from impl.util.util_attr_common import get_attr_by_cls
 
 
 # 'pylint: disable=superfluous-parens,unused-argument,too-many-locals
@@ -58,10 +60,14 @@ def shrink_compute(input_x, output_y, lambd, bias, kernel_name="Shrink"):
     if ori_dtype != input_dtype:
         input_x = tbe.cast_to(input_x, input_dtype)
     input_x_abs = tbe.vabs(input_x)
-    negative_bias = tvm.const(-bias, input_dtype)
-    lambd_tensor = tbe.broadcast(tvm.const(lambd, input_dtype), shape)
+    bias = get_attr_by_cls(bias, ShrinkAttrInfo.ATTR_BIAS, input_dtype)
+    lambd = get_attr_by_cls(lambd, ShrinkAttrInfo.ATTR_LAMBD, input_dtype)
+    lambd_tensor = tbe.broadcast(lambd, shape)
+    bias_tensor = tbe.broadcast(bias, shape)
+    # use vmuls instrucion to avoid unsupported "-x" binary op case
+    negative_bias_tensor = tbe.vmuls(bias_tensor, tvm.const(-1, input_dtype))
     zero_tensor = tbe.broadcast(tvm.const(0, input_dtype), shape)
-    x_bias_tensor = tbe.vadds(input_x_abs, negative_bias)
+    x_bias_tensor = tbe.vadd(input_x_abs, negative_bias_tensor)
     res1 = tbe.vcmpsel(input_x_abs, lambd_tensor, 'le', zero_tensor, x_bias_tensor)
     x_sign_tensor = tbe.vcmpsel(input_x, zero_tensor, 'le', -1, 1)
     result = tbe.vmul(x_sign_tensor, res1)
@@ -100,9 +106,6 @@ def shrink(input_x, output_y, lambd=0.5, bias=0.0, kernel_name="Shrink"):
     para_check.check_shape(input_shape, param_name="input_x")
     check_tuple = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_tuple, param_name="input_x")
-
-    if(lambd < 0):
-        raise RuntimeError("Only support lambd >= 0 while lambd is {}.".format(lambd))
 
     ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []

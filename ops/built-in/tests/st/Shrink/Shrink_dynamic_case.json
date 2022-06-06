@@ -1,0 +1,72 @@
+[
+    {
+      "op": "Shrink",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [8, 9],
+          "format": "ND",
+          "param_type": "input",
+          "name": "input_x",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [8, 9],
+          "format": "ND",
+          "param_type": "output",
+          "name": "output_y",
+          "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+          "name": "lambd",
+          "type": "float",
+          "value": 0.5
+        },
+        {
+          "name": "bias",
+          "type": "float",
+          "value": 0.0
+        }
+      ],
+      "case_name": "test_shrink_001"
+    },
+    {
+      "op": "Shrink",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [8, 9],
+          "format": "ND",
+          "param_type": "input",
+          "name": "input_x",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [8, 9],
+          "format": "ND",
+          "param_type": "output",
+          "name": "output_y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "lambd",
+          "type": "float",
+          "value": 0.5
+        },
+        {
+          "name": "bias",
+          "type": "float",
+          "value": 0.0
+        }
+      ],
+      "case_name": "test_shrink_002"
+    }
+]

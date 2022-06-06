@@ -69,3 +69,11 @@ class SoftmaxV2AttrInfo:
     define SoftmaxV2 attr info
     """
     ATTR_AXES = OpAttr(0, "axes", "ListInt", [-1])
+
+
+class ShrinkAttrInfo:
+    """
+    define Shrink attr info
+    """
+    ATTR_LAMBD = OpAttr(0, "lambd", "Float", 0.5)
+    ATTR_BIAS = OpAttr(1, "bias", "Float", 0.0)
