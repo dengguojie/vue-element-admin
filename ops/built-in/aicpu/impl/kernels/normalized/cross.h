@@ -19,19 +19,17 @@
 
 namespace aicpu {
 class CrossCpuKernel : public CpuKernel {
- public:
+public:
   CrossCpuKernel() = default;
   ~CrossCpuKernel() override = default;
-
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
- private:
+private:
   template <typename T1>
-  uint32_t CrossCompute(CpuKernelContext &ctx);
+  uint32_t CrossCompute(const CpuKernelContext &ctx);
 
   uint32_t GetDimAndCheck(const CpuKernelContext &ctx);
-  int64_t dim_ = 0;
+  int32_t dim_ = 0;
 };
 }  // namespace aicpu
 #endif

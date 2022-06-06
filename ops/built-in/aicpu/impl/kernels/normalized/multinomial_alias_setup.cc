@@ -139,7 +139,7 @@ void MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCal(const CpuKernelCon
 }
 
 template <typename T>
-uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(CpuKernelContext &ctx) {
+uint32_t MultinomialAliasSetupCpuKernel::MultinomialAliasSetupCompute(const CpuKernelContext &ctx) {
   int64_t data_num = ctx.Input(0)->NumElements();
   auto out_j = reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
   auto out_q = reinterpret_cast<T *>(ctx.Output(1)->GetData());

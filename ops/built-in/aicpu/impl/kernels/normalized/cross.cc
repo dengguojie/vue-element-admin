@@ -28,7 +28,7 @@ namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
 const int64_t kParallelNum = 2 * 1024;
-const char *kCross = "Cross";
+const char *const kCross = "Cross";
 const int64_t kThreeNum = 3;
 #define Cross_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                       \
@@ -47,7 +47,7 @@ uint32_t CrossCpuKernel::GetDimAndCheck(const CpuKernelContext &ctx) {
   auto input2_data_shape = ctx.Input(1)->GetTensorShape();
   AttrValue *dim_attr = ctx.GetAttr("dim");
   if (dim_attr == nullptr) {
-    for (int64_t i = 0; i < input1_data_shape->GetDims(); i++) {
+    for (int32_t i = 0; i < input1_data_shape->GetDims(); i++) {
       if (input1_data_shape->GetDimSize(i) == kThreeNum) {
         dim_ = i;
         break;
@@ -60,7 +60,7 @@ uint32_t CrossCpuKernel::GetDimAndCheck(const CpuKernelContext &ctx) {
       }
     }
   } else {
-    dim_ = dim_attr->GetInt();
+    dim_ = static_cast<int32_t>(dim_attr->GetInt());
   }
 
   if (input1_data_shape->GetDims() != input2_data_shape->GetDims()) {
@@ -121,7 +121,7 @@ uint32_t CrossCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T1>
-uint32_t CrossCpuKernel::CrossCompute(CpuKernelContext &ctx) {
+uint32_t CrossCpuKernel::CrossCompute(const CpuKernelContext &ctx) {
   Tensor *input1_data = ctx.Input(0);
   auto input1_data_addr = reinterpret_cast<T1 *>(input1_data->GetData());
   auto input1_data_shape = input1_data->GetTensorShape();
@@ -140,7 +140,7 @@ uint32_t CrossCpuKernel::CrossCompute(CpuKernelContext &ctx) {
   auto output_data_shape = output_data->GetTensorShape();
   std::vector<int64_t> output_data_shape_dims =
       output_data_shape->GetDimSizes();
-  int64_t dim = dim_;
+  int32_t dim = dim_;
   int64_t total = input1_data_num / 3;
   auto a_dims_num = input1_data_shape->GetDims();
   const int64_t n = a_dims_num;
@@ -166,13 +166,13 @@ uint32_t CrossCpuKernel::CrossCompute(CpuKernelContext &ctx) {
   }
   int64_t output_data_stride = r_stride[dim];
   auto cross_shard = [&](int64_t start, int64_t end) {
-    const int64_t input1_data_dim = input1_data_shape->GetDims();
+    const int32_t input1_data_dim = input1_data_shape->GetDims();
     std::vector<int64_t> position_in_dims(input1_data_dim);
     int64_t index_in_curr_dim = start;
     int64_t input1_data_start = 0;
     int64_t input2_data_start = 0;
     int64_t output_data_start = 0;
-    for (int64_t i = 0; i < input1_data_dim; i++) {
+    for (int32_t i = 0; i < input1_data_dim; i++) {
       if (i == dim) {
         continue;
       }

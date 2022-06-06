@@ -32,7 +32,7 @@ class MultinomialAliasSetupCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t MultinomialAliasSetupCompute(CpuKernelContext &ctx);
+  uint32_t MultinomialAliasSetupCompute(const CpuKernelContext &ctx);
 
   uint32_t MultinomialAliasSetupParamCheck(const CpuKernelContext &ctx);
 
