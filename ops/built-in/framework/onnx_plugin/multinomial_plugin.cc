@@ -78,10 +78,9 @@ Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
     return FAILED;
   }
   int int_seed = static_cast<int>(seed);
-  std::vector<int64_t> dims = {};
-  ge::Tensor tensor = Scalar2Tensor(sample_size, dims, ge::DT_INT32);
+  ge::Tensor scalar_const_value = CreateScalar(sample_size, ge::DT_INT32);
   auto data_op = op::Data(ori_name + "_input1").set_attr_index(0);
-  auto const_op = op::Const(ori_name + "_data1").set_attr_value(tensor);
+  auto const_op = op::Const(ori_name + "_data1").set_attr_value(scalar_const_value);
   auto muti_op = op::Multinomial(ori_name + "_Muti")
                  .set_input_logits(data_op)
                  .set_input_num_samples(const_op)

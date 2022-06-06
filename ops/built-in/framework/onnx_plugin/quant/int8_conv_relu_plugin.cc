@@ -346,10 +346,9 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  std::vector<int64_t> dims = {1};
-  ge::Tensor scale_tensor = Scalar2Tensor(tbeAttr.ascend_dequant_scale, dims, ge::DT_FLOAT);
-  auto const_op = op::Const(ori_name + "_scale").set_attr_value(scale_tensor);
-  ge::Operator ascend_deq = op::AscendDequant(ori_name + "_Int8ConvReluAscendDeq")
+  ge::Tensor scalar_const_scale = CreateScalar(tbeAttr.ascend_dequant_scale, ge::DT_FLOAT);
+  auto const_op = op::Const(ori_name + "_scale").set_attr_value(scalar_const_scale);
+  ge::Operator ascend_deq = op::AscendDequant("Int8ConvReluAscendDeq")
                                 .set_input_x(conv)
                                 .set_input_deq_scale(const_op)
                                 .set_attr_sqrt_mode(false)

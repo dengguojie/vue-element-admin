@@ -76,9 +76,8 @@ Status ParseOpToGraphOnehot(const ge::Operator& op, Graph& graph) {
   auto data3 = op::Data(ori_name + "_values").set_attr_index(2);
   
   int32_t split_dim = 0;
-  std::vector<int64_t> dims;
-  ge::Tensor split_dim_tensor =Scalar2Tensor(split_dim, dims, ge::DT_INT32);
-  auto split_const_op = op::Const(ori_name + "_split_dim").set_attr_value(split_dim_tensor);
+  ge::Tensor scalar_split_dim =CreateScalar(split_dim, ge::DT_INT32);
+  auto split_const_op = op::Const(ori_name + "_split_dim").set_attr_value(scalar_split_dim);
   //In order to solve the problem that the input is negative insert add and mod, becase tbe onehot not support but onnx support
   auto split_d_op = op::Split(ori_name + "_Split").create_dynamic_output_y(2)
                                                   .set_input_x(data3)

@@ -92,9 +92,8 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
     return FAILED;
   }
 
-  std::vector<int64_t> split_dim_dims = {};
-  ge::Tensor split_dim_tensor = Scalar2Tensor(split_dim, split_dim_dims, ge::DT_INT32);
-  auto const_split_dim_2 = op::Const(ori_name + "_split_dim").set_attr_value(split_dim_tensor);
+  ge::Tensor scalar_split_dim = CreateScalar(split_dim, ge::DT_INT32);
+  auto const_split_dim_2 = op::Const(ori_name + "_split_dim").set_attr_value(scalar_split_dim);
 
   if (input_size == 1) {
     std::vector<int64_t> size_splits;

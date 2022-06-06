@@ -205,8 +205,8 @@ void AvgLpPoolGenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<i
 
     float tmp_const = 0.0;
     TensorDesc valueDesc(ge::Shape({1}), ge::FORMAT_NHWC, ge::DT_FLOAT);
-    ge::Tensor values_tensor = Scalar2Tensor(tmp_const, {1}, ge::DT_INT32, ge::FORMAT_NHWC);
-    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(values_tensor);
+    ge::Tensor scalar_const_value = CreateScalar(tmp_const, ge::DT_INT32, ge::FORMAT_NHWC);
+    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(scalar_const_value);
 
     auto padV2 = op::PadV2(ori_name + "_PadV2")
                      .set_input_x(transposeIn)

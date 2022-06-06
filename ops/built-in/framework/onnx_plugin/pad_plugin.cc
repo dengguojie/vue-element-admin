@@ -85,9 +85,9 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   std::vector<int64_t> dims = {(int64_t)v_pads.size()};
   ge::Tensor tensor1 = Vec2Tensor(v_pads, dims, ge::DT_INT32);
   op_dest.SetAttr("paddings", tensor1);
-  std::vector<int64_t> dims_1 = {1};
-  ge::Tensor tensor2 = Scalar2Tensor(value, dims_1, ge::DT_FLOAT);
-  op_dest.SetAttr("constant_values", tensor2);
+
+  ge::Tensor scalar_const_value = CreateScalar(value, ge::DT_FLOAT);
+  op_dest.SetAttr("constant_values", scalar_const_value);
   op_dest.SetAttr("mode", mode_value);
   return SUCCESS;
 }

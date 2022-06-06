@@ -87,10 +87,9 @@ Status ParseOpToGraphRandomUniformLike(const ge::Operator &op, ge::Graph &graph)
   int seed = 0;
   op.GetAttr("seed", seed);
   
-  std::vector<int64_t> dims = {1};
   float delta = high - low;
-  ge::Tensor tensor_mean = Scalar2Tensor(low, dims, ge::DT_FLOAT);
-  ge::Tensor tensor_scale = Scalar2Tensor(delta, dims, ge::DT_FLOAT);
+  ge::Tensor scalar_mean = CreateScalar(low, ge::DT_FLOAT);
+  ge::Tensor scalar_scale = CreateScalar(delta, ge::DT_FLOAT);
   
   auto data0 = op::Data(ori_name + "_data0").set_attr_index(0);
   auto shape_op = op::Shape(ori_name + "_shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);
@@ -98,8 +97,8 @@ Status ParseOpToGraphRandomUniformLike(const ge::Operator &op, ge::Graph &graph)
                                                                   .set_attr_dtype(kvlist[dtype])
                                                                   .set_attr_seed(seed)
                                                                   .set_attr_seed2(seed);
-  auto const_scale = op::Const(ori_name + "_const_scale").set_attr_value(tensor_scale);
-  auto const_mean = op::Const(ori_name + "_const_mean").set_attr_value(tensor_mean);
+  auto const_scale = op::Const(ori_name + "_const_scale").set_attr_value(scalar_scale);
+  auto const_mean = op::Const(ori_name + "_const_mean").set_attr_value(scalar_mean);
   auto cast_mean = op::Cast(ori_name + "_cast_mean").set_input_x(const_mean).set_attr_dst_type(kvlist[dtype]);
   auto cast_scale = op::Cast(ori_name + "_cast_scale").set_input_x(const_scale).set_attr_dst_type(kvlist[dtype]);
 

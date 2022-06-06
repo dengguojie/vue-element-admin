@@ -82,9 +82,8 @@ Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
     return PARAM_INVALID;
   }
 
-  std::vector<int64_t> dims = {};
-  const ge::Tensor value_tensor = Scalar2Tensor(data, dims, ge::DT_INT32); 
-  op_dest.SetAttr("k", value_tensor);
+  const ge::Tensor scalar_k = CreateScalar(data, ge::DT_INT32); 
+  op_dest.SetAttr("k", scalar_k);
   op_dest.SetAttr("dim", axis);
   op_dest.SetAttr("name", node->name());
   return SUCCESS;

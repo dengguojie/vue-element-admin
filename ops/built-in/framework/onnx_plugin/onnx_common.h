@@ -41,8 +41,9 @@ ge::Tensor Vec2Tensor(vector<T>& vals, const vector<int64_t>& dims, ge::DataType
 }
 
 template<typename T>
-ge::Tensor Scalar2Tensor(T val, const vector<int64_t>& dims, ge::DataType dtype, ge::Format format = ge::FORMAT_ND) {
-  ge::Shape shape(dims);
+ge::Tensor CreateScalar(T val, ge::DataType dtype, ge::Format format = ge::FORMAT_ND) {
+  vector<int64_t> dims_scalar = {};
+  ge::Shape shape(dims_scalar);
   ge::TensorDesc desc(shape, format, dtype);
   ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(&val), sizeof(T));
   return tensor;

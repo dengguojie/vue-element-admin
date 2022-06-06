@@ -61,11 +61,10 @@ Status ParseParamsClipV9(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
-  std::vector<int64_t> dims = {1};
-  ge::Tensor tensor1 = Scalar2Tensor(max, dims, ge::DT_FLOAT);
-  op_dest.SetAttr("max", tensor1);
-  ge::Tensor tensor2 = Scalar2Tensor(min, dims, ge::DT_FLOAT);
-  op_dest.SetAttr("min", tensor2);
+  ge::Tensor scalar_max = CreateScalar(max, ge::DT_FLOAT);
+  op_dest.SetAttr("max", scalar_max);
+  ge::Tensor scalar_min = CreateScalar(min, ge::DT_FLOAT);
+  op_dest.SetAttr("min", scalar_min);
   op_dest.SetAttr("name", node->name());
 
   return SUCCESS;
@@ -152,9 +151,8 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
   Operator min_op;
   if (no_min) {
     float min = -3.402823e+38;
-    std::vector<int64_t> dims = {1};
-    ge::Tensor min_tensor = Scalar2Tensor(min, dims, ge::DT_FLOAT);
-    min_op = op::Const(ori_name + "_min").set_attr_value(min_tensor);
+    ge::Tensor scalar_min = CreateScalar(min, ge::DT_FLOAT);
+    min_op = op::Const(ori_name + "_min").set_attr_value(scalar_min);
   } else {
     min_op = op::Data(ori_name + "_min").set_attr_index(index);
   }
@@ -163,9 +161,8 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
   Operator max_op;
   if (no_max) {
     float max = 3.402823e+38;
-    std::vector<int64_t> dims = {1};
-    ge::Tensor max_tensor = Scalar2Tensor(max, dims, ge::DT_FLOAT);
-    max_op = op::Const(ori_name + "_max").set_attr_value(max_tensor);
+    ge::Tensor scalar_max = CreateScalar(max, ge::DT_FLOAT);
+    max_op = op::Const(ori_name + "_max").set_attr_value(scalar_max);
   } else {
     max_op = op::Data(ori_name + "_max").set_attr_index(index);
   }

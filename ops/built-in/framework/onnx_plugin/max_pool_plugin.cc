@@ -228,9 +228,8 @@ void GenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t> s
     auto paddings = op::Const(ori_name + "_paddings").set_attr_value(pads_tensor);
 
     float tmp_const = -65504.0f;
-    std::vector<int64_t> dims = {1};
-    ge::Tensor values_tensor = Scalar2Tensor(tmp_const, dims, ge::DT_FLOAT, ge::FORMAT_NHWC);
-    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(values_tensor);
+    ge::Tensor scalar_const_value = CreateScalar(tmp_const, ge::DT_FLOAT, ge::FORMAT_NHWC);
+    auto constant_values = op::Const(ori_name + "_constant_values").set_attr_value(scalar_const_value);
 
     auto padV2 =
         op::PadV2(ori_name + "_PadV2")

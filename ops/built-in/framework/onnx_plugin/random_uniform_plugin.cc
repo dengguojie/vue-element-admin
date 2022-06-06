@@ -119,13 +119,12 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> outputs;
   if (dtype == 6 || dtype == 2) {
     int32_t max = max_f;
-    std::vector<int64_t> dims = {};
-    ge::Tensor max_tensor = Scalar2Tensor(max, dims, temp_type);
-    auto data1 = op::Const(ori_name + "_data1").set_attr_value(max_tensor);
+    ge::Tensor scalar_max = CreateScalar(max, temp_type);
+    auto data1 = op::Const(ori_name + "_data1").set_attr_value(scalar_max);
 
     int32_t min = min_f;
-    ge::Tensor min_tensor = Scalar2Tensor(min, dims, temp_type);
-    auto data2 = op::Const(ori_name + "_data2").set_attr_value(min_tensor);
+    ge::Tensor scalar_min = CreateScalar(min, temp_type);
+    auto data2 = op::Const(ori_name + "_data2").set_attr_value(scalar_min);
 
     auto random_int = op::RandomUniformInt(ori_name + "_RandomUniformInt")
                         .set_input_shape(data0)

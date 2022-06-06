@@ -47,11 +47,10 @@ Status parseParamsCompress(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
-  std::vector<int64_t> value_dims = {1};
-  ge::Tensor tensor1 = Scalar2Tensor(axis_val, value_dims, DT_INT32);
+  ge::Tensor scalar_axis = CreateScalar(axis_val, DT_INT32);
 
   op_dest.SetAttr("need_flatten", need_flatten);
-  op_dest.SetAttr("axis_value", tensor1);
+  op_dest.SetAttr("axis_value", scalar_axis);
   op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }

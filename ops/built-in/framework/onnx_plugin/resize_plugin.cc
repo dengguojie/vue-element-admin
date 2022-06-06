@@ -111,11 +111,10 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
 
   int32_t offsets = 2;
   int32_t size_num = 2;
-  std::vector<int64_t> dims = {1};
-  ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
-  ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
-  auto data_offsets = op::Const(ori_name + "_data_offsets").set_attr_value(tensor_offsets);
-  auto data_size = op::Const(ori_name + "_data_size").set_attr_value(tensor_size);
+  ge::Tensor scalar_offsets = CreateScalar(offsets, ge::DT_INT32);
+  ge::Tensor scalar_size_num = CreateScalar(size_num, ge::DT_INT32);
+  auto data_offsets = op::Const(ori_name + "_data_offsets").set_attr_value(scalar_offsets);
+  auto data_size = op::Const(ori_name + "_data_size").set_attr_value(scalar_size_num);
 
   auto size = op::Slice(ori_name + "_Slice")
                   .set_input_x(sizes)
@@ -211,11 +210,10 @@ static Status ParseOpToGraphResizeV10(const Operator& op, Graph& graph) {
  
   int32_t offsets = 2;
   int32_t size_num = 2;
-  std::vector<int64_t> dims = {1};
-  ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
-  ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
-  auto data_offsets = op::Const(ori_name + "_data_offsets").set_attr_value(tensor_offsets);
-  auto data_size = op::Const(ori_name + "_data_size").set_attr_value(tensor_size);
+  ge::Tensor scalar_offsets = CreateScalar(offsets, ge::DT_INT32);
+  ge::Tensor scalar_size_num = CreateScalar(size_num, ge::DT_INT32);
+  auto data_offsets = op::Const(ori_name + "_data_offsets").set_attr_value(scalar_offsets);
+  auto data_size = op::Const(ori_name + "_data_size").set_attr_value(scalar_size_num);
 
   auto size = op::Slice(ori_name + "_Slice")
                   .set_input_x(sizes)

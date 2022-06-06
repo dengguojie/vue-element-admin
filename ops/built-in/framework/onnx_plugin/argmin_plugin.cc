@@ -51,10 +51,10 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
       return FAILED;
     }
   }
-  std::vector<int64_t> value_dims = {};
-  ge::Tensor tensor = Scalar2Tensor(axis, value_dims, ge::DT_INT32);
+
   op_dest.SetAttr("name", node->name());
-  op_dest.SetAttr("dimension", tensor);
+  ge::Tensor scalar_axis = CreateScalar(axis, ge::DT_INT32);
+  op_dest.SetAttr("dimension", scalar_axis);
   op_dest.SetAttr("keep_dims", keep_dims);
   return SUCCESS;
 }
@@ -87,9 +87,8 @@ static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
                                                 .set_attr_dtype(ge::DT_INT32);
 
   if (keep_dims == 1) {
-    std::vector<int64_t> dims = {1};
-    ge::Tensor tensor1 = Scalar2Tensor(keep_dims, dims, ge::DT_INT32);
-    auto data1 = op::Const(ori_name + "_data1").set_attr_value(tensor1);
+    ge::Tensor scalar_keep_dims = CreateScalar(keep_dims, ge::DT_INT32);
+    auto data1 = op::Const(ori_name + "_data1").set_attr_value(scalar_keep_dims);
 
     auto expandDims = op::ExpandDims(ori_name + "_ExpandDims").set_input_x(argMin).set_input_axis(data1);
     outputs.emplace_back(expandDims, vector<std::size_t>{0});

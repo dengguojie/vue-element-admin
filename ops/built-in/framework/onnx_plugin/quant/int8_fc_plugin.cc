@@ -127,10 +127,9 @@ Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  std::vector<int64_t> dims = {1};
-  ge::Tensor scale_tensor = Scalar2Tensor(deq_scale, dims, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0);
-  auto const_op = op::Const(ori_name + "_deq_scale").set_attr_value(scale_tensor);
-  auto ascend_deq = op::AscendDequant(ori_name + "_Int8FcAscendDequant")
+  ge::Tensor scalar_const_deq_scale = CreateScalar(deq_scale, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0);
+  auto const_op = op::Const(ori_name + "_deq_scale").set_attr_value(scalar_const_deq_scale);
+  auto ascend_deq = op::AscendDequant("Int8FcAscendDequant")
                         .set_input_x(fc_op)
                         .set_input_deq_scale(const_op)
                         .set_attr_sqrt_mode(false)

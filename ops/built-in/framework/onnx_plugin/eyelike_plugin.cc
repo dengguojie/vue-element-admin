@@ -70,39 +70,36 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
   
   int32_t k = 0;
   op.GetAttr("k", k);
-  std::vector<int64_t> dims_k = {1};
-  ge::Tensor k_tensor = Scalar2Tensor(k, dims_k, ge::DT_INT32);
+  ge::Tensor scalar_k = CreateScalar(k, ge::DT_INT32);
 
-
-  std::vector<int64_t> dims;
   int32_t pad = 0;
-  ge::Tensor pad_tensor = Scalar2Tensor(pad, dims, om_type);
+  ge::Tensor scalar_pad = CreateScalar(pad, om_type);
 
   int32_t fill = 1;
-  ge::Tensor fill_tensor = Scalar2Tensor(fill, dims, ge::DT_INT32);
+  ge::Tensor scalar_fill = CreateScalar(fill, ge::DT_INT32);
 
   int32_t split_dim = 0;
-  ge::Tensor split_dim_tensor = Scalar2Tensor(split_dim, dims, ge::DT_INT32);
+  ge::Tensor scalar_split_dim = CreateScalar(split_dim, ge::DT_INT32);
   
   auto data0 = op::Data(ori_name + "_data").set_attr_index(0);
-  auto const_op = op::Const(ori_name + "_const").set_attr_value(k_tensor);
+  auto const_op = op::Const(ori_name + "_const").set_attr_value(scalar_k);
   
   auto shape_op = op::Shape(ori_name + "_shape").set_input_x(data0).set_attr_dtype(ge::DT_INT32);
-  auto const_op_split = op::Const(ori_name + "_const3").set_attr_value(split_dim_tensor);
+  auto const_op_split = op::Const(ori_name + "_const3").set_attr_value(scalar_split_dim);
   auto split_op = op::Split(ori_name + "_split").create_dynamic_output_y(2)
                                                 .set_input_x(shape_op)
                                                 .set_input_split_dim(const_op_split)
                                                 .set_attr_num_split(2);
  
   auto add_op = op::Adds(ori_name + "_add").set_input_x(split_op, 0).set_attr_value(k);
-  auto const_op2 = op::Const(ori_name + "_const2").set_attr_value(fill_tensor);
+  auto const_op2 = op::Const(ori_name + "_const2").set_attr_value(scalar_fill);
   auto fill_op = op::Fill(ori_name + "_fill").set_input_dims(add_op).set_input_value(const_op2);
   auto cast_op = op::Cast(ori_name + "_cast").set_input_x(fill_op).set_attr_dst_type(om_type);
 
   auto squeeze_op = op::Squeeze(ori_name + "_squeeze").set_input_x(split_op, 0).set_attr_axis(0);
   auto squeeze_op1 = op::Squeeze(ori_name + "_squeeze1").set_input_x(split_op, 1).set_attr_axis(0);
   
-  auto const_op1 = op::Const(ori_name + "_const1").set_attr_value(pad_tensor);
+  auto const_op1 = op::Const(ori_name + "_const1").set_attr_value(scalar_pad);
   auto maxtrix_op = op::MatrixDiagV2(ori_name + "_matrix_diagv2").set_input_diagonal(cast_op)
                                                                  .set_input_k(const_op)
                                                                  .set_input_num_rows(squeeze_op)
@@ -110,6 +107,7 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
                                                                  .set_input_padding_value(const_op1);
 
   auto input_desc1 = maxtrix_op.GetInputDesc(2);
+  std::vector<int64_t> dims;
   input_desc1.SetShape(ge::Shape(dims));
   maxtrix_op.UpdateInputDesc("num_rows", input_desc1);
   std::vector<ge::Operator> inputs = {data0};

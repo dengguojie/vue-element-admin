@@ -48,9 +48,8 @@ Status ParseParamsGather(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
-  std::vector<int64_t> value_dims = {1};
-  ge::Tensor tensor1 = Scalar2Tensor(axis_val, value_dims, ge::DT_INT32);
-  op_dest.SetAttr("constant_values", tensor1);
+  ge::Tensor scalar_axis = CreateScalar(axis_val, ge::DT_INT32);
+  op_dest.SetAttr("constant_values", scalar_axis);
   op_dest.SetAttr("name", node->name());
   return SUCCESS;
 }
