@@ -22,7 +22,7 @@
 
 namespace aicpu {
 class CacheSwapTableMsCpuKernel : public CpuKernel {
- public:
+public:
   ~CacheSwapTableMsCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 

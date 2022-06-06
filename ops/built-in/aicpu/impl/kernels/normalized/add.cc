@@ -173,12 +173,12 @@ uint32_t AddCpuKernel::AddCalculate(BCalcInfo &calcInfo) {
   Eigen::array<Eigen::DenseIndex, RANK> bcast0;
   Eigen::array<Eigen::DenseIndex, RANK> bcast1;
 
-  for (Eigen::DenseIndex i = 0; i < RANK; i++) {
-    reshape0[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.reshape_0[i]);
-    reshape1[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.reshape_1[i]);
-    shape_out[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.shape_out[i]);
-    bcast0[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.bcast_0[i]);
-    bcast1[(RANK - i) - 1] = static_cast<Eigen::DenseIndex>(calcInfo.bcast_1[i]);
+  for (int32_t i = 0; i < RANK; i++) {
+    reshape0[(RANK - i) - 1] = calcInfo.reshape_0[i];
+    reshape1[(RANK - i) - 1] = calcInfo.reshape_1[i];
+    shape_out[(RANK - i) - 1] = calcInfo.shape_out[i];
+    bcast0[(RANK - i) - 1] = calcInfo.bcast_0[i];
+    bcast1[(RANK - i) - 1] = calcInfo.bcast_1[i];
   }
   output.reshape(shape_out) =
       input0.reshape(reshape0).broadcast(bcast0) + input1.reshape(reshape1).broadcast(bcast1);

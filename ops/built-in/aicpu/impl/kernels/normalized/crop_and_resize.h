@@ -75,7 +75,7 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
           if (method_name == "bilinear_v2") {
             int64_t y1 = boxes(b, 0) * imageHeight;
             int64_t x1 = boxes(b, 1) * imageWidth;
-            int64_t y2 =boxes(b, 2) * imageHeight;
+            int64_t y2 = boxes(b, 2) * imageHeight;
             int64_t x2 = boxes(b, 3) * imageWidth;
             int64_t w = 1;
             int64_t h = 1;

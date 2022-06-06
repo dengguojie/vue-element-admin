@@ -22,7 +22,7 @@
 
 namespace aicpu {
 class BetaincCpuKernel : public CpuKernel {
- public:
+public:
   BetaincCpuKernel() = default;
   ~BetaincCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;

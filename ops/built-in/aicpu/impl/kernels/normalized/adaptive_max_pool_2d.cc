@@ -124,7 +124,7 @@ void AdaptiveMaxPool2dOutFrame(const CpuKernelContext& ctx, AdaptiveCalcArgs<SCA
 }
 
 template <typename SCALAR_T, typename INDICES_T>
-uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
+uint32_t AdaptiveMaxPool2dOutCpuTemplate(const CpuKernelContext& ctx) {
   Tensor& input = *(ctx.Input(kFirstInputIndex));
 
   auto input_shape_ptr = input.GetTensorShape();
