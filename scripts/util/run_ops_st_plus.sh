@@ -13,24 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-export CUR_DIR=$(cd $(dirname $0); pwd)
+CUR_DIR=$(cd $(dirname $0); pwd)
 
 STATUS_SUCCESS=0
 STATUS_FAILED=1
 
 CASE_SOURCE="${CUR_DIR}/st_plus"
 RESULT_SUMMARY="${CUR_DIR}/result.txt"
+PARAMS="${CUR_DIR}/params"
 
 run() {
   local op_dir="${CASE_SOURCE}"
+  local params=""
+  if [[ -f "${PARAMS}" ]]; then
+    params=`cat ${PARAMS}`
+  fi
 
   echo "[INFO]===============now run st_plus ==================="
 
   local cases=$(find "${op_dir}" -name "*.csv" | head -1 2>/dev/null)
   if [[ -n "$cases" ]]; then
-    echo "[INFO] run case file: $cases"
-    # only dynamic
-    "${CUR_DIR}/tbe_toolkits/run.sh" "$cases" "${CUR_DIR}/st_plus_result.csv --perf-compare=false"
+    echo "[INFO] run case file: $cases, with parameters: ${params}"
+    "${CUR_DIR}/tbe_toolkits/run.sh" "$cases" "${CUR_DIR}/st_plus_result.csv ${params}"
     if [[ $? -ne 0 ]]; then
       echo "[ERROR] run ops stest plus failed, case file is: $cases."
       exit $STATUS_FAILED
@@ -42,9 +46,40 @@ run() {
   fi
 }
 
+parse_result_csv() {
+  local result_file="${CUR_DIR}/st_plus_result.csv"
+  if [[ ! -f "${result_file}" ]]; then
+    echo "[ERROR] st_plus_result.csv is not found in ${CUR_DIR}"
+    return
+  fi
+
+  local lines=$(wc -l "${result_file}" 2>/dev/null| awk '{print $1}')
+  if [[ $lines -le 1 ]]; then
+    echo "[ERROR] st_plus_result.csv is empty or only titiles in it."
+    return
+  fi
+  local total_count=$(expr $lines - 1)
+
+  # parse result.csv
+  local fail_case=`grep -E "FAIL|CRASH|EXCEPTION" "${result_file}" | awk -F',' '{print $1}'`
+  local arr=($fail_case)
+  local fail_count=${#arr[@]}
+  local succ_count=$(expr $total_count - $fail_count)
+
+  echo "SUCCESS: $succ_count" > "${RESULT_SUMMARY}"
+  echo "FAIL: $fail_count" >> "${RESULT_SUMMARY}"
+  echo "FAIL_CASE: ${arr[@]}" >> "${RESULT_SUMMARY}"
+}
+
 tar_results () {
-  cd "${CUR_DIR}"
   local files=""
+
+  parse_result_csv
+  if [[ -f "${RESULT_SUMMARY}" ]]; then
+    files=${files}" ${RESULT_SUMMARY}"
+  fi
+
+  cd "${CUR_DIR}"
   if [[ -f st_plus_result.csv ]]; then
     files=${files}" st_plus_result.csv"
     if [[ -f "tbe_toolkits/scripts/gen_result_html.py" ]]; then
@@ -68,31 +103,18 @@ tar_results () {
 }
 
 get_results() {
-  local result_file="${CUR_DIR}/st_plus_result.csv"
-  if [[ ! -f "${result_file}" ]]; then
-    echo "[ERROR] st_plus_result.csv is not found in ${CUR_DIR}"
+  if [[ ! -f "${RESULT_SUMMARY}" ]]; then
+    echo "[ERROR] st_plus_result.csv is not found or empty in ${CUR_DIR}"
     exit $STATUS_FAILED
   fi
 
-  local lines=$(wc -l "${result_file}" 2>/dev/null| awk '{print $1}')
-  if [[ $lines -le 1 ]]; then
-    echo "[ERROR] st_plus_result.csv is empty or only titiles in it."
-    exit $STATUS_FAILED
-  fi
-  local total_count=$(expr $lines - 1)
+  # parse result.txt
+  local fail_case=`cat ${RESULT_SUMMARY}| grep "^FAIL_CASE:" | awk -F: '{print $2}'`
+  local fail_count=`cat ${RESULT_SUMMARY}| grep "^FAIL:" | awk -F: '{print $2}'`
+  local succ_count=`cat ${RESULT_SUMMARY}| grep "^SUCCESS:" | awk -F: '{print $2}'`
 
-  # parse result.csv
-  local fail_case=`grep -E "FAIL|CRASH|EXCEPTION" "${result_file}" | awk -F',' '{print $1}'`
-  local arr=($fail_case)
-  local fail_count=${#arr[@]}
-  local succ_count=$(expr $total_count - $fail_count)
-
-  echo "SUCCESS: $succ_count" > "${RESULT_SUMMARY}"
-  echo "FAIL: $fail_count" >> "${RESULT_SUMMARY}"
-  echo "FAIL_CASE: ${arr[@]}" >> "${RESULT_SUMMARY}"
-
-  if [[ ${#arr[@]} -gt 0 ]]; then
-    echo "[ERROR] Some TestCase(s) failed (${#arr[@]}): ${arr[@]}"
+  if [[ ${fail_count} -gt 0 ]]; then
+    echo "[ERROR] Some TestCase(s) failed (${fail_count}): ${fail_case}"
     exit $STATUS_FAILED
   fi
 

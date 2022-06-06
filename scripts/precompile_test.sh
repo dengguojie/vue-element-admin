@@ -39,9 +39,20 @@ CHANGE_LOG=""
 TEST_INSTALL_PATH=""
 OPS_SOURCE_DIR=""
 
-install_stest() {
+generate_related_ops_by_specified_op() {
+  local ops="$1"
+  echo "related_ops_dirs=${ops//,/ }" > "${CHANGE_LOG}"
+}
+
+generate_related_ops_by_pr_file() {
   local pr_file="$1"
   get_related_ops "${pr_file}" "${CHANGE_LOG}"
+}
+
+install_stest() {
+  local pr_file="$1"
+  generate_related_ops_by_pr_file ${pr_file}
+
   all_cases=""
   install_related_ops "${CHANGE_LOG}" "${OPS_SOURCE_DIR}" "*.json"
   case_not_found=""
@@ -75,8 +86,6 @@ install_stest() {
 }
 
 install_st_plus_test() {
-  local pr_file="$1"
-  get_related_ops "${pr_file}" "${CHANGE_LOG}"
   all_cases=""
   install_related_ops "${CHANGE_LOG}" "${OPS_SOURCE_DIR}" "*.csv"
   case_not_found=""
@@ -140,9 +149,12 @@ install_script() {
 }
 
 install_st_plus_script() {
-  echo "[INFO] install tbe_toolkits"
+  echo "[INFO] install tbe_toolkits / run_ops_st_plus.sh / params"
   cp -f "${CUR_PATH}/util/run_ops_st_plus.sh" "${TEST_BIN_PATH}"
   cp -rf "${CANN_ROOT}/tools/tbe_toolkits" "${TEST_BIN_PATH}"
+  if [[ ! -z "$@" ]]; then
+    echo "$@" > "${TEST_BIN_PATH}/params"
+  fi
 }
 
 install_sch_script() {
@@ -180,8 +192,13 @@ main() {
         install_stest "${pr_file}"
         install_script
       elif [[ "${task_type}" == "st_plus" ]]; then
-        install_st_plus_test "${pr_file}"
-        install_st_plus_script
+        if [[ $# -gt 2 ]] && [[ -n "$3" ]]; then
+          generate_related_ops_by_specified_op "$3"
+        else
+          generate_related_ops_by_pr_file "${pr_file}"
+        fi
+        install_st_plus_test
+        install_st_plus_script ${@:4}
       fi
     else
       install_sch_stest "${task_type}" "${pr_file}"
