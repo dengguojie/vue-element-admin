@@ -42,7 +42,7 @@ static bool InferReductionShape(const ge::Operator& operation, const string& inp
 
   if (ge::GRAPH_SUCCESS != operation.GetAttr("axis", axis)) {
     std::string err_msg = GetInputInvalidErrMsg("axis");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(operation.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(operation), err_msg);
     return false;
   }
 
@@ -51,7 +51,7 @@ static bool InferReductionShape(const ge::Operator& operation, const string& inp
     string maxvalue = ConcatString(dimNum - 1);
     string excepted_value = ConcatString("in the range of[", minvalue, ", ", maxvalue, "]");
     std::string err_msg = GetAttrValueErrMsg("axis", ConcatString(axis), excepted_value);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(operation.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(operation), err_msg);
     return false;
   }
 

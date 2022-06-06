@@ -25,7 +25,7 @@
 
 namespace domi {
 Status ParseParamsLogSoftmaxMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  (void)AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc orgTensorW = op_dsc->GetInputDesc(0);
   ge::GeTensorDesc orgTensorW1 = op_dsc->GetOutputDesc(0);
@@ -43,7 +43,7 @@ Status ParseParamsLogSoftmaxMappingFn(const Message* op_src, ge::Operator& op) {
   if (op.GetAttr("axis", reduce_dims) != ge::GRAPH_SUCCESS) {
     OP_LOGW("LogSoftmaxV2", "GetAttr axis failed");
   }
-  op.SetAttr("axes", reduce_dims);
+  (void)op.SetAttr("axes", reduce_dims);
   return SUCCESS;
 }
 REGISTER_CUSTOM_OP("LogSoftmaxV2")

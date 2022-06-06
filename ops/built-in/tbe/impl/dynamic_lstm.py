@@ -21,12 +21,11 @@ from functools import reduce as functools_reduce
 import re
 
 import te.lang.cce
+import te.platform as tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.util_common import write_code
 from te import tvm
 from te import platform as cce
-from te.platform.cce_build import build_config
-from te.platform.cce_build import build_config_update
 from te.utils.error_manager import error_manager_vector
 
 
@@ -752,7 +751,7 @@ def dynamic_lstm(input_x, weight, bias,
         if wkspace_dict:
             write_code(wkspace_dict, kernel_name)
 
-    with build_config_update(build_config, "dummy_placeholder", False):
+    with tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", False):
         tvm.build(s, new_build_list, "cce", name=kernel_name)
         _write_workspace_info(
             [shape_i_t, shape_sync],

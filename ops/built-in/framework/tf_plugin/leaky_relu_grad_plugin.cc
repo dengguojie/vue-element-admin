@@ -35,7 +35,7 @@ Status AutoMappingFnLeakyReluGrad(const google::protobuf::Message* op_src, ge::O
     OP_LOGI("LeakyReluGrad", "GetAttr alpha failed");
     return FAILED;
   }
-  op.SetAttr("negative_slope", alpha);
+  (void)op.SetAttr("negative_slope", alpha);
   OP_LOGI("LeakyReluGrad", "op[LeakyReluGrad] tensorflow plugin parser success.");
   return SUCCESS;
 }

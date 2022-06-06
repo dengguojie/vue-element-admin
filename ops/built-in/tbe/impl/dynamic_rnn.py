@@ -17,6 +17,7 @@ dynamic_rnn
 import operator
 
 import numpy as np
+from impl.util.platform_adapter import tbe_platform
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
 from te.lang.cce import vabs
@@ -1109,11 +1110,15 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     k1 = tvm.reduce_axis((0, k_size), name='k1')
     k0 = tvm.reduce_axis((0, k0_size), name='k0')
 
+    if tbe_platform.api_check_support("tik.vec_conv", "f322f16"):
+        data_type = 'float32'
+    else:
+        data_type = 'float16'
     c_l0c = tvm.compute(shape_c,
                         lambda t, nb_0, nb_1, mb, mp, np:
                         tvm.sum((a_l0a[t, mb, k1, mp, k0] * \
                                  b_l0b[t, k1, nb_0, nb_1, np, k0]) \
-                                .astype('float32'),
+                                .astype(data_type),
                                 axis=[k1, k0]),
                         name='c_l0c',
                         tag="matmul")
@@ -1128,7 +1133,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if fp16_input_output:
         bias_ub_fp32 = \
             tvm.compute(shape_bias,
-                        lambda *indices: bias_ub(*indices).astype('float32'),
+                        lambda *indices: bias_ub(*indices).astype(data_type),
                         name="bias_ub_fp32_drnn_cast",
                         tag="elewise_single_cast")
         bias_ub_mid = bias_ub_fp32
@@ -1248,21 +1253,21 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
         if fp16_input_output:
             f_t_sigmoid_back_fp32 = tvm.compute(shape_i,
-                                                lambda *indices: f_t_sigmoid_back(*indices).astype('float32'),
+                                                lambda *indices: f_t_sigmoid_back(*indices).astype(data_type),
                                                 name="f_t_sigmoid_back_fp32_drnn_cast",
                                                 tag="elewise_single_cast")
             i_t_sigmoid_back_fp32 = tvm.compute(shape_i,
-                                                lambda *indices: i_t_sigmoid_back(*indices).astype('float32'),
+                                                lambda *indices: i_t_sigmoid_back(*indices).astype(data_type),
                                                 name="i_t_sigmoid_back_fp32_drnn_cast",
                                                 tag="elewise_single_cast")
             o_t_sigmoid_back_fp32 = tvm.compute(
                 shape_i,
-                lambda *indices: o_t_sigmoid_back(*indices).astype('float32'),
+                lambda *indices: o_t_sigmoid_back(*indices).astype(data_type),
                 name="o_t_sigmoid_back_fp32_drnn_cast",
                 tag="elewise_single_cast")
             j_t_tanh_back_fp32 = tvm.compute(
                 shape_i,
-                lambda *indices: j_t_tanh_back(*indices).astype('float32'),
+                lambda *indices: j_t_tanh_back(*indices).astype(data_type),
                 name="j_t_tanh_back_fp32_drnn_cast",
                 tag="elewise_single_cast")
 
@@ -1316,7 +1321,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                          name="update_c_fp16_back",
                                          tag="out_to_ub")
         update_c_fp16_back_fp32 = tvm.compute(shape_i,
-                                              lambda *indices: update_c_fp16_back(*indices).astype('float32'),
+                                              lambda *indices: update_c_fp16_back(*indices).astype(data_type),
                                               name="update_c_fp16_back_fp32_drnn_cast",
                                               tag="elewise_single_cast")
         c_t_tanh = tanh_compute(update_c_fp16_back_fp32)
@@ -1349,7 +1354,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
         if fp16_input_output:
             c_t_tanh_back_fp32 = tvm.compute(shape_i,
-                                             lambda *indices: c_t_tanh_back(*indices).astype('float32'),
+                                             lambda *indices: c_t_tanh_back(*indices).astype(data_type),
                                              name="c_t_tanh_back_fp32_drnn_cast",
                                              tag="elewise_single_cast")
 
@@ -1689,7 +1694,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
 
-    if fp16_input_output:
+    if fp16_input_output and data_type == 'float32':
         s[bias_ub_fp32].emit_insn(bias_ub_fp32.op.axis[0], 'vector_conv')
 
     mad_dict = {"mad_pattern": 0, "k_outer": [l1_k_outer, l0_k_outer]}
@@ -1734,16 +1739,17 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     if is_gate_output:
         if fp16_input_output:
-            s[f_t_sigmoid_fp16].emit_insn(s[f_t_sigmoid_fp16].op.axis[1],
-                                          'vector_conv')
-            s[i_t_sigmoid_fp16].emit_insn(s[i_t_sigmoid_fp16].op.axis[1],
-                                          'vector_conv')
-            s[o_t_sigmoid_fp16].emit_insn(s[o_t_sigmoid_fp16].op.axis[1],
-                                          'vector_conv')
-            s[j_t_tanh_fp16].emit_insn(s[j_t_tanh_fp16].op.axis[1],
-                                       'vector_conv')
-            s[c_t_tanh_fp16].emit_insn(s[c_t_tanh_fp16].op.axis[1],
-                                       'vector_conv')
+            if data_type == 'float32':
+                s[f_t_sigmoid_fp16].emit_insn(s[f_t_sigmoid_fp16].op.axis[1],
+                                            'vector_conv')
+                s[i_t_sigmoid_fp16].emit_insn(s[i_t_sigmoid_fp16].op.axis[1],
+                                            'vector_conv')
+                s[o_t_sigmoid_fp16].emit_insn(s[o_t_sigmoid_fp16].op.axis[1],
+                                            'vector_conv')
+                s[j_t_tanh_fp16].emit_insn(s[j_t_tanh_fp16].op.axis[1],
+                                        'vector_conv')
+                s[c_t_tanh_fp16].emit_insn(s[c_t_tanh_fp16].op.axis[1],
+                                        'vector_conv')
             s[f_t_sigmoid_back_fp32].emit_insn(
                 s[f_t_sigmoid_back_fp32].op.axis[1], 'phony_insn')
             s[i_t_sigmoid_back_fp32].emit_insn(
@@ -1772,12 +1778,13 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     # fp16 in
     if bias_dtype == 'float16':
-        s[update_c_fp16].emit_insn(update_c_fp16.op.axis[0], 'vector_conv')
+        if data_type == 'float32':
+            s[update_c_fp16].emit_insn(update_c_fp16.op.axis[0], 'vector_conv')
+            s[update_h_fp16].emit_insn(update_h_fp16.op.axis[0], 'vector_conv')
         s[update_c_fp16_back].emit_insn(update_c_fp16_back.op.axis[0],
                                         'phony_insn')
         s[update_c_fp16_back_fp32].emit_insn(
             update_c_fp16_back_fp32.op.axis[0], 'phony_insn')
-        s[update_h_fp16].emit_insn(update_h_fp16.op.axis[0], 'vector_conv')
     else:
         s[update_c_fp32_back].emit_insn(update_c_fp32_back.op.axis[0],
                                         'phony_insn')
