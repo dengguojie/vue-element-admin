@@ -44,6 +44,7 @@ constexpr std::int64_t BASE_NODE_NUMBERS = 2;
 constexpr std::int64_t GENERAL_NODE_NUMBERS = 3;
 constexpr std::int64_t ALL_ALIGN_COPY_EXPERIENCE = 12;
 constexpr std::int64_t ONE_REPEAT_BLOCK_NUM = 8;
+constexpr std::int64_t MULTI_CORE_THRESHOLD = 2048;
 constexpr std::int64_t ROW_LIMIT_FACTOR = 16;
 constexpr std::int64_t BASE_KEY = 3000000;
 constexpr std::int64_t GENERAL_KEY = 2000000;
@@ -355,7 +356,7 @@ template <typename T>
 void Split<T>::DoBaseBlockTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t core_num = c_info->core_num;
-  if (input_shapes[0] * input_shapes[1] < 2048) {
+  if (input_shapes[0] * input_shapes[1] < MULTI_CORE_THRESHOLD) {
     core_num = 1;
   }
   if (min_split_shape < ele_in_block && (input_shapes[0] * min_split_shape) / core_num < ele_in_block &&

@@ -134,9 +134,9 @@ bool Transpose<T>::GenerateOutputShape() {
   for (size_t i = 0; i < src_dim_len; i++) {
     GenerateShape(shape.GetDim(i), i, real_index, is_first_in);
   }
-  V_OP_TILING_CHECK( context->GetOutputDataType(0, dtype),
-                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get inpute dtype error"),
-                     return false);
+  V_OP_TILING_CHECK(context->GetOutputDataType(0, dtype),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get inpute dtype error"),
+                    return false);
   V_OP_TILING_CHECK((context->GetOutputNums() != 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"), return false);
   size_t dst_dim_len = context->GetOutputShape(0).GetDimNum();
@@ -305,7 +305,7 @@ bool Transpose<T>::InitCrossUbTilingParams(CrossUbTilingParams& tilingParams) {
 template <typename T>
 bool Transpose<T>::DoUbTilingNoCross() {
   CrossUbTilingParams tilingParams;
-  if(!InitCrossUbTilingParams(tilingParams)) {
+  if (!InitCrossUbTilingParams(tilingParams)) {
     return false;
   }
   while (tilingParams.input_index >= 0 && tilingParams.output_index >= 0) {
@@ -521,7 +521,7 @@ bool Transpose<T>::InitUbTilingParams(UbTilingParams& ubTilingParams, int64_t av
 template <typename T>
 bool Transpose<T>::DoUbTiling(int64_t available_ub) {
   UbTilingParams ubTilingParams;
-  if(!InitUbTilingParams(ubTilingParams, available_ub)) {
+  if (!InitUbTilingParams(ubTilingParams, available_ub)) {
     return false;
   }
   while (ubTilingParams.input_index >= 0 && ubTilingParams.output_index >= 0) {
