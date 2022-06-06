@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,8 @@ IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   }
   DataType sample_rate_dtype = op.GetInputDesc(1).GetDataType();
   if (sample_rate_dtype != DT_INT32) {
-    std::string err_msg = ConcatString("invalid data type", "[" , DTypeStr(sample_rate_dtype) ,"]", " of 1st input[sample_rate], it must be equal to int32");
+    std::string err_msg = ConcatString("invalid data type", "[", DTypeStr(sample_rate_dtype), "]",
+                                       " of 1st input[sample_rate], it must be equal to int32");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -54,12 +55,15 @@ IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   int64_t output_channels;
   op.GetAttr("dct_coefficient_count", output_channels);
   if (output_channels <= 0) {
-    std::string err_msg = ConcatString("invalid value", "[" , output_channels ,"]", " of attr[dct_coefficient_count], it should be greater than 0");
+    std::string err_msg = ConcatString("invalid value", "[", output_channels, "]",
+                                       " of attr[dct_coefficient_count], it should be greater than 0");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (channel_count < output_channels) {
-    std::string err_msg = ConcatString("attr[dct_coefficient_count] must be greater than attr[filterbank_channel_count] , ", "[" , channel_count ,"] and ", "[" , output_channels ,"]");
+    std::string err_msg = ConcatString(
+        "attr[dct_coefficient_count] must be greater than attr[filterbank_channel_count] , ",
+        "[", channel_count, "] and ", "[", output_channels, "]");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -137,7 +141,8 @@ IMPLEMT_INFERFUNC(AudioSpectrogram, AudioSpectrogramInfer) {
     return GRAPH_FAILED;
   }
   if (stride == 0) {
-    std::string err_msg = ConcatString("invalid value", "[" , stride ,"]", " of attr[stride], it should be not equal to 0");
+    std::string err_msg = ConcatString("invalid value", "[", stride,
+                                       "]", " of attr[stride], it should be not equal to 0");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }

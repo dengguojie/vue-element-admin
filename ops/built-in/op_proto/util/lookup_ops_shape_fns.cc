@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,7 +114,8 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
   const ShapeAndType& key_shape_and_type = handle_data[0];
   const ShapeAndType& value_shape_and_type = handle_data[1];
   if (key_shape_and_type.GetDataType() != key_dtype) {
-    std::string err_msg = GetInputDTypeErrMsg("key_dtype", ConcatString(key_shape_and_type.GetDataType()),ConcatString(key_dtype));
+    std::string err_msg = GetInputDTypeErrMsg("key_dtype", ConcatString(key_shape_and_type.GetDataType()),
+                                              ConcatString(key_dtype));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
     return GRAPH_FAILED;
   }
@@ -130,7 +131,8 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
       int64_t keys_rank = keys.GetDimNum();
       int64_t key_suffix_rank = key_shape_and_type.GetShape().GetDimNum();
       if (keys_rank < key_suffix_rank) {
-        std::string err_msg = OtherErrMsg(ConcatString("Expected keys to have suffix ", key_suffix_rank, ", but saw shape ", keys_rank));
+        std::string err_msg = OtherErrMsg(ConcatString("Expected keys to have suffix ",
+                                                       key_suffix_rank, ", but saw shape ", keys_rank));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
         return GRAPH_FAILED;
       }
@@ -138,7 +140,8 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
         // Ensure the suffix of keys match what's in the Table.
         int64_t dim = key_shape_and_type.GetShape().GetDim(d);
         if (ReplaceDim(keys, keys_rank - key_suffix_rank + d, dim, keys, op_name) == GRAPH_FAILED) {
-          std::string err_msg = OtherErrMsg(ConcatString("replace dim ", keys_rank - key_suffix_rank + d, " in keys failed"));
+          std::string err_msg = OtherErrMsg(ConcatString("replace dim ",
+                                                         keys_rank - key_suffix_rank + d, " in keys failed"));
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
           return GRAPH_FAILED;
         }

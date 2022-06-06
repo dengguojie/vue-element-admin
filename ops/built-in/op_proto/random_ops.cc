@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,17 +73,17 @@ IMPLEMT_INFERFUNC(MultinomialAliasDraw, MultinomialAliasDrawInfer) {
     return GRAPH_FAILED;
   }
   if (q_shape.GetDim(0) != j_shape.GetDim(0)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),std::string("q_shape should be equal to j_shape"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), std::string("q_shape should be equal to j_shape"));
     return GRAPH_FAILED;
   }
 
-  int64_t num;
-  (void)op.GetAttr("num_samples", num);
-  std::vector<int64_t> out_dims = {num};
-  TensorDesc output_desc = op.GetOutputDescByName("y");
-  output_desc.SetDataType(DT_INT64);
-  output_desc.SetShape(Shape(out_dims));
-  op.UpdateOutputDesc("y", output_desc);
+  int64_t number;
+  (void)op.GetAttr("num_samples", number);
+  std::vector<int64_t> out_dims = {number};
+  TensorDesc output_description = op.GetOutputDescByName("y");
+  output_description.SetDataType(DT_INT64);
+  output_description.SetShape(Shape(out_dims));
+  op.UpdateOutputDesc("y", output_description);
   return GRAPH_SUCCESS;
 }
 
@@ -96,15 +96,15 @@ IMPLEMT_INFERFUNC(MultinomialAliasSetup, MultinomialAliasSetupInfer) {
     return GRAPH_FAILED;
   }
   
-  TensorDesc output_desc_q = op.GetOutputDescByName("q");
-  TensorDesc output_desc_j = op.GetOutputDescByName("j");
+  TensorDesc output_description_q = op.GetOutputDescByName("q");
+  TensorDesc output_description_j = op.GetOutputDescByName("j");
   auto type = op.GetInputDescByName("probs").GetDataType();
-  output_desc_q.SetDataType(type);
-  output_desc_q.SetShape(x_shape);
-  output_desc_j.SetDataType(DT_INT64);
-  output_desc_j.SetShape(x_shape);
-  op.UpdateOutputDesc("q", output_desc_q);
-  op.UpdateOutputDesc("j", output_desc_j);
+  output_description_q.SetDataType(type);
+  output_description_q.SetShape(x_shape);
+  output_description_j.SetDataType(DT_INT64);
+  output_description_j.SetShape(x_shape);
+  op.UpdateOutputDesc("q", output_description_q);
+  op.UpdateOutputDesc("j", output_description_j);
   return GRAPH_SUCCESS;
 }
 
@@ -202,9 +202,9 @@ IMPLEMT_INFERFUNC(Randperm, RandpermInferShape) {
   Shape scalar_shape;
   (void)Scalar(scalar_shape);
   
-  TensorDesc td = op.GetOutputDescByName("out");  
-  td.SetShape(scalar_shape);
-  (void)op.UpdateOutputDesc("out", td);
+  TensorDesc tensor_desc = op.GetOutputDescByName("out");
+  tensor_desc.SetShape(scalar_shape);
+  (void)op.UpdateOutputDesc("out", tensor_desc);
 
   return GRAPH_SUCCESS;
 }
@@ -260,7 +260,7 @@ IMPLEMT_INFERFUNC(RandomShuffle, RandomShuffleInfer) {
 
   auto type = op.GetInputDescByName("x").GetDataType();
   TensorDesc output_desc = op.GetOutputDescByName("y");
-  std::vector<std::pair<int64_t,int64_t>> range;
+  std::vector<std::pair<int64_t, int64_t>> range;
   auto status = desc.GetShapeRange(range);
   if (status != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -367,30 +367,30 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
     return GRAPH_SUCCESS;
   }
 
-  for (size_t i = 0; i < valueRange.size(); i++) {
+  for (size_t idx = 0; idx < valueRange.size(); idx++) {
     OP_LOGI(TbeGetName(op).c_str(), "i = %d, first = %lld, second = %lld",
-            i, valueRange[i].first, valueRange[i].second);
-    if (valueRange[i].first < UNKNOWN_DIM || valueRange[i].second < UNKNOWN_DIM) {
+            idx, valueRange[idx].first, valueRange[idx].second);
+    if (valueRange[idx].first < UNKNOWN_DIM || valueRange[idx].second < UNKNOWN_DIM) {
       OP_LOGW(TbeGetName(op).c_str(), "value < UNKNOWN_DIM");
       return GRAPH_SUCCESS;
     }
 
-    if (i == 0) {
-      down = valueRange[i].first;
-      up = valueRange[i].second;
+    if (idx == 0) {
+      down = valueRange[idx].first;
+      up = valueRange[idx].second;
       continue;
     }
 
-    if ((down == UNKNOWN_DIM) || (valueRange[i].first == UNKNOWN_DIM)) {
+    if ((down == UNKNOWN_DIM) || (valueRange[idx].first == UNKNOWN_DIM)) {
       down = UNKNOWN_DIM;
     } else {
-      down = down * valueRange[i].first;
+      down = down * valueRange[idx].first;
     }
 
-    if ((up == UNKNOWN_DIM) || (valueRange[i].second == UNKNOWN_DIM)) {
+    if ((up == UNKNOWN_DIM) || (valueRange[idx].second == UNKNOWN_DIM)) {
       up = UNKNOWN_DIM;
     } else {
-      up = up * valueRange[i].second; 
+      up = up * valueRange[idx].second;
     }
     OP_LOGI(TbeGetName(op).c_str(), "down = %lld, up = %lld", down, up);
   }
@@ -875,7 +875,7 @@ IMPLEMT_COMMON_INFERFUNC(UniformInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Uniform, UniformInferShape);
-//-----------------------Uniform END---------------------
+// -----------------------Uniform END---------------------
 
 // ------------------ContinuationIndicator Start-------------------------------
 IMPLEMT_COMMON_INFERFUNC(ContinuationIndicatorInferShape) {
