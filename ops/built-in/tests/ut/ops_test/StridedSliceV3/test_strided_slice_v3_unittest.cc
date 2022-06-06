@@ -54,12 +54,16 @@ class StridedSliceV3UT : public testing::Test {
   }
 
   template <typename T>
-  gert::InferShapeContextFaker ConstructContextFaker(gert::StorageShape &x_shape, gert::StorageShape &y_shape,
-                                                     const std::vector<T> &begin_value,
-                                                     const std::vector<T> &end_value, const std::vector<T> &axes_value,
-                                                     const std::vector<T> &stride_value) {
-    std::unique_ptr<uint8_t[]> begin_tensor_holder = ConstructConstTensor(begin_value);
-    std::unique_ptr<uint8_t[]> end_tensor_holder = ConstructConstTensor(end_value);
+  void ConstructContextFaker(gert::StorageShape &x_shape, gert::StorageShape &y_shape,
+                             std::map<std::string, std::vector<T>> &value_dict) {
+    ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
+    auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
+    ASSERT_NE(infer_shape_func, nullptr);
+
+    std::vector<T>& axes_value = value_dict["axis"];
+    std::vector<T>& stride_value = value_dict["stride"];
+    std::unique_ptr<uint8_t[]> begin_tensor_holder = ConstructConstTensor(value_dict["begin"]);
+    std::unique_ptr<uint8_t[]> end_tensor_holder = ConstructConstTensor(value_dict["end"]);
     std::unique_ptr<uint8_t[]> axes_tensor_holder = ConstructConstTensor(axes_value);
     std::unique_ptr<uint8_t[]> stride_tensor_holder = ConstructConstTensor(stride_value);
 
@@ -75,31 +79,28 @@ class StridedSliceV3UT : public testing::Test {
     if (stride_value.empty()) {
       instance_num[4] = 0;
     }
-    auto faker = gert::InferShapeContextFaker()
+    auto holder = gert::InferShapeContextFaker()
                      .NodeIoNum(5, 1)
                      .IrInstanceNum(instance_num)
                      .InputShapes({&x_shape, begin_tensor, end_tensor, axes_tensor, stride_tensor})
-                     .OutputShapes({&y_shape});
-    return faker;
+                     .OutputShapes({&y_shape})
+                     .Build();
+
+    EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
   }
 };
 
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_normal) {
   gert::StorageShape x_shape = {{9, 10, 11, 12}, {9, 10, 11, 12}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 0};
-  std::vector<int32_t> end_value = {8, 7};
-  std::vector<int32_t> axes_value = {2, 3};
-  std::vector<int32_t> stride_value = {1, 1};
-  std::vector<int64_t> expected_output_shape = {9, 10, 8, 7};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {2, 3}},
+      {"end", {8, 7}},
+      {"axis", {2, 3}},
+      {"stride", {1, 1}}};
+  std::vector<int64_t> expected_output_shape = {9, 10, 6, 4};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
@@ -109,19 +110,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_normal) {
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_neg_axes) {
   gert::StorageShape x_shape = {{9, 10, 11, 12}, {9, 10, 11, 12}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 0};
-  std::vector<int32_t> end_value = {8, 7};
-  std::vector<int32_t> axes_value = {-2, -1};
-  std::vector<int32_t> stride_value = {1, 1};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {0, 0}},
+      {"end", {8, 7}},
+      {"axis", {-2, -1}},
+      {"stride", {1, 1}}};
   std::vector<int64_t> expected_output_shape = {9, 10, 8, 7};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
@@ -131,19 +127,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_neg_axes) {
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_neg_ends) {
   gert::StorageShape x_shape = {{9, 10, 11, 12}, {9, 10, 11, 12}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 0};
-  std::vector<int32_t> end_value = {-2, -1};
-  std::vector<int32_t> axes_value = {-2, -1};
-  std::vector<int32_t> stride_value = {2, 3};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {0, 0}},
+      {"end", {-2, -1}},
+      {"axis", {-2, -1}},
+      {"stride", {2, 3}}};
   std::vector<int64_t> expected_output_shape = {9, 10, 5, 4};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
@@ -153,19 +144,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_neg_ends) {
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_ends_out_of_range) {
   gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 1};
-  std::vector<int32_t> end_value = {1000, 1000};
-  std::vector<int32_t> axes_value = {0, 1};
-  std::vector<int32_t> stride_value = {1, 1};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {0, 1}},
+      {"end", {1000, 1000}},
+      {"axis", {0, 1}},
+      {"stride", {1, 1}}};
   std::vector<int64_t> expected_output_shape = {20, 9, 5};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
@@ -175,19 +161,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_ends_out_of_range) {
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_strides) {
   gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 0, 3};
-  std::vector<int32_t> end_value = {20, 10, 4};
-  std::vector<int32_t> axes_value = {0, 1, 2};
-  std::vector<int32_t> stride_value = {};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {0, 0, 3}},
+      {"end", {20, 10, 4}},
+      {"axis", {0, 1, 2}},
+      {"stride", {}}};
   std::vector<int64_t> expected_output_shape = {20, 10, 1};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
@@ -197,19 +178,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_strides) {
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_axes) {
   gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 0, 3};
-  std::vector<int32_t> end_value = {20, 10, 4};
-  std::vector<int32_t> axes_value = {};
-  std::vector<int32_t> stride_value = {2, 3, 4};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {0, 0, 3}},
+      {"end", {20, 10, 4}},
+      {"axis", {}},
+      {"stride", {2, 3, 4}}};
   std::vector<int64_t> expected_output_shape = {10, 4, 1};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
@@ -219,19 +195,14 @@ TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_axes) {
 TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_axes_and_strides) {
   gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
   gert::StorageShape y_shape = {{}, {}};
-  std::vector<int32_t> begin_value = {0, 0, 0};
-  std::vector<int32_t> end_value = {10,10,10};
-  std::vector<int32_t> axes_value = {};
-  std::vector<int32_t> stride_value = {};
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {0, 0, 0}},
+      {"end", {10,10,10}},
+      {"axis", {}},
+      {"stride", {}}};
   std::vector<int64_t> expected_output_shape = {10, 10, 5};
 
-  auto faker = ConstructContextFaker<int32_t>(x_shape, y_shape, begin_value, end_value, axes_value, stride_value);
-  auto holder = faker.Build();
-  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-  auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-  ASSERT_NE(infer_shape_func, nullptr);
-
-  EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
+  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
   EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
   for (int i = 0; i < expected_output_shape.size(); i++) {
     EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);

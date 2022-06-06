@@ -1197,6 +1197,7 @@ vector_B:
       - ops/built-in/op_tiling/split_d.cc
       - ops/built-in/op_tiling/split_v.cc
       - ops/built-in/op_tiling/strided_slice.cc
+      - ops/built-in/op_tiling/strided_slice.h
       - ops/built-in/op_tiling/tile_d.cc
       - ops/built-in/op_tiling/tile_with_axis.cc
       - ops/built-in/op_tiling/top_k.cc
@@ -2381,7 +2382,6 @@ unkown:
       - ops/built-in/op_tiling/prod_env_mat_a.cc
       - ops/built-in/op_tiling/prod_env_mat_a_calc_descrpt.cc
       - ops/built-in/op_tiling/ifmr.cc
-      - ops/built-in/op_tiling/strided_slice.h
       - ops/built-in/op_tiling/layer_norm_v1.h
       - ops/built-in/op_tiling/vector_tiling_profiling.h
       - ops/built-in/op_tiling/transpose.cc
@@ -4158,6 +4158,8 @@ pytorch:
       - ops/built-in/op_proto/runtime/strided_slice_v3.cc
       - ops/built-in/tbe/impl/mix_filter.py
       - ops/built-in/tbe/impl/step_interpolate.py
+      - ops/built-in/op_tiling/runtime/strided_slice_v3.cc
+      - ops/built-in/op_tiling/runtime/strided_slice_v3.h
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
