@@ -34,7 +34,7 @@ class ImageWarpOffsetsCpuKernel : public CpuKernel {
 
  private:
   template <typename TImage, typename TIndex>
-  static uint32_t DoCompute(CpuKernelContext &ctx);
+  static uint32_t DoCompute(const CpuKernelContext &ctx);
 
   uint32_t CheckParams(const CpuKernelContext &ctx);
 
@@ -43,7 +43,7 @@ class ImageWarpOffsetsCpuKernel : public CpuKernel {
 
   uint32_t CheckShapes(const CpuKernelContext &ctx);
 
-  using KernelFunction = uint32_t (*)(CpuKernelContext &ctx);
+  using KernelFunction = uint32_t (*)(const CpuKernelContext &ctx);
   static const std::map<std::string, KernelFunction> kernels_;
   static const std::vector<std::string> kernels_name_;
 };

@@ -55,7 +55,7 @@ const std::vector<std::string> ImageWarpOffsetsCpuKernel::kernels_name_ = {
     "(DT_FLOAT16,DT_INT32,DT_FLOAT16)", "(DT_FLOAT,DT_FLOAT,DT_FLOAT)"};
 
 template <typename TImage, typename TIndex>
-uint32_t ImageWarpOffsetsCpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t ImageWarpOffsetsCpuKernel::DoCompute(const CpuKernelContext &ctx) {
   auto input0_shape =
       ctx.Input(kFirstInputIndex)->GetTensorShape()->GetDimSizes();
   auto input1_shape =
