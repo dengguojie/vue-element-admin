@@ -37,4 +37,20 @@ TEST_F(broadcast_to,broadcast_to_infershape_diff_test){
     std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{1,-1}};
     EXPECT_EQ(output_shape_range,expected_shape_range);
 }
+TEST_F(broadcast_to,broadcast_to_infershape_diff_test_1){
+    ge::op::BroadcastTo op;
+    std::vector<std::pair<int64_t,int64_t>> shape_range = {{1,10}};
+    auto tensor_desc = create_desc_shape_range({-1},
+                                                ge::DT_FLOAT16,ge::FORMAT_ND,
+                                                {3},
+                                                ge::FORMAT_ND,shape_range);
+    auto input_shape_desc = create_desc_shape_range({1, 1},
+                                                ge::DT_FLOAT16,ge::FORMAT_ND,
+                                                {1, 1},
+                                                ge::FORMAT_ND,{{1, 1}});                                            
+    op.UpdateInputDesc("x",tensor_desc);
+    op.UpdateInputDesc("shape",input_shape_desc);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret,ge::GRAPH_FAILED);
+}
 

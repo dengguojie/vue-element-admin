@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,8 +80,9 @@ IMPLEMT_COMMON_INFERFUNC(GeluGradInferShape) {
 COMMON_INFER_FUNC_REG(GeluGrad, GeluGradInferShape);
 VERIFY_FUNC_REG(GeluGrad, GeluGradVerify);
 // ----------------------GeluGrad END----------------------
+
 //-----------------------ELUGRADV2-------------------------
-IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape){
+IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape) {
     TensorDesc output_desc = op.GetOutputDescByName("y");
     DataType input_dtype = op.GetInputDescByName("activations").GetDataType();
     Format input_format = op.GetInputDescByName("activations").GetFormat();
@@ -93,11 +94,11 @@ IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape){
     return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify){
+IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify) {
     // Check Whether the two input tensor data types are consistent
     DataType input_type_grads = op.GetInputDescByName("grads").GetDataType();
     DataType input_type_activations = op.GetInputDescByName("activations").GetDataType();
-    if(input_type_activations != input_type_grads) {
+    if (input_type_activations != input_type_grads) {
         OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
         return GRAPH_FAILED;
     }
@@ -107,6 +108,7 @@ IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify){
 COMMON_INFER_FUNC_REG(EluGradV2, EluGradV2InferShape);
 VERIFY_FUNC_REG(EluGradV2, EluGradV2Verify);
 //-----------------------ELUGRADV2 END---------------------
+
 // ----------------------Gelu----------------------
 IMPLEMT_COMMON_INFERFUNC(GeluInferShape) {
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
@@ -1118,7 +1120,7 @@ IMPLEMT_COMMON_INFERFUNC(HardSigmoidGradInferShape) {
     return GRAPH_SUCCESS;
 }
     
-IMPLEMT_VERIFIER (HardSigmoidGrad, HardSigmoidGradVerify){
+IMPLEMT_VERIFIER (HardSigmoidGrad, HardSigmoidGradVerify) {
     return GRAPH_SUCCESS;
 }
 

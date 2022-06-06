@@ -1106,6 +1106,11 @@ vector_B:
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/data_flow_ops.cc
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
+      - ops/built-in/op_proto/outfeed_ops.cc
+      - ops/built-in/op_proto/pad_ops.cc
+      - ops/built-in/op_proto/ragged_array_ops.cc
+      - ops/built-in/op_proto/ragged_math_ops.cc
+      - ops/built-in/op_proto/randomdsa_ops.cc
       - ops/built-in/op_proto/rpn_ops.cc
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
@@ -2434,20 +2439,15 @@ unkown:
       - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
-      - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/ctc_ops.cc
-      - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/set_ops.cc
-      - ops/built-in/op_proto/ragged_math_ops.cc
-      - ops/built-in/op_proto/randomdsa_ops.cc
       - ops/built-in/op_proto/hcom_ops.cc
       - ops/built-in/op_proto/control_flow_ops.cc
       - ops/built-in/op_proto/state_ops.cc
       - ops/built-in/op_proto/no_op.cc
-      - ops/built-in/op_proto/outfeed_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/nn_other_ops.cc
       - ops/built-in/op_proto/inc/warp_perspective_ops.h

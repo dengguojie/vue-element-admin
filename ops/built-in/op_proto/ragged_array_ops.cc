@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,30 +92,31 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
   if (SubShape(params_dense_values, 1, params_dense_values.GetDimNum(), 1, value, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call SubShape function to subshape from 1 to",
-      params_dense_values.GetDimNum(), " of input[params_dense_values] shape", DebugString(params_dense_values.GetDims()));
+                                       params_dense_values.GetDimNum(), " of input[params_dense_values] shape",
+                                       DebugString(params_dense_values.GetDims()));
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (Concatenate(Shape(unknow_dim_vec), value, values) != GRAPH_SUCCESS) {
-    std:: string err_msg = ConcatString("failed to call Concatenate function, output shape",
-      DebugString(Shape(unknow_dim_vec).GetDims())," and another shape", DebugString(value.GetDims()));
+    std::string err_msg = ConcatString("failed to call Concatenate function, output shape",
+      DebugString(Shape(unknow_dim_vec).GetDims()), " and another shape", DebugString(value.GetDims()));
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   TensorDesc outputDesc = op.GetOutputDescByName("output_dense_values");
 
-  if(op.GetInputDescByName("params_dense_values").GetShape().GetShapeSize() == UNKNOWN_DIM){
+  if (op.GetInputDescByName("params_dense_values").GetShape().GetShapeSize() == UNKNOWN_DIM) {
     outputDesc.SetShape(Shape({UNKNOWN_DIM}));
     outputDesc.SetDataType(Tvalues_type);
-    op.UpdateOutputDesc("output_dense_values",outputDesc);
+    op.UpdateOutputDesc("output_dense_values", outputDesc);
     return GRAPH_SUCCESS;
-  }else{
-    std::vector<std::pair<int64_t,int64_t>> range;
+  } else {
+    std::vector<std::pair<int64_t, int64_t>> range;
     int64_t min_dim = 1;
     std::vector<int64_t> max_dims = op.GetInputDescByName("params_dense_values").GetShape().GetDims();
-    for(const auto &maxdim:max_dims){
-      auto p = std::make_pair(min_dim,maxdim);
+    for(const auto &maxdim : max_dims){
+      auto p = std::make_pair(min_dim, maxdim);
       range.push_back(p);
     }
     std::vector<int64_t> output_dims;
@@ -134,5 +135,4 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
 }
 
 INFER_FUNC_REG(RaggedGather, RaggedGatherInfer);
-
 }  // namespace ge

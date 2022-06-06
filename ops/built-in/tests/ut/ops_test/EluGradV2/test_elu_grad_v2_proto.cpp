@@ -56,4 +56,6 @@ TEST_F(EluGradV2Test, elu_grad_v2_test_case_1) {
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {100,100};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+    ret = elu_grad_v2_op.VerifyAllAttr(true);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

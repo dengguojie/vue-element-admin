@@ -51,4 +51,6 @@ TEST_F(HardSigmoidGradTest, hard_sigmoid_grad_test_case_1) {
      EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
      std::vector<int64_t> expected_output_shape = {100};
      EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+     ret = hard_sigmoid_grad_op.VerifyAllAttr(true);
+     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,8 +46,8 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
     return GRAPH_FAILED;
   }
   if (WithRankAtMost(op.GetInputDesc(2), 1, deltas, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = ConcatString("failed to call WithRankAtMost function, input[deltas] ", 
-                                       "rank must be at most 1D, got rank[", 
+    std::string err_msg = ConcatString("failed to call WithRankAtMost function, input[deltas] ",
+                                       "rank must be at most 1D, got rank[",
                                        op.GetInputDesc(2).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -110,5 +110,4 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
 }
 
 INFER_FUNC_REG(RaggedRange, RaggedRangeInfer);
-
 }  // namespace ge

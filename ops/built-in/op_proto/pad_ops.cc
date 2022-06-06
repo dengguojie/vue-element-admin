@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,7 +139,8 @@ static graphStatus PadInferShapeAndType(ge::Operator& op, std::vector<int64_t>& 
       return GRAPH_FAILED;
     }
     if (dim_num * 2 != paddings.size()) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("the num of paddings must be double the input dim size"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                          OtherErrMsg("the num of paddings must be double the input dim size"));
       return GRAPH_FAILED;
     }
 
@@ -388,7 +389,7 @@ IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
 
   // expand paddings by 0
   auto expand_num = input_shape_max * 2 - paddings_shape;
-  for(size_t dim = 0; dim < expand_num; dim++) {
+  for (size_t dim = 0; dim < expand_num; dim++) {
     paddings.push_back(0);
   }
 
@@ -653,7 +654,7 @@ IMPLEMT_INFERFUNC(BroadcastTo, BroadcastToInferShape) {
         DataType input_dtype = op.GetInputDescByName("x").GetDataType();
 
         if (dim_num > 1) {
-            std::string err_msg = ConcatString("the rank[", dim_num,"] of input[shape] should not be more than 1");
+            std::string err_msg = ConcatString("the rank[", dim_num, "] of input[shape] should not be more than 1");
             AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
             return GRAPH_FAILED;
         }
@@ -703,7 +704,8 @@ IMPLEMT_INFERFUNC(BroadcastToD, BroadcastToDInferShape) {
     return GRAPH_FAILED;
   }
   if (shape_out.size() < DIM_SIZE1 || shape_out.size() > DIM_SIZE8) {
-    std::string err_msg = GetParamOutRangeErrMsg(TbeGetName(op).c_str(), ConcatString("1,8"), std::to_string(shape_out.size()));
+    std::string err_msg = GetParamOutRangeErrMsg(TbeGetName(op).c_str(), ConcatString("1,8"),
+                                                 std::to_string(shape_out.size()));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -755,10 +757,10 @@ IMPLEMT_COMMON_INFERFUNC(DiagInferShape) {
       }
       output_desc->SetShape(GeShape(assitDimInfo));
       for (size_t i = 0; i < shape_range.size(); i++) {
-        if(shape_range[i].first > 0){
+        if (shape_range[i].first > 0) {
           shape_range[i].first = shape_range[i].first * shape_range[i].first;
         }
-        if(shape_range[i].second > 0){
+        if (shape_range[i].second > 0) {
           shape_range[i].second = shape_range[i].second * shape_range[i].second;
         }
       }
@@ -798,7 +800,8 @@ IMPLEMT_COMMON_INFERFUNC(AscendPaddingInferShape) {
     return GRAPH_FAILED;
   }
   if (pad_dim_size < 1) {
-    std::string err_msg = GetAttrValueErrMsg("pad_dim_size", std::to_string(pad_dim_size), "greater than or equal to 1.");
+    std::string err_msg = GetAttrValueErrMsg("pad_dim_size", std::to_string(pad_dim_size),
+                                             "greater than or equal to 1.");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_PARAM_INVALID;
   }

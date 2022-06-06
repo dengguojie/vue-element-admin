@@ -74,7 +74,7 @@ IMPLEMT_INFERFUNC(DSAGenBitMask, DSAGenBitMaskInfer) {
   // get and set output dtype
   out_desc->SetDataType(DT_UINT8);
   // set shape range
-  if(count_shape.IsUnknownShape()){
+  if (count_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc_count->GetShapeRange(input_range);
     MakeUpShapeRange(count_shape, input_range);
@@ -121,7 +121,7 @@ IMPLEMT_INFERFUNC(DSARandomUniform, DSARandomUniformInfer) {
   }
 
   // set shape range
-  if(count_shape.IsUnknownShape()){
+  if (count_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc_count->GetShapeRange(input_range);
     MakeUpShapeRange(count_shape, input_range);
@@ -170,7 +170,7 @@ IMPLEMT_INFERFUNC(DSARandomTruncatedNormal, DSARandomTruncatedNormalInfer) {
   }
 
   // set shape range
-  if(count_shape.IsUnknownShape()){
+  if (count_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc_count->GetShapeRange(input_range);
     MakeUpShapeRange(count_shape, input_range);
@@ -218,7 +218,7 @@ IMPLEMT_INFERFUNC(DSARandomNormal, DSARandomNormalInfer) {
   }
 
   // set shape range
-  if(count_shape.IsUnknownShape()){
+  if (count_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc_count->GetShapeRange(input_range);
     MakeUpShapeRange(count_shape, input_range);
@@ -228,5 +228,4 @@ IMPLEMT_INFERFUNC(DSARandomNormal, DSARandomNormalInfer) {
 }
 
 INFER_FUNC_REG(DSARandomNormal, DSARandomNormalInfer);
-
 }  // namespace ge
