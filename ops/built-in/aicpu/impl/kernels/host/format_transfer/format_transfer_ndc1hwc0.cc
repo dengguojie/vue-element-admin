@@ -27,12 +27,12 @@ using namespace std;
 namespace aicpu {
 namespace formats {
 namespace {
-std::map<int32_t, std::string> kFormatTable = {
+std::map<Format, std::string> kFormatTable = {
     {FORMAT_NCDHW, "NCDHW"},
     {FORMAT_NDHWC, "NDHWC"},
 };
 
-bool CheckDataTypeSupport(DataType data_type) {
+KernelStatus CheckDataTypeSupport(DataType data_type) {
   return GetSizeByDataType(data_type) > 0 ? KERNEL_STATUS_OK : KERNEL_STATUS_PARAM_INVALID;
 }
 
@@ -149,7 +149,7 @@ uint32_t TransShapeToNdc1hwc0(const std::vector<int64_t> &src_shape, const Forma
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  if (!CheckShapeValid(src_shape, cur_format.length())) {
+  if (!CheckShapeValid(src_shape, static_cast<int64_t>(cur_format.length()))) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   dst_shape.clear();
