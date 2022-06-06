@@ -1,0 +1,31 @@
+[
+    {
+        "op": "Flatten",
+        "calc_expect_func_file":"test_flatten_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "format": "ND",
+            "name": "x",
+            "typical_shape": [255,8,33],
+            "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [255,264],
+            "format": "ND",
+            "name": "y",
+            "type": "float"
+          }
+        ],
+        "attr": [
+          {
+            "name": "axis",
+            "type": "int",
+            "value": 1
+          }
+        ],
+        "case_name": "test_Flatten_rank_000"
+    }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "case_name": "ScatterNonAliasingAdd_dynamic_shape_rank_case_ascend910a",
+    "calc_expect_func_file":"test_scatter_non_aliasing_add_golden.py:calc_expect_func",
+    "op": "ScatterNonAliasingAdd",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [33, 5],
+        "type": "float32",
+        "data_distribute" : "uniform",
+        "name": "var"
+      },
+      {
+       "format": "ND",
+       "shape": [-2],
+       "typical_shape": [33, 25, 1],
+       "type": "int32",
+       "data_distribute" : "uniform",
+       "name": "indices"
+     },
+     {
+       "format": "ND",
+       "shape": [-2],
+       "typical_shape": [33, 25, 5],
+       "type": "float32",
+       "data_distribute" : "uniform",
+       "name": "adds"
+     }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [33,5],
+        "type": "float32",
+        "name": "var_out"
+      }
+    ]
+  }
+]

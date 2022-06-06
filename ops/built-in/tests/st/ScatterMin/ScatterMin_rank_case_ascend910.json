@@ -1,0 +1,47 @@
+[
+  {
+    "case_name": "ScatterMin_dynamic_shape_rank_scatter_min_case_ascend910a",
+    "op": "ScatterMin",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [512, 8],
+        "type": "float32",
+        "data_distribute" : "uniform",
+        "name": "var"
+      },
+      {
+       "format": "ND",
+       "shape": [-2],
+       "typical_shape": [256],
+       "type": "int32",
+       "data_distribute" : "uniform",
+       "name": "indices"
+     },
+     {
+       "format": "ND",
+       "shape": [-2],
+       "typical_shape": [256, 8],
+       "type": "float32",
+       "data_distribute" : "uniform",
+       "name": "updates"
+     }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [512, 8],
+        "type": "float32",
+        "name": "var_out"
+      }
+    ],
+    "attr": [
+        {
+         "name": "use_locking",
+         "value": false,
+         "type": "bool"
+        }
+    ]
+  }
+]

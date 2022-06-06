@@ -1,0 +1,55 @@
+[
+  {
+    "case_name": "ScatterMul_dynamic_shape_rank_scatter_mul_case_ascend910a",
+    "op": "ScatterMul",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [512, 8],
+        "shape_range": [[100, 600]],
+        "type": "float32",
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "var"
+      },
+      {
+       "format": "ND",
+       "shape": [-2],
+       "typical_shape": [256],
+       "shape_range": [[100, 600]],
+       "type": "int32",
+       "value_range": [[1, 512]],
+       "data_distribute" : "uniform",
+       "name": "indices"
+     },
+     {
+       "format": "ND",
+       "shape": [-2],
+       "typical_shape": [256, 8],
+       "shape_range": [[100, 600]],
+       "type": "float32",
+       "value_range": [[0, 1]],
+       "data_distribute" : "uniform",
+       "name": "update"
+     }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [512, 8],
+        "typical_shape": [512, 8],
+        "shape_range": [[100, 600]],
+        "type": "float32",
+        "name": "var"
+      }
+    ],
+    "attr": [
+        {
+         "name": "use_locking",
+         "value": false,
+         "type": "bool"
+        }
+    ]
+  }
+]
