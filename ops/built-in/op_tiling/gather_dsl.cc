@@ -26,11 +26,12 @@
 
 #include "tiling_handler.h"
 #include "op_tiling_util.h"
+#include "auto_tiling_register.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 namespace {
-constexpr int64_t BLOCK_SIZE = 32;
+constexpr int64_t BLOCK_SIZE_BYTES = 32;
 constexpr int64_t DOUBLE_BUFFER_SIZE = 2;
 constexpr int64_t GATHER_ND_COMPUTE = 1;
 constexpr int64_t GATHER_V2_COMPUTE = 2;
@@ -109,13 +110,18 @@ constexpr int64_t PARAMS_ROWS_THRESHOLD = 64;
 constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
 }
   GatherDslCompileInfo::GatherDslCompileInfo(const std::string &op_type, const nlohmann::json &org_compile_info) {
+    Parse(op_type.c_str(), org_compile_info);
+  }
+
+  bool GatherDslCompileInfo::Parse(const char* op_type, const nlohmann::json &org_compile_info) {
+    is_valid = true;
     try {
       // parse base info
       const auto &base_info = org_compile_info.at("_base_info");
       constexpr size_t base_info_size = 5;
       V_CHECK_EQ(base_info.size(), base_info_size,
-                 VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be 6 element"),
-                 return);
+                 VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be 5 element"),
+                 return false);
       constexpr size_t core_number_idx = 0;
       constexpr size_t ub_size_idx = 1;
       constexpr size_t gather_type_idx = 2;
@@ -134,7 +140,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
       constexpr size_t custom_info_size = 4;
       V_CHECK_EQ(custom_info.size(), custom_info_size,
                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "custom info must be 5 element"),
-                 return);
+                 return false);
       constexpr size_t params_ub_store_num_idx = 0;
       constexpr size_t batch_dims_idx = 1;
       constexpr size_t unknown_batch_dims_idx = 2;
@@ -144,7 +150,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
       unknown_batch_dims = custom_info[unknown_batch_dims_idx];
       org_batch_dims = custom_info[org_batch_dims_idx];
 
-      OP_LOGD(op_type.c_str(), "GatherDslCompileInfo:%lld %lld %lld %lld",
+      OP_LOGD(op_type, "GatherDslCompileInfo:%lld %lld %lld %lld",
               gather_type, batch_dims, unknown_batch_dims, org_batch_dims);
 
       // tensor sizes for special pattern
@@ -161,16 +167,21 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
 
       if (unknown_batch_dims) {
         attr_name = org_compile_info.at("attr_name").get<std::string>();
+        attr_idx = org_compile_info.at("bath_dims_attr_idx").get<std::size_t>();
       }
     } catch (const std::exception &e) {
+      is_valid = false;
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "construct compile_info error. Error message: %s", e.what());
+      return false;
     }
-    return;
+    return true;
   }
 
-  bool GatherDsl::Init() {
-    const ge::GeShape &org_params_ge_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->
-            MutableInputDesc(0)->MutableShape();
+  template <typename T>
+  bool GatherDsl<T>::Init() {
+    op_type = context->GetOpType();
+    gather_compile_info = dynamic_cast<const GatherDslCompileInfo *>(context->GetCompileInfo());
+    const OpShape& org_params_ge_shape = context->GetInputShape(0);
     cur_params_dim_len = org_params_ge_shape.GetDimNum();
     if (cur_params_dim_len == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather org_params_shape values is empty.");
@@ -179,9 +190,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     for (size_t j = 0; j < cur_params_dim_len; j++) {
       org_params_shape[j] = org_params_ge_shape.GetDim(j);
     }
-
-    const ge::GeShape &org_indices_ge_shape =
-      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(1)->MutableShape();
+    const OpShape& org_indices_ge_shape = context->GetInputShape(1);
     cur_indices_dim_len = org_indices_ge_shape.GetDimNum();
     if (cur_indices_dim_len == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather org_indices_shape values is empty.");
@@ -192,19 +201,19 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     }
 
     // gather rank
-    if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
+    if (gather_compile_info->gather_type == GATHER_ND_COMPUTE) {
       rank = org_indices_shape[cur_indices_dim_len - 1];
     }
 
     // batch dims
     GetRealBatchDims();
 
-    if (gather_compile_info.is_dynamic_const) {
+    if (gather_compile_info->is_dynamic_const) {
       // const condition shape if fused
-      axis = gather_compile_info.const_axis;
+      axis = gather_compile_info->const_axis;
 
       // const condition
-      if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
+      if (gather_compile_info->gather_type == GATHER_ND_COMPUTE) {
         // gather nd [batch, axes, row] [batch, loops, rank]
         params_shape[PARAMS_BATCH_DIM_IDX] = org_params_shape[PARAMS_BATCH_DIM_IDX];
         params_shape[PARAMS_LOOP_IDX] = 1;
@@ -246,8 +255,8 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     output_shape[OUTPUT_INDICES_LOOP_IDX] = indices_shape[INDICES_LOOP_IDX];
     output_shape[OUTPUT_PARAMS_ROW_IDX] = params_rows;
 
-    params_rows_align = (params_rows + gather_compile_info.params_align - 1) /
-                         gather_compile_info.params_align * gather_compile_info.params_align;
+    params_rows_align = (params_rows + gather_compile_info->params_align - 1) /
+                         gather_compile_info->params_align * gather_compile_info->params_align;
 
     // cal total size
     params_size_total = std::accumulate(params_shape.begin(), params_shape.end(), 1LL, std::multiplies<int64_t>());
@@ -258,21 +267,21 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     output_size = output_shape[OUTPUT_BATCH_DIM_IDX] * output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] *
                   output_shape[OUTPUT_INDICES_LOOP_IDX] * output_shape[OUTPUT_PARAMS_ROW_IDX];
 
-    OP_LOGD(op_type.c_str(), "GatherDsl output_shape:%lld %lld %lld %lld",
+    OP_LOGD(op_type, "GatherDsl output_shape:%lld %lld %lld %lld",
             output_shape[OUTPUT_BATCH_DIM_IDX], output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX],
             output_shape[OUTPUT_INDICES_LOOP_IDX], output_shape[OUTPUT_PARAMS_ROW_IDX]);
     return true;
   }
 
-  void GatherDsl::GetRealBatchDims() {
+  template <typename T>
+  void GatherDsl<T>::GetRealBatchDims() {
     int64_t batch_dims = 0;
-    if ((gather_compile_info.unknown_batch_dims) && (gather_compile_info.gather_type != GATHER_ND_COMPUTE)) {
-      if (ge::GRAPH_SUCCESS !=
-        static_cast<int64_t>(op_paras.GetAttr(gather_compile_info.attr_name.c_str(), batch_dims))) {
+    if ((gather_compile_info->unknown_batch_dims) && (gather_compile_info->gather_type != GATHER_ND_COMPUTE)) {
+      if (!context->GetAttr(gather_compile_info->attr_name.c_str(), gather_compile_info->attr_idx, batch_dims)) {
         OP_LOGW("Gather tiling GetAttr(batch_dims) failed, set default value to 0.");
       }
     } else {
-      batch_dims = gather_compile_info.org_batch_dims;
+      batch_dims = gather_compile_info->org_batch_dims;
     }
 
     if (batch_dims < 0) {
@@ -283,12 +292,12 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return;
   }
 
-  void GatherDsl::SimplyParamsAndIndices() {
-    uint32_t inputs_num = op_paras.GetInputsSize();
+  template <typename T>
+  void GatherDsl<T>::SimplyParamsAndIndices() {
+    size_t inputs_num = context->GetInputNums();
     if (inputs_num == GATHER_V2_INPUTS_NUM) {
       std::vector <int64_t> values;
-      // input axis index is 2
-      if (!ops::GetConstIntData(op_paras, INPUT_AXIS_IDX, values)) {
+      if(!context->GetConstInput(nullptr, INPUT_AXIS_IDX, values)) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather v2 axis not exists.");
         return;
       }
@@ -297,6 +306,8 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather v2 axis values is empty.");
         return;
       }
+
+      OP_LOGD(op_type, "GetConstInput value %lld", values[0]);
 
       axis = values[0];
       if (axis < 0) {
@@ -342,7 +353,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
                                       std::multiplies<int64_t>());
     }
 
-    if ((gather_compile_info.gather_type != GATHER_ND_COMPUTE) && (real_batch_dims < cur_indices_dim_len)) {
+    if ((gather_compile_info->gather_type != GATHER_ND_COMPUTE) && (real_batch_dims < cur_indices_dim_len)) {
       indices_loops = indices_loops * org_indices_shape[cur_indices_dim_len - 1];
     }
 
@@ -352,15 +363,17 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return;
   }
 
-  bool GatherDsl::IsZeroShapeTiling() {
+  template <typename T>
+  bool GatherDsl<T>::IsZeroShapeTiling() {
     // total_size equal 0(zero shape)
     // only rank equal 0(broadcast shape)
     return (total_size == 0) || (rank == 0);
   }
 
-  bool GatherDsl::DoZeroShapeTiling() {
+  template <typename T>
+  bool GatherDsl<T>::DoZeroShapeTiling() {
     block_dims = 1;
-    if ((gather_compile_info.gather_type == GATHER_ND_COMPUTE) && (total_size != 0) && (rank == 0)) {
+    if ((gather_compile_info->gather_type == GATHER_ND_COMPUTE) && (total_size != 0) && (rank == 0)) {
       // broadcast shape
       key = BROADCAST_TILING_KEY;
       // real params shape [parmas_batch, params_data], but init is [batch, gather axis, after axis]
@@ -372,29 +385,30 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return true;
   }
 
-  bool GatherDsl::IsSpecialPattern() {
+template <typename T>
+  bool GatherDsl<T>::IsSpecialPattern() {
     return rank == 1;
   }
+template <typename T>
+  bool GatherDsl<T>::IsDePadTiling() {
+  OP_LOGD(op_type, "IsDePadTiling running");
+  OP_LOGD(op_type, "tensor_sizes: %lld", gather_compile_info->tensor_sizes.size());
 
-  bool GatherDsl::IsDePadTiling() {
-    if (gather_compile_info.tensor_sizes.count(DEPAD_SCHEDULE) == 0) {
+    if (gather_compile_info->tensor_sizes.count(DEPAD_SCHEDULE) == 0) {
+      OP_LOGD(op_type, "IsDePadTiling return");
       return false;
     }
-
-    if (gather_compile_info.tensor_sizes.at(DEPAD_SCHEDULE).size() != TENSOR_SIZES_NUM) {
+    if (gather_compile_info->tensor_sizes.at(DEPAD_SCHEDULE).size() != TENSOR_SIZES_NUM) {
       return false;
     }
-
-    params_num_ub = gather_compile_info.tensor_sizes.at(DEPAD_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
-
+    params_num_ub = gather_compile_info->tensor_sizes.at(DEPAD_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
     real_params_row_num = params_num_ub / params_rows_align;
-    if ((real_params_row_num < 1) && (params_rows % gather_compile_info.params_align == 0)) {
+    if ((real_params_row_num < 1) && (params_rows % gather_compile_info->params_align == 0)) {
       return false;
     }
-
-    bool is_shape_ok = ((params_size_total > gather_compile_info.params_ub_store_num) ||
+    bool is_shape_ok = ((params_size_total > gather_compile_info->params_ub_store_num) ||
                        (params_rows > SCALAR_MODE_THRESHOLD && params_rows < PARAMS_ROWS_THRESHOLD)) &&
-                       (params_rows % gather_compile_info.params_align > 0);
+                       (params_rows % gather_compile_info->params_align > 0);
     if (is_shape_ok) {
       // b32
       constexpr int64_t b32_last_dim_max = 168;
@@ -402,19 +416,19 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
       int64_t last_dim_max = b32_last_dim_max;
       int64_t co2co = b32_co2co;
 
-      if (gather_compile_info.params_dtype == PARAM_DTYPE_B8) {
+      if (gather_compile_info->params_dtype == PARAM_DTYPE_B8) {
         // b8
         constexpr int64_t b8_last_dim_max = 64;
         constexpr int64_t b8_co2co = 1024;
         last_dim_max = b8_last_dim_max;
         co2co = b8_co2co;
-      } else if (gather_compile_info.params_dtype == PARAM_DTYPE_B16) {
+      } else if (gather_compile_info->params_dtype == PARAM_DTYPE_B16) {
         // b16
         constexpr int64_t b16_last_dim_max = 160;
         constexpr int64_t b16_co2co = 256;
         last_dim_max = b16_last_dim_max;
         co2co = b16_co2co;
-      } else if (gather_compile_info.params_dtype == PARAM_DTYPE_B64) {
+      } else if (gather_compile_info->params_dtype == PARAM_DTYPE_B64) {
         // b64
         constexpr int64_t b64_last_dim_max = 168;
         constexpr int64_t b64_co2co = 64;
@@ -423,60 +437,68 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
       }
       bool is_params_rows_ok = params_rows <= last_dim_max;
       bool is_params_num_ok = co2co * params_rows_align <= params_num_ub;
-
       return is_params_rows_ok && is_params_num_ok;
     }
     return false;
   }
 
-  bool GatherDsl::DoDePadTiling() {
+template <typename T>
+  bool GatherDsl<T>::DoDePadTiling() {
     DoBaseTiling();
     key_special_pattern = DEPAD_TILING_KEY;
 
     return true;
   }
 
-  bool GatherDsl::IsScalarTiling() {
-    if (gather_compile_info.tensor_sizes.count(SCALAR_SCHEDULE) == 0) {
+template <typename T>
+  bool GatherDsl<T>::IsScalarTiling() {
+  OP_LOGD(op_type, "IsScalarTiling running");
+    if (gather_compile_info->tensor_sizes.count(SCALAR_SCHEDULE) == 0) {
       return false;
     }
 
-    if (gather_compile_info.tensor_sizes.at(SCALAR_SCHEDULE).size() != TENSOR_SIZES_NUM) {
+    if (gather_compile_info->tensor_sizes.at(SCALAR_SCHEDULE).size() != TENSOR_SIZES_NUM) {
       return false;
     }
 
-    params_num_ub = gather_compile_info.tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
-    indices_num_ub = gather_compile_info.tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
+    params_num_ub = gather_compile_info->tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
+    indices_num_ub = gather_compile_info->tensor_sizes.at(SCALAR_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
     real_params_row_num = params_num_ub / params_rows_align;
 
-    return (params_size_total < gather_compile_info.params_ub_store_num) &&
+    return (params_size_total < gather_compile_info->params_ub_store_num) &&
            (params_rows <= SCALAR_MODE_THRESHOLD) &&
-           (params_rows % gather_compile_info.params_align > 0);
+           (params_rows % gather_compile_info->params_align > 0);
   }
 
-  bool GatherDsl::DoScalarTiling() {
+template <typename T>
+  bool GatherDsl<T>::DoScalarTiling() {
     DoBaseTiling();
     key_special_pattern = SCALAR_TILING_KEY;
 
     return true;
   }
 
-  bool GatherDsl::IsStoreUB(int64_t params_total) {
-    return params_total < gather_compile_info.params_ub_store_num;
+template <typename T>
+  bool GatherDsl<T>::IsStoreUB(int64_t params_total) {
+  OP_LOGD(op_type, "IsStoreUB running");
+    return params_total < gather_compile_info->params_ub_store_num;
   }
 
-  bool GatherDsl::IsParamsUbTiling() {
-    if ((gather_compile_info.tensor_sizes.count(PARAMS_UB_ALIGN_SCHEDULE) == 0 ||
-        gather_compile_info.tensor_sizes.at(PARAMS_UB_ALIGN_SCHEDULE).size() != TENSOR_SIZES_NUM) &&
-        (gather_compile_info.tensor_sizes.count(PARAMS_UB_NOT_ALIGN_SCHEDULE) == 0 ||
-        gather_compile_info.tensor_sizes.at(PARAMS_UB_NOT_ALIGN_SCHEDULE).size() != TENSOR_SIZES_NUM)) {
+template <typename T>
+  bool GatherDsl<T>::IsParamsUbTiling() {
+  OP_LOGD(op_type, "IsParamsUbTiling running");
+    if ((gather_compile_info->tensor_sizes.count(PARAMS_UB_ALIGN_SCHEDULE) == 0 ||
+        gather_compile_info->tensor_sizes.at(PARAMS_UB_ALIGN_SCHEDULE).size() != TENSOR_SIZES_NUM) &&
+        (gather_compile_info->tensor_sizes.count(PARAMS_UB_NOT_ALIGN_SCHEDULE) == 0 ||
+        gather_compile_info->tensor_sizes.at(PARAMS_UB_NOT_ALIGN_SCHEDULE).size() != TENSOR_SIZES_NUM)) {
       return false;
     }
 
-    if (gather_compile_info.tensor_sizes.count(PARAMS_UB_ALIGN_SCHEDULE) > 0) {
-      params_num_ub = gather_compile_info.tensor_sizes.at(PARAMS_UB_ALIGN_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
+    if (gather_compile_info->tensor_sizes.count(PARAMS_UB_ALIGN_SCHEDULE) > 0) {
+      params_num_ub = gather_compile_info->tensor_sizes.at(PARAMS_UB_ALIGN_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
     } else {
-      params_num_ub = gather_compile_info.tensor_sizes.at(PARAMS_UB_NOT_ALIGN_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
+      params_num_ub =
+        gather_compile_info->tensor_sizes.at(PARAMS_UB_NOT_ALIGN_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
     }
 
     real_params_row_num = params_num_ub / params_rows_align;
@@ -488,13 +510,14 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return IsStoreUB(params_size_total_align);
   }
 
-  bool GatherDsl::DoParamsUbTiling() {
+template <typename T>
+  bool GatherDsl<T>::DoParamsUbTiling() {
     // check need align
     DoBaseTiling();
-    if ((block_axis == OUTPUT_PARAMS_ROW_IDX) && (block_factor % gather_compile_info.params_align != 0)) {
+    if ((block_axis == OUTPUT_PARAMS_ROW_IDX) && (block_factor % gather_compile_info->params_align != 0)) {
       return false;
     }
-    if (((params_rows * gather_compile_info.params_dtype) % BLOCK_SIZE) == 0) {
+    if (((params_rows * gather_compile_info->params_dtype) % BLOCK_SIZE_BYTES) == 0) {
       key_special_pattern = PARAMS_UB_ALIGN_KEY;
     } else {
       key_special_pattern = PARAMS_UB_NO_ALIGN_KEY;
@@ -503,55 +526,62 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return true;
   }
 
-  bool GatherDsl::IsDbModule() {
-    if (gather_compile_info.tensor_sizes.count(DB_SCHEDULE) == 0) {
+template <typename T>
+  bool GatherDsl<T>::IsDbModule() {
+  OP_LOGD(op_type, "IsDbModule running");
+    if (gather_compile_info->tensor_sizes.count(DB_SCHEDULE) == 0) {
       return false;
     }
 
-    if (gather_compile_info.tensor_sizes.at(DB_SCHEDULE).size() != TENSOR_SIZES_NUM) {
+    if (gather_compile_info->tensor_sizes.at(DB_SCHEDULE).size() != TENSOR_SIZES_NUM) {
       return false;
     }
 
-    params_num_ub = gather_compile_info.tensor_sizes.at(DB_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
+    params_num_ub = gather_compile_info->tensor_sizes.at(DB_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
 
     real_params_row_num = params_num_ub / params_rows_align;
 
-    return params_rows > gather_compile_info.params_align && params_rows % gather_compile_info.params_align == 0;
+    return params_rows > gather_compile_info->params_align && params_rows % gather_compile_info->params_align == 0;
   }
 
-  bool GatherDsl::DoDbModule() {
+template <typename T>
+  bool GatherDsl<T>::DoDbModule() {
     DoBaseTiling();
     key_special_pattern = DB_MODULE_TILING_KEY;
     return true;
   }
 
-  bool GatherDsl::IsBaseTiling() {
-    if (gather_compile_info.tensor_sizes.count(BASE_SCHEDULE) == 0) {
+template <typename T>
+  bool GatherDsl<T>::IsBaseTiling() {
+  OP_LOGD(op_type, "IsBaseTiling running");
+    if (gather_compile_info->tensor_sizes.count(BASE_SCHEDULE) == 0) {
       return false;
     }
 
-    if (gather_compile_info.tensor_sizes.at(BASE_SCHEDULE).size() != TENSOR_SIZES_NUM) {
+    if (gather_compile_info->tensor_sizes.at(BASE_SCHEDULE).size() != TENSOR_SIZES_NUM) {
       return false;
     }
 
-    params_num_ub = gather_compile_info.tensor_sizes.at(BASE_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
-    indices_num_ub = gather_compile_info.tensor_sizes.at(BASE_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
+    params_num_ub = gather_compile_info->tensor_sizes.at(BASE_SCHEDULE)[TENSOR_SIZES_PARAMS_IDX] / rank;
+    indices_num_ub = gather_compile_info->tensor_sizes.at(BASE_SCHEDULE)[TENSOR_SIZES_INDICES_IDX] / rank;
 
     real_params_row_num = params_num_ub / params_rows_align;
 
     return true;
   }
 
-  void GatherDsl::BlockFirstAxis() {
+template <typename T>
+  void GatherDsl<T>::BlockFirstAxis() {
     real_params_row_num = params_num_ub / params_rows_align;
 
     block_axis = BLOCK_TILING_FIRST_AXIS;
     int64_t under_block = output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] *
             output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows;
-    int64_t block_tmp = std::min((gather_compile_info.params_align + under_block -1) / under_block,
+    int64_t block_tmp = std::min((gather_compile_info->params_align + under_block -1) / under_block,
                                  output_shape[block_axis]);
     block_factor =
-      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+      std::max((output_shape[block_axis] + gather_compile_info->core_num - 1) / gather_compile_info->core_num,
+               block_tmp);
     if (block_factor == 0) {
       return;
     }
@@ -591,15 +621,17 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return;
   }
 
-  void GatherDsl::BlockSecondAxis() {
+template <typename T>
+  void GatherDsl<T>::BlockSecondAxis() {
     real_params_row_num = params_num_ub / params_rows_align;
 
     block_axis = BLOCK_TILING_SECOND_AXIS;
     int64_t under_block = output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows;
-    int64_t block_tmp = std::min((gather_compile_info.params_align + under_block -1) / under_block,
+    int64_t block_tmp = std::min((gather_compile_info->params_align + under_block -1) / under_block,
                                  output_shape[block_axis]);
     block_factor =
-      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+      std::max((output_shape[block_axis] + gather_compile_info->core_num - 1) / gather_compile_info->core_num,
+               block_tmp);
     if (block_factor == 0) {
       return;
     }
@@ -631,12 +663,14 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return;
   }
 
-  void GatherDsl::BlockThirdAxis() {
+template <typename T>
+  void GatherDsl<T>::BlockThirdAxis() {
     block_axis = BLOCK_TILING_THIRD_AXIS;
-    int64_t block_tmp = std::min((gather_compile_info.params_align + params_rows - 1) / params_rows,
+    int64_t block_tmp = std::min((gather_compile_info->params_align + params_rows - 1) / params_rows,
                                  output_shape[block_axis]);
     block_factor =
-      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+      std::max((output_shape[block_axis] + gather_compile_info->core_num - 1) / gather_compile_info->core_num,
+               block_tmp);
     if (block_factor == 0) {
       return;
     }
@@ -659,11 +693,13 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return;
   }
 
-  void GatherDsl::BlockLastAxis() {
+  template <typename T>
+  void GatherDsl<T>::BlockLastAxis() {
     block_axis = BLOCK_TILING_LAST_AXIS;
-    int64_t block_tmp = std::min(gather_compile_info.params_align, output_shape[block_axis]);
+    int64_t block_tmp = std::min(gather_compile_info->params_align, output_shape[block_axis]);
     block_factor =
-      std::max((output_shape[block_axis] + gather_compile_info.core_num - 1) / gather_compile_info.core_num, block_tmp);
+      std::max((output_shape[block_axis] + gather_compile_info->core_num - 1) / gather_compile_info->core_num,
+               block_tmp);
     if (block_factor == 0) {
       return;
     }
@@ -678,52 +714,52 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return;
   }
 
-  void GatherDsl::EnsureBlockUBTiling() {
-    if (block_dims != 1) {
-      // check if ub factor less than 32B
-      int64_t total_ub_size = ub_factor;
-      total_ub_size = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
-                                      total_ub_size, std::multiplies<int64_t>());
-      int64_t total_ub_size_tail = ub_factor;
-      if (block_axis == ub_axis) {
-        if (block_factor == ub_factor) {
-          int64_t pre_core_num = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis,
-                                                 1LL, std::multiplies<int64_t>());
-          if ((pre_core_num == 1) && (total_ub_size > gather_compile_info.params_align)) {
-            return;
-          }
-          total_ub_size_tail = output_shape[ub_axis] % ub_factor;
-        } else {
-          total_ub_size_tail = block_factor % ub_factor;
+  template <typename T>
+  void GatherDsl<T>::EnsureBlockUBTiling() {
+    // check if ub factor less than 32B
+    int64_t total_ub_size = ub_factor;
+    total_ub_size = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
+                                    total_ub_size, std::multiplies<int64_t>());
+    int64_t total_ub_size_tail = ub_factor;
+    if (block_axis == ub_axis) {
+      if (block_factor == ub_factor) {
+        int64_t pre_core_num = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis,
+                                               1LL, std::multiplies<int64_t>());
+        if ((pre_core_num == 1) && (total_ub_size > gather_compile_info->params_align)) {
+          return;
         }
-      } else {
         total_ub_size_tail = output_shape[ub_axis] % ub_factor;
+      } else {
+        total_ub_size_tail = block_factor % ub_factor;
       }
+    } else {
+      total_ub_size_tail = output_shape[ub_axis] % ub_factor;
+    }
 
-      total_ub_size_tail = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
-                                           total_ub_size_tail, std::multiplies<int64_t>());
-      if ((total_ub_size < gather_compile_info.params_align) ||
-      ((total_ub_size_tail < gather_compile_info.params_align) && (total_ub_size_tail > 0))) {
-        SafeTiling();
-      }
+    total_ub_size_tail = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
+                                         total_ub_size_tail, std::multiplies<int64_t>());
+    if ((total_ub_size < gather_compile_info->params_align) ||
+    ((total_ub_size_tail < gather_compile_info->params_align) && (total_ub_size_tail > 0))) {
+      SafeTiling();
     }
 
     return;
   }
 
-  void GatherDsl::SafeTiling() {
+  template <typename T>
+  void GatherDsl<T>::SafeTiling() {
     key_special_pattern = 0;
     block_dims = 1;
     block_axis = BLOCK_TILING_FIRST_AXIS;
     block_factor = output_shape[block_axis];
 
-    if (params_rows_align > gather_compile_info.params_ub_store_num) {
+    if (params_rows_align > gather_compile_info->params_ub_store_num) {
       ub_axis = OUTPUT_PARAMS_ROW_IDX;
-      ub_factor = gather_compile_info.params_ub_store_num;
+      ub_factor = gather_compile_info->params_ub_store_num;
     } else {
       int64_t ub_size_align = output_size / params_rows * params_rows_align;
       for (size_t idx = block_axis; idx < OUTPUT_PARAMS_ROW_IDX; idx++) {
-        if (ub_size_align < gather_compile_info.params_ub_store_num) {
+        if (ub_size_align < gather_compile_info->params_ub_store_num) {
           ub_axis = idx;
           ub_factor = output_shape[ub_axis];
           break;
@@ -734,18 +770,20 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     }
   }
 
-  bool GatherDsl::DoBaseTiling() {
+  template <typename T>
+  bool GatherDsl<T>::DoBaseTiling() {
+    OP_LOGD(op_type, "DoBaseTiling running");
     // n last gather and params last dim > 1
-    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= (gather_compile_info.core_num / BLOCK_AIXS_THRESHOLD)) ||
-    ((output_size / output_shape[OUTPUT_BATCH_DIM_IDX] * gather_compile_info.params_dtype) < BLOCK_SIZE) ||
+    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= (gather_compile_info->core_num / BLOCK_AIXS_THRESHOLD)) ||
+    ((output_size / output_shape[OUTPUT_BATCH_DIM_IDX] * gather_compile_info->params_dtype) < BLOCK_SIZE_BYTES) ||
     ((output_shape[OUTPUT_BATCH_DIM_IDX] >= output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX]) &&
     (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
-    gather_compile_info.core_num * gather_compile_info.params_align))) {
+    gather_compile_info->core_num * gather_compile_info->params_align))) {
       BlockFirstAxis();
     } else {
-      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= (gather_compile_info.core_num / BLOCK_AIXS_THRESHOLD)) ||
+      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= (gather_compile_info->core_num / BLOCK_AIXS_THRESHOLD)) ||
       (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
-      gather_compile_info.core_num * gather_compile_info.params_align)) {
+      gather_compile_info->core_num * gather_compile_info->params_align)) {
         BlockSecondAxis();
       } else {
         if (output_shape[OUTPUT_INDICES_LOOP_IDX] > 1) {
@@ -759,9 +797,11 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return true;
   }
 
-  bool GatherDsl::CalcKey() {
+  template <typename T>
+  bool GatherDsl<T>::CalcKey() {
+    OP_LOGD(op_type, "CalcKey running");
     // gather nd delete reduction axis
-    if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
+    if (gather_compile_info->gather_type == GATHER_ND_COMPUTE) {
       if (block_axis >= 1) {
         block_axis = block_axis - 1;
       }
@@ -778,7 +818,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     key += rank * rank_coeff + key_special_pattern;
 
     // split info
-    if (gather_compile_info.gather_type == GATHER_ND_COMPUTE) {
+    if (gather_compile_info->gather_type == GATHER_ND_COMPUTE) {
       key += block_axis * (OUTPUT_SHAPE_SIZE - 1) + ub_axis;
     } else {
       key += block_axis * OUTPUT_SHAPE_SIZE + ub_axis;
@@ -787,21 +827,22 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return true;
   }
 
-  bool GatherDsl::WriteTilingData() {
-    OP_LOGD(op_type.c_str(), "tiling key:%lld block_dims:%lld block_factor:%lld ub_factor:%lld "
+template <typename T>
+  bool GatherDsl<T>::WriteTilingData() {
+    OP_LOGD(op_type, "tiling key:%lld block_dims:%lld block_factor:%lld ub_factor:%lld "
             "block_axis:%lld ub_axis:%lld", key, block_dims, block_factor, ub_factor, block_axis, ub_axis);
 
-    if (gather_compile_info.is_dynamic_const) {
-      run_info.AddTilingData(static_cast<uint32_t>(key));
-      run_info.AddTilingData(static_cast<int32_t>(block_axis));
-      run_info.AddTilingData(static_cast<int32_t>(block_factor));
-      run_info.AddTilingData(static_cast<int32_t>(ub_axis));
-      run_info.AddTilingData(static_cast<int32_t>(ub_factor));
+    if (gather_compile_info->is_dynamic_const) {
+      context->Append(static_cast<uint32_t>(key));
+      context->Append(static_cast<int32_t>(block_axis));
+      context->Append(static_cast<int32_t>(block_factor));
+      context->Append(static_cast<int32_t>(ub_axis));
+      context->Append(static_cast<int32_t>(ub_factor));
       return true;
     }
 
-    run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
-    run_info.SetTilingKey(static_cast<uint32_t>(key));
+    context->SetBlockDim(static_cast<uint32_t>(block_dims));
+    context->SetTilingKey(static_cast<uint32_t>(key));
 
     int64_t cur_key = key;
     int64_t key_len = 8;
@@ -815,25 +856,23 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     std::string str_key = keys;
 
     try {
-      const auto &all_vars = gather_compile_info.gather_vars.at(str_key);
+      const auto &all_vars = gather_compile_info->gather_vars.at(str_key);
       for (const auto &var : all_vars) {
         if (var >= MIN_UB_FACTOR_IDX) {
-          run_info.AddTilingData(static_cast<int32_t>(ub_factor));
+          context->Append(static_cast<int32_t>(ub_factor));
         } else if (var >= MIN_BLOCK_FACTOR_IDX) {
-          run_info.AddTilingData(static_cast<int32_t>(block_factor));
+          context->Append(static_cast<int32_t>(block_factor));
         } else if (var >= INDICES_SHAPE_IDX) {
           int64_t var_value = var;
           size_t dim_index = var_value % DECIMAL_TEN;
-          run_info.AddTilingData(static_cast<int32_t>(indices_shape[dim_index]));
+          context->Append(static_cast<int32_t>(indices_shape[dim_index]));
         } else {
           int64_t var_value = var;
           size_t dim_index = var_value % DECIMAL_TEN;
-          if (total_size != 0) {
-            if ((gather_compile_info.gather_type == GATHER_ND_COMPUTE) && (dim_index > 0)) {
+          if ((total_size != 0) && (gather_compile_info->gather_type == GATHER_ND_COMPUTE) && (dim_index > 0)) {
               dim_index = dim_index + 1;
-            }
           }
-          run_info.AddTilingData(static_cast<int32_t>(params_shape[dim_index]));
+          context->Append(static_cast<int32_t>(params_shape[dim_index]));
         }
       }
     } catch (const std::exception &e) {
@@ -843,8 +882,9 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return true;
   }
 
-  bool GatherDsl::DoTiling() {
-    OP_LOGD(op_type.c_str(), "GatherDsl tiling running");
+template <typename T>
+  bool GatherDsl<T>::DoTiling() {
+    OP_LOGD(op_type, "GatherDsl tiling running");
     bool init_ret = Init();
     if (!init_ret) {
       return false;
@@ -873,7 +913,10 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
       if (!tiling_ret && IsBaseTiling()) {
         tiling_ret = DoBaseTiling();
       }
-      EnsureBlockUBTiling();
+      if (block_dims != 1) {
+        EnsureBlockUBTiling();
+      }
+
       tiling_ret = tiling_ret && CalcKey();
     }
 
@@ -881,9 +924,30 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     return tiling_ret;
   }
 
+  bool CreateGatherDslTiling(gert::TilingContext* context, const OpInfoImpl* op_info) {
+    OP_LOGD(context->GetNodeType(), "GatherTilingHandler DoTiling running");
+    AutoTilingContext auto_tiling_context(context);
+    if (op_info) {
+      auto_tiling_context.SetCompileInfo(op_info->GetCompileInfo());
+    }
+    GatherDsl<AutoTilingContext> GatherDsl(&auto_tiling_context, nullptr);
+    return GatherDsl.DoTiling();
+  }
+
+  AutoTilingCompileInfo* CreateGatherDslParser(const char* op_type, const nlohmann::json& json_compile_info) {
+    GatherDslCompileInfo* gather_compile_info = new GatherDslCompileInfo(op_type, json_compile_info);
+    if (!gather_compile_info->is_valid) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Gather parse failed");
+      return nullptr;
+    }
+
+    return gather_compile_info;
+  }
+
   bool GatherTilingHandler::DoTiling(const ge::Operator &op_paras, utils::OpRunInfo &run_info) const {
     OP_LOGD(op_type.c_str(), "GatherTilingHandler DoTiling running");
-    GatherDsl GatherDsl(op_type, op_paras, gather_compile_info, run_info);
+    AutoTilingOp auto_tiling_op(op_type.c_str(), &op_paras, &gather_compile_info, &run_info);
+    GatherDsl<AutoTilingOp> GatherDsl(&auto_tiling_op, nullptr);
     return GatherDsl.DoTiling();
   }
 
@@ -898,4 +962,6 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
                                                                 const nlohmann::json &parsed_compile_info) {
     return std::make_shared<GatherTilingHandler>(op_type, pattern, parsed_compile_info);
   }
+
+  REGISTER_AUTO_TILING(SchPattern::GATHER, CreateGatherDslTiling, CreateGatherDslParser)
 }  // namespace optiling

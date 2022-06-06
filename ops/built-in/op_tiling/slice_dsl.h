@@ -25,16 +25,22 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
+#include "exe_graph/runtime/tiling_context.h"
+#include "exe_graph/runtime/kernel_run_context.h"
+
 #include "vector_tiling.h"
-#include "external/graph/operator.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
   constexpr size_t SLICE_INIT_DIM_LEN = 8;
   constexpr int64_t DEFAULT_ALIGN_VALUE = 32;
-  struct SliceDslCompileInfo {
+  struct SliceDslCompileInfo : AutoTilingCompileInfo {
     // construct func
     SliceDslCompileInfo() = default;
     SliceDslCompileInfo(const std::string& _op_type, const nlohmann::json &compile_info);
+    ~SliceDslCompileInfo() override = default;
+    bool Parse(const char* op_type, const nlohmann::json &compile_info);
 
     // base info
     int64_t core_num{0};
@@ -58,13 +64,15 @@ namespace optiling {
 
     std::unordered_map<std::string, std::vector<int32_t>> slice_vars;
 
+    bool is_valid{false};
+
   };
 
+  template <typename T>
   class SliceDsl {
    public:
-    explicit SliceDsl(const std::string& _op_type, const ge::Operator& _op_paras,
-                      const SliceDslCompileInfo& _slice_compile_info, utils::OpRunInfo& _run_info):
-          op_type(_op_type), op_paras(_op_paras), slice_compile_info(_slice_compile_info), run_info(_run_info) {
+    explicit SliceDsl(T* _context, const OpInfoImpl* _op_info):
+        context(_context), op_info(_op_info){
     }
 
     ~SliceDsl() = default;
@@ -72,8 +80,8 @@ namespace optiling {
 
    private:
     bool Init();
-    void SimplyShape(std::vector<int64_t> org_x_shape, std::vector<int64_t> org_begin_list,
-                     std::vector<int64_t> org_size_list);
+    void SimplyShape(std::vector<int64_t>& org_x_shape, std::vector<int64_t>& org_begin_list,
+                     std::vector<int64_t>& org_size_list);
 
     bool DoBaseTiling();
 
@@ -99,10 +107,11 @@ namespace optiling {
 
     bool WriteTilingData();
 
-    const std::string &op_type;
-    const ge::Operator &op_paras;
-    const SliceDslCompileInfo& slice_compile_info;
-    utils::OpRunInfo& run_info;
+    T* context;
+    const OpInfoImpl* op_info{nullptr};
+    const char* op_type;
+    const SliceDslCompileInfo* slice_compile_info;
+
     std::vector <int64_t> input_x_shape{std::vector<int64_t>(SLICE_INIT_DIM_LEN, 0)};
     std::vector <int64_t> x_shape{std::vector<int64_t>(SLICE_INIT_DIM_LEN, 0)};
     std::vector <int64_t> begin_list{std::vector<int64_t>(SLICE_INIT_DIM_LEN, 0)};
@@ -126,6 +135,8 @@ namespace optiling {
 
     int64_t key{-1};
   };
+  template class SliceDsl<AutoTilingContext>;
+  template class SliceDsl<AutoTilingOp>;
 
   class SliceTilingHandler: public AutoTilingHandler {
    public:

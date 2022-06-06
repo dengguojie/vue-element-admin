@@ -25,17 +25,23 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
+#include "exe_graph/runtime/tiling_context.h"
+#include "exe_graph/runtime/kernel_run_context.h"
+
 #include "vector_tiling.h"
-#include "external/graph/operator.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
   constexpr std::size_t GATHER_INIT_DIM_LEN = 11;
   constexpr std::size_t INDICES_INIT_DIM_LEN = 3;
   constexpr std::size_t OUTPUT_INIT_DIM_LEN = 4;
-  struct GatherDslCompileInfo {
+  struct GatherDslCompileInfo : AutoTilingCompileInfo {
     // construct func
     GatherDslCompileInfo() = default;
     GatherDslCompileInfo(const std::string& _op_type, const nlohmann::json &compile_info);
+    ~GatherDslCompileInfo() override = default;
+    bool Parse(const char* op_type, const nlohmann::json &compile_info);
 
     // base info
     int64_t core_num{0};
@@ -50,7 +56,8 @@ namespace optiling {
     int64_t batch_dims{0};
     bool unknown_batch_dims{false};
     int64_t org_batch_dims{0};
-    std::string attr_name;
+    string attr_name;
+    size_t attr_idx{0};
 
     // tensor size
     std::unordered_map<std::string, std::vector<int64_t>> tensor_sizes;
@@ -61,13 +68,14 @@ namespace optiling {
     // const axis info
     bool is_dynamic_const{false};
     int32_t const_axis{0};
+    bool is_valid{false};
   };
 
+  template <typename T>
   class GatherDsl {
     public:
-      explicit GatherDsl(const std::string& _op_type, const ge::Operator& _op_paras,
-                         const GatherDslCompileInfo& _gather_compile_info, utils::OpRunInfo& _run_info) :
-              op_type(_op_type), op_paras(_op_paras), gather_compile_info(_gather_compile_info), run_info(_run_info){
+      explicit GatherDsl(T* _context, const OpInfoImpl* _op_info):
+      context(_context), op_info(_op_info){
       }
 
       ~GatherDsl() = default;
@@ -111,10 +119,10 @@ namespace optiling {
 
       bool WriteTilingData();
 
-      const std::string &op_type;
-      const ge::Operator &op_paras;
-      const GatherDslCompileInfo &gather_compile_info;
-      utils::OpRunInfo &run_info;
+      T* context;
+      const OpInfoImpl* op_info{nullptr};
+      const char* op_type;
+      const GatherDslCompileInfo* gather_compile_info;
 
       std::array <int64_t, GATHER_INIT_DIM_LEN> org_params_shape{};
       std::array <int64_t, GATHER_INIT_DIM_LEN> org_indices_shape{};
@@ -148,8 +156,9 @@ namespace optiling {
       int64_t params_num_ub{0};
       int64_t indices_num_ub{0};
       int64_t real_params_row_num{0};
-
   };
+  template class GatherDsl<AutoTilingContext>;
+  template class GatherDsl<AutoTilingOp>;
 
   class GatherTilingHandler : public AutoTilingHandler {
   public:

@@ -111,7 +111,10 @@ TENSOR_INPUT(opParas, tensor_inputB, indices);
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900010010 2 3778 2 756 ");
 }
@@ -177,7 +180,10 @@ TENSOR_INPUT(opParas, tensor_inputB, indices);
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900030004 1 786432 1 2420 ");
 }
@@ -250,7 +256,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
@@ -326,7 +335,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
 "1 500 6400 200 200 ");
@@ -403,7 +415,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1901 1 3120 98 98 ");
 }
@@ -476,7 +491,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),"1 162 1 1784 56 56 ");
@@ -506,7 +524,7 @@ op_compile_info.tensor_sizes = {
 };
 
 op_compile_info.gather_vars = {
-        {"901210002", {10001, 10002, 10003, 20001, 30000, 40003}},
+        {"900010010", {10001, 10002, 10003, 20001, 30000, 40003}},
 };
 
 std::vector <int64_t> inputA{5, 3, 3, 16, 2, 32};
@@ -551,11 +569,14 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
-"");
+"3 3 1024 77 3 3 ");
 }
 
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_7
@@ -628,7 +649,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
@@ -767,7 +791,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
@@ -912,7 +939,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 261 16 61 1 1 ");
 }
@@ -986,7 +1016,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 261 16 61 1 1 ");
 }
@@ -1061,7 +1094,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "14 2 42 3 1 1 ");
 }
@@ -1128,7 +1164,10 @@ TENSOR_INPUT(opParas, tensor_inputB, indices);
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(runInfo.GetBlockDim(), 1);
 }
@@ -1158,6 +1197,7 @@ op_compile_info.tensor_sizes = {
 
 op_compile_info.gather_vars = {
         {"900017010", {10001, 10002, 10003, 20001, 30002, 40002}},
+        {"990000000", {}},
 };
 
 std::vector <int64_t> inputA{1, 0};
@@ -1202,7 +1242,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(runInfo.GetBlockDim(), 1);
 }
@@ -1274,7 +1317,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900011010 2 480 2 120 ");
 }
@@ -1346,7 +1392,10 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
 }
@@ -1419,7 +1468,10 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 opParas.set_attr_batch_dims(-2);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
 }
@@ -1491,18 +1543,22 @@ TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis_data.data(
 TENSOR_OUTPUT(opParas, tensor_output, y);
 
 optiling::utils::OpRunInfo runInfo;
-optiling::GatherDsl gather_dsl_schedule("gather", opParas, op_compile_info, runInfo);
+string opName = "gather";
+optiling::AutoTilingOp oldTlingop(opName.c_str(), &opParas, &op_compile_info, &runInfo);
+optiling::OpInfoImpl opInfoImpl(&op_compile_info);
+optiling::GatherDsl<AutoTilingOp> gather_dsl_schedule(&oldTlingop, &opInfoImpl);
 gather_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
 }
 
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_20) {
 using namespace optiling;
-std::string compileInfo = R"({"_base_info":[32, 262144, 1048576, 0, 4, 4],
+std::string compileInfo = R"({"_base_info":[32, 262144, 0, 4, 4],
 "_custom_info":[32786, 0, false, 0],
 "_tensor_sizes": {"901210003": [10001, 10003, 20001, 30000, 40003]},
 "_gather_vars": {"0": [209964, 6552]},
 "attr_name": "batch_dims",
+"batch_dims_attr_idx": 0,
 "_vars": {"901210002": ["_params_dims_1", "_params_dims_3", "_indices_dims_1", "_block_factor_0", "_ub_factor_3"]}, "_pattern":"Gather"})";
 
 nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
@@ -1519,6 +1575,7 @@ std::string compileInfo = R"({"_base_info":[32, 262144, 0, 4, 4],
 "_tensor_sizes": {"0": [209964, 6552]},
 "_const_axis": 1,
 "attr_name": "batch_dims",
+"batch_dims_attr_idx": 0,
 "_vars": {"901210002": ["_params_dims_1", "_params_dims_3", "_indices_dims_1", "_block_factor_0", "_ub_factor_3"]}, "_pattern":"Gather"})";
 
 nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());

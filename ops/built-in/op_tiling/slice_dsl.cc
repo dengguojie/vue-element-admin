@@ -26,6 +26,7 @@
 
 #include "tiling_handler.h"
 #include "op_tiling_util.h"
+#include "auto_tiling_register.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
@@ -99,12 +100,17 @@ constexpr int64_t MIN_CORE_NUMBER = 1;
 }
 
 SliceDslCompileInfo::SliceDslCompileInfo(const std::string &op_type, const nlohmann::json &org_compile_info) {
+  Parse(op_type.c_str(), org_compile_info);
+}
+
+bool SliceDslCompileInfo::Parse(const char* op_type, const nlohmann::json &org_compile_info) {
+  is_valid = true;
   try {
     // parase base info
     const auto &base_info = org_compile_info.at("_base_info");
     constexpr size_t base_info_size = 3;
     V_CHECK_EQ(base_info.size(), base_info_size,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be 3 element"), return);
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be 3 element"), return false);
     constexpr size_t core_number_idx = 0;
     constexpr size_t ub_size_idx = 1;
     constexpr size_t x_type_idx = 2;
@@ -156,14 +162,17 @@ SliceDslCompileInfo::SliceDslCompileInfo(const std::string &op_type, const nlohm
       }
     }
   } catch (const std::exception &e) {
+    is_valid = false;
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "construct compile_info error. Error message: %s", e.what());
+    return false;
   }
-  return;
+  return true;
 }
 
-bool SliceDsl::Init() {
-  const ge::GeShape &org_x_ge_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->
-      MutableInputDesc(X_INPUT_DIX)->MutableShape();
+template <typename T>
+bool SliceDsl<T>::Init() {
+  op_type = context->GetOpType();
+  const OpShape& org_x_ge_shape = context->GetInputShape(X_INPUT_DIX);
   size_t cur_x_dim_len = org_x_ge_shape.GetDimNum();
   if (cur_x_dim_len == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "slice x_shape values is empty.");
@@ -174,17 +183,17 @@ bool SliceDsl::Init() {
   }
   input_x_shape.resize(cur_x_dim_len);
 
-  if (slice_compile_info.is_static) {
+  if (slice_compile_info->is_static) {
     x_shape = input_x_shape;
-    begin_list = slice_compile_info.begin;
-    size_list = slice_compile_info.size;
+    begin_list = slice_compile_info->begin;
+    size_list = slice_compile_info->size;
     shape_len = cur_x_dim_len;
   } else {
     std::vector<int64_t> org_begin_list = {};
-    if (slice_compile_info.is_const_begins) {
-      org_begin_list = slice_compile_info.begin;
+    if (slice_compile_info->is_const_begins) {
+      org_begin_list = slice_compile_info->begin;
     } else {
-      if (!ops::GetConstIntData(op_paras, BEGIN_INPUT_DIX, org_begin_list)) {
+      if (!context->GetConstInput(nullptr, BEGIN_INPUT_DIX, org_begin_list)) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get begin values failed.");
         return false;
       }
@@ -192,17 +201,17 @@ bool SliceDsl::Init() {
 
     // get size
     std::vector<int64_t> org_size_list = {};
-    bool is_thrid_input_const = slice_compile_info.is_const_sizes || slice_compile_info.is_const_ends;
+    bool is_thrid_input_const = slice_compile_info->is_const_sizes || slice_compile_info->is_const_ends;
     if (is_thrid_input_const) {
-      org_size_list = slice_compile_info.size;
+      org_size_list = slice_compile_info->size;
     } else {
-      if (!ops::GetConstIntData(op_paras, END_INPUT_DIX, org_size_list)) {
+      if (!context->GetConstInput(nullptr, END_INPUT_DIX, org_size_list)) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get size values failed.");
         return false;
       }
     }
 
-    if (slice_compile_info.end_mode == MODE_END) {
+    if (slice_compile_info->end_mode == MODE_END) {
       // change end to size
       for (size_t idx = 0; idx < org_size_list.size(); idx++) {
         org_size_list[idx] = org_size_list[idx] - org_begin_list[idx];
@@ -214,10 +223,10 @@ bool SliceDsl::Init() {
 
   last_dim = size_list[shape_len - 1];
   last_dim_align =
-      (last_dim + slice_compile_info.x_align - 1) / slice_compile_info.x_align * slice_compile_info.x_align;
+      (last_dim + slice_compile_info->x_align - 1) / slice_compile_info->x_align * slice_compile_info->x_align;
 
-  x_last_dim_align = (x_shape[shape_len - 1] + slice_compile_info.x_align - 1) /
-      slice_compile_info.x_align * slice_compile_info.x_align;
+  x_last_dim_align = (x_shape[shape_len - 1] + slice_compile_info->x_align - 1) /
+      slice_compile_info->x_align * slice_compile_info->x_align;
 
   pre_dim = std::accumulate(size_list.begin(), size_list.end() - 1, 1LL, std::multiplies<int64_t>());
 
@@ -227,9 +236,10 @@ bool SliceDsl::Init() {
   return true;
 }
 
-void SliceDsl::SimplyShape(std::vector<int64_t> org_x_shape,
-                           std::vector<int64_t> org_begin_list,
-                           std::vector<int64_t> org_size_list) {
+template <typename T>
+void SliceDsl<T>::SimplyShape(std::vector<int64_t>& org_x_shape,
+                              std::vector<int64_t>& org_begin_list,
+                              std::vector<int64_t>& org_size_list) {
   std::array<int64_t, SLICE_INIT_DIM_LEN> middle_x_shape{};
   std::array<int64_t, SLICE_INIT_DIM_LEN> middle_begin_list{};
   std::array<int64_t, SLICE_INIT_DIM_LEN> middle_size_list{};
@@ -289,10 +299,11 @@ void SliceDsl::SimplyShape(std::vector<int64_t> org_x_shape,
   return;
 }
 
-bool SliceDsl::DoBaseTiling() {
+template <typename T>
+bool SliceDsl<T>::DoBaseTiling() {
   if (shape_len == 1) {
-    ub_available = slice_compile_info.ub_size / slice_compile_info.coex_list[NORMAL_MODE_IDX] /
-        slice_compile_info.x_align * slice_compile_info.x_align;
+    ub_available = slice_compile_info->ub_size / slice_compile_info->coex_list[NORMAL_MODE_IDX] /
+        slice_compile_info->x_align * slice_compile_info->x_align;
     mode = MODE_ONE_DIM;
   } else if (IsBothAlignTiling()) {
     mode = MODE_BOTH_ALIGN;
@@ -303,33 +314,36 @@ bool SliceDsl::DoBaseTiling() {
   } else if (IsStrideAlignTiling()) {
     mode = MODE_UNALIGN_STRIDE;
   } else {
-    ub_available = slice_compile_info.ub_size / slice_compile_info.x_align * slice_compile_info.x_align;
+    ub_available = slice_compile_info->ub_size / slice_compile_info->x_align * slice_compile_info->x_align;
     mode = MODE_DATA_MOV;
   }
 
-  OP_LOGD(op_type.c_str(),
+  OP_LOGD(op_type,
           "slice dsl DoBaseTiling: mode=%lld, ub_size=%lld, coex_list[0]=%lld, "
           "coex_list[1]=%lld, coex_list[2]=%lld, ub_available=%lld",
-          mode, slice_compile_info.ub_size, slice_compile_info.coex_list[NORMAL_MODE_IDX],
-          slice_compile_info.coex_list[DEPAD_MODE_IDX],
-          slice_compile_info.coex_list[STRIDE_ALIGN_MODE_IDX], ub_available);
+          mode, slice_compile_info->ub_size, slice_compile_info->coex_list[NORMAL_MODE_IDX],
+          slice_compile_info->coex_list[DEPAD_MODE_IDX],
+          slice_compile_info->coex_list[STRIDE_ALIGN_MODE_IDX], ub_available);
 
   return true;
 }
 
-bool SliceDsl::IsBothAlignTiling() {
-  ub_available = slice_compile_info.ub_size / slice_compile_info.coex_list[NORMAL_MODE_IDX] /
-      slice_compile_info.x_align * slice_compile_info.x_align;
-  return (last_dim % slice_compile_info.x_align == 0) && (x_shape[shape_len - 1] % slice_compile_info.x_align == 0);
+template <typename T>
+bool SliceDsl<T>::IsBothAlignTiling() {
+  ub_available = slice_compile_info->ub_size / slice_compile_info->coex_list[NORMAL_MODE_IDX] /
+      slice_compile_info->x_align * slice_compile_info->x_align;
+  return (last_dim % slice_compile_info->x_align == 0) && (x_shape[shape_len - 1] % slice_compile_info->x_align == 0);
 }
 
-bool SliceDsl::IsLRDePadTiling() {
+template <typename T>
+bool SliceDsl<T>::IsLRDePadTiling() {
   return (shape_len == TWO_DIMS && size_list[0] == x_shape[0] && IsDePadTiling(x_last_dim_align));
 }
 
-bool SliceDsl::IsDePadTiling(int64_t last_dim_align_value) {
-  ub_available = slice_compile_info.ub_size / slice_compile_info.coex_list[DEPAD_MODE_IDX] /
-      slice_compile_info.x_align * slice_compile_info.x_align;
+template <typename T>
+bool SliceDsl<T>::IsDePadTiling(int64_t last_dim_align_value) {
+  ub_available = slice_compile_info->ub_size / slice_compile_info->coex_list[DEPAD_MODE_IDX] /
+      slice_compile_info->x_align * slice_compile_info->x_align;
 
   // b32
   constexpr int64_t b32_last_dim_max = 168;
@@ -337,19 +351,19 @@ bool SliceDsl::IsDePadTiling(int64_t last_dim_align_value) {
   int64_t last_dim_max = b32_last_dim_max;
   int64_t co2co = b32_co2co;
 
-  if (slice_compile_info.x_type_size == DTYPE_B8) {
+  if (slice_compile_info->x_type_size == DTYPE_B8) {
     // b8
     constexpr int64_t b8_last_dim_max = 64;
     constexpr int64_t b8_co2co = 1024;
     last_dim_max = b8_last_dim_max;
     co2co = b8_co2co;
-  } else if (slice_compile_info.x_type_size == DTYPE_B16) {
+  } else if (slice_compile_info->x_type_size == DTYPE_B16) {
     // b16
     constexpr int64_t b16_last_dim_max = 160;
     constexpr int64_t b16_co2co = 256;
     last_dim_max = b16_last_dim_max;
     co2co = b16_co2co;
-  } else if (slice_compile_info.x_type_size == DTYPE_B64) {
+  } else if (slice_compile_info->x_type_size == DTYPE_B64) {
     // b64
     constexpr int64_t b64_last_dim_max = 168;
     constexpr int64_t b64_co2co = 64;
@@ -359,42 +373,45 @@ bool SliceDsl::IsDePadTiling(int64_t last_dim_align_value) {
   bool is_params_rows_ok = last_dim_align_value <= last_dim_max;
   bool is_params_num_ok = co2co * last_dim_align_value <= ub_available;
 
-  OP_LOGD(op_type.c_str(),
+  OP_LOGD(op_type,
           "slice dsl IsDepadTiling: last_dim_align_value=%lld, last_dim_max=%lld, co2co=%lld, "
           "ub_available=%lld",
           last_dim_align_value, last_dim_max, co2co, ub_available);
 
-  return is_params_rows_ok && is_params_num_ok && shape_len >= TWO_DIMS && last_dim % slice_compile_info.x_align != 0;
+  return is_params_rows_ok && is_params_num_ok && shape_len >= TWO_DIMS && last_dim % slice_compile_info->x_align != 0;
 }
 
-bool SliceDsl::IsStrideAlignTiling() {
-  ub_available = slice_compile_info.ub_size / slice_compile_info.coex_list[STRIDE_ALIGN_MODE_IDX] /
-      slice_compile_info.x_align * slice_compile_info.x_align;
+template <typename T>
+bool SliceDsl<T>::IsStrideAlignTiling() {
+  ub_available = slice_compile_info->ub_size / slice_compile_info->coex_list[STRIDE_ALIGN_MODE_IDX] /
+      slice_compile_info->x_align * slice_compile_info->x_align;
   return last_dim <= STRIDE_ALIGN_THRESHOLD && shape_len >= TWO_DIMS
-      && pre_dim >= (slice_compile_info.core_num * BEFORE_LAST_DIM_THRESHOLD)
-      && last_dim % slice_compile_info.x_align != 0;
+      && pre_dim >= (slice_compile_info->core_num * BEFORE_LAST_DIM_THRESHOLD)
+      && last_dim % slice_compile_info->x_align != 0;
 }
 
-bool SliceDsl::DoBlockUbTiling() {
+template <typename T>
+bool SliceDsl<T>::DoBlockUbTiling() {
   bool tiling_ret = DoBlockTiling();
   tiling_ret = tiling_ret && DoUbTiling();
   tiling_ret = tiling_ret && TryImproveTiling();
   return tiling_ret;
 }
 
-bool SliceDsl::DoBlockTiling() {
+template <typename T>
+bool SliceDsl<T>::DoBlockTiling() {
   int64_t second_total_size = std::accumulate(size_list.begin() + 1,
                                               size_list.end(), 1LL, std::multiplies<int64_t>());
-  int64_t core_number = slice_compile_info.core_num;
+  int64_t core_number = slice_compile_info->core_num;
   if (total_size < DMA_CORE_THRESHOLD && mode == MODE_BOTH_ALIGN) {
-    core_number = (slice_compile_info.core_num + DMA_CORE_NUMBER - 1) / DMA_CORE_NUMBER;
+    core_number = (slice_compile_info->core_num + DMA_CORE_NUMBER - 1) / DMA_CORE_NUMBER;
   }
   if (mode == MODE_LR_DEPAD) {
-    core_number = std::min((size_list[0] + LR_DEPAD_ROWS - 1) / LR_DEPAD_ROWS, slice_compile_info.core_num);
+    core_number = std::min((size_list[0] + LR_DEPAD_ROWS - 1) / LR_DEPAD_ROWS, slice_compile_info->core_num);
   }
   core_number = core_number == 0 ? MIN_CORE_NUMBER : core_number;
   // block tiling
-  if ((second_total_size >= slice_compile_info.x_align) || (total_size >= BLOCK_TILING_THRESHOLD)) {
+  if ((second_total_size >= slice_compile_info->x_align) || (total_size >= BLOCK_TILING_THRESHOLD)) {
     for (size_t i = 0; i < shape_len; i++) {
       if (size_list[i] > 1) {
         block_axis = i;
@@ -406,7 +423,7 @@ bool SliceDsl::DoBlockTiling() {
           VECTOR_INNER_ERR_REPORT_TILIING(op_type, "slice x_shape contains 0 and run normal tiling.");
           return false;
         }
-        int64_t min_block_value = (slice_compile_info.x_align + tmp_core_num - 1) / tmp_core_num;
+        int64_t min_block_value = (slice_compile_info->x_align + tmp_core_num - 1) / tmp_core_num;
         block_factor = std::max(min_block_value, block_factor);
         block_factor = std::min(size_list[block_axis], block_factor);
         if (block_factor == 0) {
@@ -422,13 +439,14 @@ bool SliceDsl::DoBlockTiling() {
     block_factor = size_list[block_axis];
     block_dims = 1;
   }
-  OP_LOGD(op_type.c_str(),
+  OP_LOGD(op_type,
           "slice dsl DoBlockUbTiling: block_axis=%lld, block_factor=%lld, block_dims=%lld",
           block_axis, block_factor, block_dims);
   return true;
 }
 
-bool SliceDsl::DoUbTiling() {
+template <typename T>
+bool SliceDsl<T>::DoUbTiling() {
   int64_t last_dim_factor = last_dim_align;
   if (mode == MODE_LR_DEPAD) {
     last_dim_factor = x_last_dim_align;
@@ -436,11 +454,11 @@ bool SliceDsl::DoUbTiling() {
   if (block_axis == shape_len - 1) {
     last_dim_factor = block_factor;
   }
-  OP_LOGD(op_type.c_str(), "slice dsl DoBlockUbTiling: last_dim_factor=%lld", last_dim_factor);
+  OP_LOGD(op_type, "slice dsl DoBlockUbTiling: last_dim_factor=%lld", last_dim_factor);
 
   // ub tiling
   int64_t row_num = ub_available / last_dim_factor;
-  OP_LOGD(op_type.c_str(), "slice dsl DoBlockUbTiling: row_num=%lld", row_num);
+  OP_LOGD(op_type, "slice dsl DoBlockUbTiling: row_num=%lld", row_num);
   if (row_num == 0) {
     ub_axis = shape_len - 1;
     ub_factor = ub_available;
@@ -485,15 +503,16 @@ bool SliceDsl::DoUbTiling() {
   return true;
 }
 
-bool SliceDsl::TryImproveTiling() {
-  OP_LOGD(op_type.c_str(),
+template <typename T>
+bool SliceDsl<T>::TryImproveTiling() {
+  OP_LOGD(op_type,
           "slice dsl DoBlockUbTiling before improve: "
           "block_dims=%lld, block_axis=%lld, ub_axis=%lld, ub_factor==%lld",
           block_dims, block_axis, ub_axis, ub_factor);
   // try to ensure every ub data size align
-  if ((ub_axis == (shape_len - TWO_DIMS)) && (ub_factor > IMPROVE_TILING_THRESHOLD * slice_compile_info.x_align) &&
+  if ((ub_axis == (shape_len - TWO_DIMS)) && (ub_factor > IMPROVE_TILING_THRESHOLD * slice_compile_info->x_align) &&
       !(ub_axis == block_axis && ub_factor == block_factor)) {
-    int64_t tmp_ub_factor = ub_factor / slice_compile_info.x_align * slice_compile_info.x_align;
+    int64_t tmp_ub_factor = ub_factor / slice_compile_info->x_align * slice_compile_info->x_align;
     int64_t tail_ub_factor = 0;
     if (ub_axis == block_axis) {
       tail_ub_factor = block_factor % tmp_ub_factor;
@@ -505,7 +524,7 @@ bool SliceDsl::TryImproveTiling() {
       tail_ub_factor = tmp_ub_factor;
     }
 
-    if (tail_ub_factor * size_list[ub_axis + 1] >= slice_compile_info.x_align) {
+    if (tail_ub_factor * size_list[ub_axis + 1] >= slice_compile_info->x_align) {
       ub_factor = tmp_ub_factor;
     }
   }
@@ -520,52 +539,54 @@ bool SliceDsl::TryImproveTiling() {
     }
 
     if (second_last_factor < BEFORE_LAST_DIM_THRESHOLD) {
-      mode = ((last_dim < SCALAR_THRESHOLD) && (x_shape[shape_len - 1] % slice_compile_info.x_align == 0)
+      mode = ((last_dim < SCALAR_THRESHOLD) && (x_shape[shape_len - 1] % slice_compile_info->x_align == 0)
           && (second_last_factor > 1)) ? MODE_SCALAR : MODE_DATA_MOV;
     }
   }
 
-  OP_LOGD(op_type.c_str(), "slice dsl DoBlockUbTiling after improve: "
+  OP_LOGD(op_type, "slice dsl DoBlockUbTiling after improve: "
                            "block_dims=%lld, block_axis=%lld, block_factor=%lld, ub_axis=%lld, ub_factor=%lld",
           block_dims, block_axis, block_factor, ub_axis, ub_factor);
 
   return true;
 }
 
-bool SliceDsl::DoOneDimTiling() {
+template <typename T>
+bool SliceDsl<T>::DoOneDimTiling() {
   // one dim tiling
   int64_t dim_value = size_list[0];
   block_axis = 0;
   ub_axis = 0;
   if (dim_value > ONE_DIM_TILING_THRESHOLD) {
     // block tiling
-    int64_t core_number = slice_compile_info.core_num;
+    int64_t core_number = slice_compile_info->core_num;
     if (dim_value < DMA_CORE_THRESHOLD) {
-      core_number = (slice_compile_info.core_num + DMA_CORE_NUMBER - 1) / DMA_CORE_NUMBER;
+      core_number = (slice_compile_info->core_num + DMA_CORE_NUMBER - 1) / DMA_CORE_NUMBER;
     }
-    block_factor = std::ceil(dim_value * 1.0 / core_number);
-    block_factor = std::ceil(block_factor * 1.0 / slice_compile_info.x_align) * slice_compile_info.x_align;
+    block_factor = (dim_value + core_number - 1) / core_number;
+    block_factor = ((block_factor + slice_compile_info->x_align - 1) / slice_compile_info->x_align)
+        * slice_compile_info->x_align;
     if (block_factor == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "slice block_factor is 0.");
       return false;
     }
-    block_dims = std::ceil(dim_value * 1.0 / block_factor);
+    block_dims = (dim_value + block_factor - 1) / block_factor;
     // ub tiling
-    int64_t limit = std::min(ub_available, SPLIT_FACTORS.at(slice_compile_info.x_type_size));
+    int64_t limit = std::min(ub_available, SPLIT_FACTORS.at(slice_compile_info->x_type_size));
     if (limit == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "slice limit is 0.");
       return false;
     }
-    int64_t ub_for_num = std::ceil(block_factor * 1.0 / limit);
+    int64_t ub_for_num = (block_factor + limit - 1) / limit;
     if (ub_for_num == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "slice ub_for_num is 0.");
       return false;
     }
-    int64_t adjust_factor = std::ceil(block_factor * 1.0 / ub_for_num);
-    int64_t align_factor = std::ceil(adjust_factor * 1.0 / slice_compile_info.x_align);
-    ub_factor = align_factor * slice_compile_info.x_align;
+    int64_t adjust_factor = (block_factor + ub_for_num - 1) / ub_for_num;
+    int64_t align_factor = (adjust_factor + slice_compile_info->x_align - 1) / slice_compile_info->x_align;
+    ub_factor = align_factor * slice_compile_info->x_align;
     if (ub_factor > limit) {
-      ub_factor = std::floor(adjust_factor * 1.0 / slice_compile_info.x_align) * slice_compile_info.x_align;
+      ub_factor = std::floor(adjust_factor * 1.0 / slice_compile_info->x_align) * slice_compile_info->x_align;
     }
   } else {
     block_dims = 1;
@@ -576,7 +597,8 @@ bool SliceDsl::DoOneDimTiling() {
   return true;
 }
 
-bool SliceDsl::CalcKey() {
+template <typename T>
+bool SliceDsl<T>::CalcKey() {
   // base key
   key = BASE_KEY;
 
@@ -586,28 +608,29 @@ bool SliceDsl::CalcKey() {
 
   // split info
   key += block_axis * shape_len + ub_axis;
-  OP_LOGD(op_type.c_str(), "slice dsl CalcKey key=%lld", key);
+  OP_LOGD(op_type, "slice dsl CalcKey key=%lld", key);
   return true;
 }
 
-bool SliceDsl::WriteTilingData() {
-  OP_LOGD(op_type.c_str(), "tiling key:%lld block_dims:%lld block_factor:%lld ub_factor:%lld "
+template <typename T>
+bool SliceDsl<T>::WriteTilingData() {
+  OP_LOGD(op_type, "tiling key:%lld block_dims:%lld block_factor:%lld ub_factor:%lld "
                            "block_axis:%lld ub_axis:%lld",
           key, block_dims, block_factor, ub_factor, block_axis, ub_axis);
 
-  if (slice_compile_info.is_static) {
-    run_info.AddTilingData(static_cast<uint32_t>(key));
-    run_info.AddTilingData(static_cast<int32_t>(block_axis));
-    run_info.AddTilingData(static_cast<int32_t>(block_factor));
-    run_info.AddTilingData(static_cast<int32_t>(ub_axis));
-    run_info.AddTilingData(static_cast<int32_t>(ub_factor));
-    run_info.AddTilingData(static_cast<int32_t>(mode));
-    run_info.AddTilingData(static_cast<int32_t>(block_dims));
+  if (slice_compile_info->is_static) {
+    context->Append(static_cast<uint32_t>(key));
+    context->Append(static_cast<int32_t>(block_axis));
+    context->Append(static_cast<int32_t>(block_factor));
+    context->Append(static_cast<int32_t>(ub_axis));
+    context->Append(static_cast<int32_t>(ub_factor));
+    context->Append(static_cast<int32_t>(mode));
+    context->Append(static_cast<int32_t>(block_dims));
     return true;
   }
 
-  run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
-  run_info.SetTilingKey(static_cast<uint32_t>(key));
+  context->SetBlockDim(static_cast<uint32_t>(block_dims));
+  context->SetTilingKey(static_cast<uint32_t>(key));
 
   int64_t cur_key = key;
   int64_t key_len = 8;
@@ -621,24 +644,24 @@ bool SliceDsl::WriteTilingData() {
   std::string str_key = keys;
 
   try {
-    const auto &all_vars = slice_compile_info.slice_vars.at(str_key);
+    const auto &all_vars = slice_compile_info->slice_vars.at(str_key);
     for (const auto &var : all_vars) {
       if (var >= UB_START) {
-        run_info.AddTilingData(static_cast<int32_t>(ub_factor));
+        context->Append(static_cast<int32_t>(ub_factor));
       } else if (var >= BLOCK_START) {
-        run_info.AddTilingData(static_cast<int32_t>(block_factor));
+        context->Append(static_cast<int32_t>(block_factor));
       } else if (var >= SIZE_START) {
         int64_t var_value = var;
         size_t dim_index = var_value % DECIMAL_TEN;
-        run_info.AddTilingData(static_cast<int32_t>(size_list[dim_index]));
+        context->Append(static_cast<int32_t>(size_list[dim_index]));
       } else if (var >= BEGIN_START) {
         int64_t var_value = var;
         size_t dim_index = var_value % DECIMAL_TEN;
-        run_info.AddTilingData(static_cast<int32_t>(begin_list[dim_index]));
+        context->Append(static_cast<int32_t>(begin_list[dim_index]));
       } else {
         int64_t var_value = var;
         size_t dim_index = var_value % DECIMAL_TEN;
-        run_info.AddTilingData(static_cast<int32_t>(x_shape[dim_index]));
+        context->Append(static_cast<int32_t>(x_shape[dim_index]));
       }
     }
   } catch (const std::exception &e) {
@@ -648,11 +671,13 @@ bool SliceDsl::WriteTilingData() {
   return true;
 }
 
-bool SliceDsl::DoTiling() {
-  OP_LOGD(op_type.c_str(), "slice dsl DoTiling");
-  if (slice_compile_info.is_const) {
-    run_info.SetBlockDim(static_cast<uint32_t>(slice_compile_info.const_block_dims));
-    run_info.SetTilingKey(static_cast<uint32_t>(slice_compile_info.const_key));
+template <typename T>
+bool SliceDsl<T>::DoTiling() {
+  OP_LOGD(op_type, "slice dsl DoTiling");
+  slice_compile_info = dynamic_cast<const SliceDslCompileInfo *>(context->GetCompileInfo());
+  if (slice_compile_info->is_const) {
+    context->SetBlockDim(static_cast<uint32_t>(slice_compile_info->const_block_dims));
+    context->SetTilingKey(static_cast<uint32_t>(slice_compile_info->const_key));
     return true;
   }
 
@@ -662,8 +687,8 @@ bool SliceDsl::DoTiling() {
   }
 
   if (total_size == 0) {
-    run_info.SetBlockDim(static_cast<uint32_t>(ZERO_SHAPE_BLOCK_DIMS));
-    run_info.SetTilingKey(static_cast<uint32_t>(BASE_KEY));
+    context->SetBlockDim(static_cast<uint32_t>(ZERO_SHAPE_BLOCK_DIMS));
+    context->SetTilingKey(static_cast<uint32_t>(BASE_KEY));
     return true;
   }
 
@@ -680,9 +705,29 @@ bool SliceDsl::DoTiling() {
   return tiling_ret;
 }
 
+bool CreateSliceDslTiling(gert::TilingContext* context, const OpInfoImpl* op_info) {
+  OP_LOGD(context->GetNodeType(), "SliceTilingHandlerRt2 DoTiling running");
+  AutoTilingContext auto_tiling_context(context);
+  if (op_info) {
+    auto_tiling_context.SetCompileInfo(op_info->GetCompileInfo());
+  }
+  SliceDsl<AutoTilingContext> SliceDsl(&auto_tiling_context, nullptr);
+  return SliceDsl.DoTiling();
+}
+
+AutoTilingCompileInfo* CreateSliceDslParser(const char* op_type, const nlohmann::json& json_compile_info) {
+  SliceDslCompileInfo* slice_compile_info = new SliceDslCompileInfo(op_type, json_compile_info);
+  if (!slice_compile_info->is_valid) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Slice parse failed");
+    return nullptr;
+  }
+  return slice_compile_info;
+}
+
 bool SliceTilingHandler::DoTiling(const ge::Operator &op_paras, utils::OpRunInfo &run_info) const {
   OP_LOGD(op_type.c_str(), "SliceTilingHandler DoTiling running");
-  SliceDsl SliceDsl(op_type, op_paras, slice_compile_info, run_info);
+  AutoTilingOp auto_tiling_op(op_type.c_str(), &op_paras, &slice_compile_info, &run_info);
+  SliceDsl<AutoTilingOp> SliceDsl(&auto_tiling_op, nullptr);
   return SliceDsl.DoTiling();
 }
 
@@ -697,5 +742,7 @@ std::shared_ptr<AutoTilingHandler> CreateSliceTilingHandler(const std::string &o
                                                             const nlohmann::json &parsed_compile_info) {
   return std::make_shared<SliceTilingHandler>(op_type, pattern, parsed_compile_info);
 }
+
+REGISTER_AUTO_TILING(SchPattern::SLICE, CreateSliceDslTiling, CreateSliceDslParser)
 } // namespace optiling
 
