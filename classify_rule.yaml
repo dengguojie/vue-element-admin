@@ -866,6 +866,7 @@ vector_A:
       - ops/built-in/op_proto/elewise_calculation_ops.cc
       - ops/built-in/op_proto/fsrdetectionoutput_ops.cc
       - ops/built-in/op_proto/psroipooling_ops.cc
+      - ops/built-in/op_proto/inc/quantize_ops.h
       - ops/built-in/op_proto/quantize_ops.cc
       - ops/built-in/op_proto/reduction_ops.cc
       - ops/built-in/op_proto/rnn.cc
@@ -2470,7 +2471,6 @@ unkown:
       - ops/built-in/op_proto/inc/hcom_ops.h
       - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/inc/internal_ops.h
-      - ops/built-in/op_proto/inc/quantize_ops.h
       - ops/built-in/op_proto/inc/ocr_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
       - ops/built-in/op_proto/inc/list_ops.h
