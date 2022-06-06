@@ -2268,6 +2268,8 @@ vector_D:
       - ops/built-in/tbe/impl/dynamic/sparse_apply_dynamic_common.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad.py
       - ops/built-in/op_tiling/sparse_apply_common.cc
+      - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
+      - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop_v2.py
     unrelease:
       - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
@@ -2400,7 +2402,6 @@ unkown:
       - ops/built-in/op_tiling/avg_pool_1d.cc
       - ops/built-in/op_tiling/dyn_seq_outer.cc
       - ops/built-in/op_tiling/tabulate_fusion_grad.cc
-      - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
       - ops/built-in/op_tiling/extract_image_patches.cc
       - ops/built-in/op_tiling/ger.cc
       - ops/built-in/op_tiling/batch_multi_class_non_max_suppression.cc
@@ -3127,7 +3128,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/non_max_suppression_bucketize.py
       - ops/built-in/tbe/impl/dynamic/split_d.py
       - ops/built-in/tbe/impl/dynamic/pad_not_align.py
-      - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_tik.py
       - ops/built-in/tbe/impl/dynamic/index_fill_d.py
       - ops/built-in/tbe/impl/dynamic/real_div.py

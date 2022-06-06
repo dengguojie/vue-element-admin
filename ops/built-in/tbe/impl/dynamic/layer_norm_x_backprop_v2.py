@@ -24,6 +24,11 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.norm_pattern_adapter import NormPattern
+from impl.util.util_common import is_unknown_rank_input
 
 
 # 'pylint: disable=too-few-public-methods
@@ -35,77 +40,6 @@ class Constant:
     SHAPE_SIZE_LIMIT = 2147483648
     # Minimum positive number greater than 0
     EPSLON = 1e-12
-
-
-# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
-@mytbe.common.register.register_param_generalization("LayerNormXBackpropV2")
-def layer_norm_x_backprop_generalization(input_dy, input_x, input_variance,
-                                         input_mean, input_gamma, output_pd_x, output_res_gamma,
-                                         impl_mode, generalize_config=None):
-    """
-    layer norm x backprop generalization
-
-    Parameters
-    ----------
-    input_dy : dict
-        shape and dtype of input dy, only support float16, float32
-    input_x: dict
-        shape and dtype of input x, only support float16, float32
-    input_variance: dict
-        shape and dtype of input variance, only support float16, float32
-    input_mean: dict
-        shape and dtype of input mean, only support float16, float32
-    input_gamma: dict
-        shape and dtype of input gamma, only support float16, float32
-    output_pd_x: dict
-        shape and dtype of output, only support float16, float32
-    output_res_gamma: dict
-        shape and dtype of output
-    impl_mode: str
-        high_precision or high_performance for inference, default value is OpImplMode.HIGH_PERFORMANCE.
-    generalize_config: dict
-        single item under "keep_rank" mode and multiple under "all_shape"
-
-    Returns
-    -------
-    None
-    """
-    # for now only support dy and x is (-1, -1, N), variavce and mean is (-1, -1, 1), shape_gamma is (N,)
-    if generalize_config is None:
-        generalize_config = {"mode": "keep_rank"}
-
-    result = []
-    last_dim = input_x["shape"][-1]
-    shape_dy = (-1, -1, last_dim)
-    range_dy = [(1, -1), (1, -1), (last_dim, last_dim)]
-    shape_var = (-1, -1, 1)
-    range_var = [(1, -1), (1, -1), (1, 1)]
-    shape_gamma = (last_dim, )
-    range_gamma = [(last_dim, last_dim)]
-
-    input_dy["shape"], input_dy["ori_shape"] = shape_dy, shape_dy
-    input_dy["range"], input_dy["ori_range"] = range_dy, range_dy
-
-    input_x["shape"], input_x["ori_shape"] = shape_dy, shape_dy
-    input_x["range"], input_x["ori_range"] = range_dy, range_dy
-
-    input_variance["shape"], input_variance["ori_shape"] = shape_var, shape_var
-    input_variance["range"], input_variance["ori_range"] = range_var, range_var
-
-    input_mean["shape"], input_mean["ori_shape"] = shape_var, shape_var
-    input_mean["range"], input_mean["ori_range"] = range_var, range_var
-
-    input_gamma["shape"], input_gamma["ori_shape"] = shape_gamma, shape_gamma
-    input_gamma["range"], input_gamma["ori_range"] = range_gamma, range_gamma
-
-    output_pd_x["shape"], output_pd_x["ori_shape"] = shape_dy, shape_dy
-    output_pd_x["range"], output_pd_x["ori_range"] = range_dy, range_dy
-
-    output_res_gamma["shape"], output_res_gamma["ori_shape"] = shape_dy, shape_dy
-    output_res_gamma["range"], output_res_gamma["ori_range"] = range_dy, range_dy
-
-    result.append([input_dy, input_x, input_variance, input_mean, input_gamma, output_pd_x, output_res_gamma])
-    return result
 
 
 def _update_gamma_shape(shape_x, shape_gamma):
@@ -168,6 +102,40 @@ def _get_data_gm(shapes, dtype):
     return data_gm
 
 
+def _get_params_after_classify(shape_x, reduce_axis, params):
+    """
+    compute parameters including param_axis, reduce_axis and mean_num
+
+    Parameters
+    ----------
+    shape_x: list or tuple
+        shape of x
+    reduce_axis: list or tuple
+        reduce axis of inputs
+    params: dict
+        {"param_axis": param_axis, "reduce_axis": reduce_axis,
+         "mean_num": mean_num}
+
+    Returns
+    -------
+    None
+    """
+    reduce_elts = 1
+    for idx in reduce_axis:
+        reduce_elts *= shape_x[idx]
+    if isinstance(reduce_elts, int):
+        mean_cofs = reduce_elts ** (-1)
+        mean_cof = tvm.const(mean_cofs, dtype="float32")
+        mean_cof2 = tvm.const(2*mean_cofs, dtype="float32")
+    else:
+        mean_cof = tbe.var("mean_cof", dtype="float32")
+        mean_cof2 = tbe.var("mean_cof_double", dtype="float32")
+        operation.add_compile_info("reduce_mean_cof", True)
+    
+    params["reduce_axis"] = reduce_axis
+    params.update({"mean_num": [mean_cof, mean_cof2]})
+
+
 def _get_params(shape_x, shape_mean, shape_gamma):
     """
     compute parameters including param_axis, reduce_axis and mean_num
@@ -190,22 +158,15 @@ def _get_params(shape_x, shape_mean, shape_gamma):
     reduce_axis_tmp = []
     flag = -1
     for i, (xtem, mean) in enumerate(zip(shape_x, shape_mean)):
-        if xtem != mean:
-            flag = i
-            break
-    if flag != -1:
-        for i in range(flag, len(shape_x)):
+        if xtem != 1 and mean == 1:
             reduce_axis_tmp.append(i)
-    else:
-        reduce_axis_tmp.append(len(shape_x) - 1)
     reduce_axis = tuple(reduce_axis_tmp)
 
-    mean_num = 1.0
-    for i in reduce_axis:
-        mean_num *= shape_x[i]
+    all_axis = set(range(len(shape_x)))
+    param_axis = tuple(all_axis - set(reduce_axis))
 
     params = {"reduce_axis": reduce_axis,
-              "mean_num": mean_num}
+              "param_axis": param_axis}
 
     return params
 
@@ -273,8 +234,9 @@ def _get_pd_x(data, params, shape_x, dtype, cast_dtype):
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
     pdx2_broad = _broadcast_interval_dimension(pd_var, shape_x)
     pdx2_mul = tbe.vmul(pdx2_broad, sub_x_mean)
-    pd_x_2 = tbe.vmuls(pdx2_mul, tvm.const((2*(params.get("mean_num")**(-1))), dtype=cast_dtype))
-    pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype=cast_dtype))
+    pd_x_2 = tbe.vmuls(pdx2_mul, params.get("mean_num")[1])
+    pd_x_3 = tbe.vmuls(pd_mean, params.get("mean_num")[0])
+
 
     pdx_broad = _broadcast_interval_dimension(pd_x_3, shape_x)
     pdx_add = tbe.vadd(pd_x_1, pd_x_2)
@@ -370,6 +332,62 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     return pd_x, res_for_gamma
 
 
+def _update_shape_nz(shape_x, shape_var, shape_gamma):
+    """
+    function of updating Nz shape
+
+    """
+    # ND shape of x >= two dim
+    # Nz shape of x >= four dim
+    len_x = len(shape_x)
+    nz_begin = len_x - 4
+    shape_x_nz = []
+    for i in range(0, nz_begin):
+        shape_x_nz.append(shape_x[i])
+    shape_x_nz.append(shape_x[nz_begin])
+    shape_x_nz.append(shape_x[nz_begin + 1])
+    shape_x_nz.append(shape_x[nz_begin + 2])
+    shape_x_nz.append(shape_x[nz_begin + 2])
+
+    # ND shape of var >= two dim
+    shape_var_nz = []
+    len_var = len(shape_var)
+    var_nz_begin = len_var - 2
+    for i in range(0, var_nz_begin):
+        shape_var_nz.append(shape_var[i])
+    shape_var_nz.append(1)
+    shape_var_nz.append(shape_x[nz_begin + 1])
+    shape_var_nz.append(shape_x[nz_begin + 2])
+    shape_var_nz.append(1)
+
+    # ND shape of gamma is one dim
+    shape_gamma_nz = []
+    for i in range(0, nz_begin):
+        shape_gamma_nz.append(1)
+    shape_gamma_nz.append(shape_x[nz_begin])
+    shape_gamma_nz.append(1)
+    shape_gamma_nz.append(1)
+    shape_gamma_nz.append(shape_x[nz_begin + 2])
+
+    reduce_nz_axis = []
+    for i, (xtem, var) in enumerate(zip(shape_x_nz, shape_var_nz)):
+        if xtem != 1 and var == 1:
+            reduce_nz_axis.append(i)
+
+    all_axis = set(range(len(shape_x_nz)))
+    param_axis = tuple(all_axis - set(reduce_nz_axis))
+
+    param_nz = {
+        "shape_x_nz": shape_x_nz,
+        "shape_var_nz": shape_var_nz,
+        "shape_gamma_nz": shape_gamma_nz,
+        "reduce_axis": reduce_nz_axis,
+        "param_axis": param_axis
+    }
+
+    return param_nz
+
+
 # 'pylint: disable=too-many-arguments
 def layer_norm_x_backprop_v2_compute(input_dy, input_x,
                                      input_variance, input_mean,
@@ -407,17 +425,11 @@ def layer_norm_x_backprop_v2_compute(input_dy, input_x,
     return res_list
 
 
-# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
-def _get_pattern(outs):
-    cur_context = tbe_context.get_context()
-    if cur_context:
-        if cur_context.get_addition("is_static"):
-            return "Norm"
-
-    return "Layer_norm_x_backprop_v2"
-
-
-@register_operator("LayerNormXBackpropV2", pattern=_get_pattern)
+@register_operator("LayerNormXBackpropV2", "Norm")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
                              input_gamma, output_pd_x, output_res_gamma,
                              kernel_name="layer_norm_x_backprop_v2"):
@@ -460,50 +472,83 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
     dtype = input_dy.get("dtype").lower()
     shape_dy = input_dy.get("shape")
     shape_x = input_x.get("shape")
-    first_dim = shape_x[0]
-    last_dim = shape_x[-1]
+    shape_variance = input_variance.get("shape")
     shape_gamma = input_gamma.get("shape")
-    dy_format = input_dy.get("format")
+    format_dy = input_dy.get("format")
+    extra_params = {"input_shape_type": [0, 0, 1, 1, 1],
+                    "same_input_shape_group": [[0, 1], [2, 3]]}
 
-    if dy_format == "FRACTAL_NZ" and len(shape_dy) == 4:
-        dim_0 = tbe.var("dim_0")
-        dim_1 = tbe.var("dim_1")
-        dim_2 = tbe.var("dim_2")
-        dynamic_shape_dy = (first_dim, dim_2, last_dim)
-        dynamic_shape_variance = (1, dim_2, 1)
-        dynamic_shape_gamma = (first_dim, 1, last_dim)
-        params = {
-            "reduce_axis": [0, 2],
-            "mean_num": first_dim * last_dim
-        }
+    if is_unknown_rank_input((input_dy, input_x, input_variance,
+                              input_mean, input_gamma)):
+        reduce_axis = NormPattern.REDUCE_UNKNOWN_MODE
+        broadcast_axis = NormPattern.BROADCAST_UNKNOWN_MODE
+        extra_params.update(NormPattern.REDUCE_AFTER_TYPE)
+        extra_params.update({"compile_broadcast_axes": {2: reduce_axis, 3: reduce_axis,
+                                                        4: broadcast_axis}})
+        extra_params.update({"broadcast_axes_type": {2: "same_reduce", 3: "same_reduce",
+                                                     4: "opposite_reduce"}})
+        operation.add_compile_info("unknown_mode", True)
+
+        ins = classify([input_dy, input_x, input_variance, input_mean, input_gamma,
+                        reduce_axis], OpPatternMode.NORM, extra_params)
     else:
-        fuse_dim = tbe.var("fuse_dim")
-        dynamic_shape_dy = (fuse_dim, last_dim)
-        dynamic_shape_variance = (fuse_dim, 1)
-        dynamic_shape_gamma = (last_dim, )
-        params = _get_params(dynamic_shape_dy, dynamic_shape_variance, dynamic_shape_gamma)
+        if format_dy.upper() == "FRACTAL_NZ":
+            params = _update_shape_nz(shape_x, shape_variance, shape_gamma)
+            input_dy["shape"] = params.get("shape_x_nz")
+            input_x["shape"] = params.get("shape_x_nz")
+            input_variance["shape"] = params.get("shape_var_nz")
+            input_mean["shape"] = params.get("shape_var_nz")
+            input_gamma["shape"] = params.get("shape_gamma_nz")
 
-    data_gm = _get_data_gm({"shape_dy": dynamic_shape_dy, "shape_x": dynamic_shape_dy,
-                            "shape_var": dynamic_shape_variance,
-                            "shape_mean": dynamic_shape_variance,
-                            "shape_gamma": dynamic_shape_gamma}, dtype)
-    with tbe.compute():
-        input_format = input_dy.get("format").upper()
-        current_compute = operation.get_context().get_current_compute()
-        current_compute.add("input_format", input_format)
+            for input_tensor in (input_dy, input_x, input_variance, input_mean, input_gamma):
+                nz_range = [(1, None)] * len(params.get("shape_x_nz"))
+                input_tensor["range"] = nz_range
+        else:
+            params = _get_params(shape_x, shape_variance, shape_gamma)
 
-        res_list = layer_norm_x_backprop_v2_compute(data_gm[0], data_gm[1],
-                                                    data_gm[2], data_gm[3],
-                                                    data_gm[4], output_pd_x,
-                                                    output_res_gamma, params)
+        extra_params.update({"compile_broadcast_axes": {2: params.get("reduce_axis"),
+                                                        3: params.get("reduce_axis"),
+                                                        4: params.get("param_axis")}})
 
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res_list)
+        ins = classify([input_dy, input_x, input_variance, input_mean, input_gamma,
+                        params.get("reduce_axis")], OpPatternMode.NORM, extra_params)
+    
+    schedules = []
+    tensors = []
+    for (ins_dy, ins_x, ins_variance, ins_mean, ins_gamma, ins_reduce_axis) in ins:
+        with tbe.compute():
+            shape_dy, shape_x, shape_variance, shape_mean, shape_gamma = \
+                shape_util.variable_shape([ins_dy, ins_x, ins_variance, ins_mean, ins_gamma],
+                                          op_mode="norm")
 
-    tensor_list = list(data_gm) + list(res_list)
+            data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype)
+            data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype)
+            data_variance = tvm.placeholder(shape_variance, name="data_variance", dtype=dtype)
+            data_mean = tvm.placeholder(shape_mean, name="data_mean", dtype=dtype)
+            data_gamma = tvm.placeholder(shape_gamma, name="data_gamma", dtype=dtype)
 
+            if is_unknown_rank_input((input_dy, input_x, input_variance,
+                                      input_mean, input_gamma)):
+                mean_cof = tbe.var("mean_cof", dtype="float32")
+                mean_cof2 = tbe.var("mean_cof_double", dtype="float32")
+                operation.add_compile_info("reduce_mean_cof", True)
+                params = {"reduce_axis": ins_reduce_axis,
+                          "mean_num": [mean_cof, mean_cof2]}
+            else:
+                _get_params_after_classify(shape_x, ins_reduce_axis, params)
+            
+            res_list = layer_norm_x_backprop_v2_compute(data_dy, data_x, data_variance,
+                                                        data_mean, data_gamma, output_pd_x,
+                                                        output_res_gamma, params)
+            tensor_list = [data_dy, data_x, data_variance, data_mean, data_gamma] + list(res_list)
+            tensors.append(tensor_list)
+        
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res_list)
+        schedules.append(sch)
+    
     config = {"print_ir": False,
               "name": kernel_name,
-              "tensor_list": tensor_list}
-
-    tbe.build(sch, config)
+              "tensor_list": tensors}
+    
+    tbe.build(schedules, config)

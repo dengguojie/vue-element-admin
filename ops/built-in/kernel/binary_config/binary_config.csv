@@ -116,3 +116,4 @@ BNTrainingUpdateGrad,bn_training_update_grad.json
 BNTrainingReduce,bn_training_reduce.json
 BNTrainingReduceGrad,bn_training_reduce_grad.json
 SparseApplyAdagrad,sparse_apply_adagrad.json
+LayerNormXBackpropV2,layer_norm_x_backprop_v2.json

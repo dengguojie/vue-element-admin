@@ -203,8 +203,7 @@ int32_t find_closest_factor(vector<int32_t> factors, int32_t value) {
 }
 
 bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_type, 
-                          const BNTrainingUpdateGradCompileInfo& parsed_info)
-{
+                          const BNTrainingUpdateGradCompileInfo& parsed_info) {
     std::vector<int32_t> common_info = parsed_info.common_info;
     try {
         compileInfo.core_num = common_info[0];

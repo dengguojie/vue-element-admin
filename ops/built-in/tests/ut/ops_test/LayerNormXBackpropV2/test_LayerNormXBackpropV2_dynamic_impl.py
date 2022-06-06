@@ -27,6 +27,7 @@ case1 = {"params": [{"shape": (-1, -1, 512), "dtype": "float32", "format": "ND",
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
+         "case_name": "LayerNormXBackpropV2_01",
          "support_expect": True}
 case2 = {"params": [{"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
                     {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
@@ -36,6 +37,7 @@ case2 = {"params": [{"shape": (-1, -1, 512), "dtype": "float16", "format": "ND",
                     {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
+         "case_name": "LayerNormXBackpropV2_02",
          "support_expect": True}
 case3 = {"params": [{"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
@@ -45,6 +47,7 @@ case3 = {"params": [{"shape": (-1, -1, 512), "dtype": "float32", "format": "ND",
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
+         "case_name": "LayerNormXBackpropV2_03",
          "support_expect": True}
 case4 = {"params": [{"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
                     {"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
@@ -54,37 +57,35 @@ case4 = {"params": [{"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", 
                     {"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
                     {"shape": (-1, -1, 30), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
+         "case_name": "LayerNormXBackpropV2_04",
          "support_expect": True}
-case5 = {"params": [{"shape": (64, -1, -1, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 114, 16, 16),"ori_format": "FRACTAL_NZ", "range": ((0, 1), (0, 1), (0, 1), (0, 1))},
-                    {"shape": (64, -1, -1, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 114, 16, 16),"ori_format": "FRACTAL_NZ","range": ((0, 1), (0, 1), (0, 1), (0, 1))},
-                    {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1824, 1),"ori_format": "ND", "range": ((0, 5), (0, 5))},
-                    {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1824, 1),"ori_format": "ND", "range": ((0, 5), (0, 5))},
+case5 = {"params": [{"shape": (64, 114, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, -1, -1, 16),"ori_format": "FRACTAL_NZ", "range": ((0, 1), (0, 1), (0, 1), (0, 1))},
+                    {"shape": (64, 114, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, -1, -1, 16),"ori_format": "FRACTAL_NZ","range": ((0, 1), (0, 1), (0, 1), (0, 1))},
+                    {"shape": (1824, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1),"ori_format": "ND", "range": ((0, 5), (0, 5))},
+                    {"shape": (1824, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1),"ori_format": "ND", "range": ((0, 5), (0, 5))},
                     {"shape": (1024,), "dtype": "float16", "format": "ND", "ori_shape": (1024,),"ori_format": "ND", "range": ((0, 1),)},
-                    {"shape": (64, -1, 16), "dtype": "float16", "format": "ND", "ori_shape": (64, 1824, 16),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
-                    {"shape": (64, -1, 16), "dtype": "float32", "format": "ND", "ori_shape": (64, 1824, 16),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
+                    {"shape": (64, 1824, 16), "dtype": "float16", "format": "ND", "ori_shape": (64, 1824, 16),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
+                    {"shape": (64, 1824, 16), "dtype": "float32", "format": "ND", "ori_shape": (64, 1824, 16),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
+         "case_name": "LayerNormXBackpropV2_05",
          "support_expect": True}
-
-def test_generalization(args):
-    from impl.dynamic.layer_norm_x_backprop_v2 import layer_norm_x_backprop_generalization
-    layer_norm_x_backprop_generalization(
-        {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
-        {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
-        {"shape": (-1, -1, 1), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 1),"ori_format": "ND", "range": ((0, 5), (0, 5), (0, 5))},
-        {"shape": (-1, -1, 1), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 1),"ori_format": "ND", "range": ((0, 5), (0, 5), (0, 5))},
-        {"shape": (512,), "dtype": "float16", "format": "ND", "ori_shape": (512,),"ori_format": "ND", "range": ((0, 1),)},
-        {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
-        {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (13, 32, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
-        None, None)
-
+case6 = {"params": [{"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND", "range": ((0, 5), (0, 5), (0, 5))},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND", "range": ((0, 5), (0, 5), (0, 5))},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND", "range": ((0, 1),)},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
+                    {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
+         "expect": "success",
+         "case_name": "LayerNormXBackpropV2_06",
+         "support_expect": True}
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
-ut_case.add_cust_test_func(test_func=test_generalization)
+ut_case.add_case(["Ascend910A"], case6)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")
