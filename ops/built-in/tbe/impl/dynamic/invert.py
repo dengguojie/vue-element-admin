@@ -51,9 +51,9 @@ def invert_compute(input_x, output_y, kernel_name="invert"):
     return res
 
 
+@register_operator("Invert")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-@register_operator("Invert")
 def invert(input_x, output_y, kernel_name="invert"):
     """
     Flips all bits elementwise.

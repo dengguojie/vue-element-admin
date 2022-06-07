@@ -33,9 +33,16 @@ case3 = {
     "support_expect": True
 }
 
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
 ut_case.add_case("Ascend910A", case3)
+ut_case.add_cust_test_func(test_func=test_import_lib)
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
