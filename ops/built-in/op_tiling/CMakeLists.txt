@@ -203,6 +203,7 @@ set(_optiling_files
   as_strided.cc
   inplace_index_add.cc
   square_sum_all.cc
+  square_sum_v1.cc
   is_finite.cc
   ifmr.cc
   mirror_pad.cc

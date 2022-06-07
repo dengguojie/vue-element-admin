@@ -57,12 +57,19 @@ case6 = {"params": [{"shape": (1, 4, 16, 16), "dtype": "float16", "format": "FRA
          "case_name": "static_square_sum_v1_004",
          "expect": "success"}
 
+case7 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    None, True],
+         "case_name": "dynamic_rank_square_sum_v1_000",
+         "expect": "success"}
+
 ut_case.add_case(["Ascend310", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310", "Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend910A"], case6)
+ut_case.add_case(["Ascend710", "Ascend910A"], case7)
 
 
 def test_op_select_format(test_arg):
@@ -75,14 +82,14 @@ def test_op_select_format(test_arg):
                      {"shape": (1, 1, 16, 16), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 16),
                       "ori_format": "HWCN"},
                      [0,1,2,3],
-                     attr2=True,
+                     True,
                      kernel_name="test_square_sum_v1_op_select_format_1")
     op_select_format({"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
                       "ori_format": "ND"},
                      {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
                       "ori_format": "ND"},
-                     None,
-                     attr2=True,
+                     [],
+                     True,
                      kernel_name="test_square_sum_v1_op_select_format_2")
 
 
@@ -96,14 +103,14 @@ def test_get_op_support_info(test_arg):
                         {"shape": (1, 1, 16, 16), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 16),
                          "ori_format": "HWCN"},
                         [0, 1, 2, 3],
-                        attr2=True,
+                        True,
                         kernel_name="test_square_sum_v1_op_select_format_1")
     get_op_support_info({"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
                          "ori_format": "ND"},
                         {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
                          "ori_format": "ND"},
                         None,
-                        attr2=True,
+                        True,
                         kernel_name="test_square_sum_v1_op_select_format_2")
 
 

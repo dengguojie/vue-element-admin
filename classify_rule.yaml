@@ -986,6 +986,7 @@ vector_B:
       - ops/common/src/op_util.cc
       - ops/common/inc/error_code.h
       - ops/common/inc/error_util.h
+      - ops/common/inc/op_attr.h
       - ops/common/src/error_util.cc
       - ops/built-in/CMakeLists.txt
       - ops/built-in/framework/tf_plugin/avg_pool3d.cc
@@ -1205,6 +1206,7 @@ vector_B:
       - ops/built-in/op_tiling/scatter_update.cc
       - ops/built-in/op_tiling/smooth_l1_loss_v2.cc
       - ops/built-in/op_tiling/softmax_cross_entropy_with_logits.cc
+      - ops/built-in/op_tiling/square_sum_v1.cc
       - ops/built-in/op_tiling/sort.cc
       - ops/built-in/op_tiling/space_to_batch_nd.cc
       - ops/built-in/op_tiling/sparse_apply_ftrl_d.cc
@@ -3985,7 +3987,6 @@ unkown:
       - ops/contrib/framework/tf_plugin/yolov3_post_process_plugin.cc
       - ops/contrib/framework/tf_plugin/tensorflow_fasterrcnn_second_stage_processor_tik_plugin.cc
       - ops/common/inc/example.h
-      - ops/common/inc/op_attr.h
       - tools/op_test_frame/python/op_test_frame/__init__.py
       - tools/op_test_frame/python/op_test_frame/runtime/__init__.py
       - tools/op_test_frame/python/op_test_frame/config/llt_config.py

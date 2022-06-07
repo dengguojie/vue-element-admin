@@ -323,5 +323,73 @@
         "value": true
       }
     ]
+  },
+  {
+    "case_name": "SquareSumV1_dynamic_rank_000",
+    "calc_expect_func_file":"test_SquareSumV1_golden.py:calc_expect_func",
+    "op": "SquareSumV1",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [16, 16, 16, 16],
+        "name": "input_x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [1],
+        "name": "output1"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [0, 1, 2, 3]
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "SquareSumV1_dynamic_rank_001",
+    "calc_expect_func_file":"test_SquareSumV1_golden.py:calc_expect_func",
+    "op": "SquareSumV1",
+    "input_desc": [
+      {
+        "format": "FRACTAL_Z",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [16, 16, 16, 16],
+        "name": "input_x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_Z",
+        "type": "float32",
+        "shape": [1],
+        "name": "output1"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [0, 1, 2, 3]
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
   }
 ]

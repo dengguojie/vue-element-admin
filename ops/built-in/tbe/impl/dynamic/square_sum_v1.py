@@ -15,6 +15,7 @@
 """
 square_sum_v1
 """
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -33,7 +34,7 @@ from impl.util.util_common import update_axis_for_other_format
 
 
 # 'pylint: disable = unused-argument
-def get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
+def get_op_support_info(input_x, output1, axis, keep_dims=True, kernel_name="square_sum_v1"):
     """
     get_op_support_info
     """
@@ -43,13 +44,13 @@ def get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square
     for i, _ in enumerate(shape_x):
         axis_d.append(i)
     format_x = input_x.get("format").upper()
-    if attr1 is None:
-        attr1 = []
+    if axis is None:
+        axis = []
     for i in axis_d:
-        if i not in attr1:
+        if i not in axis:
             axis_split.append(i)
     if format_x == "ND":
-        if attr2:
+        if keep_dims:
             axis_split_matrix = []
             for i in axis_split:
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
@@ -65,7 +66,7 @@ def get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square
     return op_cal_info_in_json
 
 
-def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"):
+def op_select_format(input_x, output1, axis, keep_dims, kernel_name="square_sum_v1"):
     """
     select format dynamically
     op_select_format support desc:
@@ -92,18 +93,19 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
     output_format = "ND, ND"
     ori_shape = input_x.get("ori_shape")
     ori_format = input_x.get("ori_format")
-    if attr1 is None:
-        attr1 = [i for i in range(len(ori_shape))]
-    if ori_format in ("HWCN",) and len(ori_shape) == 4 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and list(
-            attr1) == [0, 1, 2, 3]:
-        dtype = "float16, float, float16, float"
-        input_format = "ND, ND, FRACTAL_Z, FRACTAL_Z"
-        output_format = "ND, ND, ND, ND"
-    if len(ori_shape) >= 2 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and \
-       list(attr1) == [i for i in range(len(ori_shape))]:
-        dtype = dtype + ", float16, float"
-        input_format = input_format + ", FRACTAL_NZ, FRACTAL_NZ"
-        output_format = output_format + ", ND, ND"
+    if axis == []:
+        axis = [i for i in range(len(ori_shape))]
+    if axis is not None:
+        if ori_format in ("HWCN",) and len(ori_shape) == 4 and ori_shape[-1] % 16 == 0 and \
+            ori_shape[-2] % 16 == 0 and list(axis) == [0, 1, 2, 3]:
+            dtype = "float16, float, float16, float"
+            input_format = "ND, ND, FRACTAL_Z, FRACTAL_Z"
+            output_format = "ND, ND, ND, ND"
+        if len(ori_shape) >= 2 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and \
+        list(axis) == [i for i in range(len(ori_shape))]:
+            dtype = dtype + ", float16, float"
+            input_format = input_format + ", FRACTAL_NZ, FRACTAL_NZ"
+            output_format = output_format + ", ND, ND"
     input0 = gen_param(classify="input0", name="input_x", datatype=dtype, format=input_format,
                        unknownshape_format=input_format)
     output0 = gen_param(classify="output0", name="output1", datatype=dtype, format=output_format,
@@ -194,7 +196,7 @@ def square_compute(input_x, output_y, kernel_name="square"):
 
 
 @register_operator_compute("SquareSumV1", op_mode="dynamic", support_fusion=True)
-def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum_v1"):
+def square_sum_v1_compute(input_x, output1, axis, keep_dims, kernel_name="square_sum_v1"):
     """
     calculating data
 
@@ -208,16 +210,16 @@ def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum
     """
 
     square = square_compute(input_x, {}, kernel_name)
-    sum0 = reduce_sum_d_compute(square, {}, axis, keepdims=attr2, kernel_name=kernel_name)
+    sum0 = reduce_sum_d_compute(square, {}, axis, keepdims=keep_dims, kernel_name=kernel_name)
 
     return sum0
 
 
 @register_operator("SquareSumV1")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
+def square_sum_v1(input_x, output1, axis, keep_dims=True, kernel_name="square_sum_v1"):
     """
     calculating data
 
@@ -229,27 +231,25 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
     -------
     None
     """
-    dtype = input_x.get("dtype")
     shape = input_x.get("shape")
     ori_shape = input_x.get("ori_shape")
-    input_dtype = dtype.lower()
+    input_dtype = input_x.get("dtype").lower()
     x_format = input_x.get("format")
     x_ori_format = input_x.get("ori_format")
 
-    axis_d = []
-
-    if not attr1:
-        axis_d = list(range(len(shape)))
-    elif x_format in ["FRACTAL_NZ", "FRACTAL_Z"]:
-        axis_d = get_new_format_axis(ori_shape, attr1, x_format, x_ori_format)
+    # In binary, the reduce template uses the unkonw mode
+    if axis is None:
+        input_axis = {"shape": [-1], "rel_pos_to_reduce": "axis"}
     else:
-        axis_d = attr1
-
-    input_axis = {"shape": [len(axis_d)], "value": axis_d, "rel_pos_to_reduce": "axis"}
+        if axis == []:
+            axis = list(range(len(shape)))
+        elif x_format in ["FRACTAL_NZ", "FRACTAL_Z"]:
+            axis = get_new_format_axis(ori_shape, axis, x_format, x_ori_format)
+        input_axis = {"shape": [len(axis)], "value": axis, "rel_pos_to_reduce": "axis"}
     input_x["rel_pos_to_reduce"] = "before"
 
     ins = classify([input_x, input_axis], OpPatternMode.REDUCE,
-                   {"keepdims": attr2 is True})
+                   {"keepdims": keep_dims is True})
     schedules, tensors = [], []
 
     for (_input_x, _axis) in ins:
@@ -259,7 +259,7 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
 
             data_input.op.attrs["format"] = x_format
             res = square_sum_v1_compute(data_input, output1, _axis.get("value"),
-                                        attr2, kernel_name)
+                                        keep_dims, kernel_name)
             tensors.append([data_input, res])
 
         with tvm.target.cce():
