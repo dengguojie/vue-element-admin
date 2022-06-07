@@ -29,13 +29,12 @@ class RandomStandardCpuKernel : public CpuKernel {
 
  private:
   /**
-   * @brief generate data from Eigen
+   * @brief generate data
    * @param ctx cpu kernel context
    * @param output using to output data
-   * @return status if success
    */
   template <typename T>
-  void Generate(CpuKernelContext &ctx, Tensor *output);
+  void Generate(const CpuKernelContext &ctx, Tensor *output);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_RANDOM_STANDARD_H

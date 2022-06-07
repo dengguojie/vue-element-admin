@@ -223,6 +223,8 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/zeta.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/tile_with_axis.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/linspace.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/random/guarded_philox_random.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/random/utils.cc
   ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
@@ -408,6 +410,7 @@ set(_cpu_kernels_ut_files
   testcase/qr/src/qr_utest.cpp
   testcase/random_gamma/src/random_gamma_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
+  testcase/random_standard_normal/src/random_standard_normal_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
   testcase/resize_bilinear/src/resize_bilinear_grad_utest.cpp

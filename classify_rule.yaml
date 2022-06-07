@@ -53,6 +53,8 @@ aicpu:
       - ops/built-in/op_proto/inc/lookup_ops.h
       - ops/built-in/op_proto/lookup_ops.cc
       - ops/built-in/framework/tf_plugin/anonymous_seed_generator_plugin.cc
+      - ops/built-in/op_proto/inc/random_ops.h
+      - ops/built-in/op_proto/random_ops.cc
       - ops/built-in/framework/tf_plugin/banded_triangular_solve_plugin.cc
       - ops/built-in/framework/tf_plugin/cross_plugin.cc
       - ops/built-in/framework/tf_plugin/delete_seed_generator_plugin.cc
@@ -86,8 +88,6 @@ aicpu:
       - ops/built-in/op_proto/inc/parsing_ops.h
       - ops/built-in/op_proto/ragged_conversion_ops.cc
       - ops/built-in/op_proto/inc/ragged_conversion_ops.h
-      - ops/built-in/op_proto/random_ops.cc
-      - ops/built-in/op_proto/inc/random_ops.h
       - ops/built-in/op_proto/sdca_ops.cc
       - ops/built-in/op_proto/inc/sdca_ops.h
       - ops/built-in/op_proto/spectral_ops.cc

@@ -54,9 +54,13 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
   GeTensorDescPtr output_desc = op_desc->MutableOutputDesc(0);
   DataType type;
   if (op.GetAttr(date_type_attr_name.c_str(), type) != GRAPH_SUCCESS) {
-    std::string info = ": Get dtype attr failed.";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), ConcatString("get attr[", date_type_attr_name, "] failed"));
+    return GRAPH_FAILED;
+  }
+
+  if (type != DT_FLOAT16 && type != DT_FLOAT && type != DT_DOUBLE) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
-        ConcatString("get attr[", date_type_attr_name, "] failed"));
+                                       ConcatString(date_type_attr_name, " attr should be half or float32 or double"));
     return GRAPH_FAILED;
   }
   if (op.GetInputConstData(shape_name.c_str(), tensor) != GRAPH_SUCCESS) {

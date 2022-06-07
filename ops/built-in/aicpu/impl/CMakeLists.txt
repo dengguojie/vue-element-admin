@@ -72,6 +72,7 @@ set(local_kernels_src_files
     kernels/normalized/pinverse.cc
     kernels/normalized/poisson.cc
     kernels/normalized/prodenvmata_calcrij.cc
+    kernels/normalized/random_standard.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
@@ -105,6 +106,8 @@ set(local_kernels_src_files
     kernels/normalized/tile_with_axis.cc
     kernels/normalized/reduce_sum.cc
     kernels/normalized/linspace.cc
+    kernels/normalized/random/guarded_philox_random.cc
+    kernels/normalized/random/utils.cc
     utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc
@@ -315,6 +318,7 @@ set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(local_kernels_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/random
     ${TOP_DIR}/inc/aicpu/cpu_kernels
     ${TOP_DIR}/inc/external/aicpu
     ${TOP_DIR}/open_source/eigen
