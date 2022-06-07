@@ -3961,9 +3961,7 @@ bool CheckEllipsisAndDuplicatedLabel(std::string part_eqn, bool &stride_flag) {
 
 bool CheckEquation(const Operator &op, const std::string &eqn, std::vector<std::string> &in_equ_list,
                    std::string &out_equ) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("Einsum", "GetName failed."), return false);
-  const char *einsum_name = op_name.GetString();
+  const std::string einsum_name = TbeGetName(op);
   std::string in_equ;
   bool input_stride_flag = false;
   bool output_inflate_flag = false;
@@ -4034,10 +4032,7 @@ bool CheckOutputNewLabel(std::string &out_equ, std::map<char, int64_t> &equ_map)
 // einsum infer shape
 bool EinsumInferShape(const Operator &op, const std::string &eqn, const std::vector<std::vector<int64_t>> &tensor_list,
                       std::vector<int64_t> &output_shape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("Einsum", "GetName failed."), return false);
-  const char *einsum_name = op_name.GetString();
-
+  const std::string einsum_name = TbeGetName(op);
   // define maps to hold the corresponding characters
   std::map<char, int64_t> equ_map;
   std::vector<int64_t> ellipsis_out;
@@ -4095,7 +4090,7 @@ void GetRangeInterSection(const std::pair<int64_t, int64_t> &new_range, std::pai
   }
 }
 
-void ResetRangewithEmptyInputRange(OpDescPtr &op_desc, const AscendString op_name, size_t i,
+void ResetRangewithEmptyInputRange(OpDescPtr &op_desc, const string &op_name, size_t i,
                                    vector<std::pair<int64_t, int64_t>> &range) {
   if (!range.empty()) {
     return;
@@ -4104,7 +4099,7 @@ void ResetRangewithEmptyInputRange(OpDescPtr &op_desc, const AscendString op_nam
   auto dims = op_desc->MutableInputDesc(i)->MutableShape().GetDims();
   for (auto dim : dims) {
     if (dim == -1) {
-      OP_LOGW(op_name.GetString(), "input%zu tensor has no range but contains -1, use range [1, -1]", i);
+      OP_LOGI(op_name, "input%zu tensor has no range but contains -1, use range [1, -1]", i);
       range.push_back(default_range);
     } else {
       range.push_back({dim, dim});
@@ -4112,9 +4107,8 @@ void ResetRangewithEmptyInputRange(OpDescPtr &op_desc, const AscendString op_nam
   }
 }
 
-void GetEquationRangeInterSection(OpDescPtr &op_desc, const AscendString op_name,
-                                  const vector<std::string> &in_equ_list,
-                                  std::map<char, std::pair<int64_t, int64_t>> &ranges) {
+void GetEquationRangeInterSection(OpDescPtr& op_desc, const string& op_name, const vector<std::string>& in_equ_list,
+                                  std::map<char, std::pair<int64_t, int64_t>>& ranges) {
   for (size_t i = 0; i < in_equ_list.size(); ++i) {
     const std::string &equ_temp = in_equ_list[i];
     vector<std::pair<int64_t, int64_t>> range;
@@ -4122,7 +4116,7 @@ void GetEquationRangeInterSection(OpDescPtr &op_desc, const AscendString op_name
     ResetRangewithEmptyInputRange(op_desc, op_name, i, range);
 
     if (range.size() < equ_temp.size()) {
-      OP_LOGW(op_name.GetString(), "skip range, range size: %zu, equation: %s", range.size(), equ_temp.c_str());
+      OP_LOGW(op_name, "skip range, range size: %zu, equation: %s", range.size(), equ_temp.c_str());
       continue;
     }
 
@@ -4151,15 +4145,11 @@ void AssembleShapeRange(const std::string &equation, const std::map<char, std::p
   }
 }
 
-bool EinsumInferShapeRange(OpDescPtr &op_desc, const AscendString op_name, std::string &eqn,
+bool EinsumInferShapeRange(OpDescPtr &op_desc, const string &op_name, std::string &eqn,
                            const vector<vector<int64_t>> &tensor_list,
                            vector<std::pair<int64_t, int64_t>> &output_range) {
   std::string targets = "...";
-  if (IsEllispis(eqn, targets)) {
-    OP_LOGE(op_name.GetString(), "not support equation[%s]", eqn.c_str());
-    return false;
-  }
-
+  CHECK(IsEllispis(eqn, targets), OP_LOGE(op_name, "not support equation[%s]", eqn.c_str()), return false);
   std::string in_equ;
   std::string out_equ;
   // Split string
@@ -4167,14 +4157,10 @@ bool EinsumInferShapeRange(OpDescPtr &op_desc, const AscendString op_name, std::
   // gets a list of input strings
   vector<std::string> in_equ_list;
   GetInSplitEquationList(in_equ, in_equ_list);
-
-  if (in_equ_list.size() != tensor_list.size()) {
-    // if equation size not equal with tensor size, tf will raise exception
-    OP_LOGE(op_name.GetString(), "equation size[%zu] not equal with tensor size[%zu]", in_equ_list.size(),
-            tensor_list.size());
-    return false;
-  }
-
+  // if equation size not equal with tensor size, tf will raise exception
+  CHECK(in_equ_list.size() != tensor_list.size(),
+        OP_LOGE(op_name, "equation size[%zu] not equal with tensor size[%zu]", in_equ_list.size(), tensor_list.size()),
+        return false);
   std::map<char, std::pair<int64_t, int64_t>> ranges;
   GetEquationRangeInterSection(op_desc, op_name, in_equ_list, ranges);
   for (size_t i = 0; i < in_equ_list.size(); ++i) {
@@ -4192,9 +4178,7 @@ bool EinsumInferShapeRange(OpDescPtr &op_desc, const AscendString op_name, std::
 }
 
 IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, CUBE_INNER_ERR_REPORT("Einsum", "GetName failed."), return GRAPH_FAILED);
-  const char *einsum_name = op_name.GetString();
+  const std::string einsum_name = TbeGetName(op);
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x0_type = op_desc->MutableInputDesc(0)->GetDataType();
   // get attr equation
@@ -4223,7 +4207,7 @@ IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
           CUBE_INNER_ERR_REPORT(einsum_name, "Infershape func failed."), return GRAPH_FAILED);
   } else {
     std::vector<std::pair<int64_t, int64_t>> output_range;
-    if (!EinsumInferShapeRange(op_desc, op_name, equation, tensor_list, output_range)) {
+    if (!EinsumInferShapeRange(op_desc, einsum_name, equation, tensor_list, output_range)) {
       CUBE_INNER_ERR_REPORT(einsum_name, "Infershape func failed.");
       return GRAPH_FAILED;
     }

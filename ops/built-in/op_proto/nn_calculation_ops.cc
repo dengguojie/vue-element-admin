@@ -604,9 +604,7 @@ bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
 }
 
 static bool reset_range(const ge::Operator& op, const std::string& tensor_name) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
+  const std::string op_name = TbeGetName(op);
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return false);
   auto tensor_desc = op_desc->MutableInputDesc(tensor_name);
@@ -631,7 +629,7 @@ static bool reset_range(const ge::Operator& op, const std::string& tensor_name) 
 
   if (reset_flag) {
     tensor_desc->SetShapeRange(shape_range);
-    OP_LOGW(op_name.GetString(), "%s range does not match the shape value, has been fixed.", tensor_name.c_str());
+    OP_LOGI(op_name, "%s range does not match the shape value, has been fixed.", tensor_name.c_str());
   }
   return reset_flag;
 }
