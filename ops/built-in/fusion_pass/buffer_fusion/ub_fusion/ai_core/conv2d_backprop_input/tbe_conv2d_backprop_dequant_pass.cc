@@ -49,7 +49,7 @@ vector<BufferFusionPattern *> TbeConv2DBackpropDequantFusionPass::DefinePatterns
 
   string pass_name = "TbeConv2DBackpropDequantFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGD(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules Convolution-->AcendDeQuant
   pattern->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
@@ -97,7 +97,7 @@ Status TbeConv2DBackpropDequantFusionPass::GetFusionNodes(const BufferFusionMapp
     if (op_desc != nullptr && op_desc->desc_name == kPatternLeakyRelu) {
       ge::NodePtr node = item.second[0];
       if (node == nullptr) {
-        OP_LOGE(kFusedOpType.c_str(), "node is nullptr");
+        OP_LOGW(kFusedOpType.c_str(), "node is nullptr");
         return PARAM_INVALID;
       }
       if (node->GetType() == kPatternPRelu) {

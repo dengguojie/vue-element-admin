@@ -52,7 +52,7 @@ vector<BufferFusionPattern *> TbeDwFixpipeFusionPass::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
   string pass_name = "TbeDwFixpipeFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name, kFusionOpNumMax);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGD(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules
   pattern->AddOpDesc(kTypeTransData1, {kOpTypeTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,

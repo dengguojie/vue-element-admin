@@ -28,23 +28,23 @@ Status AutoMappingFnMatMulV2(const ge::Operator& op_src, ge::Operator& op)
 {
   Status ret = AutoMappingByOpFn(op_src, op);
   if (ret != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "tensorflow plugin parser failed. auto mapping failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op), "Tensorflow plugin parser failed. auto mapping failed.");
     return FAILED;
   }
-  bool transposeA = false;
-  if (op.GetAttr("transpose_a", transposeA) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "GetAttr transpose_a failed");
+  bool transpose_a = false;
+  if (op.GetAttr("transpose_a", transpose_a) != ge::GRAPH_SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op), "GetAttr transpose_a failed");
     return FAILED;
   }
-  bool transposeB = false;
-  if (op.GetAttr("transpose_b", transposeB) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "GetAttr transpose_b failed");
+  bool transpose_b = false;
+  if (op.GetAttr("transpose_b", transpose_b) != ge::GRAPH_SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op), "GetAttr transpose_b failed");
     return FAILED;
   }
 
-  op.SetAttr("transpose_x1", transposeA);
-  op.SetAttr("transpose_x2", transposeB);
-  OP_LOGD("MatMul", "op[MatMul] tensorflow plugin parser[AutoMapping] success.");
+  op.SetAttr("transpose_x1", transpose_a);
+  op.SetAttr("transpose_x2", transpose_b);
+  OP_LOGD(TbeGetName(op), "Tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }
 

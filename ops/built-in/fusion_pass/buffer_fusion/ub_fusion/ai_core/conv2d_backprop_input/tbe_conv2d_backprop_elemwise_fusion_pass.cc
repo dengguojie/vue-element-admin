@@ -55,7 +55,7 @@ vector<BufferFusionPattern *> Conv2DBackpropElemwiseFusionPass::DefinePatterns()
 
   string pass_name = "TbeConv2dBackpropInputTwoElemwiseFusion";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGD(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
 
   // define pattern rules
@@ -76,7 +76,7 @@ vector<BufferFusionPattern *> Conv2DBackpropElemwiseFusionPass::DefinePatterns()
   string pass_name1 = "TbeConv2dBackpropInputElemwiseFusion";
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   BufferFusionPattern *pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1);
-  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGD(kFusedOpType.c_str(), "new an object failed."), return patterns);
 
   // define pattern1 rules
   pattern1->AddOpDesc(kPatternDx, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -126,7 +126,7 @@ Status Conv2DBackpropElemwiseFusionPass::GetFusionNodes(const BufferFusionMappin
     bool check_dim = true;
     for (size_t idx = 1; idx < elem_node_input_desc_size; idx++) {
       auto curr_input_desc = GetCurrNodeInputDesc(elem_node[0], idx);
-      FUSION_PASS_CHECK((curr_input_desc == nullptr), OP_LOGE(kFusedOpType.c_str(), "inputDesc%lu is null", idx),
+      FUSION_PASS_CHECK((curr_input_desc == nullptr), OP_LOGW(kFusedOpType.c_str(), "inputDesc%lu is null", idx),
                         return SUCCESS);
       check_dtype = check_dtype && (input0_dtype == curr_input_desc->GetDataType());
       check_dim = check_dim && (input0_dims == curr_input_desc->GetShape().GetDims());

@@ -53,7 +53,7 @@ vector<BufferFusionPattern *> TbeDwTransDataFusionPass::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
   string pass_name = "TbeDwTransDataFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name, kFusionOpNumMax);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGD(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules
   pattern->AddOpDesc(kTypeTransData, {kOpTypeTransData}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
@@ -81,7 +81,7 @@ bool TbeDwTransDataFusionPass::CheckDwSupport(const vector<ge::NodePtr> &dw_node
   ge::NodePtr dw_node = dw_nodes.at(0);
   FUSION_PASS_CHECK(
     dw_node->GetType() != "Conv2DBackpropFilter",
-    OP_LOGW(kFusedOpType.c_str(), "only support op_type Conv2DBackpropFilter"),
+    OP_LOGD(kFusedOpType.c_str(), "only support op_type Conv2DBackpropFilter"),
     return false
   );
   int64_t group;
@@ -92,7 +92,7 @@ bool TbeDwTransDataFusionPass::CheckDwSupport(const vector<ge::NodePtr> &dw_node
   );
   FUSION_PASS_CHECK(
     group != 1,
-    OP_LOGW(kFusedOpType.c_str(), "only support group is 1"),
+    OP_LOGD(kFusedOpType.c_str(), "only support group is 1"),
     return false
   );
   vector<int64_t> dilations;
@@ -103,7 +103,7 @@ bool TbeDwTransDataFusionPass::CheckDwSupport(const vector<ge::NodePtr> &dw_node
   );
   FUSION_PASS_CHECK(
     dilations != kDilationAllOne,
-    OP_LOGW(kFusedOpType.c_str(), "only support dilations is 1, 1, 1, 1"),
+    OP_LOGD(kFusedOpType.c_str(), "only support dilations is 1, 1, 1, 1"),
     return false
   );
   return true;
@@ -115,19 +115,13 @@ bool TbeDwTransDataFusionPass::CheckTransdataSupport(const vector<ge::NodePtr> &
                                                      vector <ge::NodePtr> &fusion_nodes) {
   ge::NodePtr dw_node = dw_nodes.at(0);
   ge::NodePtr transdata_node_1 = transdata_nodes.at(0);
-  if (!CheckSupportTrans(transdata_node_1)) {
-    OP_LOGW(kFusedOpType.c_str(), "transdata only support NCHW to 5HD");
-    return false;
-  }
-  if (dw_node->GetInDataNodes().size() < kInputNum) {
-    OP_LOGW(kFusedOpType.c_str(), "dw must have 3 inputs");
-    return false;
-  }
+  FUSION_PASS_CHECK(!CheckSupportTrans(transdata_node_1),
+                    OP_LOGD(kFusedOpType.c_str(), "transdata only support NCHW to 5HD"), return false);
+  FUSION_PASS_CHECK(dw_node->GetInDataNodes().size() < kInputNum,
+                    OP_LOGW(kFusedOpType.c_str(), "dw must have 3 inputs"), return false);
   ge::NodePtr transdata_node_2 = dw_node->GetInDataNodes().at(kDedyIndex);
-  if (transdata_node_2->GetType() != kOpTypeTransData && !CheckSupportTrans(transdata_node_2)) {
-    OP_LOGW(kFusedOpType.c_str(), "dw must have 2 transdata at the same time");
-    return false;
-  }
+  FUSION_PASS_CHECK(transdata_node_2->GetType() != kOpTypeTransData && !CheckSupportTrans(transdata_node_2),
+                    OP_LOGD(kFusedOpType.c_str(), "dw must have 2 transdata at the same time"), return false);
   fusion_nodes.push_back(transdata_node_2);
   return true;
 }
@@ -139,21 +133,15 @@ bool TbeDwTransDataFusionPass::CheckUnlimitedRange(const ge::NodePtr &node) cons
   vector<pair<int64_t, int64_t>> ranges;
   FUSION_PASS_CHECK(
     input_desc->GetShapeRange(ranges) != GRAPH_SUCCESS,
-    OP_LOGW(kFusedOpType.c_str(), "get range failed."),
+    OP_LOGD(kFusedOpType.c_str(), "get range failed."),
     return false
   );
 
   for (auto input_dim : input_dims) {
-    if (input_dim != kDynamicShapeDim) {
-      OP_LOGW(kFusedOpType.c_str(), "shape is not -1");
-      return false;
-    }
+    FUSION_PASS_CHECK(input_dim != kDynamicShapeDim, OP_LOGD(kFusedOpType.c_str(), "shape is not -1"), return false);
   }
   for (auto range : ranges) {
-    if (range != kUnlimitedRange) {
-      OP_LOGW(kFusedOpType.c_str(), "range is not 1, -1");
-      return false;
-    }
+    FUSION_PASS_CHECK(range != kUnlimitedRange, OP_LOGD(kFusedOpType.c_str(), "range is not 1, -1"), return false);
   }
   return true;
 }
@@ -180,12 +168,12 @@ Status TbeDwTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mappi
   }
   if (!CheckDwSupport(dw_nodes)) {
     fusion_nodes.clear();
-    OP_LOGW(kFusedOpType.c_str(), "dw check not supported");
+    OP_LOGD(kFusedOpType.c_str(), "dw check not supported");
     return SUCCESS;
   }
   if (!CheckTransdataSupport(dw_nodes, transdata_nodes, fusion_nodes)) {
     fusion_nodes.clear();
-    OP_LOGW(kFusedOpType.c_str(), "transdata check not supported");
+    OP_LOGD(kFusedOpType.c_str(), "transdata check not supported");
     return SUCCESS;
   }
 
@@ -194,12 +182,12 @@ Status TbeDwTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mappi
   ge::NodePtr transdata_node_2 = dw_node->GetInDataNodes().at(kDedyIndex);
   if (!CheckUnlimitedRange(transdata_node_1) ||!CheckUnlimitedRange(transdata_node_2)) {
     fusion_nodes.clear();
-    OP_LOGW(kFusedOpType.c_str(), "fusion only supported in dynamic mode in NCHW with no range");
+    OP_LOGD(kFusedOpType.c_str(), "fusion only supported in dynamic mode in NCHW with no range");
     return SUCCESS;
   }
   // change the op_type of the fusion node which is get from the first node of fusion nodes
   if (!ge::AttrUtils::SetStr(transdata_node_1->GetOpDesc(), UB_FUSION_OP_TYPE, "Conv2DBackpropFilter")) {
-    OP_LOGW(kFusedOpType.c_str(), "fusion node set op_type from TranData to Conv2dBackpropfilter failed");
+    OP_LOGD(kFusedOpType.c_str(), "fusion node can't set op_type from TranData to Conv2dBackpropfilter");
     fusion_nodes.clear();
     return SUCCESS;
   }

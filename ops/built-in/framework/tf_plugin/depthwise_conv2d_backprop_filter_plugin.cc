@@ -27,25 +27,22 @@
 
 namespace domi {
 Status DepthwiseConv2DBackpropFilterMappingFn(const ge::Operator& op_src, ge::Operator& op) {
-  ge::AscendString op_name;
-  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
-
   if (AutoMappingByOpFn(op_src, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "AutoMappingFn failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op), "AutoMappingFn failed.");
     return FAILED;
   }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetOpDescFromOperator got nullptr failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
-  auto tensorDescW = op_dsc->MutableOutputDesc("filter_grad");
-  tensorDescW->SetOriginFormat(ge::FORMAT_HWCN);
-  tensorDescW->SetFormat(ge::FORMAT_HWCN);
-  OP_LOGD(op_name.GetString(), "update output format success.");
-  std::vector<int32_t> padList{0, 0, 0, 0};
-  op.SetAttr("pads", padList);
-  OP_LOGD(op_name.GetString(), "update pads success.");
+  auto tensor_desc_w = op_dsc->MutableOutputDesc("filter_grad");
+  tensor_desc_w->SetOriginFormat(ge::FORMAT_HWCN);
+  tensor_desc_w->SetFormat(ge::FORMAT_HWCN);
+  OP_LOGD(TbeGetName(op), "Update output format success.");
+  std::vector<int32_t> pad_list{0, 0, 0, 0};
+  op.SetAttr("pads", pad_list);
+  OP_LOGD(TbeGetName(op), "Update pads success.");
   return SUCCESS;
 }
 

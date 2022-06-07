@@ -57,7 +57,7 @@ vector<BufferFusionPattern*> TbeDxDeqElemQuantPass::DefinePatterns() {
   string pass_name = "TbeDxDequantElemwiseQuantFusion";
   BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(pass_name);
 
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGD(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   pattern->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -75,7 +75,7 @@ vector<BufferFusionPattern*> TbeDxDeqElemQuantPass::DefinePatterns() {
   string pass_name0 = "TbeDxDequantElemwiseQuantFusion0";
   BufferFusionPattern* pattern0 = new (std::nothrow) BufferFusionPattern(pass_name0);
 
-  FUSION_PASS_CHECK((pattern0 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern0 == nullptr), OP_LOGD(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name0.c_str());
   pattern0->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -95,7 +95,7 @@ vector<BufferFusionPattern*> TbeDxDeqElemQuantPass::DefinePatterns() {
   string pass_name1 = "TbeDxDequantElemwiseQuantFusionDoubleOut";
   BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1);
 
-  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGD(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   pattern1->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -116,7 +116,7 @@ vector<BufferFusionPattern*> TbeDxDeqElemQuantPass::DefinePatterns() {
   string pass_name2 = "TbeDxDequantElemwise";
   BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
 
-  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGD(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
   pattern2->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -238,19 +238,13 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
 Status TbeDxDeqElemQuantPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do conv2d_bp_input_elemwise!");
 
-  fusion_nodes = GetMatchedNodes(mapping);
-
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> dxNodes = GetMatchedNodesByDescName(PATTERN_DX, mapping);
   for (const auto& dxNode : dxNodes) {
     auto input0desc = GetCurrNodeInputDesc(dxNode, 0);
     auto input1desc = GetCurrNodeInputDesc(dxNode, 1);
-    FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input0desc is null"),
-                  return FAILED);
-    FUSION_PASS_CHECK(input1desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input1desc is null"),
-                  return FAILED);
+    FUSION_PASS_CHECK(input0desc == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "input0desc is null"), return SUCCESS);
+    FUSION_PASS_CHECK(input1desc == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "input1desc is null"), return SUCCESS);
     vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
@@ -258,12 +252,13 @@ Status TbeDxDeqElemQuantPass::GetFusionNodes(const BufferFusionMapping& mapping,
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
     for (auto singleDim : allDims) {
       if (singleDim < 0) {
-        fusion_nodes.clear();
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
         return SUCCESS;
       }
     }
   }
+
+  fusion_nodes = GetMatchedNodes(mapping);
 
   // the outputData can't be fused
   for (auto& item : mapping) {
@@ -279,13 +274,12 @@ Status TbeDxDeqElemQuantPass::GetFusionNodes(const BufferFusionMapping& mapping,
   }
 
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
-  FUSION_PASS_CHECK(elemNode.empty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get elemNode failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(elemNode.empty(), fusion_nodes.clear();
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "get elemNode failed."), return SUCCESS);
   bool checkElemwise = (elemNode[0]->GetType() == "LeakyRelu" || elemNode[0]->GetType() == "PRelu");
   if (!checkElemwise) {
     fusion_nodes.clear();
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "only support LeakyRelu or Prelu");
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "only support LeakyRelu or Prelu");
     return SUCCESS;
   }
   SetSplitInfo(mapping, fusion_nodes);
