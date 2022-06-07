@@ -39,7 +39,7 @@ Status ParseParamsConv3DBackpropFilter(const ge::Operator& op_src, ge::Operator&
   ge::AscendString op_name;
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter ParseParamsConv3DBackpropFilter.");
+  OP_LOGD(op_name.GetString(), "Enter ParseParamsConv3DBackpropFilter.");
   AutoMappingByOpFn(op_src, op);
 
   ge::Format data_format = ge::FORMAT_NDHWC;
@@ -56,25 +56,25 @@ Status ParseParamsConv3DBackpropFilter(const ge::Operator& op_src, ge::Operator&
   org_tensor_x.SetOriginFormat(data_format);
   org_tensor_x.SetFormat(data_format);
   auto ret = opDsc->UpdateInputDesc(kInputIdx0, org_tensor_x);
-  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update input_x format failed."), return FAILED);
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to update input_x format."), return FAILED);
 
   ge::GeTensorDesc org_tensor_y = opDsc->GetInputDesc(kInputIdx1);
   org_tensor_y.SetOriginFormat(data_format);
   org_tensor_y.SetFormat(data_format);
   ret = opDsc->UpdateInputDesc(kInputIdx1, org_tensor_y);
-  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update out_backprop format failed."), return FAILED);
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to update out_backprop format."), return FAILED);
 
   ge::GeTensorDesc org_tensor_w = opDsc->GetOutputDesc(kOutputIdx0);
   org_tensor_w.SetOriginFormat(ge::FORMAT_DHWCN);
   org_tensor_w.SetFormat(ge::FORMAT_DHWCN);
   ret = opDsc->UpdateOutputDesc(kInputIdx0, org_tensor_w);
-  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update output dw format failed."), return FAILED);
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to update output dw format."), return FAILED);
   std::vector<int32_t> pad_list = {0, 0, 0, 0, 0, 0};
   op.SetAttr("pads", pad_list);
 
-  OP_LOGI(op_name.GetString(), "update output dw format success.");
+  OP_LOGD(op_name.GetString(), "update output dw format succeeded.");
 
-  OP_LOGI(op_name.GetString(), "Exit ParseParamsConv3DBackpropFilter.");
+  OP_LOGD(op_name.GetString(), "Exit ParseParamsConv3DBackpropFilter.");
   return SUCCESS;
 }
 

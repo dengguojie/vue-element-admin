@@ -39,20 +39,17 @@ Status AutoMappingFnBatchMatMul(const ge::Operator& op_src, ge::Operator& op)
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
   Status ret = AutoMappingByOpFn(op_src, op);
-  if (ret != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "tensorflow plugin parser failed.");
-    return FAILED;
-  }
+  CHECK(ret != SUCCESS,
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "tensorflow plugin parsing failed."),
+        return FAILED);
   bool transposeA = false;
-  if (op.GetAttr("adj_x", transposeA) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetAttr adj_x failed.");
-    return FAILED;
-  }
+  CHECK(op.GetAttr("adj_x", transposeA) != ge::GRAPH_SUCCESS,
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to get adj_x."),
+        return FAILED);
   bool transposeB = false;
-  if (op.GetAttr("adj_y", transposeB) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetAttr adj_y failed.");
-    return FAILED;
-  }
+  CHECK(op.GetAttr("adj_y", transposeB) != ge::GRAPH_SUCCESS,
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to get adj_y."),
+        return FAILED);
   op.SetAttr("adj_x1", transposeA);
   op.SetAttr("adj_x2", transposeB);
 
@@ -60,7 +57,7 @@ Status AutoMappingFnBatchMatMul(const ge::Operator& op_src, ge::Operator& op)
   CHECK(op_src.GetOpType(op_type) != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to get op_type"),
         return FAILED);
   if (string(op_type.GetString()) != "BatchMatMulV3") {
-    OP_LOGI(op_name.GetString(), "op[BatchMatMul] tensorflow plugin parser[AutoMapping] success.");
+    OP_LOGD(op_name.GetString(), "op[BatchMatMul] tensorflow plugin parsing[AutoMapping] succeeded.");
     return SUCCESS;
   }
 
@@ -68,11 +65,11 @@ Status AutoMappingFnBatchMatMul(const ge::Operator& op_src, ge::Operator& op)
   op.SetAttr("original_type", "BatchMatMulV3");
   ge::DataType data_type;
   CHECK(op.GetAttr("Tout", data_type) != ge::GRAPH_SUCCESS,
-      CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetAttr Tout failed."),
+      CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to getAttr Tout."),
       return FAILED);
   op.SetAttr("dst_type", static_cast<int>(data_type));
 
-  OP_LOGI(op_name.GetString(), "op[BatchMatMulV3] tensorflow plugin parser[AutoMapping] success.");
+  OP_LOGD(op_name.GetString(), "op[BatchMatMulV3] tensorflow plugin parsing[AutoMapping] succeeded.");
   return SUCCESS;
 }
 
@@ -80,14 +77,14 @@ static Status ParseOpToGraphBatchMatMulV3(const ge::Operator &op, ge::Graph &gra
 {
   ge::AscendString op_name;
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
-  OP_LOGI(op_name.GetString(), "op[BatchMatMulV3] tensorflow plugin ParseOpToGraph start.");
+  OP_LOGD(op_name.GetString(), "op[BatchMatMulV3] tensorflow plugin ParseOpToGraph start.");
   bool transpose_x1 = false;
   CHECK(op.GetAttr("adj_x1", transpose_x1) != ge::GRAPH_SUCCESS,
-        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetAttr adj_x1 failed."),
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to get adj_x1."),
         return FAILED);
   bool transpose_x2 = false;
   CHECK(op.GetAttr("adj_x2", transpose_x2) != ge::GRAPH_SUCCESS,
-        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetAttr adj_x2 failed."),
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to get adj_x2."),
         return FAILED);
 
   ge::Operator data_1 = op::Data("x1").set_attr_index(0);
@@ -102,14 +99,14 @@ static Status ParseOpToGraphBatchMatMulV3(const ge::Operator &op, ge::Graph &gra
 
   int dst_type;
   CHECK(op.GetAttr("dst_type", dst_type) != ge::GRAPH_SUCCESS,
-        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "GetAttr dst_type failed."),
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to get dst_type."),
         return FAILED);
 
   auto cast = op::Cast().set_input_x(batch_matmul).set_attr_dst_type(dst_type);
   output_indices.emplace_back(cast, vector<std::size_t>{0});
 
   graph.SetInputs(inputs).SetOutputs(output_indices);
-  OP_LOGI(op_name.GetString(), "op[BatchMatMulV3] tensorflow plugin ParseOpToGraph success.");
+  OP_LOGD(op_name.GetString(), "op[BatchMatMulV3] tensorflow plugin ParseOpToGraph success.");
   return SUCCESS;
 }
 

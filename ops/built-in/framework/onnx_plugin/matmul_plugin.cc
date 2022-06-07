@@ -39,9 +39,8 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest)
   op_dest.SetAttr("adj_x1", trans_a);
   op_dest.SetAttr("adj_x2", trans_b);
 
-  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS) {
-    return FAILED;
-  }
+  CHECK(ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS,
+        OP_LOGE(op_name.GetString(), "failed to change format."), return FAILED);
   return SUCCESS;
 }
 

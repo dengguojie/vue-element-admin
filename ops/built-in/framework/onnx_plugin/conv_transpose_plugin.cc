@@ -127,10 +127,9 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto *node, ge::Operator &o
         op.SetAttr("dilations", dilations_list);
       } else if (attr.name() == "pads") {
         unsigned int len = attr.ints_size();
-        if (len & 1) {
-          ONNX_PLUGIN_LOGE(op_name.GetString(), "The value lenth of pads is odd, transform failed.");
-          return FAILED;
-        }
+        CHECK(len & 1,
+              ONNX_PLUGIN_LOGE(op_name.GetString(), "The length of pads is odd, failed to transform."),
+              return FAILED);
         GetPadList(attr, pad_list);
       } else if (attr.name() == "output_padding") {
         SetIntListValue(attr, out_pads_list);
@@ -148,16 +147,14 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto *node, ge::Operator &o
     }
   }
 
-  if (!is_have_kenel_shape) {
-    ONNX_PLUGIN_LOGE(op_name.GetString(), "attr kenel_shape must have value");
-    return FAILED;
-  }
+  CHECK(!is_have_kenel_shape,
+        ONNX_PLUGIN_LOGE(op_name.GetString(), "attr kernel_shape must have value"),
+        return FAILED);
 
   int out_len = dim_size == INPUT_5D ? kLen3 : kLen2;
   if (!out_pads_list.empty()) {
     std::vector<int32_t> out_pads_list_new(out_len + kLen2, 0);
     if (AttrUpdate(out_pads_list_new, out_pads_list, kIndex, out_len, op_name) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op_name.GetString(), "attr out_pads update fail");
       return FAILED;
     }
     op.SetAttr("output_padding", out_pads_list_new);
@@ -166,7 +163,6 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto *node, ge::Operator &o
   if (!out_shape_list.empty()) {
     std::vector<int32_t> out_shape_list_new(out_len, 0);
     if (AttrUpdate(out_shape_list_new, out_shape_list, 0, out_len, op_name) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op_name.GetString(), "attr out_shape update fail");
       return FAILED;
     }
     op.SetAttr("output_shape", out_shape_list_new);
@@ -211,10 +207,8 @@ Status ParseParamsConvTranspose(const Message* op_src, ge::Operator& op) {
   op.SetAttr("original_type", "ai.onnx::11::ConvTranspose");
 
   if (SetAttrToOpConvTranspose(node, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "set attr to operator failed.");
     return FAILED;
   }
-
   return SUCCESS;
 }
 
@@ -222,43 +216,37 @@ Status SetFormatConvTranspose(ge::Operator& op, const int& dims) {
   if (dims == INPUT_4D) {
     // The fmap should be NCHW
     auto ret_x = ChangeFormatFromOnnx(op, 1, ge::FORMAT_NCHW, true);
-    if (ret_x != ge::GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update fmap format failed.");
-      return FAILED;
-    }
+    CHECK(ret_x != ge::GRAPH_SUCCESS,
+          CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to update fmap format."),
+          return FAILED);
     // The filter should be NCHW
     auto ret_w = ChangeFormatFromOnnx(op, kIndex, ge::FORMAT_NCHW, true);
-    if (ret_w != ge::GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
-      return FAILED;
-    }
+    CHECK(ret_w != ge::GRAPH_SUCCESS,
+          CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to update filter format."),
+          return FAILED);
     // The output should be NCHW
     auto ret_y = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCHW, false);
-    if (ret_y != ge::GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update output format failed.");
-      return FAILED;
-    }
+    CHECK(ret_y != ge::GRAPH_SUCCESS,
+          CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to update output format."),
+          return FAILED);
   } else if (dims == INPUT_5D) {
     // The fmap should be NCDHW
     auto ret_x = ChangeFormatFromOnnx(op, 1, ge::FORMAT_NCDHW, true);
-    if (ret_x != ge::GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update fmap format failed.");
-      return FAILED;
-    }
+    CHECK(ret_x != ge::GRAPH_SUCCESS,
+          CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to update fmap format."),
+          return FAILED);
     // The filter should be NCDHW
     auto ret_w = ChangeFormatFromOnnx(op, kIndex, ge::FORMAT_NCDHW, true);
-    if (ret_w != ge::GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
-      return FAILED;
-    }
+    CHECK(ret_w != ge::GRAPH_SUCCESS,
+          CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to update filter format."),
+          return FAILED);
     // The output should be NCDHW
     auto ret_y = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCDHW, false);
-    if (ret_y != ge::GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update output format failed.");
-      return FAILED;
-    }
+    CHECK(ret_y != ge::GRAPH_SUCCESS,
+          CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to update output format."),
+          return FAILED);
   } else {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "The input tensor is not 4D/5D, set format failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "The input tensor is not 4D/5D, failed to set format.");
     return FAILED;
   }
   return SUCCESS;
@@ -274,14 +262,14 @@ Status GetConvTransposeAttr(const ge::Operator& op, ConvTransposeAttr& convTrans
   op.GetAttr("output_shape", convTransposeAttr.output_shape);
   op.GetAttr("trans_2d", convTransposeAttr.trans_2d);
   auto ret_output_padding = op.GetAttr("output_padding", convTransposeAttr.output_padding);
-  if (op.GetAttr("dim_size", convTransposeAttr.dim_size) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get dim size from op failed");
-    return FAILED;
-  }
-  if (op.GetAttr("input_num", convTransposeAttr.input_num) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get number of input from op failed.");
-    return FAILED;
-  }
+
+  CHECK(op.GetAttr("dim_size", convTransposeAttr.dim_size) != SUCCESS,
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to get dim size from op"),
+        return FAILED);
+
+  CHECK(op.GetAttr("input_num", convTransposeAttr.input_num) != SUCCESS,
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "failed to get number of input from op."),
+        return FAILED);
   if (op.GetAttr("groups", convTransposeAttr.groups) != SUCCESS)
     convTransposeAttr.groups = 1;
 
@@ -322,14 +310,12 @@ Status GetConvTransposeAttr(const ge::Operator& op, ConvTransposeAttr& convTrans
 
 static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) {
   std::string ori_name;
-  if (op.GetAttr("name", ori_name) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get name from op failed.");
-    return FAILED;
-  }
+  CHECK(op.GetAttr("name", ori_name) != SUCCESS,
+        ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "failed to get name from op."),
+        return FAILED);
 
   ConvTransposeAttr tbeAttr;
   if (GetConvTransposeAttr(op, tbeAttr) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get attr value failed.");
     return FAILED;
   }
 
@@ -383,7 +369,6 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
         return FAILED;
     }
     if (SetFormatConvTranspose(convTranspose, tbeAttr.dim_size) != SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "set format for input and output failed.");
       return FAILED;
     }
     if (tbeAttr.trans_2d) {
@@ -424,11 +409,10 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
         return FAILED;
     }
     if (SetFormatConvTranspose(convTranspose, tbeAttr.dim_size) != SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "set format for input and output failed.");
       return FAILED;
     }
   } else {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "just support 4D or 5D input, transform failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "just support 4D or 5D input, failed to transform.");
     return FAILED;
   }
 

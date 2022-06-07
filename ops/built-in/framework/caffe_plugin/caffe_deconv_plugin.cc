@@ -33,10 +33,9 @@ static bool SetPads(const caffe::ConvolutionParameter& convParam, const ge::Asce
   const int kDefaultPad = 0;
   int64_t pad[2] = {kDefaultPad, kDefaultPad};
   if (convParam.has_pad_h() || convParam.has_pad_w()) {
-    if (pSize != 0) {
-      OP_LOGE(op_name.GetString(), "set either pad or pad_h/w, not both.");
-      return false;
-    }
+    CHECK(pSize != 0,
+          OP_LOGE(op_name.GetString(), "one of pad or pad_h/w needs to be set, not both."),
+          return false);
     pad[0] = convParam.pad_h();
     pad[1] = convParam.pad_w();
   } else {
@@ -64,10 +63,9 @@ static bool SetStrides(const caffe::ConvolutionParameter& convParam, const ge::A
   const int kDefaultStride = 1;
   int64_t stride[2] = {kDefaultStride, kDefaultStride};
   if (convParam.has_stride_h() || convParam.has_stride_w()) {
-    if (sSize != 0) {
-      OP_LOGE(op_name.GetString(), "set either stride or stride_h/w, not both");
-      return false;
-    }
+    CHECK(sSize != 0,
+          OP_LOGE(op_name.GetString(), "one of stride or stride_h/w needs to be set, not both."),
+          return false);
     stride[0] = convParam.stride_h();
     stride[1] = convParam.stride_w();
   } else {
@@ -113,10 +111,7 @@ Status ParseParamsDeconv(const Message* op_src, ge::Operator& op) {
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
-  if (layer == nullptr) {
-    OP_LOGE(op_name.GetString(), "convert src op failed.");
-    return FAILED;
-  }
+  CHECK(layer == nullptr, OP_LOGE(op_name.GetString(), "failed to convert src op."), return FAILED);
 
   if (layer->bottom_size() != 1) {
     OP_LOGE(op_name.GetString(), "Deconvolution layer bottom num(%d) must be 1", layer->bottom_size());
@@ -131,15 +126,12 @@ Status ParseParamsDeconv(const Message* op_src, ge::Operator& op) {
   const caffe::ConvolutionParameter& convParam = layer->convolution_param();
 
   if (!SetPads(convParam, op_name, op)) {
-    OP_LOGE(op_name.GetString(), "set pads failed.");
     return FAILED;
   }
   if (!SetStrides(convParam, op_name, op)) {
-    OP_LOGE(op_name.GetString(), "set strides failed.");
     return FAILED;
   }
   if (!SetDilations(convParam, op_name, op)) {
-    OP_LOGE(op_name.GetString(), "set dilations failed.");
     return FAILED;
   }
 
@@ -147,6 +139,7 @@ Status ParseParamsDeconv(const Message* op_src, ge::Operator& op) {
     uint32_t group = convParam.group();
     op.SetAttr("groups", group);
   }
+  OP_LOGD(op_name.GetString(), "op[Deconv] caffe plugin parsed successfully");
 
   return SUCCESS;
 }

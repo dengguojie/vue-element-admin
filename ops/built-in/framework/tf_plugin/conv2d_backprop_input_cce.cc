@@ -34,7 +34,7 @@ Status ParseParamsConv2DBackpropInput(const ge::Operator& op_src, ge::Operator& 
   ge::AscendString op_name;
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter ParseParamsConv2DBackpropInput.");
+  OP_LOGD(op_name.GetString(), "Enter ParseParamsConv2DBackpropInput.");
 
   AutoMappingByOpFn(op_src, op);
 
@@ -44,12 +44,11 @@ Status ParseParamsConv2DBackpropInput(const ge::Operator& op_src, ge::Operator& 
   org_tensor_w.SetOriginFormat(ge::FORMAT_HWCN);
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(CV_NUM_1, org_tensor_w);
-  if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "updating filter's format failed.");
-    return FAILED;
-  } else {
-    OP_LOGI(op_name.GetString(), "Update filter format success, now is %d", op.GetInputDesc(CV_NUM_1).GetFormat());
-  }
+
+  CHECK(ret != ge::GRAPH_SUCCESS,
+        CUBE_INNER_ERR_REPORT_PLUGIN(op_name.GetString(), "failed to update filter format."),
+        return FAILED);
+  OP_LOGD(op_name.GetString(), "update filter format succeeded, now is %d", op.GetInputDesc(CV_NUM_1).GetFormat());
 
   // Escape GE require attr [pads] check here
   std::vector<int32_t> pad_list = {0, 0, 0, 0};

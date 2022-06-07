@@ -38,7 +38,7 @@ Status ParseParamsConv3DBackpropInput(const ge::Operator& op_src, ge::Operator& 
   ge::AscendString op_name;
   CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter ParseParamsConv3DBackpropInput.");
+  OP_LOGD(op_name.GetString(), "Enter ParseParamsConv3DBackpropInput.");
 
   AutoMappingByOpFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
@@ -47,8 +47,8 @@ Status ParseParamsConv3DBackpropInput(const ge::Operator& op_src, ge::Operator& 
   org_tensor_w.SetOriginFormat(ge::FORMAT_DHWCN);
   org_tensor_w.SetFormat(ge::FORMAT_DHWCN);
   auto ret = op_dsc->UpdateInputDesc(kIndex1, org_tensor_w);
-  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "Update filter format failed."), return FAILED);
-  OP_LOGI(op_name.GetString(), "Update filter format success");
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to update filter format."), return FAILED);
+  OP_LOGD(op_name.GetString(), "Update filter format succeeded");
 
   ge::Format data_format = ge::FORMAT_NDHWC;
   std::string data_format_attr;
@@ -62,22 +62,22 @@ Status ParseParamsConv3DBackpropInput(const ge::Operator& op_src, ge::Operator& 
   org_tensor_y.SetOriginFormat(data_format);
   org_tensor_y.SetFormat(data_format);
   ret = op_dsc->UpdateInputDesc(kIndex0, org_tensor_y);
-  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "update inout out_backprop format failed."),
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to update input out_backprop format."),
         return FAILED);
-  OP_LOGI(op_name.GetString(), "update inout out_backprop format success.");
+  OP_LOGD(op_name.GetString(), "update input out_backprop format succeeded.");
 
   ge::GeTensorDesc org_tensor_x = op_dsc->GetOutputDesc(kIndex0);
   org_tensor_x.SetOriginFormat(data_format);
   org_tensor_x.SetFormat(data_format);
   ret = op_dsc->UpdateOutputDesc(kIndex0, org_tensor_x);
-  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "update output dx format failed."), return FAILED);
+  CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGE(op_name.GetString(), "failed to update output dx format."), return FAILED);
 
   std::vector<int32_t> pad_list = {0, 0, 0, 0, 0, 0};
   op.SetAttr("pads", pad_list);
 
-  OP_LOGI(op_name.GetString(), "update output dx format success.");
+  OP_LOGD(op_name.GetString(), "update output dx format succeeded.");
 
-  OP_LOGI(op_name.GetString(), "Exit ParseParamsConv3DBackpropInput.");
+  OP_LOGD(op_name.GetString(), "Exit ParseParamsConv3DBackpropInput.");
 
   return SUCCESS;
 }
