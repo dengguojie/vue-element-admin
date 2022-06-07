@@ -52,7 +52,7 @@ vector<BufferFusionPattern*> MatmulFastGelugradUbFusion::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
   string passName = "MatmulFastGelugradUbFusion";
   BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(passName);
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   pattern->AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_GEMM}, TBE_PATTERN_NUM_DEFAULT,
                      TBE_PATTERN_NUM_DEFAULT)
@@ -72,14 +72,8 @@ void MatmulFastGelugradUbFusion::SetSplitInfo(const BufferFusionMapping &mapping
                                               std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE, mapping);
-  if (matmulNodes.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched");
-    return;
-  }
-  if (elemWiseNodes.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
-    return;
-  }
+  FUSION_PASS_CHECK(matmulNodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched."), return );
+  FUSION_PASS_CHECK(elemWiseNodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWiseNodes node not matched."), return );
 
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
@@ -109,11 +103,11 @@ Status MatmulFastGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& map
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                  return FAILED);
+                  OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return SUCCESS);
     FUSION_PASS_CHECK(input1desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
-                  return FAILED);
+                  OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  return SUCCESS);
     vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
@@ -122,7 +116,7 @@ Status MatmulFastGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& map
     for (auto singleDim : allDims) {
       if (singleDim < 0) {
         fusionNodes.clear();
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
         return SUCCESS;
       }
     }

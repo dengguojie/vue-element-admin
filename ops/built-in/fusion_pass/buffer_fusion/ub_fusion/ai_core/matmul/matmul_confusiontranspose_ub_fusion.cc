@@ -21,10 +21,11 @@
 #include "matmul_confusiontranspose_ub_fusion.h"
 
 #include <string>
-#include "pattern_fusion_util.h"
-#include "op_log.h"
-#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+
 #include "anchor_util.h"
+#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "op_log.h"
+#include "pattern_fusion_util.h"
 namespace fe {
 static const char PATTERN_MATMUL[] = "matmul";
 static const char PATTERN_CONFUSION_TRANSPOSE[] = "matmul_transpose";
@@ -40,11 +41,11 @@ static const char PATTERN_CONFUSION_TRANSPOSE[] = "matmul_transpose";
  *
  * @return BufferFusionPattern: return all valid patterns.
  */
-vector<BufferFusionPattern*> MatmulConfusiontransposeUbFusion::DefinePatterns() {
-  vector<BufferFusionPattern*> patterns;
+vector<BufferFusionPattern *> MatmulConfusiontransposeUbFusion::DefinePatterns() {
+  vector<BufferFusionPattern *> patterns;
   string passName = "MatmulConfusiontransposeUbFusion";
-  BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(passName);
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   pattern->AddOpDesc(PATTERN_MATMUL, {OP_PATTERN_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_CONFUSION_TRANSPOSE, {OP_PATTERN_CONFUSION_TRANSPOSE}, TBE_PATTERN_NUM_DEFAULT,
@@ -63,45 +64,41 @@ vector<BufferFusionPattern*> MatmulConfusiontransposeUbFusion::DefinePatterns() 
  * @param [out] mapping: nodes matched by pattern
  * @return bool: fusion status ok or not.
  */
-Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMapping& mapping,
-                                                        vector<ge::NodePtr>& fusionNodes) {
+Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMapping &mapping,
+                                                        vector<ge::NodePtr> &fusionNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do MatmulConfusiontransposeUbFusion!");
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
 
   for (auto matmulNode : matmulNodes) {
     for (auto matmulControlNode : matmulNode->GetOutControlNodes()) {
       FUSION_PASS_CHECK(matmulControlNode == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out control of matmul is null"),
-                        return FAILED);
+                        return SUCCESS);
       if (matmulControlNode->GetType() != "ConfusionTransposeD") {
         continue;
       }
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(matmulNode->GetOutControlAnchor(),
                                                    matmulControlNode->GetInControlAnchor()) != SUCCESS,
                         OP_LOGD(FUSED_OP_TYPE.c_str(), "remove edge between matmul and confusion_transpose_d error"),
-                        return FAILED);
+                        return SUCCESS);
       for (auto transposeOutNode : matmulControlNode->GetOutAllNodes()) {
-        FUSION_PASS_CHECK(transposeOutNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "output of transpose is null"),
-                          return FAILED);
+        FUSION_PASS_CHECK(transposeOutNode == nullptr, OP_LOGW(matmulNode, "output of transpose is null"),
+                          return SUCCESS);
         FUSION_PASS_CHECK(
             ge::GraphUtils::AddEdge(matmulNode->GetOutControlAnchor(), transposeOutNode->GetInControlAnchor()) !=
                 SUCCESS,
             OP_LOGD(FUSED_OP_TYPE.c_str(), "add edge between matmul and confusion_transpose_d's output error"),
-            return FAILED);
+            return SUCCESS);
       }
     }
   }
   fusionNodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now
-  for (const auto& matmulNode : matmulNodes) {
+  for (const auto &matmulNode : matmulNodes) {
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
-    FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                  return FAILED);
-    FUSION_PASS_CHECK(input1desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
-                  return FAILED);
+    FUSION_PASS_CHECK(input0desc == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"), return SUCCESS);
+    FUSION_PASS_CHECK(input1desc == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"), return SUCCESS);
     vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
@@ -110,17 +107,17 @@ Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMappin
     for (auto singleDim : allDims) {
       if (singleDim < 0) {
         fusionNodes.clear();
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        OP_LOGI(matmulNode, "ub fusion not support dynamic shape");
         return SUCCESS;
       }
     }
   }
 
   // multi input node can not be fused except head node
-  for (auto& item : mapping) {
+  for (auto &item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
     if (opdesc != item.first->types.end()) {
-      for (auto& node : item.second) {
+      for (auto &node : item.second) {
         auto nodePtr = find(fusionNodes.begin(), fusionNodes.end(), node);
         if (nodePtr != fusionNodes.end()) {
           fusionNodes.erase(nodePtr);

@@ -55,7 +55,7 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   string passName0 = "TbeBatchMatMulElemwiseDoubleOut";
   BufferFusionPattern *pattern0 = new (std::nothrow) BufferFusionPattern(passName0, TBE_FUSION_OP_NUM_MAX);
-  FUSION_PASS_CHECK(pattern0 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern0 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName0.c_str());
   // define pattern rules
   pattern0->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
@@ -70,7 +70,7 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   string fcAddPassName = "TbeFullyconnectionAddRelu6FusionPass";
   BufferFusionPattern *fcAddPattern = new (std::nothrow) BufferFusionPattern(fcAddPassName, TBE_FUSION_OP_NUM_MAX);
-  FUSION_PASS_CHECK(fcAddPattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(fcAddPattern == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass fcAddPattern.", fcAddPassName.c_str());
   // define pattern rules
@@ -91,7 +91,7 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   string passName1 = "TbeFullyconnectionDequantElemwiseQuantFusionPass";
   BufferFusionPattern *pattern1 = new(std::nothrow) BufferFusionPattern(passName1, TBE_FUSION_OP_NUM_MAX);
-  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."),
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."),
   return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
   // define pattern rules
@@ -110,7 +110,7 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   string passName2 = "TbeFullyconnectionElemwiseDoubleOutElemwiseFusionPass";
   BufferFusionPattern *pattern2 = new (std::nothrow) BufferFusionPattern(passName2);
-  FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern2.", passName2.c_str());
   // define pattern rules
@@ -132,7 +132,7 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   string passName = "TbeFullyconnectionElemwiseDequantFusionPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName, TBE_FUSION_OP_NUM_MAX);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
@@ -181,14 +181,12 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
     if (fcNode->GetType() == "FullyConnection") {
       int axis;
       if (!ge::AttrUtils::GetInt(fcNode->GetOpDesc(), "axis", axis)) {
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "FullyConnection op[%s] type[%s] node does not have axis attr!",
-                fcNode->GetName().c_str(), fcNode->GetType().c_str());
+        OP_LOGW(fcNode, "FullyConnection op[%s] type[%s] node does not have axis attr!", fcNode->GetName().c_str(),
+                fcNode->GetType().c_str());
         return;
       }
       auto input0desc = GetCurrNodeInputDesc(fcNode, 0);
-      FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                  return);
+      FUSION_PASS_CHECK(input0desc == nullptr, OP_LOGW(fcNode, "inputDesc0 is null"), return );
       if (axis == kNumTwo) {
         n_axis = 1;
       } else if (input0desc->GetFormat() == ge::FORMAT_FRACTAL_NZ) {
@@ -261,7 +259,7 @@ bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(con
   OptionalInfo optionalInfo;
   FUSION_PASS_CHECK(
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return true);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Can not fetch platform info."), return true);
   const auto &instrinsicScatterVcmp = platformInfo.ai_core_intrinsic_dtype_map["Intrinsic_abs"];
   bool supportFP32Flag =
       find(instrinsicScatterVcmp.begin(), instrinsicScatterVcmp.end(), "float32") != instrinsicScatterVcmp.end();
@@ -277,10 +275,10 @@ Status TbeFullyconnectionElemwiseFusionPass::CheckDynamicMode(vector<ge::NodePtr
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  OP_LOGW(matmulNode, "inputDesc0 is null"),
                   return FAILED);
     FUSION_PASS_CHECK(input1desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  OP_LOGW(matmulNode, "inputDesc1 is null"),
                   return FAILED);
     vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
@@ -290,7 +288,7 @@ Status TbeFullyconnectionElemwiseFusionPass::CheckDynamicMode(vector<ge::NodePtr
     for (auto singleDim : allDims) {
       if (singleDim < 0) {
         fusionNodes.clear();
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        OP_LOGI(matmulNode, "ub fusion not support dynamic shape");
         return SUCCESS;
       }
     }
@@ -334,19 +332,19 @@ Status TbeFullyconnectionElemwiseFusionPass::CheckReluNode(const ge::NodePtr &re
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise1 type is add, start this ub fusion.");
       // the input nodes of add must be 2
       FUSION_PASS_CHECK(relu_node->GetAllInDataAnchors().size() != 2,
-                        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input nodes must be two"), return FAILED);
+                        OP_LOGW(relu_node, "add input nodes must be two"), return NOT_CHANGED);
       // previous nodes are all not FC
       bool pre_node_is_fc = !CheckPreNodeIsFcNode(relu_node);
       FUSION_PASS_CHECK(FusionReturn(pre_node_is_fc, fusion_nodes) == SUCCESS,
-                        OP_LOGD(FUSED_OP_TYPE.c_str(), "both the inputs are not FullyConnection"),
+                        OP_LOGD(relu_node, "both the inputs are not FullyConnection"),
                         return SUCCESS);
       ge::OutDataAnchorPtr out_anchor = relu_node->GetOutDataAnchor(0);
       FUSION_PASS_CHECK(out_anchor->GetPeerInDataAnchors().size() != 1,
-                        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add output node must be one"), return FAILED);
+                        OP_LOGW(relu_node, "add output node must be one"), return NOT_CHANGED);
       // the elemwise2 is not relu6
       bool is_relu = out_anchor->GetPeerInDataAnchors().at(0)->GetOwnerNode()->GetType() != "Relu6";
       FUSION_PASS_CHECK(FusionReturn(is_relu, fusion_nodes) == SUCCESS,
-                        OP_LOGD(FUSED_OP_TYPE.c_str(),
+                        OP_LOGD(relu_node,
                                 "Eltwise2 type not relu6, graph not support this ub fusion pass, skip fusion."),
                         return SUCCESS);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise2 type is relu6, this ub fusion success.");
@@ -354,9 +352,8 @@ Status TbeFullyconnectionElemwiseFusionPass::CheckReluNode(const ge::NodePtr &re
     float negative_slope = 0;
     if (relu_node->GetType() == "LeakyRelu") {
       FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(relu_node->GetOpDesc(), "negative_slope", negative_slope),
-                        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                              "LeakyRelu op[%s] type[%s] node does not have negative slope attr!",
-                                              relu_node->GetName().c_str(), relu_node->GetType().c_str()),
+                        OP_LOGW(relu_node, "LeakyRelu op[%s] type[%s] node does not have negative slope attr!",
+                                relu_node->GetName().c_str(), relu_node->GetType().c_str()),
                         return FAILED);
       if (std::fabs(negative_slope) > std::numeric_limits<float>::epsilon()) {
         fusion_nodes.clear();
@@ -439,7 +436,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   FusePreTransdata(matmulNodes, fusionNodes);
   Status ret = CheckDynamicMode(matmulNodes, fusionNodes);
   FUSION_PASS_CHECK(ret != NOT_CHANGED,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "check dynamic mode failed"),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "can not check dynamic mode"),
                     return ret);
 
   vector<ge::NodePtr> fcNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);

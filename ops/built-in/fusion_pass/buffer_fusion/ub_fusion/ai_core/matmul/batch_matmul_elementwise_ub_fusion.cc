@@ -60,7 +60,7 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
 
   string passName = "TbeBatchMatmulElemElemPattern";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName);
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
   pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
@@ -78,7 +78,7 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
 
   string passName1 = "TbeBatchMatmulElemPattern";
   BufferFusionPattern *pattern1 = new (std::nothrow) BufferFusionPattern(passName1);
-  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
   // define pattern rules
   pattern1->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
@@ -97,7 +97,7 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
    */
   string passName2 = "TbeBatchMatmulMulSigmoidMulPattern";
   BufferFusionPattern *pattern2 = new (std::nothrow) BufferFusionPattern(passName2);
-  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "can not new an object."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName2.c_str());
   // define pattern rules
   pattern2->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
@@ -271,7 +271,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
     return;
   }
   FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "matmulNodes's input size can not smaller than 1."), return);
   FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, matmulNodes, FUSED_OP_TYPE),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the first elemwise node is not match."), return);
   FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes1, matmulNodes, FUSED_OP_TYPE),
@@ -295,7 +295,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   FUSION_PASS_CHECK(
       !IntersectSplitMapWithElemwise(elemWiseNodes[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
                                      &index_already_provide_split_info, fusion_nodes),
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes[0]->GetName().c_str()), return);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "can not get split maps of %s", elemWiseNodes[0]->GetName().c_str()), return);
 
   if (!elemWiseNodes1.empty()) {
     ptr_split_maps_prev = &split_maps_fusion_op;
@@ -303,7 +303,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
     FUSION_PASS_CHECK(
         !IntersectSplitMapWithElemwise(elemWiseNodes1[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
                                        &index_already_provide_split_info, fusion_nodes),
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes1[0]->GetName().c_str()),
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "can not get split maps of %s", elemWiseNodes1[0]->GetName().c_str()),
         return);
   }
 
@@ -313,7 +313,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
     FUSION_PASS_CHECK(
         !IntersectSplitMapWithElemwise(elemWiseNodes2[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
                                        &index_already_provide_split_info, fusion_nodes),
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes2[0]->GetName().c_str()),
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "can not get split maps of %s", elemWiseNodes2[0]->GetName().c_str()),
         return);
   }
 
