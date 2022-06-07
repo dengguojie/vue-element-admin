@@ -26,7 +26,6 @@
 
 #include "error_util.h"
 #include "common/util/error_manager/error_manager.h"
-#include "common/util/platform_info.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -37,6 +36,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "tbe_ops_pass_util.h"
+#include "deep_md_fusion_pass_util.h"
 #include "concatv2_mean_mul_gatherv2_fusion_pass.h"
 
 namespace fe {
@@ -99,26 +99,6 @@ vector<FusionPattern*> ConcatV2MeanMulGatherV2FusionPass::DefinePatterns() {
   patterns.push_back(pattern);
 
   return patterns;
-}
-
-Status ConcatV2MeanMulGatherV2FusionPass::CheckPlatformSupported() {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "CheckPlatformSupported begin");
-
-  PlatformInfo platformInfo;
-  OptionalInfo optionalInfo;
-  FUSION_PASS_CHECK(
-      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
-      OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to get platform info"),
-      return NOT_CHANGED);
-
-  std::string socVersion = optionalInfo.soc_version;
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Get soc version: %s", socVersion.c_str());
-  FUSION_PASS_CHECK(socVersion != ASCEND_710,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Only 710 is supported, it has vector engine."),
-                    return NOT_CHANGED);
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "CheckPlatformSupported end");
-  return SUCCESS;
 }
 
 Status ConcatV2MeanMulGatherV2FusionPass::CheckIsMatch(ge::NodePtr concatV2Node, int64_t numN) {
@@ -283,9 +263,9 @@ Status ConcatV2MeanMulGatherV2FusionPass::SetEngineLabel(ge::NodePtr nodePtr, bo
 Status ConcatV2MeanMulGatherV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                                  vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter into AConcatV2MeanMulGatherV2FusionPass");
-  FUSION_PASS_CHECK(CheckPlatformSupported() != SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "failed to check platform info, fusion failed"),
-                    return NOT_CHANGED);
+  bool isSupport = false;
+  FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSupportVectorCore(FUSED_OP_TYPE, isSupport) != SUCCESS || !isSupport,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit for no support vector core"), return NOT_CHANGED);
 
   ge::NodePtr concatV2Node = GetNodeFromMapping(PATTERN_CONCATV2, mapping);
   FUSION_PASS_CHECK(concatV2Node == nullptr,
