@@ -48,8 +48,38 @@ enum class SchPattern {
     DEFAULT
 };
 
+
+struct VarAttr_rt2 {
+  VarAttr_rt2(const std::string& _name, size_t _index,
+          const std::string& _type, const std::string& _src_type, const int32_t& _length):
+          name (_name), index(_index), type (_type), src_type (_src_type), length (_length) {}
+  std::string name;
+  size_t index;
+  std::string type;
+  std::string src_type;
+  int32_t length{0};
+};
+
+class VarAttrWrap_rt2 {
+public:
+  bool ParseVarAttr(const nlohmann::json& json_info);
+  bool WriteVarAttrs(const uint64_t tiling_key, const std::string& op_type, const ge::Operator& op_paras,
+                     utils::OpRunInfo& run_info) const;
+  bool WriteVarAttrs(const uint64_t tiling_key, gert::TilingContext& context) const;
+
+private:
+  bool SetVarAttrs(const std::string& op_type, const ge::Operator& op_paras,
+                   utils::OpRunInfo& run_info, const std::vector<VarAttr_rt2>& var_attrs) const;
+  bool SetVarAttrs( const std::vector<VarAttr_rt2>& var_attrs, gert::TilingContext& context) const;
+
+private:
+  int32_t mode{-1};
+  std::vector<VarAttr_rt2> var_attrs;
+  std::unordered_map<std::uint64_t, std::vector<VarAttr_rt2>> var_attr_map;
+};
 struct AutoTilingCompileInfo {
   SchPattern pattern;
+  VarAttrWrap_rt2 var_attr_wrap;
 
 public:
   AutoTilingCompileInfo() {}

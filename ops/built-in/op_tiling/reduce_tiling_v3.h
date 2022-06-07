@@ -23,8 +23,13 @@
 #define REDUCE_TILING_V3_H
 #include <cmath>
 #include <vector>
-#include "vector_tiling.h"
 #include "graph/utils/op_desc_utils.h"
+#include "exe_graph/runtime/tiling_context.h"
+#include "exe_graph/runtime/kernel_run_context.h"
+
+#include "vector_tiling.h"
+#include "auto_tiling.h"
+#include "auto_tiling_context.h"
 
 namespace optiling {
 namespace v3 {
@@ -32,16 +37,17 @@ constexpr int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
 
 struct ReduceReorderInfo {
   std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
-  std::vector<int32_t> fused_block_tiling_axis;
+  std::vector<int64_t> fused_block_tiling_axis;
   // pos after reorder : pos before reorder
   // vector.idx:vector[idx]
   std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 };
 
-struct ReduceCompileInfo {
+struct ReduceCompileInfo: AutoTilingCompileInfo {
   public:
-    ReduceCompileInfo(){};
-    ReduceCompileInfo(const std::string& op_info, const nlohmann::json& json_info);
+    ReduceCompileInfo() = default;
+    ReduceCompileInfo(const char* op_type, const nlohmann::json& json_info);
+    ~ReduceCompileInfo() override = default;
     bool is_const{false};
     bool is_const_post{false};
     bool atomic{false};
@@ -62,19 +68,18 @@ struct ReduceCompileInfo {
     std::vector<int32_t> ub_info;
     std::vector<int32_t> ub_info_pad;
     std::vector<int32_t> ub_info_transpose;
-    std::pair<bool, std::vector<int32_t>> ori_axis;
+    std::pair<bool, std::vector<int64_t>> ori_axis;
     std::pair<bool, uint32_t> axes_idx;
     std::pair<bool, int32_t> compile_pattern;
     std::unordered_map<std::string, uint32_t> block_dim_map;
     std::unordered_map<std::string, bool> atomic_flags_map;
-    VarAttrWrap varAttrWrap;
-
+    bool Parse(const char* op_type, const nlohmann::json& json_info);
     bool parsed_success{true};
 
   private:
     bool GetCompileInfoForProcessControl(const nlohmann::json& json_info);
     bool GetCompileInfoForConst(const nlohmann::json& json_info);
-    bool GetCompileInfoForCalculate(std::string op_type, const nlohmann::json& json_info);
+    bool GetCompileInfoForCalculate(const char* op_type, const nlohmann::json& json_info);
     bool GetCompileInfoForRunInfo(const nlohmann::json& json_info);
 };
 
@@ -93,34 +98,37 @@ struct ReduceTilingInfo {
   uint idx{0};
 };
 
+template <typename T>
 class Reduce {
  public:
-  explicit Reduce(const std::string& _op_type, const ge::Operator& _op_paras,
-                  const ReduceCompileInfo& parsed_compile_info, utils::OpRunInfo& _run_info)
-      : op_type(_op_type), op_paras(_op_paras), compileInfo(parsed_compile_info), run_info(_run_info) {
+  explicit Reduce(T* _context, const OpInfoImpl* _op_info)
+    : context(_context),
+      op_info(_op_info) {
   }
   ~Reduce() {
   }
 
   bool DoTiling();
-  bool DoTiling(const OpInfo& op_info);
+  bool DoTiling(const OpInfoImpl& op_info);
 
  private:
-  int32_t CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& axis);
+  int32_t CalcPattern(std::vector<int64_t>& input, std::vector<int64_t>& axis);
   int64_t GetReorderInputShapeMul(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
   int64_t GetAlignShapeMul(int32_t axis_index) const;
   int64_t GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index);
   bool CalcBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor, int32_t& block_dim);
   int32_t GetRealBlockTilingAxis(std::vector<int64_t>& shape, int32_t idx);
-  int32_t CalcConstPattern(std::vector<int32_t>& reduce_axis);
-  bool getBlockTilingInfoX(int64_t cur_block_factor, int64_t i, int64_t right_total_num);
-  bool getBlockTilingInfoY(int32_t left_block_dim, int64_t i,
+  int32_t CalcConstPattern(std::vector<int64_t>& reduce_axis);
+  bool GetBlockTilingInfoX(int64_t cur_block_factor, int64_t i, int64_t right_total_num);
+  bool GetBlockTilingInfoY(int32_t left_block_dim, int64_t i,
                            int64_t max_block_tilling_factor, int64_t right_total_num);
-  bool getReduceAxisTensor();
+  bool GetBlockTilingInfoInner(int64_t i, int64_t cur_block_dim,
+                               int64_t cur_block_factor, int64_t right_total_num);
+  bool GetBlockTilingInfoLessThanCoreNum(int32_t left_block_dim, uint32_t i, int64_t right_total_num );
+  bool GetReduceAxisTensor();
 
-  bool IsInVector(std::vector<int32_t>& input, int32_t value);
+  bool IsInVector(std::vector<int64_t>& input, int32_t value);
   void EliminateOne();
-  bool GetConstValue(const ge::GeTensor* geTensor, const ge::DataType& dtype, std::vector<int32_t>& const_vec);
   bool CheckCompileInfoForCalculate();
   bool GetGeInfo();
   bool SetInit();
@@ -129,7 +137,7 @@ class Reduce {
   bool DoZeroBranch();
   bool DoConstRunTimeBranch();
   bool DoReduceTiling();
-  bool DoReduceTiling(const OpInfo& op_info);
+  bool DoReduceTiling(const OpInfoImpl& op_info);
   bool WriteWorkspace();
   bool WriteTilingData();
   bool WriteConstTilingData();
@@ -159,12 +167,16 @@ class Reduce {
   bool IsReducePadCase() const;
   bool IsEnableReducePad() const;
   bool IsReduceTransposeCase();
+  bool GetInputShapeFromOpShape(OpShape shape);
+  bool GetInputShapeOri();
+  bool GetInputShapeOri(const OpInfoImpl& op_info);
+  bool GetReduceAxisOri(const OpInfoImpl& op_info);
 
  private:
-  const std::string& op_type;
-  const ge::Operator& op_paras;
-  const ReduceCompileInfo& compileInfo;
-  utils::OpRunInfo& run_info;
+  std::string op_type;
+  T* context;
+  const OpInfoImpl* op_info{nullptr};
+  const ReduceCompileInfo* compileInfo;
   ReduceTilingInfo reduceTilingInfo;
   ReduceReorderInfo reorderInfo;
 
@@ -176,14 +188,14 @@ class Reduce {
   bool is_reduce_transpose_case{false};
 
   std::vector<int64_t> input_shape_ori;
-  std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int64_t> reduce_axis_ori{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
   std::vector<int64_t> input_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
-  std::vector<int32_t> reduce_axis{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int64_t> reduce_axis{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
   std::vector<int64_t> output_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 
   // assistant
   std::vector<int64_t> normalize_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
-  std::vector<int32_t> normalize_axis{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
+  std::vector<int64_t> normalize_axis{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
   std::vector<int32_t> reduce_flag{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 
   bool is_last_axis_reduce{false};
@@ -195,15 +207,18 @@ class Reduce {
   int32_t ubSizeA{-1};
   int32_t ubSizeB{-1};
 };
+
+template class Reduce<AutoTilingContext>;
+template class Reduce<AutoTilingOp>;
 }  // namespace v3
 
 class ReduceTilingHandler: public AutoTilingHandler {
   public:
     ReduceTilingHandler(const std::string& op_info, const std::string& pattern, const nlohmann::json& json_info)
-                         : AutoTilingHandler(op_info, pattern), compileInfo(op_info, json_info) {}
+                         : AutoTilingHandler(op_info, pattern), compileInfo(op_info.c_str(), json_info) {}
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
-  bool ParsedSuccess() const{
+  bool ParsedSuccess() const {
     return compileInfo.parsed_success;
   }
 

@@ -69,6 +69,7 @@ public:
   size_t GetInputNums(const OpInfoImpl* op_info);
   size_t GetOutputNums();
   OpShape GetInputShape(size_t idx);
+  OpShape GetOriginInputShape(size_t idx);
   OpShape GetOutputShape(size_t idx);
   const char* GetOpType();
   const AutoTilingCompileInfo* GetCompileInfo();
@@ -80,6 +81,7 @@ public:
   bool GetAttr(const char* name, size_t index, std::vector<int64_t>& values);
   bool GetConstInput(const char* name, size_t index, int64_t& value);
   bool GetConstInput(const char* name, size_t index, std::vector<int64_t>& values);
+  bool WriteVarAttrs(const uint64_t tiling_key) const;
   const ge::Operator* GetOpParas();
   utils::OpRunInfo* GetRunInfo();
 
@@ -124,6 +126,7 @@ public:
   size_t GetInputNums(const OpInfoImpl* op_info);
   size_t GetOutputNums();
   OpShape GetInputShape(size_t idx);
+  OpShape GetOriginInputShape(size_t idx);
   OpShape GetOutputShape(size_t idx);
   const char* GetOpType();
   const AutoTilingCompileInfo* GetCompileInfo();
@@ -135,6 +138,7 @@ public:
   bool GetAttr(const char* name, size_t index, std::vector<int64_t>& values);
   bool GetConstInput(const char* name, size_t index, int64_t& value);
   bool GetConstInput(const char* name, size_t index, std::vector<int64_t>& values);
+  bool WriteVarAttrs(const uint64_t tiling_key);
   const ge::Operator* GetOpParas();
   utils::OpRunInfo* GetRunInfo();
 

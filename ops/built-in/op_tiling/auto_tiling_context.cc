@@ -128,6 +128,20 @@ OpShape AutoTilingOp::GetInputShape(size_t idx) {
   return opShape;
 }
 
+OpShape AutoTilingOp::GetOriginInputShape(size_t idx) {
+  OP_LOGD(op_type, "Get origin input shape %lld:", idx);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(*op_paras);
+  if (op_desc == nullptr) {
+    return OpShape();
+  }
+  auto input_desc = op_desc->MutableInputDesc(idx);
+  if (input_desc == nullptr) {
+    return OpShape();
+  }
+  const ge::GeShape& shape = input_desc->GetOriginShape();
+  OpShape opShape(&shape);
+  return opShape;
+}
 OpShape AutoTilingOp::GetOutputShape(size_t idx) {
   OP_LOGD(op_type, "Get output shape %lld:", idx);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(*op_paras);
@@ -275,6 +289,16 @@ OpShape AutoTilingContext::GetInputShape(size_t idx) {
   OpShape opShape(&shape);
   return opShape;
 }
+OpShape AutoTilingContext::GetOriginInputShape(size_t idx) {
+  OP_LOGD(context->GetNodeType(), "Get origin input shape %lld:", idx);
+  auto input_shape = context->GetInputShape(idx);
+  if (input_shape == nullptr) {
+    return OpShape();
+  }
+  const gert::Shape& shape = input_shape->GetOriginShape();
+  OpShape opShape(&shape);
+  return opShape;
+}
 
 OpShape AutoTilingContext::GetOutputShape(size_t idx) {
   OP_LOGD(context->GetNodeType(), "Get output shape %lld:", idx);
@@ -391,6 +415,15 @@ bool AutoTilingContext::GetConstInput(const char* name, size_t index, std::vecto
   return false;
 }
 
+bool AutoTilingOp::WriteVarAttrs(const uint64_t tiling_key) const {
+  return compile_info->var_attr_wrap.WriteVarAttrs(tiling_key, op_type, *op_paras, *run_info);
+}
+
+bool AutoTilingContext::WriteVarAttrs(const uint64_t tiling_key) {
+  const AutoTilingCompileInfo *autoTilingCompileInfo =
+                            dynamic_cast<const AutoTilingCompileInfo *>(GetCompileInfo());
+  return autoTilingCompileInfo->var_attr_wrap.WriteVarAttrs(tiling_key, *context);
+}
 const ge::Operator* AutoTilingContext::GetOpParas() {
   return nullptr;
 }
