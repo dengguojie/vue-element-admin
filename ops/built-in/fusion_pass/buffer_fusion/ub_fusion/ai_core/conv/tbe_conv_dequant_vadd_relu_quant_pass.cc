@@ -222,7 +222,8 @@ vector<BufferFusionPattern*> ConvDequantVaddReluQuantFusionPass::DefinePatterns(
 }
 
 static Status AddReadSelectFromGraph(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes,
-                                     bool &use_common_rules_flag) {
+                                     bool &use_common_rules_flag, bool &read_select_flag)
+{
   for (auto &item : mapping) {
     const BufferFusionOpDesc *op_desc = item.first;
     if (op_desc != nullptr && op_desc->desc_name == kPatternVadd) {
@@ -238,6 +239,7 @@ static Status AddReadSelectFromGraph(const BufferFusionMapping &mapping, vector<
         }
         if (src_node->GetType() == "ReadSelect") {
           use_common_rules_flag = false;
+          read_select_flag = true;
           fusion_nodes.push_back(src_node);
           break;
         }
@@ -327,7 +329,12 @@ static bool IsShapeEqual(const NodePtr a_node, uint32_t id_in, uint32_t id_out) 
   return in_size == out_size;
 }
 
-void ConvDequantVaddReluQuantFusionPass::SetMemoryReuse(const BufferFusionMapping &mapping) {
+void ConvDequantVaddReluQuantFusionPass::SetMemoryReuse(const BufferFusionMapping &mapping,
+                                                        bool read_select_flag)
+{
+  if (read_select_flag) {
+    return;
+  }
   size_t in_pre = 0;
   std::string deq_name;
   uint32_t in_pos = 0;
@@ -481,7 +488,8 @@ static void UpdateFusionNodes(vector<ge::NodePtr> &conv_nodes, vector<ge::NodePt
  * @param [out] mapping: nodes matched by pattern
  * @return bool: fusion status ok or not.
  */
-Status ConvDequantVaddReluQuantFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+Status ConvDequantVaddReluQuantFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes)
+{
   OP_LOGD(fused_op_type_.c_str(), "Begin to do ConvDequantVaddReluQuant!");
   PlatformInfo platformInfo;
   OptionalInfo optionalInfo;
@@ -502,18 +510,21 @@ Status ConvDequantVaddReluQuantFusionPass::GetFusionNodes(const BufferFusionMapp
       return SUCCESS;
     }
   }
-  auto relu_node = GetMatchedNodesByDescName(kPatternRelu, mapping);
-  if (relu_node.size() == 1) {
-    use_common_rules_flag = false;
-    SetMemoryReuse(mapping);
-  }
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused
   EraseNodeFromMapping(mapping, fusion_nodes, TBE_PATTERN_OUTPUT_NODE);
-  if (SUCCESS != AddReadSelectFromGraph(mapping, fusion_nodes, use_common_rules_flag)) {
+
+  bool read_select_flag = false;
+  if (SUCCESS != AddReadSelectFromGraph(mapping, fusion_nodes, use_common_rules_flag, read_select_flag)) {
     OP_LOGE(fused_op_type_.c_str(), "Find ReadSelect node from graph failed.");
     return FAILED;
   }
+  auto relu_node = GetMatchedNodesByDescName(kPatternRelu, mapping);
+  if (relu_node.size() == 1) {
+    use_common_rules_flag = false;
+    SetMemoryReuse(mapping, read_select_flag);
+  }
+
   vector<ge::NodePtr> matched_quant_node = GetMatchedNodesByDescName(kPatternQuant, mapping);
   vector<ge::NodePtr> matched_elem_node = GetMatchedNodesByDescName(kPatternVadd, mapping);
   vector<ge::NodePtr> matched_conv_node = GetMatchedNodesByDescName(kPatternConvolution, mapping);

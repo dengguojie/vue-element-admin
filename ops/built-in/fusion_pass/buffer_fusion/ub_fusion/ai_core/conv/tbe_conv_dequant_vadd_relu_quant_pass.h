@@ -59,7 +59,7 @@ private:
   /*
    * @brief: reuse vadd output with input buffer
    */
-  void SetMemoryReuse(const BufferFusionMapping &mapping);
+  void SetMemoryReuse(const BufferFusionMapping &mapping, bool read_select_flag);
   const string fused_op_type_ = "FusedConv2DDequantVaddReluQuantOp";
 };
 }  // namespace fe
