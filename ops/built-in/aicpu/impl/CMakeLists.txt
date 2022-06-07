@@ -59,6 +59,7 @@ set(local_kernels_src_files
     kernels/normalized/logsoftmaxv2.cc
     kernels/normalized/masked_select.cc
     kernels/normalized/masked_select_grad.cc
+    kernels/normalized/matrix_diag_part_v3.cc
     kernels/normalized/mul.cc
     kernels/normalized/multinomial_alias_draw.cc
     kernels/normalized/multinomial_alias_setup.cc
