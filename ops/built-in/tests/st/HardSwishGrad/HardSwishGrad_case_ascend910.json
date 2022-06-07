@@ -1,4 +1,5 @@
 [
+    {"compile_flag": 1},
     {
       "op": "HardSwishGrad",
       "input_desc": [

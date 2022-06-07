@@ -1,0 +1,45 @@
+[
+    {"compile_flag": 1},
+    {
+        "case_name": "Test_HardSwish_001",
+        "op": "HardSwish",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [3, 8, 24, 16]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [3, 8, 24, 16]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_HardSwish_002",
+        "op": "HardSwish",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float32",
+                "shape": [3, 8, 24, 16]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float32",
+                "shape": [3, 8, 24, 16]
+            }
+        ],
+        "attr": []
+    }
+]

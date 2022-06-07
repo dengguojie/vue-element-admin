@@ -46,6 +46,8 @@ RsqrtGrad,rsqrt_grad.json
 Select,select.json
 SelectV2,select_v2.json
 ThresholdV2,threshold_v2.json
+HardSwish,hard_swish.json
+HardSwishGrad,hard_swish_grad.json
 Shrink,shrink.json
 Sigmoid,sigmoid.json
 SigmoidGrad,sigmoid_grad.json
