@@ -18,35 +18,35 @@
  * \file nn_calculation_ops.cpp
  * \brief
  */
-#define CHECK_OP_FUNC(cond, post_action_expr, msg, ...)                                                          \
-  {                                                                                                              \
-    if (cond) {                                                                                                  \
-      AscendString local_op_name;                                                                                \
-      CHECK(op.GetName(local_op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
-      CUBE_INNER_ERR_REPORT(local_op_name.GetString(), msg, ##__VA_ARGS__);                                      \
-      post_action_expr;                                                                                          \
-    }                                                                                                            \
+#define ASSERT_TRUE(cond, expr_exception_handling) \
+  do {                                             \
+    if (!(cond)) {                                 \
+      expr_exception_handling;                     \
+    }                                              \
+  } while (0);
+
+#define CHECK_OP_FUNC(cond, post_action_expr, msg, ...)          \
+  {                                                              \
+    if (cond) {                                                  \
+      CUBE_INNER_ERR_REPORT(TbeGetName(op), msg, ##__VA_ARGS__); \
+      post_action_expr;                                          \
+    }                                                            \
   }
 
-#define CHECK_SIZE(cond, post_action_expr, msg)                           \
-  {                                                     \
-    if (cond) {                                         \
-      AscendString local_op_name; \
-      CHECK(op.GetName(local_op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
-      ErrorManager::GetInstance().ATCReportErrMessage("E50058", {"op_name", "description"}, \
-                                                      {local_op_name.GetString(), msg}); \
+#define CHECK_SIZE(cond, post_action_expr, msg)                                                                     \
+  {                                                                                                                 \
+    if (cond) {                                                                                                     \
+      ErrorManager::GetInstance().ATCReportErrMessage("E50058", {"op_name", "description"}, {TbeGetName(op), msg}); \
+      post_action_expr;                                                                                             \
+    }                                                                                                               \
+  }
+
+#define CHECK_INFO(cond, post_action_expr, msg, ...) \
+  {                                                  \
+    if (cond) {                                      \
+      OP_LOGE(TbeGetName(op), msg, ##__VA_ARGS__);   \
       post_action_expr;                              \
-    }                                                   \
-  }
-
-#define CHECK_INFO(cond, post_action_expr, msg, ...)                                                             \
-  {                                                                                                              \
-    if (cond) {                                                                                                  \
-      AscendString local_op_name;                                                                                \
-      CHECK(op.GetName(local_op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), post_action_expr); \
-      OP_LOGE(local_op_name.GetString(), msg, ##__VA_ARGS__);                                                    \
-      post_action_expr;                                                                                          \
-    }                                                                                                            \
+    }                                                \
   }
 
 #include "./nn_calculation_ops.h"
@@ -164,6 +164,13 @@ struct OpDetailInfo {
   AscendString op_name;
   OpDescPtr op_desc;
   AscendString op_type;
+};
+
+struct StrideDilationHW {
+  int32_t stride_h;
+  int32_t stride_w;
+  int32_t dilation_h;
+  int32_t dilation_w;
 };
 // ----------------LSTM begin-------------------
 
@@ -5836,81 +5843,44 @@ IMPLEMT_VERIFIER(DeformableConv2D, DeformableConv2DVerify) {
 INFER_FUNC_REG(DeformableConv2D, DeformableConv2DInfer);
 VERIFY_FUNC_REG(DeformableConv2D, DeformableConv2DVerify);
 // ----------------Deconvolution--------------------------
-static bool GetAttrsDeconv(ge::Operator& op, Format refer, int32_t& strh,
-                           int32_t& strw, int32_t& dilh, int32_t& dilw) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+static bool GetAttrsDeconv(const ge::Operator &op, const Format &x_format, StrideDilationHW &stride_dilation_hw) {
+  auto op_name = TbeGetName(op);
 
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
   // in deconv stride len is 2
-  if (s_size != 2) {
-    OP_LOGE(op_name.GetString(),
-            "strides list should be 2d."
-            " actual is: %lu.",
-            s_size);
-    string sizealue = ConcatString(s_size);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "sSize";
-    err_map["expected_value"] = "2d";
-    err_map["input_value"] = sizealue;
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC(s_size != 2, return false,
+                "The length of the strides attribute should be 2, but the actual strides is %s and the length is %zu.",
+                DebugString(stride_list).c_str(), s_size);
+  CHECK_OP_FUNC(stride_list[0] <= 0 || stride_list[1] <= 0, return false,
+                "The value of the strides attribute should be > 0, but it is actuall %s.",
+                DebugString(stride_list).c_str());
+
   std::vector<int32_t> dilation_list;
   op.GetAttr("dilations", dilation_list);
   auto d_size = dilation_list.size();
-  if (d_size != kConv2dDimSizeLimit) {
-    OP_LOGE(op_name.GetString(),
-            "dilations list should be 4d."
-            " actual is: %lu.",
-            d_size);
-    string realvalue = ConcatString(d_size);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "dSize";
-    err_map["expected_value"] = "4d";
-    err_map["input_value"] = realvalue;
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC(
+      d_size != kConv2dDimSizeLimit, return false,
+      "The length of the dilations attribute should be %d, but the actual dilations is %s and the length is %zu.",
+      kConv2dDimSizeLimit, DebugString(dilation_list).c_str(), d_size);
 
-  strh = stride_list[0];
-  strw = stride_list[1];
-  if (refer == FORMAT_NCHW) {
-    dilh = dilation_list[kHDimNCHWIdx];
-    dilw = dilation_list[kWDimNCHWIdx];
-  } else {
-    return false;
-  }
-  if (strh <= 0 || strw <= 0) {
-    OP_LOGE(op_name.GetString(),
-            "strides should be positive, "
-            " actual is [%d,%d].",
-            strh, strw);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "strides";
-    err_map["expected_value"] = "positive";
-    err_map["input_value"] = "[" + std::to_string(strh) + "," + std::to_string(strw) + "]";
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC(x_format != FORMAT_NCHW, return false, "The format of the input x should be %s, but the actual is %s.",
+                TypeUtils::FormatToSerialString(FORMAT_NCHW).c_str(),
+                TypeUtils::FormatToSerialString(x_format).c_str());
 
+  stride_dilation_hw.stride_h = stride_list[0];
+  stride_dilation_hw.stride_w = stride_list[1];
+  stride_dilation_hw.dilation_h = dilation_list[kHDimNCHWIdx];
+  stride_dilation_hw.dilation_w = dilation_list[kWDimNCHWIdx];
   return true;
 }
 
 
 IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  auto op_name = TbeGetName(op);
 
-  OP_LOGD(op_name.GetString(), "Enter Deconvolution InferDataSlice.");
+  OP_LOGD(op_name, "Enter Deconvolution InferDataSlice.");
 
   auto x_tensor = op.get_input_desc_x();
   auto w_tensor = op.get_input_desc_filter();
@@ -5926,31 +5896,15 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   }
   int32_t kh = w_shape[kHDimNCHWIdx];
   int32_t kw = w_shape[kWDimNCHWIdx];
-  int32_t strh = 0;
-  int32_t strw = 0;
-  int32_t dilh = 0;
-  int32_t dilw = 0;
 
-  if (false == GetAttrsDeconv(op, x_format, strh, strw, dilh, dilw)) {
-    OP_LOGE(op_name.GetString(), "get attrs failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "get attrs failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  if ((strh <= 0) || (strw <= 0)) {
-    OP_LOGE(op_name.GetString(), "stride can not less than zero");
-    ErrorManager::GetInstance().ATCReportErrMessage("E50029",
-                                                    {"op_name", "param_name", "expected_value", "input_value"},
-                                                    {op_name.GetString(), "strides", "positive",
-                                                    std::to_string(strh) + ", " + std::to_string(strw)});
-    return GRAPH_FAILED;
-  }
+  StrideDilationHW stride_dilation_hw;
+  ASSERT_TRUE(GetAttrsDeconv(op, x_format, stride_dilation_hw), return GRAPH_FAILED);
+
   vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
-  CHECK_SIZE(pad_list.size() != kConv2dPadSizeLimit, return GRAPH_FAILED, "pad is invalid");
+  CHECK_OP_FUNC(pad_list.size() != kConv2dPadSizeLimit, return GRAPH_FAILED,
+                "The length of the pads attribute should be %zu, but the actual pads is %s and the length is %zu.",
+                kConv2dPadSizeLimit, DebugString(pad_list).c_str(), pad_list.size());
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
@@ -5965,7 +5919,7 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
 
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
+    OP_LOGD("There is no slice information of output y, so there is no need to derive the slice information of input.");
     return GRAPH_FAILED;
   }
 
@@ -5973,11 +5927,18 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
     if (y_data_slice[i].size() > 0) {
       bool deconv_failed = i == 1 && x_dtype != DT_INT8 && y_data_slice[i].size() < kDataSliceLen;
       if (deconv_failed) {
-        CUBE_INNER_ERR_REPORT(op_name.GetString(), "Shape dim check failed.");
+        CUBE_INNER_ERR_REPORT(op_name, "Shape dim check failed.");
         return GRAPH_FAILED;
       } else {
         std::vector<int32_t> y_position = {kNDimIdx, kCDimNCHWIdx, kHDimNCHWIdx, kWDimNCHWIdx};
-        std::vector<int32_t> attr_param = {kh, kw, dilh, dilw, strh, strw, ih, iw};
+        std::vector<int32_t> attr_param = {kh,
+                                           kw,
+                                           stride_dilation_hw.dilation_h,
+                                           stride_dilation_hw.dilation_w,
+                                           stride_dilation_hw.stride_h,
+                                           stride_dilation_hw.stride_w,
+                                           ih,
+                                           iw};
         std::vector<int32_t> input_sizes;
         return data_slice_conv2d_backprop_input(op, y_data_slice, x_data_slice, w_data_slice,
                                                 y_position, attr_param, input_sizes, pad_list,
@@ -5986,7 +5947,8 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
     }
   }
 
-  OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
+  OP_LOGD(op_name,
+          "There is no slice information of output y, so there is no need to derive the slice information of input.");
   return GRAPH_FAILED;
 }
 
@@ -6013,10 +5975,9 @@ static void set_deconvolution_out_shape_range(size_t idx,
 }
 
 IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  auto op_name = TbeGetName(op);
 
-  OP_LOGD(op_name.GetString(), "Enter DeconvolutionInfer.");
+  OP_LOGD(op_name, "Enter DeconvolutionInfer.");
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(opDesc, "op desc", return GRAPH_FAILED);
   auto xTensor = opDesc->MutableInputDesc("x");
@@ -6030,8 +5991,8 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   auto wShape = wTensor->MutableShape().GetDims();
   auto xFormat = xTensor->GetFormat();
   auto wFormat = wTensor->GetFormat();
-  CHECK_OP_FUNC(FORMAT_RESERVED == xFormat, return GRAPH_FAILED, "get format failed: %d", xFormat);
-  CHECK_OP_FUNC(FORMAT_RESERVED == wFormat, return GRAPH_FAILED, "get format failed: %d", wFormat);
+  CHECK_OP_FUNC(FORMAT_RESERVED == xFormat, return GRAPH_FAILED, "Failed to obtain format of input x.");
+  CHECK_OP_FUNC(FORMAT_RESERVED == wFormat, return GRAPH_FAILED, "Failed to obtain format of input filter.");
   bool isDynamic = false;
   bool unknownRank = IsUnknownRankShape(xShape);
   if (std::find(xShape.begin(), xShape.end(), -1) != xShape.end()) {
@@ -6046,20 +6007,9 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   int32_t kc = 0;
   int32_t kh = 0;
   int32_t kw = 0;
-  if (xFormat != FORMAT_NCHW) {
-    OP_LOGE(op_name.GetString(),
-            "input x format should be NCHW"
-            " actual is: %d",
-            xFormat);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "xFormat";
-    err_map["expected_format_list"] = "[NCHW]";
-    err_map["format"] = ConcatString(xFormat);
-    std::string report_error_code = "E50033";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(xFormat != FORMAT_NCHW, return GRAPH_FAILED,
+                "The format of the input x should be %s, but the actual is %s.",
+                TypeUtils::FormatToSerialString(FORMAT_NCHW).c_str(), TypeUtils::FormatToSerialString(xFormat).c_str());
   if (!unknownRank) {
     in = xShape[kNDimIdx];
     ic = xShape[kCDimNCHWIdx];
@@ -6067,10 +6017,9 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
     iw = xShape[kWDimNCHWIdx];
   }
 
-  if (wFormat != FORMAT_NCHW) {
-    OP_LOGE(op_name.GetString(), "wFormat != FORMAT_NCHW");
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(wFormat != FORMAT_NCHW, return GRAPH_FAILED,
+                "The format of the input filter should be %s, but the actual is %s.",
+                TypeUtils::FormatToSerialString(FORMAT_NCHW).c_str(), TypeUtils::FormatToSerialString(wFormat).c_str());
   kn = wShape[kNDimIdx];
   kc = wShape[kCDimNCHWIdx];
   kh = wShape[kHDimNCHWIdx];
@@ -6078,55 +6027,31 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
 
   int64_t groups = 1;
   if (GRAPH_SUCCESS != op.GetAttr("groups", groups)) {
-    OP_LOGI(op_name.GetString(), "no groups setting, use groups as 1");
+    OP_LOGI(op_name, "Since the value of the attribute groups is not explicitly set, the default value of 1 is used.");
+  } else {
+    OP_LOGD(op_name, "The value of the attribute groups is %lld.", groups);
   }
-  OP_LOGI(op_name.GetString(), "groups is %lld", groups);
 
   bool invalid_channel = (!unknownRank) && (ic != -1) && (ic != kn);
-  if (invalid_channel) {
-    OP_LOGE(op_name.GetString(),
-            "input x channel should be equal to filter. "
-            "x format is: %d, filter format is: %d "
-            "x shape is: [%s], filter shape is: [%s].",
-            xFormat, wFormat, ops::to_string(xShape).c_str(), ops::to_string(wShape).c_str());
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["attr_name"] = "channel";
-    err_map["param1_name"] = "x";
-    err_map["param1_value"] = std::to_string(ic);
-    err_map["param2_name"] = "filter";
-    err_map["param2_value"] = std::to_string(kn);
-    std::string report_error_code = "E50031";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(invalid_channel, return GRAPH_FAILED,
+                "The channel of input x and filter should be same, but the actual format of x is %s, the shape is %s; "
+                "the format of filter is %s, and the shape is %s.",
+                TypeUtils::FormatToSerialString(xFormat).c_str(), DebugString(xShape).c_str(),
+                TypeUtils::FormatToSerialString(wFormat).c_str(), DebugString(wShape).c_str());
 
-  int32_t strh = 0;
-  int32_t strw = 0;
-  int32_t dilh = 0;
-  int32_t dilw = 0;
   int32_t padt = 0;
   int32_t padb = 0;
   int32_t padl = 0;
   int32_t padr = 0;
-  if (false == GetAttrsDeconv(op, xFormat, strh, strw, dilh, dilw)) {
-    OP_LOGE(op_name.GetString(), "get attrs failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "get attrs failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  if (false == GetPadConv2D(op_name, opDesc, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr)) {
-    OP_LOGE(op_name.GetString(), "get pads attrs failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "get pads attrs failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  StrideDilationHW stride_dilation_hw;
+  ASSERT_TRUE(GetAttrsDeconv(op, xFormat, stride_dilation_hw), return GRAPH_FAILED);
+  int32_t strh = stride_dilation_hw.stride_h;
+  int32_t strw = stride_dilation_hw.stride_w;
+  int32_t dilh = stride_dilation_hw.dilation_h;
+  int32_t dilw = stride_dilation_hw.dilation_w;
+  ASSERT_TRUE(GetPadConv2D(AscendString(op_name.c_str()), opDesc, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb,
+                           padl, padr),
+              return GRAPH_FAILED);
   int khext = dilh * (kh - 1) + 1;
   int kwext = dilw * (kw - 1) + 1;
   int64_t oh = strh * (ih - 1) + khext - padt - padb;
@@ -6139,7 +6064,7 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
     size_t idxC = 1;
     size_t idxH = kHDimNCHWIdx;
     size_t idxW = kWDimNCHWIdx;
-    OP_LOGD(op_name.GetString(), "dynamic shape set range");
+    OP_LOGD(op_name, "dynamic shape set range");
     std::vector<std::pair<int64_t, int64_t>> x_range;
     xTensor->GetShapeRange(x_range);
     if (ih == -1) {
@@ -6170,21 +6095,11 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   }
   vector<int64_t> y_shape;
   auto yFormat = yTensor->GetFormat();
-  CHECK_OP_FUNC(FORMAT_RESERVED == yFormat, return GRAPH_FAILED, "get format failed: %d", yFormat);
-  if (yFormat != FORMAT_NCHW) {
-    OP_LOGE(op_name.GetString(),
-            "output y format should be NCHW."
-            " actual is: %d",
-            yFormat);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "yFormat";
-    err_map["expected_format_list"] = "[NCHW]";
-    err_map["format"] = ConcatString(yFormat);
-    std::string report_error_code = "E50033";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(FORMAT_RESERVED == yFormat, return GRAPH_FAILED, "Failed to obtain format of output y.");
+  CHECK_OP_FUNC(yFormat != FORMAT_NCHW, return GRAPH_FAILED,
+                "The format of the output y should be %s, but the actual is %s.",
+                TypeUtils::FormatToSerialString(FORMAT_NCHW).c_str(), TypeUtils::FormatToSerialString(yFormat).c_str());
+
   y_shape.push_back(in);
   y_shape.push_back(kc * groups);
   y_shape.push_back(oh);
@@ -6195,87 +6110,48 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   if (xDtype == DT_INT8) {
     yTensor->SetDataType(DT_INT32);
   }
-  OP_LOGD(op_name.GetString(), "Leave DeconvolutionInfer.");
+  OP_LOGD(op_name, "Leave DeconvolutionInfer.");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Deconvolution, DeconvolutionVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  auto op_name = TbeGetName(op);
 
-  OP_LOGD(op_name.GetString(), "Enter DeconvolutionVerify.");
+  OP_LOGD(op_name, "Enter DeconvolutionVerify.");
   auto x_tensor = op.get_input_desc_x();
   auto w_tensor = op.get_input_desc_filter();
 
   auto x_shape = x_tensor.GetShape().GetDims();
   auto w_shape = w_tensor.GetShape().GetDims();
   bool unknownRank = IsUnknownRankShape(x_shape);
-  if ((!unknownRank) && (x_shape.size() != kConv2dDimSizeLimit)) {
-    OP_LOGE(op_name.GetString(), "input x shape should be 4d.");
-    string xvalue = ConcatString(x_shape.size());
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "xShape";
-    err_map["expected_value"] = "4d";
-    err_map["input_value"] = xvalue;
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  if (w_shape.size() != kConv2dDimSizeLimit) {
-    OP_LOGE(op_name.GetString(), "input filter shape should be 4d.");
-    string w_value = ConcatString(w_shape.size());
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param_name"] = "wShape";
-    err_map["expected_value"] = "4d";
-    err_map["input_value"] = w_value;
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(
+      (!unknownRank) && (x_shape.size() != kConv2dDimSizeLimit), return GRAPH_FAILED,
+      "The length of the shape of the input x should be %d, but the actual shape is %s and the length is %zu.",
+      kConv2dDimSizeLimit, DebugString(x_shape).c_str(), x_shape.size());
+
+  CHECK_OP_FUNC(
+      w_shape.size() != kConv2dDimSizeLimit, return GRAPH_FAILED,
+      "The length of the shape of the input filter should be %d, but the actual shape is %s and the length is %zu.",
+      kConv2dDimSizeLimit, DebugString(w_shape).c_str(), w_shape.size());
 
   auto x_dtype = x_tensor.GetDataType();
   auto w_dtype = w_tensor.GetDataType();
-  if (x_dtype != w_dtype) {
-    OP_LOGE(op_name.GetString(),
-            "input x dtype is differ from filter dtype."
-            " actual x dtype is: %d filter dtype is: %d",
-            (int)x_dtype, (int)w_dtype);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["param1"] = "x";
-    err_map["param1_data_type"] = std::to_string(x_dtype);
-    err_map["param2"] = "filter";
-    err_map["param2_data_type"] = std::to_string(w_dtype);
-    err_map["rule"] = "input x dtype is same as filter dtype";
-    std::string report_error_code = "E50004";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(x_dtype != w_dtype,
+                return GRAPH_FAILED,
+                "The data type of the input x and filter should be the same, but the actual x is %s, "
+                "and the filter is %s.",
+                TypeUtils::DataTypeToSerialString(x_dtype).c_str(), TypeUtils::DataTypeToSerialString(w_dtype).c_str());
 
   std::vector<int32_t> stride_list;
-  if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
-    OP_LOGE(op_name.GetString(), "get strides list failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "get strides list failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  std::vector<int32_t> dilation_list;
-  if (GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)) {
-    OP_LOGE(op_name.GetString(), "get dilations list failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "get dilations list failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(GRAPH_SUCCESS != op.GetAttr("strides", stride_list), return GRAPH_FAILED,
+                "Failed to obtain the attribute strides.");
 
-  OP_LOGD(op_name.GetString(), "Leave DeconvolutionVerify.");
+  std::vector<int32_t> dilation_list;
+  CHECK_OP_FUNC(GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list), return GRAPH_FAILED,
+                "Failed to obtain the attribute dilations.");
+
+
+  OP_LOGD(op_name, "Leave DeconvolutionVerify.");
   return GRAPH_SUCCESS;
 }
 
@@ -6296,8 +6172,7 @@ static bool CheckVectorAnyNegative(const std::vector<T1>& list)
 }
 
 static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& dilation_list) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  auto op_name = TbeGetName(op);
 
   // check dilations shape
   if (op.GetAttr("dilations", dilation_list) != GRAPH_SUCCESS) {
@@ -6305,20 +6180,15 @@ static bool VerifyConv3dDilations(const ge::Operator& op, std::vector<int32_t>& 
     for (int32_t i = 0; i < kConv3dDimSizeLimit; i++) {
       dilation_list.push_back(1);
     }
-    OP_LOGI(op_name.GetString(), "no dilations setting, use dilations as [1,1,1,1,1]");
+    OP_LOGI(
+        op_name,
+        "Since the value of the attribute dilations is not explicitly set, the default value of [1,1,1,1,1] is used.");
   }
   auto d_size = dilation_list.size();
-  if (d_size != kConv3dDimSizeLimit) {
-    OP_LOGE(op_name.GetString(), "dilations list should be 5d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "dilation_list";
-    err_map["op_name"] = "Conv3d or Conv3dbp or Conv3dTranspose";
-    err_map["excepted_value"] = std::to_string(kConv3dDimSizeLimit);
-    err_map["input_value"] = std::to_string(d_size);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC(d_size != kConv3dDimSizeLimit, return false,
+                "The length of dilations attribute should be %d, but the actual dilations is %s and the length is %zu.",
+                kConv3dDimSizeLimit, DebugString(dilation_list).c_str(), d_size);
+
   return true;
 }
 
@@ -6327,8 +6197,7 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
                          int32_t strh, int32_t strw, int32_t dild, const int32_t dilh,
                          int32_t dilw, int32_t& padf, int32_t& padba, int32_t& padt,
                          int32_t& padb, int32_t& padl, int32_t& padr) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  auto op_name = TbeGetName(op);
 
   std::string pad_str;
   std::vector<int32_t> pad_list;
@@ -6355,35 +6224,20 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
       for (int32_t i = 0; i < kConv3dPadsSizeLimit; i++)
         pad_list.push_back(0);
     } else {
-      OP_LOGE(op_name.GetString(), "padding should be SAME or VALID.");
-      map<std::string, std::string> err_map;
-      err_map["param_name"] = "padding";
-      err_map["op_name"] = "Conv3d";
-      err_map["Expected_value"] = "SAME or VALID";
-      err_map["input_value"] = pad_str;
-      std::string report_error_code = "E50029";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      CUBE_INNER_ERR_REPORT(op_name,
+                            "The value of the padding attribute should be SAME or VALID, but the actual value is %s.",
+                            pad_str.c_str());
       return false;
     }
     op.SetAttr("pads", pad_list);
   }
   std::vector<int32_t> pad_vec;
-  if (GRAPH_SUCCESS != op.GetAttr("pads", pad_vec)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get pads failed");
-    return false;
-  }
+  CHECK_OP_FUNC(GRAPH_SUCCESS != op.GetAttr("pads", pad_vec), return false, "Failed to obtain the attribute pads.");
   auto p_size = pad_vec.size();
-  if (p_size != kConv3dPadsSizeLimit) {
-    OP_LOGE(op_name.GetString(), "pads list should be 6d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "pads_list";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "6d";
-    err_map["input_value"] = std::to_string(p_size);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC(p_size != kConv3dPadsSizeLimit, return false,
+                "The length of the pads attribute should be %d, but the actual pads is %s and the length is %zu.",
+                kConv3dPadsSizeLimit, DebugString(pad_vec).c_str(), p_size);
+
   padf = pad_vec[kConv3dPadHeadIdx];
   padba = pad_vec[kConv3dPadTailIdx];
   padt = pad_vec[kConv3dPadUpIdx];
@@ -6396,22 +6250,8 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
   bool unknown_shape = IsUnKnownShape(x_shape);
   bool negative_pad = std::any_of(pad_vec.begin(), pad_vec.end(), [](int32_t val){ return val < 0;});
   // dynamic shape pad maybe negative
-  if ((!unknown_shape) && (!unknown_rank) && negative_pad) {
-    OP_LOGE(op_name.GetString(), "pads should be positive");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "pads_list";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "positive";
-    err_map["input_value"] = std::to_string(padf) + " " + \
-                             std::to_string(padba) + " " + \
-                             std::to_string(padt) + " " + \
-                             std::to_string(padb) + " " + \
-                             std::to_string(padl) + " " + \
-                             std::to_string(padr);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC((!unknown_shape) && (!unknown_rank) && negative_pad, return false,
+                "The value of the pads attribute should >= 0, but it is actually %s.", DebugString(pad_list).c_str());
 
   return true;
 }
@@ -6419,38 +6259,24 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
 static bool GetAttrsConv3D(ge::Operator& op, Format refer, int32_t& strd,
                            int32_t& strh, int32_t& strw, int32_t& dild,
                            int32_t& dilh, int32_t& dilw) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
+  auto op_name = TbeGetName(op);
 
   std::vector<int32_t> stride_list;
-  if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get strides list failed.");
-    return false;
-  }
+  CHECK_OP_FUNC(op.GetAttr("strides", stride_list) != GRAPH_SUCCESS, return false,
+                "Failed to obtain the attribute strides.");
   auto s_size = stride_list.size();
-  if (s_size != kConv3dStridesSizeLimit) {
-    OP_LOGE(op_name.GetString(), "strides list should be 5d.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "stride_list";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = "5d";
-    err_map["input_value"] = std::to_string(s_size);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+  CHECK_OP_FUNC(s_size != kConv3dStridesSizeLimit, return false,
+                "The length of the strides attribute should be %d, but the actual strides is %s and the length is %zu",
+                kConv3dStridesSizeLimit, DebugString(stride_list).c_str(), s_size);
 
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OP_LOGI(op_name.GetString(), "no data format setting, using NDHWC");
+    OP_LOGI(op_name, "no data format setting, using NDHWC");
     data_format = FORMAT_NDHWC;
   }
 
   std::vector<int32_t> dilation_list;
-  if (!VerifyConv3dDilations(op, dilation_list)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get dilation attrs failed.");
-    return false;
-  }
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilation_list), return false);
 
   if (refer == FORMAT_NCDHW) {
     strd = stride_list[kDDimNCDHWIdx];
@@ -6468,7 +6294,7 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer, int32_t& strd,
     dilw = dilation_list[kWDimNDHWCIdx];
   }
   if (strd <= 0 || strh <= 0 || strw <= 0) {
-    OP_LOGE(op_name.GetString(), "strides should be positive.");
+    OP_LOGE(op_name, "strides should be positive.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "strides";
     err_map["op_name"] = "Conv3d";
@@ -6479,7 +6305,7 @@ static bool GetAttrsConv3D(ge::Operator& op, Format refer, int32_t& strd,
     return false;
   }
   if (dild != 1) {
-    OP_LOGE(op_name.GetString(), "dilations in the D dimension only supports 1 now.");
+    OP_LOGE(op_name, "dilations in the D dimension only supports 1 now.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "dilations";
     err_map["op_name"] = "Conv3d";
@@ -7220,10 +7046,7 @@ IMPLEMT_VERIFIER(Conv3D, Conv3DVerify) {
     return GRAPH_FAILED;
   }
   std::vector<int32_t> dilation_list;
-  if (!VerifyConv3dDilations(op, dilation_list)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get dilation attrs failed.");
-    return GRAPH_FAILED;
-  }
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilation_list), return GRAPH_FAILED);
 
   OP_LOGD(op_name.GetString(), "Leave Conv3DVerify.");
   return GRAPH_SUCCESS;
@@ -7278,10 +7101,7 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
   }
 
   std::vector<int32_t> dilations_list;
-  if (!VerifyConv3dDilations(op, dilations_list)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get dilation attrs failed.");
-    return false;
-  }
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilations_list), return false);
   CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return false);
   std::string input_format_str = format2str[input_format];
   int32_t h_input_position = input_format_str.find("H");
@@ -7462,10 +7282,7 @@ static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
 
   // check dilations shape
   std::vector<int32_t> dilations_list;
-  if (!VerifyConv3dDilations(op, dilations_list)) {
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "get dilation attrs failed.");
-    return GRAPH_FAILED;
-  }
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilations_list), return GRAPH_FAILED);
   return GRAPH_SUCCESS;
 }
 
@@ -7642,7 +7459,7 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
   }
 
   std::vector<int32_t> dilations_list;
-  CHECK_OP_FUNC(!VerifyConv3dDilations(op, dilations_list), return false, "get dilation attrs failed.");
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilations_list), return false);
 
   int64_t dx_d = dx_sizes[d_input_position];
   int64_t dx_h = dx_sizes[h_input_position];
@@ -8236,8 +8053,7 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 
   // check dilations shape
   std::vector<int32_t> dilations_list;
-  CHECK(!VerifyConv3dDilations(op, dilations_list),
-        CUBE_INNER_ERR_REPORT(op_name, "Failed to get attribute dilation."), return GRAPH_FAILED);
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilations_list), return GRAPH_FAILED);
   return GRAPH_SUCCESS;
 }
 IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
@@ -8626,10 +8442,7 @@ static bool SetInputsizeListConv3dtranspose(ge::Operator& op, const std::vector<
   }
 
   std::vector<int32_t> dilations_list;
-    if (!VerifyConv3dDilations(op, dilations_list)) {
-    CUBE_INNER_ERR_REPORT(op_name, "Failed to get dilation");
-    return false;
-  }
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilations_list), return false);
 
   std::vector<int32_t> output_padding_list;
   if (op.GetAttr("output_padding", output_padding_list) != GRAPH_SUCCESS) {
@@ -8787,7 +8600,7 @@ static bool GetAttrsConv3DTranspose(ge::Operator& op, Format refer, int32_t& str
   }
 
   std::vector<int32_t> dilation_list;
-  CHECK_OP_FUNC(!VerifyConv3dDilations(op, dilation_list), return false, "Failed to get dilation.");
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilation_list), return false);
 
   if (refer == FORMAT_NCDHW) {
     strd = stride_list[kDDimNCDHWIdx];
@@ -8894,10 +8707,7 @@ static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
 
   // check dilations shape
   std::vector<int32_t> dilations_list;
-  if (!VerifyConv3dDilations(op, dilations_list)) {
-    CUBE_INNER_ERR_REPORT(op_name, "Failed to get dilations.");
-    return GRAPH_FAILED;
-  }
+  ASSERT_TRUE(VerifyConv3dDilations(op, dilations_list), return GRAPH_FAILED);
 
   std::vector<int32_t> output_padding_list;
   if (op.GetAttr("output_padding", output_padding_list) != GRAPH_SUCCESS) {
