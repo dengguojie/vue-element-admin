@@ -3707,9 +3707,7 @@ VERIFY_FUNC_REG(Conv2DBackpropInputD, Conv2DBackpropInputDVerify);
 
 // ----------------Conv2DBackpropFilter-------------------
 bool InferConv2DBackpropFilter(ge::Operator& op) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
+  string op_name = TbeGetName(op);
   auto y_tensor = op.GetOutputDescByName("y");
   auto filter_format = y_tensor.GetOriginFormat();
   CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return false);
@@ -3718,7 +3716,7 @@ bool InferConv2DBackpropFilter(ge::Operator& op) {
   // get shape for output from filter_size
   std::vector<int32_t> filter_sizes;
   if (GRAPH_SUCCESS != op.GetAttr("filter_size", filter_sizes)) {
-    OP_LOGE(op_name.GetString(), "get filter_size list failed.");
+    OP_LOGE(op_name, "get filter_size list failed.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DBackpropFilter";
     err_map["param_name"] = "filter_size";
@@ -3740,7 +3738,7 @@ bool InferConv2DBackpropFilter(ge::Operator& op) {
   vector<vector<int64_t>> dedy_data_slice = {{}, {}, {}, {}, {}};
 
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
+    OP_LOGW(op_name, "no data slice, not need infer input");
     return false;
   }
 
@@ -3753,25 +3751,26 @@ bool InferConv2DBackpropFilter(ge::Operator& op) {
                       return false, "set dedy data slice attr failed.");
         filter_sizes[n_filter_position] = y_extend * kBlockBaseSize;
         op.SetAttr("filter_size", filter_sizes);
-        OP_LOGI(op_name.GetString(), "infer input in Cout success");
+        OP_LOGD(op_name, "infer input in Cout success");
         return true;
       }
-      OP_LOGI(op_name.GetString(), "can not supported split in Cin, H and W");
+      OP_LOGW(op_name, "can not supported split in Cin, H and W");
       return false;
     }
   }
-  OP_LOGI(op_name.GetString(), "no data slice, not need infer input");
+  OP_LOGW(op_name, "no data slice, not need infer input");
   return false;
 }
 
 IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
-  OpDetailInfo op_info;
-  CHECK(op.GetName(op_info.op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  OpDetailInfo op_info {.op_name = TbeGetName(op).c_str()};
   op_info.op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_info.op_desc, "op desc", return GRAPH_FAILED);
-  CHECK(op.GetOpType(op_info.op_type) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_type"), return GRAPH_FAILED);
+  CHECK(op.GetOpType(op_info.op_type) != GRAPH_SUCCESS,
+        OP_LOGE("Conv2DBackpropFilter", "failed to get op_type"),
+        return GRAPH_FAILED);
 
-  OP_LOGI(op_info.op_name.GetString(), "Enter Conv2DBackpropFilter inferfunction!");
+  OP_LOGD(op_info.op_name.GetString(), "Enter Conv2DBackpropFilter inferfunction!");
   std::vector<std::string> input_infer_depends = {"filter_size"};
   op_info.op_desc->SetOpInferDepends(input_infer_depends);
 
@@ -3852,13 +3851,12 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     CHECK_OP_FUNC(!SetConvGroups(op_info, x_c, filter_value.c_value), return GRAPH_FAILED,
                   "Set groups for Conv2DBackpropFilter failed.");
   }
-  OP_LOGI(op_info.op_name.GetString(), "Leaving Conv2DBackpropFilter inferfunction!");
+  OP_LOGD(op_info.op_name.GetString(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Conv2DBackpropFilter, Conv2DBackpropFilterVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
 
@@ -3869,19 +3867,18 @@ IMPLEMT_VERIFIER(Conv2DBackpropFilter, Conv2DBackpropFilterVerify) {
   ConstGeTensorDescPtr out_backprop_desc = op_desc->GetInputDescPtr(2);
   CHECK_PTR_NULL(out_backprop_desc, "out_backprop desc", return GRAPH_FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilter verifyfunction!");
-  if (GRAPH_SUCCESS != VerifyConv2dbpCommon(op_name, op_desc, x_desc, out_backprop_desc)) {
+  OP_LOGD(op_name, "Enter Conv2DBackpropFilter verifyfunction!");
+  AscendString ascend_op_name(TbeGetName(op).c_str());
+  if (GRAPH_SUCCESS != VerifyConv2dbpCommon(ascend_op_name, op_desc, x_desc, out_backprop_desc)) {
     return GRAPH_FAILED;
   }
-  OP_LOGI(op_name.GetString(), "Leaving Conv2DBackpropFilter verifyfunction!");
+  OP_LOGD(op_name, "Leaving Conv2DBackpropFilter verifyfunction!");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropFilter, Conv2DBackpropFilterInferDataSlice) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-
-  OP_LOGD(op_name.GetString(), "Enter Conv2DBackpropFilter InferDataSlice.");
+  string op_name = TbeGetName(op);
+  OP_LOGD(op_name, "Enter Conv2DBackpropFilter InferDataSlice.");
   if (!InferConv2DBackpropFilter(op)) {
     return GRAPH_FAILED;
   }
@@ -3894,16 +3891,13 @@ INFER_DATA_SLICE_FUNC_REG(Conv2DBackpropFilter, Conv2DBackpropFilterInferDataSli
 
 // ----------------Conv2DBackpropFilterD-------------------
 IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-
-  OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilterD inferfunction!");
-
+  string op_name = TbeGetName(op);
+  OP_LOGD(op_name, "Enter Conv2DBackpropFilterD inferfunction!");
   // get shape for output from filter_size
   std::vector<int32_t> filter_sizes;
   if (GRAPH_SUCCESS == op.GetAttr("filter_size", filter_sizes)) {
     if (filter_sizes.size() != kConv2dDimSizeLimit) {
-      OP_LOGE(op_name.GetString(), "filter_size list should be 4d.");
+      OP_LOGE(op_name, "filter_size list should be 4d.");
       map<std::string, std::string> err_map;
       err_map["op_name"] = "Conv2DBackpropFilter";
       err_map["param_name"] = "filter_size";
@@ -3914,7 +3908,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
       return GRAPH_FAILED;
     }
   } else {
-    OP_LOGE(op_name.GetString(), "get filter_size list failed.");
+    OP_LOGE(op_name, "get filter_size list failed.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DBackpropFilter";
     err_map["param_name"] = "filter_size";
@@ -3937,7 +3931,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
 
   // update output desc
   if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", y_desc)) {
-    OP_LOGE(op_name.GetString(), "update output desc failed.");
+    OP_LOGE(op_name, "update output desc failed.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DBackpropFilter";
     err_map["param_name"] = "updating result";
@@ -3954,9 +3948,9 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
   CHECK_OP_FUNC(FORMAT_RESERVED == x_format, return GRAPH_FAILED, "get format failed: %d", x_format);
   CHECK_OP_FUNC(FORMAT_RESERVED == filter_format, return GRAPH_FAILED, "get format failed: %d", filter_format);
   if (false == SetGroupsConv(op, x_sizes, x_format, filter_sizes, filter_format)) {
-    OP_LOGE(op_name.GetString(), "Set groups for Conv2DBackpropFilterD failed.");
+    OP_LOGE(op_name, "Set groups for Conv2DBackpropFilterD failed.");
     map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
+    err_map["op_name"] = op_name;
     err_map["description"] = "Set groups for Conv2DBackpropFilterD failed";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -3964,7 +3958,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
   }
   // update pads list by padding[SAME,VALID]
   if (false == SetPadListByPaddingConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
-    OP_LOGE(op_name.GetString(), "update pads list by padding failed.");
+    OP_LOGE(op_name, "update pads list by padding failed.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv2DBackpropFilter";
     err_map["param_name"] = "updding result";
@@ -3975,13 +3969,12 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGI(op_name.GetString(), "Leaving Conv2DBackpropFilterD inferfunction!");
+  OP_LOGD(op_name, "Leaving Conv2DBackpropFilterD inferfunction!");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  string op_name = TbeGetName(op);
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   // the x tensor index is 0
@@ -3991,19 +3984,18 @@ IMPLEMT_VERIFIER(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify) {
   ConstGeTensorDescPtr out_backprop_desc = op_desc->GetInputDescPtr(1);
   CHECK_PTR_NULL(out_backprop_desc, "out_backprop desc", return GRAPH_FAILED);
 
-  OP_LOGI(op_name.GetString(), "Enter Conv2DBackpropFilterD verifyfunction!");
-  if (GRAPH_SUCCESS != VerifyConv2dbpCommon(op_name, op_desc, x_desc, out_backprop_desc)) {
+  OP_LOGD(op_name, "Enter Conv2DBackpropFilterD verifyfunction!");
+  AscendString ascend_op_name(TbeGetName(op).c_str());
+  if (GRAPH_SUCCESS != VerifyConv2dbpCommon(ascend_op_name, op_desc, x_desc, out_backprop_desc)) {
     return GRAPH_FAILED;
   }
-  OP_LOGI(op_name.GetString(), "Leaving Conv2DBackpropFilterD verifyfunction!");
+  OP_LOGD(op_name, "Leaving Conv2DBackpropFilterD verifyfunction!");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropFilterD, Conv2DBackpropFilterDInferDataSlice) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-
-  OP_LOGD(op_name.GetString(), "Enter Conv2DBackpropFilterD InferDataSlice.");
+  string op_name = TbeGetName(op);
+  OP_LOGD(op_name, "Enter Conv2DBackpropFilterD InferDataSlice.");
   if (!InferConv2DBackpropFilter(op)) {
     return GRAPH_FAILED;
   }
