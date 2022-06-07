@@ -1759,4 +1759,30 @@ COMMON_INFER_FUNC_REG(SignBitsUnpack, SignBitsUnpackInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(SignBitsUnpack, SignBitsUnpackVerify);
 // ----------------------SignBitsUnpack End----------------------
+
+// -------------------ScaledMaskedSoftmax---------------------
+IMPLEMT_COMMON_INFERFUNC(ScaledMaskedSoftmaxInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr input_desc = op_desc->MutableInputDesc(0);
+  auto y = op_desc->MutableOutputDesc(0);
+  y->SetShape(input_desc->GetShape());
+  y->SetDataType(DT_FLOAT16);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ScaledMaskedSoftmax, ScaledMaskedSoftmaxInferShape);
+// ------------------ScaledMaskedSoftmax END------------------ 
+
+// -------------------ScaledMaskedSoftmaxGrad---------------------
+IMPLEMT_COMMON_INFERFUNC(ScaledMaskedSoftmaxGradInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr input_desc = op_desc->MutableInputDesc(0);
+  auto x_grad = op_desc->MutableOutputDesc(0);
+  x_grad->SetShape(input_desc->GetShape());
+  x_grad->SetDataType(DT_FLOAT16);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ScaledMaskedSoftmaxGrad, ScaledMaskedSoftmaxGradInferShape);
+// ------------------ScaledMaskedSoftmaxGrad END------------------ 
 }  // namespace ge

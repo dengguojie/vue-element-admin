@@ -1,0 +1,314 @@
+[
+    {
+        "op": "ScaledMaskedSoftmaxGrad",
+        "case_name": "test_ScaledMaskedSoftmaxGrad_000",
+        "input_desc": [
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "y_grad_gm",
+                  "value_range": [[0, 1]],
+                  "data_distribute" : "uniform",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "y_gm",
+                  "value_range": [[0, 1]],
+                  "data_distribute" : "uniform",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "mask_gm",
+                  "type": "bool"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "x_grad_gm",
+                  "type": "float16"
+            }
+        ],
+        "attr": [
+            {
+                "name": "scale",
+                "value": 2.0,
+                "type": "float"
+            },
+            {
+                "name": "fixed_triu_mask",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ScaledMaskedSoftmaxGrad",
+        "case_name": "test_ScaledMaskedSoftmaxGrad_001",
+        "input_desc": [
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "y_grad_gm",
+                  "value_range": [[0, 1]],
+                  "data_distribute" : "uniform",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "y_gm",
+                  "value_range": [[0, 1]],
+                  "data_distribute" : "uniform",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    1,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    1,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "mask_gm",
+                  "type": "bool"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    16,
+                    6,
+                    8,
+                    8,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    128,
+                    128
+                  ],
+                  "ori_format": "ND",
+                  "name": "x_grad_gm",
+                  "type": "float16"
+            }
+        ],
+        "attr": [
+            {
+                "name": "scale",
+                "value": 3.0,
+                "type": "float"
+            },
+            {
+                "name": "fixed_triu_mask",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ScaledMaskedSoftmaxGrad",
+        "case_name": "test_ScaledMaskedSoftmaxGrad_002",
+        "input_desc": [
+            {
+                "shape": [
+                    16,
+                    6,
+                    32,
+                    32,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    512,
+                    512
+                  ],
+                  "ori_format": "ND",
+                  "name": "y_grad_gm",
+                  "value_range": [[0, 1]],
+                  "data_distribute" : "uniform",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    6,
+                    32,
+                    32,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    512,
+                    512
+                  ],
+                  "ori_format": "ND",
+                  "name": "y_gm",
+                  "value_range": [[0, 1]],
+                  "data_distribute" : "uniform",
+                  "type": "float16"
+            },
+            {
+                "shape": [
+                    16,
+                    6,
+                    32,
+                    32,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    512,
+                    512
+                  ],
+                  "ori_format": "ND",
+                  "name": "mask_gm",
+                  "type": "bool"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    16,
+                    6,
+                    32,
+                    32,
+                    16,
+                    16
+                  ],
+                  "format": "FRACTAL_NZ",
+                  "ori_shape": [
+                    16,
+                    6,
+                    512,
+                    512
+                  ],
+                  "ori_format": "ND",
+                  "name": "x_grad_gm",
+                  "type": "float16"
+            }
+        ],
+        "attr": [
+            {
+                "name": "scale",
+                "value": 4.0,
+                "type": "float"
+            },
+            {
+                "name": "fixed_triu_mask",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]

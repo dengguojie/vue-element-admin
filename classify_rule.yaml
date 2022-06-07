@@ -4109,6 +4109,8 @@ pytorch:
       - ops/built-in/tbe/impl/giou_grad.py
       - ops/built-in/tbe/impl/diou_grad.py
       - ops/built-in/tbe/impl/ciou_grad.py
+      - ops/built-in/tbe/impl/scaled_masked_softmax.py
+      - ops/built-in/tbe/impl/scaled_masked_softmax_grad.py
       - ops/built-in/tbe/impl/common_iou_grad.py
       - ops/built-in/tbe/impl/rotated_iou.py
       - ops/built-in/tbe/impl/rotated_overlaps.py

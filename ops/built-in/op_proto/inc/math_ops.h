@@ -1271,6 +1271,70 @@ REG_OP(SignBitsUnpack)
     .REQUIRED_ATTR(size, Int)
     .REQUIRED_ATTR(dtype, Type)
     .OP_END_FACTORY_REG(SignBitsUnpack)
+
+/**
+* @brief Function scaled masked softmax . \n
+
+* @par Inputs:
+* Two inputs, including:
+* @li x: A mutable Tensor. The type support float16/float32.
+* @li mask: An optional Tensor. Must meet all of the following rules:
+*     shape of mask should be broadcastable with x.
+*     dtype of mask should be bool.
+*     mask is binary
+
+* @par Attributes:
+* scale: A attribute used to scale tensor. The type is float. The dimension softmax would be performed on. Defaults
+*     to "1.0" . \n
+* fixed_triu_mask: A flag used to enable or disable a fixed upper triangle mask. The type is bool. Defaults
+*     to "false" . \n
+
+* @par Outputs:
+* y: A mutable Tensor. Has the same type as "x". \n
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(ScaledMaskedSoftmax)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(mask, TensorType({DT_BOOL, DT_UINT1}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .ATTR(scale, Float, 1.0)
+    .ATTR(fixed_triu_mask, Bool, false)
+    .OP_END_FACTORY_REG(ScaledMaskedSoftmax)
+
+/**
+* @brief Function scaled masked softmax grad . \n
+
+* @par Inputs:
+* Three inputs, including:
+* @li y_grad: A mutable Tensor. The type support float16/float32.
+* @li y: A mutable Tensor. The type support float16/float32.
+* @li mask: An optional Tensor. Must meet all of the following rules:
+*     shape of mask should be broadcastable with x.
+*     dtype of mask should be bool.
+*     mask is binary
+
+* @par Attributes:
+* scale: A attribute used to scale tensor. The type is float. The dimension softmax would be performed on. Defaults
+*     to "1.0" . \n
+* fixed_triu_mask: A flag used to enable or disable a fixed upper triangle mask. The type is bool. Defaults
+*     to "false" . \n
+
+* @par Outputs:
+* x_grad: A mutable Tensor. Has the same type as "x". \n
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(ScaledMaskedSoftmaxGrad)
+    .INPUT(y_grad, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(mask, TensorType({DT_BOOL, DT_UINT1}))
+    .OUTPUT(x_grad, TensorType({DT_FLOAT16}))
+    .ATTR(scale, Float, 1.0)
+    .ATTR(fixed_triu_mask, Bool, false)
+    .OP_END_FACTORY_REG(ScaledMaskedSoftmaxGrad)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_
