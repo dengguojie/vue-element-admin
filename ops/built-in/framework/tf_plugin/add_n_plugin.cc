@@ -19,13 +19,19 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
 Status AutoMappingFnAddN(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("x", "N");
-  AutoMappingFnDynamic(op_src, op, value);
-  return SUCCESS;
+  if (AutoMappingFnDynamic(op_src, op, value) == SUCCESS) {
+      OP_LOGD("AddN", "op[AddN] tensorflow plugin parser[AutoMapping] success.");
+      return SUCCESS;
+  } else {
+      OP_LOGE("AddN", "op[AddN] tensorflow plugin parser[AutoMapping] failed.");
+      return FAILED;
+  }
 }
 
 REGISTER_CUSTOM_OP("AddN")

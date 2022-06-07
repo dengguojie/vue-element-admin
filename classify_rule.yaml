@@ -978,6 +978,7 @@ vector_B:
       - ops/common/src/error_util.cc
       - ops/built-in/CMakeLists.txt
       - ops/built-in/framework/tf_plugin/avg_pool3d.cc
+      - ops/built-in/framework/tf_plugin/add_n_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
       - ops/built-in/framework/tf_plugin/cast_plugin.cc
@@ -1110,6 +1111,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/dsa_core/randomdsa_fusion_pass.cc
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
+      - ops/built-in/op_proto/boosted_trees_ops.cc
+      - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/data_flow_ops.cc
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
       - ops/built-in/op_proto/outfeed_ops.cc
@@ -2448,7 +2451,6 @@ unkown:
       - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
-      - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/ctc_ops.cc
@@ -2457,7 +2459,6 @@ unkown:
       - ops/built-in/op_proto/control_flow_ops.cc
       - ops/built-in/op_proto/state_ops.cc
       - ops/built-in/op_proto/no_op.cc
-      - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/nn_other_ops.cc
       - ops/built-in/op_proto/inc/warp_perspective_ops.h
       - ops/built-in/op_proto/inc/save_ops.h
@@ -3354,7 +3355,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/hcom_remote_write_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_apply_ftrl_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/bn_training_update_plugin.cc
-      - ops/built-in/framework/tf_plugin/add_n_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_reduce_plugin.cc
       - ops/built-in/framework/tf_plugin/strided_slice_plugin.cc
       - ops/built-in/framework/tf_plugin/expand_dims_plugin.cc
