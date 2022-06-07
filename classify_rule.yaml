@@ -4165,6 +4165,8 @@ pytorch:
       - ops/built-in/op_tiling/runtime/strided_slice_v3.h
       - ops/built-in/op_tiling/group_norm.cc
       - ops/built-in/tbe/impl/dynamic/group_norm.py
+      - ops/built-in/tbe/impl/dynamic/erfinv.py
+
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
