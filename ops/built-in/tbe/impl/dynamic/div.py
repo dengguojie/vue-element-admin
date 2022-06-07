@@ -400,7 +400,7 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
     res = tbe.vdiv(input_x, input_y)
 
     if dtype_x in int_list:
-        if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend310":
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == "Ascend310":
             res = tbe.cast_to(res, "float16")
         res = tbe.floor(res)
 

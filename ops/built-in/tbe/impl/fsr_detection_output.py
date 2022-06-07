@@ -2101,7 +2101,7 @@ class FsrProcess:
                                Constant.DATA_EIGHT),
             name="mem_swap", scope=tik.scope_gm, is_workspace=True)
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.pre_nms_topn = 3000
         else:
             if self.input_dtype == "float32":
@@ -2332,7 +2332,7 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
     """
 
     tik_instance = tik.Tik(tik.Dprofile())
-    tik_name = tbe_platform.get_soc_spec("SOC_VERSION")
+    tik_name = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     input_dtype = rois_dic.get('dtype')
     check_datatype(tik_name, input_dtype)
     batch_rois = rois_dic.get("shape")[0]

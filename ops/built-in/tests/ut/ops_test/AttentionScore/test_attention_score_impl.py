@@ -25,7 +25,7 @@ ut_case = OpUT("AttentionScore", "impl.attention_score",
                "attention_score")
 
 def test_tuili(batch_dim0, batch_dim1, seq_num, n_num, nz_dim, kernel_name):
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     attention_score({"shape": (batch_dim0, batch_dim1, n_num, seq_num, nz_dim, nz_dim), "dtype": "float16",
                      "format": "FRACTAL_NZ",
                     "ori_shape": (batch_dim0, batch_dim1, seq_num * nz_dim, n_num * nz_dim), "ori_format": "ND"},
@@ -85,5 +85,5 @@ def test_attention_score_case001(test_args):
 ut_case.add_cust_test_func(test_func=test_attention_score_case001)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

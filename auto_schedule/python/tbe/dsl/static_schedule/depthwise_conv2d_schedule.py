@@ -677,7 +677,7 @@ def _tiling_fetch_all(fmap_shape,
         "kernel_name": kernel_name.value
     }
 
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")
     soc_version_list = ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     if l1_fusion_type == -1 and l1_size != 512 * 1024 and soc_version in soc_version_list:
@@ -1189,7 +1189,7 @@ def _elewise_deq_sigmoid_mul(out, tensor_dict):
     tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
     tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
     tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
-    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         tensor_dict["rec_2"] = tensor_dict["rec_3"].op.input_tensors[0]
         tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
         tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
@@ -1217,7 +1217,7 @@ def _elewise_deq_sigmoid_mul_online(out, tensor_dict):
     tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
     tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
     tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
-    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         tensor_dict["rec_2"] = tensor_dict["rec_3"].op.input_tensors[0]
         tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
         tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
@@ -1630,7 +1630,7 @@ def _set_sch_int32_phase1_dequant2_sigmoid_mul(tensor_dict, attrs_dict, out, sch
     sch[tensor_dict["rec_4"]].compute_inline()
     sch[tensor_dict["rec_3"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["rec_3"]].compute_inline()
-    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         sch[tensor_dict["rec_2"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_2"]].compute_inline()
         sch[tensor_dict["rec_1"]].set_scope(tbe_platform_info.scope_ubuf)
@@ -1680,7 +1680,7 @@ def _set_sch_int32_phase1_dequant_sigmoid_mul(tensor_dict, attrs_dict, out, buf,
         sch[tensor_dict["rec_4"]].compute_inline()
         sch[tensor_dict["rec_3"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_3"]].compute_inline()
-        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_2"]].compute_inline()
             sch[tensor_dict["rec_1"]].set_scope(tbe_platform_info.scope_ubuf)
@@ -1893,7 +1893,7 @@ def _sch_flag_is_dequant2(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
@@ -1942,7 +1942,7 @@ def _sch_flag_is_dequant(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
@@ -2196,7 +2196,7 @@ def _flag_is_dequant_sigmoid_mul(tensor_dict, sch, attrs_dict):
     sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
     sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
     sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
-    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0], 'vector_auto')
         sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0], 'vector_auto')
         sch[tensor_dict["rec_0"]].emit_insn(sch[tensor_dict["rec_0"]].op.axis[0], 'vector_auto')
@@ -2364,7 +2364,7 @@ def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out):
                 sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
-                if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+                if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
                     sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0],
                                                         'vector_auto')
                     sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0],
@@ -2431,7 +2431,7 @@ def _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch):
             sch[tensor_dict["rec_4"]].compute_inline()
             sch[tensor_dict["rec_3"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_3"]].compute_inline()
-            if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+            if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
                 sch[tensor_dict["rec_2"]].set_scope(tbe_platform_info.scope_ubuf)
                 sch[tensor_dict["rec_2"]].compute_inline()
                 sch[tensor_dict["rec_1"]].set_scope(tbe_platform_info.scope_ubuf)
@@ -2715,7 +2715,7 @@ def _relu_mul_handle(out, sch, attrs_dict, tensor_dict, res_cut_dict):
                 sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-                if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+                if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
                     sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]],
                                                          res_cut_dict["res_mcut_iio"])
                     sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]],

@@ -26,10 +26,10 @@ from tbe.common.utils import shape_to_list
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform.platform_info import api_check_support
 from tbe.common.platform import scope_ubuf
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_910
 from tbe.common.utils import log
 
@@ -561,8 +561,8 @@ def _is_supported_atomic_add(reduce_tensor):
     dtype = reduce_tensor.dtype
     if dtype != "float32":
         return False
-    soc_ver = get_soc_spec(SOC_VERSION)
-    is_version_support = (soc_ver in (ASCEND_910, ASCEND_610, ASCEND_615, ASCEND_710) or
+    soc_ver = get_soc_spec(SHORT_SOC_VERSION)
+    is_version_support = (soc_ver in (ASCEND_910, ASCEND_610, ASCEND_615, ASCEND_310P) or
                           api_check_support("tik.vgatherb"))
     if not is_version_support:
         return False
@@ -573,10 +573,10 @@ def _is_supported_atomic_add(reduce_tensor):
 
 
 GN_REDUCE_NCHW_TILING_MAP = {
-    "1_48_1_35_35_float32_Ascend710": (1, 8, 1, 2),
-    "1_48_1_39_39_float32_Ascend710": (1, 8, 1, 2),
-    "1_1536_1_9_9_float32_Ascend710": (1, 192, 1, 12),
-    "2_1024_1_14_14_float32_Ascend710": (1, 256, 1, 4),
+    "1_48_1_35_35_float32_Ascend310P": (1, 8, 1, 2),
+    "1_48_1_39_39_float32_Ascend310P": (1, 8, 1, 2),
+    "1_1536_1_9_9_float32_Ascend310P": (1, 192, 1, 12),
+    "2_1024_1_14_14_float32_Ascend310P": (1, 256, 1, 4),
 }
 
 
@@ -591,7 +591,7 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
     :return:
     """
     core_num = get_soc_spec("CORE_NUM")
-    soc_version = get_soc_spec(SOC_VERSION)
+    soc_version = get_soc_spec(SHORT_SOC_VERSION)
     shape_key = "_".join(str(i) for i in shape_before_reduce) + \
                 "_" + dtype + "_" + soc_version
     if shape_key in GN_REDUCE_NCHW_TILING_MAP:

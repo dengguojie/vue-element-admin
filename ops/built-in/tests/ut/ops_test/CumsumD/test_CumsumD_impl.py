@@ -66,7 +66,7 @@ def calc_expect_func(x, y, axis, exclusive, reverse):
 
 def test_get_op_support_info(test_arg):
     from impl.cumsum_d import get_op_support_info
-    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"})
 
 case1 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"}, #x
@@ -147,16 +147,16 @@ case10 = {"params": [{"shape": (3, 8, 50, 273), "dtype": "float32", "format": "N
 "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case8)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case9)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case10)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 precision_case1 = {"params": [{"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2), "ori_format": "ND","param_type":"input"}, #x

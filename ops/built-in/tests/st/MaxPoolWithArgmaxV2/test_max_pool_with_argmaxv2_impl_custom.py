@@ -108,7 +108,7 @@ ut_case.add_case(["Ascend310", "Ascend910A", "Ascend910B2"], case5)
 # run on Ascend910A
 ut_case.run("Ascend910A")
 # run one Ascend910B2
-soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
+soc_version = te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 te_set_version("Ascend910B2", "VectorCore")
 ut_case.run("Ascend910B2")
 te_set_version(soc_version)

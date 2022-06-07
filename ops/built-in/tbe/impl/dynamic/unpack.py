@@ -152,7 +152,7 @@ class Unpack:
         # 1536B means stack holding the param provided to the platform,
         # 1 param takes 8 bytes, needs Multiple output param and 1 input param and 1 input dynamic_param
         # mini has more parameters (offset, index) than cloud
-        compile_platform = tbe_platform.get_soc_spec("SOC_VERSION")
+        compile_platform = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
         if compile_platform in ("Ascend310",):
             max_num = (1536 // 3) // 8 - 2
         else:

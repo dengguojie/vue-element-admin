@@ -23,7 +23,7 @@ from typing import Optional
 
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_910B
 from tbe.common.platform.platform_info import get_soc_spec
 
@@ -308,7 +308,7 @@ def _pre_build():
     if {Pattern.ELEMWISE, Pattern.BROADCAST} == compute_patterns:
         operation.add_compile_info_inner(CompileInfo.CONTAINS_ELEWISE_SCH, True)
 
-    operation.add_compile_info_inner(CompileInfo.SOC_VERSION, get_soc_spec(SOC_VERSION))
+    operation.add_compile_info_inner(CompileInfo.SOC_VERSION, get_soc_spec(SHORT_SOC_VERSION))
     if is_const:
         _add_const_compile_info()
         return
@@ -356,7 +356,7 @@ class BroadcastTilingCase:
     """
 
     def __init__(self):
-        self._soc = get_soc_spec(SOC_VERSION)
+        self._soc = get_soc_spec(SHORT_SOC_VERSION)
         self._tiling_key = EMPTY_KEY
         self._tiling_strategy: Optional[Enum] = None
         self._block_split_axis = None

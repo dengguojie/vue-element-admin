@@ -501,7 +501,7 @@ def test_op_fusion_func(case):
     from te.platform.cce_conf import te_set_version
 
     def test_op_fusion(test_args):
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         with cce():
 
             tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
@@ -592,7 +592,7 @@ def test_batchmatmul_dequant_mul_add_fusion_func(case):
     from te.platform.cce_conf import te_set_version
 
     def test_op_fusion(test_args):
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         with cce():
             tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
                                     attrs={'format': case[0].get("format"),
@@ -683,7 +683,7 @@ def test_batch_matmul_elementwise_ub_fusion_func(case):
     from te.platform.cce_conf import te_set_version
 
     def test_op_ub_fusion(test_args):
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         with cce():
             tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
                                        attrs={'format': case[0].get("format"),

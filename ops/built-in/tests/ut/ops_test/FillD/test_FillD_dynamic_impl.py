@@ -14,4 +14,4 @@ case1 = {"params": [{"shape": (-1,), "ori_shape": (1,), "format": "NHWC", "ori_f
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)

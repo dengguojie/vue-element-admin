@@ -35,10 +35,10 @@ def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001
     """
     check_supported
     """
-    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
-    support_version = ("Ascend710",)
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
+    support_version = ("Ascend310P",)
     if soc_version not in support_version:
-        return False, "not support SOC_VERSION"
+        return False, "not support short soc version"
     support_dtype = ("float16", "float32")
     input_params_all = (input_0, input_1, input_2, output_0)
     for input_params in input_params_all:

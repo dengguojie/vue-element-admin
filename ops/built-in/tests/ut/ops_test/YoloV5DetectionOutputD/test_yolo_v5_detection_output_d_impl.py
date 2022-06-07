@@ -23,7 +23,7 @@ TEST_BIASES = [116, 90, 156, 198, 373, 326, 30, 61, 62, 45, 59, 119,
 
 def common_cce(batch, box_info, dtype, boxes, classes, relative, obj_threshold,
                classes_threshold, nms_threshold, biases, resize_origin_img_to_net,
-               kernel_name_val, product, cords=4, pre_nms_topn=1024, post_top_k=1024, 
+               kernel_name_val, product, cords=4, pre_nms_topn=1024, post_top_k=1024,
                case_name="case1", expect="success"):
 
     coord_data = []
@@ -56,7 +56,7 @@ def common_cce(batch, box_info, dtype, boxes, classes, relative, obj_threshold,
 
     x = coord_data + obj_data + classes_data + [img_info_dict] + windex + hindex
     split_info = get_op_support_info(x, box_out_dict, box_out_num_dict, biases)
-    
+
     return {"params": [x, box_out_dict, box_out_num_dict, biases],
             "case_name": case_name,
             "expect": expect,
@@ -74,9 +74,9 @@ case2 = common_cce(2, [[90, 90], [90, 90], [90, 90]], "float16", 1, 2, True,
 
 case3 = common_cce(2, [[6, 6], [6, 6], [6, 6]], "float16", 1, 2, True,
                    0.5, 0.5, 0.45, TEST_BIASES, True,
-                   "test_yolo_v3_float32", "Ascend710", case_name="test_yolo_v5_d_3",
+                   "test_yolo_v3_float32", "Ascend310P3", case_name="test_yolo_v5_d_3",
                    expect="faild")
 
 ut_case.add_case(["Ascend310"], case1)
 ut_case.add_case(["Ascend310"], case2)
-ut_case.add_case(["Ascend710"], case3)
+ut_case.add_case(["Ascend310P3"], case3)

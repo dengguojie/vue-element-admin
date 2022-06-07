@@ -176,7 +176,7 @@ def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, t
     if ((ori_format == "NHWC" and axis != 3) or (ori_format == "NCHW" and axis != 1)) and \
             len(ori_shape) == 4 and axis != AXIS_DEFAULT:
         # NC1HWC0+ND
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in \
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in \
                 ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16/fp32
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -211,7 +211,7 @@ def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, t
                                                     format="NC1HWC0,ND")
     else:
         # ND
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in \
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in \
                 ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16/fp32
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -459,7 +459,7 @@ class ArgMax():
         self.profile = tik.Dprofile()
         self.tik_instance = tik.Tik(self.profile, True)
 
-        self.version = tbe_platform.get_soc_spec("SOC_VERSION")
+        self.version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
         self.product_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 

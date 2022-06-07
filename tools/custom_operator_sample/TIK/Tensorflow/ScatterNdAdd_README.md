@@ -30,23 +30,23 @@ project
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
 │       │   tensorflow_scatter_nd_add_plugin.cc # 算子插件文件
-│  
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
-│   │   scatter_nd_add.cc 
-│   │   scatter_nd_add.h 
-│   
+│   │   scatter_nd_add.cc
+│   │   scatter_nd_add.h
+│
 └───tbe
 │   └───impl #算子实现目录
 │       │   scatter_nd_add.py
 │   └───op_info_cfg #算子信息库
 │       └───aicore
 │           └───ascend310
-│               │   scatter_nd_add.ini 
-│           └───ascend710
-│               │   scatter_nd_add.ini 
+│               │   scatter_nd_add.ini
+│           └───ascend310p
+│               │   scatter_nd_add.ini
 │           └───ascend910
-│               │   scatter_nd_add.ini 
+│               │   scatter_nd_add.ini
 └───testcase #测试用例
 │   └───st
 │       └───scatter_nd_add

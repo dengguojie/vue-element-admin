@@ -1,0 +1,153 @@
+{
+  "op_type": "ArgMaxV2",
+  "op_list": [
+    {
+      "bin_filename": "ArgMaxV2_3a4f27f417f663bd4652251eb5b5b651",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dimension",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ArgMaxV2_bc5cf444592b20be060ce8af4eb55c56",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dimension",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ArgMaxV2_22835ccded1e4869e14df9d649467b5e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dimension",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ArgMaxV2_f3780183a9611019cb56bfe7365d2656",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dimension",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    }
+  ]
+}

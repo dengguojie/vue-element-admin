@@ -115,14 +115,14 @@ ut_case.add_case(["all"], case9)
 ut_case.add_case(["all"], case10)
 ut_case.add_case(["all"], case11)
 from te.platform.cce_conf import te_set_version
-te_set_version("Ascend710")
-ut_case.add_case(["Ascend710", "Ascend910A"], case12)
+te_set_version("Ascend310P3")
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case12)
 
 from te.platform.cce_conf import te_set_version
 te_set_version("Ascend910")
-ut_case.add_case(["Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case13)
 
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")

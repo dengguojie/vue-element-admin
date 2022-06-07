@@ -214,7 +214,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0, shift=0.0, kernel_nam
     res: result of power
     """
 
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     input_dtype = input_x.dtype.lower()
 
     diff_scale = power * scale
@@ -291,7 +291,7 @@ def power(input_x, output_y, power=1.0, scale=1.0, shift=0.0, kernel_name="power
 
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
 
-    cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
             error_manager_vector.raise_err_input_dtype_not_supported("power", "input_x", "float16", str(input_dtype))

@@ -927,7 +927,7 @@ def if_tik_support(input_x, input_gamma, input_beta,
     support_dtype = (input_x.get("dtype").lower(),)
     support_format = ("NCHW", "ND")
 
-    soc_version = get_soc_spec(cce_conf.SOC_VERSION)
+    soc_version = get_soc_spec(cce_conf.SHORT_SOC_VERSION)
     aicore_num = get_soc_spec(cce_conf.CORE_NUM)
     max_aicore_num = 32
     if soc_version not in support_version:

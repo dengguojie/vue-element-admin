@@ -436,7 +436,7 @@ class AttentionLnQKV:
 
     def _load_2d(self, src, dst, instr_params):
         '''
-        load_2d instr is different in Ascend910 and Ascend710
+        load_2d instr is different in Ascend910 and Ascend310P
         '''
         tik_instance = self.tik_instance
         start_index, repeat, repeat_stride, sid, is_transpose = instr_params

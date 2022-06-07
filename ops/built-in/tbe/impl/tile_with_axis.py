@@ -61,7 +61,7 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
     if ori_shape is not None:
         axis = shape_util.axis_check(len(ori_shape), axis)
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 
     # for 5hd, axis is only valid for n,h,w
     if ((ori_format == "NHWC" and axis != 3) or (ori_format == "NCHW" and axis != 1)) and \

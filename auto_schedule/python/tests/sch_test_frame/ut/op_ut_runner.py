@@ -155,7 +155,7 @@ def rece_signal(signum, frame):
 def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
     signal.signal(signal.SIGSEGV, rece_signal)
-        
+
     res = True
     if run_arg.cov_report:
         ut_cover = coverage.Coverage(source=["tbe", "te"],
@@ -172,7 +172,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
 
         # template handle
 
-        if run_arg.soc_version in ["Ascend910B2", "Ascend710"]:
+        if run_arg.soc_version in ["Ascend910B2", "Ascend310P3"]:
             case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
                                CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT]
         else:

@@ -141,7 +141,7 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2,
                             rhs2(*indices) + tvm.const(1.0, dtype=inp_dtype),
                             name="rhs_power", tag='elewise_single_VS_add')
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in ("Ascend910",):
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") not in ("Ascend910",):
         vlog_t = tbe.vsqrt(lhs_power, 1)
         alpha_lr = tbe.vmul(vlog_t, lr)
         alpha = tbe.vdiv(alpha_lr, rhs_power)

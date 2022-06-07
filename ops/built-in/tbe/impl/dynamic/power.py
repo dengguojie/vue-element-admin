@@ -217,7 +217,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
     res: result of power
     """
 
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     input_dtype = input_x.dtype.lower()
 
     diff_scale = power * scale
@@ -291,7 +291,7 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
-    cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     for (input_x,) in ins:
         with tbe.compute():
             # shape

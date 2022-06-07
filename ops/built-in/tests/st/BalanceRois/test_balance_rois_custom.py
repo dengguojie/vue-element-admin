@@ -8,7 +8,7 @@ from impl.balance_rois import balance_rois
 
 
 def test_balance_rois_01():
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     input_list = [
         {
             'shape': (1000, 5),
@@ -32,7 +32,7 @@ def test_balance_rois_01():
     balance_rois(*input_list)
 
 def test_balance_rois_02():
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     input_list = [
         {
             'shape': (10000, 5),
@@ -54,7 +54,7 @@ def test_balance_rois_02():
             'dtype': 'int32'
         }, 'balance_rois']
     balance_rois(*input_list)
- 
+
 if __name__ == "__main__":
     test_balance_rois_01()
     test_balance_rois_02()

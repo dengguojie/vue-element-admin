@@ -45,8 +45,8 @@ case3 = {"params": [{"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRA
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 precision_case1 = {"params": [{"shape": (2,4,4), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2,4,4), "param_type":"input"},
                               {"shape": (2,4,4), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2,4,4),"param_type":"input"},

@@ -43,7 +43,7 @@ def _check_shape_dtype_format(input_shape, input_dtype, input_format, stride_h, 
     n, c1, h, w, c0 = input_shape
 
     para_check.check_shape([n, c1, h * stride_h, w * stride_w, c0])
-    product = tbe_platform.get_soc_spec("SOC_VERSION")
+    product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     product_list = ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     if product in product_list:
         check_list = ["float16"]

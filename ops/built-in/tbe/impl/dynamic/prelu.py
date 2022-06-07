@@ -53,7 +53,7 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
     weight_shape = weight.get("ori_shape")
     weight_ori_format = weight.get("ori_format")
 
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = ["float16"]
         format_x = ["NCHW", "ND"]

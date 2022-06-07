@@ -52,13 +52,13 @@ def test_op_support_info():
                      {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
                      {"shape": (4, 16, 24, 24, 16, 16), "dtype": "float16", "format": "ND", "ori_shape": (4, 16, 384, 384), "ori_format": "ND"},
                      "test_fused_mul_add_op_support_info_1")
-    
+
     res_2 = get_op_support_info({"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
                      {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
                      {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
                      {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
                      "test_fused_mul_add_op_support_info_2")
-    
+
     split_maps = json.loads(res).get("_op_slice_info").get("splitMaps")
     assert len(split_maps) == 1
     for item in split_maps:
@@ -68,9 +68,9 @@ def test_op_support_info():
         assert idx == 0
         idx = input_list[1].get("idx")
         assert idx == 2
-    
 
-    
+
+
 def reload_check_support():
     """
     reload_check_support to improve cov
@@ -82,7 +82,7 @@ def reload_check_support():
 
 if __name__ == '__main__':
     reload_check_support()
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Hi3796CV300CS")
     test_op_select_format()
     test_op_support_info()

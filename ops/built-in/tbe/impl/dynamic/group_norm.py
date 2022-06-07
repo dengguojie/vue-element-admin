@@ -67,7 +67,7 @@ def op_select_format(x, scale, offset, y, mean, variance, num_groups, data_forma
     format_list0 = []
     format_list1 = []
 
-    if soc_version in [tbe_platform.ASCEND_320, tbe_platform.ASCEND_710, tbe_platform.ASCEND_920A]:
+    if soc_version in ["Ascend310B", tbe_platform.ASCEND_310P, "Ascend910B"]:
         dtype_list = ["float16", "float32", "float16", "float32"]
         format_list0 = ["NC1HWC0", "NC1HWC0", "ND", "ND"]
         format_list1 = ["ND", "ND", "ND", "ND"]

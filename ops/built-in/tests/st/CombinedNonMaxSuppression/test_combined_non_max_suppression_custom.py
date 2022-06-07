@@ -66,7 +66,7 @@ def test_cnms_003():
                           ]
     obj = CNMS(*input_list)
     obj.cnms_compute()
-    
+
 
 def test_cnms_004():
     '''
@@ -111,7 +111,7 @@ def test_cnms_005():
 
 
 if __name__ == '__main__':
-    soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     te_set_version("Ascend910B2", "VectorCore")
     test_cnms_001()
     test_cnms_002()

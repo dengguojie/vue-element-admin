@@ -67,7 +67,7 @@ case2 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 ksize = (1, 12, 2, 1)
 strides = (1, 58, 33, 1)
@@ -80,7 +80,7 @@ case3 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 ksize = (1, 13, 6, 1)
 strides = (1, 6, 29, 1)
@@ -93,7 +93,7 @@ case4 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
 
 ksize = (1, 14, 16, 1)
 strides = (1, 63, 40, 1)
@@ -106,7 +106,7 @@ case5 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
 
 
 def tf_get_windowed_output_size_verbose_V2(input_size, filter_size,

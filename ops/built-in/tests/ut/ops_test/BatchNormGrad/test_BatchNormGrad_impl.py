@@ -23,10 +23,10 @@ def gen_batch_norm_grad_case(shape_x, shape_scale, shape_offset, shape_mean, sha
 
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_grad_case((2,1,1,3,4,16), (2,1,1,3,4,16), (1,1,1,1,1,16), (1,1,1,1,1,16), (1,1,1,1,1,16), "float16",
                                             "float32", "NDC1HWC0", "batch_norm_grad_2", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_grad_case((2,3,4,2), (2,3,4,2), (2,), (2,), (2,), "float16",
                                             "float32", "NHWC", "batch_norm_grad_1", "success"))
 

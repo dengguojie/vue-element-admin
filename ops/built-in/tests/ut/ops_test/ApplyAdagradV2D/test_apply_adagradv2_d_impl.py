@@ -16,7 +16,7 @@ ApplyAdagradV2D ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
-ut_case = OpUT("ApplyAdagradV2D", None, None)
+ut_case = OpUT("ApplyAdagradV2D", "impl.apply_adagradv2_d", "apply_adagradv2_d")
 
 case1 = {
     "params": [{
@@ -466,11 +466,11 @@ ut_case.add_precision_case(
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
     })
 
-ut_case.add_case(["Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910"], case5)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

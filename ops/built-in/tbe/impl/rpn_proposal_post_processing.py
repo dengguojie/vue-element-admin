@@ -58,7 +58,7 @@ CONFIG_LEN = 1536
 # 1MB can save 1024*1024/16 = 65536 proposals
 L1_MAX_NUM = 46080
 CONFIG_FP16 = 65404
-IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
+IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend310P")
 
 
 def ceil_div(num_a, num_bulk):
@@ -1434,7 +1434,7 @@ def nms_local(tik_instance, data_tensor, input_param):
                                           sup_matrix_ub[length - CONFIG_SIXTEEN], rpn_cor_ir)
 
             # v100 branch
-            if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in IF_USE_V200:
+            if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") not in IF_USE_V200:
                 # get the suppression matrix from 128 proposla each time
                 with tik_instance.for_range(0, CONFIG_MASK) as i:
                     with tik_instance.if_scope(temp_sup_vec_ub[i] == 0):
@@ -1551,7 +1551,7 @@ def nms_local(tik_instance, data_tensor, input_param):
                                              CONFIG_EIGHT,
                                              i)
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in IF_USE_V200:
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in IF_USE_V200:
         data_y_last = tik_instance.Tensor("float16",
                                           [CONFIG_FOUR, post_nms_num],
                                           name="data_y_last",
@@ -1580,14 +1580,14 @@ def nms_local(tik_instance, data_tensor, input_param):
                                post_nms_num//CONFIG_SIXTEEN,
                                CONFIG_SIXTEEN - CONFIG_TWO)
         # transpose 4*post_nms_num to post_nms_num*4
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") \
-                in ("Ascend610", "Ascend710"):
+        if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") \
+                in ("Ascend610", "Ascend310P"):
             tik_instance.v4dtrans(True,
                                   selected_reduced_coord_ub,
                                   data_y_last,
                                   post_nms_num,
                                   CONFIG_FOUR)
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend615":
+        if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") == "Ascend615":
             local_v4dtrans(tik_instance,
                            selected_reduced_coord_ub,
                            data_y_last,

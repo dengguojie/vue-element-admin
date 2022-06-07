@@ -81,10 +81,10 @@ def gen_in_training_reduce_grad_case(shape_x, shape_var, shape_gamma, data_forma
     }
 
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_in_training_reduce_grad_case((2, 128, 2, 128, 128, 16), (2, 1, 2, 1, 1, 16), (1, 1, 2, 1, 1, 16),
                                                   "NDC1HWC0", "float32", "float32", "test_right_001", "success"))
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_in_training_reduce_grad_case((2, 128, 2, 128, 128, 16), (2, 1, 2, 1, 1, 16), (1, 1, 2, 1, 1, 16),
                                                   "NDC1HWC0", "float16", "float32", "test_right_002", "success"))
 

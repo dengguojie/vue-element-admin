@@ -46,7 +46,7 @@ static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
 const int64_t SPLIT_COUNT_VALUE = 2;
-static const std::vector<std::string> SUPPORT_VECTORCORE_PLATFORM_PATTERN = {"Ascend710"};
+static const std::vector<std::string> SUPPORT_VECTORCORE_PLATFORM_PATTERN = {"Ascend310P"};
 
 Status DeepMdFusionPassUtil::CheckSupportVectorCore(const std::string& fusedOpType, bool& isSupport) {
   OP_LOGD(fusedOpType.c_str(), "Enter into IsSupportVectorCore");
@@ -57,12 +57,11 @@ Status DeepMdFusionPassUtil::CheckSupportVectorCore(const std::string& fusedOpTy
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
       OP_LOGD(fusedOpType.c_str(), "Failed to get platform info"), return FAILED);
 
-  std::string socVersion = optionalInfo.soc_version;
-  OP_LOGD(fusedOpType.c_str(), "Get soc version: %s", socVersion.c_str());
+  OP_LOGD(fusedOpType.c_str(), "Get soc version: %s", optionalInfo.soc_version.c_str());
 
   isSupport = false;
   for (string pattern : SUPPORT_VECTORCORE_PLATFORM_PATTERN) {
-    if (socVersion == pattern || socVersion.find(pattern) != string::npos) {
+    if (platformInfo.str_info.short_soc_version == pattern) {
       isSupport = true;
       break;
     }

@@ -81,9 +81,9 @@ case3 = {"params": [get_input((-2, ), [(1, None)], "float32"),
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case3)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

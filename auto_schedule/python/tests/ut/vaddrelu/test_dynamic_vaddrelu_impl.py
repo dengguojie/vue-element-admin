@@ -102,8 +102,8 @@ case3 = {
 }
 
 ut_case.add_case("all", case1)
-ut_case.add_case(["Ascend710"], case2)
-ut_case.add_case(["Ascend710"], case3)
+ut_case.add_case(["Ascend310P3"], case2)
+ut_case.add_case(["Ascend310P3"], case3)
 
 
 def calc_expect_func(x, y, z):

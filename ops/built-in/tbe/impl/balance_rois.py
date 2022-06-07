@@ -643,7 +643,7 @@ class BalanceRoiByArea(object):
             data_indices_ = self.tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm,
                                                      is_workspace=True)
 
-        cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         available_aicore_num = tik.Dprofile().get_aicore_num()
         used_aicore_num = available_aicore_num if rounds > available_aicore_num else rounds
 

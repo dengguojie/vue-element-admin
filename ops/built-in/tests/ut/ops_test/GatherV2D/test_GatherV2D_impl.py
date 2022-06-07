@@ -65,13 +65,13 @@ case7 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "NHWC", "ori
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case7)
 
 
 def calc_expect_func(x, indice, y):

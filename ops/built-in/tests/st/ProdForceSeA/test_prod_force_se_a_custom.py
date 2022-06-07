@@ -40,7 +40,7 @@ def test_prod_force_se_a_02():
         prod_force_se_a(*input_list)
 
 if __name__ == '__main__':
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     test_prod_force_se_a_01()
     set_current_compile_soc_info("Ascend910")
     test_prod_force_se_a_02()

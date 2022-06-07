@@ -37,7 +37,7 @@ def _initialize_switches(args) -> tbetoolkits.utilities.SWITCHES:
     switches.stc_switches.realtime = True
     switches.cst_switches.realtime = True
     switches.bin_switches.realtime = True
-    # RTS Online profiling switches, change to False if you want to have PMU data on Ascend710/615/610
+    # RTS Online profiling switches, change to False if you want to have PMU data on Ascend310P/Ascend615/Ascend610
     switches.dyn_switches.rts_prof = True
     switches.stc_switches.rts_prof = True
     switches.cst_switches.rts_prof = True

@@ -41,9 +41,9 @@ case1 = gen_decode_boundaries_target_case((1, 1), (1, 4), "float16", "decode_bou
 case2 = gen_decode_boundaries_target_case((16, 1), (16, 4), "float16", "decode_boundaries_target_2")
 case3 = gen_decode_boundaries_target_case((100, 1), (100, 4), "float16", "decode_boundaries_target_3")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 ut_case.add_precision_case("Ascend910", gen_precision_case((1, 1), (1, 4), "float16"))
 ut_case.add_precision_case("Ascend910", gen_precision_case((3, 1), (3, 4), "float16"))

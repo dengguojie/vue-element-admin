@@ -24,7 +24,7 @@ from te.utils.error_manager import error_manager_vector
 import te.lang.cce as tbe
 from tbe.dsl.compute.layer_norm_cube import LayerNormCube
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -75,7 +75,7 @@ def get_op_support_info(input_x, input_gamma, input_beta,
     elif format_x == "FRACTAL_NZ":
         index_list = tuple(index for index, _ in enumerate(ori_shape_x))
         start_axis = min(begin_norm_axis, begin_params_axis)
-        
+
         no_split_axis = index_list[start_axis:]
         no_split_axis = to_frac_z_axis(ori_shape_x, no_split_axis)
         for i in range(len(shape_x)):
@@ -333,7 +333,7 @@ def _broadcast_nz(tensor, shape):
 def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mode):
     """
     judge case using cube to handle reducesum
-    only supported follow case in Ascend910 and Ascend710:
+    only supported follow case in Ascend910 and Ascend310P:
         ori_shape: ((batch), m, 1024(768)), "shape": ((batch), 64(48), m//16, 16, 16), "dtype": fp16
     """
 
@@ -344,7 +344,7 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
             return False
         if len(shape_x) not in (4, 5) or shape_x[-4] not in (64, 48, 6, 12, 24, 16, 32):
             return False
-        if "Ascend910" not in get_soc_spec(SOC_VERSION) and "Ascend710" not in get_soc_spec(SOC_VERSION):
+        if get_soc_spec(SHORT_SOC_VERSION) not in ("Ascend910", "Ascend310P"):
             return False
         if begin_norm_axis != (len(ori_shape_x) - 1):
             return False

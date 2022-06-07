@@ -28,14 +28,14 @@ test ! -d "${CANN_ST_OUT}" && mkdir -p "${CANN_ST_OUT}"
 
 set_st_env() {
   local install_path="$1"
-  local soc_version="$2"
+  local short_soc_version="$2"
   # atc
   export PATH=$install_path/compiler/ccec_compiler/bin:$install_path/compiler/bin:$PATH
   export ASCEND_OPP_PATH=$install_path/opp
   export PYTHONPATH=$install_path/compiler/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH:${ASCEND_OPP_PATH}/op_impl/built-in/ai_core/tbe
   export LD_LIBRARY_PATH=$install_path/runtime/lib64:$install_path/compiler/lib64:$LD_LIBRARY_PATH
   # acl
-  if [[ $soc_version == "Ascend310" ]]; then
+  if [[ $short_soc_version == "Ascend310" ]]; then
     export DDK_PATH=$install_path
     export NPU_HOST_LIB=$install_path/runtime/lib64/stub
     export LD_LIBRARY_PATH=$install_path/runtime/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
@@ -133,16 +133,15 @@ run_st() {
 delete_unmatch_cases() {
   supported_soc="$1"
   if [[ $supported_soc == "Ascend310" ]]; then
-      find "${CANN_ST_SOURCE}" -name "*910*.json" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*710*.json" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*custom.py" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -iname "*custom.py" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*.json" -a ! -iname "*310*.py" \) | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -iname "*310[b-z]*.json" | xargs rm -rf
   elif [[ $supported_soc == "Ascend910" ]]; then
-      find "${CANN_ST_SOURCE}" -name "*310*.json" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*710*.json" | xargs rm -rf
-  elif [[ $supported_soc == "Ascend710" ]]; then
-      find "${CANN_ST_SOURCE}" -name "*310*.json" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*910*.json" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*custom.py" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*.json" -a ! -iname "*910*.py" \) | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -iname "*910[b-z]*.json" | xargs rm -rf
+  elif [[ $supported_soc == "Ascend310P3" ]]; then
+      find "${CANN_ST_SOURCE}" -iname "*custom.py" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*.json" -a ! -iname "*310p3*.json" \) | xargs rm -rf
   fi
 }
 
@@ -173,26 +172,26 @@ get_results() {
 main() {
   local base_path="$1"
   local op_type="$2"
-  local soc_version="$3"
+  local short_soc_version="$3"
   st_failed="false"
 
   if [[ -z "${op_type}" ]]; then
      op_type="all"
   fi
 
-  if [[ -z "${soc_version}" ]]; then
-     soc_version="Ascend310"
+  if [[ -z "${short_soc_version}" ]]; then
+     short_soc_version="Ascend310"
   fi
   modify_for_cov
-  delete_unmatch_cases $soc_version
-  set_st_env "${base_path}"  "${soc_version}"
-  run_st "${op_type}" "${soc_version}"
+  delete_unmatch_cases $short_soc_version
+  set_st_env "${base_path}"  "${short_soc_version}"
+  run_st "${op_type}" "${short_soc_version}"
   get_results
   clear_tmp
 }
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 ASCEND_PATH OP_TYPE [SOC_VERSION]" && exit $STATUS_FAILED
+  echo "Usage: $0 ASCEND_PATH OP_TYPE [SHORT_SOC_VERSION]" && exit $STATUS_FAILED
 fi
 
 main $@

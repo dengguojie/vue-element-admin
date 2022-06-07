@@ -191,7 +191,9 @@ class AddRowRanges():
                                     x_burst_len, 0, 0)
         self.tik_instance.data_move(indices_ub, self.indices_gm[block_index * m_size * 2], 0, 1,
                                     indices_burst_len, 0, 0)
-        m_loop_num = m_size if m_size_tail == 0 else m_size_tail
+        m_loop_num = self.tik_instance.Scalar(dtype="int32", init_value=m_size)
+        with self.tik_instance.if_scope(m_size_tail > 0):
+            m_loop_num.set_as(m_size_tail)
         with self.tik_instance.for_range(0, m_loop_num) as m_index:
             start_index.set_as(indices_ub[m_index * 2])
             end_index.set_as(indices_ub[m_index * 2 + 1])

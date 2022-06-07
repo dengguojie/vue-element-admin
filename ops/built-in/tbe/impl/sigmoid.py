@@ -111,9 +111,9 @@ def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     -------
     output tensor
     """
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
 
-    if soc_version in ("Ascend710", ) and impl_mode == "high_performance":
+    if soc_version in ("Ascend310P", ) and impl_mode == "high_performance":
         return sigmoid_high_performance_compute(x, y, kernel_name)
 
     data_input = x
@@ -123,7 +123,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     if dtype == "float32" and not mul_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16", ), dtype)
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         if dtype == "float32" and exp_support:
             ln_res = -math.log(Constant.CONST_FP32_MAX)
             ln_res = int(ln_res * 10) / 10

@@ -72,9 +72,9 @@ def test_check_supported(test_arg):
                      {"shape": (2, 2048), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                      2, 0)
 ut_case.add_cust_test_func(test_func=test_check_supported)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310"], case4)
 ut_case.add_case(["Ascend310"], case5)
 ut_case.add_case(["Ascend310"], case6)

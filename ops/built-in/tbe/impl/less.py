@@ -91,7 +91,7 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
     shape_x, shape_y, shape = shape_util.broadcast_shapes(shape_x, shape_y,
                                                           param_name_input1="input_x",
                                                           param_name_input2="input_y")
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     dtype = input_x.dtype
     if dtype in ("uint8", "int8"):
         input_x = tbe.cast_to(input_x, "float16")
@@ -102,17 +102,17 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
         # minimun num of float32 2**(-126)
         data_min = tbe.broadcast(tvm.const(2**(-126),
                                            dtype=dtype), shape, dtype)
-    elif dtype == "float16" and cce_product not in ("Ascend910", "Ascend710"):
+    elif dtype == "float16" and cce_product not in ("Ascend910", "Ascend310P"):
         # minimun num of float16 2**(-24)
         data_min = tbe.broadcast(tvm.const(2**(-24), dtype=dtype),
                                  shape, dtype)
-    elif dtype == "float16" and cce_product in ("Ascend910", "Ascend710"):
+    elif dtype == "float16" and cce_product in ("Ascend910", "Ascend310P"):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
         dtype = "float32"
         data_min = tbe.broadcast(tvm.const(2**(-126),
                                            dtype=dtype), shape, dtype)
-    elif dtype == "int32" and cce_product not in ("Ascend910", "Ascend710"):
+    elif dtype == "int32" and cce_product not in ("Ascend910", "Ascend310P"):
         data_min = tbe.broadcast(tvm.const(1, dtype=dtype),
                                  shape, dtype)
     else:

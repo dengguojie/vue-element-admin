@@ -140,7 +140,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
     """
     KERNEL_DIR = os.path.realpath("./kernel_meta")
     _case_info_map: Dict[str, Union[op_ut_case_info.OpUTCase, op_ut_case_info.OpUTCustomCase]]
-    SOC_VERSION_STR = "SOC_VERSION"
 
     def __init__(self, op_type, op_module_name=None, op_func_name=None):
 
@@ -469,7 +468,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             }
             case_info_list.append(case_obj)
         return case_info_list
-    
+
     def _build_op_ut_case_info(self, support_soc, case,
                                case_usage: op_ut_case_info.CaseUsage = op_ut_case_info.CaseUsage.IMPL,
                                case_line_num=None) -> op_ut_case_info.OpUTCase:

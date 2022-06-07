@@ -79,11 +79,11 @@ def gen_instance_norm_grad_case(shape_x, shape_gamma, shape_mean, data_format, d
     }
 
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_grad_case((2, 5, 8, 7, 16), (16,), (2, 1, 1, 1, 16), "NDHWC", "float32",
                                              "test_right_001", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_grad_case((2, 5, 8, 7, 16), (16,), (2, 1, 1, 1, 16), "NDHWC", "float16",
                                              "test_right_002", "success"))
 

@@ -144,7 +144,7 @@ case10 = {"params": [{"shape": (784,19,16,32), "dtype": "int8", "format": "FRACT
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend710", "SD3403", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310P3", "SD3403", "Ascend910A"], case10)
 
 # case from vgg16
 case11 = {"params": [{"shape": (128,1,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (1,4096),"ori_format": "ND"},
@@ -158,7 +158,7 @@ case11 = {"params": [{"shape": (128,1,16,32), "dtype": "int8", "format": "FRACTA
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend710", "SD3403", "Ascend310"], case11)
+ut_case.add_case(["Ascend310P3", "SD3403", "Ascend310"], case11)
 
 # batch_matmul
 case12 = {"params": [{"shape": (2,784,19,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (2,304,25088),"ori_format": "ND"},

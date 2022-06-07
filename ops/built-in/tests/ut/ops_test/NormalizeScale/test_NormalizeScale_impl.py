@@ -26,9 +26,9 @@ case2 = normalize_scale_cce((2, 2, 3, 3), "float16", (1,), "float16", (2, 1, 1, 
                             "normalize_scale_2")
 case3 = normalize_scale_cce((2, 3, 2, 3), "float16", (3,), "float16", (2, 1, 1, 1), "float32", True, False, 1e-10, "NCHW",
                             "normalize_scale_3")
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 def test_get_op_support_info(test_arg):
     from impl.normalize_scale import get_op_support_info

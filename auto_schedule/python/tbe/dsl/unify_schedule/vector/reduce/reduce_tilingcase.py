@@ -31,7 +31,7 @@ from typing import Union
 from tbe import tvm
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
@@ -844,7 +844,7 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     check if current tiling case support atomic
     """
     # Common Regulation
-    version = get_soc_spec(SOC_VERSION)
+    version = get_soc_spec(SHORT_SOC_VERSION)
     if version not in [ASCEND_910B, ASCEND_910]:
         return False
 

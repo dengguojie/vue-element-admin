@@ -207,12 +207,12 @@ def im2col_fractal_v2(shape, img2col_para):
 
 def is_support_v200():
     """
-    check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     False: Other version
     """
     warnings.warn("te.lang.cce.te_compute.cube_util is expired, " \

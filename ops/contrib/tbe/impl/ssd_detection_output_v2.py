@@ -36,7 +36,7 @@ def _check_product_info(input_dict):
     -------
     None
     """
-    tik_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tik_name = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 
     conf_dtype = input_dict.get("mbox_conf").get("dtype").lower()
     loc_dtype = input_dict.get("mbox_loc").get("dtype").lower()
@@ -46,7 +46,7 @@ def _check_product_info(input_dict):
             and loc_dtype == priorbox_dtype:
         raise RuntimeError("input type is error")
 
-    if tik_name in ("Ascend310", "Ascend910", "Ascend710"):
+    if tik_name in ("Ascend310", "Ascend910", "Ascend310P"):
         op_utils.check_dtype(conf_dtype.lower(), ["float16"])
 
 

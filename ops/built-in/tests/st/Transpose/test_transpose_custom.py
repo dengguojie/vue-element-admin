@@ -19,7 +19,7 @@ def test_get_ub_core_for_cov():
     from impl.dynamic.transpose import check_supported
     from impl.dynamic.transpose import get_ub_size
     from impl.dynamic.transpose import get_core_num
-    from impl.dynamic.transpose import Transpose 
+    from impl.dynamic.transpose import Transpose
 
     get_ub_size()
     get_core_num()
@@ -74,7 +74,7 @@ def test_get_op_support_info_no_const_value():
         raise Exception("get_op_support_info_no_const_should_return false")
 
 if __name__ == '__main__':
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Ascend310")
     test_get_ub_core_for_cov()
     test_nd_2_nz_shape_mismatch()

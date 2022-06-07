@@ -20,7 +20,7 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("DynSeqOuter", "impl.dynamic.dyn_seq_outer", "dyn_seq_outer")
 
-ut_case.add_case(["Ascend910A","Ascend710","Ascend310"], {
+ut_case.add_case(["Ascend910A","Ascend310P3","Ascend310"], {
     "params": [{"shape": (-1, -1), "dtype": "float32",
                 "ori_shape": (41, 512),
                 "format": "ND", "ori_format": "ND",

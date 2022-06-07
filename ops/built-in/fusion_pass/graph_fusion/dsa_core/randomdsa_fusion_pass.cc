@@ -246,10 +246,7 @@ Status RandomDsaFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Get platform info failed, not fusion.");
     return SUCCESS;
   }
-  if (optionalInfo.soc_version != "Ascend910B1" &&
-      optionalInfo.soc_version != "Ascend910B2" &&
-      optionalInfo.soc_version != "Ascend910B3" &&
-      optionalInfo.soc_version != "Ascend910B4") {
+  if (platformInfo.str_info.short_soc_version != "Ascend910B") {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "DSA fusion pass not support this soc version[%s].",
             optionalInfo.soc_version.c_str());
     return SUCCESS;

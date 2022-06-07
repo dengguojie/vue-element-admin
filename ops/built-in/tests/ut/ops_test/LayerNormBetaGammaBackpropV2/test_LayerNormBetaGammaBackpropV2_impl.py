@@ -99,15 +99,15 @@ case9 = {"params": [
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case9)
 
 def test_op_select_format(test_arg):
     from impl.layer_norm_beta_gamma_backprop_v2 import op_select_format

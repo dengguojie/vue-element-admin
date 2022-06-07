@@ -130,8 +130,8 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
     input_x["range"] = range_x
     input_dy["range"] = range_x
 
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend710", "Ascend910")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
+    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend310P", "Ascend910")
 
     if is_support and is_white_shape(input_x.get("shape")):
         context = tbe_context.op_context.get_context()

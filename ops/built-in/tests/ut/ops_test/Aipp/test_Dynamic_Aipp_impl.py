@@ -55,8 +55,8 @@ case2 = gen_dynamic_aipp_case((1,3,-1,-1), (3168,), (1,1,-1,-1,16), "uint8", "ui
                               aipp_config_json_dynamic, "aipp_2", "success")
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
 
 
 if __name__ == '__main__':

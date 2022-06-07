@@ -93,7 +93,7 @@ def _rtsProfilingCall(device: RTSInterface, block_dim: int, run_kernel_name, ker
     ################################
     # Pre-Kernel Checks
     ################################
-    if get_global_storage().PMU and get_global_storage().device_platform in ["Ascend710"]:
+    if get_global_storage().PMU and get_global_storage().device_platform in ["Ascend310P"]:
         logging.warning("Online profiling has been disabled because PMU conflicts with it on %s"
                         % get_global_storage().device_platform)
         rts_online_prof = False

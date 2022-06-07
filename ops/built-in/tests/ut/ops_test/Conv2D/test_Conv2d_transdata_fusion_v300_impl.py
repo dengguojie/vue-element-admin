@@ -231,11 +231,11 @@ def test_conv2d_transdata_fusion_v300(test_arg):
         util_conv2d.v220_gen_param(inputs, weights, shape_fm, c0_optim_flag)
         util_conv2d.is_support_v300()
 
-    cceconf.te_set_version("Ascend320")
+    cceconf.te_set_version("Ascend310B1")
     with op_context.OpContext():
         run_testcase(input_nd2nz_case)
         test_op_select_format()
 
 print("adding Conv2D v300 transdata fusion testcases")
-ut_case.add_cust_test_func('Ascend320', test_func=test_conv2d_transdata_fusion_v300)
-ut_case.run(['Ascend320'])
+ut_case.add_cust_test_func('Ascend310B1', test_func=test_conv2d_transdata_fusion_v300)
+ut_case.run(['Ascend310B1'])

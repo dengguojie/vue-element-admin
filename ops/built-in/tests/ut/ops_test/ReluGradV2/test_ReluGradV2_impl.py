@@ -30,9 +30,9 @@ case3 = {"params": [{"shape": (1,), "dtype": "float16", "format": "NC1HWC0", "or
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 
 def calc_expect_func(x1, x2, y):

@@ -32,7 +32,7 @@ case1 = {
         "shape": (16, 1),
         "dtype": "int32",
         "format": "ND"
-    }, 
+    },
     {
         "shape": (16, 120),
         "dtype": "int32",
@@ -52,7 +52,7 @@ case2 = {
         "shape": (3000, 16),
         "dtype": "uint32",
         "format": "ND"
-    }, 
+    },
     [3000, 16]
     ],
     "case_name": "test_broadcast_2",
@@ -69,16 +69,16 @@ case3 = {
         "shape": (11, 13, 15),
         "dtype": "float16",
         "format": "ND"
-    }, 
+    },
     [11, 13, 15]
     ],
     "case_name": "test_broadcast_3",
     "expect": "success",
     "support_expect": True
 }
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case2)
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"], case3)
 
 
 def calc_expect_func(x, y, dst_shape):

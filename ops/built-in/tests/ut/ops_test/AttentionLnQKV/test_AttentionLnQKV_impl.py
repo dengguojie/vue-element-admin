@@ -118,8 +118,8 @@ def _gen_case(params):
     return testcase
 
 for case in attention_ln_qkv_testcases:
-    ut_case.add_case(["Ascend910A", "Ascend710"], _gen_case(case))
+    ut_case.add_case(["Ascend910A", "Ascend310P3"], _gen_case(case))
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])
 

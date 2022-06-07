@@ -80,7 +80,7 @@ def test_bn_training_reduce_grad_001():
 
 
 if __name__ == '__main__':
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Ascend910A")
     reload_check_support()
     test_bn_training_reduce_grad_001()

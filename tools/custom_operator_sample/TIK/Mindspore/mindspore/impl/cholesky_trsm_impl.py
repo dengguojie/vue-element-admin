@@ -43,7 +43,7 @@ def cholesky_trsm(input_x, output, kernel_name):
     blocks = int(matrix_dim // split_dim)
     if blocks == 0:
         blocks = 1
-    if tbe_platform.get_soc_spec("SOC_VERSION") == platform_info.VERSION_MINI:
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))

@@ -258,11 +258,8 @@ def _set_buffer_emit_insn(sch, res, tensor_map, axis_inner):
             sch[value].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
         elif key == "dequant_to_fp16":
             sch[value].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
-            if get_soc_spec("SOC_VERSION") in ("Ascend710",
-                                                       "Ascend610",
-                                                       "Ascend615",
-                                                       "Hi3796CV300CS",
-                                                       "SD3403"):
+            if get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310P", "Ascend610", "Ascend615",
+                                               "Hi3796CV300CS", "SD3403"):
                 if res.op.attrs['is_scalar'].value == 1:
                     sch[value].emit_insn(sch[value].op.axis[0], 'dma_copy')
                 else:

@@ -70,7 +70,7 @@ def check_topk_param(input_args, output_args):
     if input_args["mem_swap"].shape[2] != 8:
         raise RuntimeError("mem_swap.shape[2] != 8")
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_args["k"] > 3000:
             raise RuntimeError("k > 3000")
     else:
@@ -104,7 +104,7 @@ def set_ub_size_by_product_type(data_type):
     """
     global UB_SIZE
     UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-    
+
     global REGION_SIZE_INBYTE
     if data_type == "float16":
         REGION_SIZE_INBYTE = 2 * 8
@@ -239,7 +239,7 @@ def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
     with tik_inst.for_range(n_required, n_required_apply) as index:
         required_score_ub[index, 4].set_as(init_scalar)
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310", "Ascend910", "Hi3796CV300ES",
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310", "Ascend910", "Hi3796CV300ES",
                                                              "Hi3796CV300CS", "SD3403"):
         count_scalar = tik_inst.Scalar("int32", "count_scalar", 0)
 

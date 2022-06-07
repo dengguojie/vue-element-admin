@@ -19,7 +19,7 @@ ascend_quant schedule
 """
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import scope_ubuf
 from ..base.operation import register_schedule
@@ -61,7 +61,7 @@ def _round_emit_insn(round_mode):
     instruction
     """
     emit_insn_str = 'vector_conv_%s' % round_mode.value.lower()
-    if get_soc_spec(SOC_VERSION) == ASCEND_310:
+    if get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310:
         # mini
         emit_insn_str = 'vector_conv'
     if round_mode == "Round":

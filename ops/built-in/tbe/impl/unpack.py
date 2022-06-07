@@ -172,7 +172,7 @@ def _get_max_num_in_platform():
     # 1536B means stack holding the param provided to the platform,
     # 1 param takes 8 bytes, needs Multiple output param and 1 input param
     # mini has more parameters (offset, index) than cloud
-    compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
+    compile_plat = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if compile_plat in ("Ascend310", ):
         max_num = (1536 // 3) // 8 - 1
     else:

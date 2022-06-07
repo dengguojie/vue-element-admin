@@ -76,8 +76,8 @@ TEST_F(attention_score_fusion_pass_test, attention_score_fusion_pass_test_01) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
-  optiCompilationInfo.soc_version = "Ascend710";
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   auto query = CreateDataNode("query", {batch_dim1, batch_dim2, seq_num * nz_dim, n_num * nz_dim}, FORMAT_ND, DT_FLOAT16);
@@ -177,8 +177,8 @@ TEST_F(attention_score_fusion_pass_test, attention_score_fusion_pass_test_02) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
-  optiCompilationInfo.soc_version = "Ascend710";
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   auto query = CreateDataNode("query", {batch_dim1, batch_dim2, seq_num * nz_dim, n_num * nz_dim}, FORMAT_ND, DT_FLOAT16);
@@ -285,8 +285,8 @@ TEST_F(attention_score_fusion_pass_test, attention_score_fusion_pass_test_03) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
-  optiCompilationInfo.soc_version = "Ascend710";
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   auto query = CreateDataNode("query", {batch_dim1, batch_dim2, seq_num * nz_dim, n_num * nz_dim}, FORMAT_ND, DT_FLOAT16);

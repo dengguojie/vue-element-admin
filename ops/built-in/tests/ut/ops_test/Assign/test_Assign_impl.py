@@ -21,7 +21,7 @@ ut_case = OpUT("Assign", None, None)
 
 case1 = {"params": [{"shape": (15, 32), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),"ori_format": "ND"}, #x
                     {"shape": (15, 32), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),"ori_format": "ND"}, #h
-                    {"shape": (15, 32), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),"ori_format": "ND"}, 
+                    {"shape": (15, 32), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),"ori_format": "ND"},
                     ],
          "case_name": "Assign_1",
          "expect": "success",
@@ -29,7 +29,7 @@ case1 = {"params": [{"shape": (15, 32), "dtype": "float16", "format": "ND", "ori
 
 case2 = {"params": [{"shape": (5, 13, 64), "dtype": "int16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND"}, #x
                     {"shape": (5, 13, 64), "dtype": "int16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND"}, #h
-                    {"shape": (5, 13, 64), "dtype": "int16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND"}, 
+                    {"shape": (5, 13, 64), "dtype": "int16", "format": "ND", "ori_shape": (5, 13, 64),"ori_format": "ND"},
                     ],
          "case_name": "Assign_2",
          "expect": "success",
@@ -37,15 +37,15 @@ case2 = {"params": [{"shape": (5, 13, 64), "dtype": "int16", "format": "ND", "or
 
 case3 = {"params": [{"shape": (65535, 53,), "dtype": "int8", "format": "ND", "ori_shape": (65535, 53,),"ori_format": "ND"}, #x
                     {"shape": (65535, 53,), "dtype": "int8", "format": "ND", "ori_shape": (65535, 53,),"ori_format": "ND"}, #h
-                    {"shape": (65535, 53,), "dtype": "int8", "format": "ND", "ori_shape": (65535, 53,),"ori_format": "ND"}, 
+                    {"shape": (65535, 53,), "dtype": "int8", "format": "ND", "ori_shape": (65535, 53,),"ori_format": "ND"},
                     ],
          "case_name": "Assign_3",
          "expect": "success",
          "support_expect": True}
-         
+
 case4 = {"params": [{"shape": (128981,), "dtype": "float32", "format": "ND", "ori_shape": (128981,),"ori_format": "ND"}, #x
                     {"shape": (128981,), "dtype": "float32", "format": "ND", "ori_shape": (128981,),"ori_format": "ND"}, #h
-                    {"shape": (128981,), "dtype": "float32", "format": "ND", "ori_shape": (128981,),"ori_format": "ND"}, 
+                    {"shape": (128981,), "dtype": "float32", "format": "ND", "ori_shape": (128981,),"ori_format": "ND"},
                     ],
          "case_name": "Assign_4",
          "expect": "success",
@@ -53,17 +53,17 @@ case4 = {"params": [{"shape": (128981,), "dtype": "float32", "format": "ND", "or
 
 case5 = {"params": [{"shape": (10000,), "dtype": "float32", "format": "ND", "ori_shape": (10000,),"ori_format": "ND"}, #x
                     {"shape": (1000,), "dtype": "float32", "format": "ND", "ori_shape": (1000,),"ori_format": "ND"}, #h
-                    {"shape": (10000,), "dtype": "float32", "format": "ND", "ori_shape": (10000,),"ori_format": "ND"}, 
+                    {"shape": (10000,), "dtype": "float32", "format": "ND", "ori_shape": (10000,),"ori_format": "ND"},
                     ],
          "case_name": "Assign_5",
          "expect": RuntimeError,
          "support_expect": False}
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
 
 def calc_expect_func(ref, value, output):
     my_dtype = ref['dtype']

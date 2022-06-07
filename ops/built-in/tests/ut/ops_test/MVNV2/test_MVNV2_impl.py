@@ -29,9 +29,9 @@ case3 = {"params": [{"shape": (1, 2, 16, 16), "dtype": "float16", "format": "NCH
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Hi3796CV300CS"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Hi3796CV300CS"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Hi3796CV300CS"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Hi3796CV300CS"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Hi3796CV300CS"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Hi3796CV300CS"], case3)
 
 
 def test_lhisi_mvn_v2(test_args):

@@ -30,7 +30,7 @@ def simple_water_test(test_args, nsample, nloc, n_a_sel, n_r_sel, nall,
     mesh_dim = 1 + 1026 * nloc
     if nloc == 192:
         mesh_dim = 1 + 1026 * nloc + nall
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         prod_env_mat_a({"shape": (nsample, nall * 3), "dtype": "float32", "format": "ND",
                         "ori_shape": (nsample, nall * 3), "ori_format": "ND",
@@ -110,5 +110,5 @@ ut_case.add_cust_test_func(test_func=test_prod_env_mat_a_case001)
 ut_case.add_cust_test_func(test_func=test_prod_env_mat_a_case002)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

@@ -28,7 +28,7 @@ def gen_dynamic_unpack_case(dict_input, list_dict_outs, num, axis, kernel_name_v
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_dynamic_unpack_case(
                      {"shape": (-1, -1, -1), "dtype": "float32", "ori_shape": (-1, -1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((1, 32), (1, 2),(1, 20))},
@@ -37,7 +37,7 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                       "format": "ND", "ori_format": "ND","range":((1,32),(1,20))}],2,1,
                      "dynamic_unpack_01", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_dynamic_unpack_case(
                      {"shape": (-1, -1, -1), "dtype": "float32", "ori_shape": (-1, -1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((1, None), (1, None), (1, 20))},
@@ -46,7 +46,7 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                       "format": "ND", "ori_format": "ND","range":((1,32),(1,20))}],2,1,
                      "dynamic_unpack_02", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_dynamic_unpack_case(
                      {"shape": (-1, -1, -1), "dtype": "float32", "ori_shape": (-1, -1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((1, None), (1, None), (1, 20))},

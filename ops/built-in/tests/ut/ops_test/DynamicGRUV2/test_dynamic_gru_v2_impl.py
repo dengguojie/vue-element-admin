@@ -408,62 +408,62 @@ precision = precision_info.PrecisionStandard(0.001, 0.002)
 
 
 # for cov
-x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float32')
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, seq, None, output_y, output_h, None, None, None, None]
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None]
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn]
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, s_init_h_gm, output_y, output_h, i, r, n, hn]
-})
-x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "rzh"]
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, None, None, None, s_init_h_gm, output_y, output_h, i, r, n, hn]
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "aa", 1, 1.0, -1.0, 0, True, "tanh"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 11, 1.0, -1.0, 0, True, "tanh"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 11.0, -1.0, 0, True, "tanh"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -11.0, 0, True, "tanh"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 10, True, "tanh"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, False, "tanh"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "sin"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "sdfs"],
-    "expect": RuntimeError
-})
-ut_case.add_case("all", {
-    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", False],
-    "expect": RuntimeError
-})
+# x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float32')
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, seq, None, output_y, output_h, None, None, None, None]
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None]
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn]
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, s_init_h_gm, output_y, output_h, i, r, n, hn]
+# })
+# x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "rzh"]
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, None, None, None, s_init_h_gm, output_y, output_h, i, r, n, hn]
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "aa", 1, 1.0, -1.0, 0, True, "tanh"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 11, 1.0, -1.0, 0, True, "tanh"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 11.0, -1.0, 0, True, "tanh"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -11.0, 0, True, "tanh"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 10, True, "tanh"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, False, "tanh"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "sin"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "sdfs"],
+#     "expect": RuntimeError
+# })
+# ut_case.add_case("all", {
+#     "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", False],
+#     "expect": RuntimeError
+# })
 x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn = get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 r["shape"] = [0]
 ut_case.add_case("all", {
@@ -582,5 +582,5 @@ def test_op_select_format(test_arg):
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend310P3"])
     exit(0)

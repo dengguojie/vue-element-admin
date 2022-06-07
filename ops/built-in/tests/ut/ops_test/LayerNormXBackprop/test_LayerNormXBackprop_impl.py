@@ -23,8 +23,8 @@ case2 = {"params": [{"shape": (1, ), "dtype": "float16", "format": "ND", "ori_sh
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 
 if __name__ == '__main__':

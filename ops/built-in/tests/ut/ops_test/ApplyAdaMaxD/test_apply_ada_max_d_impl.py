@@ -250,9 +250,9 @@ case3 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name

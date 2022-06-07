@@ -20,9 +20,9 @@ case3 = {"params": [{"shape": (16, 2, 32), "dtype": "float16", "format": "NHWC",
          "case_name": "BesselI0e_3",
          "expect": "success",
          "support_expect": True}
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
 
 # ============ auto gen ["Ascend910"] test cases start ===============
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (1,))

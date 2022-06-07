@@ -66,16 +66,16 @@ def _shape_to_list(shape):
 
 def is_support_v200():
     """
-    Check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version.
+    Check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version.
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS",
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
+    if soc_version in ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS",
                        "SD3403"):
         return True
     return False
@@ -90,7 +90,7 @@ def is_support_v220():
     True: a100 version.
     False: other version.
     """
-    soc_version = get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
     if soc_version == "a100":
         return True
     return False
@@ -672,7 +672,7 @@ def check_soc_and_dtype(op_params):
             ],
         },
     }
-    version = get_soc_spec("SOC_VERSION")
+    version = get_soc_spec("SHORT_SOC_VERSION")
     for op_name, tensor_list in op_params.items():
         if op_name not in support_info:
             err_man.raise_err_message_cube(f"op_name should be in {list(support_info.keys())}, actual is {op_name}")

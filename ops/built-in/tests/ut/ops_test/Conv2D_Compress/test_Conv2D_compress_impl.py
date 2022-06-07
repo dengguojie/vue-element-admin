@@ -466,7 +466,7 @@ def run_v300_conv2d_compress(test_arg):
         ("conv2d", "conv2d", "int8", (1, 3, 17, 17), (64, 3, 7, 7), (3, 3, 3, 3), (1, 1), 1, 1,
          False, 0, 0, 0)
     ]
-    set_current_compile_soc_info("Ascend320")
+    set_current_compile_soc_info("Ascend310B1")
     with op_context.OpContext():
         for case in v300_cases:
             print("=" * 150)

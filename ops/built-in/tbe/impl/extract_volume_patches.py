@@ -171,7 +171,7 @@ def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding,
                                                       "UB's memory space is not enough to support the tiling shape!")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910" and (out_h != 1 or out_w != 1):
+    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) == "Ascend910" and (out_h != 1 or out_w != 1):
         if fmap_w + pad_left + pad_right - kernel_w < stride_w:
             error_manager_vector.raise_err_specific_reson(
                 kernel_name,

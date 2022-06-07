@@ -46,8 +46,8 @@ case2 = {"params": [{"shape": (1,), "dtype": "float32", "format": "NCHW", "ori_s
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
 
 
 def calc_expect_func(input0, input1, input2, input3, input4, greater_y, select_e, res):

@@ -557,7 +557,7 @@ class Crop:
         """
         shape_x = self.input_dict.get("x1").get("shape")
         dtype_flag = self.dtype in ["int16", "uint16", "float16", "int32", "uint32", "float32"]
-        v200_flag = tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend710", "Ascend610", "Ascend615")
+        v200_flag = tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310P", "Ascend610", "Ascend615")
         pattern_index = self.get_pattern_index_num()
         flag = dtype_flag and v200_flag
         if flag and 0 < pattern_index < len(shape_x):
@@ -877,7 +877,7 @@ def op_select_format(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     ori_shape = x.get("ori_shape")
 
     dtype_out = dtype_base
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_out = dtype_lhisi
 

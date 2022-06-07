@@ -44,7 +44,7 @@ def test_power_04():
         1.0)
 
 if __name__ == '__main__':
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     test_power_01()
     test_power_02()
     test_power_03()

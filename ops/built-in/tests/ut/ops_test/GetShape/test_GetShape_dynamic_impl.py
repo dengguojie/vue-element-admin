@@ -8,8 +8,8 @@ from tbe.common.platform import set_current_compile_soc_info
 ut_case = OpUT("GetShape", "impl.dynamic.get_shape", "get_shape")
 
 
-def test_1951_int64_get_shape_001(test_arg):
-    set_current_compile_soc_info('Ascend710')
+def test_ascend310p3_int64_get_shape_001(test_arg):
+    set_current_compile_soc_info('Ascend310P3')
     with tbe.common.context.op_context.OpContext("dynamic"):
         get_shape([
             {
@@ -39,12 +39,12 @@ def test_1951_int64_get_shape_001(test_arg):
             "format": "ND",
             "ori_shape": (9,),
             "ori_format": "ND"
-        }, "test_1951_int64_get_shape_001_tf")
+        }, "test_ascend310p3_int64_get_shape_001_tf")
     set_current_compile_soc_info(test_arg)
 
 
-ut_case.add_cust_test_func(test_func=test_1951_int64_get_shape_001)
+ut_case.add_cust_test_func(test_func=test_ascend310p3_int64_get_shape_001)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run('Ascend710')
+        ut_case.run('Ascend310P3')

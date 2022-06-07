@@ -56,7 +56,7 @@ def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean"
     -------
     None
     """
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype = ["float16"]
     else:

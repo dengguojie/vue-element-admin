@@ -448,7 +448,7 @@ def run_v300_case(case_config, is_hf32_flag=False):
 
 def run_v300_batch_cases(case_list, is_hf32_flag=False):
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
     with op_context.OpContext():
         for case in case_list:
             if is_hf32_flag:

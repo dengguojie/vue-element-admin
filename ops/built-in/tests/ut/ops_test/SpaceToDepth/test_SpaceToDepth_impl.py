@@ -196,9 +196,9 @@ def test_static_check_supported(test_arg):
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910"], case1)
 ut_case.add_case(["Ascend910"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
 ut_case.add_case(["Ascend910A","Ascend310"], case6)
 ut_case.add_case(["Ascend910A","Ascend310"], case7)
 ut_case.add_case(["Ascend910A","Ascend310"], case8)
@@ -241,4 +241,4 @@ ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910","Ascend310","Ascend310P3"])

@@ -556,7 +556,7 @@ def test_aipp():
             pass
 
     with op_context.OpContext():
-        TEST_PLATFORM = ["Ascend320", "Ascend910", "Ascend710", "SD3403"]
+        TEST_PLATFORM = ["Ascend310B1", "Ascend910", "Ascend310P3", "SD3403"]
         for soc in TEST_PLATFORM:
             cce_conf.te_set_version(soc)
             aipp_template()

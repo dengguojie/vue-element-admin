@@ -24,7 +24,7 @@ case1 = {"params": [{"shape": (-1, -1, -1, -1), "dtype": "float16", "format": "N
                     {"shape": (-1, -1, -1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1, -1, -1),"ori_format": "ND",
                      "range":[(1,None),(1,None),(1,None),(4,4)]}, #deltas
                     {"shape": (-1, -1, -1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1, -1, -1),"ori_format": "ND",
-                     "range":[(1,None),(1,None),(1,None),(4,4)]}, 
+                     "range":[(1,None),(1,None),(1,None),(4,4)]},
                     (1.0, 2.1, 0.0, 1.8),(2.1, 1.0, 3.6, 1.9),None,0.016,
                     ],
          "case_name": "BoundingBoxDecode_dynamic_1",
@@ -43,11 +43,11 @@ case2 = {"params": [{"shape": (-1, -1, -1, -1, -1), "dtype": "float16", "format"
          "expect": "success",
          "support_expect": True}
 
-case3 = {"params": [{"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1),"ori_format": "ND", 
+case3 = {"params": [{"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1),"ori_format": "ND",
                     "range":[(1,None),(4,4)]}, #x
-                    {"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1),"ori_format": "ND", 
+                    {"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1),"ori_format": "ND",
                     "range":[(1,None),(4,4)]}, #h
-                    {"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1),"ori_format": "ND", 
+                    {"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori_shape": (-1, -1),"ori_format": "ND",
                     "range":[(1,None),(4,4)]},
                     (1.0, 2.1, 0.0, 1.8),(2.1, 1.0, 3.6, 1.9),None,0.016,
                     ],
@@ -55,11 +55,11 @@ case3 = {"params": [{"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori
          "expect": "success",
          "support_expect": True}
 
-case4 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+case4 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND",
                      "range":[(1,None),(4,4)]}, #x
-                    {"shape": (-1, 4), "dtype": "float32", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                    {"shape": (-1, 4), "dtype": "float32", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND",
                      "range":[(1,None),(4,4)]}, #h
-                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND",
                      "range":[(1,None),(4,4)]},
                     (1.0, 2.1, 0.0, 1.8),(2.1, 1.0, 3.6, 1.9),None,0.016,
                     ],
@@ -67,11 +67,11 @@ case4 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_
          "expect": RuntimeError,
          "support_expect": True}
 
-case5 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+case5 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND",
                      "range":[(1,None),(4,4)]}, #x
-                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND",
                      "range":[(1,None),(4,4)]}, #h
-                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND",
                      "range":[(1,None),(4,4)]},
                     (1.0, 2.1, 0.0, 1.8),(2.1, 1.0, 3.6, 1.9),None,0.016,
                     ],
@@ -79,11 +79,11 @@ case5 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
 
 # MOCK TEST
 vals = {("tik.vgatherb", ): True}
@@ -95,5 +95,5 @@ with patch("impl.util.platform_adapter.tbe_platform.api_check_support", MagicMoc
     ut_case.run("Ascend910",'BoundingBoxDecode_dynamic_BoundingBoxDecode_dynamic_1')
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910","Ascend310","Ascend310P3"])
     exit(0)

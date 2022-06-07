@@ -944,12 +944,12 @@ class CceConv3dBackpropFilterOp:
                     # grads and fmap need tiling in L1
                     reduce_split_mode = \
                               tiling.get("AL1_shape")[0] < tiling.get("BL1_shape")[0]
-                elif tiling.get("AL1_shape"):
-                    # only grads needs tiling in L1
-                    reduce_split_mode = True
                 elif tiling.get("BL1_shape"):
                     # only fmap needs tiling in L1
                     reduce_split_mode = False
+                elif tiling.get("AL1_shape"):
+                    # only grads needs tiling in L1
+                    reduce_split_mode = True
                 else:
                     # Neither grads nor fmap need tiling in L1
                     reduce_split_mode = False
@@ -1115,8 +1115,8 @@ class CceConv3dBackpropFilterOp:
                     hw_mad_1_mad_at, nparts=fmap_l1_tiling_nparts[0])
                 hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                     hw_mad_1_l1_at, nparts=grads_l1_tiling_nparts[0])
-                al1_at_axis = hw_mad_1_l1_out_at
                 bl1_at_axis = hw_mad_1_l1_in_at
+                al1_at_axis = hw_mad_1_l1_out_at
                 axis_k_reduce_for_mad = (
                     hw_mad_1_l1_out_at *
                     (fmap_l1_tiling_nparts[0] // grads_l1_tiling_nparts[0]) +
@@ -1165,8 +1165,8 @@ class CceConv3dBackpropFilterOp:
                     # only grads needs tiling in L1
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at = sch[dw_cc].split(
                         hw_mad_1_l1_at, nparts=fmap_l1_tiling_nparts[0])
-                al1_at_axis = hw_mad_1_l1_in_at
                 bl1_at_axis = hw_mad_1_l1_out_at
+                al1_at_axis = hw_mad_1_l1_in_at
                 axis_k_reduce_for_mad = (
                     hw_mad_1_l1_out_at *
                     (grads_l1_tiling_nparts[0] // fmap_l1_tiling_nparts[0]) +

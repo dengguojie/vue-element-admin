@@ -21,9 +21,9 @@ def test_conv2d_compress_impl1(test_arg):
     from impl.ascend_requant import ascend_requant_compute
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Hi3796CV300CS")
-    
+
     def conv2d_compress_compute_fusion(fmap_shape, filters_shape, bias_flag, strides, pads, dilations, dtype="int8"):
         if dtype == "int8":
             assert fmap_shape[1] == filters_shape[1]
@@ -71,7 +71,7 @@ def test_conv2d_compress_impl1(test_arg):
             bias_data = None
 
         conv_res = conv2dcompress_compute(fmap_data, filters_data, compress_index, bias_data, 0, None, strides, pads, dilations)
-        
+
         return conv_res, input_tensors
 
     def requant_compute_fusion(x, sqrt_mode=False, relu_flag=False, platform="v100"):
@@ -116,11 +116,11 @@ def test_conv2d_compress_impl1(test_arg):
             config = {"print_ir": False, "need_build": True,
                       "name": "conv2d_compress_fusion" + str(testcase_idx), "tensor_list": total_input_tensors}
             testcase_idx += 1
-            
+
             with tvm.target.cce():
                 sch = auto_schedule(res)
             te.lang.cce.cce_build_code(sch, config)
-    
+
     testcases = [
         {"fmap_shape": [4, 16, 28, 28], "filters_shape": [1, 16, 3, 3], "dtype": "int8", "bias_flag": True, "pads": [1, 1, 1, 1], "strides": [2, 2, 2, 2], "dilations": [1, 1, 1, 1]}
 

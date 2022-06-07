@@ -24,11 +24,11 @@ import tbe
 ut_case = OpUT("ProdVirialSeA", "impl.dynamic.prod_virial_se_a", "prod_virial_se_a")
 
 
-def simple_test_710(test_args, nframes: int, nloc: int, n_a_sel: int, n_r_sel: int, nall: int, natoms_size: int,
+def simple_test_Ascend310P(test_args, nframes: int, nloc: int, n_a_sel: int, n_r_sel: int, nall: int, natoms_size: int,
                     split_count=1, split_index=0):
     nnei = n_a_sel + n_r_sel
 
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         prod_virial_se_a({"shape": (nframes, nloc * nnei * 4), "dtype": "float32", "format": "ND",
                           "ori_shape": (nframes, nloc * nnei * 4), "ori_format": "ND",
@@ -90,9 +90,9 @@ def test_prod_virial_se_a_case001(test_args):
     nall = 28328
     natoms_size = 4
 
-    simple_test_710(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
-    simple_test_710(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
-    simple_test_710(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)
+    simple_test_Ascend310P(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
+    simple_test_Ascend310P(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
+    simple_test_Ascend310P(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)
 
     simple_test_910(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
     simple_test_910(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
@@ -107,9 +107,9 @@ def test_prod_virial_se_a_case002(test_args):
     nall = 30000
     natoms_size = 4
 
-    simple_test_710(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
-    simple_test_710(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
-    simple_test_710(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)
+    simple_test_Ascend310P(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
+    simple_test_Ascend310P(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
+    simple_test_Ascend310P(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)
 
     simple_test_910(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
     simple_test_910(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
@@ -120,5 +120,5 @@ ut_case.add_cust_test_func(test_func=test_prod_virial_se_a_case001)
 ut_case.add_cust_test_func(test_func=test_prod_virial_se_a_case002)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

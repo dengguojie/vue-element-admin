@@ -163,7 +163,7 @@ class PSROIPoolingGradV2DClass(object):
                                            "input_size(1)(%s) == y_shape[3](%s)"
                                % (self.input_size[0], self.y_shape[2],
                                   self.input_size[1], self.y_shape[3]))
-       
+
     def _input_param_check(self):
         """
         check if the inputs are valid
@@ -179,10 +179,10 @@ class PSROIPoolingGradV2DClass(object):
         para_check.check_dtype(self.dtype, (FP16, FP32), param_name="x")
         para_check.check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
 
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
-                (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
+        if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in \
+                (tbe_platform.ASCEND_310, tbe_platform.ASCEND_310B):
             error_info = {'errCode': 'E80016',
-                          'param_name1': tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION),
+                          'param_name1': tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION),
                           'op_name': 'PSROIPoolingGradV2D'}
             raise RuntimeError(error_info, "In op[%s], "
                                            "soc_version [%s] is not support gm atomic."
@@ -199,11 +199,11 @@ class PSROIPoolingGradV2DClass(object):
                                % (error_info.get('op_name'), error_info.get('param_name1'),
                                   error_info.get('param_name2'), error_info.get('param_name3')))
 
-        if self.dtype == FP16 and (tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in
+        if self.dtype == FP16 and (tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in
                                    (tbe_platform.ASCEND_910, "Ascend910B")):
             error_info = {'errCode': 'E80018',
                           'param_name1': self.dtype,
-                          'param_name2': tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION),
+                          'param_name2': tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION),
                           'op_name': 'PSROIPoolingGradV2D'}
             raise RuntimeError(error_info, "In op[%s], the dtype of input[%s], "
                                            "soc_version [%s] is not support gm atomic."
@@ -249,7 +249,7 @@ class PSROIPoolingGradV2DClass(object):
 
         profile = tik.Dprofile()
 
-        product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        product_name = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self._input_param_check()
 
         self.dsize = TYPE_LEN_DICT.get(self.dtype)
@@ -422,8 +422,8 @@ class PSROIPoolingGradV2DClass(object):
         -------
         None
         """
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, "Ascend910B",
-                                                                   tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+        if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in (tbe_platform.ASCEND_910, "Ascend910B",
+                                                                   tbe_platform.ASCEND_310P, tbe_platform.ASCEND_610):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                    STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT,
@@ -486,9 +486,9 @@ class PSROIPoolingGradV2DClass(object):
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
             bin_i_offset_c1 = output_dim_index // C0
             bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
-            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+            if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in \
                     (tbe_platform.ASCEND_910, "Ascend910B",
-                     tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+                     tbe_platform.ASCEND_310P, tbe_platform.ASCEND_610):
                 self.tik_instance.set_atomic_add(1)
                 # add diff_val
                 self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
@@ -541,9 +541,9 @@ class PSROIPoolingGradV2DClass(object):
                                          _ceil_value(params["h_width"] * params["w_width"] * C0, self.mask),
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
             with self.tik_instance.for_range(params["h_start"], params["h_end"]) as height:
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in \
                         (tbe_platform.ASCEND_910, "Ascend910B",
-                         tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+                         tbe_platform.ASCEND_310P, tbe_platform.ASCEND_610):
                     self.tik_instance.set_atomic_add(1)
                     # add diff_val
                     self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,

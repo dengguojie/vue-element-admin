@@ -68,8 +68,8 @@ def test_get_op_support_info(test_arg):
                         {"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)},
                         {"shape": (144, 16, 16, 16), "dtype": "float16","format":"ND", "ori_format":"ND", "ori_shape":(144, 16, 16, 16)}, True)
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 # ut_case.add_precision_case("Ascend910", {

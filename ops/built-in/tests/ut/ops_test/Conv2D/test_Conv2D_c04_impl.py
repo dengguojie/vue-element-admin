@@ -112,5 +112,5 @@ ut_case.add_cust_test_func(test_func=test_conv2d_c04_impl)
 
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=test_conv2d_c04_impl)
-    ut_case.run(["Ascend710"])
+    ut_case.run(["Ascend310P3"])
     exit(0)

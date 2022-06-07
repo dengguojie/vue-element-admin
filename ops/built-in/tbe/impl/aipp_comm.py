@@ -108,26 +108,26 @@ class Const:
 
     AIPP_OP_ERROR_CODE = 'E81012'
 
-    STC_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710",
+    STC_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend310P",
                                     "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403",
-                                    "Ascend910B", "Ascend320")
+                                    "Ascend910B", "Ascend310B")
 
-    DYN_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend615",
+    DYN_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend310P", "Ascend615",
                                     "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
 
-    C04_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403",
-                                    "Ascend910B", "Ascend320")
+    C04_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend610", "Ascend310P", "Ascend615", "Hi3796CV300CS", "SD3403",
+                                    "Ascend910B", "Ascend310B")
 
     SUPPORT_IMAGE_FORMAT_MAP = {
         "Ascend310": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16",
                     "NC1HWC0DI_S8", "RGB888_U8", "YUV400_U8"),
-        "Ascend320": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8",
+        "Ascend310B": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8",
                     "RAW8", "RAW10", "RAW12", "RAW14", "RAW16"),
         "Ascend910": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
         "Ascend910B": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
         "Ascend610": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
                     "RGB888_U8", "YUV400_U8"),
-        "Ascend710": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+        "Ascend310P": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
                     "RGB888_U8", "YUV400_U8"),
         "Ascend615": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
                     "RGB888_U8", "YUV400_U8", "RGB16", "RGB20", "RGB24", "RGB8_IR",
@@ -138,9 +138,9 @@ class Const:
                 "uint16")
     }
 
-    V300_SOC_VERSION_LIST = ("Ascend320",)
+    V300_SOC_VERSION_LIST = ("Ascend310B",)
 
-    ODD_CROP_SUPPORT_SOC_VERSION_LIST = ("Ascend910B", "Ascend320")
+    ODD_CROP_SUPPORT_SOC_VERSION_LIST = ("Ascend910B", "Ascend310B")
 
 
 def get_fp16(value):
@@ -2184,7 +2184,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                  (aipp_config.get("crop_size_h"), aipp_config.get("crop_size_w"))
                     raise_runtime_error(cause_desc)
 
-            if  cur_cce_product not in ("Ascend320") and aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
+            if  cur_cce_product not in ("Ascend310B",) and aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
                 if aipp_config.get("load_start_pos_w") % 2 != 0:
                     cause_desc = "when input_format is %s, " \
                                  "load_start_pos_w[%d] must be even" % \
@@ -2305,7 +2305,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 raise_runtime_error(cause_desc)
 
         if ('padding' in aipp_config and aipp_config.get('padding') == 1):
-            if cur_cce_product in ("Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend910B", "Ascend320"):
+            if cur_cce_product in ("Ascend310", "Ascend910", "Ascend610", "Ascend310P", "Ascend910B", "Ascend310B"):
                 if w > 1080:
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 1080" % w
@@ -2437,9 +2437,9 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
-    if cur_cce_product in ["Ascend320"]:
-        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320'):
-            cause_desc = "Ascend320 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320')) + \
+    if cur_cce_product in ["Ascend310B"]:
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310B'):
+            cause_desc = "Ascend310B only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310B')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
@@ -2461,9 +2461,9 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
-    if cur_cce_product in ["Ascend710"]:
-        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710'):
-            cause_desc = "Ascend710 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710')) + \
+    if cur_cce_product in ["Ascend310P"]:
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310P'):
+            cause_desc = "Ascend310P only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310P')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 

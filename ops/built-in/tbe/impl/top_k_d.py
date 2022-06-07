@@ -1576,7 +1576,7 @@ def top_k_d(input_tensor,
     if k < 1 or k > shape[-1]:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'k', 1, shape[-1], k)
 
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     is_lhisi = soc_version in ("Hi3796CV300CS", "Hi3796CV300ES", "SD3403")
     if is_lhisi:
         # 3000 indicates max size of the last dimension for better performance

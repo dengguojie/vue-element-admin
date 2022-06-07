@@ -1,11 +1,11 @@
 # # -*- coding:utf-8 -*-
 from op_test_frame.ut import OpUT
-import tensorflow as tf 
+import tensorflow as tf
 import numpy as np
 import time, itertools
 from op_test_frame.common import precision_info
 
-platforms = ["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend710", "Ascend910"]
+platforms = ["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend310P3", "Ascend910"]
 platforms_only_fp16 = ["Hi3796CV300CS", "Hi3796CV300ES", "SD3403"]
 
 ut_case = OpUT("lp_norm", None, None)
@@ -119,7 +119,7 @@ def calc_expect_func_infer(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12):
         out_val = tf.sqrt(tf.reduce_sum(inputs**2, axis=axes))
     else: # p >= 3
         out_val = tf.exp(tf.math.log(tf.reduce_sum(inputs**p, axis=axes))/p)
-    out_val = tf.maximum(out_val, epsilon)  
+    out_val = tf.maximum(out_val, epsilon)
     with tf.compat.v1.Session() as session:
        result = session.run(out_val, feed_dict={inputs: np.abs(x_value)})
     result = np.array([result]).reshape(y.get("shape"))

@@ -52,7 +52,7 @@ case4 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (34, 21
          "case_name": "InTopk_4",
          "expect": "success",
          "support_expect": True}
-         
+
 case5 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (55, 4500), "format": "ND", "ori_format": "ND", "range": ((1, 55), (1, 4500))},
                     {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (55,),"ori_format": "ND", "range": ((1, 55), )},
                     {"shape": (-1,), "dtype": "uint8", "format": "ND", "ori_shape": (55,),"ori_format": "ND", "range": ((1, 55), )},
@@ -86,15 +86,15 @@ case8 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (1216, 
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case8)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910","Ascend310","Ascend310P3"])
     exit(0)

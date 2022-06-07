@@ -245,13 +245,13 @@ case13 = {"params": [{"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format"
           "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_case(["Ascend910A"], case10)
@@ -261,7 +261,7 @@ ut_case.add_case(["Ascend910A"], case13)
 
 
 def roi_align_v200_001(test_arg):
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     roi_align({"shape": (3, 8, 5, 5, 16), "dtype": "float16", "format": "NC1HWC0",
                "ori_shape": (3, 128, 5, 5), "ori_format": "NHWC"},
               {"shape": (3, 5), "dtype": "float16", "format": "NHWC",
@@ -290,7 +290,7 @@ def roi_align_v200_002(test_arg):
 
 
 def roi_align_v200_003(test_arg):
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     roi_align({"shape": (3, 16, 5, 5, 16), "dtype": "float16", "format": "NC1HWC0",
                "ori_shape": (3, 256, 5, 5), "ori_format": "NHWC"},
               {"shape": (3, 5), "dtype": "float16", "format": "NHWC",
@@ -319,7 +319,7 @@ def roi_align_v200_004(test_arg):
 
 
 def roi_align_v200_005(test_arg):
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     roi_align({"shape": (3, 16, 5, 5, 16), "dtype": "float32", "format": "NC1HWC0",
                "ori_shape": (3, 256, 5, 5), "ori_format": "NHWC"},
               {"shape": (3, 5), "dtype": "float32", "format": "NHWC",
@@ -377,4 +377,4 @@ def side_effects(*args):
 
 
 with patch("impl.util.platform_adapter.tbe_platform.api_check_support", MagicMock(side_effect=side_effects)):
-    ut_case.run("Ascend710","ROIAlign_static_shape_roi_align_01")
+    ut_case.run("Ascend310P3","ROIAlign_static_shape_roi_align_01")

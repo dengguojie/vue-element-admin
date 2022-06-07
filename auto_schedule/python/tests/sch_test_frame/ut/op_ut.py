@@ -130,7 +130,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     """
     _case_info_map: Dict[str, Union[op_ut_case_info.OpUTCase, op_ut_case_info.OpUTCustomCase]]
     KERNEL_DIR = os.path.realpath("./kernel_meta")
-    SOC_VERSION_STR = "SOC_VERSION"
 
     def __init__(self, op_type, op_module_name=None, op_func_name=None):
 
@@ -201,7 +200,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         expect = case.get("expect")
         if not expect:
             expect = op_status.SUCCESS
-        
+
         case_type = case.get('case_type')
 
         precision_standard = case.get("precision_standard")
@@ -240,7 +239,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if not stack.filename.endswith("op_ut.py"):
                 case_line_num = stack.lineno
                 break
-            
+
         case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
 

@@ -21,7 +21,7 @@ registry = {
     ("Ascend910A", MODE.ASCEND_PEMMODEL): Ascend910_PEM_ModelParser,
     ("Ascend910A", MODE.ASCEND_CAMODEL): Ascend910_CA_ModelParser,
     ("Hi3796CV300CS", MODE.ASCEND_CAMODEL): Hi3796CV300CS_CA_ModelParser,
-    ("Ascend710", MODE.ASCEND_CAMODEL): Hi3796CV300CS_CA_ModelParser
+    ("Ascend310P", MODE.ASCEND_CAMODEL): Hi3796CV300CS_CA_ModelParser
 }
 
 

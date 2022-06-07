@@ -69,7 +69,7 @@ def _check_product_info(input_dict):
     -------
     None
     """
-    tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    tik_name = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
 
     conf_dtype = input_dict.get("mbox_conf").get("dtype").lower()
     loc_dtype = input_dict.get("mbox_loc").get("dtype").lower()
@@ -87,7 +87,7 @@ def _check_product_info(input_dict):
         para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
     elif tik_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615, tbe_platform.ASCEND_710):
+    elif tik_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615, tbe_platform.ASCEND_310P):
         para_check.check_dtype(conf_dtype.lower(), ["float16", "float32"], param_name="input_conf")
 
 
@@ -178,7 +178,7 @@ def _check_input_topk_value(dtype, topk_value):
     -------
     None
     """
-    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Hi3796CV300ES",
+    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Hi3796CV300ES",
                                                                "Hi3796CV300CS",
                                                                "SD3403"):
         if dtype == "float32":
@@ -330,7 +330,7 @@ def ssd_detection_output(bbox_delta, score, anchors,
         with tik_instance.for_range(0, outer_loop) as outer_i:
             batch.set_as(block_i * outer_loop + outer_i)
             if decode_bbox_process.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615,
-                                                   tbe_platform.ASCEND_710):
+                                                   tbe_platform.ASCEND_310P):
                 decode_bbox_process.parser_loc_data_v200(batch)
                 decode_bbox_process.parser_priorbox_data_v200(batch)
             else:

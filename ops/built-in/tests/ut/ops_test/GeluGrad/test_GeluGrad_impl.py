@@ -66,11 +66,11 @@ case5 = {"params": [{"shape": (10.1, -1), "dtype": "float32", "format": "ND", "o
 
 """
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case3)
+#ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+#ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
 
 def calc_expect_func(inputA, inputB, inputC, output):
     input_A_Arr = inputA['value']

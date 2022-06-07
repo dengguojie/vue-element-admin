@@ -16,7 +16,6 @@ ArgMaxWithKd ut case
 from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
-from tbe.common.platform import set_current_compile_soc_info
 import os
 ut_case = OpUT("ArgMaxWithKD", "impl.arg_max_with_kd", "arg_max_with_kd")
 
@@ -118,7 +117,7 @@ case11 = {"params": [{"shape": (16, 256, 30, 2), "dtype": "float16", "format": "
          "case_name": "ArgMaxWithKd_11",
          "expect": "success",
          "support_expect": True}
-         
+
 case12 = {"params": [{"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #x
                     {"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #h
                     {"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #h
@@ -228,29 +227,29 @@ case23 = {"params": [{"shape": (5, 8,16,16), "dtype": "float16", "format": "NCHW
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend710"], case2)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case8)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case9)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case10)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case11)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case13)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case14)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case15)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case12)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case16)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case17)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case18)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case19)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case20)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case21)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case22)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case23)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case7)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case8)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case9)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case10)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case11)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case13)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case14)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case15)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case12)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case16)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case17)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case18)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case19)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case20)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case21)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case22)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case23)
 
 #precision cases
 def naive_arg_top_k(data, top_k, axis):
@@ -293,7 +292,7 @@ ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (2,16,16), "dtype
 def test_arg_max_with_kd_001(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.arg_max_with_kd import arg_max_with_kd
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     arg_max_with_kd({"shape": (5, 8,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
                     {"shape": (5, 8,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
                     {"shape": (5, 8,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
@@ -366,7 +365,7 @@ def test_arg_max_with_kd_001(test_arg):
                     {"shape": (5, 8,16,15), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #h
                     {"shape": (5, 8,16,15), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #h
                     3, True, 1,)
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 ut_case.add_cust_test_func(test_func=test_arg_max_with_kd_001)
 
 if __name__ == '__main__':

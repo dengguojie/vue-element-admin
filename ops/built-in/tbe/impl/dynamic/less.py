@@ -106,7 +106,7 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
                                                               param_name_input2="input_y")
 
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     dtype_x = input_x.dtype
     if dtype_x in ("uint8", "int8"):
         input_x = tbe.cast_to(input_x, "float16")
@@ -115,9 +115,9 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
 
     if dtype_x == "float32":
         data_min = tvm.const(Constant.SCALAR_MIN_FP32, dtype=dtype_x)
-    elif dtype_x == "float16" and cce_product not in ("Ascend710", "Ascend910"):
+    elif dtype_x == "float16" and cce_product not in ("Ascend310P", "Ascend910"):
         data_min = tvm.const(Constant.SCALAR_MIN_FP16, dtype=dtype_x)
-    elif dtype_x == "int32" and cce_product not in ("Ascend710", "Ascend910"):
+    elif dtype_x == "int32" and cce_product not in ("Ascend310P", "Ascend910"):
         data_min = tvm.const(1, dtype=dtype_x)
     else:
         input_x = tbe.cast_to(input_x, "float32")

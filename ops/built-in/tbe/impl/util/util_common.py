@@ -244,13 +244,13 @@ def update_shape_for_other_format(src_shape, src_format, ori_shape, dst_format, 
     dst_shape = src_shape.copy()
     axis_c0 = _get_c0(dtype)
     axis_n0 = 16
-    
+
     if src_format == dst_format:
         return src_shape
 
     if dst_format not in FormatConstant.SPECIAL_FORMAT:
         return ori_shape
-    
+
     if dst_format == "FRACTAL_NZ":
         if len(src_shape) == 1:
             src_shape = [1, src_shape[0]]
@@ -258,7 +258,7 @@ def update_shape_for_other_format(src_shape, src_format, ori_shape, dst_format, 
         axis_n1 = ceil(src_shape[-2], axis_n0)
         dst_shape = src_shape[:-2] + [axis_c1, axis_n1, axis_n0, axis_c0]
         return dst_shape
-        
+
     elif src_format in get_fused_str(["N", "C", "D", "H", "W"]):
 
         if len(src_shape) != 5:
@@ -273,7 +273,7 @@ def update_shape_for_other_format(src_shape, src_format, ori_shape, dst_format, 
             axis_c1 = ceil(axis_c, axis_c0)
             dst_shape = [axis_n, axis_d, axis_c1, axis_h, axis_w, axis_c0]
             return dst_shape
-            
+
         if dst_format == "FRACTAL_Z_3D":
             axis_n1 = ceil(axis_n, axis_n0)
             axis_c1 = ceil(axis_c, axis_c0)
@@ -299,7 +299,7 @@ def update_shape_for_other_format(src_shape, src_format, ori_shape, dst_format, 
         elif dst_format == "NC1HWC0":
             dst_shape = [axis_n, axis_c1, axis_h, axis_w, axis_c0]
             return dst_shape
-        
+
     dict_args = {'errCode': 'E60038',
                  'desc': "update shape by dst_format failed"}
     raise RuntimeError(dict_args,
@@ -787,7 +787,7 @@ def check_load3d_w_out_1_support():
     True: support
     False: not support
     """
-    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False

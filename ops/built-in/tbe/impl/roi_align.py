@@ -269,7 +269,7 @@ class RoiAlign:
         :param block_left:
         :return:
         """
-        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
         rois_index = self.tik_inst.Scalar("int32")
         rois_process_num = self.tik_inst.Scalar("int32")
@@ -726,7 +726,7 @@ class RoiAlign:
         :return:
             count: valid roi number
         """
-        cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         count = self.tik_inst.Scalar("int32")
         count.set_as(0)
 
@@ -1011,7 +1011,7 @@ class RoiAlign:
         :return:
         """
         tik_instance = self.tik_inst
-        cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         dtype_num = 1
         if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             index_arr_fp32 = tik_instance.Tensor("float32", (ROINUM, ), \
@@ -1463,7 +1463,7 @@ def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
     :param kernel_name_val:
     :return:
     """
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     input_shape = feature_map_dict.get("shape")
 
     input_c1 = input_shape[1]
@@ -1599,7 +1599,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
     grid_h_int16 = tik_instance.Tensor(
         "int16", [proposal_num_128], name="grid_h_int16", scope=tbe_platform.scope_ubuf)
 
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     # bin size
     tik_instance.vec_muls(64 * dtype_num, roi_bin_h_fp32_value[:],
                           roi_h_fp32[:], 1.0 / pool_h,
@@ -1807,7 +1807,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
     grid_h_int16 = tik_instance.Tensor(
         "int16", [proposal_num_128], name="grid_h_int16", scope=tbe_platform.scope_ubuf)
 
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     # bin size
     tik_instance.vec_muls(64 * dtype_num, roi_bin_h_fp32_value[:],
                           roi_h_fp32[:], 1.0 / pool_h,
@@ -1952,7 +1952,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
         dtype, [1], name="tmp_bin_h_fp32", scope=tbe_platform.scope_ubuf)
     tmp_bin_h_fp32[0].set_as(roi_bin_h_fp32_value[curr_roi])
     vconv_suppot = tbe_platform.intrinsic_check_support("Intrinsic_vconv", "f322s32c")
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
 
     if vconv_suppot is False or dtype == "float16":
         tmp_int32 = tik_instance.Tensor(
@@ -2666,9 +2666,9 @@ def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                     l_x = tik_instance.Scalar(
                         dtype, init_value=x_lo_w[grid_num_w])
 
-                    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+                    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
 
-                    if (cce_product in ("Ascend610", "Ascend710", "Hi3796CV300CS", "SD3403")) \
+                    if (cce_product in ("Ascend610", "Ascend310P", "Hi3796CV300CS", "SD3403")) \
                             and (dtype == "float16") and (fm_c1 >= 8):
                         c1_block_num = (fm_c1 + 7) // 8
                         vbi_weights = _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num)
@@ -2751,7 +2751,7 @@ def _get_grid_weight(tik_instance, grid_w, grid_h, rois_start_w, rois_start_h,
     else:
         dtype_num = 2
     vconv_f322s32f_suppot = tbe_platform.intrinsic_check_support("Intrinsic_vconv", "f322s32f")
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     if vconv_f322s32f_suppot is False or dtype == "float16":
         const_value_0_127_int = tik_instance.Tensor(
             "int32", (128,), name="const_value_0_127_int",
@@ -3272,7 +3272,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                               scope=tbe_platform.scope_gm)
     grid_curr_h = tik_instance.Scalar(dtype="int32")
     grid_curr_w = tik_instance.Scalar(dtype="int32")
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     block_num = rois_shape[0] // core_num
     if rois_shape[0] % core_num != 0:
@@ -3325,7 +3325,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                     rois_valid_in_block.set_as(
                         rois_valid - roi_128_number * 128)
 
-                if (cce_product in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)) and (dtype == "float16") \
+                if (cce_product in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_310P)) and (dtype == "float16") \
                         and (rois_shape[1] == 5):
                     rois_ub_n5 = tik_instance.Tensor(
                         dtype, [128 * 5], name="rois_ub_n5",
@@ -3546,7 +3546,7 @@ def roi_align(feature_map_dict,
     ROIAlign operator
     """
     dtype = feature_map_dict.get("dtype")
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     if roi_end_mode > 1 and cce_product in (tbe_platform.ASCEND_910, "Ascend910B"):
         if dtype != "float32":
             raise RuntimeError("when roi_end_mode is 2, dtype only supports float32, but actually is %s" % dtype)
@@ -3568,7 +3568,7 @@ def roi_align(feature_map_dict,
     if (dtype == "float16") and \
             (sample_ratio > 0) and \
             (cce_product in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910, tbe_platform.HI3796CV300ES,
-                             tbe_platform.ASCEND_610, tbe_platform.ASCEND_710)):
+                             tbe_platform.ASCEND_610, tbe_platform.ASCEND_310P)):
         return roi_align_cce(feature_map_dict, rois_dict, roisn_dict,
                              output, scale, pool_h, pool_w,
                              sample_ratio, roi_end_mode, kernel_name)

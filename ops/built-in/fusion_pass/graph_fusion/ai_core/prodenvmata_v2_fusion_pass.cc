@@ -67,12 +67,11 @@ Status ProdEnvMatAV2FusionPass::CheckPlatformInfo() {
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Failed to get platform info"), return NOT_CHANGED);
 
-  std::string socVersion = optionalInfo.soc_version;
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Get soc version: %s", socVersion.c_str());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Get soc version: %s", optionalInfo.soc_version.c_str());
 
   bool isSupport = false;
   for (string pattern : SUPPORT_PLATFORM_PATTERN) {
-    if (socVersion == pattern || socVersion.find(pattern) != string::npos) {
+    if (platformInfo.str_info.short_soc_version == pattern) {
       isSupport = true;
       break;
     }

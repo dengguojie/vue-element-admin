@@ -91,7 +91,7 @@ def test_dequant_compute_1(test_arg):
     ascend_dequant_compute(x, deq_scale, None)
     ascend_dequant_compute(x, deq_scale, None, sqrt_mode=True, relu_flag=True)
 
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     ascend_dequant_compute(x, deq_scale_v200, None)
     ascend_dequant_compute(x, deq_scale_v200, None, sqrt_mode=True, relu_flag=True)
     cce_conf.cce_conf.te_set_version("Ascend310")
@@ -104,7 +104,7 @@ def test_dequant_compute_2(test_arg):
     ascend_dequant_compute(x, deq_scale, None)
     ascend_dequant_compute(x, deq_scale, None, sqrt_mode=True, relu_flag=True)
 
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     ascend_dequant_compute(x, deq_scale_v200, None)
     ascend_dequant_compute(x, deq_scale_v200, None, sqrt_mode=True, relu_flag=True)
     cce_conf.cce_conf.te_set_version("Ascend310")
@@ -116,7 +116,7 @@ def test_dequant_compute_3(test_arg):
     ascend_dequant_compute(x, deq_scale, None)
     ascend_dequant_compute(x, deq_scale, None, sqrt_mode=True, relu_flag=True)
 
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     ascend_dequant_compute(x, deq_scale_v200, None)
     ascend_dequant_compute(x, deq_scale_v200, None, sqrt_mode=True, relu_flag=True)
     cce_conf.cce_conf.te_set_version("Ascend310")
@@ -128,7 +128,7 @@ def test_dequant_compute_4(test_arg):
     ascend_dequant_compute(x, deq_scale, None)
     ascend_dequant_compute(x, deq_scale, None, sqrt_mode=True, relu_flag=True)
 
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     ascend_dequant_compute(x, deq_scale_v200, None)
     ascend_dequant_compute(x, deq_scale_v200, None, sqrt_mode=True, relu_flag=True)
     cce_conf.cce_conf.te_set_version("Ascend310")
@@ -250,7 +250,7 @@ def test_conv2d_vector(test_arg):
 
     res = _vector_dequant_v100(conv_res, shape_in, (16, 1024, 16, 16), vdeq, True, True, True)
 
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     _vector_dequant_v200(conv_res, shape_in, (16, 1024, 16, 16), vdeq_v200, True, True)
     get_conv_flag(conv_res)
     is_conv3d_fuse(conv_res)
@@ -315,7 +315,7 @@ def test_conv2d_scalar(test_arg):
     conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations, offset_x=0, options={"invalid_data_rm": True})
     _scalar_dequant_v100(conv_res, shape_in, (16, 8, 16, 16), vdeq, True, True, True)
 
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     _scalar_dequant_v200(conv_res, shape_in, (16, 8, 16, 16), vdeq_v200, True)
     cce_conf.cce_conf.te_set_version("Ascend310")
 
@@ -364,17 +364,17 @@ def test_conv2d_int4(test_arg):
     vdeq_v200 = tvm.placeholder(shape_scale, name="deq_tensor",
                                      attrs={'ori_shape': [Co1]}, dtype="uint64")
     conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations, offset_x=0, options={"invalid_data_rm": True})
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     _scalar_dequant_v200(conv_res, shape_in, (16, 8, 16, 16), vdeq_v200, True)
     cce_conf.cce_conf.te_set_version("Ascend310")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend910"], case7)
 ut_case.add_cust_test_func(test_func=test_matmul_dequant_compute)
 ut_case.add_cust_test_func(test_func=test_matmul_dequant_compute_1)
 ut_case.add_cust_test_func(test_func=test_dequant_compute_1)

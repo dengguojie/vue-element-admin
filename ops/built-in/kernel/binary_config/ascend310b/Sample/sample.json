@@ -1,0 +1,50 @@
+{
+  "op_type": "Sample",
+  "op_list": [
+    {
+      "inputs": [
+        {
+          "name": "src",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "NDC1HWC0",
+          "format_match_mode": "FormatFixed"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "dst",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NCDHW",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ],
+          "ori_format": "NCDHW",
+          "format_match_mode": "FormatFixed"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "groups",
+          "dtype": "int",
+          "value": [
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

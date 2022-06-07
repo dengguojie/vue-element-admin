@@ -146,7 +146,7 @@ def test_external_interface():
     test_check_axis_is_last()
 
     with op_context.OpContext():
-        TEST_PLATFORM = ["Ascend910", "SD3403", "Ascend710"]
+        TEST_PLATFORM = ["Ascend910", "SD3403", "Ascend310P3"]
         for soc in TEST_PLATFORM:
             cce_conf.te_set_version(soc)
             op_select_format()

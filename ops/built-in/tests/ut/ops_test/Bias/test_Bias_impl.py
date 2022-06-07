@@ -238,5 +238,5 @@ def test_op_select_format(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
-ut_case.run(["Ascend910", "Ascend310", "Ascend710", "Hi3796CV300CS"])
+ut_case.run(["Ascend910", "Ascend310", "Ascend310P3", "Hi3796CV300CS"])
 

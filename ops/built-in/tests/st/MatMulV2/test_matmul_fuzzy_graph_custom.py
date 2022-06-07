@@ -138,7 +138,7 @@ def test_matmul_confusion_transpose_30_224_perm_invalid():
 
 
 def test_matmul_confusion_transpose_710():
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     with cce():
         x1 = tvm.placeholder((48, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 768)}, dtype="float16")
         x2 = tvm.placeholder((48, 48, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (768, 768)}, dtype="float16")
@@ -156,13 +156,13 @@ def test_matmul_confusion_transpose_710():
         }
         cce_build_code(sch, config)
 
-def test_matmul_requant_bl1_fullload_bind_multicore_on_Ascend710():
+def test_matmul_requant_bl1_fullload_bind_multicore_on_Ascend310P3():
     def custom_tiling(*args):
         tiling = {'AL0_matrix': [125, 1, 16, 32, 1, 1], 'AL1_shape': [32, 1, 1, 1], 'AUB_channel_wise_flag': None, 'AUB_shape': None, 'A_overhead_opt_flag': 0, 'BL0_matrix': [], 'BL1_shape': [], 'BUB_channel_wise_flag': None, 'BUB_shape': None, 'B_overhead_opt_flag': 0, 'CL0_matrix': [1, 125, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [
             1, 125, 16, 16, 1, 1], 'batch_bef_group_flag': 0, 'block_dim': [1, 8, 1, 1], 'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 2, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1}, 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}
         return tiling
 
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=custom_tiling())):
         with cce():
             input_0 = tvm.placeholder((16, 625, 16, 32), name="i0", dtype="int8",
@@ -188,7 +188,7 @@ def test_matmul_requant_bl1_fullload_bind_multicore_on_Ascend710():
             output_fusion_op = ascend_requant_compute(output_mm, input_3, output_y2, relu_flag=False)
 
             sch = auto_schedule(output_fusion_op)
-            config = {"name": "test_matmul_requant_bl1_fullload_bind_multicore_on_ascend710", "tensor_list":[input_0, input_1, input_2, output_fusion_op]}
+            config = {"name": "test_matmul_requant_bl1_fullload_bind_multicore_on_Ascend310P3", "tensor_list":[input_0, input_1, input_2, output_fusion_op]}
             cce_build_code(sch, config)
 
 def test_matmul_requant_bl1_bl0_status_ori_equal():

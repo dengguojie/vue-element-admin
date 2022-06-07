@@ -24,7 +24,7 @@ from tvm.tensor import Tensor
 
 from tbe import tvm
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
@@ -562,7 +562,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 scope_iter_var, align_factor, offset)
 
     def _calculate_compute_align(self):
-        if get_soc_spec(SOC_VERSION) != ASCEND_910B:
+        if get_soc_spec(SHORT_SOC_VERSION) != ASCEND_910B:
             return
 
         def _set_align(_tensor, _factor):

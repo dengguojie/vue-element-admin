@@ -22,7 +22,7 @@ from decorator import decorator
 from tbe import tvm
 from tbe.tvm import expr
 from tbe.common.platform import ASCEND_310
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.testing.dsl_source_info import source_info_decorator
@@ -759,7 +759,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     if is_use_newton_iter:
         def __get_newton_iter_num():
             newton_iter_num = 2
-            if get_soc_spec(SOC_VERSION) == ASCEND_310:
+            if get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310:
                 newton_iter_num = 1
             return newton_iter_num
 

@@ -508,8 +508,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     output_w = output_shape[2] if data_format in ("NHWC",) else output_shape[3]
 
     is_global = (output_h == 1) and (output_w == 1)
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    is_710 = cce_product in ("Ascend710",)
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
+    is_710 = cce_product in ("Ascend310P",)
     axes = [2, 3]
 
     # check others parameter

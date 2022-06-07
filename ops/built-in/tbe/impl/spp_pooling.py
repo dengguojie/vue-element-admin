@@ -54,7 +54,7 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
     para_check.check_shape(x_shape_val, param_name="input_x")
     para_check.check_shape(y_shape_val, param_name="input_y")
 
-    tik_name = tbe_platform.get_soc_spec("SOC_VERSION")
+    tik_name = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if tik_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(dtype_val.lower(), ["float16"], param_name="input_x")
     else:
@@ -394,7 +394,7 @@ class PoolingCompute(PoolingCommon):
                                  self.src_ub[compute_size*self.shape[4]],
                                  init_val, 1, 1, 8)
 
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == tbe_platform.ASCEND_310 \
+        if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) == tbe_platform.ASCEND_310 \
                 and self.dtype == "float32":
             run_loop = (compute_size * self.shape[4] *
                         self.dtype_size + 255) // 256

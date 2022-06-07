@@ -70,13 +70,13 @@ case5 = {"params": [{"shape": (1, 6000), "dtype": "float16", "ori_shape": (1, 32
          "expect": "success",
          "support_expect": True}
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case1)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case2)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case3)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case4)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend310P3"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend310P3"], case5)
 
-def test_static_1951(test_arg):
+def test_static_ascend310p3(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.top_k_d import top_k_d
     te_set_version("Ascend610", "VectorCore")
@@ -99,7 +99,7 @@ def test_static_lhisi(test_arg):
             100, True, -1, True)
     set_current_compile_soc_info(test_arg)
 
-ut_case.add_cust_test_func(test_func=test_static_1951)
+ut_case.add_cust_test_func(test_func=test_static_ascend310p3)
 ut_case.add_cust_test_func(test_func=test_static_lhisi)
 
 # vals = {("tik.vbitsort32"): True}

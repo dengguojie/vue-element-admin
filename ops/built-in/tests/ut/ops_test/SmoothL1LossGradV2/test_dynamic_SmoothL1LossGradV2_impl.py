@@ -18,7 +18,7 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("SmoothL1LossGradV2", "impl.dynamic.smooth_l1_loss_grad_v2", "smooth_l1_loss_grad_v2")
 
 case1 = {
-        "params": 
+        "params":
             [{
                 "shape": (-1, -1),
                 "dtype": "float16",
@@ -53,7 +53,7 @@ case1 = {
         "support_expect": True}
 
 case2 = {
-        "params": 
+        "params":
             [{
                 "shape": (-1, -1),
                 "dtype": "int32",
@@ -88,7 +88,7 @@ case2 = {
         "support_expect": True}
 
 case3 = {
-        "params": 
+        "params":
             [{
                 "shape": (-1, -1),
                 "dtype": "float16",
@@ -158,7 +158,7 @@ case4 = {
         "support_expect": True}
 
 case5 = {
-        "params": 
+        "params":
             [{
                 "shape": (-1, -1),
                 "dtype": "float16",
@@ -193,7 +193,7 @@ case5 = {
         "support_expect": True}
 
 case6 = {
-        "params": 
+        "params":
             [{
                 "shape": (-1, -1),
                 "dtype": "float16",
@@ -228,7 +228,7 @@ case6 = {
         "support_expect": True}
 
 case7 = {
-        "params": 
+        "params":
             [{
                 "shape": (-1, -1),
                 "dtype": "float16",
@@ -262,14 +262,14 @@ case7 = {
         "expect": "success",
         "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend310P3", "Ascend910A"])
     exit(0)

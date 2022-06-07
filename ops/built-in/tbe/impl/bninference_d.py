@@ -201,7 +201,7 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     res_y = tbe.vmul(var_broadcast, mean_add)
 
     is_cast = False
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if dtype_x == "float16":
             is_cast = True
@@ -250,7 +250,7 @@ def _fused_scale_compute(x, mean, variance, scale):
     res_y = tbe.vmul(var_broadcast, mean_add)
 
     is_cast = False
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if dtype_x == "float16":
@@ -361,7 +361,7 @@ def _dtype_scale_offset_check(x, mean, variance, scale, offect):
     dtype_x = x.get("dtype")
     dtype_mean = mean.get("dtype")
     dtype_variance = variance.get("dtype")
-    product = tbe_platform.get_soc_spec("SOC_VERSION")
+    product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         checklist = ["float16"]
@@ -383,7 +383,7 @@ def _dtype_check(x, mean, variance):
     dtype_x = x.get("dtype")
     dtype_mean = mean.get("dtype")
     dtype_variance = variance.get("dtype")
-    product = tbe_platform.get_soc_spec("SOC_VERSION")
+    product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         checklist = ["float16"]

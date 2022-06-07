@@ -32,7 +32,7 @@ def gen_trans_data_case_1(src, dst, dtype, case_name_val, expect,
 def test_nd_2_nz_1(test_args):
     from impl.trans_data import trans_data
     from te import platform as cce_conf
-    cce_conf.cce_conf.te_set_version("Ascend710", core_type="VectorCore")
+    cce_conf.cce_conf.te_set_version("Ascend310P3", core_type="VectorCore")
     trans_data({"shape": (1, 16, 512), "dtype": "int32", "format": "ND", "ori_shape": (1, 16, 512),"ori_format": "ND"},
                {"shape": (1, 32, 1, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (1, 32, 1, 16, 16),"ori_format": "FRACTAL_NZ"},
                "ND", "FRACTAL_NZ")

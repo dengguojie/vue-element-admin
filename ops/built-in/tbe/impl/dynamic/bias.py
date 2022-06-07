@@ -254,7 +254,7 @@ def _check_dtype(dtype_x, dtype_bias):
     -------
     None
     """
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float32" or dtype_bias == "float32":
             error_detail = "float32 is not support in HISI"
             error_manager_vector.raise_err_two_input_dtype_invalid("bias", "x", "bias",
@@ -306,7 +306,7 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
 
         if dtype_bias == "float16":
             bias = tbe.cast_to(bias, 'float32')
-    
+
     _, _, shape_max = shape_util.broadcast_shapes(shape_util.shape_to_list(x.shape),
                                                   shape_util.shape_to_list(bias.shape),
                                                   param_name_input1="x",

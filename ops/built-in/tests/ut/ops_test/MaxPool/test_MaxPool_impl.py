@@ -26,8 +26,8 @@ case2 = {"params": [{"shape": (1,4,23,111,16), "dtype": "float16", "format": "NH
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 from impl.max_pool import check_supported
 

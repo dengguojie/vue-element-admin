@@ -67,7 +67,7 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
   }
   OP_LOGD("RoiExtractor", "Get soc_version is: [%s].", optional_info.soc_version.c_str());
   FUSION_PASS_CHECK(
-      optional_info.soc_version != "Ascend710",
+      platform_info.str_info.short_soc_version != "Ascend310P",
       OP_LOGW(FUSED_OP_TYPE.c_str(), "not support this soc_version."),
       return NOT_CHANGED);
 

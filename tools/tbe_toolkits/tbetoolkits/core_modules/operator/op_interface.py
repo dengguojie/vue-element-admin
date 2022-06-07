@@ -63,7 +63,7 @@ class OperatorInterface:
     @contextmanager
     def knowledge_base(self):
         self.interface.cann_kb_init({"core_num": self.get_soc_spec("CORE_NUM"),
-                                     "soc_version": self.get_soc_spec("SOC_VERSION")}, {}, {})
+                                     "soc_version": self.get_soc_spec("SHORT_SOC_VERSION")}, {}, {})
         yield
         self.interface.cann_kb_finalize()
 

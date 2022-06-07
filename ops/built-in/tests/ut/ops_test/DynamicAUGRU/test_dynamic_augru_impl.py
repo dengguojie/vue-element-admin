@@ -412,68 +412,68 @@ precision = precision_info.PrecisionStandard(0.001, 0.002)
 # for cov
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float32')
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, seq, None, output_y, output_h, None, None, None, None, None]
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None]
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn]
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn]
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h,
                None, None, None, None, None, "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "rzh"]
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, None, None, None, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn]
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "aa", 1, 1.0, -1.0, 0, True, "tanh"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 11, 1.0, -1.0, 0, True, "tanh"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 11.0, -1.0, 0, True, "tanh"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 1.0, -11.0, 0, True, "tanh"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 1.0, -1.0, 10, True, "tanh"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, False, "tanh"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "sin"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "sdfs"],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, None, None, None, None, None,
                "UNIDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", False],
     "expect": RuntimeError
@@ -481,99 +481,99 @@ ut_case.add_case("all", {
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 r["shape"] = [0]
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, r, i, i_att, n, hn],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, i, r, hn],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, i, i, r],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, r, output_h, i, i_att, i, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 b2["shape"] = [0]
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b2, b1, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 w2["shape"] = [0,0,0]
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w2, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 w2["shape"][1] = 1
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 w1["shape"][1] = 1
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 x["shape"][0] = 99
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 x["shape"][2] = 2
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float16')
 r["dtype"] = 'float32'
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, None, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn = \
     get_params(t_size=2, m_size=1, in_x=64, hidden_size=32, bias_dtype='float32', seq_dtype='float16')
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, seq, s_init_h_gm, output_y, output_h, i, i_att, r, n, hn]
 })
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, seq, None, output_y, output_h, None, None, None, None, None]
 })
 shape_seq = [2, 32, 32, 16, 16]
 seq_wrong = {"shape": shape_seq, "dtype": 'float16', "param_type": "input", "value_range": [0.01, 0.1],
              "ori_format": "NC1HWC0", "format": "FRACTAL_NZ", "ori_shape": shape_seq}
-ut_case.add_case("all", {
+ut_case.add_case(["Ascend910A", "Ascend310"], {
     "params": [x, w1, w2, weight_att, b1, b2, seq_wrong, None, output_y, output_h, i, i_att, r, n, hn],
     "expect": RuntimeError
 })
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend310P3"])
     exit(0)

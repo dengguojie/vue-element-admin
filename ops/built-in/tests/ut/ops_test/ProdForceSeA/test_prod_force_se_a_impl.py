@@ -28,7 +28,7 @@ def test_prod_force_se_a_case001(test_args):
     """
     Compute prod_force_se_a.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         prod_force_se_a({"shape": (1, 6782976), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 6782976), "ori_format": "ND", "range": ((1, 1), (6782976, 6782976))},
@@ -47,7 +47,7 @@ def test_prod_force_se_a_case002(test_args):
     """
     Compute prod_force_se_a.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         prod_force_se_a({"shape": (1, 1656), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 1656), "ori_format": "ND", "range": ((1, 1), (6782976, 6782976))},
@@ -66,7 +66,7 @@ def test_prod_force_se_a_case003(test_args):
     """
     Compute prod_force_se_a.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         prod_force_se_a({"shape": (1, 1656), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 1656), "ori_format": "ND", "range": ((1, 1), (6782976, 6782976))},
@@ -146,6 +146,6 @@ ut_case.add_cust_test_func(test_func=test_prod_force_se_a_case005)
 ut_case.add_cust_test_func(test_func=test_prod_force_se_a_case006)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     ut_case.run("Ascend910")
     exit(0)

@@ -26,12 +26,12 @@ case5 = test_parallel_concat([1, 17, 124, 1024], "float16", [2, 17, 124, 1024],"
 case6 = test_parallel_concat([1, 247, 1024], "float16", [2, 247, 1024],"parallel_concat_6")
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case6)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

@@ -226,7 +226,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_fo
             break
 
     core_num = get_soc_spec("CORE_NUM")
-    soc_version = get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
     max_ub_size_normal_fp16 = 10 * 1024
     max_ub_size_normal_fp32 = 10 * 1024
     if soc_version in ("Ascend310",):

@@ -70,14 +70,14 @@ case8 = {"params": [{"shape": (2,), "dtype": "float32", "format": "ND", "ori_sha
          "expect": RuntimeError,
          "support_expect": True}
 
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case8)
 
 def calc_expect_func(x, y, start, limit, delta):
     x_value = x.get("value")

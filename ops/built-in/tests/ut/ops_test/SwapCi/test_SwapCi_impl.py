@@ -70,10 +70,10 @@ ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", err1)
 ut_case.add_case("Ascend910A", err2)
 ut_case.add_case("Ascend910A", err3)
-ut_case.add_case("Ascend710", err4)
+ut_case.add_case("Ascend310P3", err4)
 ut_case.add_case("Ascend910A", err5)
 ut_case.add_case("Ascend910A", err6)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case7)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend310P3"])

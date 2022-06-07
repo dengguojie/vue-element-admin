@@ -21,7 +21,7 @@ import abc
 import itertools
 from typing import Any
 
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base import operation
 from tbe.tvm.schedule import Schedule as TVM_Schedule
@@ -142,7 +142,7 @@ def _schedule(outs, tiling_case):
     cpt = operation.get_context().get_current_compute()
     sub_pattern = cpt.get_sub_pattern()
     pattern = cpt.get_pattern()
-    soc = get_soc_spec(SOC_VERSION)
+    soc = get_soc_spec(SHORT_SOC_VERSION)
 
     if isinstance(sub_pattern, (list, tuple)):
         sch_idx = cpt.get_current_schedule().get("_sch_idx")

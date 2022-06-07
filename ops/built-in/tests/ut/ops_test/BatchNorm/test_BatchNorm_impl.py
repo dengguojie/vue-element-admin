@@ -17,7 +17,7 @@ def calc_expect_func_infer(x, scale, offset, mean, variance, y, batch_mean, batc
     scale_value = scale.get("value")
     offset_value = offset.get("value")
     mean_value = mean.get("value")
-    variance_value = variance.get("value")  
+    variance_value = variance.get("value")
     x_shape = x_value.shape
     x_dim = len(x_shape)
     if data_format in ["NCHW", "ND"]:
@@ -99,41 +99,41 @@ def gen_batch_norm_precious_case(x_shape, shape_scale, shape_reserve, dtype_x,
             "calc_expect_func": calc_expect_func_infer,
             "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_case((1,2,3,4,16), (1,2,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "batch_norm_1", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_case((1,1,2,3,4,16), (1,1,2,1,1,16), (), "float16",
                                      "float32", "NDC1HWC0", "batch_norm_2", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_case((2,16,384,576,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "batch_norm_3", "success"))
 
 pre_fix = "_function_"
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_case((2, 64, 7), (64, ), (64, ), "float16",
                                     "float32", "NCHW", "batch_norm" + pre_fix + "0_dim_3_traing_True", "success", is_training=False))
 idx = 1
 for dim_num in range(2, 9):
     for training in [True, False]:
         shape_x = gen_x_shapes(dim_num)
-        ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+        ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_batch_norm_case(shape_x, (shape_x[1],), (), "float16",
                                      "float32", "ND", "batch_norm" + pre_fix + str(idx) + "_dim_" + str(dim_num) + "_traing_" + str(training), "success", is_training=training))
         idx += 1
 
 
-pre_fix = "_precious_"
-ut_case.add_precision_case(["Ascend710", "Ascend910A"],
-                 gen_batch_norm_precious_case((2, 64, 7), (64, ), (64, ), "float32",
-                                     "float32", "NCHW", "batch_norm" + pre_fix + "0_dim_3_traing_False", is_training=False))
-idx = 1
-for dim_num in range(2, 9):
-    shape_x = gen_x_shapes(dim_num)
-    ut_case.add_precision_case(["Ascend710", "Ascend910A"],
-                 gen_batch_norm_precious_case(shape_x, (shape_x[1],), (shape_x[1],), "float32",
-                                     "float32", "ND", "batch_norm" + pre_fix + str(idx) + "_dim_" + str(dim_num) + "_traing_False", is_training=False))
-    idx += 1
+# pre_fix = "_precious_"
+# ut_case.add_precision_case(["Ascend310P3", "Ascend910A"],
+#                  gen_batch_norm_precious_case((2, 64, 7), (64, ), (64, ), "float32",
+#                                      "float32", "NCHW", "batch_norm" + pre_fix + "0_dim_3_traing_False", is_training=False))
+# idx = 1
+# for dim_num in range(2, 9):
+#     shape_x = gen_x_shapes(dim_num)
+#     ut_case.add_precision_case(["Ascend310P3", "Ascend910A"],
+#                  gen_batch_norm_precious_case(shape_x, (shape_x[1],), (shape_x[1],), "float32",
+#                                      "float32", "ND", "batch_norm" + pre_fix + str(idx) + "_dim_" + str(dim_num) + "_traing_False", is_training=False))
+#     idx += 1
 
 if __name__ == '__main__':
     ut_case.run()

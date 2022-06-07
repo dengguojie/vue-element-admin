@@ -130,21 +130,21 @@ case8 = {"params": [{"shape": (2, 1, 1, 8600, 16), "dtype": "float16", "format":
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
 
 # ut_case.add_precision_case(["Ascend310", "Ascend910A"], case6)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case8)
 
 from impl.avg_pool import check_supported
 from impl.avg_pool import get_op_support_info
@@ -222,7 +222,7 @@ def test_avgpool_conv2d_fusion_para_001(test_arg):
         })
 
 def test_710_gap(test_arg):
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     x = {"shape": (1, 2, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0",
          "ori_shape": (1, 8, 8, 32),"ori_format": "NHWC"}
     y = {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0",
@@ -238,5 +238,5 @@ ut_case.add_cust_test_func(test_func=test_avgpool_conv2d_fusion_para_001)
 ut_case.add_cust_test_func(test_func=test_710_gap)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend310P3", "Ascend910A"])
     exit(0)

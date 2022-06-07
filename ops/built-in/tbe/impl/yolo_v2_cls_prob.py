@@ -81,7 +81,7 @@ class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
     def __init__(self, input_dict):
         super(ClsProbComputer, self).__init__(input_dict)
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in ( \
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             adj_hw = self.get_adj_hw(self.boxes * self.height * self.width)
             self.obj_prob_v200 = self.instance.Tensor(self.dtype,
@@ -104,7 +104,7 @@ class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
         None
         """
         index_ub = None
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ( \
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ( \
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
                                             name="index_ub",
@@ -217,7 +217,7 @@ class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
           -------
           None
           """
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             sum_mask_ub = self.instance.Tensor(self.dtype, (16,),
                                                name="sum_mask_ub",
@@ -289,7 +289,7 @@ class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
         self.t_data_move(param['ub_a'], self.obj_prob[batch, 0], param['burlen'])
 
         # The supplemented part is deleted for v200 reduce
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.t_data_move(
                 self.obj_prob_v200[param['obj_gm_offset']], param['ub_a'],
@@ -475,7 +475,7 @@ class ClsProbComputer(yolo_v2_correct_box.CorrectBoxComputer):
             with self.instance.if_scope(last_index_len == 0):
                 last_index_len.set_as(index_len)
 
-            if tbe_platform.get_soc_spec("SOC_VERSION") not in ( \
+            if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in ( \
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.t_data_move(
                     self.obj_prob_v200[param['obj_gm_offset']],
@@ -613,7 +613,7 @@ def check_param(input_dict):
       None
       """
     pre_nms_topn = input_dict.get("pre_nms_topn")
-    if tbe_platform.get_soc_spec("SOC_VERSION") in (
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(input_dict.get("dtype"), ["float16"], param_name="windex")
     else:
@@ -631,7 +631,7 @@ def check_param(input_dict):
 
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("dtype")
-    if tbe_platform.get_soc_spec("SOC_VERSION") in (
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") \
             or dtype == constant.DATA_TYPE_FP32:
         if pre_nms_topn > PRE_NMS_TOPN // 2 or pre_nms_topn <= 0:

@@ -47,7 +47,7 @@ class SSDDectionParamInit():
         self.dtype = input_dict.get("mbox_loc").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
 
-        self.ascend_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.ascend_name = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         ub_capacity = self.ub_size // self.dsize
 
@@ -799,7 +799,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
             self.compute_decode_bbox_coord_corner_size(batch, data_offset,
                                                        is_tail, decode_bbox_ori)
 
-        if self.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615, tbe_platform.ASCEND_710):
+        if self.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615, tbe_platform.ASCEND_310P):
             self.clip_bbox_v200(decode_bbox_ori, decode_bbox_clip)
         else:
             self.clip_bbox(decode_bbox_ori, decode_bbox_clip)

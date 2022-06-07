@@ -35,7 +35,7 @@ def dsl_cpu_test_fp16():
     sch = tvm.create_schedule(conv_res.op)
     fadd = tvm.build(sch, tensor_list, "c", "llvm", name="fadd")
     ctx = tvm.cpu(0)
-    
+
 def gen_kernel_name(input_shape, weights_shape):
     dedy_shape_info = '_'.join([str(i) for i in input_shape])
     w_shape_info = '_'.join([str(i) for i in weights_shape])
@@ -376,7 +376,7 @@ def test_invalid_data_rm_1(test_arg):
                   'invalid_data_rm': True}
     res = conv(inputs, weights, para_dict, optim_dict, dsl_flag=False)
 print("adding conv2d test_invalid_data_rm_1 testcase")
-ut_case.add_cust_test_func(test_func=test_invalid_data_rm_1)  
+ut_case.add_cust_test_func(test_func=test_invalid_data_rm_1)
 
 def test_invalid_data_rm_2(test_arg):
     inputs = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8",
@@ -394,10 +394,10 @@ def test_invalid_data_rm_2(test_arg):
                   'invalid_data_rm': False}
     res = conv(inputs, weights, para_dict, optim_dict, dsl_flag=False)
 print("adding conv2d test_invalid_data_rm_2 testcase")
-ut_case.add_cust_test_func(test_func=test_invalid_data_rm_2)  
+ut_case.add_cust_test_func(test_func=test_invalid_data_rm_2)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910", "Ascend710", "Ascend310"])
+    ut_case.run(["Ascend910", "Ascend310P3", "Ascend310"])
     dsl_cpu_test_int8()
     dsl_cpu_test_fp16()
     exit(0)

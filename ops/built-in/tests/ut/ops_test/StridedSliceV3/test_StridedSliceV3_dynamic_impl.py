@@ -14,7 +14,7 @@ def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):
     begin = {"shape": (len(shape),), "dtype": "int32",
              "ori_shape": shape,
              "ori_format": input_format, "format": input_format,
-             'range': [[2,2]]}    
+             'range': [[2,2]]}
     end = {"shape": (len(shape),), "dtype": "int32",
              "ori_shape": shape,
              "ori_format": input_format, "format": input_format,
@@ -39,7 +39,7 @@ def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case((10, 10), "float16", "case_1", "success"))
 
 

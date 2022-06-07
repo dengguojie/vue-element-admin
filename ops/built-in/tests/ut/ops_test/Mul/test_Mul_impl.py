@@ -106,7 +106,7 @@ def test_mul_compute_nz_nd_ubfusion_1(test_arg):
     x = tvm.placeholder((15, 512, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (8192, 240)})
     y = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
     output = {"shape": (15, 512, 16, 16), "dtype": "float16", "ori_shape": (8192, 240), "format": "FRACTAL_NZ", "ori_format": "ND"}
-    mul_compute(x, y, output, False)  
+    mul_compute(x, y, output, False)
 
 def test_mul_compute_nz_nd_ubfusion_2(test_arg):
     from impl.mul import mul_compute
@@ -130,7 +130,7 @@ def test_mul_compute_nd_nz_ubfusion_1(test_arg):
     x = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
     y = tvm.placeholder((15, 512, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (8192, 240)})
     output = {"shape": (15, 512, 16, 16), "dtype": "float16", "ori_shape": (8192, 240), "format": "FRACTAL_NZ", "ori_format": "ND"}
-    mul_compute(x, y, output, False) 
+    mul_compute(x, y, output, False)
 
 def test_mul_compute_nd_nz_ubfusion_2(test_arg):
     from impl.mul import mul_compute
@@ -324,13 +324,13 @@ def test_op_select_format(test_arg):
                      {"shape": (256, 32), "dtype": "float16", "format": "ND", "ori_shape": (256, 32),
                       "ori_format": "ND", "sub_format" : 0})
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_1)
 ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_2)

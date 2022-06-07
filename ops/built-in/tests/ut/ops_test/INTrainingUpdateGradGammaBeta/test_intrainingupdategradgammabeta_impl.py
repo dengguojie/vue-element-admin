@@ -57,7 +57,7 @@ def gen_in_training_update_grad_case(shape_var, shape_gamma, data_format, dtype_
     }
 
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_in_training_update_grad_case((2, 1, 2, 1, 1, 16), (1, 1, 2, 1, 1, 16), "NDC1HWC0", "float32",
                                                   "test_right_001", "success"))
 

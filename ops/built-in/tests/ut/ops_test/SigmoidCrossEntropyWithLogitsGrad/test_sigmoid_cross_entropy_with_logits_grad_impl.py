@@ -64,11 +64,11 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
 
 # ============ auto gen ["Ascend910"] test cases end =================
 

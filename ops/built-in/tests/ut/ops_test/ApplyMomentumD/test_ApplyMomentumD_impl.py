@@ -100,10 +100,10 @@ def test_apply_get_op_support_info(test_arg):
         }, None)
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
 ut_case.add_cust_test_func(test_func=test_apply_get_op_support_info)
 
 

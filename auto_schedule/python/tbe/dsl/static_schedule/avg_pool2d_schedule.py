@@ -21,7 +21,7 @@ from tbe.common import platform as cce
 from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_310
 
 # define the quantize tensor name
@@ -298,7 +298,7 @@ def _set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if get_soc_spec(SOC_VERSION) == ASCEND_310:
+    if get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310:
         # mini
         emit_insn_str = "vector_conv"
     else:

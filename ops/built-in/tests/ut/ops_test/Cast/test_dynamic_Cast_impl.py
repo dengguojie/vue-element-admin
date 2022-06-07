@@ -125,17 +125,17 @@ case11 = {"params": [
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case11)
 
 case12 = {"params": [
     {"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND",
@@ -181,10 +181,10 @@ case15 = {"params": [
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend710", "Ascend910A"], case13)
-ut_case.add_case(["Ascend710", "Ascend910A"], case14)
-ut_case.add_case(["Ascend710", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case15)
 
 def test_check_supported(test_arg):
     from impl.dynamic.cast import check_supported

@@ -79,9 +79,9 @@ case_first_shape_error = {
 }
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case_num_segments_error)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case_first_shape_error)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case_num_segments_error)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case_first_shape_error)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910","Ascend310","Ascend310P3"])
     exit(0)

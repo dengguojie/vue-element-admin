@@ -15,13 +15,13 @@ ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16"], (16,4), (16,16,16
 ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16"], (16,4), (16,16,128,1))
 ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16"], (16,4), (16,16,32,32))
 ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16"], (16,4), (16,512,512,513))
-ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend710"], ["float16"], (16,4), (16,1,1,1))
+ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend310P3"], ["float16"], (16,4), (16,1,1,1))
 
 
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend310P3"])
     # ut_case.run()
     exit(0)

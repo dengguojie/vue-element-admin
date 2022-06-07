@@ -50,11 +50,11 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
 
 #precision cases
 def _compare_value(data_x, data_y):
@@ -81,7 +81,7 @@ def _calculate_result_ge(data_x, data_y, data_dz, dtype, shape_dz):
     result_dx = data_dz * datax_select_ge
     result_dy = (datax_select_ge + minus_one_tensor) * minus_one_tensor * data_dz
     return result_dx, result_dy
-    
+
 def calc_expect_func(grads, x1, x2, y1, y2):
     dtype = x1['dtype']
     shape_dz = grads['shape']

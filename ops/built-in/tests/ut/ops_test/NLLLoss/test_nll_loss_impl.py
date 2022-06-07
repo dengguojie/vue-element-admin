@@ -18,7 +18,7 @@ def calc_expect_func(x, target, weight, y, total_weight, reduction):
     n_dim = x_shape[0]
     total_weight = 0
     loss = np.zeros([n_dim]).astype(x_dtype)
-    
+
     for i in range(0, n_dim):
         valid_weight = weight_value[target_value[i]]
         loss[i] = -1 * x_value[i][target_value[i]] * valid_weight
@@ -28,9 +28,9 @@ def calc_expect_func(x, target, weight, y, total_weight, reduction):
         loss = np.sum(loss).reshape(y_shape)
     elif reduction == "mean":
         loss = (np.sum(loss) / total_weight).reshape(y_shape)
-    
+
     total_weight = total_weight.reshape(total_weight_shape)
-        
+
     return loss, total_weight
 
 case1 = {"params": [{"shape": (2, 5), "dtype": "float32", "format": "ND", "ori_shape": (2, 5),"ori_format": "ND"},
@@ -102,12 +102,12 @@ case6 = {"params": [{"shape": (3072, 30528), "dtype": "float32", "format": "ND",
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
 
 ut_case.add_precision_case(["Ascend910A"], {
     "params": [

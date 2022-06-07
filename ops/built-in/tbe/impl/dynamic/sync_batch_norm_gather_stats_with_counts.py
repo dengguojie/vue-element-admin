@@ -83,7 +83,7 @@ def sync_batch_norm_gather_stats_with_counts_compute(mean_all,
     if dtype == "float32":
         calc_dtype = "float32"
     elif dtype == "float16":
-        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
         if not sum_support_fp32 and not vdiv_support_fp32:
             calc_dtype = "float16"
         elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:
@@ -93,7 +93,7 @@ def sync_batch_norm_gather_stats_with_counts_compute(mean_all,
     else:
         # int8 and uint8
         calc_dtype = "float16"
-    
+
     if dtype != calc_dtype:
         data_mean_all_tmp = tbe.cast_to(mean_all, calc_dtype)
         data_invert_std_all_tmp = tbe.cast_to(invert_std_all, calc_dtype)

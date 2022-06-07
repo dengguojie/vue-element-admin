@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved. 
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,20 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# bash build_binary.sh {opp_run_path} {output_path} {soc_version}
+# bash build_binary.sh {opp_run_path} {output_path} {short_soc_version}
 export ASCEND_SLOG_PRINT_TO_STDOUT=0
 export ASCEND_GLOBAL_LOG_LEVEL=3
 
 OPP_RUN_PATH=$1
 OUTPUT_PATH=$2
-SOC_VERSION=$3
+SHORT_SOC_VERSION=$3
 CCACHE_ARGS=$4
 _CURR_PATH=$(cd $( dirname "$BASE_SOURCE[0]" ) && pwd)
 ROOT_DEFAULT_PATH=/usr/local/Ascend/latest
 USER_DEFAULT_PATH=${HOME}/Ascend/latest
 #use gen_opcinfo_for_socversion to gen csv
-soc_version=$(echo $SOC_VERSION | tr 'a' 'A')
-csv_file="opc_info_${soc_version}.csv"
+short_soc_version=$(echo $SHORT_SOC_VERSION | tr 'a' 'A')
+csv_file="opc_info_${short_soc_version}.csv"
 
 if [ $# -lt 3 ]; then
     echo "ERROR: Input Args Nums Not Equal Three, Please Check The Num."
@@ -82,7 +82,7 @@ export PATH=${_CURR_PATH}:$PATH
 
 echo "**************Start to Generate Opc Info*****************"
 binary_csv_file="$_CURR_PATH/../binary_config/binary_config.csv"
-bash gen_opcinfo_for_socversion.sh ${soc_version} ${csv_file}
+bash gen_opcinfo_for_socversion.sh ${short_soc_version} ${csv_file}
 if [ "$?" != 0 ]; then
     echo "ERROR: Gen opc info failed, Please Check!"
     exit 1
@@ -105,7 +105,7 @@ rm -f ./${task_path}/*
 op_list=`cat ${binary_csv_file} | tail -n +3 | awk -F, '{print $1}'`
 for op_type in ${op_list}; do
 {
-    bash build_binary_single_op_gen_task.sh ${op_type} ${soc_version} ${OPP_RUN_PATH}/opp ${OUTPUT_PATH} ${task_path} ${csv_file}
+    bash build_binary_single_op_gen_task.sh ${op_type} ${short_soc_version} ${OPP_RUN_PATH}/opp ${OUTPUT_PATH} ${task_path} ${csv_file}
 }
 done
 

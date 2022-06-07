@@ -57,7 +57,7 @@ def test_dtype_in_not_same(soc):
     try:
         input1 = tvm.placeholder((128,), name="input1", dtype="float32")
         input2 = tvm.placeholder((128,), name="input2", dtype="float16")
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         tbe.vsubrelu(input1, input2)
     except RuntimeError as e:
         print(e.args[0].get("detailed_cause"))
@@ -93,7 +93,7 @@ case2 = {
 }
 
 compile_case = {
-    "1": [case1, "Ascend710"],
+    "1": [case1, "Ascend310P3"],
     "2": [case2, None]
 }
 for _, item in compile_case.items():

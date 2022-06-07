@@ -91,7 +91,7 @@ print("adding test_h_out_1_case_910A")
 ut_case.add_cust_test_func("Ascend910A", test_func=test_h_out_1_case_910A)
 
 print("adding test_h_out_1_case_710")
-ut_case.add_cust_test_func("Ascend710", test_func=test_h_out_1_case_710)
+ut_case.add_cust_test_func("Ascend310P3", test_func=test_h_out_1_case_710)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

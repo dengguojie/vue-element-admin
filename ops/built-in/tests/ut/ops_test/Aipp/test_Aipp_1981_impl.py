@@ -104,7 +104,7 @@ def test_aipp_static_1(test_arg):
         print("exception:", e)
 
     try:
-        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend320", kernel_name="aipp")
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend310B", kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
         print("exception:", e)
@@ -148,7 +148,7 @@ def test_aipp_static_2(test_arg):
                          input_dync_param,
                          output_data,
                          aipp_config_dict_tmp,
-                         "Ascend320",
+                         "Ascend310B",
                          kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
@@ -193,7 +193,7 @@ def test_aipp_static_3(test_arg):
                          input_dync_param,
                          output_data,
                          aipp_config_dict_tmp,
-                         "Ascend320",
+                         "Ascend310B",
                          kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
@@ -239,7 +239,7 @@ def test_aipp_static_4(test_arg):
                          input_dync_param,
                          output_data,
                          aipp_config_dict_tmp,
-                         "Ascend320",
+                         "Ascend310B",
                          kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
@@ -285,7 +285,7 @@ def test_aipp_static_5(test_arg):
                          input_dync_param,
                          output_data,
                          aipp_config_dict_tmp,
-                         "Ascend320",
+                         "Ascend310B",
                          kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
@@ -338,7 +338,7 @@ def test_aipp_static_6(test_arg):
                          input_dync_param,
                          output_data,
                          aipp_config_dict_tmp,
-                         "Ascend320",
+                         "Ascend310B",
                          kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
@@ -453,7 +453,7 @@ def test_aipp_dynamic_1(test_arg):
                          input_dync_param,
                          output_data,
                          aipp_config_dict_dynamic_tmp,
-                         "Ascend320",
+                         "Ascend310B",
                          kernel_name="aipp")
     except Exception as e:
         print("1911 aipp test mock")
@@ -463,5 +463,5 @@ def test_aipp_dynamic_1(test_arg):
 ut_case.add_cust_test_func(test_func=test_aipp_dynamic_1)
 
 if __name__ == "__main__":
-    # ut_case.run("Ascend710")
+    # ut_case.run("Ascend310P3")
     ut_case.run()

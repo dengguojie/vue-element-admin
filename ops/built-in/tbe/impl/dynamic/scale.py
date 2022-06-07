@@ -368,7 +368,7 @@ def _fused_scale_compute(x, scale):
     dtype_scale = scale.dtype
 
     is_cast = False
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":
@@ -413,7 +413,7 @@ def _fused_scale_bias_compute(x, scale, bias):
     dtype_bias = bias.dtype
 
     is_cast = False
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":

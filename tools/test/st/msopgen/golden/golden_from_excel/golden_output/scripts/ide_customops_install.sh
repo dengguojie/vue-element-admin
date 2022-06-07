@@ -80,33 +80,16 @@ changemode()
         # chmod -R 550 ${targetdir}
         subdirs=$(ls "${targetdir}" 2> /dev/null)
         for dir in ${subdirs}; do
-            if [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "Ascend310RC" ]]&& [[ ${dir} != "Ascend910" ]] && [[ ${dir} != "Ascend710" ]]  && [[ ${dir} != "aicpu" ]]; then
+            if [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "Ascend310RC" ]]&& [[ ${dir} != "Ascend910" ]] && [[ ${dir} != "Ascend310P" ]]  && [[ ${dir} != "aicpu" ]]; then
                 chmod -R 550 "${targetdir}/${dir}" >/dev/null 2>&1
             fi
         done
-    fi
-
-    if [ $? -ne 0 ];then
-        log "[ERROR] chmod failed."
     fi
 
     return 0
 }
 echo "[ops_custom]changemode..."
 changemode
-if [ $? -ne 0 ];then
-    exit 1
-fi
-
-subdirs=$(ls "${targetdir}" 2> /dev/null)
-for dir in ${subdirs}; do
-    if [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "Ascend310RC" ]]&& [[ ${dir} != "Ascend910" ]] && [[ ${dir} != "Ascend710" ]]  && [[ ${dir} != "aicpu" ]]; then
-        chmod -R -w "${targetdir}/${dir}"  >/dev/null 2>&1
-    fi
-done
-if [ $? -ne 0 ];then
-    exit 1
-fi
 
 echo "SUCCESS"
 exit 0

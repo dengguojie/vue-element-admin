@@ -1446,7 +1446,7 @@ def assist_matrix_compute(res):
     if ConvParam.v200_width_out_1_flag:
         out_w = 1
     if res["padding_mode"] == "VALID":
-        if "Ascend310" in tbe_platform.get_soc_spec("SOC_VERSION"):
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310",):
             c_ub_avg = tvm.compute(conv_shape,
                                    lambda n, c1, m, c0:
                                    tvm.div(c_ub(n, c1, m, c0), filter_h * filter_w).astype(res_dtype),
@@ -1477,7 +1477,7 @@ def assist_matrix_compute(res):
                                        mean_matrix(*index).astype(res_dtype),
                                        name="mean_matrix_fp16",
                                        tag="elewise_single_cast")
-        if "Ascend310" in tbe_platform.get_soc_spec("SOC_VERSION"):
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310",):
             mean_matrix_rec = tvm.compute(mean_matrix_shape, lambda *index:
                                           1 / mean_matrix_fp16(*index),
                                           name="mean_matrix_rec",

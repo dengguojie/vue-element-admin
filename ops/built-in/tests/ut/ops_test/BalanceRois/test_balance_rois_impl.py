@@ -6,11 +6,11 @@ ut_case = OpUT("BalanceRois")
 
 
 # 'pylint: disable=unused-argument
-def test_710_1(test_arg):
+def test_Ascend310P_1(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.balance_rois import balance_rois
 
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 
     roi_shape = [1000, 5]
     index_shape = [1000]
@@ -45,11 +45,11 @@ def test_710_1(test_arg):
 
 
 # 'pylint: disable=unused-argument
-def test_710_2(test_arg):
+def test_Ascend310P_2(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.balance_rois import balance_rois
 
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 
     roi_shape = [10000, 5]
     index_shape = [10000]
@@ -82,6 +82,6 @@ def test_710_2(test_arg):
     params = [rois, re_rois, index, "balance_roi"]
     balance_rois(*params)
 
-ut_case.add_cust_test_func("Ascend710", test_710_1)
-ut_case.add_cust_test_func("Ascend710", test_710_2)
-ut_case.run("Ascend710")
+ut_case.add_cust_test_func("Ascend310P3", test_Ascend310P_1)
+ut_case.add_cust_test_func("Ascend310P3", test_Ascend310P_2)
+ut_case.run("Ascend310P3")

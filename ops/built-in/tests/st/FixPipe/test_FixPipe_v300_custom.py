@@ -566,7 +566,7 @@ def run_v300_case(case_config, is_hf32_flag=False):
 
 def run_v300_batch_cases(case_list, is_hf32_flag=False):
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
     with op_context.OpContext():
         for case in case_list:
             if is_hf32_flag:
@@ -1029,10 +1029,10 @@ def run_v300_cases(test_arg):
 
 def test_aipp_compute():
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
     run_v300_batch_cases_aipp(single_conv2d)
 
-    te_set_version("Ascend710", "AiCore")
+    te_set_version("Ascend310P3", "AiCore")
     run_v300_batch_cases_aipp(single_conv2d)
 
 

@@ -53,16 +53,16 @@ class DepthwiseConv2dParam:
 
 def _check_support_v200():
     """
-    check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
+    if soc_version in ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
 
@@ -79,7 +79,7 @@ def check_load3d_w_out_1_support():
     True: support
     False: not support
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False
@@ -470,7 +470,7 @@ def depthwise_conv2d_compute(fmap,
                 'input_value': str(output_h),
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-        
+
         # if output_w is equal to 1, wout_equal_1 or load2d_pass_flag must be true
         elif int(output_w) == 1:
             if not (wout_equal_1_pass_flag or out_both_equal_1_pass_flag):
@@ -612,7 +612,7 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
                                                kernel_name="depthwise_conv2d_compute"):
     """
     compute of depthwise conv2d backprop filter
-    
+
     the interface will be eliminated soon!
 
     Parameters

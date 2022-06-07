@@ -156,7 +156,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
     format_list_input1 = [format_tuple[1] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
     format_list_output = [format_tuple[2] for format_tuple in format_support_flag if format_support_flag[format_tuple]]
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16"]
     else:

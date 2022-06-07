@@ -41,7 +41,7 @@ def test_dynamic_fixpipe(test_arg):
     from impl.dynamic.conv2d import _conv2d_compute
 
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
 
     # case name: ((fm_range), (weight_shape), (paddings), (strides), (dilations), group, bias_flag, dtype)
     testcase = {
@@ -108,7 +108,7 @@ def test_dynamic_fixpipe_single(test_arg):
     from impl.dynamic.fix_pipe import fix_pipe
     from tbe.dsl.base import operation
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
 
     testcase = {
         # "conv2d_dynamic_fixpipe_test_fp16_1": ([(1, 4), (256, 256), (56, 100), (56, 100)], (512, 256, 1, 1), [0, 0, 0, 0], [1, 1, 2, 2], [1, 1, 1, 1], 1, False, "float16"),

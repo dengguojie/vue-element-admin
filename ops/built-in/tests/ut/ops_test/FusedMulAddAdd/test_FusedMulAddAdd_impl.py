@@ -94,10 +94,10 @@ case7 = {
     "format_expect": [],
     "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910", "Ascend610"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910", "Ascend610"], case7)

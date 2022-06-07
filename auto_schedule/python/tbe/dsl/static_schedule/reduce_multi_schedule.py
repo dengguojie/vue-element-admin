@@ -21,11 +21,11 @@ import math
 
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_310P
 from tbe.common.utils.errormgr import get_error_message
 
 from . import util
@@ -278,7 +278,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
            is_tiling_matched and \
            self._is_matched_softmax_fractalz_emit_insn_limit():
             if insn == "vector_reduce_sum" and tensor.dtype == "float32" and \
-                (get_soc_spec("SOC_VERSION") not in ("Ascend910B", "Ascend910B2",)):
+                (get_soc_spec("SHORT_SOC_VERSION") not in ("Ascend910B", "Ascend910B2",)):
                 ret_insn = "vector_reduce_sum_softmax_fractalz"
             elif insn == "vector_reduce_max" and tensor.dtype == "float16":
                 ret_insn = "vector_reduce_max_softmax_fractalz"
@@ -461,12 +461,12 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
     def __check_support_log_softmax_grad_tiling(self):
         # log_softmax_grad_fp16 shape (20, 21136) (xxx, 21136)
-        # Ascend710 not support
+        # Ascend310P not support
         max_last_reduce_size = 21136
         if (self._pattern == "log_softmax_grad_fp16_1980") and \
                 self._reduce_include_last_axis and \
                 (self._default_shape[-1] >= max_last_reduce_size) and \
-                (get_soc_spec(SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_710)):
+                (get_soc_spec(SHORT_SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_310P)):
             return False
 
         return True
@@ -568,7 +568,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         for tensor in self._mid_tensors:
             if tensor.op.tag.split('|')[0] not in white_list:
                 return True
-        if get_soc_spec(SOC_VERSION) == ASCEND_310:
+        if get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310:
             for tensor in self._mid_tensors:
                 if tensor.op.tag.split('|')[0] in black_list_in_mini:
                     return True

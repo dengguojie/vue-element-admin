@@ -28,7 +28,7 @@ def simple_water_test(test_args, nsample, nloc, n_a_sel, n_r_sel, nall,
                       rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, split_count=1, split_index=0, kernel_name = "prod_env_mat_a"):
     nnei = n_a_sel + n_r_sel
 
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     prod_env_mat_a({"shape": (nsample, nall * 3), "dtype": "float32", "format": "ND",
                     "ori_shape": (nsample, nall * 3), "ori_format": "ND",
                     "range": ((nsample, nsample), (nall * 3, nall * 3))},
@@ -89,5 +89,5 @@ def test_prod_env_mat_a_case001(test_args):
 ut_case.add_cust_test_func(test_func=test_prod_env_mat_a_case001)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

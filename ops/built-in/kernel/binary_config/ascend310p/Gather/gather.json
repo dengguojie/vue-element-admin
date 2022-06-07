@@ -1,0 +1,1965 @@
+{
+  "op_type": "Gather",
+  "op_list": [
+    {
+      "bin_filename": "Gather_438be06ddd5001a226a9e0d0f2047144",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_7005603b524a96b1270dbe1e84372365",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_35d7cdc465f85c9c0b26b87d2e486836",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_af3360b464a5368044b581a688ac63b1",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_98a15dad6a31b7c452aab956848557eb",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_c493981d1508f3e5fde71396166e4201",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_b12ebb9da16a3c8408a3dd8d35897ed3",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_d6583d91afe122887e2e658b5f34b73e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_36295c41124109b1fbe46da535891ebc",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_ccd4dc208879e9ac99164a8aba4b7134",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_5fe645b5780ad7b290773043ad76a4ec",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_3331fff954ee00d461ecadb96ca7a923",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_5982ecf2b0f2e2fe798c84c4b6ed4f87",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_058aca300bd1354a71953b7c1f7136e3",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_66f53d31edba87f53121786b36a05145",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_0267b930c752abe5b2e05cb5efe766ee",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_345709c18bfed54c3efb038382a59763",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_94f9727b3644df69d132e173b65a5293",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_eede0288f892bdcc9584c47f19cd9ef4",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_65485835f9796f54ce13fb24fec48008",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_54ac47f77a66dffdc146b61c84fe2677",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_5f199a8d122dec52efa9ff9085ecfd74",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_470a96efc8e3ca6e3a7d96ae93aee19f",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_36175421869e4488f2f0acd1db91c31b",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_c4a0563c542d41f386e62c86c0a773f5",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_2e028d9b811310c9739d9290bc402d96",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_294d12f71af57ced0cbcef45d6f746fb",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_7dd1a4b01bf40c06ec276984f2d2f2e2",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_ee83a04823ae105ca44dae40c37236d9",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_4a6ac5d119303b88e0cc3d570724f0d8",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_229baefe925bdb3c3f17a32ef5bd0f92",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_462811e1537c04c645d65b330c10325e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_84f8f01c1b500a0ac73b3070f9b97e02",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_27a4c1318370175b733ee4a74e5f12e4",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_143e2d14eaf1844de060c36cd19df1ac",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_8cca61b97ec834618cee45dc3608463b",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_7721a1aaa0a323c7fbb332b62be06a94",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_6b21b8e1b84a9754ec7bee20cd447bcd",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_1026fc2162bc976537bb6b2838ea4324",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Gather_32258469deda1ddcfa6507bcbae619de",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "indices",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "validate_indices",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "batch_dims",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

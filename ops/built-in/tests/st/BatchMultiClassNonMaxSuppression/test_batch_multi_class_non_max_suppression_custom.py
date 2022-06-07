@@ -46,23 +46,23 @@ def get_impl_list(batch_size, num_boxes, num_class, num_class_boxes, score_thres
 
 
 def test_vector_core():
-    old_soc_version = cce_conf.get_soc_spec(cce_conf.SOC_VERSION)
+    old_soc_version = cce_conf.get_soc_spec(cce_conf.SHORT_SOC_VERSION)
     old_aicore_type = cce_conf.get_soc_spec(cce_conf.AICORE_TYPE)
-    cce_conf.te_set_version("Ascend710", "VectorCore")
+    cce_conf.te_set_version("Ascend310P3", "VectorCore")
     params = get_impl_list(8, 100, 90, 90, 0.5, 0.5, 100, 100, True, True, True)
     batch_multi_class_non_max_suppression(*params)
     params = get_impl_list(8, 40800, 90, 90, 0.5, 0.5, 100, 100, True, True, False)
     batch_multi_class_non_max_suppression(*params, impl_mode="high_precision")
 
     # impl == norm_class
-    cce_conf.te_set_version("Ascend710")
+    cce_conf.te_set_version("Ascend310P3")
     params = get_impl_list(8, 1024, 80, 1, 0.01, 0.66, 256, 256, False, False, False)
     batch_multi_class_non_max_suppression(*params, image_size=(2048, 2048), impl_mode="norm_class")
 
     cce_conf.te_set_version(old_soc_version, old_aicore_type)
 
 
-soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 cce_conf.te_set_version("Hi3796CV300CS")
 test_vector_core()
 cce_conf.te_set_version(soc_version)
@@ -122,7 +122,7 @@ def test_op_mask_1981_test_2():
             obj.bmcnms_compute()
 
 
-soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 cce_conf.te_set_version("Ascend910B2")
 test_op_mask_1981_test_2()
 cce_conf.te_set_version(soc_version)

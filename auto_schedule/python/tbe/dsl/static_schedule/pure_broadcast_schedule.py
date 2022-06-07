@@ -29,10 +29,10 @@ from tbe.dsl.instrinsic.cce_util import get_buffer
 from tbe.dsl.instrinsic.cce_util import apply_for_new_alloc
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import ASCEND_910B
 from .pure_broadcast_intrin import last_axis_broadcast
@@ -404,8 +404,8 @@ class PureBroadcastSchedule:  # 'pylint: disable=R0902
                     block_split_nparts = i
                     block_split_axis = axis
                     break
-                soc_ver = get_soc_spec(SOC_VERSION)
-                hdw_tsch = soc_ver in (ASCEND_910, ASCEND_910B, ASCEND_610, ASCEND_615, ASCEND_710)
+                soc_ver = get_soc_spec(SHORT_SOC_VERSION)
+                hdw_tsch = soc_ver in (ASCEND_910, ASCEND_910B, ASCEND_610, ASCEND_615, ASCEND_310P)
                 if not hdw_tsch:
                     if core_num >= self.device_core_num:
                         break

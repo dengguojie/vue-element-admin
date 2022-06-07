@@ -74,7 +74,7 @@ def test_batchmatmul_confusion_transpose_910():
         cce_build_code(sch, config)
 
 def test_batchmatmul_confusion_transpose_710():
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     with cce():
         x1 = tvm.placeholder((8*12, 8, 8, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (8, 12, 128, 128)}, dtype="float16")
         x2 = tvm.placeholder((8*12, 4, 8, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (8, 12, 128, 64)}, dtype="float16")
@@ -112,7 +112,7 @@ def test_batchmatmul_dequant_mul_add_710():
         "add"]
 
     with op_context.OpContext():
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         with cce():
             tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
                                     attrs={'format': case[0].get("format"),
@@ -188,7 +188,7 @@ def test_batch_matmul_elementwise_ub_fusion_710():
     ]
 
     with op_context.OpContext():
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         with cce():
             tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
                                        attrs={'format': case[0].get("format"),

@@ -70,7 +70,7 @@ def reduce_mean_with_count_compute(x,
     if dtype == "float32":
         calc_dtype = "float32"
     elif dtype == "float16":
-        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
         if (not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and
             not tbe_platform.api_check_support("te.lang.cce.vdiv", "float32")):
             calc_dtype = "float16"

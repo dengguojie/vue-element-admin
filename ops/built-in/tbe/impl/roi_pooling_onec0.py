@@ -475,7 +475,7 @@ class RoiOneC0Class(roi_pooling_base.RoiClass):
             "double_buffer_non_reuse": True,
             "out_of_bound_sync_check": True
         }
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Hi3796CV300ES",
+        if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Hi3796CV300ES",
                                                                    "Hi3796CV300CS",
                                                                    "SD3403"):
             if self.roi_actual_num_effect:

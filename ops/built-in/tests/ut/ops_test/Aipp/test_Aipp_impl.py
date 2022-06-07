@@ -99,7 +99,7 @@ def test_aipp_get_op_support_info(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_aipp_get_op_support_info)
 
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_static_aipp_case((1, 3, 418, 416), (1, 1, 418, 416, 32), "uint8", "uint8", "NCHW", "NC1HWC0",
                                       aipp_config, "aipp_1", "success"))
 ut_case.add_case(["Ascend910"],
@@ -114,7 +114,7 @@ aipp_config_dict["crop"] = 1
 aipp_config_dict["padding"] = 1
 aipp_config3 = json.dumps(aipp_config_dict)
 aipp_config_dict21 = aipp_config_dict.copy()
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_static_aipp_case((1, 3, 418, 416), (1, 1, 258, 240, 32), "uint8", "uint8", "NCHW", "NC1HWC0",
                                       aipp_config3, "aipp_3", "success"))
 
@@ -123,23 +123,23 @@ aipp_config_dict["padding"] = 1
 aipp_config_dict["padding_value"] = 10
 aipp_config4 = json.dumps(aipp_config_dict)
 
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_static_aipp_case((1, 3, 418, 416), (1, 1, 258, 240, 32), "uint8", "uint8", "NCHW", "NC1HWC0",
                                       aipp_config4, "aipp_4", "success"))
-ut_case.add_case(["Ascend710"],
+ut_case.add_case(["Ascend310P3"],
                  gen_static_aipp_case((1, 3, 418, 416), (1, 1, 258, 240, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
                                       aipp_config4, "aipp_c04_2", "success"))
 
 aipp_config_dict["input_format"] = "RGB888_U8"
 aipp_config5 = json.dumps(aipp_config_dict)
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_static_aipp_case((1, 3, 418, 416), (1, 1, 258, 240, 16), "uint8", "float16", "NCHW", "NC1HWC0",
                                       aipp_config5, "aipp_6", "success"))
 
 aipp_config_dict["input_format"] = "YUV400_U8"
 aipp_config_dict["csc_switch"] = 0
 aipp_config6 = json.dumps(aipp_config_dict)
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_static_aipp_case((1, 1, 418, 416), (1, 1, 258, 240, 16), "uint8", "float16", "NCHW", "NC1HWC0",
                                       aipp_config6, "aipp_5", "success"))
 
@@ -148,7 +148,7 @@ aipp_config_dict["csc_switch"] = 0
 aipp_config_dict["padding"] = 0
 aipp_config_dict["resize"] = 1
 aipp_config7 = json.dumps(aipp_config_dict)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"],
                  gen_static_aipp_case((1, 1, 258, 240, 4), (1, 1, 258, 240, 4), "uint8", "float16", "NCHW", "NC1HWC0",
                                       aipp_config7, "aipp_7", RuntimeError))
 
@@ -285,7 +285,7 @@ aipp_config_dict_dynamic = {
     "max_src_image_size": 921600
 }
 aipp_config_dynamic = json.dumps(aipp_config_dict_dynamic)
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_dynamic_aipp_case((1, 1, 224, 224), (1, 1, 223, 223, 16), "uint8", "float16", "NCHW", "NC1HWC0",
                                        aipp_config_dynamic, "aipp_dynamic_1", "success"))
 
@@ -455,7 +455,7 @@ def test_check_aipp_dtype_001(test_arg):
     except RuntimeError as e:
         pass
 
-    set_current_compile_soc_info("Ascend320")
+    set_current_compile_soc_info("Ascend310B1")
     aipp_config_dict["input_format"] = "RAW8"
     aipp_config = json.dumps(aipp_config_dict)
     try:

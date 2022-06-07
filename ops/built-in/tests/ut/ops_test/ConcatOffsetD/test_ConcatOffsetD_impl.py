@@ -21,8 +21,8 @@ case2 = {"params": [[list0, list0, list0, list0, list0],
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

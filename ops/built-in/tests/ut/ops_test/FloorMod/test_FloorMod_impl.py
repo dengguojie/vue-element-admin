@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import BroadcastOpUT
 from op_test_frame.common import precision_info
-from tbe.common.platform.platform_info import set_current_compile_soc_info
 from unittest.mock import MagicMock
 from unittest.mock import patch
 from impl.floor_mod import check_supported as check_supported_static
@@ -65,7 +64,7 @@ ut_case.add_case(
 # ============ auto gen ["Ascend910"] test cases end =================
 
 
-def test_check_supported_001(test_args): 
+def test_check_supported_001(test_args):
     def side_effects(*args):
         context = tbe.common.context.op_context.OpContext()
         context.add_addition("op_impl_mode_dict", {"FloorMod": "high_precision"})
@@ -86,7 +85,7 @@ def test_check_supported_001(test_args):
         # ut_case.run("Ascend910", check_supported_static)
         # ut_case.run("Ascend910", check_supported_dynamic)
 
-def test_check_supported_002(test_args): 
+def test_check_supported_002(test_args):
     def side_effects(*args):
         context = tbe.common.context.op_context.OpContext()
         context.add_addition("op_impl_mode_dict", {"FloorMod": "high_preformance"})

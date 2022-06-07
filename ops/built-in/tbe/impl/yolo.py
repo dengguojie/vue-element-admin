@@ -90,14 +90,14 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     para_check.check_shape(out2_shape, param_name="output2")
     para_check.check_shape(out3_shape, param_name="output3")
 
-    project_name = tbe_platform.get_soc_spec("SOC_VERSION")
+    project_name = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if project_name in ("Ascend310",):
         para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Ascend910",):
         para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
     elif project_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(dtype.lower(), ["float16"], param_name="output1")
-    elif project_name in ("Ascend610", "Ascend710"):
+    elif project_name in ("Ascend610", "Ascend310P"):
         para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
     else:
         para_check.check_dtype(dtype.lower(), ["float16", "float32"], param_name="output1")
@@ -205,7 +205,7 @@ class ComputerCommon(ShapeInfo):
         """
         repeats = (dlen + 255) // 256
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in ("Ascend310",):
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in ("Ascend310",):
             tik_inst.vdiv(mask, dividend, dividend, divisor,
                           repeats, 1, 1, 1, 8, 8, 8)
         else:
@@ -862,7 +862,7 @@ class InitTikAndTensor:
         -------
         NONE
         """
-        self.product_name = tbe_platform.get_soc_spec("SOC_VERSION")
+        self.product_name = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
 
     def set_ub_buf(self):

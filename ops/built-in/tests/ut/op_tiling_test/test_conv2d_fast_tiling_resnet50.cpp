@@ -17,19 +17,19 @@ const uint32_t NOTSUPPORTNOW = 2;
 class CheckTiling {
     /**
      * @brief check tiling result, should satisfy nine path.
-     * 
+     *
      * judgment path diagram
-     * 
+     *
      * brief mark
      * fm: feature map
      * weight: w
      * full load: fd
      * L1 is mad's n: 1T
      * L1 is mad's 1/n: nT
-     * 
+     *
      * fm.fd & w.!fd --> not support now
      * fm.fd & w.fd  --> not supoort now
-     * 
+     *
      * fm.!fd & w.fd
      *     |----w.fd2l1
      *     |        |----fm 1T (load2d/3d)--> valid
@@ -38,14 +38,14 @@ class CheckTiling {
      *     |----w.fd2l0b
      *              |----fm 1T (load2d/3d)--> valid
      *              |----fm nT --> not support now
-     * 
+     *
      * fm.!fd & w.!fd
      *     |----w.reuse --> not supported now
      *     |----fm.reuse
      *              |----fm nT
      *                     |----w(w->L0B) (laod2d) --> valid
      *                     |----w(w->L1->L0B) --> not support
-     * 
+     *
      *              |----fm 1T
      *                     |----w(w->L0B) (load3d) --> valid
      *                     |----w(w->L1->L0B)
@@ -3311,7 +3311,7 @@ protected:
         std::cout << "Conv2DFastTilingTest TearDown" << std::endl;
     }
 
-    void setHardwareInfoAscend710() {
+    void setHardwareInfoAscend310P() {
         hardwareInfo.aicoreNum = 8;
         hardwareInfo.l2Size = 16777216;
         hardwareInfo.l1Size = 1048576;
@@ -3332,11 +3332,11 @@ protected:
         hardwareInfo.ubToL2Rate = 114;
         hardwareInfo.ubToDdrRate = 17;
         hardwareInfo.ubToL1Rate = 256;
-        hardwareInfo.socVersion = "Ascend710";
+        hardwareInfo.socVersion = "Ascend310P";
     }
 
     virtual void SetUp() {
-        setHardwareInfoAscend710();
+        setHardwareInfoAscend310P();
         std::cout << "SetUp" << std::endl;
     }
 

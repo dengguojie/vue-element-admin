@@ -121,9 +121,9 @@ def test_conv2d_v200(test_arg):
                 else:
                     bias_tensor = None
                 out = ascend_dequant_s16_compute(conv_res, vdeq_reg, bias_tensor, None, relu_flag=relu_flag)
-                tiling = {'AL0_matrix':[4, 9, 16, 16], 'CL0_matrix': [1, 4, 16, 16, 1], 'CUB_matrix': [1, 4, 16, 16], 
+                tiling = {'AL0_matrix':[4, 9, 16, 16], 'CL0_matrix': [1, 4, 16, 16, 1], 'CUB_matrix': [1, 4, 16, 16],
                           'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0, 'BL0_matrix': [9, 1, 16, 16],
-                          'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 
+                          'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1,
                           'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
                           'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 1, 1, 1], 'CUB_channel_wise_flag': False}
                 ConvParam.tiling = tiling
@@ -192,9 +192,9 @@ def test_conv2d_v200(test_arg):
                 deq16_reg = tvm.placeholder(shape_req, name='deq_reg', dtype='uint64',
                     attrs={'ori_shape': [c_out*16 if vector_flag else 1]})
                 out = ascend_dequant_compute(conv_res, deq16_reg, None, sqrt_mode=False, relu_flag=True)
-                tiling = {'AL0_matrix':[4, 9, 16, 16], 'CL0_matrix': [1, 4, 16, 16, 1], 'CUB_matrix': [1, 4, 16, 16], 
+                tiling = {'AL0_matrix':[4, 9, 16, 16], 'CL0_matrix': [1, 4, 16, 16, 1], 'CUB_matrix': [1, 4, 16, 16],
                           'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0, 'BL0_matrix': [9, 1, 16, 16],
-                          'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 
+                          'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1,
                           'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
                           'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 1, 1, 1], 'CUB_channel_wise_flag': False}
                 ConvParam.tiling = tiling
@@ -364,7 +364,7 @@ def test_conv2d_v200(test_arg):
     The UT for cce Test_conv2d_v200
     """
     print("---------------------------------------------------")
-    cce_conf.te_set_version('Ascend710')
+    cce_conf.te_set_version('Ascend310P3')
     print("[ UNITTEST START conv2d v200]")
 
     run_testcase()

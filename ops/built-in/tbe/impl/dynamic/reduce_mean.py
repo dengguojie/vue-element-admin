@@ -38,7 +38,7 @@ def get_calc_dtype(dtype_x, impl_mode):
     if dtype_x == "float32":
         calc_dtype = "float32"
     elif dtype_x == "float16":
-        cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
         if not tbe_platform.api_check_support("tbe.dsl.sum", "float32"):
             calc_dtype = "float16"
         elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:

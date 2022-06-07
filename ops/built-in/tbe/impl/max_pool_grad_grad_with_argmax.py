@@ -280,7 +280,7 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
                 error_manager_vector.raise_err_specific_reson("max_pool_grad_grad_with_argmax", "Not supported shape.")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910" and (shape_max_pool_h != 1
+    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) == "Ascend910" and (shape_max_pool_h != 1
                                                                                or shape_max_pool_w != 1):
         if fmap_w + pad_left + pad_right - kernel_w < stride_w:
             error_manager_vector.raise_err_specific_reson(

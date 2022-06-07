@@ -7,7 +7,7 @@ Function: Pads a tensor.
 ```
 t = tf.constant([[1, 2, 3], [4, 5, 6]])
 paddings = tf.constant([[1, 1,], [2, 2]])
-tf.pad(t, paddings)  
+tf.pad(t, paddings)
 
 # [[0, 0, 0, 0, 0, 0, 0],
 #  [0, 0, 1, 2, 3, 0, 0],
@@ -31,13 +31,13 @@ project
 │   └───common #插件公共依赖
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
-│       │   tensorflow_pad_plugin.cc 
-│  
+│       │   tensorflow_pad_plugin.cc
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   pad.cc
 │   │   pad.h
-│   
+│
 └───tbe
 │   └───impl #算子实现目录
 │       └───dynamic #算子实现目录
@@ -46,11 +46,11 @@ project
 │   └───op_info_cfg #算子信息库
 │       └───aicore
 │           └───ascend310
-│               │   pad.ini 
-│           └───ascend710
-│               │   pad.ini 
+│               │   pad.ini
+│           └───ascend310p
+│               │   pad.ini
 │           └───ascend910
-│               │   pad.ini 
+│               │   pad.ini
 └───testcase #测试用例
 │   └───st
 │       └───pad

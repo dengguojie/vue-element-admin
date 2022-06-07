@@ -58,7 +58,6 @@ static const std::string ATTR_OP_SPECIFIED_KERNEL_LIB_NAME = "_specified_kernel_
 static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string AIC_LABEL = "AIcoreEngine";
 static const std::string AIV_LABEL = "VectorEngine";
-static const std::string ASCEND_710 = "Ascend710";
 static const std::string CONCATV2_N = "N";
 static const int64_t MIN_N = 2;
 static const int64_t MAX_N = 63;

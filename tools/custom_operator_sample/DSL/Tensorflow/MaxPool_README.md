@@ -15,18 +15,18 @@ Function: Perform max pooling on the input.
 ### 3. 主要工程结构
 ```
 project
-│  
+│
 └───framework #插件目录
 │   └───common #插件公共依赖
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
 │       │   tensorflow_max_pool_plugin.cc
-│  
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   max_pool.cc
 │   │   max_pool.h
-│   
+│
 └───tbe
 │   └───impl #算子实现目录
 │       │   max_pool.py
@@ -34,7 +34,7 @@ project
 │       └───aicore
 │           └───ascend310
 │               │   max_pool.ini #算子信息库
-│           └───ascend710
+│           └───ascend310p
 │               │   max_pool.ini #算子信息库
 │           └───ascend910
 │               │   max_pool.ini #算子信息库

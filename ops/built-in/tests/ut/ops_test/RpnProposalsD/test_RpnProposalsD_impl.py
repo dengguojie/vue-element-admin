@@ -33,9 +33,9 @@ case2 = gen_data(72000, 16, "float16",0.7, 720, 1280, True, 0, 6000, True, 0, 0,
 case3 = gen_data(7200, 16, "float16",0.7, 720, 1280, True, 0, 0, True, 0, 0, False,
                  "rpn_proposals_d_3")
 
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+# ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+# ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+# ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 
 if __name__ == '__main__':

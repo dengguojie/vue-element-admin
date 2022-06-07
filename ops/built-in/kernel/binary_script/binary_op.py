@@ -914,7 +914,7 @@ def fuzz_opinfo_cfg(op_type, op_name, soc_version, format_type, dtype_type, attr
         else:
             print("[ERROR]{} dump binary json fail in {}".format(op_type, soc))
 
- 
+
 def get_attrs(var_attrs, enumerate_attrs):
     """
     get_attrs
@@ -953,7 +953,7 @@ def binary_cfg(op_type, soc_version):
 
     # 获取需要生成json的平台
     if soc_version == "all":
-        soc_version = ["Ascend310", "Ascend320", "Ascend610", "Ascend615", "Ascend710",
+        soc_version = ["Ascend310", "Ascend310B", "Ascend610", "Ascend615", "Ascend310P",
                        "Ascend910", "Ascend910B", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     else:
         soc_version = soc_version.strip(',').split(',')

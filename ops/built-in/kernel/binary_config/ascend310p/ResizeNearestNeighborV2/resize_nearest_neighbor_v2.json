@@ -1,0 +1,397 @@
+{
+  "op_type": "ResizeNearestNeighborV2",
+  "op_list": [
+    {
+      "bin_filename": "ResizeNearestNeighborV2_cb4df345235a550671e70956b1337180",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_35ecc84ca29e24777e943a80415e1c5b",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_7b7bb258485b71d30bf588382a86852b",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_ea64345d0b13cf58c9e3cc8a965f7179",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_1bb31d461aac9eabab2c17841ad11693",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_c4bf70b769d25368b9570617a73b9ba3",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_bf12bc7572322a486387ff1e424999e4",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2_4ffc142f59e2b9045f4a095f3d8bc75c",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    }
+  ]
+}

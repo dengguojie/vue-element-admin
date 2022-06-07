@@ -72,8 +72,8 @@ def set_range(input_x, input_gamma, input_beta):
 
 
 def _is_support_device():
-    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    support_device = (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710,)
+    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
+    support_device = (tbe_platform.ASCEND_910, tbe_platform.ASCEND_310P,)
     if cur_cce_product in support_device:
         return True
     return False

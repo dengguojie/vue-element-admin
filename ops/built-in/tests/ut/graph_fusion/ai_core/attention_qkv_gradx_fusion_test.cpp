@@ -638,8 +638,8 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_6) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "Ascend310P";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");

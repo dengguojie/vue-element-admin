@@ -438,8 +438,8 @@ class AdaptiveMaxPool2d:
 
         src_gap = self.input_w - k_size_w
         dst_gap = win_num * self.k_max_w - k_size_w
-        with self.tik_instance.if_scope(
-                dst_gap <= Constant.TIK_MOVE_STRIDE_MAX and src_gap <= Constant.TIK_MOVE_STRIDE_MAX):
+        with self.tik_instance.if_scope(tik.all(dst_gap <= Constant.TIK_MOVE_STRIDE_MAX,
+                                                src_gap <= Constant.TIK_MOVE_STRIDE_MAX)):
             self.tik_instance.data_move(ub_dst[ub_offset], self.input_gm[base_offset], 0,
                                         k_size_h, k_size_w,
                                         src_gap, dst_gap)

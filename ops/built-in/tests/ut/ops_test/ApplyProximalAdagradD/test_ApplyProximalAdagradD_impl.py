@@ -25,9 +25,9 @@ case1 = {"params": [{"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_s
                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}, #c
                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}, #w
                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},  #b
-                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #mask 
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #mask
                     {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #ft
-                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #ot            
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #ot
                     ],
          "case_name": "ApplyProximalAdagradD_1",
          "expect": "success",
@@ -38,9 +38,9 @@ case2 = {"params": [{"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_s
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}, #c
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}, #w
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},  #b
-                    {"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #mask 
+                    {"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #mask
                     {"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #ft
-                    {"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #ot            
+                    {"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND"}, #ot
                     ],
          "case_name": "ApplyProximalAdagradD_2",
          "expect": "success",
@@ -48,8 +48,8 @@ case2 = {"params": [{"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_s
 
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
 def test_op_select_format(test_arg):
     from impl.apply_proximal_adagrad_d import op_select_format
     op_select_format({"shape": (16,16,5,5), "ori_shape": (16,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},

@@ -53,7 +53,7 @@ def get_cce_product_version():
     -------
     product version
     """
-    return cce.cce_conf.get_soc_spec("SOC_VERSION")
+    return cce.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 
 
 def op_select_format(x, segment_ids, y, num_segments,

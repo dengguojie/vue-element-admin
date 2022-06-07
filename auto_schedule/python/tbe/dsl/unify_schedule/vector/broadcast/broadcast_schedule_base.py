@@ -26,7 +26,7 @@ from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_910B
 from tbe.common.platform.platform_info import get_soc_spec
 
@@ -494,7 +494,7 @@ class BaseBroadcastSchedule:
             const_compile_info = {
                 CompileInfo.FLAG_INFO: [only_const_tiling, is_const_shapes, support_broadcast, use_special_pattern],
                 CompileInfo.BASE_INFO: base_info,
-                CompileInfo.SOC_VERSION: get_soc_spec(SOC_VERSION),
+                CompileInfo.SOC_VERSION: get_soc_spec(SHORT_SOC_VERSION),
                 CompileInfo.BROADCAST_AXIS: broadcast_axis,
                 CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align,
                 CompileInfo.CLASSIFY_INPUTS_NUM: operation.get_context().get("_classify_inputs_num")
@@ -1061,7 +1061,7 @@ class BaseBroadcastSchedule:
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
         # adjust storage bound by tiling handle one dim (128 align)
-        if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN and get_soc_spec(SOC_VERSION) != ASCEND_910B:
+        if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN and get_soc_spec(SHORT_SOC_VERSION) != ASCEND_910B:
             self._tensor_space = self._tensor_space // ONE_DIM_ALIGN * ONE_DIM_ALIGN
 
         tensors = self._pure_middle_tensors \

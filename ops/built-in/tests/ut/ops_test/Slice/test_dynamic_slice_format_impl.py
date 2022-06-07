@@ -187,11 +187,11 @@ case_nz = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend710"], case_fz_001)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_fz_002)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_5hd)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_6hd)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_nz)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_fz_001)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_fz_002)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_5hd)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_6hd)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_nz)
 
 
 def check_format(support_dtype, support_format, format_json):
@@ -658,4 +658,4 @@ ut_case.add_cust_test_func(test_func=test_op_select_format_dy_001)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     ut_case.run("Ascend310")
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")

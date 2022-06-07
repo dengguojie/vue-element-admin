@@ -91,8 +91,8 @@ case5 = {"params": [{"shape": (-1, -1, -1, -1, -1, -1,),
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case1)
-ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case2)
-ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case3)
-ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case4)
-ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case5)
+ut_case.add_case(["Ascend910A", "Ascend310P3", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310P3", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310P3", "Ascend310"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310P3", "Ascend310"], case4)
+ut_case.add_case(["Ascend910A", "Ascend310P3", "Ascend310"], case5)

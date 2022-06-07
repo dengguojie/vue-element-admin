@@ -72,14 +72,14 @@ def test_ascend_quant_a100(test_arg):
     cce_conf.cce_conf.te_set_version(test_arg)
 #ut_case.add_cust_test_func(test_func=test_ascend_quant_a100)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend710"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case6)
+ut_case.add_case(["Ascend310P3"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case8)
 
 #precision cases
 def nhwc_data4Dto5D(inputData, channel0=16):

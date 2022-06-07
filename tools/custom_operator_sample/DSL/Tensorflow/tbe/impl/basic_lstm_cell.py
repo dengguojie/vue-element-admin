@@ -1031,10 +1031,10 @@ def basic_lstm_cell(x, h, c, w, b, mask, ct, ht, it, jt, ft, ot, tanhct,
     is_hisi_es = False
     is_mini = False
     is_cloud = False
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if tbe_product == "Ascend910":
         is_cloud = True
-    elif tbe_product in ("Ascend710", "Ascend610"):
+    elif tbe_product in ("Ascend310P", "Ascend610"):
         is_cloud = True
     elif tbe_product == "Ascend310":
         is_mini = True

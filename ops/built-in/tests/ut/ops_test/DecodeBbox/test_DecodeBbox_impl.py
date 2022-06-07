@@ -18,8 +18,8 @@ case1 = gen_decode_bbox_case((4, 1, 1, 16), (4, 16), "float16", 8, "decode_bbox_
 case2 = gen_decode_bbox_case((6, 16, 4), (16*6, 4), "float16", 8, "decode_bbox_2")
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 
 if __name__ == '__main__':

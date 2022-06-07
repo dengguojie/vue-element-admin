@@ -69,7 +69,7 @@ def op_select_format(x, y, weight, output,
         is_support_hd = True
         is_support_fz = True
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = ["float16"]
     else:

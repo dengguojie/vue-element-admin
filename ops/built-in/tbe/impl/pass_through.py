@@ -60,7 +60,7 @@ def op_select_format(in_dic, filter_dic, out_dic,
     > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
     > filter : Tensor of (shape=(16, 16, 16, 16), "NCHW")
     """
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if filter_dic is not None and len(filter_dic['shape']) != 0:
         if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             dtype0 = "float16, int8, uint8, int16, uint16, int32, uint32, int64, uint64"

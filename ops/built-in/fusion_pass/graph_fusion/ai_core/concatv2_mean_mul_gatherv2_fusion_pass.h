@@ -32,7 +32,6 @@ class ConcatV2MeanMulGatherV2FusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  Status CheckPlatformSupported();
   Status CheckIsMatch(ge::NodePtr concatV2Node, int64_t numN);
   Status SetLabelInNode(ge::NodePtr nodePtr, bool isAic);
   Status SetEngineLabel(ge::NodePtr nodePtr, bool isAic, int64_t start, int64_t end);

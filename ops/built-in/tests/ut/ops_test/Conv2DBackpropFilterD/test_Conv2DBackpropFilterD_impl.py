@@ -33,7 +33,7 @@ vals = {("CORE_NUM", ): 48,
         ("Intrinsic_fix_pipe_l0c2out",): True,
         ("Compiler_arch",): "dav-c220-cube",
         ("AICORE_TYPE",): "AiCore",
-        ("SOC_VERSION",): "Ascend910B2",
+        ("SHORT_SOC_VERSION",): "Ascend910B2",
         ("Intrinsic_fix_pipe_unit_list",): True,
         ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True,
         ("l1_to_l0_a_rate",): 256,
@@ -403,7 +403,7 @@ def test_fixpipe_cases(test_args):
 ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 
 def test_reverse(test_args):
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     tiling_params = {
         'op_type': 'conv2d_backprop_filter', 'A_shape': [32, 21, 96, 128, 16], 'B_shape': [32, 21, 96, 128, 16],
         'C_shape': [336, 21, 1, 1, 16], 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float32',

@@ -186,12 +186,11 @@ class PlatformApi:
     HI3796CV300CS = platform.HI3796CV300CS
     SD3403 = platform.SD3403
     ASCEND_610 = platform.ASCEND_610
-    ASCEND_710 = platform.ASCEND_710
+    ASCEND_310P = platform.ASCEND_310P
     ASCEND_615 = platform.ASCEND_615
-    ASCEND_710P = platform.ASCEND_710P
     ASCEND_SD = platform.ASCEND_SD
-    AIC_710 = platform.AIC_710
-    VEC_710 = platform.VEC_710
+    AIC_310P = platform.AIC_310P
+    VEC_310P = platform.VEC_310P
     AIC_610 = platform.AIC_610
     VEC_610 = platform.VEC_610
     AIC_615 = platform.AIC_615
@@ -217,7 +216,7 @@ class PlatformApi:
     scope_smask = platform.scope_smask
     dma_copy = platform.dma_copy
     dma_copy_global = platform.dma_copy_global
-    SOC_VERSION = platform.SOC_VERSION
+    SHORT_SOC_VERSION = platform.SHORT_SOC_VERSION
     FULL_SOC_VERSION = platform.FULL_SOC_VERSION
     AICORE_TYPE = platform.AICORE_TYPE
     CORE_NUM = platform.CORE_NUM

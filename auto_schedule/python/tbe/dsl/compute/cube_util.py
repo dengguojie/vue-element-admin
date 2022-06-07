@@ -581,9 +581,9 @@ class ConvDslPattern(CubeDslPattern):
         """
         if not var_map:
             var_map = {}
-            
+
         def _is_load3d_special(var_map, h_out, w_hout):
-            if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310")
+            if (tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310")
                 and not tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
                 and not var_map
                 and int(h_out) != 1
@@ -676,16 +676,16 @@ class ConvDslPattern(CubeDslPattern):
 
 def is_support_v200():
     """
-    check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
+    if soc_version in ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
 
@@ -772,7 +772,7 @@ def is_mini_version():
     True: mini version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in [tbe_platform_info.ASCEND_310]:
         return True
     return False
@@ -788,7 +788,7 @@ def is_cloud_version():
     True: cloud version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in [tbe_platform_info.ASCEND_910, tbe_platform_info.ASCEND_910H,
                        tbe_platform_info.ASCEND_910M, tbe_platform_info.ASCEND_910P]:
         return True
@@ -805,9 +805,9 @@ def is_ng1_version():
     True: mini_ng1 version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in [tbe_platform_info.ASCEND_610, tbe_platform_info.ASCEND_615,
-                       tbe_platform_info.ASCEND_710, tbe_platform_info.ASCEND_710P]:
+                       tbe_platform_info.ASCEND_310P]:
         return True
     return False
 
@@ -822,7 +822,7 @@ def is_lhisi_version():
     True: shisi version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in [tbe_platform_info.HI3796CV300ES, tbe_platform_info.HI3796CV300CS,
                        tbe_platform_info.ASCEND_SD]:
         return True
@@ -839,7 +839,7 @@ def is_lhisi_cs_version():
     True: 3796CS version
     False: Other version
     """
-    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in [tbe_platform_info.HI3796CV300CS, tbe_platform_info.ASCEND_SD]:
         return True
     return False

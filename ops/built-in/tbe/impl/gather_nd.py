@@ -680,8 +680,8 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
             aglined_ele_num = (ele_per_core // ele_per_block) * ele_per_block
             aglined_offset = aglined_ele_num - (ele_per_block - last_ele)
             reg_tmp = ir_build.allocate(data.dtype, (4,), name='reg_tmp', scope=tbe_platform.scope_reg)
-            compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
-            if compile_plat in ("Ascend310", "Ascend710"):
+            compile_plat = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
+            if compile_plat in ("Ascend310", "Ascend310P"):
                 with ir_build.for_range(0, ele_per_core, name='core_row') as core_row:
                     reg_gm[0] = tvm.const(0, dtype=indices.dtype)
                     reg_mul[0] = tvm.const(params_total_size, dtype=indices.dtype)

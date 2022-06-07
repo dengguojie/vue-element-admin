@@ -158,7 +158,7 @@ class Reconstruction():
         # variable. The name with suffix "size" represent the memory
         # space of variable. The name with suffix "repeat" represent the
         # number of repeat time when processing this variable.
-        self.soc_version = get_soc_spec("SOC_VERSION")
+        self.soc_version = get_soc_spec("FULL_SOC_VERSION")
         status = set_current_compile_soc_info(self.soc_version)
         if status != "success":
             raise ValueError('Set soc_version failed, please check!')
@@ -172,7 +172,7 @@ class Reconstruction():
         if self.data_num > Constant.SHAPE_SIZE_LIMIT:
             raise ValueError('Excessive amount of "input_data"(more than 2^31)!')
 
-        if self.soc_version in ('Ascend710', 'Ascend910', 'Ascend610'):
+        if self.soc_version in ('Ascend910A', 'Ascend910B', 'Ascend310P3', 'Ascend310P1', 'Ascend610'):
             self.calc_precision = 'float32'
         elif self.soc_version in ('SD3403'):
             self.calc_precision = 'float16'

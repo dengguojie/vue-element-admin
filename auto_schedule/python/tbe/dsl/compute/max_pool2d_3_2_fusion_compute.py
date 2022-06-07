@@ -61,16 +61,16 @@ def _shape_to_list(shape):
 
 def _is_support_v200():
     """
-    check if Ascend610/Ascend710/Hi3796CV300CS version
+    check if Ascend610/Ascend310P/Hi3796CV300CS version
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend710/Hi3796CV300CS/SD3403 version
+    True:  Ascend610/Ascend310P/Hi3796CV300CS/SD3403 version
     False: Other version
     """
-    soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Hi3796CV300CS", "SD3403"):
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
+    if soc_version in ("Ascend310P", "Ascend610", "Hi3796CV300CS", "SD3403"):
         return True
     return False
 

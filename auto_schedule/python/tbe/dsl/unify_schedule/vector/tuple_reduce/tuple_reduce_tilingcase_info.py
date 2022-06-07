@@ -28,9 +28,9 @@ from functools import reduce
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform.platform_info import ASCEND_910B
 from tbe.common.platform.platform_info import ASCEND_910
-from tbe.common.platform.platform_info import ASCEND_710
-from tbe.common.platform.platform_info import ASCEND_320
-from tbe.common.platform.platform_info import SOC_VERSION
+from tbe.common.platform.platform_info import ASCEND_310P
+from tbe.common.platform.platform_info import ASCEND_310B
+from tbe.common.platform.platform_info import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import CORE_NUM
 from tbe.common.platform.platform_info import UB_SIZE
 
@@ -59,7 +59,7 @@ def product(lst): return reduce(lambda x, y: x * y, lst)
 
 
 def check_atomic_add_support(version, dtype):
-    if version not in [ASCEND_910B, ASCEND_910, ASCEND_710, ASCEND_320]:
+    if version not in [ASCEND_910B, ASCEND_910, ASCEND_310P, ASCEND_310B]:
         return False
     if dtype != "float32":
         return False
@@ -73,7 +73,7 @@ class Info:
 
     def __init__(self, outs: Iterable[Tensor]):
         # SOC INFORMATION
-        self.version = get_soc_spec(SOC_VERSION)
+        self.version = get_soc_spec(SHORT_SOC_VERSION)
         self.core_num = get_soc_spec(CORE_NUM)
         self.ub_size = get_soc_spec(UB_SIZE)
         self.block_size = 32
@@ -170,7 +170,7 @@ class Info:
             self.graph.reduce_tensors)
         self.grande_tensors = set(self.graph.tensors) - self.short_tensors
         self.unique_tensors = {}
-    
+
     def calc_buffer_count(self):
         # calc buffer count
         self.buffer_count = self.graph.buffer_count(

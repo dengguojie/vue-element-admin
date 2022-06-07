@@ -24,11 +24,12 @@ import tbe
 ut_case = OpUT("TabulateFusion", "impl.dynamic.tabulate_fusion", "tabulate_fusion")
 
 
-def tabulate_fusion_ut_test(test_args, nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0, soc="710"):
+def tabulate_fusion_ut_test(test_args, nloc, nnei, last_layer_size, table_dim0,
+                            split_count=1, split_index=0, soc="310P3"):
     if soc == "910":
         set_current_compile_soc_info("Ascend910")
     else:
-        set_current_compile_soc_info("Ascend710")
+        set_current_compile_soc_info("Ascend310P3")
 
     last_layer_size_align = (last_layer_size + 64 - 1) // 64 * 64
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -78,5 +79,5 @@ ut_case.add_cust_test_func(test_func=test_tabulate_fusion_case003)
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

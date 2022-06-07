@@ -121,7 +121,7 @@ def _para_check_of_reduce(func, *args, **kwargs):
                 {"errCode": "E90002",
                  "detailed_cause": "[%s] do not support [%s] in [%s] !" % (intr,
                                                                            dtype,
-                                                                           get_soc_spec("SOC_VERSION"))})
+                                                                           get_soc_spec("SHORT_SOC_VERSION"))})
 
     if len(args) == 3 or len(args) == 4:
         is_true(isinstance(args[0], tvm.tensor.Tensor),

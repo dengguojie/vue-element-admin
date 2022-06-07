@@ -20,7 +20,7 @@ def test_maxpoolwithargmaxv2_001():
         max_pool_with_argmax_v2(*input_list)
 
 if __name__ == '__main__':
-    soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     te_set_version("Ascend910B2", "VectorCore")
     test_maxpoolwithargmaxv2_001()
     te_set_version(soc_version)

@@ -88,7 +88,7 @@ def gen_prelu_nz_nd_case(shape, weight_shape, ori_shape, ori_weight_shape, case_
 
 ut_case = OpUT("Prelu", "impl.prelu", None)
 ut_case1 = OpUT("Prelu", "impl.prel", None)
-platform = ["Ascend310", "Ascend710", "Ascend910"]
+platform = ["Ascend310", "Ascend310P3", "Ascend910"]
 ut_case.add_case(platform, gen_prelu_case((1, 2, 4), (1,), "prelu_1"))
 ut_case.add_case(platform, gen_prelu_case((16, 16), (16,), "prelu_2"))
 ut_case.add_case(platform, gen_prelu_case((32, 2, 4, 16), (1,), "prelu_3"))

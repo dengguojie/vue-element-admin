@@ -272,7 +272,7 @@ def auto_cast_of_reduce(func, *args, **kwargs):
         dtype = raw_tensor.dtype
 
         if dtype not in supported_dtypes:
-            soc_ver = get_soc_spec("SOC_VERSION")
+            soc_ver = get_soc_spec("SHORT_SOC_VERSION")
             dict_args = {
                 "errCode": "E90002",
                 "detailed_cause": f"[{intr}] do not support [{dtype}] in [{soc_ver}] !"}

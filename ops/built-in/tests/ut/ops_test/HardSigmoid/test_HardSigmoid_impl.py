@@ -19,7 +19,7 @@ from op_test_frame.common import precision_info
 
 ut_case = OpUT("hard_sigmoid")
 
-platforms = ["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend710", "Ascend910"]
+platforms = ["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend310P3", "Ascend910"]
 platforms_only_fp16 = ["Hi3796CV300CS", "Hi3796CV300ES", "SD3403"]
 
 ut_case.add_case(support_soc="all", case={
@@ -214,12 +214,12 @@ idx = 1
 param_gen = gen_params()
 for dtype, x_shape, alpha, beta in param_gen:
     if dtype == "float32": # SD3403/Hi3796CV300CS/Hi3796CV300ES cannot support fp32 input data
-        platform_select = platforms 
+        platform_select = platforms
         precision_limit = 0.001
     else:  # fp16 and int32 input data
         platform_select = "all"
         precision_limit = 0.001
-    
+
     ut_case.add_precision_case(platform_select, {"params": [{"shape": x_shape, "dtype": dtype, "format": "ND", "ori_shape": x_shape, "ori_format": "ND", "param_type": "input", "value_range": [-1.0, 1.0]},
                     {"shape": x_shape, "dtype": dtype, "format": "ND", "ori_shape": x_shape,"ori_format": "ND", "param_type": "output"},
                     alpha, beta],

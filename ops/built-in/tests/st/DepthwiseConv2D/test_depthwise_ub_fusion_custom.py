@@ -156,5 +156,5 @@ def test_transdata_depthwise_fixpipe_sub_round_rsqrt_square_relu6_fusion(test_ar
             sch = te.utils.cce.auto_schedule(out)
 
 print("adding Conv2D test_transdata_depthwise_fixpipe_sub_round_rsqrt_square_relu6_fusion st testcases")
-ut_case.add_cust_test_func("Ascend320", test_func=test_transdata_depthwise_fixpipe_sub_round_rsqrt_square_relu6_fusion)
-ut_case.run(['Ascend320'])
+ut_case.add_cust_test_func("Ascend310B1", test_func=test_transdata_depthwise_fixpipe_sub_round_rsqrt_square_relu6_fusion)
+ut_case.run(['Ascend310B1'])

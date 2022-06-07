@@ -500,7 +500,7 @@ class GemmSchedule:
         soc_version = tbe_platform_info.get_soc_spec(tbe_platform_info.FULL_SOC_VERSION)
         size_l1 = tbe_platform_info.get_soc_spec(tbe_platform_info.L1_SIZE)
 
-        status = soc_version == "Ascend710" and self.status_controller.quantify_fusion
+        status = soc_version == "Ascend310P3" and self.status_controller.quantify_fusion
         status = status and self.get_a_matrix_mode == "Nz2Zz" and self.get_b_matrix_mode == "none"
         status = status and not self._is_full_load(t.get("AL1_shape")) and self._is_full_load(t.get("BL1_shape"))
         status = status and (self._calc_b_l1(False) + self._calc_a_l1(False) > size_l1)

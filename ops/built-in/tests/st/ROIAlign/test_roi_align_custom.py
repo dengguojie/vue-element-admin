@@ -41,8 +41,8 @@ def test_roi_align_dynamic():
 
 
 if __name__ == '__main__':
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
-    cce_conf.te_set_version("Ascend710")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
+    cce_conf.te_set_version("Ascend310P3")
     vals = {("tik.vextract", "float16"): False,
             ("tik.vextract", "float32"): False,
             ("tik.vdiv", "float32"): True

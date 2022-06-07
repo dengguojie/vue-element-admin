@@ -70,12 +70,12 @@ case6 = {"params": [{"shape": (16,1,256,256,16), "dtype": "float16", "format": "
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
 
 if __name__ == '__main__':
     # ut_case.run()

@@ -390,7 +390,7 @@ def test_conv2d_l1_fp16(test_arg):
                        "l1_fusion_type": l1_fusion_type,
                        "fmap_l1_valid_size": L1_valid_size,
                        "fmap_l1_addr_flag": 1}
-        if cce_conf.get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
+        if cce_conf.get_soc_spec("SHORT_SOC_VERSION") == "Hi3796CV300ES":
             if data_flow == 0:
                 try:
                     _conv_layer_cce(fm_shape, filter, fm_type, weight_type,

@@ -40,8 +40,8 @@ case2 = {"params": [{"shape": (338, 128, 6, 8, 16), "dtype": "float32", "format"
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend310P3"], case2)
 
 # pylint: disable=invalid-name
 # precision cases

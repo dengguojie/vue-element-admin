@@ -105,12 +105,12 @@ case6 = {"params": [{"shape": (3072, 30528), "dtype": "float32", "format": "ND",
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
 
 ut_case.add_precision_case(["Ascend910A"], {
     "params": [
@@ -119,7 +119,7 @@ ut_case.add_precision_case(["Ascend910A"], {
         {"shape": (3,), "dtype": "int32", "format": "ND", "ori_shape": (3,), "ori_format": "ND", "param_type": "input","value_range": [0, 3]},
         {"shape": (4,), "dtype": "float32", "format": "ND", "ori_shape": (4,), "ori_format": "ND", "param_type": "input","value_range": [0.0, 1.0]},
         {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND", "param_type": "input","value_range": [1.0, 10.0]},
-        {"shape": (3, 4), "dtype": "float32", "format": "ND", "ori_shape": (3,4 ), "ori_format": "ND", "param_type": "output"}, 
+        {"shape": (3, 4), "dtype": "float32", "format": "ND", "ori_shape": (3,4 ), "ori_format": "ND", "param_type": "output"},
         "mean"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)

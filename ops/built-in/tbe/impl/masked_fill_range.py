@@ -85,7 +85,7 @@ class MaskedFillRange():
 
         self.tik_inst = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self._input_param_check()
         self._init_gm_tensor()

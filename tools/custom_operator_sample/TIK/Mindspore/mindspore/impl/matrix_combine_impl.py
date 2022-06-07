@@ -39,7 +39,7 @@ def matrix_combine(input_x, output, kernel_name="matrix_combine"):
     input_x_shape = input_x.get("shape")
     output_shape = output.get("shape")
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") == platform_info.VERSION_MINI:
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))

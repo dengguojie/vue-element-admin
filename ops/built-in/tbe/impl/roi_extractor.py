@@ -683,7 +683,7 @@ class RoiExtractor:
 
     def balance_compute(self, index):
         """
-        fpn_roi extractor compute when soc_version is Ascend710
+        fpn_roi extractor compute when soc_version is Ascend310P
         """
         index_ub, data_index = None, None
         if index is not None:
@@ -792,9 +792,9 @@ def roi_extractor(feats, rois, index=None, roi_feats=None,
                                 finest_scale, roi_scale_factor, spatial_scale,
                                 pooled_h, pooled_w, sample_num, pool_mode, aligned, kernel_name)
 
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
 
-    if cce_product == tbe_platform.ASCEND_710:
+    if cce_product == tbe_platform.ASCEND_310P:
         core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         rois_shape = rois.get("shape")
         roi_num = rois_shape[0]

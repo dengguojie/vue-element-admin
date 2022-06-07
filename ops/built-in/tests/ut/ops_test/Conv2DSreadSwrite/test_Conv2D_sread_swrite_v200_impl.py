@@ -1442,7 +1442,7 @@ def TestConvSreadSwriteConf(test_arg):
     The UT for conv vector fused
     """
 
-    cce_conf.te_set_version("Ascend710")
+    cce_conf.te_set_version("Ascend310P3")
 
     print("-----------------------------------------------------")
     print("[ v200 conv_sread_swrite UNITTEST START ]")

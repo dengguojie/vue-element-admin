@@ -66,12 +66,12 @@ case6 = {"params": [{"shape": (128, 255, 36), "dtype": "float32", "format": "NCH
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
 
 #precision cases
 def _nudge_min_max(min, max, num_bits, narrow_range):

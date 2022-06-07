@@ -112,19 +112,19 @@ def test_ascend_requant_prebuild7001(_):
 ut_case = OpUT("AscendRequant", "impl.dynamic.ascend_requant",
                "ascend_requant")
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild1001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild1001)
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild2001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild2001)
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild3001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild3001)
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild4001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild4001)
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild5001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild5001)
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild6001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild6001)
 ut_case.add_cust_test_func(
-    ["Ascend310", "Ascend710", "Ascend910A"], test_func=test_ascend_requant_prebuild7001)
+    ["Ascend310", "Ascend310P3", "Ascend910A"], test_func=test_ascend_requant_prebuild7001)
 
 
 from impl.dynamic.ascend_requant import ascend_requant_compute

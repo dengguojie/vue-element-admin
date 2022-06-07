@@ -28,7 +28,7 @@ def test_gen_adc_case001(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (32,), "dtype": "float16", "format": "ND",
                  "ori_shape": (32,), "ori_format": "ND", "range": ((32, 32),)},
@@ -47,7 +47,7 @@ def test_gen_adc_case002(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (64,), "dtype": "float32", "format": "ND",
                  "ori_shape": (64,), "ori_format": "ND", "range": ((64, 64),)},
@@ -66,7 +66,7 @@ def test_gen_adc_case003(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (64,), "dtype": "float16", "format": "ND",
                  "ori_shape": (64,), "ori_format": "ND", "range": ((64, 64),)},
@@ -85,7 +85,7 @@ def test_gen_adc_case004(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (128,), "dtype": "float32", "format": "ND",
                  "ori_shape": (128,), "ori_format": "ND", "range": ((128, 128),)},
@@ -104,7 +104,7 @@ def test_gen_adc_case005(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (128,), "dtype": "float32", "format": "ND",
                  "ori_shape": (128,), "ori_format": "ND", "range": ((128, 128),)},
@@ -124,7 +124,7 @@ def test_gen_adc_case006(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (128,), "dtype": "float32", "format": "ND",
                  "ori_shape": (128,), "ori_format": "ND", "range": ((128, 128),)},
@@ -144,7 +144,7 @@ def test_gen_adc_case007(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (256,), "dtype": "float32", "format": "ND",
                  "ori_shape": (256,), "ori_format": "ND", "range": ((256, 256),)},
@@ -164,7 +164,7 @@ def test_gen_adc_case008(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (256,), "dtype": "float32", "format": "ND",
                  "ori_shape": (256,), "ori_format": "ND", "range": ((256, 256),)},
@@ -184,7 +184,7 @@ def test_gen_adc_case009(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (512,), "dtype": "float32", "format": "ND",
                  "ori_shape": (512,), "ori_format": "ND", "range": ((512, 512),)},
@@ -204,7 +204,7 @@ def test_gen_adc_case010(test_args):
     """
     Compute adc distance.
     """
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("dynamic"):
         gen_adc({"shape": (512,), "dtype": "float32", "format": "ND",
                  "ori_shape": (512,), "ori_format": "ND", "range": ((512, 512),)},
@@ -250,9 +250,9 @@ ut_case.add_cust_test_func(test_func=test_gen_adc_case008)
 ut_case.add_cust_test_func(test_func=test_gen_adc_case009)
 ut_case.add_cust_test_func(test_func=test_gen_adc_case010)
 
-ut_case.add_case(["Ascend710", "Ascend910"], test_gen_adc_case101)
+ut_case.add_case(["Ascend310P3", "Ascend910"], test_gen_adc_case101)
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

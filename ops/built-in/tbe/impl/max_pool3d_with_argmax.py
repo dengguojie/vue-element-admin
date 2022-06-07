@@ -619,7 +619,7 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
     # so we put size kernel_d * input_h * input_w into l1 at one time.
     if ksize[2] * (input_shape[3] + l1_h_pad) * input_shape[4] * 16 > tbe_platform.get_soc_spec(tbe_platform.L1_SIZE):
         raise RuntimeError("l1 is not enough, please try a smaller kernel_d, or a smaller input_h or input_w!")
-    if wo == 1 and ho != 1 and tbe_platform.get_soc_spec('SOC_VERSION') != 'Ascend310':
+    if wo == 1 and ho != 1 and tbe_platform.get_soc_spec('SHORT_SOC_VERSION') != 'Ascend310':
         raise RuntimeError("current version don't support W_out = 1 in this environment!")
 
 

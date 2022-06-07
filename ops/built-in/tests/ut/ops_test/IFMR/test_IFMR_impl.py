@@ -122,8 +122,8 @@ def test_ifmr_float16_without_offset_SD3403(test_args):
     set_current_compile_soc_info(test_args)
 ut_case.add_cust_test_func(test_func=test_ifmr_float16_without_offset_SD3403)
 
-def test_ifmr_float32_with_offset_710(test_args):
-    set_current_compile_soc_info("Ascend710")
+def test_ifmr_float32_with_offset_310P3(test_args):
+    set_current_compile_soc_info("Ascend310P3")
     with tbe.common.context.op_context.OpContext("static"):
         ifmr({'shape': (32, 3, 5, 5), 'dtype': 'float32', 'format': 'ND',
             'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
@@ -143,7 +143,7 @@ def test_ifmr_float32_with_offset_710(test_args):
             0.01,
             True)
     set_current_compile_soc_info(test_args)
-ut_case.add_cust_test_func(test_func=test_ifmr_float32_with_offset_710)
+ut_case.add_cust_test_func(test_func=test_ifmr_float32_with_offset_310P3)
 
 def test_ifmr_float32_with_offset_610(test_args):
     set_current_compile_soc_info("Ascend610")
@@ -537,5 +537,5 @@ ut_case.add_cust_test_func(test_func=test_ifmr_float32_with_offset_610)
 #         'case_name': 'test_ifmr_excessive_steps'})
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910", "SD3403", "Ascend710", "Ascend610"])
+    ut_case.run(["Ascend910A", "SD3403", "Ascend310P3", "Ascend610"])
     exit(0)

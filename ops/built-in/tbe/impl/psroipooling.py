@@ -143,7 +143,7 @@ class PsroiClass():
 
         profile = tik.Dprofile()
 
-        product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        product_name = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self._input_param_check()
 
         self.dsize = TYPE_LEN_DICT[self.dtype]
@@ -462,7 +462,7 @@ class PsroiClass():
         -------
         None
         """
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710,
+        if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_310P,
                                                                    tbe_platform.ASCEND_610):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat, STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT, STRIDE_ZERO)

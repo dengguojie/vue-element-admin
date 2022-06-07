@@ -114,7 +114,7 @@ def _gen_conv2d_transpose_case(
 
 def _gen_conv2d_transpose_op_case():
     for test_case in conv2d_transpose_ut_testcase.conv2d_transpose_op_testcase:
-        ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], _gen_conv2d_transpose_case(*test_case))
+        ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], _gen_conv2d_transpose_case(*test_case))
 
 
 def test_op_check_supported(test_arg):
@@ -193,5 +193,5 @@ ut_case.add_cust_test_func(test_func=test_op_compute_int8)
 
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend310", "Ascend710", "Ascend910"])
+    ut_case.run(["Ascend310", "Ascend310P3", "Ascend910"])
     sys.exit(0)

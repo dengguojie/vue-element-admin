@@ -75,30 +75,30 @@ ut_case.add_case(["Ascend910A"], case1)
 def test_yolo_v3_detection_output_v2d_001(test_arg):
     from impl.yolo_v3_detection_output_v2d import yolo_v3_detection_output_v2d
     from tbe.common.platform.platform_info import set_current_compile_soc_info
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     yolo_v3_detection_output_v2d(*(common_cce(2, [[6, 6], [6, 6], [6, 6]], "float16", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float16", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float16", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(64, [[6, 6], [6, 6], [6, 6]], "float16", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float16", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float16", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(60, [[6, 6], [6, 6], [6, 6]], "float16", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float16", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float16", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(2, [[32, 40], [6, 6], [6, 6]], "float32", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(2, [[6, 6], [32, 42], [6, 6]], "float32", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(2, [[33, 41], [32, 42], [33, 41]], "float32", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(2, [[61, 63], [61, 63], [61, 63]], "float32", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend310P3").get("params")))
 
     yolo_v3_detection_output_v2d(*(common_cce(2, [[60, 64], [60, 64], [60, 64]], "float32", 1, 2, True, 0.5, 0.5, 0.45,
-                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend710").get("params")))
+                                              TEST_BIASES, True, "test_yolo_v3_float32", "Ascend310P3").get("params")))
 
 
 ut_case.add_cust_test_func(test_func=test_yolo_v3_detection_output_v2d_001)

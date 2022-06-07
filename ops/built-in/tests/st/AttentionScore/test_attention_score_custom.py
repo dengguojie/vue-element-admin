@@ -55,7 +55,7 @@ def test_attention_score_case():
     seq_num = 24
     n_num = 4
     nz_dim = 16
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     drop_mask_dtype = "float16"
     test_tuili(batch_dim0, batch_dim1, seq_num, n_num, nz_dim, drop_mask_dtype, kernel_name)
 

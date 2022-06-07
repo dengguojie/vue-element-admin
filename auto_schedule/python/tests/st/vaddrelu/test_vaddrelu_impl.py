@@ -91,7 +91,7 @@ case2 = {"params": [{"shape": (128, ), "dtype": "float16", "format": "ND"},
 
 compile_case = {
     "1": [case1, None],
-    "2": [case2, "Ascend710"]
+    "2": [case2, "Ascend310P3"]
 }
 for _, item in compile_case.items():
     ut_case.add_case(case=item[0], support_soc=item[1])
@@ -116,7 +116,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "Ascend710", {
+    "Ascend310P3", {
         "params": [{"shape": (64, 4096), "dtype": "float16", "param_type": "input"},
                    {"shape": (64, 4096), "dtype": "float16", "param_type": "input"},
                    {"shape": (64, 4096), "dtype": "int32", "param_type": "output"},

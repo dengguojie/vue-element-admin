@@ -48,7 +48,7 @@ def test_conv2d_ub_cal_fix(test_arg):
         tbe.dsl.build(sch, config)
 
     def test_conv2d_accumulate_nv2_relu():
-        cceconf.te_set_version("Ascend710")
+        cceconf.te_set_version("Ascend310P3")
         with tvm.target.cce():
             inputs = tvm.placeholder((1, 4, 56, 56, 16), name="fmap", dtype="float16")
             weights = tvm.placeholder((4, 16, 16, 16), name="weights", dtype="float16", attrs={"ori_shape": [256, 64, 1, 1], "ori_format": "NCHW"})
@@ -82,7 +82,7 @@ def test_conv2d_ub_cal_fix(test_arg):
 
 
     def test_conv2d_dequant_tanh():
-        cceconf.te_set_version("Ascend710")
+        cceconf.te_set_version("Ascend310P3")
         with tvm.target.cce():
             inputs = tvm.placeholder((1, 4, 256, 256, 32), name="fmap", dtype="int8")
             weights = tvm.placeholder((64, 1, 16, 32), name="weights", dtype="int8",

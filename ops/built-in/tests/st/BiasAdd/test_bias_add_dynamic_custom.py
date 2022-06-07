@@ -38,7 +38,7 @@ def test_op_select_format():
                      "test_add_op_select_format_5")
 
 if __name__ == '__main__':
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Hi3796CV300CS")
     test_op_select_format()
     cce_conf.te_set_version(soc_version)

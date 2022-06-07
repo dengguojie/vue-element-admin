@@ -51,8 +51,8 @@ case2 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_sha
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
 
 def calc_expect_func(x1, x2, x3, x4, x5, x6, x7, x8, y1, y2, y3):
     dtype = x1['dtype']

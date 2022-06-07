@@ -90,7 +90,7 @@ def test_conv2d_vector(test_arg):
     from impl.ascend_requant import ascend_requant_compute
     from impl import ascend_quant_util as util
 
-    cce_conf.te_set_version('Ascend710')
+    cce_conf.te_set_version('Ascend310P3')
     shape_in = (16, 1024, 7, 7)
     shape_w = (1024, 1024, 1, 1)
     pads = (0, 0, 0, 0)
@@ -131,15 +131,15 @@ def test_conv2d_vector(test_arg):
     ascend_requant_compute(conv_res, vdeq_v200, None, True)
     cce_conf.cce_conf.te_set_version("Ascend310")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case9)
 ut_case.add_cust_test_func(test_func=test_conv2d_vector)
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ deconvolution_ut_case = [
     # fp16 -> fp16 opti
     # stride = 1 with bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -16,7 +16,7 @@ deconvolution_ut_case = [
     ),
     # stride > 1 withnot bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -29,7 +29,7 @@ deconvolution_ut_case = [
     # fp16 -> fp16  general
     # stride = 1, no padding bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 2, 2),
         (16, 16, 3, 3),
@@ -41,7 +41,7 @@ deconvolution_ut_case = [
     ),
     # stride > 1, no padding no bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 4, 4),
         (16, 16, 4, 4),
@@ -53,7 +53,7 @@ deconvolution_ut_case = [
     ),
     # stride = 1, padding bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 3, 3),
@@ -65,7 +65,7 @@ deconvolution_ut_case = [
     ),
     # stride > 1, padding no bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 4, 4),
@@ -77,7 +77,7 @@ deconvolution_ut_case = [
     ),
     # stride > 1, group>1, padding  bias
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 51, 45, 45),
         (51, 2, 3, 3),
@@ -166,7 +166,7 @@ deconvolution_ut_case = [
     # error case
     # input not math output
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -179,7 +179,7 @@ deconvolution_ut_case = [
     ),
     # error pading
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -192,7 +192,7 @@ deconvolution_ut_case = [
     ),
     # error shape
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 8, 3, 3),
         (16, 16, 1, 1),
@@ -223,7 +223,7 @@ deconvolution_ut_fusion_case = [
     # soc dtype, dedy_shape, filter_shape, dedx_shape, padding, stride, dilution, bias_flag, fusionpass
     # the deconv+relu(prelu)
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -235,7 +235,7 @@ deconvolution_ut_fusion_case = [
         ["relu"],
     ),
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -247,7 +247,7 @@ deconvolution_ut_fusion_case = [
         ["relu"],
     ),
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 5, 5),
         (16, 16, 3, 3),
@@ -371,7 +371,7 @@ deconvolution_ut_fusion_case = [
     ),
     # deconv + requant  [requant, vector_mode, relu_mode]
     (
-        ["Ascend710"],
+        ["Ascend310P3"],
         "int8",
         (1, 32, 4, 4),
         (32, 32, 4, 4),
@@ -383,7 +383,7 @@ deconvolution_ut_fusion_case = [
         ["requant", True, False],
     ),
     (
-        ["Ascend710"],
+        ["Ascend310P3"],
         "int8",
         (1, 32, 4, 4),
         (32, 32, 4, 4),

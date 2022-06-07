@@ -158,25 +158,25 @@ case19 = {"params": [{"shape": (16, 16, 1, 1, 16, 16), "dtype": "float32", "form
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case10)
 ut_case.add_case(["Ascend910A"], case11)
-ut_case.add_case(["Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend710", "Ascend910A"], case13)
-ut_case.add_case(["Ascend710","Ascend910A","Hi3796CV300CS"], case14)
-ut_case.add_case(["Ascend710", "Ascend910A"], case15)
-ut_case.add_case(["Ascend710", "Ascend910A"], case16)
-ut_case.add_case(["Ascend710", "Ascend910A"], case17)
-ut_case.add_case(["Ascend710", "Ascend910A"], case18)
-ut_case.add_case(["Ascend710", "Ascend910A"], case19)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310P3","Ascend910A","Hi3796CV300CS"], case14)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case16)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case17)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case18)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case19)
 # precision cases
 ## need axis is list
 
@@ -761,7 +761,7 @@ def test_external_interface(test_arg):
     test_check_axis_is_last()
 
     with op_context.OpContext():
-        TEST_PLATFORM = ["Ascend910", "SD3403", "Ascend710", "Ascend310"]
+        TEST_PLATFORM = ["Ascend910", "SD3403", "Ascend310P3", "Ascend310"]
         for soc in TEST_PLATFORM:
             cce_conf.te_set_version(soc)
             op_select_format()

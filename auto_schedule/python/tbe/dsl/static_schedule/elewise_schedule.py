@@ -26,7 +26,7 @@ from tbe import tvm
 from tbe.common.utils import log
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import HI3796CV300CS
 from tbe.common.platform import HI3796CV300ES
@@ -746,7 +746,7 @@ class CceOp:
         # get device_core_num
         device_core_num = \
             get_soc_spec("CORE_NUM")
-        soc_ver = get_soc_spec(SOC_VERSION)
+        soc_ver = get_soc_spec(SHORT_SOC_VERSION)
         if device_core_num == 1 and (soc_ver not in (HI3796CV300CS, HI3796CV300ES, SD3403)):
             self._need_enable_muticore = False
         else:
@@ -3967,7 +3967,7 @@ class CceOp:
         return False
 
     def _check_dich_add_emit_insn(self, lop):
-        if get_soc_spec(SOC_VERSION) == ASCEND_310 and \
+        if get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310 and \
                 lop["cache_buffer"].dtype.lower() == "float32":
             return False
 

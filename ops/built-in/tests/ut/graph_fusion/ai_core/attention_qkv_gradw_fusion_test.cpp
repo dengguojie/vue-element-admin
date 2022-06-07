@@ -80,7 +80,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_1) {
     conf_trans_dw_value.set_attr_perm({0, 2, 1, 3});
     conf_trans_dw_value.set_attr_shape({12288, 1024});
     conf_trans_dw_value.set_attr_transpose_first(1);
-    
+
     // layer_norm
     auto input_x_data = op::Data("input_x_data");
     TensorDesc input_x_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
@@ -1115,8 +1115,8 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_8) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "Ascend310P";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // Batchmatmul_dw
     auto bmm_x_data = op::Data("bmm_x_data");
@@ -1157,7 +1157,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_8) {
     conf_trans_dw_value.set_attr_perm({0, 2, 1, 3});
     conf_trans_dw_value.set_attr_shape({12288, 1024});
     conf_trans_dw_value.set_attr_transpose_first(1);
-    
+
     // layer_norm
     auto input_x_data = op::Data("input_x_data");
     TensorDesc input_x_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
@@ -1314,7 +1314,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_9) {
     conf_trans_dw_value.set_attr_perm({0, 2, 1, 3});
     conf_trans_dw_value.set_attr_shape({12288, 1024});
     conf_trans_dw_value.set_attr_transpose_first(1);
-    
+
     // layer_norm
     auto input_x_data = op::Data("input_x_data");
     TensorDesc input_x_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
@@ -1483,7 +1483,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_10) {
     conf_trans_dw_value.set_attr_perm({0, 2, 1, 3});
     conf_trans_dw_value.set_attr_shape({12288, 1024});
     conf_trans_dw_value.set_attr_transpose_first(1);
-    
+
     // layer_norm
     auto input_x_data = op::Data("input_x_data");
     TensorDesc input_x_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
@@ -1646,7 +1646,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_11) {
     conf_trans_dw_value.set_attr_perm({0, 2, 1, 3});
     conf_trans_dw_value.set_attr_shape({12288, 1024});
     conf_trans_dw_value.set_attr_transpose_first(1);
-    
+
     // layer_norm
     auto input_x_data = op::Data("input_x_data");
     TensorDesc input_x_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);

@@ -202,7 +202,7 @@ def is_lhisi_version():
     """
     check is Lhisi version
     """
-    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         return True
     return False
@@ -212,8 +212,8 @@ def is_support_v200():
     """
     check is v200 version
     """
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
-            "Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS",
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in (
+            "Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS",
             "SD3403") or tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False

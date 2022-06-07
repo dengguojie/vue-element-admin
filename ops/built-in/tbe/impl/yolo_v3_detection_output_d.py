@@ -208,7 +208,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                                              name="box_out_num",
                                              scope=tik.scope_gm)
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") \
                 and self.obj_data.size // (8 * self.dsize) > self.max_ub_num:
             each_loop = (8 * self.dsize)
@@ -298,7 +298,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         None
         """
         index_ub = None
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
                                             name="index_ub",
@@ -335,7 +335,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                                             name="proposals_ub",
                                             scope=tik.scope_ubuf)
         mask = None
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             dtype = "uint16"
             if self.dtype == constant.DATA_TYPE_FP32:
@@ -359,7 +359,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
             xyhw_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
                                            name="xyhw_ub",
                                            scope=tik.scope_ubuf)
-            if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+            if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.filter_obj(mask, xyhw_ub, param)
             loop_cycle, ub_num, last_ub_num = self.get_loop_param(
@@ -368,7 +368,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
             param["ub_num"] = ub_num
             param["last_ub_num"] = last_ub_num
             param["image_ub"] = image_ub
-            if tbe_platform.get_soc_spec("SOC_VERSION") in (
+            if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.get_xyhw_by_index(xyhw_ub, param)
             x1y1x2y2_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
@@ -377,7 +377,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
             param["x1y1x2y2_ub"] = x1y1x2y2_ub
             with self.instance.if_scope(param["count"] > 0):
                 self.get_x1y1x2y2(xyhw_ub, x1y1x2y2_ub, param)
-                if tbe_platform.get_soc_spec("SOC_VERSION") in (
+                if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                         "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                     self.concatx1y1x2y2(x1y1x2y2_ub, proposals_ub, param)
 
@@ -1000,7 +1000,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                                             param["class_cycle"] * self.obj_num
                     self.set_class_nms(param)
 
-            if tbe_platform.get_soc_spec("SOC_VERSION") in (
+            if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.instance.vconcat(param["proposals_ub"],
                                       param["classes_ub_nms"],
@@ -1061,7 +1061,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                                image_h, repeats, constant.REPEAT_STRIDE_EIGHT,
                                constant.REPEAT_STRIDE_EIGHT)
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Ascend310", "Ascend910"):
             threshold = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
                                              scope=tik.scope_ubuf,
@@ -1154,7 +1154,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         None
         """
         repeats = common_util.get_vector_repeat_times(self.instance, param["obj_total"])
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             loop_start = self.instance.Scalar("int32")
             loop_start.set_as(param["count_offset"])
@@ -1270,7 +1270,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         self.instance.vec_dup(self.mask, selected_tmp, 0.0,
                               PRE_NMS_TOPN * 8 * self.dsize // 256, 8)
         with self.instance.new_stmt_scope():
-            if tbe_platform.get_soc_spec("SOC_VERSION") in (
+            if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.class_filter(selected_tmp, proposals_ub, selected_class, param)
             else:
@@ -1474,7 +1474,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
         None
         """
         iou_num = PRE_NMS_TOPN
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") or \
                 self.dtype == constant.DATA_TYPE_FP32:
             iou_num = iou_num // 2

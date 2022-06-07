@@ -109,7 +109,7 @@ def swish_compute(data_input, y, scale, kernel_name="swish"):
     """
     dtype = data_input.dtype.lower()
     exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
-    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         return swish_overflow(data_input, scale, dtype)
     else:
         return swish_normal(data_input, scale, dtype, exp_support)

@@ -23,10 +23,10 @@ from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common.platform import scope_ubuf
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import ASCEND_910B
 from tbe.common.utils.errormgr import get_error_message
@@ -134,10 +134,10 @@ class ReduceAtomicSchedule(VectorSchedule):
             ASCEND_910B: ["float32"],
             ASCEND_610: ["float32"],
             ASCEND_615: ["float32"],
-            ASCEND_710: ["float32", "float16"]
+            ASCEND_310P: ["float32", "float16"]
         }
 
-        self._unsupported_710_fp16_case_dict = {
+        self._unsupported_ascend310p_fp16_case_dict = {
             "[4, 42, 499, 1115]": "[1, 1, 1, 1]",
             "[578, 946]": "[946]",
             "[99, 622, 4, 12]": "[1]"
@@ -293,11 +293,11 @@ class ReduceAtomicSchedule(VectorSchedule):
         if reduce_tensor is None:
             return False
         dtype = reduce_tensor.dtype
-        soc_ver = get_soc_spec(SOC_VERSION)
+        soc_ver = get_soc_spec(SHORT_SOC_VERSION)
         if dtype == "float16":
             output_shape = list(reduce_tensor.shape)
             input_shape = self._reduce_info["shape_before_reduce"]
-            if self._unsupported_710_fp16_case_dict.get(str(input_shape)) ==\
+            if self._unsupported_ascend310p_fp16_case_dict.get(str(input_shape)) ==\
                 str(output_shape):
                 return False
         if not (dtype in self._soc_support_atomic.get(soc_ver, [])):

@@ -67,31 +67,31 @@ def gen_instance_norm_case(shape_x, shape_gamma, shape_mean, data_format, dtype,
     }
 
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 5, 8, 7, 16), (16,), (2, 1, 1, 1, 16), "NDHWC", "float32", "test_right_001",
                                         "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 5, 8, 7, 16), (16,), (2, 1, 1, 1, 16), "NDHWC", "float16", "test_right_002",
                                         "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 16, 5, 8, 7), (16,), (2, 16, 1, 1, 1), "NCDHW", "float32", "test_right_003",
                                         "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 16, 5, 8, 7), (16,), (2, 16, 1, 1, 1), "NCDHW", "float16", "test_right_004",
                                         "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 8, 7, 16), (16,), (2, 1, 1, 16), "NHWC", "float32", "test_right_005",
                                         "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 16, 8, 7), (16,), (2, 16, 1, 1), "NCHW", "float32", "test_right_006",
                                         "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310P3"],
                  gen_instance_norm_case((2, 16, 8, 7), (16,), (2, 16, 1, 1), "ND", "float32", "test_right_007",
                                         "success"))
 

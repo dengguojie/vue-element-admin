@@ -104,7 +104,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         self.last_len = self.boxes * self.height[-1] * self.width[-1]
         self.tail_len = self.last_len % self.len_32b
         shape = self.totalwh * self.boxes - self.last_len
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             each_burst = constant.BLOCK_SIZE // self.dsize
 
@@ -168,7 +168,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         in_param["index_offset"] = param['index_offset']
         in_param["total_len"] = self.boxes * self.width[idx] * self.height[idx]
         in_param["obj_gm_offset"] = param['obj_gm_offset']
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             in_param.get('index_offset').set_as(out_offset)
         if self.boxes * self.width[idx] * self.height[idx] * self.dsize < \
@@ -195,7 +195,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
           -------
           None
         """
-        if tbe_platform.get_soc_spec("SOC_VERSION") in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.set_index_ub_by_mask(param, length)
 
@@ -269,7 +269,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
 
         self.instance.data_move(param['ub_a'], param['obj_data'][batch, 0], Constant.SID,
                                 Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
-        if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.instance.data_move(self.obj_data[param['obj_gm_offset']],
                                     param['ub_a'], Constant.SID,
@@ -498,7 +498,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
             with self.instance.if_scope(last_index_len == 0):
                 last_index_len.set_as(index_len)
 
-            if tbe_platform.get_soc_spec("SOC_VERSION") not in (
+            if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.instance.data_move(self.obj_data[param['obj_gm_offset']],
                                         param['ub_a'], Constant.SID,
@@ -696,7 +696,7 @@ def check_param(input_dict):
 
     pre_nms_topn = input_dict.get("pre_nms_topn")
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") in (
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
             "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         for box_info in input_dict.get("box_info"):
             para_check.check_dtype(box_info.get("dtype"), ["float16"],
@@ -719,7 +719,7 @@ def check_param(input_dict):
                             error_info.get('real_value')))
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("box_info")[0].get("dtype")
-    if tbe_platform.get_soc_spec("SOC_VERSION") in (
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") \
             or dtype == constant.DATA_TYPE_FP32:
         if pre_nms_topn > Constant.PRE_NMS_TOPN // 2 or pre_nms_topn <= 0:

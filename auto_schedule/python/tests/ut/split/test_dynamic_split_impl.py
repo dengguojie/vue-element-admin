@@ -236,15 +236,15 @@ case8 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend710"], case0)
-ut_case.add_case(["Ascend910A", "Ascend710"], case1)
-ut_case.add_case(["Ascend910A", "Ascend710"], case2)
-ut_case.add_case(["Ascend910A", "Ascend710"], case3)
-ut_case.add_case(["Ascend910A", "Ascend710"], case4)
-ut_case.add_case(["Ascend910A", "Ascend710"], case5)
-ut_case.add_case(["Ascend910A", "Ascend710"], case6)
-ut_case.add_case(["Ascend910A", "Ascend710"], case7)
-ut_case.add_case(["Ascend910A", "Ascend710"], case8)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case0)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case4)
+#ut_case.add_case(["Ascend910A", "Ascend310P3"], case5)
+#ut_case.add_case(["Ascend910A", "Ascend310P3"], case6)
+#ut_case.add_case(["Ascend910A", "Ascend310P3"], case7)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case8)
 
 case100 = {
     "params": [{
@@ -361,12 +361,12 @@ case105 = {
     "support_expect": True
 }
 
-ut_case1.add_case(["Ascend910A", "Ascend710"], case100)
-ut_case1.add_case(["Ascend910A", "Ascend710"], case101)
-ut_case1.add_case(["Ascend910A", "Ascend710"], case102)
-ut_case1.add_case(["Ascend910A", "Ascend710"], case103)
-ut_case1.add_case(["Ascend910A", "Ascend710"], case104)
-ut_case1.add_case(["Ascend910A", "Ascend710"], case105)
+ut_case1.add_case(["Ascend910A", "Ascend310P3"], case100)
+ut_case1.add_case(["Ascend910A", "Ascend310P3"], case101)
+ut_case1.add_case(["Ascend910A", "Ascend310P3"], case102)
+ut_case1.add_case(["Ascend910A", "Ascend310P3"], case103)
+ut_case1.add_case(["Ascend910A", "Ascend310P3"], case104)
+ut_case1.add_case(["Ascend910A", "Ascend310P3"], case105)
 
 case200 = {
     "params": [{
@@ -508,12 +508,12 @@ case205 = {
     "support_expect": True
 }
 
-ut_case2.add_case(["Ascend910A", "Ascend710"], case200)
-ut_case2.add_case(["Ascend910A", "Ascend710"], case201)
-ut_case2.add_case(["Ascend910A", "Ascend710"], case202)
-ut_case2.add_case(["Ascend910A", "Ascend710"], case203)
-ut_case2.add_case(["Ascend910A", "Ascend710"], case204)
-ut_case2.add_case(["Ascend910A", "Ascend710"], case205)
+ut_case2.add_case(["Ascend910A", "Ascend310P3"], case200)
+ut_case2.add_case(["Ascend910A", "Ascend310P3"], case201)
+ut_case2.add_case(["Ascend910A", "Ascend310P3"], case202)
+ut_case2.add_case(["Ascend910A", "Ascend310P3"], case203)
+ut_case2.add_case(["Ascend910A", "Ascend310P3"], case204)
+ut_case2.add_case(["Ascend910A", "Ascend310P3"], case205)
 
 if __name__ == '__main__':
     import os

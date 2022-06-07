@@ -6,7 +6,7 @@ Function: Compute norm for p equals 0, 1, 2, -inf, inf, or other integers.
 
 计算过程：p默认为2
 
-* p = 0: 矩阵或向量中的非0元素的个数； 
+* p = 0: 矩阵或向量中的非0元素的个数；
 * p = 1: 矩阵或向量中的每个元素绝对值abs之和；
 * p = inf: 矩阵或向量中各项元素绝对值abs中的最大值；
 * p = -inf: 矩阵或向量中各项元素绝对值abs中的最小值；(inf与-inf芯片不支持，不要实现)
@@ -23,12 +23,12 @@ Function: Compute norm for p equals 0, 1, 2, -inf, inf, or other integers.
 ### 3. 主要工程结构
 ```
 project
-│  
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   lp_norm.cc
 │   │   lp_norm.h
-│   
+│
 └───tbe
 │   └───impl #算子实现目录
 │       │   lp_norm.py
@@ -36,7 +36,7 @@ project
 │       └───aicore
 │           └───ascend310
 │               │   lp_norm.ini #算子信息库
-│           └───ascend710
+│           └───ascend310p
 │               │   lp_norm.ini #算子信息库
 │           └───ascend910
 │               │   lp_norm.ini #算子信息库

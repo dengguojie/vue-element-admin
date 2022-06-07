@@ -109,8 +109,8 @@ TEST_F(prodforcesea_add_fusion_test, prodforcesea_add_fusion_test_01) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
-  optiCompilationInfo.soc_version = "Ascend710";
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   fe::FusionPassTestUtils::InferShapeAndType(computeGraph);
@@ -180,8 +180,8 @@ TEST_F(prodforcesea_add_fusion_test, prodforcesea_add_fusion_test_02) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
-  optiCompilationInfo.soc_version = "Ascend710";
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   fe::FusionPassTestUtils::InferShapeAndType(computeGraph);

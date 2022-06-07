@@ -40,8 +40,8 @@ case2 = {"params": [{"shape": (1, 1, 512, 128), "dtype": "float16", "format":"ND
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
 
 
 def calc_expect_func(weight, grad, weight_s, grad_s, weight_decay, learning_rate, out, hyperparam, epsilon, use_clip):

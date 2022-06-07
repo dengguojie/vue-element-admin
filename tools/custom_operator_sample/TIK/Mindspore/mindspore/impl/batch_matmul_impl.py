@@ -192,7 +192,7 @@ def process_input_shape_1152(input_shape, tik_instance, dtype, total_input, res)
 def batch_matmul(input_x1, input_x2, output, transpose_a=False,
                      transpose_b=True, kernel_name="batch_matmul"):
     """cus_batch_matmul"""
-    if tbe_platform.get_soc_spec("SOC_VERSION") == platform_info.VERSION_MINI:
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == platform_info.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))
     else:
         tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))

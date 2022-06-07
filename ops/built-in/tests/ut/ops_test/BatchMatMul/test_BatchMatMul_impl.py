@@ -237,18 +237,18 @@ case19 = {"params": [{"shape": (3, 32, 96), "dtype": "float16", "format": "NHWC"
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
 ut_case.add_case("Ascend910B2", case9)
 ut_case.add_case(["Ascend910A"], case12)
 ut_case.add_case(["Ascend910A"], case13)
 ut_case.add_case(["Ascend910A"], case14)
 print("==========add case for batchmamtul fusion===============")
 for fusion_case in batchmatmul_ut_fusion_case:
-   ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
+   ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend310P3"],
                               test_func=test_batchmatmul_fusion(fusion_case))
 
 def test_split_batch_matmul(test_arg):
@@ -309,7 +309,7 @@ def test_batchmatmul_confusion_transpose_910(test_arg):
     te_set_version("Ascend310")
 
 def test_batchmatmul_confusion_transpose_710(test_arg):
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     with cce():
         x1 = tvm.placeholder((8*12, 8, 8, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (8, 12, 128, 128)}, dtype="float16")
         x2 = tvm.placeholder((8*12, 4, 8, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (8, 12, 128, 64)}, dtype="float16")
@@ -618,5 +618,5 @@ ut_case.add_cust_test_func(test_func=test_mock_cases)
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     ut_case.run("Ascend910")
-    # ut_case.run(["Ascend310", "Ascend710", "Ascend910A"],
+    # ut_case.run(["Ascend310", "Ascend310P3", "Ascend910A"],
     #             simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")

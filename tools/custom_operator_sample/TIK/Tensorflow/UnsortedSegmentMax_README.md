@@ -20,12 +20,12 @@ project
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
 │       │   tensorflow_unsorted_segment_max_plugin.cc
-│  
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   unsorted_segment_max.cc
 │   │   unsorted_segment_max.h
-│   
+│
 └───tbe
 │   └───impl #算子实现目录
 │       └───dynamic #算子实现目录
@@ -34,11 +34,11 @@ project
 │   └───op_info_cfg #算子信息库
 │       └───aicore
 │           └───ascend310
-│               │   unsorted_segment_max.ini 
-│           └───ascend710
+│               │   unsorted_segment_max.ini
+│           └───ascend310p
 │               │   unsorted_segment_max.ini
 │           └───ascend910
-│               │   unsorted_segment_max.ini                                  
+│               │   unsorted_segment_max.ini
 └───testcase #测试用例
 │   └───st
 │       └───unsorted_segment_max

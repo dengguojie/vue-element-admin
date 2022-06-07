@@ -166,8 +166,8 @@ class SyncResizeBilinearV2Grad:
         check if support l1 buffer or not
         :return:
         """
-        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        if soc_version in [tbe_platform.ASCEND_910, tbe_platform.ASCEND_710, tbe_platform.ASCEND_610,
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
+        if soc_version in [tbe_platform.ASCEND_910, tbe_platform.ASCEND_310P, tbe_platform.ASCEND_610,
                            tbe_platform.ASCEND_615]:
             return 1
         else:

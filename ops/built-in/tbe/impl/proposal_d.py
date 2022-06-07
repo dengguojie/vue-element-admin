@@ -395,7 +395,7 @@ def proposal_d(cls_prob_dic,
     feature_dic = {"shape": input_shape, "dtype": input_dtype}
 
     tik_instance = tik.Tik(tik.Dprofile())
-    tik_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    tik_name = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     _check_datatype(input_dtype)
     if actual_rois_num_dic is not None and bool(actual_rois_num_dic):
         output_actual_rois_num = 1

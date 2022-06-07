@@ -129,7 +129,7 @@ def test_scan_pq_codes_04():
             262144, 64, 0, 2, 0)
 
 if __name__ == "__main__":
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     test_scan_pq_codes_01()
     test_scan_pq_codes_02()
     test_scan_pq_codes_03()

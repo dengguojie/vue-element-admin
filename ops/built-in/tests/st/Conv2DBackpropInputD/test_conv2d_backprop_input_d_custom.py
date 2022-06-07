@@ -32,7 +32,7 @@ vals = {("CORE_NUM", ): 48,
     ("L0B_SIZE", ): 65536,
     ("L1_SIZE", ): 524288,
     ("L0C_SIZE", ): 131072,
-    ("SOC_VERSION",): "Ascend910B2"
+    ("SHORT_SOC_VERSION",): "Ascend910B2"
 }
 
 support_intrinsic_cube_vector_split = {

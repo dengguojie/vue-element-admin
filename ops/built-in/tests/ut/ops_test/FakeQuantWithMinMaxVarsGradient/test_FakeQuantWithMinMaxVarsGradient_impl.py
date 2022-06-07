@@ -72,10 +72,10 @@ case4 = {"params": [{"shape": (7, 6, 1), "dtype": "float32", "format": "ND", "or
 
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend710"], case1)
-#ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910A","Ascend710"], case3)
-ut_case.add_case(["Ascend910A","Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend310P3"], case1)
+#ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A","Ascend310P3"], case4)
 
 #precision cases
 #model value wrong

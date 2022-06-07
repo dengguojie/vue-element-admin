@@ -70,8 +70,7 @@ def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
 
     res = tbe.vdiv(input_x, input_y)
 
-    if dtype_x != "float16" and tbe_platform.get_soc_spec(
-            "SOC_VERSION") == "Ascend310":
+    if dtype_x != "float16" and tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == "Ascend310":
         res = tbe.cast_to(res, "float16")
 
     res = tbe.floor(res)

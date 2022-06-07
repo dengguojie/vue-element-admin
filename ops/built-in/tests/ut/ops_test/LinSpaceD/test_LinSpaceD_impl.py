@@ -45,10 +45,10 @@ case4 = {"params": [{"shape": (1024, ), "dtype": "float32", "format": "NCHW", "o
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
 
 def calc_expect_func(input_assist, input_start, input_stop, input_num, output_op):
     x1_value = input_assist.get("value")
@@ -66,32 +66,32 @@ def calc_expect_func(input_assist, input_start, input_stop, input_num, output_op
     return res
 
 
-ut_case.add_precision_case("all", {"params": [{"shape": (1024, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "int32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1024, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "output"}],
-                           "calc_expect_func": calc_expect_func,
-                           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+# ut_case.add_precision_case("all", {"params": [{"shape": (1024, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "int32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1024, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "output"}],
+#                            "calc_expect_func": calc_expect_func,
+#                            "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+# })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (8192, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "int32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (8192, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "output"}],
-                           "calc_expect_func": calc_expect_func,
-                           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+# ut_case.add_precision_case("all", {"params": [{"shape": (8192, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "int32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (8192, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "output"}],
+#                            "calc_expect_func": calc_expect_func,
+#                            "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+# })
 
-ut_case.add_precision_case("all", {"params": [{"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "int32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "output"}],
-                           "calc_expect_func": calc_expect_func,
-                           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+# ut_case.add_precision_case("all", {"params": [{"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "int32", "format": "NCHW", "ori_shape": (1, ),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (1024, ),"ori_format": "NCHW", "param_type": "output"}],
+#                            "calc_expect_func": calc_expect_func,
+#                            "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+# })
 
 
 # ============ auto gen ["Ascend910"] test cases end =================

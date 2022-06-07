@@ -40,7 +40,7 @@ def test_multi_conv2d(test_arg):
         else:
             bias_tensor = None
         conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations)
-    
+
     for key, value in testcase.items():
         print("test multi conv2d case:",key)
         conv_v200_fusion(*value, key)
@@ -52,5 +52,5 @@ ut_case.add_cust_test_func(test_func=test_multi_conv2d)
 # if __name__ == '__main__':
 #     ut_case.run("Ascend310")
 #     ut_case.run("Ascend910A")
-#     ut_case.run("Ascend710")
+#     ut_case.run("Ascend310P3")
 #     exit(0)

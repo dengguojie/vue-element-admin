@@ -82,9 +82,11 @@ def test_conv2d_v200(test_arg):
                 (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 0, 1, 0, 1),
             # relu
             "conv_v200_quant_bias_1_flow_6": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 6, 1, 0, 0),
+            "conv_v200_quant_bias_1_flow_6_dma": ((1, 32, 10, 4098), (32, 32, 1, 257), [0, 0, 0, 0], [1, 1, 1, 1], 6, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_30": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 30, 1, 0, 1),
             "conv_v200_quant_bias_1_flow_31": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 31, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_34": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 34, 1, 0, 0),
+            "conv_v200_quant_bias_1_flow_34_dma": ((1, 32, 10, 4098), (32, 32, 1, 257), [0, 0, 0, 0], [1, 1, 1, 1], 34, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_35": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 35, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_36": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 36, 1, 0, 1),
             "conv_v200_quant_bias_1_flow_33": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 33, 1, 0, 0),
@@ -460,7 +462,6 @@ def test_conv2d_v200(test_arg):
                     data_flow_fution_type_map_bias_false["unknown"])
             assert auto_sch_res.fusion_type == fution_type
 
-
         return sch, tensor_list
 
 
@@ -513,7 +514,7 @@ def test_conv2d_v200(test_arg):
         if version == "v100":
             ddk_info = "Ascend310"
         else:
-            ddk_info = "Ascend710"
+            ddk_info = "Ascend310P3"
 
         cce_conf.cce_conf.te_set_version(ddk_info)
 
@@ -522,10 +523,10 @@ def test_conv2d_v200(test_arg):
     """
     print("---------------------------------------------------")
     set_ddk_version("v200")
-    print("[ UNITTEST START conv2d v200 ddk is Ascend710]")
+    print("[ UNITTEST START conv2d v200 ddk is Ascend310P3]")
 
     run_testcase()
     set_ddk_version("v100")
 
-print("adding Conv2D v200 Ascend710 ut testcases")
+print("adding Conv2D v200 Ascend310P3 ut testcases")
 ut_case.add_cust_test_func(test_func=test_conv2d_v200)

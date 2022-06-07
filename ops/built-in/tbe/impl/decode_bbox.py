@@ -126,7 +126,7 @@ class InitTikParam:
     None
     """
     def __init__(self):
-        self.product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        self.product_name = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
         self.total_ub = tik.Dprofile().get_unified_buffer_size()
         self.available_ub_size = (self.total_ub - Constant.RESERVED_UB) // Constant.CONFIG_TWO
         self.aicore_num = tik.Dprofile().get_aicore_num()
@@ -143,7 +143,7 @@ class InitTikParam:
         -------
         product name
         """
-        self.product_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        self.product_name = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 
     def set_ub_buf(self):
         """

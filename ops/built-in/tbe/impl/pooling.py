@@ -360,7 +360,7 @@ def pooling_compute(x,
     # l1 fusion params assign
     fusion_params = get_fusion_params(x, y, False)
     l1_fusion_type = fusion_params.get("l1_fusion_type")
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if all([impl_mode == "high_precision", mode == "GAP", cce_product in ("Hi3796CV300CS", "SD3403")]):
         # L1 fusion not support
         if l1_fusion_type != -1:

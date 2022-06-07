@@ -417,8 +417,8 @@ platform2arch_dict = {
     "Ascend310": "dav-m100",  # 2  ai 0 vec
     "Ascend610": "dav-m200",  # 10 ai 8 vec
     "Ascend615": "dav-m201",  # 10 ai 8 vec
-    "Ascend710": "dav-m200",  # 8 ai 7 vec
-    "Ascend710Pro": "dav-m200",  # 10 ai 8 vec
+    "Ascend310P3": "dav-m200",  # 8 ai 7 vec
+    "Ascend310P1": "dav-m200",  # 10 ai 8 vec
     "Ascend910": "dav-c100",  # 32 ai 0 vec
     "Ascend910B": "dav-c100",  # 30 ai 0 vec
     "Ascend910PremiumA": "dav-c100",  # Ascend910

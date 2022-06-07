@@ -28,7 +28,7 @@ def test_conv_aipp(test_arg):
     from impl.aipp import aipp_compute
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
-    TEST_PLATFORM = ["Ascend310","Ascend610","Ascend710","Hi3796CV300ES"]
+    TEST_PLATFORM = ["Ascend310","Ascend610","Ascend310P3","Hi3796CV300ES"]
 
     def int_ceil_div(num_a, num_b):
         """
@@ -43,7 +43,7 @@ def test_conv_aipp(test_arg):
         crops=False, soc_version="Ascend310"):
         N, C, H, W = shape_in_ori
 
-        if soc_version in ["Ascend610", "Ascend710"] and C04:
+        if soc_version in ["Ascend610", "Ascend310P3"] and C04:
             shape_in = (N, (C + 3)//4, H, W, 4)
         else:
             shape_in = (N, (C + 15)//16, H, W, 16)
@@ -82,7 +82,7 @@ def test_conv_aipp(test_arg):
             else:
                 h_after_crop = shape_in_ori[2]
                 w_after_crop = shape_in_ori[3]
-            if soc_version in ["Ascend610", "Ascend710"] and C04:
+            if soc_version in ["Ascend610", "Ascend310P3"] and C04:
 
                 output_data = {'shape': [N,1,h_after_crop,w_after_crop,4], 'ori_shape': [N,3,h_after_crop,w_after_crop], 'format': 'NC1HWC0_C04', 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'use_L1_workspace': 0, 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': (), 'split_index': 0}
             else:
@@ -155,7 +155,7 @@ def test_conv_aipp(test_arg):
         crops=False, soc_version="Ascend310"):
         N, C, H, W = shape_in_ori
 
-        if soc_version in ["Ascend610", "Ascend710"] and C04:
+        if soc_version in ["Ascend610", "Ascend310P3"] and C04:
             shape_in = (N, (C + 3)//4, H, W, 4)
         else:
             shape_in = (N, (C + 15)//16, H, W, 16)
@@ -192,7 +192,7 @@ def test_conv_aipp(test_arg):
             else:
                 h_after_crop = shape_in_ori[2]
                 w_after_crop = shape_in_ori[3]
-            if soc_version in ["Ascend610", "Ascend710"] and C04:
+            if soc_version in ["Ascend610", "Ascend310P3"] and C04:
 
                 output_data = {'shape': [N,1,h_after_crop,w_after_crop,4], 'ori_shape': [N,3,h_after_crop,w_after_crop], 'format': 'NC1HWC0_C04', 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'use_L1_workspace': 0, 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': (), 'split_index': 0}
             else:
@@ -264,7 +264,7 @@ def test_conv_aipp(test_arg):
         C04=True,aipp_format="yuv", crops=False, soc_version="Ascend310"):
         N, C, H, W = shape_in_ori
 
-        if soc_version in ["Ascend610", "Ascend710"] and C04:
+        if soc_version in ["Ascend610", "Ascend310P3"] and C04:
             shape_in = (N, (C + 3)//4, H, W, 4)
         else:
             shape_in = (N, (C + 15)//16, H, W, 16)
@@ -301,7 +301,7 @@ def test_conv_aipp(test_arg):
             else:
                 h_after_crop = shape_in_ori[2]
                 w_after_crop = shape_in_ori[3]
-            if soc_version in ["Ascend610", "Ascend710"] and C04:
+            if soc_version in ["Ascend610", "Ascend310P3"] and C04:
 
                 output_data = {'shape': [N,1,h_after_crop,w_after_crop,4], 'ori_shape': [N,3,h_after_crop,w_after_crop], 'format': 'NC1HWC0_C04', 'ori_format': 'NCHW', 'dtype': 'float16', 'addr_type': 0, 'valid_shape': (), 'slice_offset': (), 'use_L1_workspace': 0, 'L1_workspace_size': -1, 'L1_fusion_type': -1, 'L1_addr_offset': 0, 'total_shape': (), 'split_index': 0}
             else:
@@ -356,7 +356,7 @@ def test_conv_aipp(test_arg):
                                         quant_dict['offset'],
                                         quant_dict['round_mode'])
             auto_sch_res = AutoScheduleOp(out)
-            if soc_version in ("Ascend610", "Ascend710"):
+            if soc_version in ("Ascend610", "Ascend310P3"):
                 fusion_type = 808 if aipp_input_format == "YUV420SP_U8" else 40
             else:
                 fusion_type = 809 if aipp_input_format == "YUV420SP_U8" else 41

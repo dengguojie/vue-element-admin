@@ -53,7 +53,7 @@ CONFIG_UNIT = 1024
 MATRIX = 256
 MAX_REP_TIME = 255
 CONFIG_SCORE_THRESHOLD = 0
-IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710")
+IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend310P")
 
 
 def ceil_div(num_a, num_bulk):
@@ -1735,7 +1735,7 @@ def rpn_proposals_d(rois, cls_bg_prob, sorted_box,
         else:
             k = rois.get("shape")[0]
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") not in IF_USE_V200:
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") not in IF_USE_V200:
         tik_instance = rpn_proposals_d_compute((rois, cls_bg_prob, sorted_box),
                                                (img_size, score_threshold, k, min_size,
                                                 nms_threshold, score_filter, box_filter,

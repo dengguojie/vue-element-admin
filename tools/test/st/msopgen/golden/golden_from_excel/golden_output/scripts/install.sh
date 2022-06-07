@@ -161,25 +161,6 @@ if [ $? -ne 0 ];then
     exit 1
 fi
 
-changemode()
-{
-    if [ -d ${targetdir} ];then
-        subdirs=$(ls "${targetdir}" 2> /dev/null)
-        for dir in ${subdirs}; do
-            if [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "Ascend310RC" ]]&& [[ ${dir} != "Ascend910" ]] && [[ ${dir} != "Ascend710" ]] && [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "aicpu" ]]; then
-                chmod -R 550 "${targetdir}/${dir}" >/dev/null 2>&1
-            fi
-        done
-    fi
-
-    return 0
-}
-echo "[ops_custom]changemode..."
-#changemode
-if [ $? -ne 0 ];then
-    exit 1
-fi
-
 if [ -d ${targetdir}/op_impl/custom/cpu/aicpu_kernel/custom_impl/ ]; then
     chmod -R 440 ${targetdir}/op_impl/custom/cpu/aicpu_kernel/custom_impl/* >/dev/null 2>&1
 fi

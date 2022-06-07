@@ -45,12 +45,12 @@ case6 = {"params": [{"shape": (3, 3, 2, 128), "dtype": "float32", "format": "HWC
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
 
 
 def test_op_select_format(test_arg):
@@ -70,7 +70,7 @@ def calc_expect_func(x, y):
     x_shape = x["shape"]
     x_format = x["format"]
     x_data = x["value"]
-    
+
     session_config = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)

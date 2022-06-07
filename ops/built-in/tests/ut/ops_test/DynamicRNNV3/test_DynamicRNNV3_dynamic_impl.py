@@ -98,10 +98,10 @@ case4 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float32", T
                              "success", "dynamic_dynamic_rnnv3_4", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
                              [(64,64)])
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

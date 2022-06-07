@@ -227,7 +227,7 @@ class WorkspaceLayerNormSchedule:
 
     def _do_storage_bound(self):
         UB_SIZE = get_soc_spec("UB_SIZE")
-        soc_version = get_soc_spec("SOC_VERSION")
+        soc_version = get_soc_spec("SHORT_SOC_VERSION")
         # analysis coexit tensor node
         tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
             self.output_tensor_ub_list) | set(self.input_tensor_ub_list)

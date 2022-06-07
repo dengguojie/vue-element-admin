@@ -328,7 +328,7 @@ def _check_input_params(
         # load3d instruction not support out_w = 1
         # only Ascend310/Hi3796CS/SD3403 can support
         # in dx, out is fmap
-        if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]
+        if (tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]
             and not tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT") \
             and dx_h != 1 and dx_w == 1 and var_map):
             return True
@@ -862,7 +862,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                 lambda *index: mean_matrix(*index).astype(out_backprop.dtype),
                 name="mean_matrix_fp16",
                 tag="mean_matrix_fp16")
-            if "Ascend310" in tbe_platform_info.get_soc_spec("SOC_VERSION"):
+            if  tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310",):
                 mean_matrix_rec = tvm.compute(
                     mean_matrix_shape,
                     lambda *index: 1 / mean_matrix_fp16(*index),

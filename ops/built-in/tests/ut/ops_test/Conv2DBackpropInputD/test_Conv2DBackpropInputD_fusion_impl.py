@@ -32,7 +32,7 @@ vals = {("CORE_NUM", ): 48,
     ("L0B_SIZE", ): 65536,
     ("L1_SIZE", ): 524288,
     ("L0C_SIZE", ): 131072,
-    ("SOC_VERSION",): "Ascend910A"
+    ("SHORT_SOC_VERSION",): "Ascend910A"
 }
 
 support_intrinsic_cube_vector_split = {
@@ -617,5 +617,5 @@ ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_add_milan)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_fixpipe_milan)
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])
+    ut_case.run(["Ascend910A", "Ascend310P3", "Ascend310"])
     sys.exit(0)

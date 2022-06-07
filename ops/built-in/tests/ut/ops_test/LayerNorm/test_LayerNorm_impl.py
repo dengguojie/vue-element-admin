@@ -376,9 +376,9 @@ case22 = {"params": [{"shape": (87,48,8,54), "dtype": "float32", "format": "ND",
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case21)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case21)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend910A"], case5)
@@ -389,17 +389,17 @@ ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_case(["Ascend910A"], case10)
-ut_case.add_case(["Ascend710", "Ascend910A"], case11)
-ut_case.add_case(["Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend710", "Ascend910A"], case13)
-ut_case.add_case(["Ascend710", "Ascend910A"], case14)
-ut_case.add_case(["Ascend710", "Ascend910A"], case15)
-ut_case.add_case(["Ascend710", "Ascend910A"], case16)
-ut_case.add_case(["Ascend710", "Ascend910A"], case17)
-ut_case.add_case(["Ascend710", "Ascend910A"], case18)
-ut_case.add_case(["Ascend710", "Ascend910A"], case19)
-ut_case.add_case(["Ascend710", "Ascend910A"], case20)
-ut_case.add_case(["Ascend710", "Ascend910A"], case22)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case16)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case17)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case18)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case19)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case20)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case22)
 
 # pylint: disable=unused-argument
 def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_params_axis):
@@ -598,4 +598,4 @@ ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_import_lib)
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])
+    ut_case.run(["Ascend910A", "Ascend310P3", "Ascend310"])

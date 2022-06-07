@@ -18,7 +18,7 @@ def dsl_dynamic_vsel(condition, x, y, z, kernel_name="dsl_dynamic_vsel"):
         x_dtype = x.get("dtype")
         y_dtype = y.get("dtype")
         ins = tbe.dsl.classify([condition, x, y], "elewise")
-        
+
         for (condition, x, y) in ins:
             with tbe.dsl.compute():
                 shape_condition, shape_x, shape_y = shape_util.variable_shape([condition, x, y])
@@ -35,7 +35,7 @@ def dsl_dynamic_vsel(condition, x, y, z, kernel_name="dsl_dynamic_vsel"):
     elif isinstance(x, dict) and not isinstance(y, dict):
         x_dtype = x.get("dtype")
         ins = tbe.dsl.classify([condition, x], "elewise")
-        
+
         for (condition, x) in ins:
             with tbe.dsl.compute():
                 shape_condition, shape_x = shape_util.variable_shape([condition, x])
@@ -51,7 +51,7 @@ def dsl_dynamic_vsel(condition, x, y, z, kernel_name="dsl_dynamic_vsel"):
     elif isinstance(y, dict) and not isinstance(x, dict):
         y_dtype = y.get("dtype")
         ins = tbe.dsl.classify([condition, y], "elewise")
-        
+
         for (condition, y) in ins:
             with tbe.dsl.compute():
                 shape_condition, shape_y = shape_util.variable_shape([condition, y])
@@ -66,7 +66,7 @@ def dsl_dynamic_vsel(condition, x, y, z, kernel_name="dsl_dynamic_vsel"):
             schedules.append(sch)
     else:
         ins = tbe.dsl.classify([condition], "elewise")
-        
+
         for (condition,) in ins:
             with tbe.dsl.compute():
                 shape_condition = shape_util.variable_shape([condition])[0]
@@ -117,7 +117,7 @@ case2 = {
         "dtype": "bool",
         "range": [(1, None), (1, None)]
     },
-    0.5, 
+    0.5,
     {
         "shape": (-1, -1),
         "dtype": "float16",
@@ -136,8 +136,8 @@ case2 = {
 }
 
 
-ut_case.add_case(["Ascend910A", "Ascend710"], case1)
-ut_case.add_case(["Ascend910A", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case2)
 
 
 def calc_expect_func(condition, x, y, z):

@@ -56,10 +56,10 @@ case3 = call_spp_pooling((1, 1, 224, 224, 16), "float16", False, "MAX",
                          (14, 14), (0, 0, 0, 0), (14, 14), "CEIL","spp_pooling_3")
 case4 = call_spp_pooling((2, 2, 32, 32, 16), "float32", False, "MAX",
                          (16, 16), (0, 0, 0, 0), (16, 16), "CEIL","spp_pooling_4")
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

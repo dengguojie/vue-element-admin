@@ -207,16 +207,16 @@ case10 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case10)
 
 
 def extract_image_patches_produce(in_x, conv_param, src_type):
@@ -414,13 +414,13 @@ ut_case.add_precision_case(
             precision_info.PrecisionStandard(0.001, 0.001)
     })
 
-def test_static_1951(test_arg):   
-    set_current_compile_soc_info("Ascend710")
+def test_static_ascend310p3(test_arg):
+    set_current_compile_soc_info("Ascend310P3")
     extract_image_patches({"shape": (1, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 16, 16, 16), "ori_format": "NHWC"},
                           {"shape": (1, 16, 16, 64), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 16, 16, 64), "ori_format": "NHWC"},
                           (1, 2, 2, 1), (1, 1, 1, 1), (1, 3, 3, 1), "SAME")
     set_current_compile_soc_info(test_arg)
-ut_case.add_cust_test_func(test_func=test_static_1951)
+ut_case.add_cust_test_func(test_func=test_static_ascend310p3)
 # if __name__ == '__main__':
 #     ut_case.run("Ascend910")
 #     exit(0)

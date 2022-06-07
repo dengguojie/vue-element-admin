@@ -45,7 +45,7 @@ OPS_PKG_SHARED_LIBS := \
         aic-ascend910-ops-info.json \
         aic-ascend910b-ops-info.json \
         aic-ascend310-ops-info.json \
-        aic-ascend710-ops-info.json \
+        aic-ascend310p-ops-info.json \
         aic-ascend610-ops-info.json \
         aic-ascend615-ops-info.json \
         aic-hi3796cv300es-ops-info.json \
@@ -617,13 +617,13 @@ $(LOCAL_BUILT_MODULE):
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := aic-ascend710-ops-info.json
+LOCAL_MODULE := aic-ascend310p-ops-info.json
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
 $(LOCAL_BUILT_MODULE):
 	@mkdir -p $(dir $@)
-	@./cann/ops/built-in/tbe/scripts/compile_tbe_info.sh $(product) ascend710
+	@./cann/ops/built-in/tbe/scripts/compile_tbe_info.sh $(product) ascend310p
 	@echo $@
 	@echo $(HOST_OUT_INTERMEDIATES)/$(notdir $@)
 	@cp $(HOST_OUT_INTERMEDIATES)/$(notdir $@) $@

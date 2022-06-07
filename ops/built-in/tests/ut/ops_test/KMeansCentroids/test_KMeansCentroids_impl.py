@@ -136,10 +136,10 @@ case_k_2048 = {"params": [{"shape": (256, 2048), "dtype": "float32", "format": "
                "expect": RuntimeError,
                "support_expect": True}
 
-ut_case.add_case(["Ascend910A", "Ascend710"], case_k_128)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_k_32)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_k_128_T)
-ut_case.add_case(["Ascend910A", "Ascend710"], case_k_32_T)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_k_128)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_k_32)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_k_128_T)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case_k_32_T)
 ut_case.add_case(["Ascend910A"], case_k_128_HP)
 ut_case.add_case(["Ascend910A"], case_m_tail)
 ut_case.add_case(["Ascend910A"], case_n_tail)
@@ -147,4 +147,4 @@ ut_case.add_case(["Ascend910A"], case_not_aligned)
 ut_case.add_case(["Ascend910A"], case_k_2048)
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

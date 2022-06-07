@@ -436,7 +436,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
                                                           'width in ori_output must be %d' % out_w, 'ho', output_w)
     # cloud,dc out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Ascend910", "Ascend710") and (out_h != 1 or out_w != 1):
+    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Ascend910", "Ascend310P") and (out_h != 1 or out_w != 1):
         if fmap_w + pad_l + pad_r - kernel_w < stride_w:
             error_manager_vector.raise_err_specific_reson(
                 'max_pool_grad_grad',
@@ -872,7 +872,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         grads_sel_ub = _new_alloc(tvm_ir, grads_ub.dtype, img_shape, "grads_sel_ub", tbe_platform.scope_ubuf,
                                   ub_tiling["buffer"])
         # v200 support vsel repeat
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Ascend910", "Ascend310"):
+        if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Ascend910", "Ascend310"):
             # case v100
             with tvm_ir.for_range(0, tiling_ub_howo_i, name="mask_r") as mask_r:
                 fractal_repeat = fmap_c0 * fmap_c0 // VECTOR_INST_BLOCK_SIZE

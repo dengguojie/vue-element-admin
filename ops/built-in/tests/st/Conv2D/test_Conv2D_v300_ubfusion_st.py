@@ -149,7 +149,7 @@ def test_conv2d_v300_ubfusion():
             sch = generic.auto_schedule(out)
 
 
-    cceconf.te_set_version('Ascend320')
+    cceconf.te_set_version('Ascend310B1')
     with op_context.OpContext():
         for x in case_list:
             dataflow, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag = x

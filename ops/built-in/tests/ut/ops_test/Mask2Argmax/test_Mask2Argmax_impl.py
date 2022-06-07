@@ -27,8 +27,8 @@ case2 = {"params": [{"shape": (32,4,112,112,16), "dtype": "float16", "format": "
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
 
 if __name__ == '__main__':
     # ut_case.run()

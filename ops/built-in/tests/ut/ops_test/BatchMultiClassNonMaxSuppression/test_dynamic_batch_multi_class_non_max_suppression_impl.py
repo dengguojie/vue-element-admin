@@ -114,7 +114,7 @@ ut_case.add_case(["Ascend910A"], case6)
 ut_case.run("Ascend910A")
 
 
-def get_impl_list_920(batch_size, num_boxes, num_class, num_class_boxes,
+def get_impl_list_Ascend910B(batch_size, num_boxes, num_class, num_class_boxes,
                   score_threshold, iou_threshold, max_size_per_class,
                   max_total_size, change_coordinate_frame, is_need_clip,
                   is_need_valid):
@@ -153,26 +153,26 @@ def get_impl_list_920(batch_size, num_boxes, num_class, num_class_boxes,
     return input_list + par_list
 
 
-def test_op_nms_1981_test_1(test_arg):
+def test_op_nms_Ascend910B_test_1(test_arg):
     from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
     with OpContext("dynamic") as _:
         from tbe.common.platform.platform_info import set_current_compile_soc_info
         set_current_compile_soc_info("Ascend910B2")
-        lis = get_impl_list_920(-1, -1, -1, -1, 0, 0.7, 100, 100, False, False, False)
-        obj = BMCNMS(*lis, "test_op_nms_1981_test_1")
+        lis = get_impl_list_Ascend910B(-1, -1, -1, -1, 0, 0.7, 100, 100, False, False, False)
+        obj = BMCNMS(*lis, "test_op_nms_Ascend910B_test_1")
         obj.bmcnms_compute()
         set_current_compile_soc_info(test_arg)
 
 
-def test_op_nms_1981_test_2(test_arg):
+def test_op_nms_Ascend910B_test_2(test_arg):
     from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
     with OpContext("dynamic") as _:
         from tbe.common.platform.platform_info import set_current_compile_soc_info
         set_current_compile_soc_info("Ascend910B2")
-        lis = get_impl_list_920(-1, -1, -1, -1, 0.1, 0.7, 1000, 1000, False, False, False)
-        obj = BMCNMS(*lis, "test_op_nms_1981_test_2")
+        lis = get_impl_list_Ascend910B(-1, -1, -1, -1, 0.1, 0.7, 1000, 1000, False, False, False)
+        obj = BMCNMS(*lis, "test_op_nms_Ascend910B_test_2")
         obj.bmcnms_compute()
         set_current_compile_soc_info(test_arg)
 
-ut_case.add_cust_test_func(test_func=test_op_nms_1981_test_1)
-ut_case.add_cust_test_func(test_func=test_op_nms_1981_test_2)
+ut_case.add_cust_test_func(test_func=test_op_nms_Ascend910B_test_1)
+ut_case.add_cust_test_func(test_func=test_op_nms_Ascend910B_test_2)

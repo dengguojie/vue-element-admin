@@ -15,18 +15,18 @@ Function: Basic LSTM Cell forward calculation
 ### 3. 主要工程结构
 ```
 project
-│  
+│
 └───framework #插件目录
 │   └───common #插件公共依赖
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
-│       │   tensorflow_basic_lstm_cell_plugin.cc 
-│  
+│       │   tensorflow_basic_lstm_cell_plugin.cc
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   basic_lstm_cell.cc
 │   │   basic_lstm_cell.h
-│   
+│
 └───tbe
 │   └───impl #算子实现目录
 │       │   basic_lstm_cell.py
@@ -34,7 +34,7 @@ project
 │       └───aicore
 │           └───ascend310
 │               │   basic_lstm_cell.ini #算子信息库
-│           └───ascend710
+│           └───ascend310p
 │               │   basic_lstm_cell.ini #算子信息库
 │           └───ascend910
 │               │   basic_lstm_cell.ini #算子信息库

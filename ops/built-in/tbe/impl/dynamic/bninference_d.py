@@ -64,7 +64,7 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     res_y = tbe.vmul(var_broadcast, mean_add)
 
     is_cast = False
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":
             is_cast = True
@@ -119,7 +119,7 @@ def _fused_scale_compute(x, mean, variance, scale):
     res_y = tbe.vmul(var_broadcast, mean_add)
 
     is_cast = False
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":
@@ -265,7 +265,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
             if "addr_type" in x_input_tensor.op.attrs:
                 in_l1_flag = x_input_tensor.op.attrs["addr_type"].value == 1
-            else: 
+            else:
                 in_l1_flag = False
             in_l1_flag_list.append(in_l1_flag)
             if "valid_shape" in x_input_tensor.op.attrs:
@@ -474,7 +474,7 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
     para_check.check_format(format_data, excepted_format_list, param_name="x")
 
     # check dtype
-    product = tbe_platform.get_soc_spec("SOC_VERSION")
+    product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if product in ("Hi3796CV300ES", "Hi3796CV300CS"):
         checklist = ["float16"]
     else:

@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 from impl.arg_max_with_kd import op_select_format
-from tbe.common.platform import set_current_compile_soc_info
 
 ut_case = OpUT("ArgMaxWithKD", None, None)
 
@@ -74,7 +73,7 @@ ut_case.add_cust_test_func(test_func=test_op_select_format_001)
 
 def test_op_select_format_002(test_arg):
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     op_select_format(
         {
             "shape": (5, 8, 16, 16),
@@ -155,8 +154,8 @@ def test_op_select_format_002(test_arg):
         False,
         1,
     )
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 ut_case.add_cust_test_func(test_func=test_op_select_format_002)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

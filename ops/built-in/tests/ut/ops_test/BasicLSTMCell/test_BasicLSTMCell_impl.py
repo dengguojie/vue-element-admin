@@ -557,7 +557,7 @@ ut_case.add_case(["Ascend910A", "Ascend310"], case16)
 def test_basic_lstm_cell_001(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.basic_lstm_cell import basic_lstm_cell
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     basic_lstm_cell(*(case1["params"]))
     basic_lstm_cell(*(case2["params"]))
     basic_lstm_cell(*(case3["params"]))

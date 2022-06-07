@@ -67,7 +67,7 @@ static const int NUM_THREE = 3;
 static const int NUM_FOUR = 4;
 static const int NUM_FIVE = 5;
 static const int NUM_SIX = 6;
-static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend710"};
+static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310P"};
 static const char kNameFusionPass[] = "ZAttentionScoreFusionPass";
 }  // namespace
 
@@ -118,17 +118,16 @@ Status ZAttentionScoreFusionPass::CheckPlatformInfo() {
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
       OP_LOGD(kNameFusionPass, "Failed to get platform info"), return NOT_CHANGED);
 
-  std::string socVersion = optionalInfo.soc_version;
-  OP_LOGD(kNameFusionPass, "Get soc version: %s", socVersion.c_str());
+  OP_LOGD(kNameFusionPass, "Get soc version: %s", optionalInfo.soc_version.c_str());
 
   bool isSupport = false;
   for (string pattern : SUPPORT_PLATFORM_PATTERN) {
-    if (socVersion == pattern || socVersion.find(pattern) != string::npos) {
+    if (platformInfo.str_info.short_soc_version == pattern) {
       isSupport = true;
       break;
     }
   }
-  FUSION_PASS_CHECK(!isSupport, OP_LOGD(kNameFusionPass, "Only support 710, 910 series platform"),
+  FUSION_PASS_CHECK(!isSupport, OP_LOGD(kNameFusionPass, "Only support Ascend310P series platform"),
                     return NOT_CHANGED);
 
   OP_LOGD(kNameFusionPass, "CheckPlatformInfo end");

@@ -27,7 +27,7 @@ def test_conv2d_aipp_maxpool_fusion_v300():
         crops=False, soc_version="Ascend310"):
         N, C, H, W = shape_in_ori
 
-        if soc_version in ["Ascend610", "Ascend710", "Ascend320"] and C04:
+        if soc_version in ["Ascend610", "Ascend310P3", "Ascend310B1"] and C04:
             shape_in = (N, (C + 3) // 4, H, W, 4)
         else:
             shape_in = (N, (C + 15) // 16, H, W, 16)
@@ -70,7 +70,7 @@ def test_conv2d_aipp_maxpool_fusion_v300():
             else:
                 h_after_crop = shape_in_ori[2]
                 w_after_crop = shape_in_ori[3]
-            if soc_version in ["Ascend610", "Ascend710", "Ascend320"] and C04:
+            if soc_version in ["Ascend610", "Ascend310P3", "Ascend310B1"] and C04:
 
                 output_data = {
                     'shape': [N, 1, h_after_crop, w_after_crop, 4],
@@ -181,7 +181,7 @@ def test_conv2d_aipp_maxpool_fusion_v300():
             conv_res = conv2d_compute(aipp_res, Weight, bias_tensor, None,
                                       None, strides, pads, dilations)
 
-            if soc_version == "Ascend320":
+            if soc_version == "Ascend310B1":
                 x1 = conv_res
                 x2 = None
                 quant_scale_0 = None
@@ -361,7 +361,7 @@ def test_conv2d_aipp_maxpool_fusion_v300():
         sch = auto_schedule(pool_res)
 
     with op_context.OpContext():
-        TEST_PLATFORM = ["Ascend320"]
+        TEST_PLATFORM = ["Ascend310B1"]
         for soc in TEST_PLATFORM:
             cce_conf.te_set_version(soc)
             aipp_conv_relu_maxpooling_test_cases1(soc)

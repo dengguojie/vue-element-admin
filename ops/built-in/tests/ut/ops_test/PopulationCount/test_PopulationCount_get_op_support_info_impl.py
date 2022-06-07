@@ -24,8 +24,8 @@ case1 = {"params": [{"shape": (1,3), "dtype": "int16", "format": "ND", "ori_shap
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910","Ascend310","Ascend310P3"])
     exit(0)

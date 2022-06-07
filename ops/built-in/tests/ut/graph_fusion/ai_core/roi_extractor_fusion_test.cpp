@@ -30,8 +30,8 @@ TEST_F(roi_extractor_fusion_test, roi_extractor_fusion_test_1) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
     platform_info.soc_info.vector_core_cnt = 7;
-    opti_compilation_info.soc_version = "Ascend710";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+    opti_compilation_info.soc_version = "Ascend310P3";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
     ge::Graph graph("roi_extractor_fusion_test_1");

@@ -577,7 +577,7 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first, para_dict):
     """
     check if it is case of fusion with matmul
     """
-    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     valid = isinstance(y, dict) and (isinstance(perm, (list, tuple))) and \
             (isinstance(shape, (list, tuple))) and list(perm) == [0, 2, 1, 3]
     if not valid:
@@ -611,7 +611,7 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first, para_dict):
             if y.get("shape")[0] == 64 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 1024 and \
                 y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
                 return True
-    elif soc_version == "Ascend710":
+    elif soc_version == "Ascend310P":
         if not transpose_first:
             batch_supported = [1, 8, 16, 32, 64]
             if list(y.get("shape"))[1:] == [12, 4, 8, 16, 16] and list(shape)[1:] ==  [128, 12, 64] and \

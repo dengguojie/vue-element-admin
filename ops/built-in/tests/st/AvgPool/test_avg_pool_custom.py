@@ -175,7 +175,7 @@ def test_avg_pool_fuzzbuild_generalization_graph_mode_04():
 from te.platform.cce_conf import te_set_version
 from impl.avg_pool import avg_pool
 def test_710_gap():
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     x = {"shape": (1, 2, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0",
          "ori_shape": (1, 8, 8, 32),"ori_format": "NHWC"}
     y = {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0",

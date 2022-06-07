@@ -1917,7 +1917,7 @@ def check_support_5hd(input_x, paddings):
             if dtype in ("float16", "float", "float32"):
                 if paddings[3][0] % 16 == 0:
                     is_support_5hd = True
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = ["float16", "int32"]
         dtype_5hd = ["float16"]
     else:

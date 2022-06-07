@@ -32,7 +32,7 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 
 
 from . import pattern
@@ -755,7 +755,7 @@ def get_atomic_reduce_info():
     """
     get atomic reduce info
     """
-    version_code = get_soc_spec(SOC_VERSION)
+    version_code = get_soc_spec(SHORT_SOC_VERSION)
     if version_code in REDUCE_ATOMIC_SUPPORT.keys():
         return REDUCE_ATOMIC_SUPPORT[version_code]
     return {}

@@ -1,0 +1,821 @@
+{
+  "op_type": "Cast",
+  "op_list": [
+    {
+      "bin_filename": "Cast_9c43a2159df30b81b4f0be7b57558657",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_df2b778f1b80e749bd4242386ec57ab9",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_a9b7af94359fc7c19da07ad0790f065c",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_242fa859b1cb06fae4f1978b0b48e0ae",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_4325e616c4bc72859fb86647b05f4584",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_1fb1c1a33856de01862630399320fff3",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_190ba98903fff611153f0bf94697b304",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_0e42f7a6f60e1804e1f0089cbcf78804",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_d0ab120a33e42f5a6549148f57ee088c",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_15ccf3aee15572ed7572778d4afbef60",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_f5adc6eec859fba24c87ef45958ded66",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_9fc020fd54590bb5fe6cf6eabcf7b473",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_660f10d3e693c01ea3af5912b43efd31",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_31ca22bd6d375c8987286dcfde19ef7c",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_e87590d11ccda8b259ab6b1ea7212319",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_fc9ab9e995cdd7dbeb84a5a2d0101b31",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_978f08346d4bedb917a8113f923e3b2e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_39a266ce9a8d7d9ead33f6686e936b72",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_434e18d5ca522bba0df287e89de93d13",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_12b6d15bff7d06561611b4aa844275a2",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_35a70320fdd81102cb3d00e57ceec61d",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_947e525847e558d95d0059218a9b81ad",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_14e77172692fe25c1c0e65ca853c96e9",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_b1c42a1c14e040815c21ec016b8bbe5e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

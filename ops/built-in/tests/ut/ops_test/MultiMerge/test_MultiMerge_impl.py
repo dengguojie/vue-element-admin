@@ -53,7 +53,7 @@ ut_case.add_case(["Ascend910A"], case_1)
 def test_op_select_format(_):
     params = case_0.get("params")
     op_select_format(*params)
-    soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     te_set_version("Ascend910B2", "VectorCore")
     case_2 = add_case((32, 3277584, 4), 1808412, 16, "float16", 2)
     case_3 = add_case((2, 1808432, 4), 1808412, 16, "float16", 3)

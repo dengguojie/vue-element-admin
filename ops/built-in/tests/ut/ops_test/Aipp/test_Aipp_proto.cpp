@@ -196,7 +196,7 @@ TEST_F(Aipp, aipp_infershape_diff_test_7) {
   std::string caseDir = __FILE__;
   std::size_t idx = caseDir.find_last_of("/");
   caseDir = caseDir.substr(0, idx);
-  std::string cfgFile = caseDir + "/aipp_static_rgb24.cfg";  // RGB24, 1951 PG2
+  std::string cfgFile = caseDir + "/aipp_static_rgb24.cfg";
   std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
   op.SetAttr("aipp_config_path", cfgFile);
 
@@ -219,7 +219,7 @@ TEST_F(Aipp, aipp_infershape_diff_test_8) {
   std::string caseDir = __FILE__;
   std::size_t idx = caseDir.find_last_of("/");
   caseDir = caseDir.substr(0, idx);
-  std::string cfgFile = caseDir + "/aipp_static_rgb24_ir.cfg";  // RGB24_IR, 1951 PG2
+  std::string cfgFile = caseDir + "/aipp_static_rgb24_ir.cfg";
   std::cout << "cfgFile:" << cfgFile.c_str() << std::endl;
   op.SetAttr("aipp_config_path", cfgFile);
 

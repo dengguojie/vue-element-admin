@@ -59,5 +59,5 @@ case1 = {
 }
 
 ut_case.add_case(["Ascend910A"], case1)
-ut_case.add_case(["Ascend710"], case1)
+ut_case.add_case(["Ascend310P3"], case1)
 

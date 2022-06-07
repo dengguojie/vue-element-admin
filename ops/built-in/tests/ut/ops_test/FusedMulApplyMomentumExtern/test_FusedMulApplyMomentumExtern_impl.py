@@ -46,7 +46,7 @@ case1 = {"params": [{"shape": (144, 16, 16, 16), "dtype": "float32","format":"ND
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910"], case1)
 
 ut_case.add_precision_case("Ascend910", {
     "params": [{"shape": (3, 16, 16, 16), "dtype": "float32","format":"ND", "ori_format":"ND", "ori_shape":(3, 16, 16, 16), "param_type":"input"},

@@ -21,7 +21,7 @@ import abc
 import itertools
 from typing import Any
 
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base import operation
 
@@ -133,7 +133,7 @@ def _listize(_x):
 def _tiling_case(outs, option=None):
     cpt = operation.get_context().get_current_compute()
     pattern = cpt.get_pattern()
-    soc = get_soc_spec(SOC_VERSION)
+    soc = get_soc_spec(SHORT_SOC_VERSION)
     computation = ComputationManager.get_computation(soc, pattern)
     instance = computation.get_instance(outs, option)
     sub_pattern = instance.get_sub_pattern()

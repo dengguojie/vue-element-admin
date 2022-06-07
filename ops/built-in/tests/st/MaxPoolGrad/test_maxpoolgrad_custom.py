@@ -151,7 +151,7 @@ def test_max_pool_grad_dynamic():
 
 
 if __name__ == '__main__':
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Ascend910A")
     vals = {("tik.load3dv1", ): False}
     def side_effects(*args):

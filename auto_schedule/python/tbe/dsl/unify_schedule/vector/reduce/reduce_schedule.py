@@ -29,7 +29,7 @@ from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
 from tbe.tvm.tensor import Tensor
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 
 from ...constants import DTYPE_BYTE_MAPPING
@@ -532,7 +532,7 @@ class ReduceSchedule(VectorSchedule):
         if self.tiling_case.is_reduce_transpose_case:
             return
 
-        if get_soc_spec(SOC_VERSION) != ASCEND_910B:
+        if get_soc_spec(SHORT_SOC_VERSION) != ASCEND_910B:
             return
 
         def _set_align(_tensor, _factor):

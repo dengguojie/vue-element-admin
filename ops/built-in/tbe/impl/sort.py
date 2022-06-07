@@ -68,7 +68,7 @@ def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
 # pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 class Sort(object):
     def __init__(self, x, y1, y2, axis, descending, kernel_name):
-        self.cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self.is_old_version = True
         shape, self.dtype, self.num_per_task = self.check(x, y1, y2, axis, kernel_name)
         self.kernel_name = kernel_name

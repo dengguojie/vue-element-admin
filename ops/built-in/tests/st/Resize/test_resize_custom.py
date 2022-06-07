@@ -90,7 +90,7 @@ def test_check_supported_op_select_format():
 
 
 if __name__ == '__main__':
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Ascend910")
     reload_check_support()
     test_check_supported_op_select_format()

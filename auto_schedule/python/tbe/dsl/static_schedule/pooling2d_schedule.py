@@ -26,7 +26,7 @@ from tbe.common.platform import scope_cbuf
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.common.buildcfg import get_L1_info
 from tbe.common.utils.errormgr import get_error_message
@@ -1164,7 +1164,7 @@ def set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if get_soc_spec(SOC_VERSION) == ASCEND_310:
+    if get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310:
         # mini/cloud
         emit_insn_str = "vector_conv"
     else:
@@ -1251,7 +1251,7 @@ def _check_fp32_ability(pooling_mode, impl_mode):
     vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
 
     if pooling_mode == "GAP":
-        use_fp16 = (get_soc_spec(SOC_VERSION) == ASCEND_310) and (impl_mode == "high_performance")
+        use_fp16 = (get_soc_spec(SHORT_SOC_VERSION) == ASCEND_310) and (impl_mode == "high_performance")
         is_support_fp32_ability = vconv_ability and vadd_ability and vmul_ability and (not use_fp16)
     else:
         is_support_fp32_ability = vconv_ability and vadd_ability and vmul_ability

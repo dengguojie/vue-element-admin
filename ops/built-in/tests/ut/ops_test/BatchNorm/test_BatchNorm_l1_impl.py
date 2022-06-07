@@ -22,13 +22,13 @@ def gen_batch_norm_case(shape_x, shape_scale, shape_mean, shape_reserve, dtype_x
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case((1,2,3,4,16), (1,2,1,1,16), (0,), (), "float16",
                                      "float32", "NC1HWC0", "batch_norm_1", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case((1,2,3,4,16), (2,2,1,1,16), (0,), (), "float16",
                                      "float32", "NC1HWC0", "batch_norm_2", RuntimeError))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "batch_norm_3", "success"))
 
@@ -51,44 +51,44 @@ def gen_batch_norm_case2(shape_x, shape_scale, shape_mean, shape_reserve, dtype_
             "format_expect": [],
             "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NHWC",  False, True, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NHWC",  True, False, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NHWC",  False, False, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NHWC",  True, True, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NCHW",  False, True, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NCHW",  True, False, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NCHW",  False, False, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NCHW",  True, True, "batch_norm_3", "success"))
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NC1HWC0",  False, True, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NC1HWC0",  False, False, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NC1HWC0",  True, True, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NC1HWC0",  True, False, "batch_norm_3", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_case2((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
                                      "float32", "NC1HWC0", "NC1HWC1",  True, False, "batch_norm_3", "success"))
 if __name__ == '__main__':

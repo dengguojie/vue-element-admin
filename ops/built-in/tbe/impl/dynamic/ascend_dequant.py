@@ -59,7 +59,7 @@ def _check_params(x, deq_scale, sqrt_mode, kernel_name):
 
 
 def _is_support_v200_instruction():
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
 

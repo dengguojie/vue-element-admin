@@ -75,11 +75,11 @@ def generate_case(x_shape, roi_shape, y_shape, dtype, output_size=7, vrange=None
 
 
 # 'pylint: disable=unused-argument
-def test_710(test_arg):
+def test_Ascend310P(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.roi_extractor import roi_extractor
 
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 
     x_shape = [(1, 16, 16, 16), (1, 16, 9, 9), (1, 16, 8, 8), (1, 16, 4, 5)]
     roi_shape = [1000, 5]
@@ -140,5 +140,5 @@ ut_case.add_case("Ascend310", generate_case([(1, 16, 16, 16), (1, 16, 9, 9), (1,
                                             (1000, 16, 7, 7), "float32", 7))
 ut_case.add_case("Ascend310", generate_case([(1, 16, 16, 16), (1, 16, 9, 9), (1, 16, 8, 8), (1, 16, 4, 5)], (1000, 4),
                                             (1000, 16, 7, 7), "float32", 7, iserror=True))
-ut_case.add_cust_test_func("Ascend310", test_710)
+ut_case.add_cust_test_func("Ascend310", test_Ascend310P)
 ut_case.run("Ascend310")

@@ -26,13 +26,13 @@ from tbe import tvm
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import HI3796CV300CS
 from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
@@ -104,21 +104,21 @@ def is_v100():
     """
     :return:
     """
-    return get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_310)
+    return get_soc_spec(SHORT_SOC_VERSION) in (ASCEND_910, ASCEND_310)
 
 
 def is_v200():
     """
     :return:
     """
-    return get_soc_spec(SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_710, HI3796CV300ES, HI3796CV300CS, SD3403)
+    return get_soc_spec(SHORT_SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_310P, HI3796CV300ES, HI3796CV300CS, SD3403)
 
 
 def is_v220():
     """
     :return:
     """
-    return get_soc_spec(SOC_VERSION) in (ASCEND_910B,)
+    return get_soc_spec(SHORT_SOC_VERSION) in (ASCEND_910B,)
 
 
 def need_temp_space(tensor: tvm.tensor.Tensor):

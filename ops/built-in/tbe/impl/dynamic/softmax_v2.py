@@ -175,7 +175,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
         data_subtrac = tbe.cast_to(data_subtrac, "float32")
         has_improve_precision = True
 
-    tbe_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if data_subtrac.dtype == "float32" and tbe_product in ("Ascend310",):
         data_subtrac = tbe.cast_to(data_subtrac, "float16")
         data_exp = tbe.vexp(data_subtrac)
@@ -200,7 +200,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
         else:
             data_expsum = tbe.broadcast(data_expsum, shape)
         output = tbe.vdiv(data_exp, data_expsum)
-    elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
+    elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend310P") or
             tbe_platform.api_check_support("tik.vgatherb")
        ) and output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         if _is_special_cases(ori_shape):

@@ -84,7 +84,7 @@ def _check_dtype(input_dtype):
     None
     """
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") in (
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
             error_manager_vector.raise_err_specific_reson("mvn", "Hi3796CV300ES is not supported \
@@ -160,7 +160,7 @@ def mvn_compute(x, y, normalize_variance, across_channels,
             y_sqrt = tbe.vsqrt(var)
             y_add = tbe.vadds(y_sqrt, eps)
             res = tbe.vdiv(mean_sub, y_add)
-        elif tbe_platform.get_soc_spec("SOC_VERSION") in (
+        elif tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in (
                 "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             y_sqrt = tbe.vsqrt(var, priority_flag=1)
             y_add = tbe.vadds(y_sqrt, eps)

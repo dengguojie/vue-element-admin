@@ -147,8 +147,7 @@ def asin_compute(x, y, kernel_name="asin"):
         choice_1 = tbe.vsub(choice_1, boundary_mask1)
 
     choice_dtype = choice_1.dtype
-    if choice_dtype != "float16" and tbe_platform.get_soc_spec(
-        "SOC_VERSION") == "Ascend310":
+    if choice_dtype != "float16" and tbe_platform.get_soc_spec("SHORT_SOC_VERSION") == "Ascend310":
         choice_1 = tbe.cast_to(choice_1, "float16")
     choice_1 = tbe.floor(choice_1)
     choice_1 = tbe.cast_to(choice_1, choice_dtype)

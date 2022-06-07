@@ -105,16 +105,16 @@ ut_case.add_case(["Ascend310"], case10)
 def test_vector_core(test_arg):
     import te.platform as tepf
     from impl.batch_multi_class_non_max_suppression import batch_multi_class_non_max_suppression
-    old_soc_version = tepf.get_soc_spec(tepf.SOC_VERSION)
+    old_soc_version = tepf.get_soc_spec("FULL_SOC_VERSION")
     old_aicore_type = tepf.get_soc_spec(tepf.AICORE_TYPE)
-    tepf.te_set_version("Ascend710", "VectorCore")
+    tepf.te_set_version("Ascend310P3", "VectorCore")
     params = get_impl_list(8, 100, 90, 90, 0.5, 0.5, 100, 100, True, True, True)
     batch_multi_class_non_max_suppression(*params)
     params = get_impl_list(8, 40800, 90, 90, 0.5, 0.5, 100, 100, True, True, False)
     batch_multi_class_non_max_suppression(*params, impl_mode="high_precision")
 
     # impl == norm_class
-    tepf.te_set_version("Ascend710")
+    tepf.te_set_version("Ascend310P3")
     params = get_impl_list(8, 1024, 80, 1, 0.01, 0.66, 256, 256, False, False, False)
     batch_multi_class_non_max_suppression(*params, image_size=(2048, 2048), impl_mode="norm_class")
 
@@ -124,5 +124,5 @@ def test_vector_core(test_arg):
 ut_case.add_cust_test_func(test_func=test_vector_core)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend710"])
+    ut_case.run(["Ascend310", "Ascend310P3"])
     exit(0)

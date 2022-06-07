@@ -19,7 +19,7 @@ ascend_anti_quant schedule
 """
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import scope_ubuf
 from ..base.operation import register_schedule

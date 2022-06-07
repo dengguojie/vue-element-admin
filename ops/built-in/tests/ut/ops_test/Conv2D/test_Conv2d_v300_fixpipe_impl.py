@@ -538,7 +538,7 @@ def set_impl_mode():
 
 def run_v300_batch_cases(case_list, is_hf32_flag=False):
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
     with op_context.OpContext():
         for case in case_list:
             if is_hf32_flag:
@@ -551,5 +551,5 @@ def run_v300_cases(test_arg):
     #run_v300_batch_cases(single_conv2d)
 
 print("adding conv2d v300 fixpipe ut")
-ut_case.add_cust_test_func('Ascend320', test_func=run_v300_cases)
-ut_case.run(['Ascend320'])
+ut_case.add_cust_test_func('Ascend310B1', test_func=run_v300_cases)
+ut_case.run(['Ascend310B1'])

@@ -58,8 +58,8 @@ case2 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
 
 def _gen_outputs(input_var, input_m, input_v, input_beta1_power, input_beta2_power, input_lr,
                  input_beta1, input_beta2, input_epsilon, input_grad, dtype, use_locking, use_nesterov):

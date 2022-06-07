@@ -30,4 +30,4 @@ ut_case.add_cust_test_func(test_func=test_conv2d_param_process)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])
+    ut_case.run(["Ascend910A", "Ascend310P3", "Ascend310"])

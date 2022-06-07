@@ -242,8 +242,8 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     softmax["range"] = range_x
     grad_softmax["range"] = range_x
 
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend710", "Ascend910")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
+    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend310P", "Ascend910")
 
     if is_support and is_white_shape(shape_softmax):
         context = tbe_context.op_context.get_context()

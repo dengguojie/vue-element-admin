@@ -120,7 +120,7 @@ def test_get_input_offset_list_001(test_arg):
 def test_get_input_offset_001(test_arg):
     from impl.util.platform_adapter import tik
     from impl.crop import _get_input_offset
-    _get_input_offset((16, 16, 16, 16), (16, 16, 16, 16), [64, 88, 140, 120], 64, 
+    _get_input_offset((16, 16, 16, 16), (16, 16, 16, 16), [64, 88, 140, 120], 64,
                         3, tik.Tik().Scalar(dtype="int32", init_value=0))
 
 def test_get_tail_num_001(test_arg):
@@ -136,14 +136,14 @@ ut_case.add_cust_test_func(test_func=test_get_tail_num_001)
 def test_crop_001(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.crop import crop
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     crop({"shape": (1, 21, 568, 568), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 21, 568, 568), "ori_format": "NCHW"},
          {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
          {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
                     0, [0, 3, 4, 5])
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 ut_case.add_cust_test_func(test_func=test_crop_001)
 
 if __name__ == "__main":
-    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend310P3"])
     exit(0)

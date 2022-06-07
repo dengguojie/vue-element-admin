@@ -23,7 +23,7 @@ from te.utils.error_manager import error_manager_vector
 import te.lang.cce as tbe
 from tbe.dsl.compute.layer_norm_cube import LayerNormCube
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -310,7 +310,7 @@ def _broadcast_nz(tensor, shape):
 def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mode):
     """
     judge case using cube to handle reducesum
-    only supported follow case in Ascend910 and Ascend710:
+    only supported follow case in Ascend910 and Ascend310P:
         ori_shape: ((batch), m, 1024(768)), "shape": ((batch), 64(48), m//16, 16, 16), "dtype": fp16
     """
     def _check_shape_and_dtype():
@@ -320,7 +320,7 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
             return False
         if len(shape_x) not in (4, 5) or shape_x[-4] not in (64, 48):
             return False
-        if "Ascend910" not in get_soc_spec(SOC_VERSION) and "Ascend710" not in get_soc_spec(SOC_VERSION):
+        if "Ascend910" not in get_soc_spec(SHORT_SOC_VERSION) and "Ascend310P" not in get_soc_spec(SHORT_SOC_VERSION):
             return False
         if begin_norm_axis != (len(ori_shape_x) - 1):
             return False

@@ -176,12 +176,12 @@ def test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_may_ta
         return ins == expect_ins
 
 
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_may_tail_may)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_not_tail_not)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_not_tail_may)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_may_tail_not)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_may_tail_may)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_not_tail_not)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_not_tail_may)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_may_tail_not)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_may_tail_may)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_not_tail_not)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_not_tail_may)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_not_cut_batch_may_tail_not)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_may_tail_may)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_not_tail_not)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_not_tail_may)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_func=test_dynamic_softmax_cross_entropy_with_logits_classify_cut_batch_may_tail_not)
 

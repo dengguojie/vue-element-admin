@@ -1274,7 +1274,7 @@ def if_tik_support(input_x, input_gamma, input_beta, output_y, output_mean, outp
         begin_norm_axis += len(input_x["shape"])
     if begin_params_axis < 0:
         begin_params_axis += len(input_x["shape"])
-    soc_version = get_soc_spec(cce_conf.SOC_VERSION)
+    soc_version = get_soc_spec(cce_conf.SHORT_SOC_VERSION)
     aicore_num = get_soc_spec(cce_conf.CORE_NUM)
     max_aicore_num = 32
     if soc_version not in support_version:

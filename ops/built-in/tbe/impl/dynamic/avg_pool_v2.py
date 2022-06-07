@@ -544,7 +544,7 @@ def avg_pool_v2(x, weight, bias, y, ksize, strides, padding="CALCULATED", pads=(
                                                name="mean_matrix_fp16",
                                                tag="elewise_single_cast")
 
-                if "Ascend310" in get_soc_spec("SOC_VERSION"):
+                if get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310",):
                     mean_matrix_rec = tvm.compute(mean_matrix_shape, lambda m, c0:
                                                   1/mean_matrix_fp16(m, c0),
                                                   name="mean_matrix_rec",

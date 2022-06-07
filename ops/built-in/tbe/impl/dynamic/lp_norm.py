@@ -35,7 +35,7 @@ class Constant:
     """
     CONST_INF = 2147483647
     CONST_EPSILON_FP16 = 1e-7
-    CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
+    CCE_PLAT = tbe_platform.get_soc_spec('SHORT_SOC_VERSION')
 
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments

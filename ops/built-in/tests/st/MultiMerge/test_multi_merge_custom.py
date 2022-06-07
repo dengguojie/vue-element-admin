@@ -41,7 +41,7 @@ def reload_check_support():
     """
     reload_check_support to improve cov
     """
-    soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     te_set_version("Ascend910B2", "VectorCore")
     case_2 = add_case((32, 3277584, 4), 1808412, 16, "float16")
     case_3 = add_case((2, 1808432, 4), 1808412, 16, "float16")

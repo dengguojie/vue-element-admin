@@ -199,7 +199,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     length_x_ori = len(shape_x_ori)
     dtype = input_x.get("dtype").lower()
     ori_input_format = input_x.get("ori_format")
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if length_x_ori == 2:
         if shape_x_ori[0] == 1:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -209,7 +209,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16",
                                                         format="NC1HWC0,ND")
-            if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
+            if tbe_product in ("Ascend610", "Ascend615", "Ascend310P",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                         datatype="float16,float16,float",
                                                         format="NC1HWC0,ND,ND")
@@ -231,7 +231,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float16",
                                                         format="FRACTAL_NZ,NC1HWC0,ND")
-            if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
+            if tbe_product in ("Ascend610", "Ascend615", "Ascend310P",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                         datatype="float16,float16,float16,float",
                                                         format="FRACTAL_NZ,NC1HWC0,ND,ND")
@@ -253,7 +253,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16",
                                                     format="NC1HWC0,NDC1HWC0,ND")
-        if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
+        if tbe_product in ("Ascend610", "Ascend615", "Ascend310P",):
             if _is_special_cases(shape_x_ori, 0):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16",
@@ -336,7 +336,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16,float16",
                                                     format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
-        if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
+        if tbe_product in ("Ascend610", "Ascend615", "Ascend310P",):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float,float16,float16,float,float16",
                                                    format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
@@ -387,8 +387,8 @@ def is_white_shape(shape):
 
 
 def _is_special_cases(input_shape, compare_type):
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if tbe_product not in ("Ascend610", "Ascend615", "Ascend710",):
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
+    if tbe_product not in ("Ascend610", "Ascend615", "Ascend310P",):
         return False
     white_list_shape = [[8, 8732, 81], [16, 8732, 81], [96, 50, 50],
                         [192, 50, 50], [384, 50, 50], [768, 50, 50],
@@ -496,7 +496,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
         has_improve_precision = True
     data_exp = te.lang.cce.vexp(data_subtrac)
 
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if data_exp.dtype == "float16" and tbe_product in ("Ascend310",):
         data_exp = te.lang.cce.cast_to(data_exp, "float32")
         has_improve_precision = True
@@ -510,7 +510,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
             data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
             data_expsum = _broadcast_nz(data_expsum, shape)
             output = te.lang.cce.vmul(data_exp, data_expsum)
-    elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
+    elif (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend310P") or
           tbe_platform.api_check_support("tik.vgatherb")) and \
             output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
@@ -905,7 +905,7 @@ def check_isusefp32(shape, dtype):
     if dtype == "float32":
         use_fp32 = True
         return use_fp32
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         use_fp32 = False
         return use_fp32
@@ -923,7 +923,7 @@ def check_nz_isusefp32(shape, dtype):
     if dtype == "float32":
         use_fp32 = True
         return use_fp32
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         use_fp32 = False
         return use_fp32
@@ -2599,7 +2599,7 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
         in_shape = list(in_shape)
         in_shape = [in_shape[0] * in_shape[1]] + in_shape[2:]
     return_list = [in_shape, in_dtype, pad_flag, pad_param]
-    
+
     return return_list
 
 
@@ -2763,7 +2763,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                 if axis[0] >= 0:
                     axis[0] = axis[0] + 1
 
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     use_dynamic = True
     if input_format in ("NDC1HWC0",) and input_x.get("dtype").lower() == "float32":
         use_dynamic = False

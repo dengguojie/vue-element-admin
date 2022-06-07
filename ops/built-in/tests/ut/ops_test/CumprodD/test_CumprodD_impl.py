@@ -22,27 +22,27 @@ ut_case = OpUT("CumprodD", "impl.cumprod_d", "cumprod_d")
 def test_get_op_support_info(test_arg):
     from impl.cum_computer import get_computer_by_ctype
     from impl.cumprod_d import get_op_support_info
-    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"})
 
 def test_get_op_support_info2(test_arg):
     from impl.cum_computer import get_computer_by_ctype
     from impl.cumprod_d import get_op_support_info
-    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
                         axis=1)
 
 def test_get_op_support_info3(test_arg):
     from impl.cum_computer import get_computer_by_ctype
     from impl.cumprod_d import get_op_support_info
-    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
                         axis=-1)
 
 def test_get_op_support_info4(test_arg):
     from impl.cum_computer import get_computer_by_ctype
     from impl.cumprod_d import get_op_support_info
-    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 80, 2, 32),"ori_format": "NCHW"}, 
+    get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 80, 2, 32),"ori_format": "NCHW"},
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 80, 2, 32),"ori_format": "NCHW"})
 
 case1 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"}, #x
@@ -151,19 +151,19 @@ ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info2)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info3)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case11)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case12)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case13)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case8)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case9)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case10)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case11)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case12)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case13)
 
 def calc_expect_func(x, y, axis, exclusive, reverse):
     shape = x['shape']

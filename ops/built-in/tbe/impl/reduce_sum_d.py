@@ -58,7 +58,7 @@ def reduce_sum_d_compute(x, y, axis, keepdims, kernel_name="reduce_sum_d", is_5h
         axis = list(axis)
 
     dtype = x.dtype
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.sum", "float32") and \

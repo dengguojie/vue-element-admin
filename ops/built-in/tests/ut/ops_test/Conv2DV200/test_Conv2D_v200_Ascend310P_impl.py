@@ -62,14 +62,14 @@ def test_conv2d_v200(test_arg):
             # 41 :（5）Conv2d+AscendDequant+LeakyReLU+Eltwise+AscendQuant
             # 42 :（6）conv2d+AscendDequant+LeakyRelu+AscendQuant
 
-            "conv_v200_bias_1_flow_21": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 21, 1, 0, 0),
-            "conv_v200_bias_1_flow_22": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 22, 1, 0, 0),
-            "conv_v200_bias_1_flow_23": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 23, 1, 0, 0),
+            "conv_v200_bias_1_flow_21": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 21, 1, 0, 0),
+            "conv_v200_bias_1_flow_22": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 22, 1, 0, 0),
+            "conv_v200_bias_1_flow_23": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 23, 1, 0, 0),
             "conv_v200_bias_1_flow_24": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 24, 1, 0, 0),
-            "conv_v200_bias_1_flow_25": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 25, 1, 0, 0),
+            "conv_v200_bias_1_flow_25": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 25, 1, 0, 0),
             "conv_v200_bias_1_flow_60": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 60, 1, 0, 0),
             "conv_v200_bias_1_flow_61": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 61, 1, 0, 0),
-            "conv_v200_bias_1_flow_62": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 1, 0, 0),
+            "conv_v200_bias_1_flow_62": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 1, 0, 0),
             "conv_v200_bias_0_flow_60": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 60, 0, 0, 0),
             "conv_v200_bias_0_flow_61": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 61, 0, 0, 0),
             "conv_v200_bias_0_flow_62": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 62, 0, 0, 0),
@@ -82,11 +82,9 @@ def test_conv2d_v200(test_arg):
                 (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 0, 1, 0, 1),
             # relu
             "conv_v200_quant_bias_1_flow_6": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 6, 1, 0, 0),
-            "conv_v200_quant_bias_1_flow_6_dma": ((1, 32, 10, 4098), (32, 32, 1, 257), [0, 0, 0, 0], [1, 1, 1, 1], 6, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_30": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 30, 1, 0, 1),
             "conv_v200_quant_bias_1_flow_31": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 31, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_34": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 34, 1, 0, 0),
-            "conv_v200_quant_bias_1_flow_34_dma": ((1, 32, 10, 4098), (32, 32, 1, 257), [0, 0, 0, 0], [1, 1, 1, 1], 34, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_35": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 35, 1, 0, 0),
             "conv_v200_quant_bias_1_flow_36": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 36, 1, 0, 1),
             "conv_v200_quant_bias_1_flow_33": ((1, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 33, 1, 0, 0),
@@ -462,6 +460,7 @@ def test_conv2d_v200(test_arg):
                     data_flow_fution_type_map_bias_false["unknown"])
             assert auto_sch_res.fusion_type == fution_type
 
+
         return sch, tensor_list
 
 
@@ -469,7 +468,6 @@ def test_conv2d_v200(test_arg):
         data_flow, bias_flag, relu_flag, vector_flag, kernel_name):
         from te.platform.cce_policy import disableL2
         disableL2()
-
         block_size_k = 32
         block_size_n = 16
         batch, channel, height, weight = fm_shape
@@ -515,7 +513,7 @@ def test_conv2d_v200(test_arg):
         if version == "v100":
             ddk_info = "Ascend310"
         else:
-            ddk_info = "Ascend710"
+            ddk_info = "Ascend310P3"
 
         cce_conf.cce_conf.te_set_version(ddk_info)
 
@@ -524,10 +522,10 @@ def test_conv2d_v200(test_arg):
     """
     print("---------------------------------------------------")
     set_ddk_version("v200")
-    print("[ UNITTEST START conv2d v200 ddk is Ascend710]")
+    print("[ UNITTEST START conv2d v200 ddk is Ascend310P3]")
 
     run_testcase()
     set_ddk_version("v100")
 
-print("adding Conv2D v200 Ascend710 ut testcases")
+print("adding Conv2D v200 Ascend310P3 ut testcases")
 ut_case.add_cust_test_func(test_func=test_conv2d_v200)

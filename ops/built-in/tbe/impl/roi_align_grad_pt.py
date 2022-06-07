@@ -137,7 +137,7 @@ def get_soc():
     get soc_version
     :return:
     """
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     return soc_version
 
 

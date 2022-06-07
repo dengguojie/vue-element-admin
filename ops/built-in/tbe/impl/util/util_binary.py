@@ -80,7 +80,7 @@ def get_module_name(op_type, soc_version_lower=None, opp_path=None):
     get_module_name
     """
     if soc_version_lower is None:
-        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         soc_version_lower = soc_version.lower()
     op_json_file_name = "aic-{0}-ops-info.json".format(soc_version_lower)
     if opp_path is None:
@@ -140,7 +140,7 @@ class BinaryMatchBase:
             # mean the binary case is init, return directly
             return
         opp_path = Path(os.environ.get(_ASCEND_OPP_PATH_ENV, _ASCEND_OPP_PATH_DEFAULT))
-        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         soc_version_lower = soc_version.lower()
         if self.json_name is None:
             # will get file name from op ini file: aic-{soc_version_lower}-ops-info.json

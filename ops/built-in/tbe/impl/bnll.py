@@ -105,7 +105,7 @@ def bnll(input_x, output_y, kernel_name="bnll"):
 
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
-    product = tbe_platform.get_soc_spec("SOC_VERSION")
+    product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if product in ["Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"] and \
         input_dtype == "float32":
         error_manager_vector.raise_err_input_dtype_not_supported("bnll", "input_x", "float16", input_dtype)

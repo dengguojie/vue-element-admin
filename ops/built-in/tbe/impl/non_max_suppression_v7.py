@@ -38,7 +38,7 @@ MIN_SCALAR_FP16 = 2 ** (-24)
 TMP_SCALAR_FP16 = 2 ** 12
 # output ub limit
 OUTPUT_UB_LIMIT = 51200
-# coordinate scaling 
+# coordinate scaling
 COORDINATE_SCALING = 0.001
 
 
@@ -74,7 +74,7 @@ class NonMaxSuppression():
         self.input_gm_list = []
         self.output_gm_list = []
         # for soc
-        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.is_lhisi = True
         else:
@@ -1382,7 +1382,7 @@ def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
                                                0, 1, burst_lens_gm, 0, 0)
                     with tik_instance.else_scope():
                         # if even
-                        with tik_instance.if_scope(burst_lens_gm != 0): 
+                        with tik_instance.if_scope(burst_lens_gm != 0):
                             tik_instance.data_move(nms.gm_nms_result[global_cnt * 8 + class_offset],
                                                 nmsed_result_index_ub[global_cnt * 8],
                                                 0, 1, burst_lens_gm, 0, 0)

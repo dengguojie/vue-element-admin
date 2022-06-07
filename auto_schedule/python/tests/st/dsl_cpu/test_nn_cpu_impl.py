@@ -105,7 +105,7 @@ def test_vaddrelu_cpu_api(soc):
     input1 = tvm.placeholder((n,), dtype="float16", name="input1")
     input2 = tvm.placeholder((n,), dtype="float16", name="input2")
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     output = tbe.vaddrelu(input1, input2)
     sch = tvm.create_schedule(output.op)
     func_vaddrelu = tvm.build(sch, [input1, input2, output], "c", "llvm", name="func_vaddrelu")
@@ -167,7 +167,7 @@ def test_vsubrelu_cpu_api(soc):
     input1 = tvm.placeholder((n,), dtype="float16", name="input1")
     input2 = tvm.placeholder((n,), dtype="float16", name="input2")
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     output = tbe.vsubrelu(input1, input2)
     sch = tvm.create_schedule(output.op)
     func_vsubrelu = tvm.build(sch, [input1, input2, output], "c", "llvm", name="func_vsubrelu")
@@ -303,7 +303,7 @@ def test_vlrelu_cpu_api(soc):
         n = 10000
         input1 = tvm.placeholder((n,), dtype="float16", name="input1")
         from te.platform.cce_conf import te_set_version
-        te_set_version("Ascend710")
+        te_set_version("Ascend310P3")
         output = tbe.vlrelu(input1)
         sch = tvm.create_schedule(output.op)
         func_vlrelu = tvm.build(sch, [input1, output], "c", "llvm", name="func_vlrelu")

@@ -206,7 +206,7 @@ def test_conv2d_v200(test_arg):
         if version == "v100":
             ddk_info = "Ascend310"
         else:
-            ddk_info = "Ascend710"
+            ddk_info = "Ascend310P3"
         cce_conf.cce_conf.te_set_version(ddk_info)
 
     """

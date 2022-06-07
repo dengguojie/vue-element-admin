@@ -70,13 +70,13 @@ case6 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (
 case7 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
                              "tanh", "hard_sigmoid", "ijfo", True, "success", "dynamic_rnn_7")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
+ut_case.add_case(["Ascend910A"], case7)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

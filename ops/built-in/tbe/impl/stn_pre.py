@@ -88,7 +88,7 @@ class SpatialTransformer:
         self.use_default_theta = use_default_theta
 
         self.tik_instance = tik.Tik(tik.Dprofile())
-        self.soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self.calc_by_fp16 = self.soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
         self.ai_core_num = tik.Dprofile().get_aicore_num()
 

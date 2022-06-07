@@ -97,7 +97,7 @@ def unsorted_segment_max_d(x, segment_ids, y, num_segments, kernel_name="unsorte
     x: dict
         shape and dtype of input.
         dtype only support float16, float32, int32
-        on Ascend710, dtype also support int16
+        on Ascend310P, dtype also support int16
 
     segment_ids : dict
         should be the size of the first dimension

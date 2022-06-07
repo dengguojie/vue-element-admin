@@ -96,13 +96,13 @@ case7 = {"params": [{"shape": (1, 3, 7), "dtype": "float16", "format": "NCHW", "
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
 
 def calc_expect_func(dy, x, variance, mean, gamma, res_x, res_gamma, res_beta):
     data_dy_ori = dy['value']
@@ -174,13 +174,13 @@ def calc_expect_func(dy, x, variance, mean, gamma, res_x, res_gamma, res_beta):
 
     pd_x = pd_xl * np.power((data_variance + EPSLON), (-0.5)) + pd_var * (2.0 / m) * (
             data_x - data_mean) + pd_mean * (1.0 / m)
-    
+
     # pd_gamma = np.sum((data_dy * (data_x - data_mean) * np.power((data_variance + EPSLON), (-0.5))),
     #                   param_axis, keepdims=True)
     # pd_beta = np.sum(data_dy, param_axis, keepdims=True)
     pd_beta = data_dy
     pd_gamma = data_dy * (data_x - data_mean) * np.power((data_variance + EPSLON), (-0.5))
-    
+
     pd_x_res = pd_x.astype(dst_type)
     pd_gamma_res = pd_gamma.astype(dst_type)
     pd_beta_res = pd_beta.astype(dst_type)

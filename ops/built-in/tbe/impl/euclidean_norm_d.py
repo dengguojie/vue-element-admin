@@ -60,7 +60,7 @@ def euclidean_norm_d_compute(x,
     """
     dtype = x.dtype.lower()
     shape = x.shape
-    product = get_soc_spec("SOC_VERSION")
+    product = get_soc_spec("SHORT_SOC_VERSION")
     if product != "Ascend310" and dtype != "float32":
         x = te.lang.cce.cast_to(x, "float32")
     one_flag = []

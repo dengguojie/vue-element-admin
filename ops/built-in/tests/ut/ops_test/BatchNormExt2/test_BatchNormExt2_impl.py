@@ -30,7 +30,7 @@ def gen_batch_norm_ext2_case(shape_x, shape_scale, shape_offset, shape_mean, sha
         "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"],
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"],
                  gen_batch_norm_ext2_case((10, 20, 30, 40), (40,), (40,), (40,), (40,), "float32",
                                           "float32", "NHWC", "batch_norm_ext2_1", "success"))
 

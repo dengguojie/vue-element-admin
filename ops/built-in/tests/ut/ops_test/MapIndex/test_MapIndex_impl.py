@@ -17,7 +17,7 @@ def gen_static_aipp_case(x_shape, data_seq_shape, y_shape,
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend310", "Ascend310P3"],
                  gen_static_aipp_case([1], [100], [8],
                                       "int32", "ND", "mapindex_1", "success"))
 

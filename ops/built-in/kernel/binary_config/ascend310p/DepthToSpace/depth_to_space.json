@@ -1,0 +1,885 @@
+{
+  "op_type": "DepthToSpace",
+  "op_list": [
+    {
+      "bin_filename": "DepthToSpace_dc111f2dd74b3530ad573b690af2effd",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_e0c4d4020322fa57b9d19925bf739665",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_d55b412ec11b4822cc48b39a100c623a",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_764b4904d4127f4e8edbfaedf405fe92",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_340b6610fbf5b2e2833a061d2db451e6",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_a8d52cb6e7e5c762e63d03bf8c7abd74",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_77d6c4a2bb6c5e98cc9c7bb9355e9457",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_87938583ffa806dcf7442162a82aa067",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_e95c7048a5e6d6d268c1b78638ded570",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_41068af3c8ae4b89c4778aab402ba54b",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_76716c143755fea1dfa46602bb6e0341",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_571928ef0e6f32d26534b771c94653bc",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_c042b236563bcc74005f49fa9d5ac06b",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_fc8c088de66c5e4a622d0df6d6627e7e",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_f56b7b1b3598922d63ac577f54258e74",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_6b32712d646843c38cd3f55e7b39ecef",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_104ae8e9c267def4de07ba211ebf159d",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_2c3ecd7c7fa1b4710ea2e430035512e5",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_519c86f875f99a2e64207a692af7745c",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "CRD"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "DepthToSpace_f30981daef93fd606f61d919b7f6bf19",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "block_size",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "mode",
+          "dtype": "string",
+          "value": "DCR"
+        },
+        {
+          "name": "data_format",
+          "dtype": "string",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

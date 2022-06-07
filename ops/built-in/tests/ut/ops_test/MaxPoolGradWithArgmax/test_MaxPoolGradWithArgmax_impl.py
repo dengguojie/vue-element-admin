@@ -150,19 +150,19 @@ case13 = {"params": [{"shape": (2,1,400,384,16), "dtype": "float16", "format": "
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend710", "Ascend910A"], case10)
-ut_case.add_case(["Ascend710", "Ascend910A"], case11)
-ut_case.add_case(["Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case13)
 from impl.max_pool_grad_with_argmax import check_supported
 
 # pylint: disable=unused-argument,unused-variable

@@ -77,7 +77,7 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
         format_scale_hisi = "NC1HWC0,ND"
         format_bias_hisi = "NC1HWC0,ND"
 
-    product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if length_x_ori == 4:
         # NC1HWC0+ND
         if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -243,7 +243,7 @@ def _check_dtype(input_dtype, name):
     None
     """
 
-    product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if product_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
             rule_desc = "float32 is not support in HISI"
@@ -412,7 +412,7 @@ def _fused_scale_compute(x, scale):
     dtype_scale = scale.dtype
 
     is_cast = False
-    product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if dtype_x == "float16":
@@ -457,7 +457,7 @@ def _fused_scale_bias_compute(x, scale, bias):
     dtype_bias = bias.dtype
 
     is_cast = False
-    product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if dtype_x == "float16":

@@ -47,7 +47,7 @@ ut_case.add_case("Ascend310",
                      "psroipooling_02", RuntimeError))
 
 # invalid dtype 3
-ut_case.add_case("Ascend710",
+ut_case.add_case("Ascend310P3",
                  gen_psroipooling_case(
                      {"shape": (1, 2*3*3, 14, 14, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (1, 2*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -191,7 +191,7 @@ ut_case.add_case("all",
                      "psroipooling_14", "success"))
 
 # normal shape 5, and fp32
-ut_case.add_case("Ascend710",
+ut_case.add_case("Ascend310P3",
                  gen_psroipooling_case(
                      {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -203,7 +203,7 @@ ut_case.add_case("Ascend710",
                      "psroipooling_15", "success"))
 
 # normal shape 6, and fp32
-ut_case.add_case("Ascend710",
+ut_case.add_case("Ascend310P3",
                  gen_psroipooling_case(
                      {"shape": (3, 2*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (3, 2*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -264,5 +264,5 @@ ut_case.add_case("Hi3796CV300CS",
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend710", "Hi3796CV300CS"])
+    ut_case.run(["Ascend310", "Ascend310P3", "Hi3796CV300CS"])
     exit(0)

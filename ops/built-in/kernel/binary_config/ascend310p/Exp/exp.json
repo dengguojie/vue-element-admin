@@ -1,0 +1,97 @@
+{
+  "op_type": "Exp",
+  "op_list": [
+    {
+      "bin_filename": "Exp_021c04a41209e4be23f708d031ffad31",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "base",
+          "dtype": "float",
+          "value": -1.0
+        },
+        {
+          "name": "scale",
+          "dtype": "float",
+          "value": 1.0
+        },
+        {
+          "name": "shift",
+          "dtype": "float",
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "bin_filename": "Exp_a8527d1416fd434d3e07ce502c2544ab",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "format_match_mode": "FormatAgnostic"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "base",
+          "dtype": "float",
+          "value": -1.0
+        },
+        {
+          "name": "scale",
+          "dtype": "float",
+          "value": 1.0
+        },
+        {
+          "name": "shift",
+          "dtype": "float",
+          "value": 0.0
+        }
+      ]
+    }
+  ]
+}

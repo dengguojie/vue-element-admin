@@ -131,7 +131,7 @@ def cosine_embedding_loss_compute(x1, x2, target, output_y, x_shape_broadcat,
     -------
     res: TVM tensor
     """
-    cce_plat = cceconf.get_soc_spec('SOC_VERSION')
+    cce_plat = cceconf.get_soc_spec('SHORT_SOC_VERSION')
     cast_dtype = 'float32'
     epsilon = tvm.const(1e-12, dtype="float32")
 

@@ -145,7 +145,7 @@ def test_conv2d_pooling(test_arg):
         from te.platform.cce_policy import disableL2
         disableL2()
         smalle_channel_flag = False
-        if cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310"):
+        if cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310",):
             platform = "mini"
         else:
             platform = "not_mini"

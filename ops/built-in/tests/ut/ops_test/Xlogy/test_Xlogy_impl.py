@@ -23,9 +23,9 @@ ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16", "float32"], (1, 51
 ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16", "float32"], (1, 16, 512, 512), (1, 1, 512, 512))
 ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16", "float32"], (9973, 1), (9973, 1))
 ut_case.add_broadcast_case_simple(["Ascend910A"], ["float16", "float32"], (1024, 1024, 256), (1024, 1024, 256))
-ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend710"], ["float16", "float32"], (11, 33), (11, 33))
-ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend710"], ["float16", "float32"], (10, 12), (10, 11), expect=RuntimeError)
-ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend710"], ["float16", "float32"], (10, 13), (10, 11, 12), expect=RuntimeError)
+ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend310P3"], ["float16", "float32"], (11, 33), (11, 33))
+ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend310P3"], ["float16", "float32"], (10, 12), (10, 11), expect=RuntimeError)
+ut_case.add_broadcast_case_simple(["Ascend910A","Ascend310","Ascend310P3"], ["float16", "float32"], (10, 13), (10, 11, 12), expect=RuntimeError)
 
 # ============ auto gen ["Ascend910"] test cases end =================
 def calc_expect_func(inputA, inputB, output):
@@ -56,5 +56,5 @@ ut_case.add_precision_case("Ascend910A",precision_case1)
 ut_case.add_precision_case("Ascend910A",precision_case2)
 ut_case.add_precision_case("Ascend910A",precision_case3)
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend310P3"])
     exit(0)

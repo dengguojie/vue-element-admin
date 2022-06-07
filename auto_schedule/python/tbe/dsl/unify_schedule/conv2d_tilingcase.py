@@ -183,7 +183,7 @@ def get_hardware_info():
         "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
         "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
         "cube_bandwidth": 0, "vector_bandwidth": 0}
-    platform_info_dict["Ascend320"] = {
+    platform_info_dict["Ascend310B1"] = {
         "ddr_read_rate": 17, "ddr_write_rate": 17,
         "l2_rate": 256, "l2_read_rate": 256,
         "l2_write_rate": 128, "l1_to_l0_a_rate": 512,
@@ -207,7 +207,7 @@ def get_hardware_info():
         "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 114,
         "ub_to_ddr_rate": 17, "ub_to_l1_rate": 256,
         "cube_bandwidth": 0, "vector_bandwidth": 0}
-    platform_info_dict["Ascend710"] = {
+    platform_info_dict["Ascend310P3"] = {
         "ddr_read_rate": 17, "ddr_write_rate": 17,
         "l2_rate": 114, "l2_read_rate": 114,
         "l2_write_rate": 114, "l1_to_l0_a_rate": 512,
@@ -215,7 +215,7 @@ def get_hardware_info():
         "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 114,
         "ub_to_ddr_rate": 17, "ub_to_l1_rate": 256,
         "cube_bandwidth": 0, "vector_bandwidth": 0}
-    platform_info_dict["Ascend710Pro"] = {
+    platform_info_dict["Ascend310P1"] = {
         "ddr_read_rate": 17, "ddr_write_rate": 17,
         "l2_rate": 114, "l2_read_rate": 114,
         "l2_write_rate": 114, "l1_to_l0_a_rate": 512,

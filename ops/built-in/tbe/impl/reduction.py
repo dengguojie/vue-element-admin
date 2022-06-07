@@ -56,7 +56,7 @@ def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_n
     if len(input_ori_shape) < 4:
         is_support_5hd = False
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = ["float16"]
     else:
         dtype_base = ["float16", "float32"]
@@ -149,7 +149,7 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     -------
     None
     """
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     # input_x's shape check
     ori_shape = list(input_x.get("ori_shape"))

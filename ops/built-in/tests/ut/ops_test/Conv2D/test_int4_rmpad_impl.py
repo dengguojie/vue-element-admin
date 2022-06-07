@@ -41,10 +41,10 @@ def test_conv2d_int4(test_arg):
                         bias_flag, relu_flag, vector_flag, stride_swrite,
                         quant_scale=1, quant_offset=0,
                         kernel_name="conv_rmpad", invalid_data_rm_flag=False):
-        
+
         Ni, Ci, Hi, Wi = shape_in
         Co, _, Hk, Wk = shape_w
-        
+
         if dataflow in (0, 1, 9):
             Ci1 = (Ci + 15) // 16
             Ci0 = 16
@@ -57,10 +57,10 @@ def test_conv2d_int4(test_arg):
 
         if dataflow in (2, 3, 4, 11, 12):
             Co = ((Co + 31) // 32)*32
-        
+
         if dataflow in (5, 7, 8, 9, 13, 14):
             Co = ((Co + 63) // 64)*64
-        
+
         Co1 = (Co + 15) // 16
         Co0 = 16
 
@@ -116,7 +116,7 @@ def test_conv2d_int4(test_arg):
             with tvm.target.cce():
                 if fm_addr_type:
                     load_to_l1({"shape": shape_in_5HD, "dtype": in_dtype_map[dataflow]}, None, kernel_name=kernel_name + "_fm_l1")
-                
+
                 fm = tvm.placeholder(shape_in_5HD, name='fmap', dtype=in_dtype_map[dataflow],
                                     attrs={'ori_format': 'NCHW', 'addr_type': fm_addr_type,
                                             'valid_shape': fm_valid_shape, 'slice_offset': fm_offset,
@@ -124,10 +124,10 @@ def test_conv2d_int4(test_arg):
                 if strided_read_flag:
                     fm_ori = fm
                     fm = strided_read_compute(fm_ori, {"shape": shape_in_5HD}, 1, 0, "strided_read")
-                
+
                 filter_w = tvm.placeholder(shape_w_fracz, name='filter_w', dtype=in_dtype_map[dataflow],
                                         attrs={'ori_shape': shape_w, 'ori_format': 'NCHW'})
-                
+
                 if bias_flag:
                     bias_tensor = tvm.placeholder((Co1*Co0, ), name='bias_tensor', dtype=bias_dtype_map[dataflow])
                 else:
@@ -137,7 +137,7 @@ def test_conv2d_int4(test_arg):
                 if dataflow in (2, 3, 4, 5, 7, 8, 11, 12, 13, 14):
                     vdeq = tvm.placeholder(shape_scale, name='vreq_reg', dtype=dequant_scale_dtype_map[version],
                                         attrs={'ori_shape': [Co1*Co0 if vector_flag else 1]})
-                
+
                 if dataflow == 5:
                     # conv + dequant + relu6
                     dequant = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
@@ -146,15 +146,15 @@ def test_conv2d_int4(test_arg):
                     # out = leaky_relu_compute(dequant, None)
                     if ws_fp16_valid_shape:
                         out = write_select_compute(out, {"valid_shape": ws_fp16_valid_shape})
-                    
+
                     if l1fusion_stride_swrite:
                         y = {"shape": tuple(i.value for i in out.shape)}
                         out = strided_write_compute(out, y, 1, l1fusion_stride_swrite, "strided_write")
-                    
+
                     if stride_swrite: # for stridedwrite in no L1fusion
                         y = {"shape": tuple(i.value for i in out.shape)}
                         out = strided_write_compute(out, y, 1, stride_swrite, "strided_write")
-                    
+
                     if invalid_data_rm_flag:
                         out = conv2d_data_rm_compute(out)
                     out.op.attrs["addr_type"] = out_addr_type
@@ -165,9 +165,9 @@ def test_conv2d_int4(test_arg):
                         tensor_list = [fm, filter_w, bias_tensor, vdeq, out]
                     else:
                         tensor_list = [fm, filter_w, vdeq, out]
-                    
+
                 sch = generic.auto_schedule(out)
-            
+
         config = {
             "print_ir": False,
             "need_build": True,
@@ -190,7 +190,7 @@ def test_conv2d_int4(test_arg):
 
             if i[0] in (1, 3, 4, 6, 7, 8, 11, 12, 13, 14):
                 kernel_name += "_sc_" + str(quant_scale) + "_of_" + str(quant_offset)
-            
+
             kernel_name += "_dic"
 
             for key, item  in l1fusion_dict.items():
@@ -239,11 +239,11 @@ def test_conv2d_int4(test_arg):
 
         def test_cce_conv_rmpad(self):
             if tc.rmpad_testcase["v200"]["st"]:
-                cceconf.te_set_version('Ascend710')
+                cceconf.te_set_version('Ascend310P3')
                 run_testcase("v200", tc.rmpad_testcase["v200"]["st"])
 
     from te import platform as cce_conf
-    cce_conf.te_set_version("Ascend710")
+    cce_conf.te_set_version("Ascend310P3")
     run_testcase("v200", tc.rmpad_testcase["v200"]["st"])
     cce_conf.te_set_version("Ascend310")
 

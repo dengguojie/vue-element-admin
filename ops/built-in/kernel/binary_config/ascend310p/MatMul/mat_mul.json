@@ -1,0 +1,1045 @@
+{
+  "op_type": "MatMul",
+  "op_list": [
+    {
+      "bin_filename": "MatMul_ND_NZ_FP16_FP32_true_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_NZ_FP16_FP32_false_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_NZ_FP16_FP32_false_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_NZ_FP16_FP32_true_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_ND_FP16_FP16_true_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_ND_FP16_FP16_false_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_ND_FP16_FP16_false_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_ND_ND_FP16_FP16_true_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP32_true_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP32_false_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP32_false_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP32_true_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP16_true_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP16_false_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP16_false_true",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "MatMul_NZ_NZ_FP16_FP16_true_false",
+      "inputs": [
+        {
+          "name": "x1",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        {
+          "name": "x2",
+          "index": 1,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "shape": [
+            -2
+          ],
+          "ori_shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "adj_x1",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "adj_x2",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "offset_x",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

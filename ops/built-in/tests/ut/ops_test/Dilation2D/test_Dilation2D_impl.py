@@ -119,20 +119,20 @@ case14= {"params": [{"shape": (1,1,3,3,16), "dtype": "float16", "format": "NC1HW
          "expect": "failed",
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case12)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case13)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case14)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case10)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case11)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case12)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case13)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case14)
 
 
 def nhwc_data4Dto5D(inputData, channel0=16):

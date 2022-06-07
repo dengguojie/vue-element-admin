@@ -317,9 +317,9 @@ def check_supported(x, roi, scales, sizes, y, coordinate_transformation_mode="ha
 
 
 def check_soc_version_support(soc_version):
-    soc_support_fp32 = ("Ascend310", "Ascend320",
+    soc_support_fp32 = ("Ascend310", "Ascend310B",
                         "Ascend610", "Ascend615",
-                        "Ascend710", "Ascend910",
+                        "Ascend310P", "Ascend910",
                         "Ascend910B")
     for version_support in soc_support_fp32:
         if soc_version == version_support:
@@ -334,7 +334,7 @@ def op_select_format(x, roi, scales, sizes, y, coordinate_transformation_mode="h
     """
     op_select_format for resize, when dimensions of x is 4, support NC1HWC0, is 5, support NDC1HWC0.
     """
-    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
     if check_soc_version_support(soc_version):
         x_shape = x.get("ori_shape")
         support_format = ["NC1HWC0", "NC1HWC0", "NC1HWC0", "NC1HWC0"]

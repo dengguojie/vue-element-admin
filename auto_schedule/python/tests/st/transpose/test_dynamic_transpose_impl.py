@@ -176,20 +176,20 @@ case13 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend710"], case0)
-ut_case.add_case(["Ascend910A", "Ascend710"], case1)
-ut_case.add_case(["Ascend910A", "Ascend710"], case2)
-ut_case.add_case(["Ascend910A", "Ascend710"], case3)
-ut_case.add_case(["Ascend910A", "Ascend710"], case4)
-ut_case.add_case(["Ascend910A", "Ascend710"], case5)
-ut_case.add_case(["Ascend910A", "Ascend710"], case6)
-ut_case.add_case(["Ascend910A", "Ascend710"], case7)
-ut_case.add_case(["Ascend910A", "Ascend710"], case8)
-ut_case.add_case(["Ascend910A", "Ascend710"], case9)
-ut_case.add_case(["Ascend910A", "Ascend710"], case10)
-ut_case.add_case(["Ascend910A", "Ascend710"], case11)
-ut_case.add_case(["Ascend910A", "Ascend710"], case12)
-ut_case.add_case(["Ascend910A", "Ascend710"], case13)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case0)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case4)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case5)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case6)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case7)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case8)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case9)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case10)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case11)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case12)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case13)
 
 
 if __name__ == '__main__':

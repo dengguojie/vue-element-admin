@@ -160,7 +160,7 @@ def test_op_select_format(_):
                     {"shape": [1, 1, 6, 6, 6], "ori_shape": [1, 1, 6, 6, 6]})
     mode_name_all = ("nearest", "linear")
     roi, scales, sizes = None, None, None
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     for soc, input_x, output_y, mode_name in zip(soc_version_all, input_x_all, output_y_all, mode_name_all):
         cce_conf.te_set_version(soc)
         check_supported(input_x, roi, scales, sizes, output_y, mode=mode_name)

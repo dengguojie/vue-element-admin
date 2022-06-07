@@ -132,7 +132,7 @@ class PadV3Init:
         self.paddings_dtype = paddings.get('dtype')
         self.constant_values = constant_values
         # MDC 610 compute grouping avoiding patch DTS:2022022105256
-        self.version_info = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.version_info = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self.kernel_name = kernel_name
         self.input_gm = None
         self.output_gm = None

@@ -544,7 +544,7 @@ def layer_norm_compute(input_x,
     normalize_sub = variance_sub
 
     # DSL description of the normalize calculation process
-    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
     if (impl_mode == "high_performance" and is_support_vexp) or cur_cce_product in (tbe_platform.ASCEND_910,):
         epsilon = get_attr_by_cls(epsilon, LayerNormAttrInfo.ATTR_EPSILON, cast_dtype)
         variance_normalize_broadcast = tbe.broadcast(variance, shape_x)

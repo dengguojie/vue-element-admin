@@ -5,7 +5,7 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("conv_schedule", "conv_schedule.test_static_conv_schedule_impl")
 
 
-def run_v300_conv2d_compress():
+def run_v300_conv2d_compress(test_arg):
     Ci0_dict = {
         "float32": 8,
         "float16": 16,
@@ -117,7 +117,7 @@ def run_v300_conv2d_compress():
     v300_cases = [
         ("conv2d", "conv2d", "int8", (1, 3, 17, 17), (64, 3, 7, 7), (3, 3, 3, 3), (1, 1), 1, 1, False, 0, 0, 0)
     ]
-    set_current_compile_soc_info("Ascend320")
+    set_current_compile_soc_info("Ascend310B1")
     with op_context.OpContext():
         for case in v300_cases:
             print("=" * 150)
@@ -132,5 +132,5 @@ ut_case.add_cust_test_func(test_func=run_v300_conv2d_compress)
 
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=run_v300_conv2d_compress)
-    ut_case.run("Ascend320")
+    ut_case.run("Ascend310B1")
     exit(0)

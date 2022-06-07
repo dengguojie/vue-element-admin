@@ -472,7 +472,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
     def aipp_ir(input_buf, param_buf, output_buf):
         ib = tvm.ir_builder.create()
-        cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
         device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         batch_num = n

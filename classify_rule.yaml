@@ -517,6 +517,8 @@ cube:
       - auto_schedule/python/tbe/dsl/boost_schedule_kit/schedule_agent.py
       - auto_schedule/python/tbe/dsl/boost_schedule_kit/__init__.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_filter_compute.py
+      - auto_schedule/python/lang/cce/te_compute/cube_util.py
+      - auto_schedule/python/tbe/dsl/compute/cube_util.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_general_compute.py
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_input_opti_compute.py
@@ -612,6 +614,8 @@ cube:
       - ops/built-in/tbe/impl/attention_qkv_grad_x.py
       - ops/built-in/tbe/impl/attention_qkv_grad_w.py
       - ops/built-in/tbe/impl/util/attention_qkv_util.py
+      - ops/built-in/tbe/impl/util/platform_adapter.py
+
     unrelease:
       - ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
   llt:
@@ -628,12 +632,15 @@ cube-tiling:
       - auto_schedule/python/tbe/dsl/static_schedule/conv_schedule_v2.py
       - auto_schedule/python/tbe/dsl/unify_schedule/conv2d_tilingcase.py
       - ops/built-in/tbe/impl/conv2d.py
+      - ops/built-in/tbe/impl/avg_pool.py
+      - ops/built-in/tbe/impl/avg_pool_v2.py
       - ops/built-in/tbe/impl/conv2d_compress.py
       - ops/built-in/tbe/impl/strided_read.py
       - ops/built-in/tbe/impl/strided_write.py
       - ops/built-in/tbe/impl/conv2d_data_rm.py
       - ops/built-in/tbe/impl/depthwise_conv2d.py
       - ops/built-in/tbe/impl/dynamic/conv2d.py
+      - ops/built-in/tbe/impl/dynamic/avg_pool_v2.py
       - ops/built-in/tbe/impl/dynamic/conv2d_data_rm.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
       - ops/built-in/tbe/impl/util/util_conv2d_dynamic.py
@@ -643,7 +650,9 @@ cube-tiling:
       - auto_schedule/python/tbe/common/utils/op_util/__init__.py
       - auto_schedule/python/tbe/common/utils/op_util/op_util_conv2d.py
       - auto_schedule/python/tbe/dsl/compute/conv_compute.py
+      - auto_schedule/python/tbe/dsl/compute/depthwise_conv2d_compute.py
       - auto_schedule/python/tbe/dsl/compute/max_pool2d_3_2_fusion_compute.py
+      - auto_schedule/python/tbe/dsl/static_schedule/depthwise_conv2d_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv_schedule_util.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv_maxpoolfusion_schedule.py
@@ -899,6 +908,7 @@ vector_A:
       - ops/built-in/tbe/impl/cumsum_d.py
       - ops/built-in/tbe/impl/cumulativelogsumexp_d.py
       - ops/built-in/tbe/impl/softmax_v2.py
+      - ops/built-in/tbe/impl/ssd_detection_output.py
       - ops/built-in/tbe/impl/dynamic/aipp.py
       - ops/built-in/tbe/impl/dynamic/dynamic_lstm_grad_cell.py
       - ops/built-in/tbe/impl/dynamic/dynamic_rnn.py
@@ -2156,6 +2166,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/SquareSumV1/test_SquareSumV1_impl.py
       - ops/built-in/tests/ut/ops_test/SquareSumV2/test_SquareSumV2_impl.py
       - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_impl.py
+      - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_v200_Ascend310P_impl.py
       - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_v200_Ascend710_impl.py
       - ops/built-in/tests/ut/ops_test/StridedSliceGrad/test_dynamic_strided_slice_grad_impl.py
       - ops/built-in/tests/ut/ops_test/SwapCi/test_SwapCi_impl.py
@@ -2800,7 +2811,6 @@ unkown:
       - ops/built-in/tbe/impl/xdivy.py
       - ops/built-in/tbe/impl/max_pool3d_with_argmax.py
       - ops/built-in/tbe/impl/assign_add.py
-      - ops/built-in/tbe/impl/lp_norm.py
       - ops/built-in/tbe/impl/population_count.py
       - ops/built-in/tbe/impl/basic_lstm_cell_weight_grad.py
       - ops/built-in/tbe/impl/decode_bbox.py
@@ -2924,8 +2934,6 @@ unkown:
       - ops/built-in/tbe/impl/bninference_d.py
       - ops/built-in/tbe/impl/cdist_grad.py
       - ops/built-in/tbe/impl/abs.py
-      - ops/built-in/tbe/impl/avg_pool.py
-      - ops/built-in/tbe/impl/avg_pool_v2.py
       - ops/built-in/tbe/impl/softplus_v2_grad.py
       - ops/built-in/tbe/impl/unpack.py
       - ops/built-in/tbe/impl/inplace_add_d.py
@@ -3144,7 +3152,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/ascend_requant.py
       - ops/built-in/tbe/impl/dynamic/apply_ftrl_d.py
       - ops/built-in/tbe/impl/dynamic/atan_grad.py
-      - ops/built-in/tbe/impl/dynamic/avg_pool_v2.py
       - ops/built-in/tbe/impl/dynamic/pad_v2.py
       - ops/built-in/tbe/impl/dynamic/pad_v3.py
       - ops/built-in/tbe/impl/dynamic/ascend_quant.py
@@ -3183,7 +3190,6 @@ unkown:
       - ops/built-in/tbe/impl/auto_tune/__init__.py
       - ops/built-in/tbe/impl/auto_tune/resize_bilinear_v2.py
       - ops/built-in/tbe/impl/util/util_common.py
-      - ops/built-in/tbe/impl/util/platform_adapter.py
       - ops/built-in/tbe/impl/util/util_tensor_dict.py
       - ops/built-in/tbe/impl/util/util_build.py
       - ops/built-in/tbe/impl/util/util_frac_z.py
@@ -4011,7 +4017,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/static_schedule/pooling3d_max_grad_grad_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_grad_schedule_nd.py
       - auto_schedule/python/tbe/dsl/static_schedule/read_select_schedule.py
-      - auto_schedule/python/tbe/dsl/static_schedule/depthwise_conv2d_schedule.py
       - auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
@@ -4042,7 +4047,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_tilingcase.py
       - auto_schedule/python/tbe/dsl/compute/array.py
       - auto_schedule/python/tbe/dsl/compute/common.py
-      - auto_schedule/python/tbe/dsl/compute/depthwise_conv2d_compute.py
       - auto_schedule/python/tbe/dsl/compute/inplace.py
       - auto_schedule/python/tbe/dsl/compute/pooling3d.py
       - auto_schedule/python/tbe/dsl/compute/pooling3d_max_grad_grad.py
@@ -4077,6 +4081,9 @@ pytorch:
   team: "pytorch"
   src:
     release:
+      - ops/contrib/tbe/impl/decode_bbox.py
+      - ops/contrib/tbe/impl/interp_common.py
+      - ops/contrib/tbe/impl/ssd_detection_output_v2.py
       - ops/built-in/op_proto/runtime/dyn_seq_outer.cc
       - ops/built-in/op_tiling/runtime/dyn_seq_outer.cc
       - ops/built-in/op_tiling/runtime/dyn_seq_outer.h
@@ -4118,6 +4125,9 @@ pytorch:
       - ops/built-in/tbe/impl/group_norm_relu.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.h
+      - ops/built-in/tbe/impl/ascend/ascend_container.py
+      - ops/built-in/tbe/impl/layer_norm_tik.py
+      - ops/built-in/tbe/impl/dynamic/global_lppool.py
       - ops/built-in/tbe/impl/dynamic/resize_nearest3d.py
       - ops/built-in/tbe/impl/dynamic/celu_v2.py
       - ops/built-in/tbe/impl/celu_v2.py

@@ -205,7 +205,7 @@ conv2d_transpose_ut_fusion_case = [
     # soc dtype, dedy_shape, filter_shape, dedx_shape, padding, stride, dilution, bias_flag, fusionpass
     # the deconv+relu
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -217,7 +217,7 @@ conv2d_transpose_ut_fusion_case = [
         ["relu"],
     ),
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "float16",
         (1, 16, 3, 3),
         (16, 16, 1, 1),
@@ -304,7 +304,7 @@ conv2d_transpose_ut_fusion_case = [
     ),
     # deconv + requant  [requant, vector_mode, relu_mode]
     (
-        ["Ascend710"],
+        ["Ascend310P3"],
         "int8",
         (1, 32, 4, 4),
         (32, 32, 4, 4),
@@ -316,7 +316,7 @@ conv2d_transpose_ut_fusion_case = [
         ["requant", True, False],
     ),
     (
-        ["Ascend710"],
+        ["Ascend310P3"],
         "int8",
         (1, 32, 4, 4),
         (32, 32, 4, 4),
@@ -334,7 +334,7 @@ conv2d_transpose_ut_fusion_exception_case = [
     # soc, dtype, dedy_shape, filter_shape, dedx_shape, padding, stride, dilution, bias_flag, fusionpass
     # deconv + dequant + quant [quant, sqrt, vector_mode, relu_mode, sqrt, scalar, offset, round_mode]
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "int8",
         (2, 32, 3, 3),
         (32, 32, 3, 3),
@@ -346,7 +346,7 @@ conv2d_transpose_ut_fusion_exception_case = [
         ["quant", False, False, False, False, 1.1, -7, 'ceil'],
     ),
     (
-        ["Ascend310", "Ascend710", "Ascend910"],
+        ["Ascend310", "Ascend310P3", "Ascend910"],
         "int8",
         (2, 32, 3, 3),
         (32, 32, 1, 1),

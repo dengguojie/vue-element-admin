@@ -191,7 +191,7 @@ def _gen_conv2d_transpose_op_fusion_case():
         )
 
 
-_gen_conv2d_transpose_op_fusion_case()
+#_gen_conv2d_transpose_op_fusion_case()
 
 
 def _test_conv2d_transpose_fusion_exception(
@@ -263,5 +263,5 @@ _gen_conv2d_transpose_op_fusion_exception_case()
 
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910", "Ascend710", "Ascend310"])
+    ut_case.run(["Ascend910", "Ascend310P3", "Ascend310"])
     sys.exit(0)

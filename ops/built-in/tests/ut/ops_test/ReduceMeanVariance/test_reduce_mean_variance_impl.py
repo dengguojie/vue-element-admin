@@ -15,7 +15,7 @@ case1 = {"params": [{"shape": (4, 224, 2, 224, 160, 16), "dtype": "float16", "fo
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
 
 if __name__ == "__main__":
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")

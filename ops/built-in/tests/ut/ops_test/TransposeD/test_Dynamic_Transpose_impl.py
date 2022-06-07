@@ -32,42 +32,42 @@ def gen_transpose_case(dynamic_input_shapes, ori_input_shapes, dtype, perm,
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_transpose_case((-1, -1),
                                     (66, 2),
                                     "float32", (0, 1), "case_1", "success"))
 
-# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
 #                  gen_transpose_case((-1, -1),
 #                                     (66, 2),
 #                                     "float32", (1, 0), "case_2", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_transpose_case((-1, -1, -1),
                                     (66, 2, 100),
                                     "float16", (0, 1, 2), "case_3", "success"))
 
-# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
 #                  gen_transpose_case((-1, -1, -1),
 #                                     (66, 2, 100),
 #                                     "float32", (0, 2, 1), "case_4", "success"))
 
-# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
 #                  gen_transpose_case((-1, -1, -1),
 #                                     (66, 2, 100),
 #                                     "float32", (1, 0, 2), "case_5", "success"))
 
-# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
 #                  gen_transpose_case((-1, -1, -1),
 #                                     (66, 2, 100),
 #                                     "float32", (1, 2, 0), "case_6", "success"))
 
-# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
 #                  gen_transpose_case((-1, -1, -1),
 #                                     (66, 2, 100),
 #                                     "float32", (2, 0, 1), "case_7", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_transpose_case((-1, -1, -1, -1, -1, -1, -1, -1),
                                     (66, 2, 100),
                                     "float32", (2, 1, 0), "case_8", "success"))

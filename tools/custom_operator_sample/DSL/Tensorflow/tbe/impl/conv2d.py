@@ -191,13 +191,13 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
             c0_optim_flg = False
         # format NC1HWC0_C04 can only be used at first conv layer
         # for those soc using NC1HWC0_C04, ensure is_first_layer == 1
-        if not inputs.get("is_first_layer") and get_soc_spec("SOC_VERSION") \
-                in ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
+        if not inputs.get("is_first_layer") and get_soc_spec("SHORT_SOC_VERSION") \
+                in ("Ascend310P", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
             c0_optim_flg = False
         if c0_optim_flg:
             use_v200_c04_flag = False
-            if get_soc_spec("SOC_VERSION") in \
-                    ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
+            if get_soc_spec("SHORT_SOC_VERSION") in \
+                    ("Ascend310P", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
                 use_v200_c04_flag = util_conv2d.use_v200_c04_check(shape_fm, shape_filter, params)
             if use_v200_c04_flag:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",

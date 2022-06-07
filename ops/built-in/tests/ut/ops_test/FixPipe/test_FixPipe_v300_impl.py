@@ -587,7 +587,7 @@ def run_v300_case(case_config, is_hf32_flag=False):
 
 def run_v300_batch_cases(case_list, is_hf32_flag=False):
     from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend320", "AiCore")
+    te_set_version("Ascend310B1", "AiCore")
     with op_context.OpContext():
         for case in case_list:
             if is_hf32_flag:
@@ -1099,8 +1099,8 @@ def run_v300_batch_cases_aipp(case_list, is_hf32_flag=False):
     from te.platform.cce_conf import te_set_version
     from tbe.common.platform.platform_info import get_soc_spec
     with op_context.OpContext():
-        te_set_version("Ascend320", "AiCore")
-        soc_version = get_soc_spec("SOC_VERSION")
+        te_set_version("Ascend310B1", "AiCore")
+        soc_version = get_soc_spec("SHORT_SOC_VERSION")
         for case in case_list:
             if is_hf32_flag:
                 set_impl_mode()

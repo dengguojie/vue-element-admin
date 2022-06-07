@@ -30,7 +30,7 @@ case1 = {"params": [{"shape": (-1, -1), "dtype": "float16", "ori_shape": (880, 4
          "expect": "success",
          "support_expect": True}
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310P3"], case1)
 
 def test_a100(test_arg):
     from te.platform.cce_conf import te_set_version
@@ -51,5 +51,5 @@ def test_a100(test_arg):
 #ut_case.add_cust_test_func(test_func=test_a100)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend310P3"])
     exit(0)

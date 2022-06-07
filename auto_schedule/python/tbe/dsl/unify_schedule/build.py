@@ -23,7 +23,7 @@ from tbe.common.platform import ASCEND_310
 from tbe.common.platform import HI3796CV300CS
 from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -34,7 +34,7 @@ from .unify_auto_schedule import build as dynamic_build
 
 def _check_dynamic_build_unsupported_versions(context):
     unsupported_versions = [ASCEND_310, HI3796CV300CS, HI3796CV300ES, SD3403]
-    soc_version = get_soc_spec(SOC_VERSION)
+    soc_version = get_soc_spec(SHORT_SOC_VERSION)
     if soc_version not in unsupported_versions:
         return
 

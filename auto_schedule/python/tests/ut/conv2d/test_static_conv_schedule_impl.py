@@ -26,8 +26,8 @@ def test_bias_preload(test_arg):
                 dilations = [1, 1, 1, 1]
                 conv_out = conv2d_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NCHW")
                 scale_dtype = "float16"
-                v200_version = ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
-                if te.platform.cce_conf.get_soc_spec("SOC_VERSION") in v200_version:
+                v200_version = ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
+                if te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in v200_version:
                     scale_dtype = "uint64"
                 deq_scale = tvm.placeholder((1, 4, 1, 1, 16), name="deq_scale", dtype=scale_dtype, attrs={"ori_shape": [64]})
                 dequant_out = ascend_dequant_compute(conv_out, deq_scale, None)
@@ -262,7 +262,7 @@ def run_v300_batch_cases_aipp(case_list, is_hf32_flag=False):
     from tbe.common.platform.platform_info import get_soc_spec
     from tbe.common.context import op_context
     with op_context.OpContext():
-        te_set_version("Ascend320", "AiCore")
+        te_set_version("Ascend310B1", "AiCore")
         for case in case_list:
             test_aipp_conv2d(case)
 
@@ -298,8 +298,8 @@ def test_bias_preload(test_arg):
                 dilations = [1, 1, 1, 1]
                 conv_out = conv2d_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NCHW")
                 scale_dtype = "float16"
-                v200_version = ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
-                if te.platform.cce_conf.get_soc_spec("SOC_VERSION") in v200_version:
+                v200_version = ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
+                if te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in v200_version:
                     scale_dtype = "uint64"
                 deq_scale = tvm.placeholder((1, 4, 1, 1, 16), name="deq_scale", dtype=scale_dtype, attrs={"ori_shape": [64]})
                 dequant_out = ascend_dequant_compute(conv_out, deq_scale, None)
@@ -321,7 +321,7 @@ def test_bias_preload(test_arg):
         return True
 
 print("adding test_bias_preload")
-ut_case.add_cust_test_func("Ascend710", test_func=test_bias_preload)
+ut_case.add_cust_test_func("Ascend310P3", test_func=test_bias_preload)
 
 def test_conv2d_reluv2_mask_buffer_align(test_arg):
     try:
@@ -354,7 +354,7 @@ def test_conv2d_reluv2_mask_buffer_align(test_arg):
         return True
 
 print("adding test_conv2d_reluv2_mask_buffer_align")
-ut_case.add_cust_test_func("Ascend710", test_func=test_conv2d_reluv2_mask_buffer_align)
+ut_case.add_cust_test_func("Ascend310P3", test_func=test_conv2d_reluv2_mask_buffer_align)
 
 def test_static_conv_schedule_quant_fusion(test_arg):
     try:
@@ -387,7 +387,7 @@ def test_static_conv_schedule_quant_fusion(test_arg):
         return True
 
 print("adding test_static_conv_schedule_quant_fusion")
-ut_case.add_cust_test_func("Ascend710", test_func=test_static_conv_schedule_quant_fusion)
+ut_case.add_cust_test_func("Ascend310P3", test_func=test_static_conv_schedule_quant_fusion)
 
 def test_static_conv_schedule_blo_buffer_tile(test_arg):
     try:
@@ -402,9 +402,9 @@ def test_static_conv_schedule_blo_buffer_tile(test_arg):
                 dilations = [1, 1, 1, 1]
                 conv_out = conv2d_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NHWC")
                 tensor_list = [x_, filter_, bias_, conv_out]
-                tiling = {'AL0_matrix':[1, 1, 16, 16], 'CL0_matrix': [1, 1, 16, 16, 1], 'CUB_matrix': [1, 1, 16, 16], 
+                tiling = {'AL0_matrix':[1, 1, 16, 16], 'CL0_matrix': [1, 1, 16, 16, 1], 'CUB_matrix': [1, 1, 16, 16],
                     'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0, 'BL0_matrix': [ ],
-                    'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 
+                    'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1,
                     'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
                     'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 8, 1, 1], 'CUB_channel_wise_flag': False}
                 ConvParam.tiling = tiling
@@ -426,9 +426,9 @@ def test_static_conv_schedule_blo_buffer_tile(test_arg):
         return True
 
 print("adding static_conv_schedule_blo_buffer_tile")
-ut_case.add_cust_test_func("Ascend710",test_func=test_static_conv_schedule_blo_buffer_tile)
+ut_case.add_cust_test_func("Ascend310P3",test_func=test_static_conv_schedule_blo_buffer_tile)
 ut_case.add_cust_test_func(test_func=test_static_conv_schedule_quant_fusion)
 ut_case.add_cust_test_func(test_func=run_v300_aipp_fusion_cases)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

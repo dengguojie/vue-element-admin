@@ -78,7 +78,7 @@ def conv2dcompress_support_check(inputs, weight_compress, compress_index, groups
     if alg == WEIGHT_UNZIP:
         util_conv2d.check_soc_and_dtype(
             {"conv2d_compress": [inputs, weight_compress, compress_index]})
-    
+
     if alg == WEIGHT_SPARSE_4_2:
         if not util_conv2d.is_support_fixpipe():
             err_man_cube.raise_err_message_cube("only v200 and v300 soc support {} alg".format(WEIGHT_SPARSE_4_2))
@@ -139,7 +139,7 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
         inputs, weight_compress, bias, offset_w, strides, pads, dilations,
         offset_x, groups, kernel_name, data_format, options)
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES") and \
             para_dict["filter_h"] * para_dict["filter_w"] > MAX_FITLER_HW:
         err_man_cube.raise_err_specific("conv2dcompress",
                                         "conv2d Min tiling still exceed ub buffer, when open weight unzip")
@@ -246,7 +246,7 @@ def get_group_opt_params(shape_in, shape_w, w_dtype, groups):
     c0_val = 16
     if w_dtype == "int8":
         c0_val = 32
-    
+
     cin_ori = shape_in[1] // groups
     cout_ori = shape_w[0] // groups
 
@@ -381,7 +381,7 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
         offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, groups)
 
     out_channel, _, filter_h, filter_w = shape_w
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES") and \
             filter_h * filter_w > MAX_FITLER_HW:
         err_man_cube.raise_err_specific("conv2dcompress",
                                         "conv2d Min tiling still exceed ub buffer, "

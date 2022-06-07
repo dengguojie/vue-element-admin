@@ -59,8 +59,8 @@ case2 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
 
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
 
 #precision cases
 def adam_apply_one_with_decay_data(input0, input1, input2, input3, input4,
@@ -110,5 +110,5 @@ precision_case1 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND"
                    "expect": "success",
                    "calc_expect_func": calc_expect_func,
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
-                   
+
 ut_case.add_precision_case("Ascend910", precision_case1)

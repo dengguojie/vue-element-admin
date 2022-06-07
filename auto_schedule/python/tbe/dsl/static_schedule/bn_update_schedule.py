@@ -28,7 +28,7 @@ from tbe import tvm
 from tbe.common.utils import shape_to_list
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform.platform_info import api_check_support
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import scope_ubuf
 from .util import get_nearest_factor
@@ -64,7 +64,7 @@ def get_max_ub_count(dtype, op_type):
         total_width_other = 9
         total_width_cloud = 7
 
-    if get_soc_spec(SOC_VERSION) in (ASCEND_910,) or api_check_support("tik.vgatherb"):
+    if get_soc_spec(SHORT_SOC_VERSION) in (ASCEND_910,) or api_check_support("tik.vgatherb"):
         total_width = total_width_cloud
     else:
         total_width = total_width_other

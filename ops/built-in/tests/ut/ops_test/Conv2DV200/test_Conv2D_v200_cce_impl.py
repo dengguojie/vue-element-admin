@@ -323,7 +323,7 @@ def test_conv2d_v200(test_arg):
     The UT for cce Test_conv2d_v200
     """
     print("---------------------------------------------------")
-    cce_conf.te_set_version('Ascend710')
+    cce_conf.te_set_version('Ascend310P3')
     print("[ UNITTEST START conv2d v200]")
 
     run_testcase()

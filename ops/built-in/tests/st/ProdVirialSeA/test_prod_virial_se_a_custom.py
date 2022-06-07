@@ -55,7 +55,7 @@ def test_prod_virial_se_a_case(
         nall,
         natoms_size):
 
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
     simple_test(nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size)
     simple_test(nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 0)
     simple_test(nframes, nloc, n_a_sel, n_r_sel, nall, natoms_size, 2, 1)

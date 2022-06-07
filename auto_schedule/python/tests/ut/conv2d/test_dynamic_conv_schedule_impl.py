@@ -31,8 +31,8 @@ def test_bias_not_support_preload_910A(test_arg):
                 dilations = [1, 1, 1, 1]
                 conv_out = conv2d_fusion_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NCHW")
                 scale_dtype = "float16"
-                v200_version = ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
-                if te.platform.cce_conf.get_soc_spec("SOC_VERSION") in v200_version:
+                v200_version = ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
+                if te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in v200_version:
                     scale_dtype = "uint64"
                 deq_scale = tvm.placeholder((1, 4, 1, 1, 16), name="deq_scale", dtype=scale_dtype, attrs={"ori_shape": [64]})
                 dequant_out = ascend_dequant_compute(conv_out, deq_scale, None)
@@ -72,8 +72,8 @@ def test_bias_not_support_preload_710(test_arg):
                 dilations = [1, 1, 1, 1]
                 conv_out = conv2d_fusion_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NCHW")
                 scale_dtype = "float16"
-                v200_version = ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
-                if te.platform.cce_conf.get_soc_spec("SOC_VERSION") in v200_version:
+                v200_version = ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
+                if te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in v200_version:
                     scale_dtype = "uint64"
                 deq_scale = tvm.placeholder((1, 4, 1, 1, 16), name="deq_scale", dtype=scale_dtype, attrs={"ori_shape": [64]})
                 dequant_out = ascend_dequant_compute(conv_out, deq_scale, None)
@@ -98,7 +98,7 @@ print("adding test_bias_not_support_preload_910A")
 ut_case.add_cust_test_func("Ascend910A",test_func=test_bias_not_support_preload_910A)
 
 print("adding test_bias_not_support_preload_710")
-ut_case.add_cust_test_func("Ascend710",test_func=test_bias_not_support_preload_710)
+ut_case.add_cust_test_func("Ascend310P3",test_func=test_bias_not_support_preload_710)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

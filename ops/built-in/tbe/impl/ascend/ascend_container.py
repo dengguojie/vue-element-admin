@@ -168,7 +168,6 @@ class AContainer(a_lib.ObjWithConst):
         self.const_l0b_max_byte = get_f(self.plat.cce_conf.L0B_SIZE)
         self.const_l0c_max_byte = get_f(self.plat.cce_conf.L0C_SIZE)
         self.const_aicore_num = get_f(self.plat.cce_conf.CORE_NUM)
-        self.const_soc_version = get_f(self.plat.cce_conf.SOC_VERSION)
 
     def _init_const_value(self):
         self.const_dtype_byte = {"float16": 2, "float32": 4, "int32": 4,

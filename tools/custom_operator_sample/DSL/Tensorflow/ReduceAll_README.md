@@ -25,19 +25,19 @@ tf.reduce_all(x, 1)  # [True, False]
 ### 3. 主要工程结构
 ```
 project
-│  
+│
 └───framework #插件目录
 │   └───common #插件公共依赖
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
 │       │   tensorflow_reduce_all_plugin.cc
-│  
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   reduce_all.cc
 │   │   reduce_all.h
-│   
-└───tbe  
+│
+└───tbe
 │   └───impl #算子实现目录
 │       └───dynamic #算子动态实现
 │           │   reduce_all.py
@@ -46,7 +46,7 @@ project
 │       └───aicore
 │           └───ascend310
 │               │   reduce_all.ini #算子信息库
-│           └───ascend710
+│           └───ascend310p
 │               │   reduce_all.ini #算子信息库
 │           └───ascend910
 │               │   reduce_all.ini #算子信息库

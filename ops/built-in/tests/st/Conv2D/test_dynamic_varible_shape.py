@@ -29,4 +29,4 @@ print("adding cube_varible_shape")
 ut_case.add_cust_test_func(test_func=cube_varible_shape)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

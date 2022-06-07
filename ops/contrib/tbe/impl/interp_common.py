@@ -11,7 +11,7 @@ ARGS_STR_V_ALL = tvm.call_pure_intrin("int32", "tvm_cce_string_print", "PIPE_ALL
 class GlobalParams:
     def __init__(self, inputs, outputs):
         # get device version
-        version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        version = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
         if version in ("Ascend910"):
             self.devices = "1980"
             self.core_counts = 32

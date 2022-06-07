@@ -489,7 +489,7 @@ class LRNBase5HD(LRNBase):
             tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self.ub_max_ele_num = self.ub_byte_size // self.input_data_size
         self.is_cloud = False
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend910",):
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend910",):
             self.is_cloud = True
         self.alpha_sqrt_flag = False
         if (0 < self.alpha < 0.001) and (not self.is_cloud):
@@ -1054,7 +1054,7 @@ class LRNBase4HD(LRNBase):
         self.one_block_ele_num_cast =\
             constant.BLOCK_SIZE // self.cast_ub_data_size
 
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend910",):
+        if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend910",):
             self.is_cloud = True
 
         self.is_alpha_sqrt_flag = self._check_alpha_sqrt()

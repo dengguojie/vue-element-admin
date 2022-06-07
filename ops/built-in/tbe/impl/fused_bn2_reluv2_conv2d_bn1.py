@@ -31,7 +31,7 @@ class Bn2ReluV2Conv2dBn1NoRedundant:
                  kernel_name="bn2reluv2conv2dbn1noredundant"):
         self.kernel_name = kernel_name
         self.tiling = tiling
-        soc_version = get_soc_spec("SOC_VERSION")
+        soc_version = get_soc_spec("SHORT_SOC_VERSION")
         status = tbe.common.platform.set_current_compile_soc_info(soc_version)
         if status != "success":
             err_man.raise_err_specific("fused_bn2_reluv2_conv2d_bn1", "set soc_version failed, please check!!!")

@@ -300,9 +300,9 @@ case13 = {
         True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend710"], case2)
-ut_case.add_case(["Ascend910A", "Ascend710"], case3)
-ut_case.add_case(["Ascend910A", "Ascend710"], case4)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310P3"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)

@@ -50,4 +50,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend310", "Ascend310P3", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

@@ -15,18 +15,18 @@ Function: Return x1 * x2 element-wise
 ### 3. 主要工程结构
 ```
 project
-│  
+│
 └───framework #插件目录
 │   └───common #插件公共依赖
 │   └───omg #插件公共依赖
 │   └───tf_plugin #tensorflow插件目录
 │       │   tensorflow_mul_plugin.cc
-│  
+│
 └───proto #算子原型目录
 │   └───util #原型公共依赖
 │   │   mul.cc
 │   │   mul.h
-│   
+│
 └───tbe
 │   └───impl #算子实现目录
 │       │   mul.py
@@ -34,7 +34,7 @@ project
 │       └───aicore
 │           └───ascend310
 │               │   mul.ini #算子信息库
-│           └───ascend710
+│           └───ascend310p
 │               │   mul.ini #算子信息库
 │           └───ascend910
 │               │   mul.ini #算子信息库

@@ -146,8 +146,8 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", imp
         range_x.append((dim, dim))
     input_x["range"] = range_x
 
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend710", "Ascend910")
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
+    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend310P", "Ascend910")
 
     if is_support and is_white_shape(shape):
         context = tbe_context.op_context.get_context()

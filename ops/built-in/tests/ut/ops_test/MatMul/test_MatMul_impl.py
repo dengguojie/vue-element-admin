@@ -96,9 +96,9 @@ case5 = {"params": [{"shape": (0, 10), "dtype": "float16", "format": "ND", "ori_
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 #precision cases
 
@@ -443,7 +443,7 @@ def test_matmul_confusion_transpose_30_224_perm_invalid(test_arg):
         print("test_matmul_confusion_transpose_30_224_perm_invalid success")
 
 def test_matmul_confusion_transpose_710(test_arg):
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     with cce():
         x1 = tvm.placeholder((48, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 768)}, dtype="float16")
         x2 = tvm.placeholder((48, 48, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (768, 768)}, dtype="float16")
@@ -523,7 +523,7 @@ ut_case.add_cust_test_func(test_func=test_matmul_multi_output)
 
 
 def test_matmul_fusion_multi_output(test_arg):
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
     with cce():
         x1 = tvm.placeholder((2, 1, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 32)}, dtype="float16")
         x2 = tvm.placeholder((1, 2, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 32)}, dtype="float16")

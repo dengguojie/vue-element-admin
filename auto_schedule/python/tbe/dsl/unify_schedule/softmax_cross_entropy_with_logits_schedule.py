@@ -397,7 +397,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         soc_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
                            not cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
 
-        # UB on 710 doesn't need to align
+        # UB on Ascend310P doesn't need to align
         soc_not_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
                                cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
 

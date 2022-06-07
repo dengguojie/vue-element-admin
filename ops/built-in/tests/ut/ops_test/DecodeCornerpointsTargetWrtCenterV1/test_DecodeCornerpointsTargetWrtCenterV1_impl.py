@@ -44,9 +44,9 @@ case3 = {"params": [{"shape": (8,4), "dtype": "float16", "format": "ND", "ori_sh
 
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
 
 def calc_expect_func(inputA, inputB, output):
     input_shape_x = inputA['shape']

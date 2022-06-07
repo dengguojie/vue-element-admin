@@ -228,8 +228,8 @@ def test_avg_pool_v2_compute(test_arg):
     a=tvm.placeholder((1, 8, 12, 12, 16), name="fmap", dtype="float16", attrs={"ori_shape":(1, 12, 12, 128), "format":"NC1HWC0", "ori_format":"NHWC","shape":(1, 8, 12, 12, 16)})
     out={"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "ori_shape": (1,1,1,128), "shape": (1,8,1,1,16)}
     avg_pool_v2_compute(a,None,None,out,[1,12,12,1],[1,1,1,1],"VALID",(0,0,0,0),"NHWC",True,False,True)
-                        
-                        
+
+
     b=tvm.placeholder((1,1,3,3,16), name="fmap", dtype="float16", attrs={"shape":(1,1,3,3,16),"ori_shape":(1,16,3,3), "format":"NC1HWC0", "ori_format":"NCHW"})
     c=tvm.placeholder((4,1,16,16), name="filter", dtype="float16", attrs={"shape":(4,1,16,16),"ori_shape":(16,1,2,2), "format":"FRACTAL_Z", "ori_format":"NCHW"})
     bias1=tvm.placeholder((16,), name="bias", dtype="float16", attrs={"shape":(16,),"ori_shape":(16,), "format":"ND", "ori_format":"ND"})
@@ -253,7 +253,7 @@ def test_get_op_support_info(test_arg):
     info_result = get_op_support_info(a, None, None, out, [1, 12, 12, 1],
                                       [1, 1, 1, 1], "VALID",
                                       (0, 0, 0, 0), "NHWC", True)
-               
+
     b = {"shape": (1, 8, 12, 12, 16), "dtype": "float16",
          "format": "NC1HWC0", "ori_shape": (-1, 12, 12, 128),
          "ori_format": "NHWC", "param_type": "input"}
@@ -272,7 +272,7 @@ def test_get_op_support_info(test_arg):
          "shape": (1,8,1,1,16)}
     info_result3 = get_op_support_info(a, None, None, out, [1, 12, 12, 1],
                                       [1, 1, 1, 1], "VALID",
-                                      (0, 0, 0, 0), "NHWC", False)       
+                                      (0, 0, 0, 0), "NHWC", False)
 
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_cust_test_func(test_func=test_avg_pool_v2_compute)
@@ -280,5 +280,5 @@ ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend310P3", "Ascend910A"])
     exit(0)

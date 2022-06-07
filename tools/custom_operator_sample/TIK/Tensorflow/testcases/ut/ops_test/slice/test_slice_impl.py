@@ -26,7 +26,7 @@ def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case((-1, -1), "float16", "case_1", "success"))
 
 

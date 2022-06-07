@@ -97,7 +97,7 @@ def aipp_compute(input_data, input_dync_param, output_data,
     crop_size_h = 0
     crop_size_w = 0
 
-    cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if output_format == "NC1HWC0_C04":
         if c0_channel != 4:
             cause_dec = "when output_format is NC1HWC0_C04, c0[%d] must be 4" % c0_channel
@@ -164,7 +164,7 @@ def aipp_compute(input_data, input_dync_param, output_data,
     aipp_map["load_start_pos_w"] = load_start_pos_w
     aipp_map["crop_size_h"] = load_image_h
     aipp_map["crop_size_w"] = load_image_w
-    if cur_cce_product in ["Ascend910B", "Ascend320"]:
+    if cur_cce_product in ["Ascend910B", "Ascend310B"]:
         aipp_map["is_first_layer"] = True
 
     aipp_res = tvm.compute(
@@ -242,7 +242,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
         if l1_image_buf_max < actual_col_size:
             half_l1_image_buf_max = l1_image_buf_max
 
-        cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
         if cur_cce_product not in aipp_comm.Const.STC_AIPP_SUPPORT_SOC_VERSION_SET:
             cause_desc = "Only support " + ", ".join(aipp_comm.Const.STC_AIPP_SUPPORT_SOC_VERSION_SET) + \
@@ -895,8 +895,8 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     input_format_list = ["NCHW", "NHWC", "NC1HWC0_C04"]
     para_check.check_format(input_format, input_format_list, param_name="input")
 
-    cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if output_format == "NC1HWC0" and cur_cce_product in ('Ascend910B', 'Ascend320'):
+    cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
+    if output_format == "NC1HWC0" and cur_cce_product in ('Ascend910B', 'Ascend310B'):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config, cur_cce_product, kernel_name)
         return
 

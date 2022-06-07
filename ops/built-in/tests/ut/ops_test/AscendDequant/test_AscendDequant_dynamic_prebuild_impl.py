@@ -137,7 +137,7 @@ def add_test_1():
     ut_case.add_cust_test_func(["Ascend310", "Ascend910A"], test_func=test_ascend_dequant_dynamic_prebuild_1008)
 
 
-def add_test_ascend710():
+def add_test_Ascend310P():
     def test_ascend_dequant_dynamic_prebuild_2001(_):
         x = {"shape": (1, 1, 1, 1, 16), "dtype": "int32", "format": "NC1HWC0",
              "ori_shape": (1, 1, 1, 1, 16), "ori_format": "NC1HWC0"}
@@ -149,7 +149,7 @@ def add_test_ascend710():
         params = {"x": x, "deq_scale": deq_scale, "y": y, "sqrt_mode": False,
                   "relu_mode": False, "kernel_name": "ascend_dequant"}
 
-        cce_conf.cce_conf.te_set_version("Ascend710")
+        cce_conf.cce_conf.te_set_version("Ascend310P3")
         test_ascend_dequant_dynamic_prebuild_0(params)
         cce_conf.cce_conf.te_set_version("Ascend310")
 
@@ -161,10 +161,10 @@ def add_test_ascend710():
         y = {"shape": (1, 2, 4, 4, 16), "dtype": "float16", "format": "NC1HWC0",
              "ori_shape": (1, 2, 4, 4, 16), "ori_format": "NC1HWC0"}
 
-        params = {"x": x, "deq_scale": deq_scale, "y": y, "sqrt_mode": True,
+        params = {"x": x, "deq_scale": deq_scale, "y": y, "sqrt_mode": False,
                   "relu_mode": True, "kernel_name": "ascend_dequant"}
 
-        cce_conf.cce_conf.te_set_version("Ascend710")
+        cce_conf.cce_conf.te_set_version("Ascend310P3")
         test_ascend_dequant_dynamic_prebuild_0(params)
         cce_conf.cce_conf.te_set_version("Ascend310")
 
@@ -179,7 +179,7 @@ def add_test_ascend710():
         params = {"x": x, "deq_scale": deq_scale, "y": y, "sqrt_mode": False,
                   "relu_mode": False, "kernel_name": "ascend_dequant"}
 
-        cce_conf.cce_conf.te_set_version("Ascend710")
+        cce_conf.cce_conf.te_set_version("Ascend310P3")
         test_ascend_dequant_dynamic_prebuild_0(params)
         cce_conf.cce_conf.te_set_version("Ascend310")
 
@@ -194,14 +194,14 @@ def add_test_ascend710():
         params = {"x": x, "deq_scale": deq_scale, "y": y, "sqrt_mode": False,
                   "relu_mode": False, "kernel_name": "ascend_dequant"}
 
-        cce_conf.cce_conf.te_set_version("Ascend710")
+        cce_conf.cce_conf.te_set_version("Ascend310P3")
         test_ascend_dequant_dynamic_prebuild_0(params)
         cce_conf.cce_conf.te_set_version("Ascend310")
 
-    ut_case.add_cust_test_func("Ascend710", test_func=test_ascend_dequant_dynamic_prebuild_2001)
-    ut_case.add_cust_test_func("Ascend710", test_func=test_ascend_dequant_dynamic_prebuild_2002)
-    ut_case.add_cust_test_func("Ascend710", test_func=test_ascend_dequant_dynamic_prebuild_2003)
-    ut_case.add_cust_test_func("Ascend710", test_func=test_ascend_dequant_dynamic_prebuild_2004)
+    ut_case.add_cust_test_func("Ascend310P3", test_func=test_ascend_dequant_dynamic_prebuild_2001)
+    ut_case.add_cust_test_func("Ascend310P3", test_func=test_ascend_dequant_dynamic_prebuild_2002)
+    ut_case.add_cust_test_func("Ascend310P3", test_func=test_ascend_dequant_dynamic_prebuild_2003)
+    ut_case.add_cust_test_func("Ascend310P3", test_func=test_ascend_dequant_dynamic_prebuild_2004)
 
 
 def add_test_matmul():
@@ -518,7 +518,7 @@ def add_test_vector_dequant_v200():
 
 
 add_test_1()
-add_test_ascend710()
+add_test_Ascend310P()
 add_test_matmul()
 add_test_conv()
 add_test_scalar_dequant_v200()

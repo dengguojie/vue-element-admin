@@ -226,7 +226,7 @@ def test_conv2d_v220(test_arg):
         """
         Check if Ascend310/Ascend910 version.
         """
-        soc_version = get_soc_spec("SOC_VERSION")
+        soc_version = get_soc_spec("SHORT_SOC_VERSION")
         if soc_version in ("Ascend310", "Ascend910"):
             return True
         return False
@@ -234,10 +234,10 @@ def test_conv2d_v220(test_arg):
 
     def is_support_v200():
         """
-        Check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version.
+        Check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version.
         """
-        soc_version = get_soc_spec("SOC_VERSION")
-        if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS",
+        soc_version = get_soc_spec("SHORT_SOC_VERSION")
+        if soc_version in ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS",
                            "SD3403"):
             return True
         return False

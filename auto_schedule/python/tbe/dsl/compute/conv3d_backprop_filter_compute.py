@@ -257,7 +257,7 @@ class Conv3dBackpropFilter:
 
         self.flag_load3d_special_case = False
         if not self.var_map \
-            and tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
+            and tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
             and self.shape_grads_6hd[3] != 1 \
             and self.shape_grads_6hd[4] == 1:
             self.flag_load3d_special_case = True

@@ -123,7 +123,7 @@ def check_input_params(input_data, input_dync_param, output_data, aipp_config_js
     input_dync_param_dtype = input_dync_param.get('dtype').lower()
     output_dtype = output_data.get('dtype').lower()
     output_format = output_data.get('format')
-    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
 
     para_check.check_dtype(data_dtype, ("uint8",), param_name="input_dtype")
     para_check.check_dtype(input_dync_param_dtype, ("uint8",), param_name="input_dync_param_dtype")
@@ -133,8 +133,8 @@ def check_input_params(input_data, input_dync_param, output_data, aipp_config_js
     para_check.check_format(data_format, input_format_list, param_name="input_data")
 
     if cur_cce_product not in (tbe_platform.ASCEND_310, tbe_platform.ASCEND_910,
-                               tbe_platform.ASCEND_710):
-        cause_desc = "aipp dynamic shape only support Ascend310, Ascend910, Ascend710"
+                               tbe_platform.ASCEND_310P):
+        cause_desc = "aipp dynamic shape only support Ascend310, Ascend910, Ascend310P"
         raise_runtime_error(cause_desc)
 
     para_check.check_format(output_format, ("NC1HWC0",), param_name="output_data")
@@ -174,7 +174,7 @@ class Aipp():
             self.c_padding_value_zero = 0
             self.area_padding_value_zero = 0
 
-        self.cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        self.cur_cce_product = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size
         self.l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)

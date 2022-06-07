@@ -43,7 +43,7 @@ def get_kernel_name(x, w, b):
 def test_fully_connection_requant_fusion(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, deq):
     kernel_name_val = get_kernel_name(x, w, b)
     print('running', kernel_name_val)
-    cceconf.te_set_version("Ascend710", "AiCore")
+    cceconf.te_set_version("Ascend310P3", "AiCore")
     shape_x = x.get('shape')
     dtype_x = x.get('dtype')
     format_x = x.get('format')
@@ -113,7 +113,7 @@ def test_fully_connection_requant_fusion_dsl():
 
 
 ut_case.add_cust_test_func(
-    ["Ascend710", "Ascend910A"], test_func=test_fully_connection_requant_fusion_dsl()
+    ["Ascend310P3", "Ascend910A"], test_func=test_fully_connection_requant_fusion_dsl()
 )
 
 

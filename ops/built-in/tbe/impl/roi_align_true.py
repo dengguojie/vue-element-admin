@@ -159,13 +159,13 @@ class RoiAlign(object):
         """
         self.data_mul(count_ub, grid_w, grid_h, [0, 0, 0], num=roi_num)
         self.data_max(count_ub, count_ub, one_ub, [0, 0, 0], num=roi_num)
-    
+
     def l1_support(self):
         """
         check if support l1 buffer or not
-        :return: 
+        :return:
         """
-        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION)
         if soc_version == "Ascend910B":
             return 0
         else:

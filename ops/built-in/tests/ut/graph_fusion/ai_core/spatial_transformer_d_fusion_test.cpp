@@ -81,7 +81,7 @@ TEST_F(spatial_transformer_d_fusion_test, spatial_transformer_d_fusion_test_0) {
 
     auto end_op = op::Square("end_op");
     end_op.set_input_x(stn_layer);
-	
+
     std::vector<Operator> inputs{};
     inputs.push_back(inputXData);
     inputs.push_back(inputThetaData);
@@ -108,8 +108,8 @@ TEST_F(spatial_transformer_d_fusion_test, spatial_transformer_d_fusion_test_1) {
   fe::OptionalInfo opti_compilation_info;
   platform_info.soc_info.ai_core_cnt = 1;
   platform_info.str_info.ccec_aic_version = "dav-s200";
-  opti_compilation_info.soc_version = "Ascend710";
-  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platform_info;
+  opti_compilation_info.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platform_info;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
   ge::Graph graph("spatial_transformer_d_fusion_test_0");

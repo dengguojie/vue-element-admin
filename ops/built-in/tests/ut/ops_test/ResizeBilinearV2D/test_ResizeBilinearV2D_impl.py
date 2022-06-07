@@ -57,7 +57,7 @@ case7 = {"params": [{"shape": (2,260,1,1,16), "dtype": "float32", "format": "NHW
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-       
+
 case8 = {"params": [{"shape": (2,260,1,1,16), "dtype": "int64", "format": "NHWC", "ori_shape": (2,260,1,1,16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 2, 2,16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2,16),"ori_format": "NHWC"},
                     (257, 10), False, False],
@@ -120,14 +120,14 @@ case32 = {"params": [{"shape": (25, 128, 2, 2, 1), "dtype": "float16", "format":
          "case_name": "resize_bilinear_v2_d_32",
          "expect": "success",
          "format_expect": [],
-         "support_expect": True}     #cover line 300-306 
+         "support_expect": True}     #cover line 300-306
 case33 = {"params": [{"shape": (25, 128, 2, 2, 1), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 2, 2, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_33",
          "expect": "success",
          "format_expect": [],
-         "support_expect": True}      
+         "support_expect": True}
 case16 = {"params": [{"shape": (25, 128, 2, 2, 1), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 2, 2, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
@@ -161,126 +161,126 @@ case20 = {"params": [{"shape": (150, 512, 1, 1, 10), "dtype": "float16", "format
                     (100, 50), True, False],
          "case_name": "resize_bilinear_v2_d_20",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}     #entre : second loop  line 417    third loop start!
 case21 = {"params": [{"shape": (150, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 512, 10, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (5, 10), True, False],
          "case_name": "resize_bilinear_v2_d_21",
          "expect": "success",
-         "format_expect": [], 
-         "support_expect": True} 
+         "format_expect": [],
+         "support_expect": True}
 case22 = {"params": [{"shape": (150, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 1000, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (2, 10), True, False],
          "case_name": "resize_bilinear_v2_d_22",
          "expect": "success",
-         "format_expect": [], 
-         "support_expect": True} 
+         "format_expect": [],
+         "support_expect": True}
 case30 = {"params": [{"shape": (5, 168, 1, 1, 2), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 888, 10, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (10, 15), True, False],
          "case_name": "resize_bilinear_v2_d_30",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case23 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 100, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 10), True, False],
          "case_name": "resize_bilinear_v2_d_23",
          "expect": "success",
-         "format_expect": [], 
-         "support_expect": True} 
+         "format_expect": [],
+         "support_expect": True}
 case24 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 10, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 10), True, False],
          "case_name": "resize_bilinear_v2_d_24",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}   #line 757
 case25 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 9.5, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_25",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case26 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 10, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_26",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case27 = {"params": [{"shape": (160, 55, 1, 1, 30), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 10, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_27",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}    #line 936 else
 case28 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 200, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_28",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case29 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 1000, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_29",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}    #watch out case30 case32 case33 above
 case31 = {"params": [{"shape": (25, 512, 1, 1, 35), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 10), True, False],
          "case_name": "resize_bilinear_v2_d_31",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case34 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (100, 15), True, False],
          "case_name": "resize_bilinear_v2_d_34",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case35 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (5, 15), True, False],
          "case_name": "resize_bilinear_v2_d_35",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case36 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (4, 7), True, False],
          "case_name": "resize_bilinear_v2_d_36",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case37 = {"params": [{"shape": (10, 50, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (6, 100), True, False],
          "case_name": "resize_bilinear_v2_d_37",
          "expect": "success",
-         "format_expect": [], 
-         "support_expect": True}   #kittle size start line 1907 
+         "format_expect": [],
+         "support_expect": True}   #kittle size start line 1907
 case38 = {"params": [{"shape": (10, 50, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (10, 300), True, False],
          "case_name": "resize_bilinear_v2_d_38",
          "expect": "success",
-         "format_expect": [], 
-         "support_expect": True} 
+         "format_expect": [],
+         "support_expect": True}
 case39 = {"params": [{"shape": (10, 50, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (9, 2), True, False],
          "case_name": "resize_bilinear_v2_d_39",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 
 case40 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
@@ -288,124 +288,124 @@ case40 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float32", "format
                     (3, 1000), True, False],
          "case_name": "resize_bilinear_v2_d_40",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}     #f32 line 2404 start
 case41 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 10), True, False],
          "case_name": "resize_bilinear_v2_d_41",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case42 = {"params": [{"shape": (10, 2025, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 5), True, False],
          "case_name": "resize_bilinear_v2_d_42",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case43 = {"params": [{"shape": (10, 820, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 5), True, False],
          "case_name": "resize_bilinear_v2_d_43",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case44 = {"params": [{"shape": (10, 40, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 1000), True, False],
          "case_name": "resize_bilinear_v2_d_44",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case45 = {"params": [{"shape": (10, 50, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 50, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (3, 5), True, False],
          "case_name": "resize_bilinear_v2_d_45",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case46 = {"params": [{"shape": (10, 50, 3, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (2, 3, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), False, True],
          "case_name": "resize_bilinear_v2_d_46",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}                # No.3 situation : output H/W = (1,1)   line 3612 start
 case47 = {"params": [{"shape": (10, 50, 3, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 50, 3, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_47",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case48 = {"params": [{"shape": (10, 50, 999, 999, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 2025, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_48",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case49 = {"params": [{"shape": (10, 2025, 3, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (45, 500, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_49",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case50 = {"params": [{"shape": (10, 50, 655, 111, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 50, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_50",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case51 = {"params": [{"shape": (10, 2025, 3, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 50, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_51",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case52 = {"params": [{"shape": (10, 50, 655, 111, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (100, 260, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_52",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case53 = {"params": [{"shape": (10, 2025, 3, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (100, 132, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_53",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case54 = {"params": [{"shape": (10, 1, 655, 111, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 13, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_54",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case55 = {"params": [{"shape": (10, 2025, 3, 3, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 13, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (1, 1), True, False],
          "case_name": "resize_bilinear_v2_d_55",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 case56 = {"params": [{"shape": (10, 2025, 3, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 13, 1, 16),"ori_format": "NHWC"},
                     {"shape": (10, 13, 2, 2, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 3, 2, 2, 16),"ori_format": "NHWC"},
                     (5, 5), True, False],
          "case_name": "resize_bilinear_v2_d_56",
          "expect": "success",
-         "format_expect": [], 
+         "format_expect": [],
          "support_expect": True}
 
 
 
-def test_check_supported_info(test_arg): 
+def test_check_supported_info(test_arg):
     from impl.resize_bilinear_v2_d import check_supported
     check_supported({"shape": (1, 1, 1, 1), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1), "ori_format": "NHWC"},
                     {"shape": (1, 1), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1), "ori_format": "NHWC"},
@@ -429,61 +429,61 @@ def test_check_supported_info(test_arg):
                     "check_supported_5")
 ut_case.add_cust_test_func(test_func=test_check_supported_info)
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case14)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case15)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case16)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case17)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case18)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case19)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case20)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case21)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case22)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case23)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case24)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case26)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case27)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case28)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case29)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case30)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case31)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case32)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case33)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case34)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case35)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case36)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case37)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case38)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case39)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case40)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case41)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case42)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case43)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case44)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case45)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case46)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case47)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case48)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case49)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case50)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case51)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case52)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case53)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case54)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case55)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case56)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case16)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case17)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case18)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case19)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case20)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case21)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case22)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case23)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case24)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case26)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case27)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case28)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case29)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case30)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case31)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case32)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case33)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case34)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case35)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case36)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case37)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case38)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case39)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case40)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case41)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case42)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case43)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case44)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case45)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case46)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case47)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case48)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case49)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case50)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case51)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case52)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case53)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case54)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case55)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case56)
 
 
 
@@ -521,7 +521,7 @@ def calc_expect_func(image, out, size):
     x =  tf.placeholder(image['dtype'], shape=data_in.shape)
     y =  tf.placeholder("int32", shape=(2,))
     z =  tf.image.resize_bilinear(x, y, False)
-    
+
     with tf.Session() as sess:
         res = sess.run(z, feed_dict={x: data_in, y: np.array(size)})
     res = trans_tf_data_out(res)

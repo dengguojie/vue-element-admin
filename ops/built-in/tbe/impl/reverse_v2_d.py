@@ -91,7 +91,7 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
             and (input_ori_shape[1] % 16 != 0):
         is_support_5hd = False
 
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_base = [
             "float16", "int8", "int16", "int32", "int64", "uint8",

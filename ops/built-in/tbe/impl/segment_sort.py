@@ -32,7 +32,7 @@ def op_select_format(input_data, input_index, output_proposal, k_num, kernel_nam
     """
     select format dynamically
     """
-    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
     if check_soc_version_support(soc_version, ("Ascend910B",)):
         input0 = util_select_op_base.gen_param(classify="input0", name="input_data",
                                                datatype="float16,float",
@@ -274,7 +274,7 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
     -------
     None
     """
-    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
     if check_soc_version_support(soc_version, ("Ascend910B",)):
         segment_sort_v2(input_data, input_index, output_proposal, k_num, kernel_name)
     else:

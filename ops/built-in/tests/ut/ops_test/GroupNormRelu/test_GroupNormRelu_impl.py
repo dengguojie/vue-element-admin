@@ -151,7 +151,7 @@ def init_error_case():
 def add_case(_):
     case_all = init_case()
     case_all_check_support = init_error_case()
-    cce_conf.cce_conf.te_set_version("Ascend710")
+    cce_conf.cce_conf.te_set_version("Ascend310P3")
     check_supported(*case_all[0])
     for case in case_all_check_support:
         check_supported(*case)

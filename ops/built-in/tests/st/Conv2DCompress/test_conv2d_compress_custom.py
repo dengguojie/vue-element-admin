@@ -68,8 +68,8 @@ def test_conv2d_compress_fused():
     compress_index = tvm.placeholder([compress_index_shape], name="compress_index", dtype="int8")
 
     scale_dtype = "float16"
-    v200_version = ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
-    if te.platform.cce_conf.get_soc_spec("SOC_VERSION") in v200_version:
+    v200_version = ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403")
+    if te.platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in v200_version:
         scale_dtype = "uint64"
     deq_scale = tvm.placeholder((1, input_list[1]["ori_shape"][0]//16, 1, 1, 16), name="deq_scale", dtype=scale_dtype, attrs={"ori_shape": [input_list[1]["ori_shape"][0]]})
     input_params = [x_, filter_, compress_index, None, None, None, *input_list[6:]]
@@ -205,7 +205,7 @@ def run_v300_conv2d_compress_single_op():
     v300_cases = [
         ("conv2d_add", "conv2d_add", "int8", (1, 3, 17, 17), (64, 3, 7, 7), (3, 3, 3, 3), (1, 1), 1, 1, False, 0, 0, 0)
     ]
-    set_current_compile_soc_info("Ascend320")
+    set_current_compile_soc_info("Ascend310B1")
     with op_context.OpContext():
         for case in v300_cases:
             print("=" * 150)
@@ -218,7 +218,7 @@ def run_v300_conv2d_compress_single_op():
 
 if __name__ == '__main__':
     run_v300_conv2d_compress_single_op()
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("FULL_SOC_VERSION")
     cce_conf.te_set_version("Hi3796CV300CS")
     test_conv2d_compress_no_bias()
     test_conv2d_compress_fused()

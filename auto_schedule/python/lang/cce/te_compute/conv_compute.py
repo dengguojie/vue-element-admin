@@ -19,12 +19,12 @@ import warnings
 
 def is_support_v200():
     """
-    Check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version.
+    Check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version.
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     False: Other version
     """
     warnings.warn("te.lang.cce.te_compute.conv_compute.is_support_v200 is deprecated, " \

@@ -39,8 +39,8 @@ case15 = prior_box_cce((2, 3, 5, 5, 16), (2, 3, 300, 300, 16), (5,1,1,1), (5,1,1
 case16 = prior_box_cce((2, 3, 5, 5, 16), (2, 3, 300, 300, 16), (5,1,1,1), (5,1,1,1), (6,1,1,1), (1, 2, 5, 5, 6, 4), "float16", "NC1HWC0", [162.0], [213.0], 300, 300, 0, 0, True, True, 0.5, [0.1, 0.1, 0.2, 0.2], "success", "prior_box_16")
 case17 = prior_box_cce((2, 3, 5, 5, 16), (2, 3, 300, 300, 16), (5,1,1,1), (5,1,1,1), (6,1,1,1), (1, 2, 5, 5, 6, 4), "float16", "NC1HWC0", [162.0], [213.0], 300, 300, 64.0, 64.0, True, True, 0.5, [0.1, -0.1, 0.2, 0.2], RuntimeError, "prior_box_17")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)

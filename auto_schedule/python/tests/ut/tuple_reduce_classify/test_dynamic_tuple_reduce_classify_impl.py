@@ -29,5 +29,5 @@ def test_ranked_dynamic(_):
                        [0]]]
         return ins == expect_ins
 
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_static)
-ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_ranked_dynamic)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_static)
+ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_ranked_dynamic)

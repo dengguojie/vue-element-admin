@@ -41,7 +41,7 @@ class Constant:
     MAXTRIX = 256
     DOWN_FACTOR = 0.05
     REC_FACTOR = 1 / DOWN_FACTOR
-    IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend710", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
+    IF_USE_V200 = ("Ascend610", "Ascend615", "Ascend310P", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
 
 
 # 'pylint: disable=using-constant-test,too-many-locals
@@ -1144,7 +1144,7 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
     final_tensor = InitFinalTensorV100(tik_instance, topk_k)
 
     # extract scores and classes from sorted proposals
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310":
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") == "Ascend310":
         with tik_instance.for_range(0, middle_tensor.cal_topk_k) as i:
             final_tensor.sorted_scores_ub[i].set_as(middle_tensor.data_ub_proposal[i * Constant.EIGHT
                                                                                    + Constant.FOUR])
@@ -1224,7 +1224,7 @@ def postprocessing(tik_instance, gm_tensor, shape, middle_tensor):
                        Constant.ONE, Constant.ONE, Constant.ONE, Constant.ONE)
 
     # cut out topk * Constant.FOUR from topk * Constant.SIXTEEN
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend615":
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") == "Ascend615":
         mask_final = tik_instance.Tensor('uint16', (1, 16), name='mask_final',
                                          scope=tik.scope_ubuf)
         mask_num = tik_instance.Scalar('uint16', name='mask_num',

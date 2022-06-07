@@ -48,7 +48,7 @@ static const std::string OP_TYPE_CAST = "Cast";
 static const std::string OP_TYPE_CONST = "Const";
 static const std::string OP_TYPE_CONSTANT = "Constant";
 static const std::string PADDINGS = "paddings";
-static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310", "Ascend610", "Ascend615", "Ascend710",
+static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310", "Ascend610", "Ascend615", "Ascend310P",
                                                                   "Ascend910"};
 static const std::vector<int64_t> BLACK_SHAPE = {1, 3200, 256};
 
@@ -77,17 +77,16 @@ Status PaddUpdateFusionPass::CheckPlatformInfo() {
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Failed to get platform info"), return NOT_CHANGED);
 
-  std::string socVersion = optionalInfo.soc_version;
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Get soc version: %s", socVersion.c_str());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Get soc version: %s", optionalInfo.soc_version.c_str());
 
   bool isSupport = false;
   for (string pattern : SUPPORT_PLATFORM_PATTERN) {
-    if (socVersion == pattern || socVersion.find(pattern) != string::npos) {
+    if (platformInfo.str_info.short_soc_version == pattern) {
       isSupport = true;
       break;
     }
   }
-  FUSION_PASS_CHECK(!isSupport, OP_LOGD(FUSED_OP_TYPE.c_str(), "Only support 310, 610, 615, 710, 910 series platform"),
+  FUSION_PASS_CHECK(!isSupport, OP_LOGD(FUSED_OP_TYPE.c_str(), "Only support 310, 610, 615, 310P, 910 series platform"),
                     return NOT_CHANGED);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "CheckPlatformInfo end");

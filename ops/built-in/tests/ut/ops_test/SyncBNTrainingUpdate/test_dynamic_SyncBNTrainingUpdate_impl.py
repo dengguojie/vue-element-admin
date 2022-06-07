@@ -35,6 +35,6 @@ ut_case.add_case("all",
 
 if __name__ == "__main__":
     ut_case.run("Ascend910")
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     ut_case.run("Ascend310")
 

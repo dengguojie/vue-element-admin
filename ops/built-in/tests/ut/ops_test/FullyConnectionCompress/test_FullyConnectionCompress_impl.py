@@ -123,17 +123,17 @@ case11 = {"params": [{"shape": (32, 1, 1, 1, 32), "dtype": "int8", "format": "NC
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910A"], case11)
 
 # ND -> ND
 def test_split_fc_compress(test_arg):

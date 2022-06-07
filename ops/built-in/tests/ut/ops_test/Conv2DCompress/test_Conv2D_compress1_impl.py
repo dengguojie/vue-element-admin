@@ -18,7 +18,7 @@ def test_conv2d_compress_impl2(test_arg):
     from impl.ascend_dequant import ascend_dequant_compute
     from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Hi3796CV300CS")
 
     def conv2d_compress_test(fmap_shape, filters_shape, bias_flag, strides, pads, dilations, dtype="int8"):

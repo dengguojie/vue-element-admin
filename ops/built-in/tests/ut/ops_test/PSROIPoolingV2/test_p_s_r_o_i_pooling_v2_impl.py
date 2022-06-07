@@ -175,7 +175,7 @@ ut_case.add_case("all",
                      "psroipooling_14", "success"))
 
 # normal shape 5, and fp32
-ut_case.add_case("Ascend710",
+ut_case.add_case("Ascend310P3",
                  gen_psroipooling_case(
                      {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -187,7 +187,7 @@ ut_case.add_case("Ascend710",
                      "psroipooling_15", "success"))
 
 # normal shape 6, and fp32
-ut_case.add_case("Ascend710",
+ut_case.add_case("Ascend310P3",
                  gen_psroipooling_case(
                      {"shape": (3, 2*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (3, 2*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -232,7 +232,7 @@ ut_case.add_case("Ascend310",
                       "ori_shape": (11, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      13, 3, 0.125,
                      "psroipooling_19", "success"))
-                     
+
 # output_dim less than or equal 1
 ut_case.add_case("all",
                  gen_psroipooling_case(
@@ -305,7 +305,7 @@ ut_case.add_case("all",
                       "ori_shape": (8, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      11, 3, 0.0625,
                      "psroipooling_25", "success"))
-              
+
 
 # scaler smaller than 0
 ut_case.add_case("all",

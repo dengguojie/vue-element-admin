@@ -136,7 +136,7 @@ def op_sub_select_format(x1, x2, y, kernel_name="add"):
     enum_x1 = functools.reduce(lambda x, y: x * y, shape_x1)
     enum_x2 = functools.reduce(lambda x, y: x * y, shape_x2)
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16", "int32", "int8", "uint8"]
     else:
@@ -270,7 +270,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16", "int32", "int8", "uint8"]
     else:

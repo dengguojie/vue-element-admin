@@ -1,11 +1,11 @@
 # # -*- coding:utf-8 -*-
 from op_test_frame.ut import OpUT
-import tensorflow as tf 
+import tensorflow as tf
 import numpy as np
 import time, itertools
 from op_test_frame.common import precision_info
 
-platforms = ["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend710", "Ascend910"]
+platforms = ["Ascend910A", "Ascend310", "Ascend610", "Ascend615", "Ascend310P3", "Ascend910"]
 platforms_only_fp16 = ["Hi3796CV300CS", "Hi3796CV300ES", "SD3403"]
 
 ut_case = OpUT("lp_norm", None, None)

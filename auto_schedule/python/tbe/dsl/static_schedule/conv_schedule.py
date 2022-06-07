@@ -619,7 +619,7 @@ class CceConvOp:
         self._l1_size = get_soc_spec("L1_SIZE")
         self._corenum = get_soc_spec("CORE_NUM")
         self._ub_size = get_soc_spec("UB_SIZE")
-        self._al1_preload_flag = True if get_soc_spec("SOC_VERSION") in ("SD3403") else False
+        self._al1_preload_flag = True if get_soc_spec("SHORT_SOC_VERSION") in ("SD3403") else False
         self.unzip_parameters = {"weight_zip_flag": False,
                                  "max_block_size": 32*1024,
                                  "compact_mode_index_size": 8,
@@ -825,7 +825,7 @@ class CceConvOp:
                 check_tiling_m_k_n(tiling, {TILING_INT8_M}, {TILING_INT8_K}, {TILING_INT8_N}, "int8")
             elif w_dtype == "int4":
                 check_tiling_m_k_n(tiling, {TILING_INT4_M}, {TILING_INT4_K}, {TILING_INT4_N}, "int4")
-            else:   
+            else:
                 err_man.raise_err_value_or_format_invalid("conv2d", "weight", "float16 or int8 or int4", "")
 
             check_innerbatch_tiling()
@@ -982,7 +982,7 @@ class CceConvOp:
 
                 """
                 if self.unzip_parameters.get("weight_zip_flag") and \
-                        get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
+                        get_soc_spec("SHORT_SOC_VERSION") == "Hi3796CV300ES":
                     compress_fusion_flag = self.unzip_parameters.get(
                         "compress_flag")
                     compress_fusion_flag = compress_fusion_flag << \
@@ -1080,10 +1080,10 @@ class CceConvOp:
                 when set fp32 output, compute cub_coefficient
                 """
                 if res_dtype == "float32":
-                    # if res_dtype is float32, ub_multiples shouble be 
+                    # if res_dtype is float32, ub_multiples shouble be
                     # float32 bytes multiples with float16 bytes
-                    # so the ub_multiples is 2 
-                    # by the way ,one multiples of float16 already apply in tiling 
+                    # so the ub_multiples is 2
+                    # by the way ,one multiples of float16 already apply in tiling
                     # so the ub_multiples in schedule need to be reduce one
                     ub_multiples = coeff(res_dtype, "float16")
                     cub_coefficient += ub_multiples - 1
@@ -1249,7 +1249,7 @@ class CceConvOp:
 
                 tiling["AL1_shape"] = [1, 1]
                 if self.unzip_parameters.get("weight_zip_flag") and \
-                        get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
+                        get_soc_spec("SHORT_SOC_VERSION") == "Hi3796CV300ES":
                     tiling["BL1_shape"] = [1]
                 else:
                     tiling["BL1_shape"] = None
@@ -1540,7 +1540,7 @@ class CceConvOp:
 
                     """
                     if self.unzip_parameters.get("weight_zip_flag") and \
-                            get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+                            get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                         compress_fusion_flag = self.unzip_parameters.get("compress_flag")
                         compress_fusion_flag = compress_fusion_flag << WEIGHT_UNZIP_FUSION_TYPE_BIT
                         fusion_type_new = fusion_type + compress_fusion_flag
@@ -7081,7 +7081,7 @@ class AutoScheduleOp:
             "fusion_type_7_4_6_1_3": 13,
             "fusion_type_7_4_6_1_9_3": 14,
             # convfp16+relu+quant
-            # Ascend610 Ascend710 808 for aipp
+            # Ascend610 Ascend310P3 808 for aipp
             "fusion_type_1_2_3_7": 40,
             # Hi3796CV300ES Ascend310 809 for aipp
             "fusion_type_1_2_3_4_7": 41,

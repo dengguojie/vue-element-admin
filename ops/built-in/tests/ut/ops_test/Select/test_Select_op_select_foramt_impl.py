@@ -21,4 +21,4 @@ def gen_select_case(shape_var, dtype, expect, case_name_val, input_format, bool_
 case1 = gen_select_case((16, 16, 16, 16, 16), "float16", "success", "select_op_select_format_6hd_1", "NDHWC")
 case1 = gen_select_case((16, 16, 16, 16), "float16", "success", "select_op_select_format_5hd_1", "NCHW")
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)

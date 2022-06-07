@@ -216,7 +216,7 @@ def _tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
     with tik_inst.for_range(n_required, n_required_apply) as index:
         required_score_ub[index, 4].set_as(init_scalar)
 
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310", "Ascend910"):
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310", "Ascend910"):
         count_scalar = tik_inst.Scalar("int32", "count_scalar", 0)
 
         ones_ub = tik_inst.Tensor(data_type, (ceil_num,), name="ones_ub", scope=tik.scope_ubuf)

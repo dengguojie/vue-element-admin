@@ -130,7 +130,7 @@ class IrParams:
         self.uint64_all_one = tvm.const(Constant.MAX_VALUE_UINT64, "uint64")
 
         # get run plat, mini or cloud
-        self.compile_plat = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        self.compile_plat = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
         self.segment_size_calcu_histogram = Constant.SEGMENT_SIZE_CALCU_HISTOGRAM
         if self.compile_plat in ("Ascend310",):
             self.segment_size_calcu_histogram = \
@@ -484,7 +484,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
     None
     """
     def _do_cmp_calcu(repeat, cal_offset, nbins_index):
-        if params.compile_plat in ("Ascend910", "Ascend610", "Ascend710") \
+        if params.compile_plat in ("Ascend910", "Ascend610", "Ascend310P") \
                 or tbe_platform.api_check_support("tik.vgatherb"):
             params.ir_builder.emit(
                 tvm.call_extern(
@@ -720,7 +720,7 @@ def _fuction_accu_to_output(_ib, params):
         # fp16 to s32
         kernel_api.kernel_cast_to_fuc(_ib, _addr_list, _data_info,
                                       "vconv_f162s32r")
-    elif params.compile_plat in ("Ascend910", "Ascend610", "Ascend710") \
+    elif params.compile_plat in ("Ascend910", "Ascend610", "Ascend310P") \
             or tbe_platform.api_check_support("tik.vgatherb"):
         kernel_api.kernel_cast_to_fuc(_ib, _addr_list, _data_info,
                                       "vconv_f322s32r")

@@ -33,7 +33,7 @@ def l1_loss_grad_compute(grads, predict, label, y, reduction="mean", kernel_name
     """
     l1_loss_grad_compute
     """
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
 
     data_type = predict.dtype.lower()
     if data_type == "float32" and cce_product == "Ascend310":

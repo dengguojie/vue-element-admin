@@ -3,7 +3,7 @@
 from op_test_frame.ut import OpUT
 
 
-ut_case = OpUT("PtIou", op_func_name="iou")
+ut_case = OpUT("PtIou", "impl.iou", op_func_name="iou")
 
 case1 = {"params": [{"shape": (1, 4), "dtype": "float16", "format": "ND", "ori_shape": (1, 4), "ori_format": "ND"},
                     {"shape": (1, 4), "dtype": "float16", "format": "ND", "ori_shape": (1, 4), "ori_format": "ND"},

@@ -224,7 +224,7 @@ def _check_1d_updates(indices, updates, output_y):
     check if updates are 1-D shape or not
     """
     # only support v100 cloud
-    if tbe_platform.get_soc_spec("SOC_VERSION") not in ("Ascend910",):
+    if tbe_platform.get_soc_spec("SHORT_SOC_VERSION") not in ("Ascend910",):
         return False
     indices_shape = indices.get("shape")
     updates_shape = updates.get("shape")

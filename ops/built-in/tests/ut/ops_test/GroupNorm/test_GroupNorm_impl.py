@@ -34,7 +34,7 @@ def add_case():
              "expect": "success",
              "format_expect": [],
              "support_expect": True}
-    ut_case.add_case(["Ascend910A", "Ascend710"], case1)
+    ut_case.add_case(["Ascend910A", "Ascend310P3"], case1)
 
 
 def add_case1():
@@ -68,7 +68,7 @@ def add_case1():
              "expect": "success",
              "format_expect": [],
              "support_expect": True}
-    ut_case.add_case(["Ascend910A", "Ascend710"], case2)
+    ut_case.add_case(["Ascend910A", "Ascend310P3"], case2)
 
 
 add_case()
@@ -76,4 +76,4 @@ add_case1()
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310P3"])

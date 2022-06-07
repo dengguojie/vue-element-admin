@@ -35,10 +35,10 @@ case4 = {"params": [{"shape": (-2,), "dtype": "float32", "format": "ND", "ori_sh
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910A","Ascend610","Ascend710"], case1)
-ut_case.add_case(["Ascend910A","Ascend610","Ascend710"], case2)
-ut_case.add_case(["Ascend910A","Ascend610","Ascend710"], case3)
-ut_case.add_case(["Ascend910A","Ascend610","Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910A","Ascend610","Ascend310P3"], case4)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend610", "Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend610", "Ascend310P3", "Ascend910A"])

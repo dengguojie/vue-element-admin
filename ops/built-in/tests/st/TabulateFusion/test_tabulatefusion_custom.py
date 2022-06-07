@@ -20,11 +20,11 @@ from impl.dynamic.tabulate_fusion import tabulate_fusion
 from tbe.common.platform.platform_info import set_current_compile_soc_info
 
 
-def tabulate_fusion_test(nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0, soc="710"):
+def tabulate_fusion_test(nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0, soc="310P3"):
     if soc == "910":
         set_current_compile_soc_info("Ascend910")
     else:
-        set_current_compile_soc_info("Ascend710")
+        set_current_compile_soc_info("Ascend310P3")
 
     last_layer_size_align = (last_layer_size + 64 - 1) // 64 * 64
     with tbe.common.context.op_context.OpContext("dynamic"):

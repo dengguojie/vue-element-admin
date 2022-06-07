@@ -43,7 +43,7 @@ class DetectionParamInit(object):
         self.dtype = input_dict.get("mbox_loc").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
 
-        self.ascend_name = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+        self.ascend_name = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
         self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
         ub_capacity = self.ub_size // self.dsize
 

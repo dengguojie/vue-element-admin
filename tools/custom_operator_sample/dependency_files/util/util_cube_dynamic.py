@@ -214,7 +214,7 @@ class CubeParaProcess:
             return True
         return False
 
-    
+
     def check_dynamic_channel_scene(self, in_shape, out_shape, channel):
         """
         check if valid dynamic channel scene
@@ -224,7 +224,7 @@ class CubeParaProcess:
                 self.op_type, "out channel does not support -1.")
         if in_shape[C_DIM] == DYNAMIC_FLAG:
             in_shape[C_DIM] = channel
-    
+
     def check_range_valid(self, shape, dyn_range, name, in_format):
         """
         check if the range is valid
@@ -385,7 +385,7 @@ class CubeParaProcess:
                 "as {}".format(out_h_lower))
         if out_h_upper and out_h_upper > self.valid_paras.get("hw_max"):
             out_h_upper = min(out_h_upper, self.valid_paras.get("hw_max"))
-            new_in_range[H_DIM] = (new_in_range[H_DIM][0], _get_higher_input(out_h_upper, w_shape[H_DIM], (self.pads[0], self.pads[1]), 
+            new_in_range[H_DIM] = (new_in_range[H_DIM][0], _get_higher_input(out_h_upper, w_shape[H_DIM], (self.pads[0], self.pads[1]),
                                     self.strides[H_DIM],self.dilations[H_DIM]))
             correct_range_flag = True
             warnings.warn("The output calculated based on the higher limit of the input h "+
@@ -401,7 +401,7 @@ class CubeParaProcess:
                 "as {}".format(out_w_lower))
         if out_w_upper and out_w_upper > self.valid_paras.get("hw_max"):
             out_w_upper = min(out_w_upper, self.valid_paras.get("hw_max"))
-            new_in_range[W_DIM] = (new_in_range[W_DIM][0], _get_higher_input(out_w_upper, w_shape[W_DIM], (self.pads[2], self.pads[3]), 
+            new_in_range[W_DIM] = (new_in_range[W_DIM][0], _get_higher_input(out_w_upper, w_shape[W_DIM], (self.pads[2], self.pads[3]),
                                     self.strides[W_DIM],self.dilations[W_DIM]))
             correct_range_flag = True
             warnings.warn("The output calculated based on the higher limit of the input w "+
@@ -557,7 +557,7 @@ class Conv2dParaProcess(CubeParaProcess):
         if in_shape[C_DIM] == DYNAMIC_FLAG:
             err_man.raise_err_specific_user(
                 self.op_type, "dynamic c dimension is not supported yet.")
-        soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
+        soc_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
         if self.paras.get("offset_w"):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")

@@ -21,7 +21,7 @@ ut_case = OpUT("L1LossGrad", "impl.dynamic.l1_loss_grad", "l1_loss_grad")
 case1 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]},
                     "none"
                     ],
          "case_name": "L1LossGrad_dynamic_1",
@@ -31,7 +31,7 @@ case1 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_s
 case2 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]},
                     "sum"
                     ],
          "case_name": "L1LossGrad_dynamic_2",
@@ -41,7 +41,7 @@ case2 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_s
 case3 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]},
                     "mean"
                     ],
          "case_name": "L1LossGrad_dynamic_3",
@@ -51,7 +51,7 @@ case3 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_s
 case4 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,4), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]},
                     "mean"
                     ],
          "case_name": "L1LossGrad_dynamic_4",
@@ -61,7 +61,7 @@ case4 = {"params": [{"shape":(-1,-1,4), "dtype":"float16", "format":"ND", "ori_s
 case5 = {"params": [{"shape":(-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(4,4)]},
                     "mean"
                     ],
          "case_name": "L1LossGrad_dynamic_5",
@@ -71,7 +71,7 @@ case5 = {"params": [{"shape":(-1,-1,-1), "dtype":"float16", "format":"ND", "ori_
 case6 = {"params": [{"shape":(-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(4,4)]},
                     "mean"
                     ],
          "case_name": "L1LossGrad_dynamic_6",
@@ -81,21 +81,21 @@ case6 = {"params": [{"shape":(-1,-1,-1,-1), "dtype":"float16", "format":"ND", "o
 case7 = {"params": [{"shape":(-1,-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(1,None),(4,4)]}, #predict
                     {"shape":(-1,-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(1,None),(4,4)]}, #grads
                     {"shape":(-1,-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(1,None),(4,4)]}, #label
-                    {"shape":(-1,-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(1,None),(4,4)]}, 
+                    {"shape":(-1,-1,-1,-1,-1), "dtype":"float16", "format":"ND", "ori_shape":(-1,-1,-1,-1,-1), "ori_format":"ND", "range":[(1,None),(1,None),(1,None),(1,None),(4,4)]},
                     "mean"
                     ],
          "case_name": "L1LossGrad_dynamic_7",
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case1)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case5)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case6)
+ut_case.add_case(["Ascend910","Ascend310","Ascend310P3"], case7)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910","Ascend310","Ascend310P3"])
     exit(0)

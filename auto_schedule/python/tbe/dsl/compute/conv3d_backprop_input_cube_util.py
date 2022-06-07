@@ -425,7 +425,7 @@ class ConvDslPattern(CubeDslPattern):
         ----------
         w_out : width of output tensor
         """
-        if tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
+        if tbe_platform_info.get_soc_spec("SHORT_SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
             and not var_map \
             and int(h_out) != 1 \
             and int(w_out) == 1:

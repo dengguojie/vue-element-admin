@@ -65,7 +65,7 @@ def preprocess_input(impl_mode, dtype, data_input_tmp, is_5hdc, is_nz_nd):
     preprocess input and get has_improve_precision
     """
     has_improve_precision = False
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     if impl_mode is None:
         if cce_product in ("Ascend310",):
             impl_mode = "high_performance"

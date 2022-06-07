@@ -960,7 +960,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     """
     _check_empty_tensor(input_x1, input_x2, output_z, bias)
     # check soc_version
-    soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    soc_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         error_manager_vector.raise_err_specific_reson(
             "batch_matmul", "Hi3796CV300ES and Hi3796CV300CS and SD3403 don't support dynamic shape"
@@ -990,7 +990,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
         reason = f"not support op_type: {op_type}"
         error_manager_vector.raise_err_specific_reson(op_type, reason)
 
-    if "Ascend910" in soc_version or "Ascend710" in soc_version:
+    if soc_version in ("Ascend910", "Ascend310P"):
         _define_cache_tiling_var(input_x1, input_x2, bias)
 
     if len(shape_x1) >= BATCH_ND_LENGTH:

@@ -33,9 +33,9 @@ case3 = {"params": [{"shape": (1,1,7,4096,16), "dtype": "float16", "format": "NC
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case3)
 
 from impl.adaptive_max_pool2d import check_supported
 
@@ -81,7 +81,7 @@ def calc_expect_func(x, y, output_size):
     inputArr_NCHW = NC1HWC02NCHW(inputArr, shape, "float16")
 
     m = torch.nn.AdaptiveMaxPool2d(tuple(output_size))
-    outputArr_NCHW = m(inputArr_NCHW) 
+    outputArr_NCHW = m(inputArr_NCHW)
     #output shape
     batch, channel, height, width = outputArr_NCHW.shape
     C0 = shape[4]

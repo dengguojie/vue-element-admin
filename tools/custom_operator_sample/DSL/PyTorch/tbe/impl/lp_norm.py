@@ -23,7 +23,7 @@ from te.utils import para_check
 
 _CONST_INF = 2147483647
 _CONST_EPSILON_FP16 = 1e-7
-_CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
+_CCE_PLAT = tbe_platform.get_soc_spec('SHORT_SOC_VERSION')
 
 
 # pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
@@ -97,7 +97,7 @@ def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     elif not sum_support_fp32 and x_type == "float32":
         cast_support_f322f16 = tbe_platform.api_check_support("te.lang.cce.cast_to", "f322f16")
         if cast_support_f322f16:
-            abs_x = tbe.cast_to(abs_x, "float16")            
+            abs_x = tbe.cast_to(abs_x, "float16")
         else:
             raise RuntimeError("Type of input x must be float16 since cast op cannot support f322f16")
 
@@ -219,7 +219,7 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
         res = lp_norm2_compute(abs_data, x_type, y, axes, keepdim, kernel_name)
     else:
         res = lp_norm_compute(abs_data, x_type, y, p, axes, keepdim, kernel_name)
-    
+
     if x_type == "float16" and float(epsilon) <= _CONST_EPSILON_FP16:
         std_no = tvm.const(_CONST_EPSILON_FP16, dtype=x_type)
     else:

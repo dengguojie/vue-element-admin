@@ -382,7 +382,7 @@ def _post_proposal_nms_extract(tik_instance, ret_ub, select_proposal_ub, repeat)
     :param repeat:
     :return:
     """
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310",):
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310",):
         with tik_instance.for_range(0, repeat * 16) as offset:
             ret_ub[4, offset].set_as(select_proposal_ub[offset, 4])
     else:
@@ -404,7 +404,7 @@ def _get_batch_id(tik_instance, ret_ub, dtype, batch_id, num):
     """
 
     with tik_instance.if_scope(True):
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310", "Ascend910"):
+        if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310", "Ascend910"):
             tmp_buffer_ub = tik_instance.Tensor(
                 dtype, (1, num * 16), name="tmp_buffer_ub", scope=tik.scope_ubuf)
             batch_id_ub = tik_instance.Tensor(
@@ -753,7 +753,7 @@ def _nms_output_postproposal(input_data, post_nms_topn, selected_count, temp_pro
         tik_inst.data_move(select_proposal_ub, temp_proposal_out[batch_index, 0, 0], 0, 1,
                            ((post_nms_topn + 15) // 16 * 16 * 8 * size) // 32, 0, 0)
 
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend310", "Ascend910"):
+        if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") in ("Ascend310", "Ascend910"):
             temp = class_index
             temp_dup = tik_inst.Tensor("int32", (16,), name="temp_dup", scope=tik.scope_ubuf)
             _vec_dup((tik_inst, 16, "int32"), temp_dup, temp)

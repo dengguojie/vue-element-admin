@@ -69,9 +69,9 @@ case4 = {"params": [
     "expect": RuntimeError,
     "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
 ut_case.run("Ascend910A")
 
 vals = {("tik.vextract", "float16"): False}
@@ -79,8 +79,8 @@ def side_effects(*args):
     return vals[args]
 
 with patch("impl.util.platform_adapter.tbe_platform.api_check_support", MagicMock(side_effect=side_effects)):
-    ut_case.run("Ascend710",'ROIAlignGrad_dynamic_shape_RoiAlignGrad_1')
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
+    ut_case.run("Ascend310P3",'ROIAlignGrad_dynamic_shape_RoiAlignGrad_1')
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

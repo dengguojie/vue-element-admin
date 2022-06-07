@@ -81,7 +81,7 @@ def global_lppool(input_x, output_y, p=2.0, kernel_name="global_lppool"):
     if len(shape) == 5:
         axis = [2, 3, 4]
 
-    cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cur_cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     input_x["rel_pos_to_reduce"] = "before"
     input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
     schedules = []

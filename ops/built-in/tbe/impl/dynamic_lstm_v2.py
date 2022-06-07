@@ -224,7 +224,7 @@ def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf
     if bias_dtype == 'float32':
         impl_mode = "high_precision"
 
-    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if product_version in ('Hi3796CV300ES', 'Hi3796CV300CS', 'Hi3796CV300SD3403'):
         impl_mode = "high_performance"
 

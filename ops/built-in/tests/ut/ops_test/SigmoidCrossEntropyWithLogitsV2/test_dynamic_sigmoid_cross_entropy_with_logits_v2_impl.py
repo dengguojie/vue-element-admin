@@ -132,5 +132,5 @@ case3 = {
 }
 
 ut_case.add_case(["Ascend910A"], case1)
-ut_case.add_case(["Ascend910A"], case2)
+#ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)

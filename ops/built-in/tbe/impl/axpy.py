@@ -99,7 +99,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     dtype_list = ["float16", "int32"]
     if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list.append("float32")
@@ -452,7 +452,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
         x2 = te.lang.cce.broadcast(x2, shape_max)
 
     # start the main logic
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if tbe_platform.cce_conf.get_soc_spec("SHORT_SOC_VERSION") == "Ascend910":
         if dtype in ("float16", "float32"):
             # fp16 or fp32
             if neg_1_axis_flag:

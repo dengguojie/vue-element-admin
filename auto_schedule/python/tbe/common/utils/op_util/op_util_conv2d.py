@@ -344,4 +344,4 @@ def get_cur_soc():
     """
     get soc version
     """
-    return tbe.common.platform.platform_info.get_soc_spec("SOC_VERSION")
+    return tbe.common.platform.platform_info.get_soc_spec("SHORT_SOC_VERSION")

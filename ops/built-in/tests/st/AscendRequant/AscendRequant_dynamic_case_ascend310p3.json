@@ -1,0 +1,74 @@
+[
+  {
+    "op": "AscendRequant",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          32,
+          4,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          -1,
+          32,
+          4,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "typical_shape": [1, 32, 4, 4],
+        "shape_range": [[1, 1]],
+        "value_range": [[1, 1]],
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          32,
+          1,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          32,
+          1,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "req_scale",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          32,
+          4,
+          4
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          32,
+          4,
+          4
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "relu_flag",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_AscendRequant_dynamic_000"
+  }
+]

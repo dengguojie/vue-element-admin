@@ -126,7 +126,7 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
     -------
     None
     """
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     shape_x1 = x.get("ori_shape")
     shape_x2 = y.get("ori_shape")
 
@@ -1082,7 +1082,7 @@ def static_reshape(x, y):
     shape_y = shape_util.scalar2tensor_one(shape_y)
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_shape(shape_y, param_name="y")
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     if para_check.is_scalar(shape_y) and cce_product == "Ascend910":
         is_scene_1d = True
         shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)

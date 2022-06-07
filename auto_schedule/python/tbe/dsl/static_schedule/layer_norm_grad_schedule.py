@@ -545,7 +545,7 @@ def _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
         sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
         sch[tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
 
-    soc_version = get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
 
     for tensor in mid_tensor_buffer_map:
         buffer_tensor = mid_tensor_buffer_map[tensor]
@@ -923,7 +923,7 @@ def schedule_cut_general(sch_list, shape_input, ub_split_reduce_axis, split_fact
         size = size * shape_input[3]
     loop_tail_size = size - outer_factor * loop_size
 
-    soc_version = get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
 
     if _need_dichotomy_add(loop_size, loop_tail_size, dtype) and not api_check_support("tik.vgatherb"):
         sch[final_out_buffer].emit_insn(sum_x_ub_inner, "vector_dichotomy_add_for_bn_reduce")
@@ -1014,7 +1014,7 @@ def schedule_cut_m1_nz(sch_list, res, shape_x,
 
     vector_inst_one_repeat_size = 64
 
-    soc_version = get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
 
     if ub_split_inner * 16 % vector_inst_one_repeat_size == 0 and not api_check_support("tik.vgatherb"):
         sch[final_ub_tensor].emit_insn(ub_inner,

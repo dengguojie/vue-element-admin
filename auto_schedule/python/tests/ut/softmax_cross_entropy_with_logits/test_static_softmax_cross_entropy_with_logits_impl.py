@@ -239,7 +239,7 @@ compile_case_list = [
 ]
 
 for item in compile_case_list:
-    ut_case.add_case(["Ascend920A", "Ascend910A"], case=item)
+    ut_case.add_case(["Ascend910B2", "Ascend910A"], case=item)
 
 if __name__ == '__main__':
     import os

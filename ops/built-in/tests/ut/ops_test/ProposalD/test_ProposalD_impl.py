@@ -48,7 +48,7 @@ case3 = {"params": [{"shape": (1,4,1,16), "dtype": "float16", "format": "NCHW", 
          "format_expect": [],
          "support_expect": True}
 
-#ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+#ut_case.add_case(["Ascend310", "Ascend310P3", "Ascend910"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 #ut_case.add_case(["Hi3796CV300ES"], case3)
 def test_proposald_sd3403_1(test_arg):

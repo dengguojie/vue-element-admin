@@ -461,7 +461,7 @@ def test_conv3d_requant_fusion_scene(test_args):
     from impl.ascend_requant import ascend_requant_compute
     from te.platform.cce_conf import te_set_version
     from tbe.common.tiling.tiling_helper import TILING_INSTANCE
-    te_set_version("Ascend710")
+    te_set_version("Ascend310P3")
 
     try:
         tiling_type = "auto_tiling"

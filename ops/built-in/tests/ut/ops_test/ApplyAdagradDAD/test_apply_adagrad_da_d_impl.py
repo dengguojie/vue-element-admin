@@ -52,8 +52,8 @@ case2 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_sha
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend310P3"], case1)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend310P3"], case2)
 
 def _gen_outputs(input_var, input_grad_accum, input_grad_squa_accum,
                  input_grad, input_lr, input_l1,

@@ -36,13 +36,13 @@ from tbe.tvm.tensor import Tensor
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import HI3796CV300CS
 from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import FAKE_NODE_TAG
@@ -64,7 +64,7 @@ REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC = {
     ASCEND_310: ("float16",),
     ASCEND_910: ("float16",),
     ASCEND_910B: ("float16", "float32", "int32"),
-    ASCEND_710: ("float16",),
+    ASCEND_310P: ("float16",),
     ASCEND_610: ("float16",),
     ASCEND_615: ("float16",),
     ASCEND_SHISI: ("float16",),
@@ -358,7 +358,7 @@ class ComputeGraphInfo:
                 the func get all dtypes that reduce_max and reduce_min supports vcross func (vcmax or vcmin)
                 by soc type
                 """
-                soc_ver = get_soc_spec(SOC_VERSION)
+                soc_ver = get_soc_spec(SHORT_SOC_VERSION)
                 if soc_ver in (HI3796CV300CS, HI3796CV300ES, SD3403):
                     soc_ver = ASCEND_SHISI
                 soc_support_dtype = REDUCE_MAX_MIN_SUPPORT_VCROSSFUNC.get(soc_ver)

@@ -211,7 +211,7 @@ case26 = {"params": [{"shape": (33, 2, 33, 2, 16), "dtype": "float32", "format":
          "case_name": "resize_bilinear_v2_grad_26",
          "expect": "success",
          "format_expect": [],
-         "support_expect": True} 
+         "support_expect": True}
 case27 = {"params": [{"shape": (33, 1, 4, 240, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (33, 1, 4, 240, 16),"ori_format": "NHWC"},
                     {"shape": (3, 1, 1, 1, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 1, 1, 1, 16),"ori_format": "NHWC"},
                     {"shape": (3,3,2,2,16), "dtype": "float32", "format": "NHWC", "ori_shape": (3,3,2,2,16),"ori_format": "NHWC"},
@@ -220,35 +220,35 @@ case27 = {"params": [{"shape": (33, 1, 4, 240, 16), "dtype": "float32", "format"
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend710", "Ascend910A"], case6)
-ut_case.add_case(["Ascend710", "Ascend910A"], case7)
-ut_case.add_case(["Ascend710", "Ascend910A"], case8)
-ut_case.add_case(["Ascend710", "Ascend910A"], case9)
-ut_case.add_case(["Ascend710", "Ascend910A"], case10)
-ut_case.add_case(["Ascend710", "Ascend910A"], case11)
-ut_case.add_case(["Ascend710", "Ascend910A"], case12)
-ut_case.add_case(["Ascend710", "Ascend910A"], case13)
-ut_case.add_case(["Ascend710", "Ascend910A"], case14)
-ut_case.add_case(["Ascend710", "Ascend910A"], case15)
-ut_case.add_case(["Ascend710", "Ascend910A"], case16)
-ut_case.add_case(["Ascend710", "Ascend910A"], case17)
-ut_case.add_case(["Ascend710", "Ascend910A"], case18)
-ut_case.add_case(["Ascend710", "Ascend910A"], case19)
-ut_case.add_case(["Ascend710", "Ascend910A"], case20)
-ut_case.add_case(["Ascend710", "Ascend910A"], case21)
-ut_case.add_case(["Ascend710", "Ascend910A"], case22)
-ut_case.add_case(["Ascend710", "Ascend910A"], case23)
-ut_case.add_case(["Ascend710", "Ascend910A"], case24)
-ut_case.add_case(["Ascend710", "Ascend910A"], case25)
-ut_case.add_case(["Ascend710", "Ascend910A"], case26)
-ut_case.add_case(["Ascend710", "Ascend910A"], case27)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case16)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case17)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case18)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case19)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case20)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case21)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case22)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case23)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case24)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case25)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case26)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case27)
 if __name__ == '__main__':
-    ut_case.run(["Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend310P3", "Ascend910A"])
     # ut_case.run("Ascend910")
     exit(0)
 

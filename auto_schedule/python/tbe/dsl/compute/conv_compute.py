@@ -111,16 +111,16 @@ def remove_suffix_num_for_name(name):
 
 def is_support_v200():
     """
-    Check if Ascend610/Ascend615/Ascend710/Hi3796CV300CS version.
+    Check if Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version.
     ----------
 
     Returns
     -------
-    True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend615/Ascend310P/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
+    if soc_version in ("Ascend310P", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
 
@@ -147,7 +147,7 @@ def check_load3d_w_out_1_support():
     if is_support_fixpipe():
         return True
 
-    soc_version = get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SHORT_SOC_VERSION")
     if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False
@@ -2412,7 +2412,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if "mad_dtype" not in para_dict:
             if weight.dtype in ("int4", "int8"):
                 mad_dtype = "int32"
-            elif get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+            elif get_soc_spec("SHORT_SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 mad_dtype = "float16"
             else:
                 mad_dtype = "float32"

@@ -25,7 +25,7 @@ ut_case = OpUT("TabulateFusionGrad", "impl.dynamic.tabulate_fusion_grad", "tabul
 
 
 def tabulate_fusion_grad_ut_test(test_args, nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0):
-    set_current_compile_soc_info("Ascend710")
+    set_current_compile_soc_info("Ascend310P3")
 
     with tbe.common.context.op_context.OpContext("dynamic"):
         table = {"shape": (table_dim0, last_layer_size*6), "dtype": "float32", "format": "ND",
@@ -77,5 +77,5 @@ ut_case.add_cust_test_func(test_func=test_tabulate_fusion_grad_case002)
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend710")
+    ut_case.run("Ascend310P3")
     exit(0)

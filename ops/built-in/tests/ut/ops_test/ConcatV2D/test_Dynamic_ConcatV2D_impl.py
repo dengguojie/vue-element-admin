@@ -22,26 +22,26 @@ def gen_concat_case(dynamic_input_shapes, ori_input_shapes, dtype, axis,
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case([(-1, -1), (-1, -1), (-1, -1)],
                                  [(66, 2), (66, 2), (66, 32)],
                                  "float16", -1, "case_1_v2", "success"))
 
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case([(-1, -1), (-1, -1), (-1, -1)],
                                  [(66, 65), (66, 393216), (66, 65)], "float16",
                                  -1, "case_2", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case([(-1, -1)] * 1, [(2, 2)] * 1, "int64",
                                  -1, "case_3", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case([(-1, -1)] * 1, [(2, 2)] * 1, "int8",
                                  -1, "case_4", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend310P3"],
                  gen_concat_case([(-2,)] * 1, [(2, 2)] * 1, "int8",
                                  1, "case_5", "success"))
 
