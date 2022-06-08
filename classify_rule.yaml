@@ -393,9 +393,10 @@ cube:
       - ops/built-in/fusion_pass/common/lx_fusion_func.h
       - ops/built-in/fusion_pass/common/fusion_pre_trans_func.cc
       - ops/built-in/fusion_pass/common/fusion_pre_trans_func.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fullyconnection_power_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_biasadd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_biasadd_fusion_pass.h
