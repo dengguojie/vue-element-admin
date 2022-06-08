@@ -31,7 +31,6 @@ from typing import Union
 from tbe import tvm
 from tbe.common.platform import ASCEND_910
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
@@ -538,7 +537,7 @@ def apply_common_compile_info(graph_info, reduce_info):
             support_transpose = 0
             if reduce_info.reduce_tensor.op.tag in REDUCE_EMITSN_SUPPORT_TRANSPOSE:
                 support_transpose = 1
-            support_group_reduce = get_soc_spec(SOC_VERSION) != ASCEND_910B
+            support_group_reduce = get_soc_spec("SHORT_SOC_VERSION") != ASCEND_910B
             common_info = [core_num, keep_dims, min_block_size, atomic, graph_info.coef,
                            graph_info.pad_max_entire_size, support_transpose, reduce_tensor_dtype_byte,
                            support_group_reduce]
@@ -804,7 +803,7 @@ def _calculate_group_reduce_tiling_cases(info: SingleReduceInfo) -> List[ReduceT
 
     if check_atomic_add_support(info):
         return tiling_case_list
-    if get_soc_spec(SOC_VERSION) == ASCEND_910B or get_soc_spec("CORE_NUM") == 1:
+    if get_soc_spec("SHORT_SOC_VERSION") == ASCEND_910B or get_soc_spec("CORE_NUM") == 1:
         return tiling_case_list
     # not ARA
     if len(info.reduce_axis_indexes) > 1 or info.is_reduce_last_axis():
@@ -844,7 +843,7 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     check if current tiling case support atomic
     """
     # Common Regulation
-    version = get_soc_spec(SHORT_SOC_VERSION)
+    version = get_soc_spec("SHORT_SOC_VERSION")
     if version not in [ASCEND_910B, ASCEND_910]:
         return False
 

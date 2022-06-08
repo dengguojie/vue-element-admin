@@ -62,7 +62,7 @@ def op_select_format(x, scale, offset, y, mean, variance, num_groups, data_forma
 
     shape_x = x.get("ori_shape")
 
-    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    soc_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     dtype_list = []
     format_list0 = []
     format_list1 = []

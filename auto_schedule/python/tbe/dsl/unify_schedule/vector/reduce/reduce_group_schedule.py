@@ -21,7 +21,6 @@ import copy
 
 from tbe import tvm
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base.operation import var_inner
 from tbe.dsl.base.operation import get_context
@@ -523,7 +522,7 @@ class ReduceGroupSchedule:
                 self._sch[single_tensor].emit_insn(param[0], param[1], attrs=param[2])
 
     def _calc_compute_align(self):
-        if get_soc_spec(SOC_VERSION) != ASCEND_910B:
+        if get_soc_spec("SHORT_SOC_VERSION") != ASCEND_910B:
             return
 
         for single_tensor, param in self._storage_align_map.items():
