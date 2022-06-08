@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright 2021-2021 Huawei Technologies Co., Ltd
+# Copyright 2021-2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,5 @@
 # limitations under the License.
 # ============================================================================
 """
-transdata
+transdata-common
 """
-from .common import transdata_pattern_parser
-from .common import transdata_tilingcase
-
-from .sch import transdata_backward_schedule
-from .sch import transdata_forward_schedule
-from .sch import transdata_backward_borrow_n_schedule
-from .sch import transdata_forward_borrow_n_schedule
-from .sch import transdata_forward_borrow_h_schedule
-from .sch import transdata_backward_borrow_h_schedule

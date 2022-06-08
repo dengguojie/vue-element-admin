@@ -15,17 +15,18 @@
  */
 
 /*!
- * \file transdata_dsl_borrow_n.h
- * \brief dynamic transdata_dsl_borrow_n op tiling
+ * \file transdata_dsl_borrow.h
+ * \brief dynamic transdata_dsl_borrow op tiling
  */
 
-#ifndef TRANSDATA_DSL_BORROW_N_H
-#define TRANSDATA_DSL_BORROW_N_H
+#ifndef TRANSDATA_DSL_BORROW_H
+#define TRANSDATA_DSL_BORROW_H
 
 #include "transdata_dsl.h"
 
 namespace optiling {
-struct TDBNTilingInfo {
+struct TDBTilingInfo {
+  // Transdata-Dsl-Borrow TilingInfo
   int64_t blk_dim;
   int64_t blk_factor;
   int64_t ub_0_factor;
@@ -54,12 +55,12 @@ struct TDBNTilingInfo {
     core = possible_core;
   }
 
-  TDBNTilingInfo() {
+  TDBTilingInfo() {
     Reset();
   }
 };
 
-struct TDBNSplit {
+struct TDBSplit {
   size_t ptrA;
   size_t ptrB;
 
@@ -73,24 +74,25 @@ struct TDBNSplit {
     ptrB = b;
   }
 
-  TDBNSplit() {
+  TDBSplit() {
     Reset();
   }
 };
 
-class TransdataBN {
+class TransdataBorrow {
  public:
-  explicit TransdataBN(const std::string& _op_type, const CompileInfoTransdataDSL& _compileInfo, utils::OpRunInfo& _run_info,
-                       Shape& _input, Shape& _output)
+  explicit TransdataBorrow(const std::string& _op_type, const CompileInfoTransdataDSL& _compileInfo,
+                           utils::OpRunInfo& _run_info, Shape& _input, Shape& _output)
       : op_type(_op_type),
         compileInfo(_compileInfo),
         run_info(_run_info),
         input(_input),
-        output(_output){
+        output(_output) {
   }
-  ~TransdataBN() {
+  ~TransdataBorrow() {
   }
   bool DoTiling();
+  void SetAttr(size_t type, size_t work);
 
  private:
   const std::string& op_type;
@@ -99,16 +101,20 @@ class TransdataBN {
   Shape& input;
   Shape& output;
 
+  size_t computeType{BORROW_N_SCH};
+  size_t transposeWork{1};
+  size_t avoidBCWork{1};
   Shape tiling_input;
   Shape tiling_output;
   size_t c_index{0};
   size_t c1_index{0};
   size_t c0_index{0};
-  std::vector<size_t> permute{std::vector<size_t>(MAX_DIM, 0)};
-  size_t computeType{BORROW_N_SCH};
+  size_t x1_index{0};
+  size_t x0_index{0};
+  const std::vector<size_t>* permute;
   size_t shapeType{STORAGE_ALIGN};
   size_t array_size{0};
-  TDBNSplit split_array[MAX_DIM];
+  TDBSplit split_array[MAX_DIM];
 
   bool has_dim_n{true};
   bool is_reinterpret{false};
@@ -122,14 +128,15 @@ class TransdataBN {
   int64_t align_size{0};
   int64_t ele_byte{0};
   int64_t mte_rate{0};
+  int64_t coef{0};
   MTEInfo mte3;
-  TDBNTilingInfo tilingInfo;
+  TDBTilingInfo tilingInfo;
 
  private:
   bool CalcTiling();
   bool WriteTilingData();
-  bool InitBackward();
-  bool InitForward();
+  bool ChooseHelpInfo();
+  bool Init();
   bool IsConstRuntime();
   bool Strategy();
   bool UBTiling();
@@ -140,14 +147,18 @@ class TransdataBN {
 
  private:
   bool InferTilingInput();
+  bool BNFilter(size_t ptrA, size_t ptrB);
+  bool BHFilter(size_t ptrA, size_t ptrB);
   bool OnceTiling();
   void CompareTiling();
   void AdjustUBFactorForward();
   void AdjustUBFactorBackward();
-  void GetOutputRealTail(int64_t ptr, int64_t factor, MTEInfo& mte);
+  void GetOutputRealTail(size_t ptr, int64_t factor, MTEInfo& mte);
   void DiscriminationAxisType(AxisType* type_array, size_t length);
   int64_t CalcTilingKey();
+  int64_t CalcBNBound();
+  int64_t CalcBHBound();
 };
 }  // namespace optiling
 
-#endif  // TRANSDATA_DSL_BORROW_N_H
+#endif  // TRANSDATA_DSL_BORROW_H

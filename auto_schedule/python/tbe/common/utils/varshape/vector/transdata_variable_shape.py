@@ -59,27 +59,31 @@ def variable_shape(inputs):
 
         result = []
         for k, v in enumerate(_input):
-            # set pad-dim-n as var but not 1 while dynamic
-            result.append(v if v != -1 and [k, v] != [0, 1] else operation.var_inner(f"_dim_{k}", [1, None]))
+            result.append(v if v != -1 else operation.var_inner(f"_dim_{k}", [1, None]))
         return result
 
-    def src_infer_dst(in_shape, out_shape, _map):
-        for key, value in enumerate(in_shape):
-            map_value = _map.get(key)
-            if isinstance(map_value, int):
-                out_shape[map_value] = value
-            elif isinstance(map_value, (list, tuple)):
-                if len(map_value) == 1:
-                    out_shape[map_value[0]] = tvm.floordiv(value + pad_factor - 1, pad_factor) * pad_factor
-                else:
-                    out_shape[map_value[0]] = tvm.floordiv(value + pad_factor - 1, pad_factor)
-                    out_shape[map_value[1]] = pad_factor
+    def src_infer_dst(_input, _output):
+        # axes_map: represent transpose order.
+        # src_pad_mode: pad way.
+        # src_pad_var: pad value.
+        for src_idx, value in enumerate(_input):
+            dst_idx = axes_map.get(src_idx)
+            mode, pad_factor = 0, 1
+            if src_idx in range(len(src_pad_mode)):
+                mode, pad_factor = src_pad_mode[src_idx], src_pad_var[src_idx]
 
-        return out_shape
+            if mode == 0:
+                _output[dst_idx] = value
+            elif mode == 1:
+                _output[dst_idx[0]] = tvm.floordiv(value + pad_factor - 1, pad_factor) * pad_factor
+            elif mode == 2:
+                _output[dst_idx[0]] = tvm.floordiv(value + pad_factor - 1, pad_factor)
+                _output[dst_idx[1]] = pad_factor
+        return _output
 
-    def infer_shape_main(_input, _output, _map):
+    def infer_shape_main(_input, _output):
         _input = init_shape(_input)
-        _output = src_infer_dst(_input, _output, _map)
+        _output = src_infer_dst(_input, _output)
         return _input, _output
 
     axes_map = inputs[2]
@@ -91,17 +95,19 @@ def variable_shape(inputs):
         src_shape, dst_shape = dst_shape, src_shape
         axes_map = reversed_map(axes_map)
 
+    # compileInfo
+    compile_info = operation.get_compile_info()
+    src_pad_mode = compile_info.get("_src_pad_mode")
+    src_pad_var = compile_info.get("_src_pad_var")
+    # computeInfo
     current_compute = operation.get_context().get_current_compute()
-    # transdata_category that help to choose different computation.
-    # 32bit-Tensor would be reinterpret as 16bit-Tensor in schedule(ori_bit).
-    pad_factor = operation.get_compile_info().get("_pad_factor")
     is_const = is_const_model(src_shape)
-    current_compute.add("_pad_factor", pad_factor)
     current_compute.add("_const_model", is_const)
     current_compute.add("_transdata_category", inputs[0].get("transdata_category", None))
     current_compute.add("_ori_bit", inputs[0].get("ori_bit", None))
-
-    src_shape, dst_shape = infer_shape_main(src_shape, dst_shape, axes_map)
+    current_compute.add("_bit", inputs[0].get("bit", None))
+    # InferShape
+    src_shape, dst_shape = infer_shape_main(src_shape, dst_shape)
     if not is_forward:
         src_shape, dst_shape = dst_shape, src_shape
 

@@ -17,11 +17,11 @@ def test_transdata_variable_shape(_):
         with operation.compute() as crt_compute:
             intpus = [
                 {
-                    'shape': [-1,-1,-1],
-                    'format': 'NCHW', 
-                    'dtype': 'float16', 
-                    'range': [[1, None], [1, None], [1, None]], 
-                    'is_forward': True, 
+                    'shape': [-1, -1, -1],
+                    'format': 'NCHW',
+                    'dtype': 'float16',
+                    'range': [[1, None], [1, None], [1, None]],
+                    'is_forward': True,
                     'transdata_category': 'general.forward'
                 },
                 [-1, -1, -1, 16],
@@ -31,7 +31,8 @@ def test_transdata_variable_shape(_):
                     2: 2
                 }
             ]
-            operation.add_compile_info_inner("_pad_factor", 16)
+            operation.add_compile_info_inner("_src_pad_mode", [0, 2, 0])
+            operation.add_compile_info_inner("_src_pad_var", [1, 16, 1])
 
             ret = vs.variable_shape(intpus)
             expected = [
@@ -68,13 +69,9 @@ def test_transdata_variable_shape(_):
                 ],
             ]
 
-            pad_factor_assert = crt_compute.get("_pad_factor") == 16
-            const_model_assert = crt_compute.get("_const_model") is False
-            transdata_category_assert = crt_compute.get("_transdata_category") == "general.forward"
-
             ret_assert = var_util.equals_for_variable_shape(ret, expected)
 
-            return pad_factor_assert and const_model_assert and transdata_category_assert and ret_assert
+            return ret_assert
 
 
 test_funcs = [

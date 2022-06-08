@@ -50,7 +50,6 @@ class Pattern:
     CONV3D_BACKPROP_INPUT = "Conv3d_backprop_input"
     CONV3D_BACKPROP_FILTER = "Conv3d_backprop_filter"
     SOFTMAX_CROSS_ENTROPY_WITH_LOGITS = "SoftmaxCrossEntropyWithLogits"
-    LayerNorm = "LayerNorm"
     BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
     LAYER_NORM_X_BACKPROP_V2 = "Layer_norm_x_backprop_v2"
@@ -59,6 +58,7 @@ class Pattern:
     TRANSDATA = "Transdata"
     TUPLE_REDUCE = "TupleReduce"
     EXTRACT_IMAGE_PATCHES = "ExtractImagePatches"
+    LayerNorm = "LayerNorm"
 
 
 class ElewisePattern:
@@ -148,7 +148,9 @@ class TransdataCategory:
     GENERAL_FORWARD = "general.forward"
     GENERAL_BACKWARD = "general.backward"
     BORROW_N_B8B16_BACKWARD = "borrow.n.b8b16.backward"
+    BORROW_H_B8B16_BACKWARD = "borrow.h.b8b16.backward"
     BORROW_N_B8B16_FORWARD = "borrow.n.b8b16.forward"
+    BORROW_H_B8B16_FORWARD = "borrow.h.b8b16.forward"
 
 
 class ConcatPattern:

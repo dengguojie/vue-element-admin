@@ -194,7 +194,10 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/softmax_cross_entropy_with_logits_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/with_reduce_softmax_cross_entropy_with_logits_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/constants.py
+      - auto_schedule/python/tbe/dsl/base/classifier/transdata/__init__.py
       - auto_schedule/python/tbe/dsl/base/classifier/util.py
       - auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py
@@ -212,6 +215,10 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/compute/pooling2d.py
       - auto_schedule/python/tbe/dsl/compute/reduce.py
       - auto_schedule/python/tbe/dsl/compute/transdata/performance_transdata.py
+      - auto_schedule/python/tbe/dsl/compute/transdata/general_transdata.py
+      - auto_schedule/python/tbe/dsl/compute/transdata/transdata_compute.py
+      - auto_schedule/python/tbe/dsl/compute/transdata/transdata_op.py
+      - auto_schedule/python/tbe/dsl/compute/transdata/__init__.py
       - auto_schedule/python/tbe/dsl/compute/util.py
       - auto_schedule/python/tbe/dsl/__init__.py
       - auto_schedule/python/tbe/dsl/static_schedule/cce_schedule_declarations.py
@@ -295,8 +302,10 @@ auto_schedule:
       - ops/built-in/op_tiling/slice_dsl.h
       - ops/built-in/op_tiling/transdata_dsl.h
       - ops/built-in/op_tiling/transdata_dsl.cc
-      - ops/built-in/op_tiling/transdata_dsl_borrow_n.cc
-      - ops/built-in/op_tiling/transdata_dsl_borrow_n.h
+      - ops/built-in/op_tiling/transdata_dsl_borrow.cc
+      - ops/built-in/op_tiling/transdata_dsl_borrow.h
+      - ops/built-in/op_tiling/transdata_dsl_general.cc
+      - ops/built-in/op_tiling/transdata_dsl_general.h
       - ops/built-in/op_tiling/tiling_handler.h
       - ops/built-in/op_tiling/split_dsl.cc
       - ops/built-in/op_tiling/split_dsl.h
@@ -2403,7 +2412,6 @@ unkown:
       - ops/built-in/utils/block_store.h
       - ops/built-in/utils/pool_allocator.h
       - ops/built-in/op_tiling/is_finite.cc
-      - ops/built-in/op_tiling/transdata_dsl_general.h
       - ops/built-in/op_tiling/square_sum_all.cc
       - ops/built-in/op_tiling/prod_env_mat_a.cc
       - ops/built-in/op_tiling/prod_env_mat_a_calc_descrpt.cc
@@ -2437,7 +2445,6 @@ unkown:
       - ops/built-in/op_tiling/resize_nearest_neighbor_v2_grad.cc
       - ops/built-in/op_tiling/strided_slice_v3.cc
       - ops/built-in/op_tiling/resize_bilinear_v2.cc
-      - ops/built-in/op_tiling/transdata_dsl_general.cc
       - ops/built-in/op_tiling/softmax_tiling.h
       - ops/built-in/op_tiling/pad_v3_5hd.h
       - ops/built-in/op_tiling/confusion_softmax_grad.cc
@@ -4020,9 +4027,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/static_schedule/read_select_schedule.py
       - auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/__init__.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin_md.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_util.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin.py
@@ -4051,9 +4055,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/compute/inplace.py
       - auto_schedule/python/tbe/dsl/compute/pooling3d.py
       - auto_schedule/python/tbe/dsl/compute/pooling3d_max_grad_grad.py
-      - auto_schedule/python/tbe/dsl/compute/transdata/general_transdata.py
-      - auto_schedule/python/tbe/dsl/compute/transdata/transdata_compute.py
-      - auto_schedule/python/tbe/dsl/compute/transdata/__init__.py
       - auto_schedule/python/tbe/common/utils/create_kb_query_key.py
       - auto_schedule/python/lang/__init__.py
       - auto_schedule/python/lang/diagnose/cce_diag.py

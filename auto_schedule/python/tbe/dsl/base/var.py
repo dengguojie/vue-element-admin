@@ -24,6 +24,7 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 from typing import Tuple
+from typing import List
 
 from tbe.dsl.base import var_api
 
@@ -92,6 +93,12 @@ class Var:
         :return:
         """
         return self._addition
+
+    def set_bound(self, bound: List):
+        """
+        :return:
+        """
+        self._bound = bound
 
 
 @dataclass

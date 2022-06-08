@@ -17,27 +17,31 @@
 """
 performance transdata
 """
-import operator
-from copy import copy
-from functools import reduce
-
 from tbe import tvm
 from tbe.common.utils.shape_util import shape_to_list
 from tbe.dsl.base import operation
-from tbe.dsl.base.classifier.transdata.constants import DTYPE_BYTE
-from tbe.dsl.base.classifier.transdata.constants import BLOCK
+from tbe.dsl.base.classifier.transdata.constants import BLOCK, DTYPE_BYTE, DO_TRANSPOSE_PAD
 from tbe.dsl.base.classifier.transdata.constants import BORROW_N_B8B16_BACKWARD, BORROW_N_B8B16_FORWARD
+from tbe.dsl.base.classifier.transdata.constants import BORROW_H_B8B16_BACKWARD, BORROW_H_B8B16_FORWARD
 from .transdata_compute import TransdataComputation
+from .transdata_op import PadOp, TransposeOp, PadSReshapeOp, SReshapeOp
+from .transdata_op import FReshapeOp, SetValueOp, DataMoveOp, DePadOp, PlaceholderOp
+from .transdata_op import set_align
 
 
-class BorrowNBackwardComputation(TransdataComputation):
+class BNBackwardComputation(TransdataComputation):
     """
     BorrowNBackwardComputation
     """
 
     def __init__(self, tensor, dst_shape, axes_map, pad_value):
         super().__init__(tensor, dst_shape, axes_map, pad_value)
+        self._tensor = PlaceholderOp(tensor)
         self._axes_map = dict(sorted(axes_map.items(), key=lambda x: x[1]))
+        self.x_idx = 0
+        self.x_align_var = BLOCK // DTYPE_BYTE.get(self._tensor.dtype, 1)
+        self.c1_idx = \
+            list(self._axes_map.keys())[list(self._axes_map.values()).index(self._pad_mode.index(DO_TRANSPOSE_PAD))][0]
 
     @classmethod
     def get_category(cls):
@@ -46,107 +50,73 @@ class BorrowNBackwardComputation(TransdataComputation):
         """
         return BORROW_N_B8B16_BACKWARD
 
-    def _get_permute(self):
-        permute = []
-        for k in self._axes_map.keys():
-            if isinstance(k, int):
-                permute.append(k)
-            elif isinstance(k, (tuple, list)):
-                permute.extend(k)
-        return permute
-
-    def _calc_depad(self, src_shape, dst_shape):
-        shapes, axes = [src_shape], []
-        for k, v in self._axes_map.items():
-            if isinstance(k, (tuple, list)):
-                shape = copy(shapes[-1])
-                shape[v] = dst_shape[v]
-                shapes.append(shape)
-                axes.append(v)
-        return shapes[1:], axes
-
-    def _calc_f_reshape_axes(self):
-        _fused_axes = []
-        i = 0
-        for k, v in self._axes_map.items():
-            if isinstance(k, int):
-                _fused_axes.append(i)
-                i += 1
-            elif isinstance(k, (tuple, list)):
-                stop = i + len(k)
-                _fused_axes.append(tuple(range(i, stop)))
-                i = stop
-        return _fused_axes
-
-    def _backward_preprocess(self):
-        # example: (N, C1, H, W, C0) -> (Nx, C1, C0, H, W)
-        pad_factor = BLOCK // DTYPE_BYTE.get(self._tensor.dtype, 1)
-        padded_tensor = _pad(self._tensor, 0, pad_factor)
-
-        # example: (Nx, C1, H, W, C0) -> (Nx.o, 16, C1, H, W, C0)
-        axes = [[0, 1] if x == 0 else x + 1 for x in range(len(padded_tensor.shape))]
-        s_reshaped_tensor = _s_reshape(padded_tensor, axes, pad_factor)
-
-        # example: (Nx.o, 16, C1, H, W, C0) -> (Nx.o, C1, H, W, C0, 16)
-        perm = [0, ] + list(range(2, len(s_reshaped_tensor.shape))) + [1, ]
-        transposed_tensor = _transpose(s_reshaped_tensor, perm)
-
-        # While borrow-n is work, axes-map should be adjusted.
-        self._axes_map[len(transposed_tensor.shape) - 1] = len(self._axes_map)
-        return transposed_tensor
-
-    def _backward_process(self, tensor):
-        # example: (Nx.o, C1, H, W, C0, 16) -> (Nx.o, H, W, C1, C0, 16)
-        perm = self._get_permute()
-        transposed_tensor = _transpose(tensor, perm)
-
-        # example: (Nx.o, H, W, C1, C0, 16) -> (Nx.o, H, W, Cx, 16)
-        axes = self._calc_f_reshape_axes()
-        f_reshaped_tensor = _f_reshape(transposed_tensor, axes)
-
-        # example: (Nx.o, H, W, Cx, 16) -> (Nx.o, H, W, C, 16)
-        src_tensor = f_reshaped_tensor
-        src_shape = shape_to_list(src_tensor.shape)
-        dst_shape = src_shape.copy()
-        for k, v in self._axes_map.items():
-            if isinstance(k, (list, tuple)):
-                dst_shape[v] = self._dst_shape[v]
-        shapes, axes = self._calc_depad(src_shape, dst_shape)
-        for shape, axis in zip(shapes, axes):
-            src_tensor = _depad(src_tensor, axis, shape)
-        return src_tensor
-
-    def _backward_postprocess(self, tensor):
-        # example: (Nx.o, H, W, C, 16) -> (Nx.o, 16, H, W, C)
-        perm = [0, len(tensor.shape) - 1] + list(range(1, len(tensor.shape) - 1))
-        backward_transposed_tensor = _transpose(tensor, perm)
-
-        # example: (Nx.o, 16, H, W, C) -> (Nx, H, W, C)
-        axes = [[0, 1], ] + list(range(2, len(backward_transposed_tensor.shape)))
-        backward_f_reshaped_tensor = _f_reshape(backward_transposed_tensor, axes)
-
-        # example: (Nx, H, W, C) -> (N, H, W, C)
-        return _data_move(self._dst_shape, backward_f_reshaped_tensor)
-
     def do_compute(self):
         """
         Main Process
         """
-        tensor = self._backward_preprocess()
+        tensor = self._bn_backward_preprocess()
 
-        tensor = self._backward_process(tensor)
+        tensor = self._bn_backward_process(tensor)
 
-        return self._backward_postprocess(tensor)
+        return self._bn_backward_postprocess(tensor)
+
+    def _bn_backward_preprocess(self):
+        # example: (N,C1,H,C0) -> (Nx,C1,H,C0)
+        perm, dst_shape = self.calc_align_borrow_axis()
+        padded_tensor = PadOp(self._tensor, perm, dst_shape, op_name="pad_n")
+
+        # example: (Nx,C1,H,C0) -> (N1,N0,C1,H,C0)
+        perm, dst_shape = self.calc_s_reshape(padded_tensor, self.x_idx, self.x_align_var)
+        s_reshaped_tensor = SReshapeOp(padded_tensor, perm, dst_shape, op_name="s_reshape_n")
+
+        # example: (N1,N0,C1,H,C0) -> (N1,C1,H,C0,N0)
+        perm, dst_shape = self.calc_transpose_0(s_reshaped_tensor, half=1)
+        return TransposeOp(s_reshaped_tensor, perm, dst_shape, op_name="t0")
+
+    def _bn_backward_process(self, tensor):
+        # example: (N1,C1,H,C0,N0) -> (N1,H,C1,C0,N0)
+        perm, dst_shape = self.calc_transpose_1(tensor, is_forward=False)
+        transposed_tensor = TransposeOp(tensor, perm, dst_shape, op_name="t1")
+
+        # example: (N1,H,C1,C0,N0) -> (N1,H,Cx,N0)
+        c1 = transposed_tensor.infer_axes(self._tensor, self.c1_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(transposed_tensor, c1)
+        f_reshaped_tensor = FReshapeOp(transposed_tensor, perm, dst_shape, op_name="f_reshape_c")
+
+        # example: (N1,H,Cx,N0) -> (N1,H,C,N0)
+        tensor = f_reshaped_tensor
+        perms, shapes = self.calc_depad(tensor, mode="bn")
+        for k, [perm, dst_shape] in enumerate(zip(perms, shapes)):
+            tensor = DePadOp(tensor, perm, dst_shape, op_name=f"depad_{k}")
+        return tensor
+
+    def _bn_backward_postprocess(self, tensor):
+        # example: (N1,H,C,N0) -> (N1,N0,H,C)
+        perm, dst_shape = self.calc_transpose_2(tensor, mode="bn")
+        transposed_tensor = TransposeOp(tensor, perm, dst_shape, op_name="t2")
+
+        # example:(N1,N0,H,C) -> (Nx,H,C)
+        n1 = transposed_tensor.infer_axes(self._tensor, self.x_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(transposed_tensor, n1)
+        f_reshaped_tensor = FReshapeOp(transposed_tensor, perm, dst_shape, op_name="f_reshape_n")
+
+        # example: (Nx,H,C) -> (N,H,C)
+        perm = list(range(len(f_reshaped_tensor.shape)))
+        return DataMoveOp(f_reshaped_tensor, perm, self._dst_shape, "res").tensor
 
 
-class BorrowNForwardComputation(TransdataComputation):
+class BNForwardComputation(TransdataComputation):
     """
     BorrowNForwardComputation
     """
 
     def __init__(self, tensor, dst_shape, axes_map, pad_value):
         super().__init__(tensor, dst_shape, axes_map, pad_value)
+        self._tensor = PlaceholderOp(tensor)
         self._axes_map = dict(sorted(axes_map.items()))
+        self.x_idx = 0
+        self.x_align_var = BLOCK // DTYPE_BYTE.get(self._tensor.dtype, 1)
+        self.c_idx = self._pad_mode.index(DO_TRANSPOSE_PAD)
 
     @classmethod
     def get_category(cls):
@@ -154,77 +124,6 @@ class BorrowNForwardComputation(TransdataComputation):
         Return tag of transdata
         """
         return BORROW_N_B8B16_FORWARD
-
-    def _get_permute(self):
-        permute = []
-        for _, v in self._axes_map.items():
-            if isinstance(v, int):
-                permute.append(v)
-            elif isinstance(v, (tuple, list)):
-                permute.extend(v)
-        return permute
-
-    def _calc_pad(self):
-        axes = []
-        for k, v in self._axes_map.items():
-            if isinstance(v, (tuple, list)):
-                axes.append(k)
-        axes.sort(reverse=True)
-        return axes
-
-    def _calc_s_reshape(self):
-        shape, axes = [], []
-        for k, v in self._axes_map.items():
-            if isinstance(v, int) or (isinstance(v, (tuple, list)) and len(v) == 1):
-                shape.append(1)
-                axes.append(len(shape) - 1)
-            else:
-                shape.extend([1, ] * len(v))
-                start, stop = len(shape) - len(v), len(shape)
-                axes.append(tuple(range(start, stop)))
-        return axes
-
-    def _preprocess(self):
-        # example: (N, H, C) -> (Nx, H, C)
-        pad_factor = BLOCK // DTYPE_BYTE.get(self._tensor.dtype, 1)
-        padded_tensor = _pad(self._tensor, 0, pad_factor)
-
-        # example: (Nx, H, C) -> (Nx.o, 16, H, C)
-        axes = [[0, 1] if x == 0 else x + 1 for x in range(len(padded_tensor.shape))]
-        s_reshaped_tensor = _s_reshape(padded_tensor, axes, pad_factor)
-
-        # example: (Nx.o, 16, H, C) -> (Nx.o, H, C, 16)
-        perm = [0, ] + list(range(2, len(s_reshaped_tensor.shape))) + [1, ]
-        transposed_tensor = _transpose(s_reshaped_tensor, perm)
-
-        # While borrow-n is work, axes-map should be adjusted.
-        self._axes_map[len(self._axes_map)] = len(transposed_tensor.shape)
-        return transposed_tensor
-
-    def _process(self, tensor):
-        # example: (Nx.o, H, C, 16) -> (Nx.o, HX, CX, 16)
-        pad_factor = operation.get_compile_info().get("_pad_factor")
-        for axis in self._calc_pad():
-            tensor = _pad(tensor, axis, pad_factor)
-
-        # example: (Nx.o, HX, CX, 16) -> (Nx,o, HX, C1, C0, 16)
-        axes = self._calc_s_reshape()
-        s_reshaped_tensor = _s_reshape(tensor, axes, pad_factor)
-
-        # example: (Nx.o, HX, C1, C0, 16) -> (Nx.o, C1, HX, C0, 16)
-        return _transpose(s_reshaped_tensor, self._get_permute())
-
-    def _postprocess(self, tensor):
-        # example: (Nx.o, C1, HX, C0, 16) -> (Nx.o, 16, C1, HX, C0)
-        perm = [0, len(tensor.shape) - 1] + list(range(1, len(tensor.shape) - 1))
-        transposed_tensor = _transpose(tensor, perm)
-
-        # example: (Nx.o, 16, C1, HX, C0) -> (Nx, C1, HX, C0)
-        axes = [[0, 1], ] + list(range(2, len(transposed_tensor.shape)))
-        f_reshaped_tensor = _f_reshape(transposed_tensor, axes)
-
-        # example: (Nx, H, W, C) -> (N, H, W, C)
-        return _data_move(self._dst_shape, f_reshaped_tensor)
 
     def do_compute(self):
         """
@@ -236,125 +135,248 @@ class BorrowNForwardComputation(TransdataComputation):
 
         return self._postprocess(tensor)
 
+    def _preprocess(self):
+        # example: (N,H,C) -> (Nx,H,C)
+        perm, dst_shape = self.calc_align_borrow_axis()
+        padded_tensor = PadOp(self._tensor, perm, dst_shape, op_name="pad_n")
 
-def _pad(tensor, pad_axis, pad_factor, pad_value=0, name="pad"):
+        # example: (N,H,C) -> (N1,N0,H,C)
+        perm, dst_shape = self.calc_s_reshape(padded_tensor, self.x_idx, self.x_align_var)
+        s_reshaped_tensor = SReshapeOp(padded_tensor, perm, dst_shape, op_name="s_reshape_n")
+
+        # example: (N1,N0,H,C) -> (N1,H,C,N0)
+        perm, dst_shape = self.calc_transpose_0(s_reshaped_tensor, half=1)
+        return TransposeOp(s_reshaped_tensor, perm, dst_shape, op_name="t0")
+
+    def _process(self, tensor):
+        # example: (N1,H,C,N0) -> (N1,Hx,Cx,N0)
+        perms, shapes = self.calc_pad(tensor)
+        for k, [perm, dst_shape] in enumerate(zip(perms, shapes)):
+            tensor = PadOp(tensor, perm, dst_shape, self._pad_value, op_name=f"pad_{k}")
+
+        # example: (N1,Hx,Cx,N0) -> (N1,Hx,C1,C0,N0)
+        c = tensor.infer_axes(self._tensor, self.c_idx)
+        factor = self._pad_var[c]
+        perm, dst_shape = self.calc_s_reshape(tensor, c, factor)
+        s_reshaped_tensor = SReshapeOp(tensor, perm, dst_shape, op_name="s_reshape_c")
+
+        # example: (N1,Hx,C1,C0,N0) -> (N1,C1,Hx,C0,N0)
+        perm, dst_shape = self.calc_transpose_1(s_reshaped_tensor, is_forward=True)
+        return TransposeOp(s_reshaped_tensor, perm, dst_shape, op_name="t1")
+
+    def _postprocess(self, tensor):
+        # example: (N1,C1,Hx,C0,N0) -> (N1,N0,C1,Hx,C0)
+        perm, dst_shape = self.calc_transpose_2(tensor, mode="bn")
+        transposed_tensor = TransposeOp(tensor, perm, dst_shape, op_name="t2")
+
+        # example: (N1,N0,C1,Hx,C0) -> (Nx,C1,Hx,C0)
+        n1 = transposed_tensor.infer_axes(self._tensor, self.x_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(transposed_tensor, n1)
+        f_reshaped_tensor = FReshapeOp(transposed_tensor, perm, dst_shape, op_name="f_reshape_n")
+
+        # example: (Nx,C1,Hx,C0) -> (N,C1,Hx,C0)
+        perm = list(range(len(f_reshaped_tensor.shape)))
+        return DataMoveOp(f_reshaped_tensor, perm, self._dst_shape, "res").tensor
+
+
+class BHForwardComputation(TransdataComputation):
     """
-    :param tensor: src-tensor
-    :param pad_axis: int, index of pad-axes
-    :param pad_factor: pad-align-var
-    :param pad_value: filled var
-    :return: dst-tensor
-    """
-
-    def func(idx, axis_, tensor_):
-        pad_cond = idx[axis_] >= tensor_.shape[axis_]
-        pad_var = tvm.const(pad_value, dtype=tensor_.dtype)
-        origin_value = tensor_[idx]
-        return tvm.select(pad_cond, pad_var, origin_value)
-
-    shape = list(tensor.shape)
-    shape[pad_axis] = _set_align(shape[pad_axis], pad_factor)
-    with tvm.tag_scope("transdata|pad"):
-        tensor = tvm.compute(shape, lambda *i: func(i, pad_axis, tensor), name=name, attrs={"axes": pad_axis})
-    return tensor
-
-
-def _depad(tensor, depad_axis, dst_shape, name="depad"):
-    """
-    :param tensor: src-tensor
-    :param depad_axis: int, index of depad axes
-    :param dst_shape: dst-tensor's shape
-    :return: dst-tensor
-    """
-    with tvm.tag_scope("transdata|depad"):
-        tensor = tvm.compute(dst_shape, lambda *i: tensor[i], name=name, attrs={"axes": depad_axis})
-    return tensor
-
-
-def _s_reshape(tensor, axes, s_factor, name="reshape"):
-    """
-    :param tensor: src-tensor
-    :param axes: record which axes need to split
-    :param s_factor: dim split as [floordiv(dim, s_factor), s_factor]
-    :return: dst-tensor
-    """
-
-    def func(idx):
-        mapped_idx = []
-        for axis in axes:
-            if isinstance(axis, int):
-                mapped_idx.append(idx[axis])
-            elif isinstance(axis, (tuple, list)):
-                s, e = axis[0], axis[-1] + 1
-                strides = (_math_prod(dst_shape[(i + 1):e]) for i in axis)
-                mapped_idx.append(sum(a * b for a, b in zip(idx[s:e], strides)))
-        return mapped_idx
-
-    dst_shape = []
-    for k, v in enumerate(axes):
-        if isinstance(v, int):
-            dst_shape.append(tensor.shape[k])
-        else:
-            dst_shape.extend([tvm.floordiv(tensor.shape[k], s_factor), s_factor])
-    with tvm.tag_scope("transdata|s_reshape"):
-        tensor = tvm.compute(dst_shape, lambda *i: tensor(*func(i)), name=name, attrs={"axes": axes})
-    return tensor
-
-
-def _transpose(tensor, perm, name="transpose"):
-    """
-    :param tensor: src-tensor
-    :param perm: permute for transpose
-    :return: dst-tensor
-    """
-    shape = tuple(tensor.shape[i] for i in perm)
-    with tvm.tag_scope("transdata|transpose"):
-        tensor = tvm.compute(shape, lambda *i: tensor(*[x for _, x in sorted(zip(perm, i))]),
-                             name=name, attrs={"permute": perm})
-    return tensor
-
-
-def _f_reshape(tensor, axes, name="reshape"):
-    """
-    :param tensor: src-tensor
-    :param axes: record which axes need to fuse
-    :return: dst-tensor
+    BorrowHForwardComputation
     """
 
-    def func(idx):
-        mapped_idx = []
-        for i, axis in enumerate(axes):
-            if isinstance(axis, int):
-                mapped_idx.append(idx[i])
-            elif isinstance(axis, (tuple, list)):
-                remained = idx[i]
-                for x in axis:
-                    stride = _math_prod(crt_shape[(x + 1):(axis[-1] + 1)])
-                    mapped_idx.append(remained // stride)
-                    remained = remained % stride
-        return mapped_idx
+    def __init__(self, tensor, dst_shape, axes_map, pad_value):
+        super().__init__(tensor, dst_shape, axes_map, pad_value)
+        self._tensor = PlaceholderOp(tensor)
+        self._axes_map = dict(sorted(axes_map.items()))
+        self.hi = operation.var_inner("_hi", [1, None])
+        self.ho_i = BLOCK // DTYPE_BYTE.get(tensor.dtype, 1)
+        self.x_idx = self._borrowed_axes()
+        self.c_idx = self._pad_mode.index(DO_TRANSPOSE_PAD)
+        self.x_align_var = self.ho_i * self.hi
 
-    dst_shape = []
-    crt_shape = shape_to_list(tensor.shape)
-    for k, v in enumerate(axes):
-        if isinstance(v, int):
-            dst_shape.append(crt_shape[v])
-        else:
-            dst_shape.append(_math_prod(crt_shape[j] for j in v))
-    with tvm.tag_scope("transdata|f_reshape"):
-        reshape_tensor = tvm.compute(dst_shape, lambda *i: tensor(*func(i)), name=name, attrs={"axes": axes})
-    return reshape_tensor
+    @classmethod
+    def get_category(cls):
+        """
+        Return tag of transdata
+        """
+        return BORROW_H_B8B16_FORWARD
+
+    def do_compute(self):
+        """
+        Main Process
+        """
+        tensor = self._bh_preprocess()
+
+        tensor = self._bh_process(tensor)
+
+        return self._bh_postprocess(tensor)
+
+    def _borrowed_axes(self):
+        """
+        Return index of h base on src-shape
+        """
+        for k, v in self._axes_map.items():
+            if isinstance(v, int) and k != v:
+                return k
+            if isinstance(v, (list, tuple)) and len(v) == 1 and k != v[0]:
+                return k
+        return None
+
+    def _calc_pad_s_reshape(self):
+        # split h as h1 && h0
+        axes = [i if i < self.x_idx else i + 1 for i in range(len(self._axes_map))]
+        axes[self.x_idx] = [axes[self.x_idx] - 1, axes[self.x_idx]]
+        dst_shape = shape_to_list(self._tensor.shape)
+        dst_shape.insert(self.x_idx, tvm.floordiv(set_align(dst_shape[self.x_idx], self.x_align_var), self.hi))
+        dst_shape[self.x_idx + 1] = self.hi
+        return axes, dst_shape
+
+    def _calc_set_value(self, tensor):
+        # pad for borrow-axis
+        i = tensor.infer_axes(self._tensor, self.x_idx)
+        perm = list(range(len(tensor.shape)))
+        perm[i] = [perm[i], ]
+        cond = lambda *j: tvm.all(j[i] >= self._src_shape[self.x_idx], j[i] < self._dst_shape[i])
+        return perm, tensor.shape, cond
+
+    def _bh_preprocess(self):
+        # example: (N, H, C) -> (N, H1, H0, C).
+        perm, dst_shape = self._calc_pad_s_reshape()
+        padded_tensor = PadSReshapeOp(self._tensor, perm, dst_shape)
+
+        # example: (N, H1, H0, C) -> (N, H0, C, H1)
+        perm, dst_shape = self.calc_transpose_0(padded_tensor, half=0)
+        return TransposeOp(padded_tensor, perm, dst_shape, op_name="t0")
+
+    def _bh_process(self, tensor):
+        # example: (N, H0, C, H1) -> (N, H0, Cx, H1)
+        perms, shapes = self.calc_pad(tensor)
+        for k, [perm, dst_shape] in enumerate(zip(perms, shapes)):
+            tensor = PadOp(tensor, perm, dst_shape, self._pad_value, op_name=f"pad_{k}")
+
+        # example: (N, H0, Cx, H1) -> (N, H0, C1, C0, H1)
+        c = tensor.infer_axes(self._tensor, self.c_idx)
+        factor = self._pad_var[c]
+        perm, dst_shape = self.calc_s_reshape(tensor, c, factor)
+        s_reshaped_tensor = SReshapeOp(tensor, perm, dst_shape, op_name="s_reshape_c")
+
+        # example: (N, H0, C1, C0, H1) -> (N, C1, H0, C0, H1)
+        perm, dst_shape = self.calc_transpose_1(s_reshaped_tensor, is_forward=True)
+        return TransposeOp(s_reshaped_tensor, perm, dst_shape, op_name="t1")
+
+    def _bh_postprocess(self, tensor):
+        # example: (N, C1, H0, C0, H1) -> (N, C1, H1, H0, C0)
+        perm, dst_shape = self.calc_transpose_2(tensor, mode="bh")
+        transposed_tensor = TransposeOp(tensor, perm, dst_shape, op_name="t2")
+
+        # example: (N, C1, H1, H0, C0) -> (N, C1, Hx, C0)
+        h1 = transposed_tensor.infer_axes(self._tensor, self.x_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(transposed_tensor, h1)
+        f_reshaped_tensor = FReshapeOp(transposed_tensor, perm, dst_shape, op_name="f_reshape_h")
+
+        # example: (N, C1, Hx, C0) -> (N, C1, Hx, C0)
+        perm, dst_shape, cond = self._calc_set_value(f_reshaped_tensor)
+        padded_tensor = SetValueOp(f_reshaped_tensor, perm, dst_shape, cond, self._pad_value, op_name="pad_h")
+
+        # example: (N, C1, Hx, C0) -> (N, C1, H, C0)
+        perm = list(range(len(padded_tensor.shape)))
+        return DataMoveOp(padded_tensor, perm, self._dst_shape, "res").tensor
 
 
-def _data_move(dst_shape, tensor, name="res"):
-    with tvm.tag_scope("transdata|res"):
-        tensor = tvm.compute(dst_shape, lambda *i: tensor[i], name=name)
-    return tensor
+class BHBackwardComputation(TransdataComputation):
+    """
+    BorrowHBackwardComputation
+    """
 
+    def __init__(self, tensor, dst_shape, axes_map, pad_value):
+        super().__init__(tensor, dst_shape, axes_map, pad_value)
+        self._tensor = PlaceholderOp(tensor)
+        self._axes_map = dict(sorted(axes_map.items(), key=lambda x: x[1]))
+        self.hi = operation.var_inner("_hi", [1, None])
+        self.ho_i = BLOCK // DTYPE_BYTE.get(tensor.dtype, 1)
+        self.x_idx = self._borrowed_axes()
+        self.x_align_var = self.ho_i * self.hi
+        self.c1_idx = \
+            list(self._axes_map.keys())[list(self._axes_map.values()).index(self._pad_mode.index(DO_TRANSPOSE_PAD))][0]
 
-def _set_align(dim, factor):
-    return tvm.floordiv(dim + factor - 1, factor) * factor
+    @classmethod
+    def get_category(cls):
+        """
+        Return tag of transdata
+        """
+        return BORROW_H_B8B16_BACKWARD
 
+    def do_compute(self):
+        """
+        Main Process
+        """
+        tensor = self._bh_backward_preprocess()
 
-def _math_prod(iterable):
-    return reduce(operator.mul, iterable, 1)
+        tensor = self._bh_backward_process(tensor)
+
+        return self._bh_backward_postprocess(tensor)
+
+    def _borrowed_axes(self):
+        """
+        Return index of h based on src-shape
+        """
+        for k, v in self._axes_map.items():
+            if isinstance(k, int) and k != v:
+                return k
+            if isinstance(k, (list, tuple)) and len(k) == 1 and k[0] != v:
+                return k[0]
+        return None
+
+    def _bh_backward_preprocess(self):
+        # example: (N,C1,H,C0) -> (N,C1,Hx,C0)
+        perm, dst_shape = self.calc_align_borrow_axis()
+        padded_tensor = PadOp(self._tensor, perm, dst_shape, op_name="pad_h")
+
+        # example: (N,C1,Hx,C0) -> (N,C1,H1,H0,C0)
+        perm, dst_shape = self.calc_s_reshape(padded_tensor, self.x_idx, self.x_align_var)
+        s_reshaped_tensor = SReshapeOp(padded_tensor, perm, dst_shape, op_name="s_reshape_h")
+
+        # example: (N,C1,H1,H0,C0) -> (N,C1,H1,ho_i,hi,C0)
+        h0 = s_reshaped_tensor.infer_axes(self._tensor, self.x_idx, half=1)
+        perm, dst_shape = self.calc_s_reshape(s_reshaped_tensor, h0, self.hi)
+        s_reshaped_tensor = SReshapeOp(s_reshaped_tensor, perm, dst_shape, op_name="s_reshape_h0")
+
+        # example: (N,C1,H1,ho_i,hi,C0) -> (N,C1,H1*ho_i,hi,C0)
+        h1 = s_reshaped_tensor.infer_axes(self._tensor, self.x_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(s_reshaped_tensor, h1)
+        f_reshaped_tensor = FReshapeOp(s_reshaped_tensor, perm, dst_shape, op_name="f_reshape_h1")
+
+        # example: (N,C1,H1*ho_i,hi,C0) -> (N,C1,hi,C0,H1*ho_i)
+        perm, dst_shape = self.calc_transpose_0(f_reshaped_tensor, half=0)
+        return TransposeOp(f_reshaped_tensor, perm, dst_shape, op_name="t0")
+
+    def _bh_backward_process(self, tensor):
+        # example: (N,C1,hi,C0,H1*ho_i) -> (N,hi,C1,C0,H1*ho_i)
+        perm, dst_shape = self.calc_transpose_1(tensor, is_forward=False)
+        transposed_tensor = TransposeOp(tensor, perm, dst_shape, op_name="t1")
+
+        # example: (N,hi,C1,C0,H1*ho_i) -> (N,hi,Cx,H1*ho_i)
+        c1 = transposed_tensor.infer_axes(self._tensor, self.c1_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(transposed_tensor, c1)
+        f_reshaped_tensor = FReshapeOp(transposed_tensor, perm, dst_shape, op_name="f_reshape_c")
+
+        # example: (N,hi,Cx,H1*ho_i) -> (N,hi,C,H1*ho_i)
+        tensor = f_reshaped_tensor
+        perms, shapes = self.calc_depad(tensor, mode="bh")
+        for k, [perm, dst_shape] in enumerate(zip(perms, shapes)):
+            tensor = DePadOp(tensor, perm, dst_shape, op_name=f"depad_{k}")
+        return tensor
+
+    def _bh_backward_postprocess(self, tensor):
+        # example: (N,hi,C,H1*ho_i) -> (N,H1*ho_i,hi,C)
+        perm, dst_shape = self.calc_transpose_2(tensor, mode="bh")
+        transposed_tensor = TransposeOp(tensor, perm, dst_shape, op_name="t2")
+
+        # example: (N,H1*ho_i,hi,C) -> (N,Hx,C)
+        h1 = transposed_tensor.infer_axes(self._tensor, self.x_idx, half=0)
+        perm, dst_shape = self.calc_f_reshape(transposed_tensor, h1)
+        f_reshaped_tensor = FReshapeOp(transposed_tensor, perm, dst_shape, op_name="f_reshape_h")
+
+        # example: (N,Hx,C) -> (N,H,C)
+        perm = list(range(len(f_reshaped_tensor.shape)))
+        return DataMoveOp(f_reshaped_tensor, perm, self._dst_shape, "res").tensor

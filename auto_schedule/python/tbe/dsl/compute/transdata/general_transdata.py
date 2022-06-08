@@ -17,14 +17,12 @@
 """
 general_transdata
 """
-import operator
 from copy import copy
-from functools import reduce
 
 from tbe import tvm
 from tbe.common.utils.shape_util import shape_to_list
-
 from .transdata_compute import TransdataComputation
+from .transdata_op import math_prod
 
 
 class GeneralForwardComputation(TransdataComputation):
@@ -70,10 +68,10 @@ class GeneralForwardComputation(TransdataComputation):
         for j, (shape, axis) in enumerate(zip(shapes, axes)):
             with tvm.tag_scope("transdata|pad"):
                 tensor = tvm.compute(shape, lambda *i: func(i, axis, tensor), name="pad_" + str(j),
-                                     attrs={"axes": (axis,)})
+                                     attrs={"axes": axis})
         return tensor
 
-    def _reshape(self, tensor):
+    def _reshape(self, tensor, order=0):
         def func(idx):
             mapped_idx = []
             for axis in axes:
@@ -81,21 +79,21 @@ class GeneralForwardComputation(TransdataComputation):
                     mapped_idx.append(idx[axis])
                 elif isinstance(axis, (tuple, list)):
                     s, e = axis[0], axis[-1] + 1
-                    strides = (_math_prod(shape[(i + 1):e]) for i in axis)
+                    strides = (math_prod(shape[(i + 1):e]) for i in axis)
                     mapped_idx.append(sum(a * b for a, b in zip(idx[s:e], strides)))
             return mapped_idx
 
         shape, axes = self._calc_reshape()
         with tvm.tag_scope("transdata|s_reshape"):
             tensor = tvm.compute(shape, lambda *i: tensor(*func(i)), name="reshape",
-                                 attrs={"axes": axes})
+                                 attrs={"axes": axes, "order": order})
         return tensor
 
-    def _transpose(self, tensor):
+    def _transpose(self, tensor, order=0):
         shape, permute = self._dst_shape, self._calc_permute()
         with tvm.tag_scope("transdata|transpose"):
             tensor = tvm.compute(shape, lambda *i: tensor(*[x for _, x in sorted(zip(permute, i))]),
-                                 name="transpose", attrs={"permute": permute})
+                                 name="transpose", attrs={"permute": permute, "order": order})
 
         return tensor
 
@@ -106,7 +104,7 @@ class GeneralForwardComputation(TransdataComputation):
         for k, v in _map_items:
             if isinstance(v, (tuple, list)):
                 shape = copy(shapes[-1])
-                shape[k] = _math_prod(self._dst_shape[i] for i in v)
+                shape[k] = math_prod(self._dst_shape[i] for i in v)
                 shapes.append(shape)
                 axes.append(k)
         return shapes[1:], axes
@@ -164,7 +162,7 @@ class GeneralBackwardComputation(TransdataComputation):
 
         return depadded_tensor
 
-    def _transpose(self, tensor):
+    def _transpose(self, tensor, order=0):
         """
         eg: (N,C,H,W) -> (H,W,C,N), axes_map is {0:3, 1:0, 2:1, 3:2}, value of dict is base on dst,
         while sort axes_map by value, axs_map is {1:0, 2:1, 3:2, 0:3}, key of dict is base on src.
@@ -173,10 +171,10 @@ class GeneralBackwardComputation(TransdataComputation):
         shape = tuple(self._src_shape[i] for i in permute)
         with tvm.tag_scope("transdata|transpose"):
             tensor = tvm.compute(shape, lambda *i: tensor(*[x for _, x in sorted(zip(permute, i))]),
-                                 name="transpose", attrs={"permute": permute})
+                                 name="transpose", attrs={"permute": permute, "order": order})
         return tensor
 
-    def _reshape(self, tensor):
+    def _reshape(self, tensor, order=0):
         def func(idx):
             mapped_idx = []
             for i, axis in enumerate(fused_axes):
@@ -185,7 +183,7 @@ class GeneralBackwardComputation(TransdataComputation):
                 elif isinstance(axis, (tuple, list)):
                     remained = idx[i]
                     for x in axis:
-                        stride = _math_prod(crt_shape[(x + 1):(axis[-1] + 1)])
+                        stride = math_prod(crt_shape[(x + 1):(axis[-1] + 1)])
                         mapped_idx.append(remained // stride)
                         remained = remained % stride
             return mapped_idx
@@ -194,7 +192,7 @@ class GeneralBackwardComputation(TransdataComputation):
         fused_shape, fused_axes = self._calc_reshape()
         with tvm.tag_scope("transdata|f_reshape"):
             reshape_tensor = tvm.compute(fused_shape, lambda *i: tensor(*func(i)), name="reshape",
-                                         attrs={"axes": fused_axes})
+                                         attrs={"axes": fused_axes, "order": order})
         return reshape_tensor
 
     def _depad(self, tensor):
@@ -223,7 +221,7 @@ class GeneralBackwardComputation(TransdataComputation):
                 fused_axes.append(i)
                 i += 1
             elif isinstance(k, (tuple, list)):
-                fused_shape.append(_math_prod(self._src_shape[j] for j in k))
+                fused_shape.append(math_prod(self._src_shape[j] for j in k))
                 stop = i + len(k)
                 fused_axes.append(tuple(range(i, stop)))
                 i = stop
@@ -238,7 +236,3 @@ class GeneralBackwardComputation(TransdataComputation):
                 shapes.append(shape)
                 axes.append(v)
         return shapes[1:], axes
-
-
-def _math_prod(iterable):
-    return reduce(operator.mul, iterable, 1)

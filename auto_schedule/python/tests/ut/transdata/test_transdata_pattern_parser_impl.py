@@ -3,7 +3,7 @@ import warnings
 
 from tbe.dsl.unify_schedule.constants import ComputeType
 from tbe.dsl.unify_schedule.constants import Pattern
-from tbe.dsl.unify_schedule.vector.transdata.transdata_pattern_parser import TransdataPatternParser
+from tbe.dsl.unify_schedule.vector.transdata.common.transdata_pattern_parser import TransdataPatternParser
 
 from sch_test_frame.ut import OpUT
 

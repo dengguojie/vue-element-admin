@@ -34,9 +34,9 @@ DTYPE_BYTE = {
 }
 
 # reinterpret mapping
-REINTERPRET_MAP = {"float32": "float16", "int32": "int16",
-                   "uint32": "uint16", "bfloat32": "bfloat16",
-                   "int64": "int16", "uint64": "uint16"}
+REINTERPRET_DTYPE = {"float32": "float16", "int32": "int16",
+                     "uint32": "uint16", "bfloat32": "bfloat16",
+                     "int64": "int16", "uint64": "uint16"}
 
 UNKNOWN_DIM = -1
 PACKET_SENDING_RATE = 256
@@ -45,6 +45,8 @@ GENERAL_FORWARD = "general.forward"
 GENERAL_BACKWARD = "general.backward"
 BORROW_N_B8B16_BACKWARD = "borrow.n.b8b16.backward"
 BORROW_N_B8B16_FORWARD = "borrow.n.b8b16.forward"
+BORROW_H_B8B16_FORWARD = "borrow.h.b8b16.forward"
+BORROW_H_B8B16_BACKWARD = "borrow.h.b8b16.backward"
 
 # describe operation of pad
 DO_NOTHING = 0
@@ -57,3 +59,11 @@ B16 = 2
 B32 = 4
 B64 = 8
 BLOCK = 32
+
+# norm pad Value
+PAD_32 = 32
+PAD_16 = 16
+PAD_8 = 8
+
+# size of ub
+RESERVED_SPACE = 1024
