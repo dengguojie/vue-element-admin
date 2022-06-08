@@ -85,7 +85,7 @@ void GetShapeHead(const std::vector<int64_t> &shape,
   }
 }
 
-int32_t GetSrcIndex(int32_t dst_index, const std::vector<int64_t> &src_shape,
+int32_t GetSrcIndex(int64_t dst_index, const std::vector<int64_t> &src_shape,
                     const std::vector<int64_t> &dst_shape,
                     const std::vector<int64_t> &src_shape_head,
                     const std::vector<int64_t> &dst_shape_head,
@@ -404,7 +404,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_PARAM_INVALID;
     }
     uint64_t data_type_size = output_tensor->GetDataSize();
-    uint64_t data_byte_size = static_cast<uint64_t>(GetSizeByDataType(data_type) * data_type_size);
+    uint64_t data_byte_size = GetSizeByDataType(data_type) * data_type_size;
     TransArgs args = {reinterpret_cast<uint8_t *>(input_tensor->GetData()),
                       input_tensor->GetTensorShape()->GetDimSizes(),
                       output_tensor->GetTensorShape()->GetDimSizes(),
