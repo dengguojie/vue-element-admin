@@ -565,24 +565,24 @@ class GemmSchedule:
         """
         the main func of gemm_schedule
         """
-        print_ir_matmul(self.DEBUG_IR, "orgin ir", self.sch)
+        print_ir_matmul(self.DEBUG_IR, "original ir", self.sch)
         self._set_para_for_genenal()
         if in_dynamic():
             self._set_para_for_dynamic()
             self._get_seed_shape()
         self._set_data_layout(self.res)
-        print_ir_matmul(self.DEBUG_IR, "after data layout", self.sch)
+        print_ir_matmul(self.DEBUG_IR, "ir after set data layout", self.sch)
         self._get_batch_info()
         self._set_buffer_reuse_dict()
         self._tiling_process()
         self._update_flag_after_tiling()
         self._set_nd_out_compute_inline()
         self._atomic_add_k_axis()
+        print_ir_matmul(self.DEBUG_IR, "ir after atomic_add_k_axis", self.sch)
         if self.cache_tiling and self.format_info.get("a") == "ND" and self.format_info.get("b") == "ND":
             ub_reuse_obj = UbBufferReuser(self.tiling_work.tiling, self.container.tensor_map,
                                           self.container.buffer_reuse_dict)
             ub_reuse_obj.set_post_ub_reuse_pre_ub(self.status_controller.split_k_axis_by_tiling)
-        print_ir_matmul(self.DEBUG_IR, "atomic_add_k_axis", self.sch)
         self.sch_agent = ScheduleAgent(self.sch)
         self._tiling_l0_process()
         self._tiling_l1_process()
@@ -612,7 +612,7 @@ class GemmSchedule:
         self._mem_process()
         self._set_continuous_axis()
         self._set_var_range_for_dynamic()
-        print_ir_matmul(self.DEBUG_IR, "finial", self.sch)
+        print_ir_matmul(self.DEBUG_IR, "final ir", self.sch)
         self.tiling_work.tiling.clear()
         self.container.tensor_map.clear()
         return True
@@ -642,6 +642,7 @@ class GemmSchedule:
         self.format_info["b"] = tensor_l0c.op.attrs["format_b"].value
         if self.status_controller.ops_data_flow_mode == "int82int32":
             self.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
+            self.tiling_work.block_reduce = self.block_reduce
         self.tensor_b_reshape = 1 if tensor_map.get("tensor_b_reshape") is not None else 0
         self.kernel_name =  tensor_l0c.op.attrs["kernel_name"].value
         # set container para
@@ -2864,12 +2865,6 @@ class GemmSchedule:
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
 
-    def _ceil_div(self, a, b):
-        if self.cache_tiling:
-            return a // b
-        else:
-            return (a + b - 1) // b
-
     def _al1_process(self):
         self.status_controller.al1_attach_status = "full_load"
         not_need_process = self.tiling_work.tiling.get("AL1_shape") in (None, []) and (not self.is_dynamic)
@@ -2885,7 +2880,7 @@ class GemmSchedule:
         cl0_tiling_m0, cl0_tiling_n0 = self.tiling_work.cl0_tiling_m0, self.tiling_work.cl0_tiling_n0
 
         l1_ma = al1_tiling_m
-        l1_ka = self._ceil_div(al1_tiling_k, al0_tiling_k0)
+        l1_ka = al1_tiling_k // al0_tiling_k0 if self.cache_tiling else int_ceil_div(al1_tiling_k, al0_tiling_k0)
 
         a_l1 = (
             self.container.tensor_map.get("b_l1") if self.status_controller.mmad_mode == "gemv"
@@ -3023,7 +3018,7 @@ class GemmSchedule:
         cl0_tiling_nc, cl0_tiling_n0 = self.tiling_work.cl0_tiling_nc, self.tiling_work.cl0_tiling_n0
 
         l1_nb = bl1_tiling_n
-        l1_kb = self._ceil_div(bl1_tiling_k, bl0_tiling_k0)
+        l1_kb = bl1_tiling_k // bl0_tiling_k0 if self.cache_tiling else int_ceil_div(bl1_tiling_k, bl0_tiling_k0)
 
         l1b2l0c_affine_shape = [
             l1_nb,
@@ -4301,26 +4296,6 @@ class GemmSchedule:
             for i in tensor_at_res:
                 self.sch[i].compute_at(self.sch[self.res], inner_axis)
 
-    def _get_a_max_k_bound(self):
-        """
-        This function is used to get the maximum k bound, which will be used in the
-        following calculation to solve bank conflict and to set storage bound.
-        """
-        a_matrix_dim = [get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
-        k_bound_tiling = (int_ceil_div(a_matrix_dim[-3], self.tiling_work.tiling.get("AL0_matrix")[1])
-            * self.tiling_work.tiling.get("AL0_matrix")[1] * self.block_reduce)
-        return int_ceil_div(k_bound_tiling, self.tiling_work.tiling.get("block_dim")[-1])
-
-    def _get_b_max_k_bound(self):
-        """
-        This function is used to get the maximum k bound, which will be used in the
-        following calculation to solve bank conflict and to set storage bound.
-        """
-        b_matrix_dim = [get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
-        k_bound_tiling = (int_ceil_div(b_matrix_dim[-4], self.tiling_work.tiling.get("BL0_matrix")[0])
-                * self.tiling_work.tiling.get("BL0_matrix")[0] * self.block_reduce)
-        return int_ceil_div(k_bound_tiling, self.tiling_work.tiling.get("block_dim")[-1])
-
     def do_aub_storage_align(self):
         """
         solve the bank conflict of aub
@@ -4343,7 +4318,7 @@ class GemmSchedule:
         # may be larger than the tiling value.
         if self.status_controller.aub_attach_status == "c_gm" and not self.status_controller.transpose_a:
             self.status_controller.cgm_ka_storage_change = True
-            max_k_bound = self._get_a_max_k_bound()
+            max_k_bound = self.tiling_work.get_a_max_k_bound(self.container.tensor_map.get("a_l0a"))
             a_align_value = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0,
                                        max_k_bound + gap_value, 1)
         if self.cache_tiling:
@@ -4380,9 +4355,9 @@ class GemmSchedule:
         # when the Inner axis is K and attach to C_gm, k_aligned value
         # may be larger than the tiling value.
         if self.status_controller.bub_attach_status == "c_gm" and self.status_controller.transpose_b:
-            max_k_bound = self._get_b_max_k_bound()
-            b_align_value = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0,
-                                       max_k_bound + gap_value, 1)
+            max_k_bound = self.tiling_work.get_b_max_k_bound(self.container.tensor_map.get("b_l0b"),
+                                                             self.is_dynamic, self.dynamic_k)
+            b_align_value = tvm.select(max_k_bound % self.THRESHOLD_DATA_NUM == 0, max_k_bound + gap_value, 1)
         if self.cache_tiling:
             b_align_value = self.cache_tiling.get("b_align_value")
         b_transpose = self.container.tensor_map.get("b_transpose")
@@ -5009,7 +4984,7 @@ class GemmSchedule:
         m_bound = self.tiling_work.aub_tiling_m * self.block_in
         m_bound = (m_bound + gap_value) if self.status_controller.storage_m_bound_change else m_bound
         if self.status_controller.aub_attach_status == "c_gm":
-            max_k_bound = self._get_a_max_k_bound()
+            max_k_bound = self.tiling_work.get_a_max_k_bound(self.container.tensor_map.get("a_l0a"))
             k_bound_not_align = max_k_bound
             # If having bank conflict
             k_bound = tvm.select(
@@ -5033,7 +5008,8 @@ class GemmSchedule:
         n_bound = self.tiling_work.bub_tiling_n * self.block_out
         n_bound = (n_bound + gap_value) if self.status_controller.storage_n_bound_change else n_bound
         if self.status_controller.bub_attach_status == "c_gm":
-            max_k_bound = self._get_b_max_k_bound()
+            max_k_bound = self.tiling_work.get_b_max_k_bound(self.container.tensor_map.get("b_l0b"),
+                                                             self.is_dynamic, self.dynamic_k)
             k_bound_not_align = max_k_bound
             # If having bank conflict
             k_bound = tvm.select(

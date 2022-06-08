@@ -390,6 +390,19 @@ case25 = {"params": [{"shape": (1024, 256, 64), "dtype": "float16", "format": "N
          "expect": "success",
          "support_expect": True}
 
+case_solve_bank_conflict = {"params": [{"shape": (1664, 32, 128), "dtype": "float16", "format": "ND",
+                                        "ori_shape": (1664, 32, 128),"ori_format": "ND"},
+                                       {"shape": (1664, 32, 128), "dtype": "float16", "format": "ND",
+                                        "ori_shape": (1664, 32, 128),"ori_format": "ND"},
+                                       None, None,
+                                       {"shape": (1664, 32, 32), "dtype": "float32", "format": "ND",
+                                        "ori_shape": (1664, 32, 32),"ori_format": "ND"},
+                                       False, True,
+                                      ],
+                            "case_name": "BatchMatmul_solve_bank_conflict",
+                            "expect": "success",
+                            "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -407,6 +420,7 @@ ut_case.add_case(["Ascend910A"], case22)
 ut_case.add_case(["Ascend910A"], case23)
 ut_case.add_case(["Ascend910A"], case24)
 ut_case.add_case(["Ascend910A"], case25)
+ut_case.add_case(["Ascend910A"], case_solve_bank_conflict)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16",

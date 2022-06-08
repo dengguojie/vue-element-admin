@@ -278,7 +278,6 @@ def test_get_op_support_info_dynamic_batchmatmul_v2_case2(test_arg):
     get_op_support_info(x1, x2, trans_a=True)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul_v2_case2)
 
-
 def test_batch_matmul_v2_fuzzy_generalization(test_arg):
     from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
     input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}

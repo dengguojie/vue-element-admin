@@ -22,6 +22,7 @@ from tbe.common import platform as tbe_platform
 from tbe.common.buildcfg import build_config
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.util import int_ceil_div
+from tbe.dsl.compute.util import get_value
 
 
 def get_all_tags(res):
@@ -553,6 +554,7 @@ class GemmTilingWork:
     """
     def __init__(self):
         self.tiling = None
+        self.block_reduce = tbe_platform.BLOCK_REDUCE
         (self.al0_tiling_batch, self.al0_tiling_ma,
          self.al0_tiling_ka, self.al0_tiling_m0, self.al0_tiling_k0) = 1, 1, 1, 16, 16
         (self.bl0_tiling_batch, self.bl0_tiling_nb,
@@ -670,3 +672,30 @@ class GemmTilingWork:
             if attach_at_flag.get("min_kl1_cmp_kl0"):
                 self.factor_shape.get("al12cl0").insert(0, 1)
                 self.factor_shape.get("bl12cl0").insert(0, 1)
+
+    def get_a_max_k_bound(self, a_l0a):
+        """
+        This function is used to get the maximum k bound, which will be used in the
+        following calculation to solve bank conflict and to set storage bound.
+        """
+        a_matrix_dim = [get_value(i) for i in a_l0a.shape]
+        k_bound_tiling = (int_ceil_div(a_matrix_dim[-3],
+                                       self.tiling.get("AL0_matrix")[1]) * self.tiling.get("AL0_matrix")[1] *
+                          self.block_reduce)
+        return int_ceil_div(k_bound_tiling, self.tiling.get("block_dim")[-1])
+
+    def get_b_max_k_bound(self, b_l0b, is_dynamic, dynamic_k):
+        """
+        This function is used to get the maximum k bound, which will be used in the
+        following calculation to solve bank conflict and to set storage bound.
+        """
+        b_matrix_dim = [get_value(i) for i in b_l0b.shape]
+        if self.tiling.get("BL0_matrix"):
+            k_bound_tiling = (int_ceil_div(b_matrix_dim[-4],
+                                           self.tiling.get("BL0_matrix")[0]) *
+                              self.tiling.get("BL0_matrix")[0] * self.block_reduce)
+            return int_ceil_div(k_bound_tiling, self.tiling.get("block_dim")[-1])
+        elif is_dynamic:
+            return int_ceil_div(dynamic_k, self.tiling.get("block_dim")[-1]) * self.block_reduce
+        else:
+            return int_ceil_div(b_matrix_dim[-4], self.tiling.get("block_dim")[-1]) * self.block_reduce
