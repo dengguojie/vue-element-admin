@@ -134,14 +134,13 @@ delete_unmatch_cases() {
   supported_soc="$1"
   if [[ $supported_soc == "Ascend310" ]]; then
       find "${CANN_ST_SOURCE}" -iname "*custom.py" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" \( -iname "*.json" -a ! -iname "*310*.py" \) | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -iname "*310[b-z]*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*310[b-z]*.json" -o -iname "*910*.json" -o -iname "*710*.json" \) | xargs rm -rf
   elif [[ $supported_soc == "Ascend910" ]]; then
-      find "${CANN_ST_SOURCE}" \( -iname "*.json" -a ! -iname "*910*.py" \) | xargs rm -rf
-      find "${CANN_ST_SOURCE}" -iname "*910[b-z]*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*910[b-z]*.json" -o -iname "*310*.json" -o -iname "*710*.json" \) | xargs rm -rf
   elif [[ $supported_soc == "Ascend310P3" ]]; then
       find "${CANN_ST_SOURCE}" -iname "*custom.py" | xargs rm -rf
-      find "${CANN_ST_SOURCE}" \( -iname "*.json" -a ! -iname "*310p3*.json" \) | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*910*.json" -o -iname "*710*.json" \) | xargs rm -rf
+      find "${CANN_ST_SOURCE}" \( -iname "*310*.json" -a ! -iname "*310p3*.json" \) | xargs rm -rf
   fi
 }
 
