@@ -2389,6 +2389,7 @@ ops_pub:
     release:
       - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
       - ops/built-in/fusion_pass/common/pattern_fusion_util.h
+      - ops/built-in/fusion_pass/common/fp16_t.cc
       - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/op_proto/inc/rnn.h
@@ -2573,7 +2574,6 @@ unkown:
       - ops/built-in/tbe/impl/batch_norm3d_grad.py
       - ops/built-in/tbe/impl/atanh.py
       - ops/built-in/tbe/impl/inplace_index_add.py
-      - ops/built-in/tbe/impl/fsr_detection_output.py
       - ops/built-in/tbe/impl/apply_gradient_descent.py
       - ops/built-in/tbe/impl/batch_multi_class_nms_topk.py
       - ops/built-in/tbe/impl/depth_to_space.py
@@ -3639,7 +3639,6 @@ unkown:
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.cc
       - ops/built-in/fusion_pass/common/quant_host_cpu_op_common.h
       - ops/built-in/fusion_pass/common/fusion_addoutput_registry.h
-      - ops/built-in/fusion_pass/common/fp16_t.cc
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pass_through_second_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.h
