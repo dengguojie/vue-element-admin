@@ -2603,6 +2603,7 @@ def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
     """
     gather_v2 interface for tik
     """
+    tbe_context.get_context().add_compile_info("is_gather_v2", True)
     obj = GatherV2(x, indices, axis, y, batch_dims, kernel_name)
     return obj.gather_v2_compute()
 

@@ -21,6 +21,7 @@ set(_optiling_files
   runtime/dynamic_atomic_addr_clean.cc
   runtime/flatten.cc
   runtime/max_pool_v3.cc
+  runtime/gatherv2.cc
   runtime/dynamic_rnn_v3.cc
   runtime/dyn_seq_outer.cc
   runtime/trans_data.cc

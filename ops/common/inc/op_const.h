@@ -151,19 +151,56 @@ bool GetConstInt(gert::InferShapeContext* context, const int64_t const_input_idx
   auto dtype = axes_tensor->GetDataType();
   switch (dtype) {
     case ge::DT_UINT64:
-      value = axes_tensor->GetData<uint64_t>()[0];
+      value = static_cast<T>(axes_tensor->GetData<uint64_t>()[0]);
       break;
     case ge::DT_INT64:
-      value = axes_tensor->GetData<int64_t>()[0];
+      value = static_cast<T>(axes_tensor->GetData<int64_t>()[0]);
       break;
     case ge::DT_UINT32:
-      value = axes_tensor->GetData<uint32_t>()[0];
+      value = static_cast<T>(axes_tensor->GetData<uint32_t>()[0]);
       break;
     case ge::DT_INT32:
-      value = axes_tensor->GetData<int32_t>()[0];
+      value = static_cast<T>(axes_tensor->GetData<int32_t>()[0]);
       break;
     default: {
-      OP_LOGW("GetConstInt", "GetConstInt of dtype[%d] is not implement yet.", dtype);
+      OP_LOGW("GetConstInt", "GetConstInt of dtype[%d] has not implement yet.", dtype);
+      return false;
+    } break;
+  }
+  OP_LOGI("GetConstInt", "GetConstInt of value is %d", value);
+  return true;
+}
+
+/*
+ * @brief: read constvalue from paras store into value
+ * @param [in] context: gert::TilingContext
+ * @param [in] const_input_idx: constvalue axes index
+ * @param [out] value: integer to store return value.
+ * @return bool: flag of success or not
+ */
+template <typename T>
+bool GetConstInt(gert::TilingContext* context, const int64_t const_input_idx, T& value) {
+  auto axes_tensor = context->GetInputTensor(const_input_idx);
+  if (axes_tensor == nullptr) {
+    OP_LOGW("GetConstIntData", "constvalue is nullptr");
+    return false;
+  }
+  auto dtype = axes_tensor->GetDataType();
+  switch (dtype) {
+    case ge::DT_UINT64:
+      value = static_cast<T>(axes_tensor->GetData<uint64_t>()[0]);
+      break;
+    case ge::DT_INT64:
+      value = static_cast<T>(axes_tensor->GetData<int64_t>()[0]);
+      break;
+    case ge::DT_UINT32:
+      value = static_cast<T>(axes_tensor->GetData<uint32_t>()[0]);
+      break;
+    case ge::DT_INT32:
+      value = static_cast<T>(axes_tensor->GetData<int32_t>()[0]);
+      break;
+    default: {
+      OP_LOGW("GetConstInt", "GetConstInt of dtype[%d] has not implement yet.", dtype);
       return false;
     } break;
   }

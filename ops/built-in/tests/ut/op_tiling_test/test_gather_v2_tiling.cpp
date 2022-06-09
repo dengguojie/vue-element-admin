@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 #include <gtest/gtest.h>
 
@@ -10,7 +11,18 @@
 #include "array_ops.h"
 #include "test_common.h"
 #include "common/utils/ut_op_util.h"
-#include "op_tiling/gather_dsl.h"
+#include "common_unittest.h"
+#include "gatherv2.h"
+
+
+#include "graph/utils/op_desc_utils.h"
+#include "graph/graph.h"
+#include "op_tiling/tiling_handler.h"
+
+#include "common_autotiling_util.h"
+
+#include "graph/compute_graph.h"
+#include "graph/utils/graph_utils.h"
 
 using namespace std;
 using namespace ge;
@@ -70,12 +82,21 @@ static void Compute(vector <int64_t> inputA, vector <int64_t> inputB, vector <in
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), expectTilingData);
+  optiling::GatherV2CompileInfo info;
+  int64_t tiling_len = sizeof(optiling::GatherV2TilingParams);
+  TILING_PARSE_JSON_TO_COMPILEINFO("GatherV2",compileInfo,info);
+  vector<bool> input_const={false, false, true};
+  vector<string> attrs={"batch_dims"};
+  ATTACH_OPERATOR_TO_HOLDER_CONST(holder,opParas, input_const, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder,"GatherV2",ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int64_t, expectTilingData);
+
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_0) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   vector<int64_t> inputA{
       87552,
   };
@@ -96,7 +117,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_0) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   ;
   std::vector<int64_t> inputA{81, 6, 3};
   std::vector<int64_t> inputB{
@@ -118,7 +139,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{81, 6, 32};
   std::vector<int64_t> inputB{
       6,
@@ -139,7 +160,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{81, 6, 32};
   std::vector<int64_t> inputB{
       6,
@@ -160,7 +181,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_4) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{16, 8, 16, 32};
   std::vector<int64_t> inputB{
       32,
@@ -181,7 +202,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_4) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_5) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{16, 8, 16, 32};
   std::vector<int64_t> inputB{
       320,
@@ -202,7 +223,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_5) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_6) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{180, 4};
   std::vector<int64_t> inputB{
       4,
@@ -223,7 +244,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_6) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_7) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{180, 400000};
   std::vector<int64_t> inputB{
       4,
@@ -244,7 +265,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_7) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_10) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{64, 8, 16, 32};
   std::vector<int64_t> inputB{
       32,
@@ -265,7 +286,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_10) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":2, \"batch_dims\":0}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{64, 8, 3, 16};
   std::vector<int64_t> inputB{
       32,
@@ -286,7 +307,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16, 3};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -305,7 +326,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_20_02) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{100, 16, 3};
   std::vector<int64_t> inputB{100, 800};
   std::vector<int64_t> inputC{1};
@@ -324,7 +345,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_20_02) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_21) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{100, 16, 3};
   std::vector<int64_t> inputB{100, 8000};
   std::vector<int64_t> inputC{1};
@@ -343,7 +364,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_21) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_22) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16, 3};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -362,7 +383,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_22) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_23) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16000, 3};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -381,7 +402,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_23) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_23_02) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{100, 16000, 3};
   std::vector<int64_t> inputB{100, 800};
   std::vector<int64_t> inputC{1};
@@ -400,7 +421,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_23_02) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_24) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{100, 16000, 3};
   std::vector<int64_t> inputB{100, 18000};
   std::vector<int64_t> inputC{1};
@@ -421,7 +442,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_24) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_25) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16000, 3};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -441,7 +462,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_25) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_26) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16, 33};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -460,7 +481,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_26) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_27) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{100, 16, 33};
   std::vector<int64_t> inputB{100, 18000};
   std::vector<int64_t> inputC{1};
@@ -480,7 +501,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_27) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_28) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16, 33};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -500,7 +521,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_28) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_29) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16, 32};
   std::vector<int64_t> inputB{10, 4};
   std::vector<int64_t> inputC{1};
@@ -519,7 +540,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_29) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_30) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{1000, 16, 32};
   std::vector<int64_t> inputB{1000, 800};
   std::vector<int64_t> inputC{1};
@@ -538,7 +559,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_30) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_31) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 6, 5, 32};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -557,7 +578,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_31) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_32) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16000, 32};
   std::vector<int64_t> inputB{10, 4};
   std::vector<int64_t> inputC{1};
@@ -576,7 +597,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_32) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_33) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{1000, 16000, 8};
   std::vector<int64_t> inputB{1000, 1800};
   std::vector<int64_t> inputC{1};
@@ -597,7 +618,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_33) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_34) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 6, 500, 32};
   std::vector<int64_t> inputB{10, 40000};
   std::vector<int64_t> inputC{1};
@@ -618,7 +639,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_34) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_35) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{10, 16, 33000};
   std::vector<int64_t> inputB{10, 40};
   std::vector<int64_t> inputC{1};
@@ -637,7 +658,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_35) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_36) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 2, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{4, 16, 33000};
   std::vector<int64_t> inputB{4, 19999};
   std::vector<int64_t> inputC{1};
@@ -656,7 +677,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_36) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_37) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{2, 16, 33000};
   std::vector<int64_t> inputB{2, 40000};
   std::vector<int64_t> inputC{1};
@@ -675,7 +696,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_37) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_38) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{2, 160, 2};
   std::vector<int64_t> inputB{2, 2};
   std::vector<int64_t> inputC{1};
@@ -694,7 +715,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_38) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_39) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{2, 16000, 2};
   std::vector<int64_t> inputB{2, 2};
   std::vector<int64_t> inputC{1};
@@ -713,7 +734,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_39) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_40) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{100, 16, 2};
   std::vector<int64_t> inputB{100, 2};
   std::vector<int64_t> inputC{1};
@@ -732,7 +753,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_40) {
 TEST_F(GatherV2Tiling, gather_v2_tiling_41) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
-      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true}";
+      "\"indices_dsize\":4, \"params_dsize\":4, \"batch_dims\":1}, \"is_tik\": true,\"is_gather_v2\": true}";
   std::vector<int64_t> inputA{2, 16000, 2};
   std::vector<int64_t> inputB{2, 2};
   std::vector<int64_t> inputC{1};
@@ -748,37 +769,1788 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_41) {
           compileInfo, expectTilingData, batch_dims);
 }
 
-TEST_F(GatherV2Tiling, gather_v2_tiling_42) {
-  std::string compileInfo = R"({
-    "_pattern": "Gather", "_base_info": [32, 262144, 0, 4, 8],
-    "_custom_info": [32768, 1, false, 0],
-    "_tensor_sizes": {"7": [15392, 1924], "6": [26208, 3276], "1": [26208, 3276], "2": [26208, 3276],
-    "5": [26208, 3276], "0": [52416, 6552]},
-    "_gather_vars": {"900017000": [10000, 10001, 10002, 10003, 20001, 30000, 40000],
-    "900015010": [10000, 10001, 10002, 10003, 20001, 30002, 40002],
-    "900017006": [10000, 10001, 10002, 10003, 20001, 30001, 40002]},
-    "_vars": {"900017006": ["_params_dim_0", "_params_dim_1", "_params_dim_2", "_params_dim_3", "_indices_dim_1",
-    "_block_factor_0", "_ub_factor_0"], "900015010": ["_params_dim_0",
-    "_params_dim_1", "_params_dim_2", "_params_dim_3", "_indices_dim_1", "_block_factor_2", "_ub_factor_2"]},
-    "_normal_vars": {"900017006": ["_params_dim_0", "_params_dim_1", "_params_dim_2", "_params_dim_3",
-    "_indices_dim_1", "_block_factor_0", "_ub_factor_0"],
-     "900015010": ["_params_dim_0", "_params_dim_1", "_params_dim_2", "_params_dim_3", "_indices_dim_1",
-     "_block_factor_2", "_ub_factor_2"]},
-    "_attr_vars": {"900017006": [], "900015010": []},
-    "_custom_vars": {"900017006": [],"900015010": []}
-    })";
 
-  std::vector <int64_t> inputA{640000, 80};
-  std::vector <int64_t> inputB{22551};
+TEST_F(GatherV2Tiling, gather_v2_tiling_rt) {
+  std::string compileInfo = R"({
+    "attr_name": "batch_dims",
+    "batch_dims_attr_idx": 0,
+    "_pattern": "Gather",
+    "_base_info": [
+        32,
+        262144,
+        0,
+        4,
+        8
+    ],
+    "_custom_info": [
+        32768,
+        1,
+        false,
+        0
+    ],
+    "_tensor_sizes": {
+        "7": [
+            15392,
+            1924
+        ],
+        "6": [
+            26208,
+            3276
+        ],
+        "1": [
+            26208,
+            3276
+        ],
+        "2": [
+            26208,
+            3276
+        ],
+        "5": [
+            26208,
+            3276
+        ],
+        "0": [
+            52416,
+            6552
+        ]
+    },
+    "_gather_vars": {
+        "900017000": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40000
+        ],
+        "900017001": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40001
+        ],
+        "900017002": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40002
+        ],
+        "900017003": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40003
+        ],
+        "900017005": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40001
+        ],
+        "900017006": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40002
+        ],
+        "900017007": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40003
+        ],
+        "900017010": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40002
+        ],
+        "900017011": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40003
+        ],
+        "900017015": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30003,
+            40003
+        ],
+        "900016000": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40000
+        ],
+        "900016001": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40001
+        ],
+        "900016002": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40002
+        ],
+        "900016003": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40003
+        ],
+        "900016005": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40001
+        ],
+        "900016006": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40002
+        ],
+        "900016007": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40003
+        ],
+        "900016010": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40002
+        ],
+        "900016011": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40003
+        ],
+        "900016015": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30003,
+            40003
+        ],
+        "900011000": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40000
+        ],
+        "900012000": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40000
+        ],
+        "900011001": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40001
+        ],
+        "900012001": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40001
+        ],
+        "900011002": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40002
+        ],
+        "900012002": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40002
+        ],
+        "900011003": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40003
+        ],
+        "900012003": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40003
+        ],
+        "900011005": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40001
+        ],
+        "900012005": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40001
+        ],
+        "900011006": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40002
+        ],
+        "900012006": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40002
+        ],
+        "900011007": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40003
+        ],
+        "900012007": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40003
+        ],
+        "900011010": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40002
+        ],
+        "900012010": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40002
+        ],
+        "900011011": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40003
+        ],
+        "900012011": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40003
+        ],
+        "900011015": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30003,
+            40003
+        ],
+        "900012015": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30003,
+            40003
+        ],
+        "900015000": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40000
+        ],
+        "900015001": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40001
+        ],
+        "900015002": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40002
+        ],
+        "900015003": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40003
+        ],
+        "900015005": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40001
+        ],
+        "900015006": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40002
+        ],
+        "900015007": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40003
+        ],
+        "900015010": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40002
+        ],
+        "900015011": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40003
+        ],
+        "900015015": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30003,
+            40003
+        ],
+        "900010000": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40000
+        ],
+        "900010001": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40001
+        ],
+        "900010002": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40002
+        ],
+        "900010003": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30000,
+            40003
+        ],
+        "900010005": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40001
+        ],
+        "900010006": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40002
+        ],
+        "900010007": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30001,
+            40003
+        ],
+        "900010010": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40002
+        ],
+        "900010011": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30002,
+            40003
+        ],
+        "900010015": [
+            10000,
+            10001,
+            10002,
+            10003,
+            20001,
+            30003,
+            40003
+        ]
+    },
+    "_vars": {
+        "900017000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900017001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900017002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900017003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900017005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900017006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900017007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900017010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900017011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900017015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900016000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900016001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900016002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900016003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900016005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900016006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900016007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900016010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900016011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900016015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900011000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900012000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900011001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900012001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900011002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900012002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900011003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900012003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900011005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900012005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900011006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900012006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900011007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900012007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900011010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900012010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900011011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900012011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900011015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900012015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900015000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900015001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900015002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900015003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900015005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900015006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900015007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900015010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900015011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900015015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900010000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900010001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900010002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900010003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900010005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900010006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900010007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900010010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900010011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900010015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ]
+    },
+    "_normal_vars": {
+        "900017000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900017001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900017002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900017003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900017005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900017006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900017007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900017010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900017011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900017015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900016000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900016001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900016002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900016003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900016005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900016006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900016007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900016010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900016011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900016015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900011000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900012000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900011001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900012001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900011002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900012002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900011003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900012003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900011005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900012005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900011006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900012006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900011007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900012007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900011010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900012010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900011011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900012011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900011015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900012015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900015000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900015001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900015002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900015003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900015005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900015006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900015007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900015010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900015011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900015015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ],
+        "900010000": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_0"
+        ],
+        "900010001": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_1"
+        ],
+        "900010002": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_2"
+        ],
+        "900010003": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_0",
+            "_ub_factor_3"
+        ],
+        "900010005": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_1"
+        ],
+        "900010006": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_2"
+        ],
+        "900010007": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_1",
+            "_ub_factor_3"
+        ],
+        "900010010": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_2"
+        ],
+        "900010011": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_2",
+            "_ub_factor_3"
+        ],
+        "900010015": [
+            "_params_dim_0",
+            "_params_dim_1",
+            "_params_dim_2",
+            "_params_dim_3",
+            "_indices_dim_1",
+            "_block_factor_3",
+            "_ub_factor_3"
+        ]
+    },
+    "_custom_vars": {
+        "900017000": [],
+        "900017001": [],
+        "900017002": [],
+        "900017003": [],
+        "900017005": [],
+        "900017006": [],
+        "900017007": [],
+        "900017010": [],
+        "900017011": [],
+        "900017015": [],
+        "900016000": [],
+        "900016001": [],
+        "900016002": [],
+        "900016003": [],
+        "900016005": [],
+        "900016006": [],
+        "900016007": [],
+        "900016010": [],
+        "900016011": [],
+        "900016015": [],
+        "900011000": [],
+        "900012000": [],
+        "900011001": [],
+        "900012001": [],
+        "900011002": [],
+        "900012002": [],
+        "900011003": [],
+        "900012003": [],
+        "900011005": [],
+        "900012005": [],
+        "900011006": [],
+        "900012006": [],
+        "900011007": [],
+        "900012007": [],
+        "900011010": [],
+        "900012010": [],
+        "900011011": [],
+        "900012011": [],
+        "900011015": [],
+        "900012015": [],
+        "900015000": [],
+        "900015001": [],
+        "900015002": [],
+        "900015003": [],
+        "900015005": [],
+        "900015006": [],
+        "900015007": [],
+        "900015010": [],
+        "900015011": [],
+        "900015015": [],
+        "900010000": [],
+        "900010001": [],
+        "900010002": [],
+        "900010003": [],
+        "900010005": [],
+        "900010006": [],
+        "900010007": [],
+        "900010010": [],
+        "900010011": [],
+        "900010015": []
+    }
+})";
+
+  std::vector <int64_t> inputA{6400, 225};
+  std::vector <int64_t> inputB{225};
   std::vector <int64_t> inputC{1};
-  std::vector <int64_t> output{22551, 80};
+  std::vector <int64_t> output{6400,224};
   std::vector <int32_t> axis{1};
   ge::DataType dtypeA = ge::DT_FLOAT;
-  ge::DataType dtypeB = ge::DT_INT32;
+  ge::DataType dtypeB = ge::DT_INT64;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
   int64_t batch_dims = 0;
-  string expectTilingData = "2748779069440001 4294967376 85899345942551 1880 ";
-  Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput,
-  this->test_info_->name(),compileInfo, expectTilingData, batch_dims);
+  string expectTilingData = "1 6400 225 1 225 200 8 ";
+  std::string op_name = "GatherV2";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputA));
+  tensor_inputA.SetDataType(dtypeA);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputB));
+  tensor_inputB.SetOriginShape(ge::Shape(inputB));
+  tensor_inputB.SetDataType(dtypeB);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputC));
+  tensor_inputC.SetDataType(dtypeC);
+  TensorDesc tensor_output;
+  tensor_output.SetShape(ge::Shape(output));
+  tensor_output.SetDataType(dtypeOutput);
+
+  auto opParas = op::GatherV2("GatherV2");
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, indices);
+  TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t *) axis.data(), axis.size() * 4);
+  TENSOR_OUTPUT(opParas, tensor_output, y);
+  opParas.SetAttr("batch_dims", batch_dims);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(ut_util::to_string_int32(runInfo.GetAllTilingData()), expectTilingData);
+ 
+  optiling::GatherV2CompileInfo info;
+  int64_t tiling_len = sizeof(optiling::GatherV2TilingParams);
+  TILING_PARSE_JSON_TO_COMPILEINFO("GatherV2",compileInfo,info);
+  vector<bool> input_const={false, false, true};
+  vector<string> attrs={"batch_dims"};
+  ATTACH_OPERATOR_TO_HOLDER_CONST(holder,opParas, input_const, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder,"GatherV2",ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 6400 225 1 225 200 8 ");
+
 }

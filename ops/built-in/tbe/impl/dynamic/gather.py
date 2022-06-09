@@ -58,6 +58,7 @@ def gather_tik(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="
     """
     gather interface for tik
     """
+    tbe_context.get_context().add_compile_info("is_gather_v2", False)
     axis_dict = {"dtype": "int32"}
     obj = GatherV2(x, indices, axis_dict, y, batch_dims, kernel_name)
     return obj.gather_compute()
