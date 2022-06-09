@@ -47,6 +47,7 @@ static const string PATTERN_CONV2DBPFILTER = "Conv2DBackpropFilterD";
 static const string PATTERN_FUSEDDBNDW = "FusedDbnDw";
 static const uint32_t kSupportAicoreNum = 32;
 static const vector<int64_t> kSupportBatch = {32, 256};
+static const uint32_t kWDimIdx = 3;
 static const vector<int64_t> Batch256AddCase = {
   256, 1024, 14, 14, 14, 14, 1, 1
 };
@@ -68,7 +69,7 @@ vector<FusionPattern*> Resnet50DbnDwFusionPass::DefinePatterns() {
 
   FusionPattern* pattern = new (nothrow) FusionPattern("Resnet50DbnDwFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "new pattern obj failed"),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "new pattern obj failed"),
                     return patterns);
   pattern->AddOpDesc(PATTERN_DBN, {PATTERN_DBN})
           .AddOpDesc(PATTERN_CONV2DBPFILTER, {PATTERN_CONV2DBPFILTER})
@@ -82,7 +83,6 @@ vector<FusionPattern*> Resnet50DbnDwFusionPass::DefinePatterns() {
 
 Status Resnet50DbnDwFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping,
                                        vector<NodePtr>& fusion_nodes) {
-  OP_LOGD("Start to fuse DBN and DW.");
   // check the platform
   PlatformInfo platform_info;
   OptionalInfo opti_compilation_info;
@@ -97,10 +97,10 @@ Status Resnet50DbnDwFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping,
   // get the origin Node from mapping
   NodePtr dbn_node = GetNodeFromMapping(PATTERN_DBN, mapping);
   NodePtr dw_node = GetNodeFromMapping(PATTERN_CONV2DBPFILTER, mapping);
-  FUSION_PASS_CHECK(dbn_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Dbn node is null, fusion failed."),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(dw_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Dw node is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(dbn_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Dbn node is null, fusion failed."),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(dw_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Dw node is null, fusion failed."),
+                    return NOT_CHANGED);
   OpDescPtr dw_op_desc = dw_node->GetOpDesc();
   OpDescPtr dbn_op_desc = dbn_node->GetOpDesc();
 
@@ -109,53 +109,53 @@ Status Resnet50DbnDwFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_MAKE_SHARED(
     fused_dbn_dw_desc = make_shared<ge::OpDesc>(dbn_node->GetName() + "_Conv2DBackpropFilterD_FUSED_layer",
                                                 PATTERN_FUSEDDBNDW),
-    return FAILED);
+    return NOT_CHANGED);
 
   // set the new Node OpDesc by origin Node
-  SetOpDesc(dw_op_desc, dbn_op_desc, fused_dbn_dw_desc);
+  SetOpDesc(dw_op_desc, dbn_op_desc, fused_dbn_dw_desc, dw_node);
   FUSION_PASS_CHECK(CheckSupportCase(dw_op_desc) != SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "this case not support dw&dbn fusion."),
+                    OP_LOGW(dw_node, "this case not support dw&dbn fusion."),
                     return NOT_CHANGED);
 
   // add the node and push back it to fusion_nodes
   NodePtr fused_dbn_dw_node = graph.AddNode(fused_dbn_dw_desc);
   FUSION_PASS_CHECK(fused_dbn_dw_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedDbnDw Node is null, fusion failed."),
-                    return FAILED);
+                    OP_LOGW(dw_node, "fusedDbnDw Node is null, fusion failed."),
+                    return NOT_CHANGED);
   fusion_nodes.push_back(fused_dbn_dw_node);
 
   // handle the edges, connect all inputs edges and all outputs edges to the new node
   FUSION_PASS_CHECK(GraphUtils::AddEdge(dw_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                         fused_dbn_dw_node->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    OP_LOGE(fused_dbn_dw_node,
                             "add edge from dw's input to fusednode's input failed"),
                     return FAILED);
   for (size_t i = 0; i < dbn_node->GetAllInDataAnchors().size(); i++) {
     FUSION_PASS_CHECK(GraphUtils::AddEdge(dbn_node->GetInDataAnchor(i)->GetPeerOutAnchor(),
                                           fused_dbn_dw_node->GetInDataAnchor(i+1)) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      OP_LOGE(fused_dbn_dw_node,
                               "add edge from dbn's input to fusednode's input failed"),
                       return FAILED);
   }
   OutDataAnchorPtr dbn_out_anchor_ptr = dbn_node->GetOutDataAnchor(0);
   OutDataAnchorPtr dw_out_anchor_ptr = dw_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(dbn_out_anchor_ptr == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Dbn out anchor is null, fusion failed."),
+                    OP_LOGE(dbn_node, "Dbn out anchor is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(dw_out_anchor_ptr == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Dw out anchor is null, fusion failed."),
+                    OP_LOGE(dw_node, "Dw out anchor is null, fusion failed."),
                     return PARAM_INVALID);
   for (auto post_anchor_ptr0 : dbn_out_anchor_ptr->GetPeerInDataAnchors()) {
     post_anchor_ptr0->UnlinkAll();
     FUSION_PASS_CHECK(GraphUtils::AddEdge(fused_dbn_dw_node->GetOutDataAnchor(0), post_anchor_ptr0) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      OP_LOGE(fused_dbn_dw_node,
                               "add edge between fused node and dbn's next node failed"),
                       return FAILED);
   }
   for (auto post_anchor_ptr0 : dw_out_anchor_ptr->GetPeerInDataAnchors()) {
     post_anchor_ptr0->UnlinkAll();
     FUSION_PASS_CHECK(GraphUtils::AddEdge(fused_dbn_dw_node->GetOutDataAnchor(1), post_anchor_ptr0) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      OP_LOGE(fused_dbn_dw_node,
                               "add edge between fused node and dw's next node failed"),
                       return FAILED);
   }
@@ -163,77 +163,77 @@ Status Resnet50DbnDwFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping,
   // delete dbn_node and dw_node
   FUSION_PASS_CHECK(
     graph.RemoveNode(dbn_node) == GRAPH_FAILED,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Removing Dbn Node is failed."),
+    OP_LOGE(dbn_node, "Removing Dbn Node is failed."),
     return FAILED);
 
   FUSION_PASS_CHECK(
     graph.RemoveNode(dw_node) == GRAPH_FAILED,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Removing Dw Node is failed."),
+    OP_LOGE(dw_node, "Removing Dw Node is failed."),
     return FAILED);
 
   return SUCCESS;
 }
 
 Status Resnet50DbnDwFusionPass::SetOpDesc(OpDescPtr &dw_op_desc, OpDescPtr &dbn_op_desc,
-                                          OpDescPtr &fused_dbn_dw_desc) {
+                                          OpDescPtr &fused_dbn_dw_desc, NodePtr& dw_node) {
   GeTensorDesc dw_input_desc = dw_op_desc->GetInputDesc(0);
   GeTensorDesc dw_output_desc = dw_op_desc->GetOutputDesc(0);
   GeTensorDesc dbn_output_desc = dbn_op_desc->GetOutputDesc(0);
   FUSION_PASS_CHECK(fused_dbn_dw_desc->AddInputDesc(dw_input_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dw input failed"),
-                    return FAILED);
+                    OP_LOGW(dw_node, "add dw input failed"),
+                    return NOT_CHANGED);
   for (auto dbn_input_desc : dbn_op_desc->GetAllInputsDesc()) {
     FUSION_PASS_CHECK(fused_dbn_dw_desc->AddInputDesc(dbn_input_desc) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add dbn input failed"),
-                      return FAILED);
+                      OP_LOGW(dw_node, "add dbn input failed"),
+                      return NOT_CHANGED);
   }
   FUSION_PASS_CHECK(fused_dbn_dw_desc->AddOutputDesc(dbn_output_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dbn output failed"),
-                    return FAILED);
+                    OP_LOGW(dw_node, "add dbn output failed"),
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(fused_dbn_dw_desc->AddOutputDesc(dw_output_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add dw output failed"),
-                    return FAILED);
+                    OP_LOGW(dw_node, "add dw output failed"),
+                    return NOT_CHANGED);
 
   vector<int64_t> filter_size_index;
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(dw_op_desc, "filter_size", filter_size_index),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get filter_size failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get filter_size failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetListInt(fused_dbn_dw_desc, "filter_size", filter_size_index);
 
   vector<int64_t> strides_index;
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(dw_op_desc, "strides", strides_index),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get strides failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get strides failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetListInt(fused_dbn_dw_desc, "strides", strides_index);
 
   vector<int64_t> pads_index;
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(dw_op_desc, "pads", pads_index),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get pads failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get pads failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetListInt(fused_dbn_dw_desc, "pads", pads_index);
 
   vector<int64_t> dilations_index;
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(dw_op_desc, "dilations", dilations_index),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get dilations failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get dilations failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetListInt(fused_dbn_dw_desc, "dilations", dilations_index);
 
   int64_t groups_index;
   FUSION_PASS_CHECK(!AttrUtils::GetInt(dw_op_desc, "groups", groups_index),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get groups failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get groups failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetInt(fused_dbn_dw_desc, "groups", groups_index);
 
   string data_format_index;
   FUSION_PASS_CHECK(!AttrUtils::GetStr(dw_op_desc, "data_format", data_format_index),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get data_format failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get data_format failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetStr(fused_dbn_dw_desc, "data_format", data_format_index);
 
   float epsilon_val;
   FUSION_PASS_CHECK(!AttrUtils::GetFloat(dbn_op_desc, "epsilon", epsilon_val),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get epsilon failed"),
-                    return PARAM_INVALID);
+                    OP_LOGW(dw_node, "get epsilon failed"),
+                    return NOT_CHANGED);
   AttrUtils::SetFloat(fused_dbn_dw_desc, "epsilon", epsilon_val);
 
   return SUCCESS;
@@ -262,7 +262,7 @@ Status Resnet50DbnDwFusionPass::CheckSupportCase(OpDescPtr &dw_op_desc) {
     batch = fmap_nchw[0];
     c_in = fmap_nchw[1];
     fmap_h = fmap_nchw[2];
-    fmap_w = fmap_nchw[3];
+    fmap_w = fmap_nchw[kWDimIdx];
   }
   GeTensorDesc dw_dy_desc = dw_op_desc->GetInputDesc(1);
   vector<int64_t> dy_dim_info = dw_dy_desc.GetShape().GetDims();
@@ -273,7 +273,7 @@ Status Resnet50DbnDwFusionPass::CheckSupportCase(OpDescPtr &dw_op_desc) {
   } else {
     c_out = dy_nchw[1];
     dy_h = dy_nchw[2];
-    dy_w = dy_nchw[3];
+    dy_w = dy_nchw[kWDimIdx];
   }
   GeTensorDesc dw_output_desc = dw_op_desc->GetOutputDesc(0);
   vector<int64_t> output_dim_info = dw_output_desc.GetShape().GetDims();
@@ -283,7 +283,7 @@ Status Resnet50DbnDwFusionPass::CheckSupportCase(OpDescPtr &dw_op_desc) {
     return FAILED;
   } else {
     filter_h = filter_nchw[2];
-    filter_w = filter_nchw[3];
+    filter_w = filter_nchw[kWDimIdx];
   }
   AttrUtils::GetInt(dw_op_desc, "groups", group);
 
@@ -324,23 +324,22 @@ vector<int64_t> Resnet50DbnDwFusionPass::GetNchwVec(vector<int64_t> &dim_info,
       param_n = dim_info[0];
       param_h = dim_info[1];
       param_w = dim_info[2];
+      // 3 is the index of c in FORMAT_NHWC
       param_c = dim_info[3];
     } else if (origin_format == FORMAT_NCHW) {
-      param_n = dim_info[0];
-      param_c = dim_info[1];
-      param_h = dim_info[2];
-      param_w = dim_info[3];
+      return dim_info;
     } else if (origin_format == FORMAT_HWCN) {
       param_h = dim_info[0];
       param_w = dim_info[1];
       param_c = dim_info[2];
+      // 3 is the index of n in FORMAT_HWCN
       param_n = dim_info[3];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "OriginFormat only support NHWC and NCHW and HWCN");
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "OriginFormat only support NHWC and NCHW and HWCN");
       return params_nchw;
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dim_info size is not right");
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "dim_info size is not right");
     return params_nchw;
   }
   params_nchw.push_back(param_n);

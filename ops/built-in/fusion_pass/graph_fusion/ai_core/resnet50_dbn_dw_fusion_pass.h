@@ -34,8 +34,8 @@ protected:
 
 private:
   const string FUSED_OP_TYPE = "FusedDbnDw";
-  Status SetOpDesc(ge::OpDescPtr &dw_op_desc, ge::OpDescPtr &dbn_op_desc,
-                   ge::OpDescPtr &fused_dbn_dw_desc);
+  Status SetOpDesc(ge::OpDescPtr& dw_op_desc, ge::OpDescPtr& dbn_op_desc, ge::OpDescPtr& fused_dbn_dw_desc,
+                   ge::NodePtr& dw_node);
   Status CheckSupportCase(ge::OpDescPtr &dw_op_desc);
   vector<int64_t> GetNchwVec(vector<int64_t> &dim_info, ge::Format &origin_format);
 };

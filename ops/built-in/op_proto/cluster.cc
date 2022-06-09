@@ -27,49 +27,48 @@
 namespace ge {
 // ------------ KMeansCentroids -----------------
 IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
-  OP_LOGI(op_name.GetString(), "Enter KMeansCentroids inferfunction.");
+  const string op_name = TbeGetName(op);
+  OP_LOGD(op_name, "Enter KMeansCentroids inferfunction.");
 
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::ConstGeTensorDescPtr input_x_desc = op_desc->GetInputDescPtr(0);
   if (input_x_desc == nullptr) {
-    OP_LOGE(op_name.GetString(), "get input x failed.");
+    OP_LOGE(op_name, "get input x failed.");
     return GRAPH_FAILED;
   }
 
   ge::ConstGeTensorDescPtr input_y_desc = op_desc->GetInputDescPtr(1);
   if (input_y_desc == nullptr) {
-    OP_LOGE(op_name.GetString(), "get input y failed.");
+    OP_LOGE(op_name, "get input y failed.");
     return GRAPH_FAILED;
   }
 
   ge::ConstGeTensorDescPtr input_ssy_desc = op_desc->GetInputDescPtr(2);
   if (input_ssy_desc == nullptr) {
-    OP_LOGE(op_name.GetString(), "get input sum_square_y failed.");
+    OP_LOGE(op_name, "get input sum_square_y failed.");
     return GRAPH_FAILED;
   }
 
   bool use_actual_distance = false;
   if (op.GetAttr("use_actual_distance", use_actual_distance) != GRAPH_SUCCESS) {
-    OP_LOGW(op_name.GetString(), "Failed to get attr[use_actual_distance]. Set it to false.");
+    OP_LOGW(op_name, "Failed to get attr[use_actual_distance]. Set it to false.");
   }
 
   auto output_segment_sum = op_desc->MutableOutputDesc(0);
   if (output_segment_sum == nullptr) {
-    OP_LOGE(op_name.GetString(), "get output segment_sum failed.");
+    OP_LOGE(op_name, "get output segment_sum failed.");
     return GRAPH_FAILED;
   }
 
   auto output_segment_count = op_desc->MutableOutputDesc(1);
   if (output_segment_count == nullptr) {
-    OP_LOGE(op_name.GetString(), "get output segment_count failed.");
+    OP_LOGE(op_name, "get output segment_count failed.");
     return GRAPH_FAILED;
   }
 
   auto output_kmean_total_sum = op_desc->MutableOutputDesc(2);
   if (output_kmean_total_sum == nullptr) {
-    OP_LOGE(op_name.GetString(), "get output kmean_total_sum failed.");
+    OP_LOGE(op_name, "get output kmean_total_sum failed.");
     return GRAPH_FAILED;
   }
 
@@ -94,13 +93,13 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
   n_ssy = input_ssy_shape.GetDim(1);
 
   if (x_d != y_d) {
-    OP_LOGE(op_name.GetString(),
+    OP_LOGE(op_name,
             "The second dimension of input x should be equal to the second dimension of input y");
     return GRAPH_FAILED;
   }
 
   if (y_n != n_ssy) {
-    OP_LOGE(op_name.GetString(),
+    OP_LOGE(op_name,
             "The first dimension of input y should be equal to the second dimension of input sum_square_y");
     return GRAPH_FAILED;
   }
@@ -108,13 +107,13 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
   if (use_actual_distance) {
     ge::ConstGeTensorDescPtr input_ssx_desc = op_desc->GetInputDescPtr(3);
     if (input_ssx_desc == nullptr) {
-      OP_LOGE(op_name.GetString(), "get input sum_square_x failed.");
+      OP_LOGE(op_name, "get input sum_square_x failed.");
       return GRAPH_FAILED;
     }
     const GeShape &input_ssx_shape = input_ssx_desc->GetShape();
     m_ssx = input_ssx_shape.GetDim(0);
     if (x_m != m_ssx) {
-      OP_LOGE(op_name.GetString(),
+      OP_LOGE(op_name,
               "The first dimension of input x should be equal to the first dimension of input sum_square_x");
       return GRAPH_FAILED;
     }
@@ -124,7 +123,7 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
   int64_t d_tail = x_d % 16;
   int64_t n_tail = y_n % 16;
   if (m_tail != 0 || n_tail != 0 || d_tail != 0) {
-    OP_LOGE(op_name.GetString(), "input shape non-16 alignment");
+    OP_LOGE(op_name, "input shape non-16 alignment");
     return GRAPH_FAILED;
   }
 

@@ -159,25 +159,25 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   if (with_cast_flag) {
     FUSION_PASS_CHECK(
       ge::GraphUtils::RemoveEdge(matmul_node->GetOutDataAnchor(0), cast_node->GetInDataAnchor(0)) != SUCCESS,
-      CUBE_INNER_ERR_REPORT(matmul_node, "fail to remove edge between matmul_node and cast_node"),
+      CUBE_INNER_ERR_REPORT(matmul_node, "Failed to remove edge between matmul_node and cast_node"),
       return FAILED
     );
   } else {
     FUSION_PASS_CHECK(
       ge::GraphUtils::RemoveEdge(matmul_node->GetOutDataAnchor(0), left_mul_node->GetInDataAnchor(0)) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove edge between matmul_node and left_mul_node"),
+      CUBE_INNER_ERR_REPORT(matmul_node, "Failed to remove edge between matmul_node and left_mul_node"),
       return FAILED
     );
   }
   FUSION_PASS_CHECK(
     ge::GraphUtils::RemoveEdge(add_node->GetOutDataAnchor(0), left_transdata_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove edge between add_node and left_transdata_node"),
+    CUBE_INNER_ERR_REPORT(add_node, "Failed to remove edge between add_node and left_transdata_node"),
     return FAILED
   );
   for (auto input_data_anchor : y_anchors_ptr) {
     FUSION_PASS_CHECK(
       ge::GraphUtils::RemoveEdge(left_transdata_node->GetOutDataAnchor(0), input_data_anchor) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove edge between transdata_node and y_nodes"),
+      CUBE_INNER_ERR_REPORT(left_transdata_node, "Failed to remove edge between transdata_node and y_nodes"),
       return FAILED
     );
   }
@@ -185,49 +185,47 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   // remove some edge of right side
   FUSION_PASS_CHECK(
     ge::GraphUtils::RemoveEdge(c_node->GetOutDataAnchor(0), right_transdata_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove edge between c_node and right_transdata_node"),
+    CUBE_INNER_ERR_REPORT(c_node, "Failed to remove edge between c_node and right_transdata_node"),
     return FAILED
   );
   FUSION_PASS_CHECK(
     ge::GraphUtils::RemoveEdge(right_transdata_node->GetOutDataAnchor(0),
                                right_mul_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
-                            "fail to remove edge between right_transdata_node and right_mul_node"),
+    CUBE_INNER_ERR_REPORT(right_transdata_node, "Failed to remove edge between right_transdata and right_mul"),
     return FAILED
   );
 
   // add some edge
   FUSION_PASS_CHECK(
     ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), left_transdata_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to add edge between matmul_node and left_transdata_node"),
+    CUBE_INNER_ERR_REPORT(matmul_node, "Failed to add edge between matmul_node and left_transdata_node"),
     return FAILED
   );
 
   if (with_cast_flag) {
     FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(left_transdata_node->GetOutDataAnchor(0), cast_node->GetInDataAnchor(0)) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to add edge between left_transdata_node and cast_node"),
+      CUBE_INNER_ERR_REPORT(left_transdata_node, "Failed to add edge between left_transdata_node and cast_node"),
       return FAILED
     );
   } else {
     FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(left_transdata_node->GetOutDataAnchor(0), left_mul_node->GetInDataAnchor(0)) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
-                              "fail to add edge between left_transdata_node and left_mul_node"),
+      CUBE_INNER_ERR_REPORT(left_transdata_node, "Failed to add edge between left_transdata_node and left_mul_node"),
       return FAILED
     );
   }
 
   FUSION_PASS_CHECK(
     ge::GraphUtils::AddEdge(c_node->GetOutDataAnchor(0), right_mul_node->GetInDataAnchor(0)) != SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to add edge between c_node and right_mul_node"),
+    CUBE_INNER_ERR_REPORT(c_node, "Failed to add edge between c_node and right_mul_node"),
     return FAILED
   );
 
   for (auto input_data_anchor : y_anchors_ptr) {
     FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(add_node->GetOutDataAnchor(0), input_data_anchor) != SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove edge between add_node and y_nodes"),
+      CUBE_INNER_ERR_REPORT(add_node, "Failed to remove edge between add_node and y_nodes"),
       return FAILED
     );
   }
@@ -238,23 +236,23 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   auto right_mul_node_desc = right_mul_node->GetOpDesc();
   auto add_node_desc = add_node->GetOpDesc();
   FUSION_PASS_CHECK(
-    left_mul_node_desc->UpdateInputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of left_mul_node"),
+    left_mul_node_desc->UpdateInputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(left_mul_node, "Failed to update input description of left_mul_node"),
     return FAILED
   );
   FUSION_PASS_CHECK(
-    left_mul_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update output description of left_mul_node"),
+    left_mul_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(left_mul_node, "Failed to update output description of left_mul_node"),
     return FAILED
   );
   FUSION_PASS_CHECK(
-    add_node_desc->UpdateInputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of add_node"),
+    add_node_desc->UpdateInputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(add_node, "Failed to update input description of add_node"),
     return FAILED
   );
   FUSION_PASS_CHECK(
-    add_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update output description of add_node"),
+    add_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(add_node, "Failed to update output description of add_node"),
     return FAILED
   );
   if (with_cast_flag) {
@@ -262,51 +260,46 @@ Status MatMulTransdataFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
     auto left_transdata_node_desc = left_transdata_node->GetOpDesc();
     auto matmul_node_outdesc = matmul_node->GetOpDesc()->GetOutputDesc(0);
     FUSION_PASS_CHECK(
-      cast_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of left_mul_node"),
+      cast_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(cast_node, "Failed to update output description of cast_node"),
       return FAILED
     );
     left_transdata_node_outdesc.SetDataType(matmul_node_outdesc.GetDataType());
     left_transdata_node_outdesc.SetOriginDataType(matmul_node_outdesc.GetOriginDataType());
     FUSION_PASS_CHECK(
-      cast_node_desc->UpdateInputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of cast_node_outdesc"),
+      cast_node_desc->UpdateInputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(cast_node, "Failed to update input description of cast_node_outdesc"),
       return FAILED
     );
     FUSION_PASS_CHECK(
-      left_transdata_node_desc->UpdateInputDesc(0, matmul_node_outdesc) !=  SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
-                              "fail to update input description of left_transdata_node_outdesc"),
-      return FAILED
-    );
+      left_transdata_node_desc->UpdateInputDesc(0, matmul_node_outdesc) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(left_transdata_node, "Failed to update input description of left_transdata_node_outdesc"),
+      return FAILED);
     FUSION_PASS_CHECK(
-      left_transdata_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) !=  SUCCESS,
-      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
-                              "fail to update output description of left_transdata_node_outdesc"),
-      return FAILED
-    );
+      left_transdata_node_desc->UpdateOutputDesc(0, left_transdata_node_outdesc) != SUCCESS,
+      CUBE_INNER_ERR_REPORT(left_transdata_node, "Failed to update output description of left_transdata_node_outdesc"),
+      return FAILED);
   }
   auto c_node_outdesc = c_node->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(
-    right_mul_node_desc->UpdateInputDesc(0, c_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of right_mul_node"),
+    right_mul_node_desc->UpdateInputDesc(0, c_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(c_node, "Failed to update input description of right_mul_node"),
     return FAILED
   );
   FUSION_PASS_CHECK(
-    right_mul_node_desc->UpdateOutputDesc(0, c_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update output description of right_mul_node"),
+    right_mul_node_desc->UpdateOutputDesc(0, c_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(c_node, "Failed to update output description of right_mul_node"),
     return FAILED
   );
   FUSION_PASS_CHECK(
-    add_node_desc->UpdateInputDesc(1, c_node_outdesc) !=  SUCCESS,
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of add_node"),
+    add_node_desc->UpdateInputDesc(1, c_node_outdesc) != SUCCESS,
+    CUBE_INNER_ERR_REPORT(add_node, "Failed to update input description of add_node"),
     return FAILED
   );
 
-  // RemoveNode(right_transdata_node)
   FUSION_PASS_CHECK(
     graph.RemoveNode(right_transdata_node),
-    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to remove right_transdata_node"),
+    CUBE_INNER_ERR_REPORT(right_transdata_node, "Failed to remove right_transdata_node"),
     return FAILED
   );
   OP_LOGI(matmul_node, "matmul transdata fusion success!");

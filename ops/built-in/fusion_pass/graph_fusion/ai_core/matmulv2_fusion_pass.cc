@@ -47,7 +47,8 @@ vector<FusionPattern*> MatMulV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatMulV2FusionPass");
 
-  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "new MatMulV2FusionPass pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_MATMULV2, {MATMULV2})
@@ -61,19 +62,18 @@ vector<FusionPattern*> MatMulV2FusionPass::DefinePatterns() {
 }
 
 Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MatMulV2FusionPass fusion begin");
   ge::NodePtr matMulV2Node = GetNodeFromMapping(PATTERN_MATMULV2, mapping);
   FUSION_PASS_CHECK(matMulV2Node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
-                    return PARAM_INVALID);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "matMulV2Node Node is null, fusion failed."),
+                    return NOT_CHANGED);
 
   bool transposeB = false;
   ge::OpDescPtr matMulV2NodeDescPtr = matMulV2Node->GetOpDesc();
   FUSION_PASS_CHECK(matMulV2NodeDescPtr == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matMulV2NodeDescPtr is null."),
-                    return PARAM_INVALID);
+                    OP_LOGW(matMulV2Node, "matMulV2NodeDescPtr is null."),
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(matMulV2Node->GetOpDesc(), TRANSPOSEB, transposeB),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Get transpose_b attr failed."), return NOT_CHANGED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get transpose_b attr failed."), return NOT_CHANGED);
 
   if (!transposeB) {
     return NOT_CHANGED;
@@ -89,14 +89,14 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   }
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(matMulV2Node->GetOpDesc(), TRANSPOSEB, false),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Set transpose_b attr failed."), return FAILED);
+                    OP_LOGW(matMulV2Node, "Set transpose_b attr failed."), return NOT_CHANGED);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(matMulV2Node->GetOpDesc(), TRANSPOSEBX2, false),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Set transpose_x2 attr failed."), return FAILED);
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "Set transpose_x2 attr failed."), return FAILED);
 
   std::vector<int64_t> oldDims = matMulV2Node->GetOpDesc()->GetInputDesc(CONST_INDEX).GetShape().GetDims();
   FUSION_PASS_CHECK(oldDims.size() < 2,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matmul shape length is not 2."),
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "matmul shape length is not 2."),
                     return FAILED);
   vector<int64_t> newDims;
   newDims.push_back(oldDims[1]);
@@ -107,7 +107,7 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   ge::NodePtr constNode = GetPeerOutNodeWithInDataAnchor(matMulV2Node, CONST_INDEX);
   FUSION_PASS_CHECK(constNode == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to get const node"),
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "failed to get const node"),
                     return FAILED);
 
   std::shared_ptr<ge::OpDesc> transposeOpdesc = nullptr;
@@ -115,7 +115,7 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
       (transposeOpdesc = std::make_shared<ge::OpDesc>(constNode->GetName() + "_transpose_b", TRANSPOSED_TYPE)),
       return FAILED);
   FUSION_PASS_CHECK(transposeOpdesc == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create transpose node"),
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "failed to create transpose node"),
                     return FAILED);
 
   vector<int64_t> perm;
@@ -123,42 +123,42 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   perm.push_back(0);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(transposeOpdesc, PERM, perm),
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    CUBE_INNER_ERR_REPORT(matMulV2Node,
                     "Set perm to %s failed.", transposeOpdesc->GetName().c_str()), return FAILED);
 
   ge::GeTensorDesc inputDesc = constNode->GetOpDesc()->GetOutputDesc(0);
   ge::GeTensorDesc outputDesc = matMulV2Node->GetOpDesc()->GetInputDesc(CONST_INDEX);
 
   FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.",
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "%s add inputDesc failed.",
                     transposeOpdesc->GetName().c_str()), return FAILED);
   FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.",
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "%s add outputDesc failed.",
                     transposeOpdesc->GetName().c_str()), return FAILED);
 
   ge::NodePtr transposeNode = graph.AddNode(transposeOpdesc);
   FUSION_PASS_CHECK(transposeNode == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to add transpose to graph"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "failed to add transpose to graph"), return FAILED);
 
   ge::OutDataAnchorPtr src = constNode->GetOutDataAnchor(0);
   ge::InDataAnchorPtr dst = matMulV2Node->GetInDataAnchor(CONST_INDEX);
 
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove %s input0 edge error",
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "remove %s input0 edge error",
                     matMulV2Node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(src, transposeNode->GetInDataAnchor(0)) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "Add edge between node %s. and node %s failed.",
                             constNode->GetName().c_str(), transposeNode->GetName().c_str()),
                     return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), dst) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    CUBE_INNER_ERR_REPORT(matMulV2Node, "Add edge between node %s. and node %s failed.",
                             transposeNode->GetName().c_str(), matMulV2Node->GetName().c_str()),
                     return FAILED);
 
   fusionNodes.push_back(transposeNode);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MatMulV2FusionPass fusion end");
+  OP_LOGI(matMulV2Node, "MatMulV2FusionPass fusion success!");
   return SUCCESS;
 }
 REGISTER_PASS("MatMulV2FusionPass", BUILT_IN_GRAPH_PASS, MatMulV2FusionPass);
