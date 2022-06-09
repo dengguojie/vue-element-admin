@@ -666,12 +666,14 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or \
                              (len(shape_x) == len(shape_y) == 1 and shape_x[0] % 16 == shape_y[0] % 16 == 0) or \
-                             (len(shape_x) == 1 and y_flag.get("4d") and format_x == format_y and
+                             (len(shape_x) == 1 and y_flag.get("4d") and format_x == format_y and \
+                              y_cdim == reduce_x and \
                               ((format_y in ("NHWC",) and reduce_y != 1) or
                                (format_y in ("NCHW", "HWCN") and
                                 (y_cdim == shape_x[0] or y_cdim == 1 or
                                  shape_x[0] == 1 or shape_x[0] // 16 == 1)))) or \
-                             (len(shape_y) == 1 and x_flag.get("4d") and format_x == format_y and
+                             (len(shape_y) == 1 and x_flag.get("4d") and format_x == format_y and \
+                              x_cdim == reduce_y and \
                               ((format_x in ("NHWC",) and reduce_x != 1) or
                                (format_x in ("NCHW", "HWCN") and
                                 (x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or
