@@ -641,7 +641,7 @@ class RTSInterface:
         self.parse_error(rt_error, "rtDeviceReset", f"costs {round(time.time() - start_time, 3)} seconds")
         self.device_id = None
 
-    def start_online_profiling(self, stream: Optional[ctypes.c_uint64], profiling_count: int):
+    def start_online_profiling(self, stream: Optional[Union[ctypes.c_void_p, ctypes.c_uint64]], profiling_count: int):
         """
         Start online task profiling
         :param stream:
@@ -657,7 +657,7 @@ class RTSInterface:
         self.parse_error(rt_error, "rtStartOnlineProf", f"costs {round(time.time() - start_time, 3)} seconds")
         self.online_profiling_status = True
 
-    def stop_online_profiling(self, stream: Optional[ctypes.c_uint64]):
+    def stop_online_profiling(self, stream: Optional[Union[ctypes.c_void_p, ctypes.c_uint64]]):
         """
         Stop online task profiling
         :param stream:
@@ -672,7 +672,8 @@ class RTSInterface:
         else:
             logging.warning("RTS Online Profiling already stopped!")
 
-    def get_online_profiling_data(self, stream: Optional[ctypes.c_uint64], profiling_count: int):
+    def get_online_profiling_data(self, stream: Optional[Union[ctypes.c_void_p, ctypes.c_uint64]],
+                                  profiling_count: int):
         """
         Get online task profiling result
         :param stream:

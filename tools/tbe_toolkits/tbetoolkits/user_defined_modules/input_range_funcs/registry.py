@@ -20,6 +20,7 @@ from .element_wise import _floor_div
 from .element_wise import _real_div
 from .element_wise import _floor_mod
 from .element_wise import _relu_grad_v2
+from .element_wise import _select
 from .elementary_reduce import _reduce_sum
 from .elementary_reduce import _reduce_sum_d
 from .elementary_reduce import _reduce_prod
@@ -42,7 +43,8 @@ input_range_func = {
     "reduce_prod": _reduce_prod,
     "bias_add_grad": _bias_add_grad,
     "reduce_mean_d": _reduce_mean_d,
-    "relu_grad_v2": _relu_grad_v2
+    "relu_grad_v2": _relu_grad_v2,
+    "select": _select
 }
 
 

@@ -345,6 +345,13 @@ def _relu_grad_v2(range_mode,
                   other_runtime_params):
     # Use them once to avoid static checks
     [stc_inputs, dyn_inputs, other_runtime_params].clear()
+
+    if range_mode not in ("LOW", "HIGH"):
+        raise KeyError("Unknown range inference mode %s" % range_mode)
+
+    if idx not in (0, 1):
+        raise RuntimeError("Operator ReluGradV2 should have two inputs only !!!")
+
     numpy_dtype = numpy.dtype(dyn_input_dtypes[0])
     if numpy_dtype.kind in "iu":
         numpy_info = numpy.iinfo(numpy_dtype)
@@ -353,13 +360,34 @@ def _relu_grad_v2(range_mode,
     maximum = numpy_info.max
     minimum = numpy_info.min
 
-    if range_mode not in ("LOW", "HIGH"):
-        raise KeyError("Unknown range inference mode %s" % range_mode)
-
-    if idx not in (0, 1):
-        raise RuntimeError("Operator ReluGradV2 should have two inputs only !!!")
-
     if range_mode == "LOW":
         return minimum if idx == 0 else 0
     else:
         return maximum if idx == 0 else 1.99
+
+
+def _select(range_mode,
+            idx,
+            dyn_inputs,
+            stc_inputs,
+            dyn_input_dtypes,
+            other_runtime_params):
+    # Use them once to avoid static checks
+    [idx, stc_inputs, other_runtime_params].clear()
+
+    if range_mode not in ("LOW", "HIGH"):
+        raise KeyError("Unknown range inference mode %s" % range_mode)
+
+    if idx not in (0, 1, 2):
+        raise RuntimeError("Operator Select should have three inputs only!!!")
+
+    if idx == 0:
+        numpy_dtype = numpy.dtype(dyn_input_dtypes[0])
+        if numpy_dtype.kind in "iu":
+            minimum, maximum = 0, 2
+        else:
+            minimum, maximum = -2, 2
+
+        return minimum if range_mode == "LOW" else maximum
+    else:
+        return -2 if range_mode == "LOW" else 2

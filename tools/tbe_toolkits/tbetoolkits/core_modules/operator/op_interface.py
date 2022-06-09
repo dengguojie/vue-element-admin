@@ -5,9 +5,11 @@ Operator Compilation Interface
 # Standard Packages
 import copy
 import ctypes
+import glob
 import inspect
 import json
 import logging
+import os
 import time
 from collections import Callable
 from contextlib import contextmanager
@@ -21,7 +23,7 @@ from .special_operator_rules import special_operator_registry
 from ..testcase_manager import UniversalTestcaseStructure
 from ...utilities import BinaryCompilationResult, DynamicCompilationResult
 from ...utilities import apply_as_list, eliminate_scalar_shapes, get, get_global_storage, get_loaded_so_path
-from ...utilities import param_transformation, parse_dtype, tuple_flatten
+from ...utilities import param_transformation, parse_dtype, read_file, tuple_flatten
 
 
 class OperatorInterface:
@@ -537,9 +539,25 @@ class OperatorInterface:
                                                                          timer=tiling_time,
                                                                          attrs=attrs)
         except:
-            logging.error(f"{tiling_op_type} OP Tiling C++ Func Call Failed, "
-                          f"check ascend log or ascend logging print for details")
-            raise RuntimeError(f"{tiling_op_type} Op Tiling Func Call Failure") from None
+            time.sleep(0.5)
+            # Trying to get plog path
+            plog_home = os.path.expanduser("~/ascend/log/plog")
+            plog_possible_name = f"plog-{os.getpid()}_*.log"
+            all_possible_logs = glob.glob(f"{plog_home}/{plog_possible_name}")
+            error_logs = []
+            if all_possible_logs:
+                use_log = all_possible_logs[-1]
+                log_content = read_file(use_log).decode("utf-8").splitlines()
+                for i in range(min(5, len(log_content))):
+                    error_logs.append(log_content[-i])
+            else:
+                error_logs.append(f"{tiling_op_type} OP Tiling C++ Func Call Failed, Ascend log parse Failed, "
+                                  f"please check ascend log or ascend logging print yourself for details")
+            raise RuntimeError(f"OPTILING_FAILURE: \n"
+                               f"*********************************************************************************\n"
+                               f"{os.linesep.join(error_logs)}\n"
+                               f"*********************************************************************************") \
+                from None
         if tiling_time:
             for i in range(get_global_storage().tiling_run_time):
                 tiling_time_temp = []

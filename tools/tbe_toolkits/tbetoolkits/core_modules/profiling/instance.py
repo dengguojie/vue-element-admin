@@ -22,6 +22,7 @@ from typing import Tuple
 from typing import Callable
 
 # Third-Party Packages
+from .knowledge_base_sequence import knowledge_base_sequence
 from .profiling import profile_process
 from .profiling import ProfilingReturnStructure
 from .compilation import compilation_process
@@ -172,6 +173,16 @@ class ProfilingInstance:
         logging.info("Parsing testcases...")
         self._prepare_testcases(self.input_path)
         logging.info(f"Case num: {len(tuple_flatten(tuple(self.testcases.values())))}")
+        # Prepare Knowledge Base
+        logging.info("Launching knowledge base Server process")
+        kb = SimpleCommandProcess(self.mp_context, name="KnowledgeBaseServer")
+        kb.data["switch"] = True
+        kb.send_action(knowledge_base_sequence, (), {})
+        while not kb.status == kb.status.RUNNING:
+            kb.update()
+        logging.info(f"Knowledge base Server Pid: {kb.get_pid()}")
+        for testcase in self.flatten_testcases:
+            testcase.kb_pid = kb.get_pid()
         # Prepare SubProcesses
         logging.info("Preparing Task Executors...")
         self._prepare_processes()
@@ -186,6 +197,7 @@ class ProfilingInstance:
         logging.info("Received compilation tasks: %d" % len(self.waiting_tasks))
         # Loop check compiling and add to profiling pool
         while True:
+            kb.update()
             self._update_processes()
             self._push_tasks()
             if self.total_tasks_count == self.completed_task_count:
@@ -194,6 +206,10 @@ class ProfilingInstance:
         # Close all processes
         for proc in self.process_to_device:
             proc.close()
+        kb.data["switch"] = False
+        while kb.status != kb.status.READY:
+            kb.update()
+        kb.close()
 
     def init_flush(self, file_path: str):
         self.csv_writer = csv.writer(open(file_path, newline='', mode='w+'))
@@ -249,11 +265,15 @@ class ProfilingInstance:
         self.flatten_testcases: Tuple[UniversalTestcaseStructure] = tuple_flatten(tuple(self.testcases.values()))
         logging.info("Checking testcase name...")
         testcase_names = set()
+        duplicate_flag = False
         for t in self.flatten_testcases:
             if t.testcase_name in testcase_names:
                 logging.error(f"Testcase duplicate: {t.testcase_name}")
+                duplicate_flag = True
             else:
                 testcase_names.add(t.testcase_name)
+        if duplicate_flag:
+            raise RuntimeError("Detected duplicated testcases!!!")
         if self.switches.preserve_original_csv:
             self.titles = testcase_manager.header
         else:

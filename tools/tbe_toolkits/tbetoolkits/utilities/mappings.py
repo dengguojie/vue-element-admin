@@ -2754,7 +2754,8 @@ id2network_map = {
     "ID2410": "AlphaFold2_1024",
     "ID2411": "bigTransfer",
     "ID2412": "Swin-Transformer",
-    "ID2413": "BigGAN"
+    "ID2413": "BigGAN",
+    "ID2529": "oxford_pets_image_segmentation"
 }
 
 

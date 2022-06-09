@@ -291,8 +291,8 @@ def __inner_compare(goldens, outputs, percentage_thresholds, absolute_precision,
                 golden_data = golden[start_index: end_index][real_index]
                 actual_data = output[start_index: end_index][real_index]
                 if "bool" not in str(golden.dtype):
-                    compare_results += "Index: %03d RealIndex: %06d Expected: %-14.09f " \
-                                       "Actual: %-14.09f Diff: %-14.06f\n" \
+                    compare_results += "Index: %03d RealIndex: %06d Expected: %-14.18f " \
+                                       "Actual: %-14.18f Diff: %-14.06f\n" \
                                        % (index, start_index + real_index, golden_data,
                                           actual_data, (actual_data - golden_data) / golden_data)
                 else:

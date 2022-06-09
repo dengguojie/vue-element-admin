@@ -47,6 +47,7 @@ class PROCESS_RPC(Enum):
     RELEASE_SEMAPHORE = auto()
     GET_ACQUIRED_SEMAPHORES = auto()
     STORE_DATA = auto()
+    GET_DATA = auto()
     CHANGE_NAME = auto()
     SUICIDE = auto()
     SEMAPHORE_DEAD_SEQUENCE = auto()
@@ -140,6 +141,10 @@ class ProcessContext:
     def send_data(self, name, value) -> NoReturn:
         self.pipe.send((PROCESS_RPC.STORE_DATA, (name, value)))
 
+    def get_data(self, name):
+        self.pipe.send((PROCESS_RPC.GET_DATA, (name,)))
+        return self.pipe.recv()
+
     def change_name(self, name: str) -> NoReturn:
         self.pipe.send((PROCESS_RPC.CHANGE_NAME, (name,)))
 
@@ -228,6 +233,12 @@ class SimpleCommandProcess:
             name: str = rpc_args[0]
             value = rpc_args[1]
             self.data[name] = value
+        elif rpc_command == PROCESS_RPC.GET_DATA:
+            name: str = rpc_args[0]
+            if name in self.data:
+                self.parent_pipe.send(self.data[name])
+            else:
+                self.parent_pipe.send(None)
         elif rpc_command == PROCESS_RPC.CHANGE_NAME:
             name: str = rpc_args[0]
             self.name = name
@@ -317,15 +328,12 @@ class SimpleCommandProcess:
             # noinspection PyBroadException
             try:
                 self._parent_send_rpc(PROCESS_RPC.SUICIDE, ())
-            except:
-                pass
-            else:
-                self.parent.terminate()
-                self.parent.join()
+                self.parent.join(3)
             finally:
-                if self.get_exitcode() is not None:
+                if self.get_exitcode() is None:
+                    self.parent.terminate()
+                    self.parent.join(3)
                     self.kill()
-                    self.parent.join()
                 self.parent.close()
                 self.status = PROCESS_STATUS_CODE.DEAD
 
