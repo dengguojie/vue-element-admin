@@ -1372,7 +1372,7 @@ IMPLEMT_COMMON_INFERFUNC(GroupNormInferShape) {
   MakeUpShapeRange(input_dims, input_range);
 
   int64_t num_groups = 0;
-  if(GRAPH_SUCCESS != op.GetAttr("num_groups", num_groups)){
+  if (GRAPH_SUCCESS != op.GetAttr("num_groups", num_groups)) {
     OP_LOGE(TbeGetName(op).c_str(), "Failed to get the value of num_groups.");
     return GRAPH_FAILED;
   }

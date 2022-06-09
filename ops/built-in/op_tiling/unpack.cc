@@ -75,7 +75,7 @@ bool UnpackParseFunc(const std::string& op_type, const nlohmann::json& compile_i
   OP_TILING_CHECK(!GetCompileValue(compile_vars, "is_special_tiling", compile_value.is_special_tiling),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UnpackParseFunc get is_special_tiling error"),
                   return false);
-  OP_TILING_CHECK(!GetCompileValue(compile_vars, "multi_coexisting_quantities", 
+  OP_TILING_CHECK(!GetCompileValue(compile_vars, "multi_coexisting_quantities",
                                    compile_value.multi_coexisting_quantities),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "UnpackParseFunc get multi_coexisting_quantities error"),
                   return false);
@@ -217,7 +217,7 @@ void GetLeftDimOutForRightDimLess32B(int32_t left_dim, int32_t right_dim, int32_
 
 void VerifySmallShapeMultiCoexistingQuantities(std::vector<int64_t>& new_shape,
                                                const int32_t ub_limit, int32_t& split_factor, int32_t& split_axis,
-                                               const CompileInfo& compile_info, TilingStrategy& key){
+                                               const CompileInfo& compile_info, TilingStrategy& key) {
   int32_t old_split_factor = split_factor;
   int32_t new_ub_limit = ub_limit / compile_info.multi_coexisting_quantities;
   GetUbTiling(new_shape, new_ub_limit, compile_info.dtype_size, split_axis, split_factor);
@@ -286,7 +286,7 @@ void GetMultiOutputTilingParams(const std::vector<int64_t>& output_reshape, cons
   // verify whether is SMALL_SHAPE_MULTI_COEXISTING_QUANTITIES case
   bool is_verify_flag = (key == SMALL_SHAPE) && (right_dim_in >= ele_per_block) && (split_factor >= ele_per_block) &&
    (right_dim_in % ele_per_block) > 0;
-  if (is_verify_flag){
+  if (is_verify_flag) {
     VerifySmallShapeMultiCoexistingQuantities(new_shape, ub_limit, split_factor, split_axis,
                                               compile_info, key);
   }
