@@ -410,7 +410,7 @@ def test_reverse(test_args):
         'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
         "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
         'group': 1, 'bias_flag': 0, 'fused_double_operand_num': 0, 'fusion_type': 0,
-        'kernel_name': "dw_reverse", 'model_type': 'transformer', 'tiling_access_version': 0}
+        'kernel_name': "dw_reverse", 'model_type': 'transformer', 'split_axis_mode': 0, 'tiling_access_version': 0}
     tiling_dict = {
         "dw_reverse": {
             'AL0_matrix': [1, 64, 16, 16, 1, 1], 'AL1_shape': [12288, 1, 1, 1], 'AUB_channel_wise_flag': None,

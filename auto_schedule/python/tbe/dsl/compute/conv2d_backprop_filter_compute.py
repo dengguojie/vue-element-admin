@@ -35,15 +35,31 @@ from tbe.tvm.tensor import Tensor
 
 # fractal size, only support 16 for now
 BLOCK_SIZE = 16
+
 # maximum of int64 (2**63 - 1)
 DATA_SIZE_LIMIT_INT64 = 9223372036854775807
 INPUTS_H_MAX = 200000
 INPUTS_W_MAX = 4096
 INPUTS_HW_MIN = 1
+
 # maximum of w in conv1d is (2**31 - 1)
 CONV1D_MAX_W = 2147483647
-# maximum of stride, limited by load3d
+
+# filterH, filterW must be in [1,255]
+FILTER_HW_MAX = 255
+FILTER_HW_MIN = 1
+
+# stride must be in [1,63]
 STRIDE_HW_MAX = 63
+STRIDE_HW_MIN = 1
+
+# dilation must be in [1,255]
+DILATION_MIN = 1
+DILATION_MAX = 255
+
+# pad must be in [1,255]
+PAD_MIN = 0
+PAD_MAX = 255
 
 # the bytes length of several dtype
 BIT_RATIO_DICT = {
@@ -169,16 +185,16 @@ def _check_addressing_rule(shape, byte_count, limit, name):
         error_manager_util.raise_runtime_error(dict_args)
 
 
-def check_shape_equal(x, y, param_name1, param_name2):
+def check_shape_equal(shape_x, shape_y, param_name1, param_name2):
     """
     check shape dim equal
     """
-    if x != y:
+    if shape_x != shape_y:
         dict_args = {}
         dict_args['errCode'] = "E64002"
         dict_args['param1'] = param_name1
         dict_args['param2'] = param_name2
-        dict_args['actual_value'] = "{}, {}".format(x, y)
+        dict_args['actual_value'] = "{}, {}".format(shape_x, shape_y)
         error_manager_util.raise_runtime_error(dict_args)
 
 
@@ -259,6 +275,7 @@ class Conv2dBackpropFilter:
         self.flag_all_one_case = False
         self.flag_load3d_special_case = False
         self.conv1d_situation = False
+        self.flag_load3d_w_split_case = False
         self.l0b_dma_flag = False
 
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -296,6 +313,326 @@ class Conv2dBackpropFilter:
             "kernel_name": kernel_name,
             "dynamic_shape_flag": True
         }
+
+    def deconv_dw_access(self):
+        """
+        complete compute generation, including input check,
+        compute definition and result record
+
+        """
+        if not DynamicConv2dBpFilterParams.is_binary_flag:
+            self._deconv_dw_input_check_1()
+            self._deconv_dw_input_check_2()
+            if not self.var_map:
+                self._deconv_dw_input_check_3()
+        self._compute_group_dict()
+        self.deconv_dw_compute()
+        self.res_tensor = self.dw_ddr  # return tensor of this file to topi
+
+    def deconv_dw_compute(self):
+        """
+        complete compute definition
+
+        """
+
+        fmap_dtype = self.fmap_dtype
+
+        batch_size, grads_channel_1, grads_height, grads_width, grads_c0 = self.shape_grads_5hd
+        _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
+        _, _, kernel_height, kernel_width = self.weight_shape
+        _, _, _, dilation_w = self.dilation
+
+        if not self.var_map and self.flag_load3d_special_case:
+            # in this situation, stride_w do no make sense
+            # set stride_w be fmap_w_after_pad
+            # add kernel_w_after_dilation to pad_right
+            # so that grads_w be 2
+            self.stride[1] = fmap_width + self.pad[2] + self.pad[3]
+            self.pad[3] += (kernel_width - 1) * dilation_w + 1
+            grads_width = grads_width * 2
+            self.shapelist.get('grads_5hd')[-2] = grads_width
+            self.shape_grads_5hd[-2] = grads_width
+        if self.var_map and not DynamicConv2dBpFilterParams.is_binary_flag:
+            w_one_flag = tvm.var("w_one_flag")
+            self.var_map["w_one_flag"] = w_one_flag
+            stride_w = tvm.select(w_one_flag == 2,
+                                  fmap_width + self.pad[2] + self.pad[3],
+                                  self.stride[1])
+            self.stride[1] = stride_w
+
+            pad_r = tvm.select(w_one_flag == 2,
+                               self.pad[3] + (kernel_width - 1) * dilation_w + 1,
+                               self.pad[3])
+            self.pad[3] = pad_r
+            grads_width = grads_width * w_one_flag
+            self.shapelist.get('grads_5hd')[-2] = grads_width
+            self.shape_grads_5hd[-2] = grads_width
+
+        # group dict
+        group_dict = self.group_dict
+        real_g = group_dict.get("real_g")
+        fmap_c1_g = group_dict.get("cin1_g")
+        grads_channel_g = group_dict.get("cout_g")
+
+        # align to 16
+        hw_mad = (grads_height * grads_width + BLOCK_SIZE - 1) \
+                 // BLOCK_SIZE * BLOCK_SIZE
+        hw_mad_1 = (grads_height * grads_width + BLOCK_SIZE - 1) \
+                 // BLOCK_SIZE
+        wo_mad_1 = (grads_width + BLOCK_SIZE - 1) // BLOCK_SIZE
+
+        # move grads to L1
+        grads_shape_matrix = (batch_size,
+                              grads_channel_1,
+                              grads_height * grads_width,
+                              grads_c0)
+
+        if self.grads_dtype == "float32":
+            grads_shape_matrix = (
+                batch_size,
+                hw_mad_1,
+                grads_channel_1,
+                BLOCK_SIZE,
+                grads_c0
+            )
+
+        if self.flag_load3d_w_split_case:
+            grads_shape_matrix = (batch_size,
+                                  grads_channel_1,
+                                  grads_height,
+                                  grads_width,
+                                  grads_c0)
+            if self.grads_dtype == "float32":
+                grads_shape_matrix = (batch_size,
+                                      grads_height,
+                                      wo_mad_1,
+                                      grads_channel_1,
+                                      BLOCK_SIZE,
+                                      grads_c0)
+
+        self.shapelist['grads_matrix'] = grads_shape_matrix
+
+        grads_matrix = self._grads_2_matrix(grads_shape_matrix, self.grads)
+
+        # move grads_matrix to L0A and do transpose
+        grads_shape_fractal = (real_g,
+                               batch_size,
+                               grads_channel_g // grads_c0,
+                               hw_mad_1,
+                               grads_c0,
+                               BLOCK_SIZE)
+
+        if self.grads_dtype == "float32":
+            # transpose to make sure k0 axis in mad is 8
+            grads_shape_fractal = (
+                real_g,
+                batch_size,
+                grads_channel_g // grads_c0 // 2,
+                hw_mad_1 * 2,
+                grads_c0 * 2,
+                BLOCK_SIZE // 2
+            )
+
+        if self.flag_load3d_w_split_case:
+            grads_shape_fractal = (real_g,
+                                   batch_size,
+                                   grads_channel_g // grads_c0,
+                                   grads_height,
+                                   wo_mad_1,
+                                   grads_c0,
+                                   BLOCK_SIZE)
+            if self.grads_dtype == "float32":
+                grads_shape_fractal = (
+                    real_g,
+                    batch_size,
+                    grads_channel_g // grads_c0 // 2,
+                    grads_height,
+                    wo_mad_1 * 2,
+                    grads_c0 * 2,
+                    BLOCK_SIZE // 2
+                )
+
+        self.shapelist['grads_fractal'] = grads_shape_fractal
+        grads_fractal = self._grads_2_fractal(grads_shape_fractal, grads_matrix)
+
+        if not self.flag_all_one_case:
+            if not self.var_map:
+                # Load 3D Data Flow:
+                # fmap in DDR to fmap_matrix in L1 to fmap_fractal_nZ in L0B
+
+                # Dma Mode Data Flow:
+                # fmap in DDR to fmap_ub_pad in UB to fmap_matrix in L1 to
+                # fmap_fractal_before_zZ in L1 to fmap_fractal_nZ in L0B
+                fmap_ub = None
+                if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
+                    pad_top, pad_bottom, pad_left, pad_right = self.pad
+                    fmap_ub_shape = (batch_size,
+                                     fmap_channel_1,
+                                     fmap_height + pad_top + pad_bottom,
+                                     fmap_width + pad_left + pad_right,
+                                     fmap_c0)
+                    fmap_ub = self._fmap_2_ub(fmap_ub_shape, fmap_height, fmap_width)
+
+                # shape of fmap_original_matrix, corresponding to set_fmatrix
+                fmap_shape_original_matrix = (batch_size,
+                                              grads_height*grads_width,
+                                              fmap_channel_1,
+                                              kernel_height,
+                                              kernel_width,
+                                              fmap_c0)
+
+                if self.flag_load3d_w_split_case:
+                    fmap_shape_original_matrix = (batch_size,
+                                                  grads_height,
+                                                  grads_width,
+                                                  fmap_channel_1,
+                                                  kernel_height,
+                                                  kernel_width,
+                                                  fmap_c0)
+
+                self.shapelist['fmap_original_matrix'] = fmap_shape_original_matrix
+
+                if fmap_ub is None:
+                    fmap_l1_before = self.fmap
+                else:
+                    fmap_l1_before = fmap_ub
+                fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
+                                                  fmap_l1_before, fmap_dtype)
+                # load 3d: move fmap to L0B
+                # dma mode: change to zZ in L1 first
+                fmap_shape_fmap_matrix = (real_g,
+                                          batch_size,
+                                          hw_mad_1,
+                                          fmap_c1_g * kernel_height * kernel_width,
+                                          fmap_c0,
+                                          BLOCK_SIZE)
+                if self.fmap_dtype == "float32":
+                    fmap_shape_fmap_matrix = (
+                        real_g,
+                        batch_size,
+                        hw_mad_1 * 2,
+                        fmap_c1_g * kernel_height * kernel_width // 2,
+                        fmap_c0 * 2,
+                        BLOCK_SIZE // 2
+                    )
+
+                if self.flag_load3d_w_split_case:
+                    fmap_shape_fmap_matrix = (real_g,
+                                              batch_size,
+                                              grads_height,
+                                              wo_mad_1,
+                                              fmap_c1_g * kernel_height * kernel_width,
+                                              fmap_c0,
+                                              BLOCK_SIZE)
+                    if self.fmap_dtype == "float32":
+                        fmap_shape_fmap_matrix = (real_g,
+                                                  batch_size,
+                                                  grads_height,
+                                                  wo_mad_1 * 2,
+                                                  fmap_c1_g * kernel_height * kernel_width // 2,
+                                                  fmap_c0 * 2,
+                                                  BLOCK_SIZE // 2)
+
+                self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
+
+                if self.l0b_dma_flag:
+                    fmap_shape_fmap_matrix = (
+                        real_g,
+                        batch_size,
+                        hw_mad_1,
+                        fmap_c1_g*kernel_height*kernel_width,
+                        BLOCK_SIZE,
+                        fmap_c0
+                    )
+                fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix, fmap_matrix, fmap_dtype)
+
+                # dma_mode: move fmap(zZ) to L0B
+                # swap the last two axes
+                if self.l0b_dma_flag:
+                    fmap_shape_fmap_matrix = self.shapelist.get('fmap_fmap_matrix')
+                    fmap_fractal_with_dma = tvm.compute(fmap_shape_fmap_matrix,
+                                                        lambda *indices:
+                                                        fmap_fractal(*indices[:-2], indices[-1], indices[-2]),
+                                                        name='fmap_2_fractal_dma',
+                                                        tag='fmap_2_fractal_dma')
+                    fmap_fractal = fmap_fractal_with_dma
+            else:
+                fmap_l1_shape = (real_g, batch_size, fmap_c1_g,
+                                    fmap_height, fmap_width, fmap_c0)
+                fmap_l1 = tvm.compute(fmap_l1_shape,
+                                        lambda g, n, c1, h, w, c0:
+                                        self.fmap(n, c1 + g * fmap_c1_g, h, w, c0),
+                                        name='dw_fmap_l1', tag='dw_fmap_l1',
+                                        attrs={'group_dict':self.group_dict})
+
+                fmap_shape_fmap_matrix = (real_g,
+                                          batch_size,
+                                          hw_mad_1,
+                                          fmap_c1_g*kernel_height*kernel_width,
+                                          fmap_c0,
+                                          BLOCK_SIZE)
+                img2col_para = (fmap_l1, kernel_height, kernel_width,
+                            self.pad, self.stride, grads_width, self.dilation)
+                fmap_fractal = self._im2col_fractal_v2(fmap_shape_fmap_matrix,
+                                                       img2col_para)
+
+        # else: all_one_case, using load_2d instead of load_3d
+        else:
+            # shape of fmap_matrix
+            fmap_shape_matrix = (batch_size,
+                                 fmap_channel_1,
+                                 fmap_height*fmap_width,
+                                 fmap_c0)
+
+            self.shapelist['fmap_matrix'] = fmap_shape_matrix
+
+            fmap_matrix = self._fmap_2_matrix_load2d(fmap_shape_matrix,
+                                                     self.fmap)
+
+            # move fmap to L0B
+            fmap_shape_fractal = (real_g,
+                                  batch_size,
+                                  hw_mad//BLOCK_SIZE,
+                                  fmap_c1_g*kernel_height*kernel_width,
+                                  fmap_c0,
+                                  BLOCK_SIZE)
+            self.shapelist['fmap_matrix'] = fmap_shape_fractal
+
+            fmap_fractal = self._fmap_2_fractal_load2d(fmap_shape_fractal,
+                                                       fmap_matrix)
+
+        # shape of result dw [group,n1,m,n0]
+        if self.fmap_dtype == "float32" and self.grads_dtype == "float32":
+            dw_shape = (
+                real_g,
+                fmap_c1_g // 2 * kernel_height * kernel_width,
+                grads_channel_g,
+                fmap_c0 * 2
+            )
+            dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
+            # do channel split
+            dw_c_split_shape = (real_g, fmap_c1_g, kernel_height*kernel_width,
+                                grads_channel_g, fmap_c0)
+            khkw = kernel_height * kernel_width
+            dw_c_split = tvm.compute(dw_c_split_shape,
+                                     lambda g_idx, c1_idx, kk_idx, grads_c_idx, c0_idx:
+                                     dw_cc(
+                                         g_idx,
+                                         c1_idx // 2 * khkw + kk_idx,
+                                         grads_c_idx,
+                                         c1_idx % 2 * self.c0_size + c0_idx
+                                     ).astype(self.res_dtype),
+                                     name='dw_c_split', tag=self.optag + "_c_split",
+                                     attrs={'kernel_name': self.kernel_name})
+            self.dw_ddr = dw_c_split
+        else:
+            dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
+                        grads_channel_g, fmap_c0)
+            self.shapelist['dw'] = dw_shape
+            dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
+            self.dw_ddr = dw_cc
+
+        return 1
 
     def _get_dynamic_para(self):
         n_dim = 0
@@ -390,6 +727,12 @@ class Conv2dBackpropFilter:
                 format(self.shape_x_5hd[0], self.shape_grads_5hd[0])
             error_manager_util.raise_runtime_error(dict_args)
 
+        def _check_attr_range(attr_list, lower_limit, upper_limit):
+            for attr in attr_list:
+                if not isinstance(attr, int) or attr < lower_limit or attr > upper_limit:
+                    return False
+            return True
+
         # special supporting for a unique case, there are 2 conditions:
         # (1) height & weight of x/output_backprop/filter are all 1
         # (2) strides is [1,1]
@@ -419,6 +762,33 @@ class Conv2dBackpropFilter:
                     and self.stride[0] == 1 and self.dilation[2] == 1:
                 self.conv1d_situation = True
 
+        def _set_load3d_w_split_case_flag():
+            """
+            Helper function for load3d w split check.
+
+            """
+            _, stride_w = self.stride
+            _, _, dilation_h, dilation_w = self.dilation
+            kernel_h_dilation = (kernel_height - 1) * dilation_h + 1
+            kernel_w_dilation = (kernel_width - 1) * dilation_w + 1
+            input_dtype_size = BIT_RATIO_DICT.get(self.fmap_dtype, 2)
+            l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+            al1_min_byte = BLOCK_SIZE * BLOCK_SIZE * input_dtype_size
+            # the min load size of Ho is kernel_h
+            bl1_min_byte = kernel_h_dilation * (
+                (BLOCK_SIZE - 1) * stride_w + kernel_w_dilation) * BLOCK_SIZE * input_dtype_size
+            conv1d_flag = fmap_height_after_pad == 1 and kernel_height == 1 and self.stride[0] == 1
+
+            w_split_support_flag = ((not self.var_map)
+                                    and (not conv1d_flag)
+                                    and (al1_min_byte + bl1_min_byte) < l1_size
+                                    and _check_attr_range([kernel_height, kernel_width], FILTER_HW_MIN, FILTER_HW_MAX)
+                                    and _check_attr_range(self.stride, STRIDE_HW_MIN, STRIDE_HW_MAX)
+                                    and _check_attr_range(self.pad, PAD_MIN, PAD_MAX))
+
+            if w_split_support_flag and (self.shape_x_5hd[3] > INPUTS_W_MAX or not _min_l1_check()):
+                self.flag_load3d_w_split_case = True
+
         def _set_dma_flag(attr, attr_limit):
             for attr_value in attr:
                 if attr_value > attr_limit:
@@ -436,10 +806,12 @@ class Conv2dBackpropFilter:
             input_dtype_size = BIT_RATIO_DICT.get(self.fmap_dtype, 2)
 
             al1_min_byte = BLOCK_SIZE * BLOCK_SIZE * input_dtype_size
-            if not self.conv1d_situation:
-                kl1_min = self.shape_x_5hd[3]
-            else:
+
+            if self.conv1d_situation:
                 kl1_min = (BLOCK_SIZE - 1) * stride_w + kernel_w_dilation
+            else:
+                kl1_min = self.shape_x_5hd[3]
+
             if width_grads >= BLOCK_SIZE:
                 if width_grads % BLOCK_SIZE == 0:
                     bl1_min_byte = kernel_h_dilation * kl1_min * BLOCK_SIZE * input_dtype_size
@@ -454,9 +826,8 @@ class Conv2dBackpropFilter:
                     bl1_min_byte = (kernel_h_dilation + bl1_align_factor * stride_h) * kl1_min * \
                                    BLOCK_SIZE * input_dtype_size
             l1_size = tbe_platform.get_soc_spec("L1_SIZE")
-            if (al1_min_byte + bl1_min_byte) > l1_size:
-                return False
-            return True
+
+            return (al1_min_byte + bl1_min_byte) <= l1_size
 
         def _check_dma_mode():
             """
@@ -465,6 +836,7 @@ class Conv2dBackpropFilter:
                 1. chip have ub buffer
                 2. not transdata fusion
                 3. dilation is [1, 1, 1, 1]
+                4. w cannot split
             ----------
             following scene will choose dma mode:
                 1. over l1 buffer
@@ -474,8 +846,11 @@ class Conv2dBackpropFilter:
                 5. w > 4096
                 6. load3d_special_case and w > 63
             """
-            is_dma_scene = (not self.cube_vector_split) and (self.fmap.op.tag != "NHWC_trans_5HD") and \
-                           self.dilation == [1, 1, 1, 1]
+            is_dma_scene = ((not self.var_map)
+                            and (not self.cube_vector_split)
+                            and (self.fmap.op.tag != "NHWC_trans_5HD")
+                            and self.dilation == [1, 1, 1, 1]
+                            and (not self.flag_load3d_w_split_case))
             if is_dma_scene:
                 is_special_case = self.flag_load3d_special_case and self.shape_x_5hd[3] > STRIDE_HW_MAX
                 if (not _min_l1_check()) or is_special_case:
@@ -485,7 +860,7 @@ class Conv2dBackpropFilter:
                 _set_dma_flag([kernel_height, kernel_width], 255)
                 _set_dma_flag(self.stride, STRIDE_HW_MAX)
                 _set_dma_flag(self.pad, 255)
-            elif not _min_l1_check():
+            elif not self.flag_load3d_w_split_case and not _min_l1_check():
                 dict_args = {}
                 dict_args["errCode"] = "E60026"
                 error_manager_util.raise_runtime_error(dict_args)
@@ -493,8 +868,8 @@ class Conv2dBackpropFilter:
         _set_all_one_case_flag()
         _set_load3d_special_case_flag()
         _set_conv1d_situation_flag()
-        if not self.var_map:
-            _check_dma_mode()
+        _set_load3d_w_split_case_flag()
+        _check_dma_mode()
 
         if not self.l0b_dma_flag:
             _check_variable_range(kernel_height, 1, 255, "height of filter")
@@ -598,7 +973,7 @@ class Conv2dBackpropFilter:
         _, _, grads_height, grads_width, _ \
             = self.shape_grads_5hd
 
-        if self.conv1d_situation or self.l0b_dma_flag:
+        if self.conv1d_situation or self.l0b_dma_flag or self.flag_load3d_w_split_case:
             inputs_w_max = CONV1D_MAX_W
 
         _check_variable_range(grads_height, INPUTS_HW_MIN,
@@ -623,7 +998,6 @@ class Conv2dBackpropFilter:
             _check_attr_rule(self.pad, 4, [0, 255], \
                              "[up,down,left,right]", "pad")
         return True
-
 
     def _compute_group_dict(self):
         """
@@ -669,263 +1043,6 @@ class Conv2dBackpropFilter:
         DynamicConv2dBpFilterParams.tiling_info_dict = tiling_info_dict_tmp
         self.group_dict = group_dict
 
-    def deconv_dw_access(self):
-        """
-        complete compute generation, including input check,
-        compute definition and result record
-
-        """
-        if not DynamicConv2dBpFilterParams.is_binary_flag:
-            self._deconv_dw_input_check_1()
-            self._deconv_dw_input_check_2()
-            if not self.var_map:
-                self._deconv_dw_input_check_3()
-        self._compute_group_dict()
-        self.deconv_dw_compute()
-        self.res_tensor = self.dw_ddr  # return tensor of this file to topi
-
-    def deconv_dw_compute(self):
-        """
-        complete compute definition
-
-        """
-
-        fmap_dtype = self.fmap_dtype
-
-        batch_size, grads_channel_1, grads_height, grads_width, grads_c0 \
-            = self.shape_grads_5hd
-        _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
-        _, _, kernel_height, kernel_width = self.weight_shape
-        _, _, _, dilation_w = self.dilation
-
-        if not self.var_map and self.flag_load3d_special_case:
-            # in this situation, stride_w do no make sense
-            # set stride_w be fmap_w_after_pad
-            # add kernel_w_after_dilation to pad_right
-            # so that grads_w be 2
-            self.stride[1] = fmap_width + self.pad[2] + self.pad[3]
-            self.pad[3] += (kernel_width - 1) * dilation_w + 1
-            grads_width = grads_width * 2
-            self.shapelist.get('grads_5hd')[-2] = grads_width
-            self.shape_grads_5hd[-2] = grads_width
-        if self.var_map and not DynamicConv2dBpFilterParams.is_binary_flag:
-            w_one_flag = tvm.var("w_one_flag")
-            self.var_map["w_one_flag"] = w_one_flag
-            stride_w = tvm.select(w_one_flag == 2,
-                                  fmap_width + self.pad[2] + self.pad[3],
-                                  self.stride[1])
-            self.stride[1] = stride_w
-
-            pad_r = tvm.select(w_one_flag == 2,
-                               self.pad[3] + (kernel_width - 1) * dilation_w + 1,
-                               self.pad[3])
-            self.pad[3] = pad_r
-            grads_width = grads_width * w_one_flag
-            self.shapelist.get('grads_5hd')[-2] = grads_width
-            self.shape_grads_5hd[-2] = grads_width
-
-        # group dict
-        group_dict = self.group_dict
-        real_g = group_dict.get("real_g")
-        fmap_c1_g = group_dict.get("cin1_g")
-        grads_channel_g = group_dict.get("cout_g")
-
-        # align to 16
-        hw_mad = (grads_height*grads_width + BLOCK_SIZE - 1) \
-                 // BLOCK_SIZE*BLOCK_SIZE
-        hw_mad_1 = (grads_height*grads_width + BLOCK_SIZE - 1) \
-                 // BLOCK_SIZE
-
-        # move grads to L1
-        grads_shape_matrix = (batch_size,
-                              grads_channel_1,
-                              grads_height*grads_width,
-                              grads_c0)
-        if self.grads_dtype == "float32":
-            grads_shape_matrix = (
-                batch_size,
-                hw_mad_1,
-                grads_channel_1,
-                BLOCK_SIZE,
-                grads_c0
-            )
-        self.shapelist['grads_matrix'] = grads_shape_matrix
-
-        grads_matrix = self._grads_2_matrix(grads_shape_matrix, self.grads)
-
-        # move grads_matrix to L0A and do transpose
-        grads_shape_fractal = (real_g,
-                               batch_size,
-                               grads_channel_g // grads_c0,
-                               hw_mad_1,
-                               grads_c0,
-                               BLOCK_SIZE)
-        if self.grads_dtype == "float32":
-            # transpose to make sure k0 axis in mad is 8
-            grads_shape_fractal = (
-                real_g,
-                batch_size,
-                grads_channel_g // grads_c0 // 2,
-                hw_mad_1 * 2,
-                grads_c0 * 2,
-                BLOCK_SIZE // 2
-            )
-        self.shapelist['grads_fractal'] = grads_shape_fractal
-        grads_fractal = self._grads_2_fractal(grads_shape_fractal,
-                                              grads_matrix)
-        if not self.flag_all_one_case:
-            if not self.var_map:
-                # Load 3D Data Flow:
-                # fmap in DDR to fmap_matrix in L1 to fmap_fractal_nZ in L0B
-
-                # Dma Mode Data Flow:
-                # fmap in DDR to fmap_ub_pad in UB to fmap_matrix in L1 to
-                # fmap_fractal_before_zZ in L1 to fmap_fractal_nZ in L0B
-                fmap_ub = None
-                if self.l0b_dma_flag and self.pad != [0, 0, 0, 0]:
-                    pad_top, pad_bottom, pad_left, pad_right = self.pad
-                    fmap_ub_shape = (batch_size,
-                                     fmap_channel_1,
-                                     fmap_height + pad_top + pad_bottom,
-                                     fmap_width + pad_left + pad_right,
-                                     fmap_c0)
-                    fmap_ub = self._fmap_2_ub(fmap_ub_shape, fmap_height, fmap_width)
-
-                # shape of fmap_original_matrix, corresponding to set_fmatrix
-                fmap_shape_original_matrix = (batch_size,
-                                              grads_height*grads_width,
-                                              fmap_channel_1,
-                                              kernel_height,
-                                              kernel_width,
-                                              fmap_c0)
-
-                self.shapelist['fmap_original_matrix'] = \
-                                                    fmap_shape_original_matrix
-
-                if fmap_ub is None:
-                    fmap_l1_before = self.fmap
-                else:
-                    fmap_l1_before = fmap_ub
-                fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
-                                                  fmap_l1_before, fmap_dtype)
-                # load 3d: move fmap to L0B
-                # dma mode: change to zZ in L1 first
-                fmap_shape_fmap_matrix = (real_g,
-                                          batch_size,
-                                          hw_mad_1,
-                                          fmap_c1_g*kernel_height*kernel_width,
-                                          fmap_c0,
-                                          BLOCK_SIZE)
-                if self.fmap_dtype == "float32":
-                    fmap_shape_fmap_matrix = (
-                        real_g,
-                        batch_size,
-                        hw_mad_1 * 2,
-                        fmap_c1_g * kernel_height * kernel_width // 2,
-                        fmap_c0 * 2,
-                        BLOCK_SIZE // 2
-                    )
-                self.shapelist['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
-
-                if self.l0b_dma_flag:
-                    fmap_shape_fmap_matrix = (
-                        real_g,
-                        batch_size,
-                        hw_mad_1,
-                        fmap_c1_g*kernel_height*kernel_width,
-                        BLOCK_SIZE,
-                        fmap_c0
-                    )
-                fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
-                                                    fmap_matrix, fmap_dtype)
-                # dma_mode: move fmap(zZ) to L0B
-                # swap the last two axes
-                if self.l0b_dma_flag:
-                    fmap_shape_fmap_matrix = self.shapelist.get('fmap_fmap_matrix')
-                    fmap_fractal_with_dma = tvm.compute(fmap_shape_fmap_matrix,
-                                                        lambda *indices:
-                                                        fmap_fractal(*indices[:-2], indices[-1], indices[-2]),
-                                                        name='fmap_2_fractal_dma',
-                                                        tag='fmap_2_fractal_dma')
-                    fmap_fractal = fmap_fractal_with_dma
-            else:
-                fmap_l1_shape = (real_g, batch_size, fmap_c1_g,
-                                    fmap_height, fmap_width, fmap_c0)
-                fmap_l1 = tvm.compute(fmap_l1_shape,
-                                        lambda g, n, c1, h, w, c0:
-                                        self.fmap(n, c1 + g * fmap_c1_g, h, w, c0),
-                                        name='dw_fmap_l1', tag='dw_fmap_l1',
-                                        attrs={'group_dict':self.group_dict})
-
-                fmap_shape_fmap_matrix = (real_g,
-                                          batch_size,
-                                          hw_mad_1,
-                                          fmap_c1_g*kernel_height*kernel_width,
-                                          fmap_c0,
-                                          BLOCK_SIZE)
-                img2col_para = (fmap_l1, kernel_height, kernel_width,
-                            self.pad, self.stride, grads_width, self.dilation)
-                fmap_fractal = self._im2col_fractal_v2(fmap_shape_fmap_matrix,
-                                                       img2col_para)
-
-        # else: all_one_case, using load_2d instead of load_3d
-        else:
-            # shape of fmap_matrix
-            fmap_shape_matrix = (batch_size,
-                                 fmap_channel_1,
-                                 fmap_height*fmap_width,
-                                 fmap_c0)
-
-            self.shapelist['fmap_matrix'] = fmap_shape_matrix
-
-            fmap_matrix = self._fmap_2_matrix_load2d(fmap_shape_matrix,
-                                                     self.fmap)
-
-            # move fmap to L0B
-            fmap_shape_fractal = (real_g,
-                                  batch_size,
-                                  hw_mad//BLOCK_SIZE,
-                                  fmap_c1_g*kernel_height*kernel_width,
-                                  fmap_c0,
-                                  BLOCK_SIZE)
-            self.shapelist['fmap_matrix'] = fmap_shape_fractal
-
-            fmap_fractal = self._fmap_2_fractal_load2d(fmap_shape_fractal,
-                                                       fmap_matrix)
-
-        # shape of result dw [group,n1,m,n0]
-        if self.fmap_dtype == "float32" and self.grads_dtype == "float32":
-            dw_shape = (
-                real_g,
-                fmap_c1_g // 2 * kernel_height * kernel_width,
-                grads_channel_g,
-                fmap_c0 * 2
-            )
-            dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
-            # do channel split
-            dw_c_split_shape = (real_g, fmap_c1_g, kernel_height*kernel_width,
-                                grads_channel_g, fmap_c0)
-            khkw = kernel_height * kernel_width
-            dw_c_split = tvm.compute(dw_c_split_shape,
-                                     lambda g_idx, c1_idx, kk_idx, grads_c_idx, c0_idx:
-                                     dw_cc(
-                                         g_idx,
-                                         c1_idx // 2 * khkw + kk_idx,
-                                         grads_c_idx,
-                                         c1_idx % 2 * self.c0_size + c0_idx
-                                     ).astype(self.res_dtype),
-                                     name='dw_c_split', tag=self.optag + "_c_split",
-                                     attrs={'kernel_name': self.kernel_name})
-            self.dw_ddr = dw_c_split
-        else:
-            dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
-                        grads_channel_g, fmap_c0)
-            self.shapelist['dw'] = dw_shape
-            dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
-            self.dw_ddr = dw_cc
-
-        return 1
-
     def _grads_2_matrix(self, grads_shape_matrix, grads):
         """
         compute definiton of loading grads to L1
@@ -944,9 +1061,11 @@ class Conv2dBackpropFilter:
             """
             do coordinate calculation
             """
+            if self.flag_load3d_w_split_case:
+                return grads(*indices)
+
             grads_width = self.shapelist.get('grads_5hd')[3]
-            batch_indices, grads_c1_indices, hw_mad_indices, grads_c0_indices \
-                = indices
+            batch_indices, grads_c1_indices, hw_mad_indices, grads_c0_indices = indices
 
             # calculate index of grads according to indice of grads_matrix
             batch_size_index = batch_indices
@@ -969,15 +1088,18 @@ class Conv2dBackpropFilter:
             """
             do coordinate calculation for fp32
             """
-            grads_h = self.shapelist.get('grads_5hd')[2]
             grads_w = self.shapelist.get('grads_5hd')[3]
-            hw_mad = grads_h * grads_w
-            (batch_indices,
-                hw_mad_1_indices, grads_c1_indices,
-                hw_mad_0_indices, grads_c0_indices) = indices
-            hw_mad_indices = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
-            grads_h_index = hw_mad_indices // grads_w
-            grads_w_index = hw_mad_indices % grads_w
+            if self.flag_load3d_w_split_case:
+                (batch_indices, ho_indices, wo_mad_1_indices, grads_c1_indices, wo_mad_0_indices,
+                grads_c0_indices) = indices
+                grads_h_index = ho_indices
+                wo_mad_indices = wo_mad_1_indices * BLOCK_SIZE + wo_mad_0_indices
+                grads_w_index = wo_mad_indices % grads_w
+            else:
+                (batch_indices, hw_mad_1_indices, grads_c1_indices, hw_mad_0_indices, grads_c0_indices) = indices
+                hw_mad_indices = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
+                grads_h_index = hw_mad_indices // grads_w
+                grads_w_index = hw_mad_indices % grads_w
             return grads(
                     batch_indices,
                     grads_c1_indices,
@@ -1008,18 +1130,46 @@ class Conv2dBackpropFilter:
         None
         """
 
+        def __grads_2_fractal_w_split_compute(indices, grads_2_matrix):
+            """
+            Compute function for w-split scene.
+            """
+            (group_indices, batch_indices,
+            grads_c1_indices, ho_indices, wo_mad_1_indices,
+            grads_c0_indices, wo_mad_0_indices) = indices
+            if self.grads_dtype == "float32":
+                # hw axis in matrix is 16 aligned, while in fractal is 8 aligned
+                wo_mad_index = wo_mad_1_indices * self.c0_size + wo_mad_0_indices
+                wo_mad_1_index = wo_mad_index // BLOCK_SIZE
+                wo_mad_0_index = wo_mad_index % BLOCK_SIZE
+
+                # c axis in matrix is 8 aligned, while in fractal is 16 aligned
+                grads_c_index = group_indices * self.group_dict.get("cout_g") \
+                                + grads_c1_indices * BLOCK_SIZE + grads_c0_indices
+                grads_c1_index = grads_c_index // self.c0_size
+                grads_c0_index = grads_c_index % self.c0_size
+
+                return grads_2_matrix(batch_indices, ho_indices,
+                                      wo_mad_1_index, grads_c1_index,
+                                      wo_mad_0_index, grads_c0_index)
+            else:
+                grads_c1_index = (group_indices * self.group_dict.get("cout_g")) // BLOCK_SIZE + grads_c1_indices
+                grads_w_index = wo_mad_1_indices * BLOCK_SIZE + wo_mad_0_indices
+                grads_c0_index = grads_c0_indices
+                return grads_2_matrix(batch_indices, grads_c1_index,
+                                      ho_indices, grads_w_index, grads_c0_index)
+
         def __grads_2_fractal_compute(indices, grads_2_matrix):
             """
             do coordinate calculation
             """
-            group_dict = self.group_dict
             (group_indices, batch_indices,
-                grads_c1_indices, hw_mad_1_indices,
-                grads_c0_indices, hw_mad_0_indices) = indices
+            grads_c1_indices, hw_mad_1_indices,
+            grads_c0_indices, hw_mad_0_indices) = indices
 
             batch_size_index = batch_indices
             grads_c1_index = (
-                                group_indices * group_dict.get("cout_g")
+                                group_indices * self.group_dict.get("cout_g")
                                 ) // BLOCK_SIZE + grads_c1_indices
             grads_hw_index = (
                                 hw_mad_1_indices * BLOCK_SIZE
@@ -1034,8 +1184,8 @@ class Conv2dBackpropFilter:
             do coordinate calculation for fp32
             """
             (group_indices, batch_indices,
-                grads_c1_indices, hw_mad_1_indices,
-                grads_c0_indices, hw_mad_0_indices) = indices
+            grads_c1_indices, hw_mad_1_indices,
+            grads_c0_indices, hw_mad_0_indices) = indices
 
             # hw axis in matrix is 16 aligned, while in fractal is 8 aligned
             hw_mad_index = hw_mad_1_indices * self.c0_size + hw_mad_0_indices
@@ -1056,7 +1206,13 @@ class Conv2dBackpropFilter:
                 grads_c0_index
             )
 
-        func_name = __grads_2_zz_fractal_compute if self.grads_dtype == "float32" else __grads_2_fractal_compute
+        if self.flag_load3d_w_split_case:
+            func_name = __grads_2_fractal_w_split_compute
+        elif self.grads_dtype == "float32":
+            func_name = __grads_2_zz_fractal_compute
+        else:
+            func_name = __grads_2_fractal_compute
+
         return tvm.compute(grads_shape_fractal,
                             lambda *indices:
                             func_name(indices, grads_2_matrix),
@@ -1100,37 +1256,50 @@ class Conv2dBackpropFilter:
         None
         """
 
-        def __fmap_2_matrix_compute(indices,
-                                    fmap, kernel_width,
-                                    pad_left=0, pad_right=0, pad_top=0,
-                                    strideh=1, stridew=1, dilationh=1,
-                                    dilationw=1):
+        def __fmap_2_matrix_w_split_compute(indices, fmap):
+            """
+            do coordinate calculation for w-split scene.
+
+            """
+            (batch_indices,
+            ho_indices,
+            wo_indices,
+            fmap_c1_indices,
+            kernel_height_indices,
+            kernel_width_indices,
+            fmap_c0_indices) = indices
+
+            n_index = batch_indices
+            c1_index = fmap_c1_indices
+            h_index = ho_indices * strideh + kernel_height_indices * dilationh
+            w_index = wo_indices * stridew + kernel_width_indices * dilationw
+            c0_index = fmap_c0_indices
+
+            # if index belongs to padding and 16 align, select 0
+            return tvm.select(tvm.any(h_index < pad_top,
+                                      h_index > fmap_height + pad_top - 1,
+                                      w_index < pad_left,
+                                      w_index > fmap_width + pad_left - 1),
+                              tvm.const(0.0, fmap_dtype),
+                              fmap(n_index, c1_index, h_index - pad_top,
+                                   w_index - pad_left, c0_index))
+
+        def __fmap_2_matrix_compute(indices, fmap):
             """
             do coordinate calculation
 
             """
-
-            _, _, fmap_height, fmap_width, _ = self.shapelist.get('fmap_5hd')
-
-            batch_indices, \
-                hw_fuse_indices, \
-                fmap_c1_indices, \
-                kernel_height_indices, \
-                kernel_width_indices, \
-                fmap_c0_indices = indices
-
-            dilation_kernel_width = kernel_width \
-                + (kernel_width - 1) * (dilationw - 1)
-            fmap_width_after_pad = fmap_width + pad_left + pad_right
-            width_out = (fmap_width_after_pad - dilation_kernel_width) \
-                // stridew + 1
+            (batch_indices,
+            hw_fuse_indices,
+            fmap_c1_indices,
+            kernel_height_indices,
+            kernel_width_indices,
+            fmap_c0_indices) = indices
 
             n_index = batch_indices
             c1_index = fmap_c1_indices
-            h_index = (hw_fuse_indices // width_out) * strideh \
-                + kernel_height_indices * dilationh
-            w_index = (hw_fuse_indices % width_out) * stridew \
-                + kernel_width_indices * dilationw
+            h_index = (hw_fuse_indices // width_out) * strideh + kernel_height_indices * dilationh
+            w_index = (hw_fuse_indices % width_out) * stridew + kernel_width_indices * dilationw
             c0_index = fmap_c0_indices
 
             if self.l0b_dma_flag:
@@ -1142,27 +1311,26 @@ class Conv2dBackpropFilter:
                                       w_index < pad_left,
                                       w_index > fmap_width + pad_left - 1),
                               tvm.const(0.0, fmap_dtype),
-                              fmap(n_index, c1_index, h_index-pad_top,
-                                   w_index-pad_left, c0_index))
+                              fmap(n_index, c1_index, h_index - pad_top,
+                                   w_index - pad_left, c0_index))
 
+        _, _, fmap_height, fmap_width, _ = self.shapelist.get('fmap_5hd')
         pad_top, _, pad_left, pad_right = self.pad
         strideh, stridew = self.stride
         _, _, dilationh, dilationw = self.dilation
-
         kernel_width = fmap_shape_original_matrix[4]
+        dilation_kernel_width = kernel_width + (kernel_width - 1) * (dilationw - 1)
+        fmap_width_after_pad = fmap_width + pad_left + pad_right
+        width_out = (fmap_width_after_pad - dilation_kernel_width) // stridew + 1
+
+        compute_func = __fmap_2_matrix_w_split_compute if self.flag_load3d_w_split_case else __fmap_2_matrix_compute
         return tvm.compute(fmap_shape_original_matrix,
                            lambda *indices:
-                           __fmap_2_matrix_compute(indices, fmap, kernel_width,
-                                                   pad_left=pad_left,
-                                                   pad_right=pad_right,
-                                                   pad_top=pad_top,
-                                                   strideh=strideh,
-                                                   stridew=stridew,
-                                                   dilationh=dilationh,
-                                                   dilationw=dilationw),
+                           compute_func(indices, fmap),
                            name='fmap_2_col_matrix',
                            tag='fmap_2_col_matrix',
-                           attrs={'pad': self.pad, 'stride': self.stride,
+                           attrs={'pad': self.pad,
+                                  'stride': self.stride,
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape,
                                   'group_dict': self.group_dict})
@@ -1235,6 +1403,41 @@ class Conv2dBackpropFilter:
         -------
         None
         """
+        def __fmap_2_fractal_w_split_compute(indices, fmap_2_col_matrix):
+            """
+            do coordinate calculation for w-split scene.
+
+            """
+            _, _, grads_width, _, kernel_height, kernel_width, _ = self.shapelist.get('fmap_original_matrix')
+
+            (group_index, n_vm_index,
+            ho_indices, wo_mad_1_indices, fkk_indices,
+            fmap_c0_indices, wo_mad_0_indices) = indices
+
+            if self.fmap_dtype == "float32":
+                wo_vm_index = wo_mad_1_indices * self.c0_size + wo_mad_0_indices
+                c1_index = group_index * self.group_dict.get("cin1_g") + \
+                    fkk_indices // (kernel_height * kernel_width) * 2 + fmap_c0_indices // self.c0_size
+                kh_vm_index = fkk_indices // kernel_width % kernel_height
+                kw_vm_index = fkk_indices % kernel_width
+                c0_vm_index = fmap_c0_indices % self.c0_size
+            else:
+                wo_vm_index = wo_mad_1_indices * BLOCK_SIZE + wo_mad_0_indices
+                c1_vm_index = (((fkk_indices * BLOCK_SIZE + fmap_c0_indices)
+                                // BLOCK_SIZE) // kernel_width) // kernel_height
+                c1_index = group_index * self.group_dict.get("cin1_g") + c1_vm_index
+                kh_vm_index = (((fkk_indices * BLOCK_SIZE + fmap_c0_indices) // BLOCK_SIZE)
+                                // kernel_width) % kernel_height
+                kw_vm_index = ((fkk_indices * BLOCK_SIZE + fmap_c0_indices) // BLOCK_SIZE) % kernel_width
+                c0_vm_index = (fkk_indices * BLOCK_SIZE + fmap_c0_indices) % BLOCK_SIZE
+
+            # select padding and 16 align
+            return tvm.select(tvm.any(wo_vm_index < 0,
+                                      wo_vm_index > grads_width - 1),
+                              tvm.const(0.0, fmap_dtype),
+                              fmap_2_col_matrix(n_vm_index, ho_indices, wo_vm_index,
+                                                c1_index, kh_vm_index,
+                                                kw_vm_index, c0_vm_index))
 
         def __fmap_2_fractal_compute(indices, fmap_2_col_matrix):
             """
@@ -1300,10 +1503,10 @@ class Conv2dBackpropFilter:
                                                 c1_index, kh_vm_index,
                                                 kw_vm_index, c0_vm_index))
 
+        compute_func = __fmap_2_fractal_w_split_compute if self.flag_load3d_w_split_case else __fmap_2_fractal_compute
         return tvm.compute(fmap_shape_fmap_matrix,
                            lambda *indices:
-                           __fmap_2_fractal_compute(indices,
-                                                    fmap_2_col_matrix),
+                           compute_func(indices, fmap_2_col_matrix),
                            name='fmap_2_col_fractal',
                            tag='fmap_2_col_fractal')
 
@@ -1379,34 +1582,52 @@ class Conv2dBackpropFilter:
         None
         """
 
-        batch_size, _, grads_height, grads_width, _ \
-            = self.shapelist.get('grads_5hd')
-        hw_fuse = grads_height*grads_width
+        batch_size, _, grads_height, grads_width, _ = self.shapelist.get('grads_5hd')
 
         batch_axis = tvm.reduce_axis((0, batch_size), name='axis_b')
-        k_axis = tvm.reduce_axis((0, hw_fuse), name='axis_k')
+        reduce_axes = [batch_axis, ]
+        if self.flag_load3d_w_split_case:
+            k_axis_ho = tvm.reduce_axis((0, grads_height), name='axis_k_ho')
+            k_axis = tvm.reduce_axis((0, grads_width), name='axis_k_wo')
+            reduce_axes.extend([k_axis_ho, k_axis])
+        else:
+            k_axis = tvm.reduce_axis((0, grads_height * grads_width), name='axis_k')
+            reduce_axes.append(k_axis)
 
-        k_1 = k_axis.var // 16
-        k_0 = k_axis.var % 16
+        k_1 = k_axis.var // self.c0_size
+        k_0 = k_axis.var % self.c0_size
 
-        mode = "f162f32"
-        if self.res_dtype == "float16":
-            mode = "f162f16"
+        mode_dict = {
+            ("float16", "float16"): "f162f16",
+            ("float16", "float32"): "f162f32",
+            ("float32", "float32"): "fp322fp32"
+        }
+        mode = mode_dict.get((self.fmap_dtype, self.res_dtype), "f162f32")
 
-        if self.fmap_dtype == "float32":
-            k_1 = k_axis.var // self.c0_size
-            k_0 = k_axis.var % self.c0_size
-            mode = "fp322fp32"
+        if self.flag_load3d_w_split_case:
+            mad_func = lambda g, fkk, grads_c, fmap_c0: tvm.sum(
+                (grads[g, batch_axis, grads_c // 16, k_axis_ho, k_1, grads_c % 16, k_0] *
+                fmap[g, batch_axis, k_axis_ho, k_1, fkk, fmap_c0, k_0]).astype(self.res_dtype),
+                axis=reduce_axes)
+        else:
+            mad_func = lambda g, fkk, grads_c, fmap_c0: tvm.sum(
+                (grads[g, batch_axis, grads_c // 16, k_1, grads_c % 16, k_0] *
+                fmap[g, batch_axis, k_1, fkk, fmap_c0, k_0]).astype(self.res_dtype),
+                axis=reduce_axes)
 
+        # Enum for split_axis_mode
+        # 0: split hw (default)
+        # 1: split w
+        split_axis_mode = 1 if self.flag_load3d_w_split_case else 0
         c_col = tvm.compute(mad_shape,
-                            lambda g, fkk, grads_c, fmap_c0:
-                            tvm.sum((grads[g, batch_axis, grads_c // 16,
-                                           k_1, grads_c % 16, k_0] *
-                                     fmap[g, batch_axis, k_1, fkk, fmap_c0,
-                                          k_0]).astype(self.res_dtype),
-                                    axis=[batch_axis, k_axis]),
-                            name='dw_ddr', tag=self.optag + "dw_ddr",
-                            attrs={'mode': mode, 'kernel_name': self.kernel_name})
+                            mad_func,
+                            name='dw_ddr',
+                            tag=self.optag + "dw_ddr",
+                            attrs={
+                                'mode': mode,
+                                'kernel_name': self.kernel_name,
+                                'split_axis_mode': split_axis_mode
+                            })
         return c_col
 
     def _im2col_fractal_v2(self, shape, img2col_para):

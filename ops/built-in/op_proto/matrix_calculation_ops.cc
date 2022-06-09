@@ -3759,7 +3759,6 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
     return GRAPH_PARAM_INVALID);
 
   Shape output_shape;
-  OP_LOGI(opName.GetString(), "num_rows: ", num_rows, " num_cols: ", num_cols);
   if (lower_diag_index == upper_diag_index) {
     CHECK(ReplaceDim(diagonal_shape, diagonal_rank - 1, num_rows, output_shape, opName.GetString()) != GRAPH_SUCCESS,
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), ConcatString(

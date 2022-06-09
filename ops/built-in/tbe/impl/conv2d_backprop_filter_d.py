@@ -31,25 +31,6 @@ STRIDES_SHAPE_DIM = 2
 
 # the min x or y dim for cube mul
 C0 = 16
-# fmapH, must be in [1,200000]
-FMAP_H_MAX = 200000
-# fmapW, must be in [1,4096]
-FMAP_W_MAX = 4096
-FMAP_HW_MIN = 1
-
-# DeDyH must be in [1,200000]
-DEDY_H_MAX = 200000
-# DeDyW must be in [1,4096]
-DEDY_W_MAX = 4096
-DEDY_HW_MIN = 1
-
-# filterH, filterW must be in [1,255]
-FILTER_HW_MAX = 255
-FILTER_HW_MIN = 1
-
-# stride must be in [1,63]
-STRIDE_HW_MAX = 63
-STRIDE_HW_MIN = 1
 
 # dilation must be in [1,255]
 DILATION_MIN = 1
@@ -79,8 +60,6 @@ BIT_RATIO_DICT = {
 PADDING_VAILD = [0, 0, 0, 0]
 # If pads is string , only support "SAME" or "VALID"
 PADDING_SUPPORT = ("SAME", "VALID")
-# conv1d situation support w not larger than 2^31-1
-CONV1D_MAX_W = 2147483647
 
 
 def _align(input_x, input_y):
@@ -304,15 +283,15 @@ def check_supported(x,
 
     | Name             | Field    | Scope
     -------------------|----------|--------------
-    | x                | H or W   | [1, 4096]
+    | x                | H or W   | [1, 1000000]
     -------------------|----------|--------------
-    | out_backprop     | H or W   | [1, 4096]
+    | out_backprop     | H or W   | [1, 1000000]
     -------------------|----------|--------------
-    | filter_size      | H or W   | [1, 255]
+    | filter_size      | H or W   | [1, 1000000]
     -------------------|----------|--------------
-    | y(filter)        | H or W   | [1, 255]
+    | y(filter)        | H or W   | [1, 1000000]
     -------------------|----------|--------------
-    | Stride           | H or W   | [1, 63]
+    | Stride           | H or W   | [1, 1000000]
     -------------------|----------|--------------
     | Dilation         | H or W   | [1, 255]
 

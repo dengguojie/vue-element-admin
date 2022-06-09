@@ -717,6 +717,24 @@ conv2d_bp_filter_op_testcase = [
         1,
         "success",
     ),
+    # w-split normal case
+    (
+        "float16", # fmap dtype
+        "float16", # dedy dtype
+        "float32", # dedw dtype
+        (1, 16, 28, 5002), # fmap shape
+        (1, 32, 26, 5000), # dedy shape
+        (32, 16, 3, 3), # filter shape
+        "NCHW", # fmap format
+        "NCHW", # dedy format
+        "NCHW", # filter format
+        (32, 16, 3, 3), # filter size
+        (1, 1, 1, 1), # strides
+        (0, 0, 0, 0), # padding
+        (1, 1, 1, 1), # dilation
+        1, # group
+        "success", # expect
+    ),
 ]
 
 op_support_info_testcase = [
