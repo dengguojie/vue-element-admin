@@ -30,6 +30,8 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
+from tbe.common.platform import ASCEND_910B
+from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import decode
 from tbe.common.utils import do_op_tiling
@@ -1470,9 +1472,9 @@ class NormInfo:
         return True
 
     def _gen_reduce_pattern(self):
-        pattern_list = [
-            "R" if index in self.reduce_axis_indices else "A" for index in range(len(self.shape_before_reduce))
-        ]
+        shape_len = len(self.shape_before_reduce)
+        pattern_list = ["R" if index in self.reduce_axis_indices else "A" for index in range(shape_len)]
+
         return ''.join(pattern_list)
 
     def _judge_discontinuous_reduce_axis(self):
@@ -1567,13 +1569,30 @@ class NormInfo:
                     __current_coexist_node += REDUCE_TRANSPOSE_EXTRA_NODES
                     return __current_coexist_node
 
-                _reduce_max_or_min_need_extra_node = _tensor.op.tag in ("reduce_max", "reduce_min") and \
-                    self.is_reduce_last_axis and _tensor.dtype == "float16"
+                if _mode == COMMON_MODE:
+                    _is_multi_last_reduce = self.is_reduce_last_axis and self.is_discontinuous_reduce_axis
+                    _src = _tensor.op.input_tensors[0]
+                    _is_src_can_not_reuse = len(self.graph_info.tensor_consumers_map.get(_src)) > 1
+                    if _is_multi_last_reduce and _is_src_can_not_reuse:
+                        __current_coexist_node += 1
+
+                # use vcmax or vcmin
+                _reduce_last_axis_max_or_min = \
+                    _tensor.op.tag in ("reduce_max", "reduce_min") and self.is_reduce_last_axis
+                _last_dim = util.shape_to_list(self.shape_before_reduce)[-1]
+                _last_dim_is_known = isinstance(_last_dim, int)
+                if get_soc_spec(SOC_VERSION) != ASCEND_910B:
+                    # 910B use vcmax and vcmin all the time
+                    _reduce_max_or_min_use_vc = _tensor.dtype == "float16"
+                    if get_context().get_current_compute().get("_mode") == "const":
+                        _reduce_max_or_min_use_vc = _reduce_max_or_min_use_vc and _last_dim > get_block_size("float16")
+                else:
+                    _reduce_max_or_min_use_vc = _tensor.dtype in ("float16", "float32")
+
+                _reduce_max_or_min_need_extra_node = _reduce_last_axis_max_or_min and _reduce_max_or_min_use_vc
                 if _mode != WORKSPACE_MODE and _reduce_max_or_min_need_extra_node:
                     __current_coexist_node += 1
 
-                _last_dim = util.shape_to_list(self.shape_before_reduce)[-1]
-                _last_dim_is_known = isinstance(_last_dim, int)
                 _eight_blocks_value = ONE_REPEAT_PROCESS_BYTES // DTYPE_BYTE_MAPPING.get(_tensor.dtype)
                 _reduce_sum_use_vc = _tensor.op.tag == "reduce_sum" and self.reduce_pattern == "AR"
                 _last_dim_is_not_larger_than_eight_blocks = _last_dim_is_known and _last_dim <= _eight_blocks_value

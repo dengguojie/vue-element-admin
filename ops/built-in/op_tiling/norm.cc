@@ -227,10 +227,6 @@ bool Norm<T>::GetInput() {
 template <typename T>
 bool Norm<T>::InitReduceFromOpInfo() {
   OP_LOGD(op_type, "Init reduce according to op_info");
-  if (!op_info->GetAxes()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get reduce axes from op_info failed");
-    return false;
-  }
   const auto& reduce_axis = *(op_info->GetAxes());
   return NormalizeAxis(reduce_axis, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
 }
@@ -292,7 +288,7 @@ bool Norm<T>::InitReduceFromAttr() {
 
 template <typename T>
 bool Norm<T>::InitReduce() {
-  if (op_info && !op_info->GetAxes()->empty()) {
+  if (op_info && op_info->GetAxes() && !op_info->GetAxes()->empty()) {
      return InitReduceFromOpInfo();
   }
   // init reduce axis
@@ -948,9 +944,9 @@ bool Norm<T>::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& 
       int64_t actual_block_factor = (input_shape[index] + cur_block_dim - 1) / cur_block_dim;
       tilingInfo.block_tiling_axis = index;
       tilingInfo.block_tiling_factor = is_continuous_data_move &&
-                                        (actual_block_factor * post_right_product < block_size) ?
-                                        (block_size + post_right_product - 1) / post_right_product:
-                                        actual_block_factor;
+                                       (actual_block_factor * post_right_product < block_size) ?
+                                       (block_size + post_right_product - 1) / post_right_product:
+                                       actual_block_factor;
       // storage align last axis but align block factor is larger than max_block_factor
       bool is_illegal_cut = max_block_factor != 0 && index == dim_len - 1 &&
         (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size > max_block_factor;
@@ -1286,8 +1282,13 @@ bool Norm<T>::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_
                                           const int64_t& cur_dim) const {
   bool is_nlast_split_last_a = !is_last_axis_reduce && index == dim_len - 1;
   bool is_factor_not_align = cur_ub_factor > block_size + block_size && cur_ub_factor % block_size != 0;
-  if (is_nlast_split_last_a && is_factor_not_align) {
-    return true;
+  if (is_nlast_split_last_a) {
+    if (cur_ub_factor == cur_dim) {
+      return false;
+    }
+    if (is_factor_not_align) {
+      return true;
+    }
   }
 
   bool is_last_split_last_a = is_last_axis_reduce && index == dim_len - reduce_axis_len - 1;
@@ -1295,7 +1296,7 @@ bool Norm<T>::JudgeNormalCurUbFactorIsBad(const std::size_t& index, const int64_
     cur_ub_factor % NORM_CONSTANT_EIGHT != 0;
   if (compileInfo->is_const && is_last_split_last_a && is_discontinuous_reduce_axis) {
     if (cur_ub_factor == cur_dim) {
-        return false;
+      return false;
     }
     if (is_factor_not_eight_align) {
       return true;
@@ -1350,8 +1351,8 @@ bool Norm<T>::JudgeNormalCurDimSplitUb(const std::size_t& index) {
       int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
       tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
       // if entire_cut ub_factor is illegal, turn to common_cut ub_factor
-      bool is_entire_cut_illegal = tilingInfo.ub_tiling_factor > ub_size / right_product_align ||
-                                   tilingInfo.ub_tiling_factor * right_product < block_size;
+      bool is_entire_cut_illegal = !CheckNormalCurUbFactor(tilingInfo.ub_tiling_factor, current_dim,
+                                                           current_dim_tail, right_product);
       if (is_entire_cut_illegal || JudgeNormalCurUbFactorIsBad(index, tilingInfo.ub_tiling_factor, current_dim)) {
         tilingInfo.ub_tiling_factor = std::min(cur_ub_factor, current_dim);
       }
