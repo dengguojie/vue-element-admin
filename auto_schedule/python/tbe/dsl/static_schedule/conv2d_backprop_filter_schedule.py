@@ -494,20 +494,20 @@ class CceConv2dBackpropFilterOp:
             dw_ub_tiling_nparts = [_ceil_div(dw_tiling_factor[0], dw_ub_tiling_factor[0]),
                                    _ceil_div(dw_tiling_factor[1], dw_ub_tiling_factor[1])]
 
-            if self.var_map:
-                k_single_core_length = _ceil_div(hw_pad_1, block_dim_k) * self.c0_size
+            if not self.var_map:
+                k_al1 = tiling.get("AL1_shape")[0] if tiling.get("AL1_shape") else dw_k * self.c0_size
+                k_bl1 = tiling.get("BL1_shape")[0] if tiling.get("BL1_shape") else dw_k * self.c0_size
 
-            k_al1 = tiling.get("AL1_shape")[0] if tiling.get("AL1_shape") else dw_k * self.c0_size
-            k_bl1 = tiling.get("BL1_shape")[0] if tiling.get("BL1_shape") else dw_k * self.c0_size
-
-            if self.split_axis_mode == 1:
-                k_one_core_max = max(k_al1, k_bl1, dw_k * self.c0_size) // (dw_k * self.c0_size)
-                ho_single_core_factor = _ceil_div(height_grads, block_dim_k)
-                k_single_core_length = _align(ho_single_core_factor, k_one_core_max) * dw_k * self.c0_size
+                if self.split_axis_mode == 1:
+                    k_one_core_max = max(k_al1, k_bl1, dw_k * self.c0_size) // (dw_k * self.c0_size)
+                    ho_single_core_factor = _ceil_div(height_grads, block_dim_k)
+                    k_single_core_length = _align(ho_single_core_factor, k_one_core_max) * dw_k * self.c0_size
+                else:
+                    k_one_core_max = max(k_al1, k_bl1, dw_k * self.c0_size)
+                    hw_single_core_factor = _ceil_div(hw_pad_1 * self.c0_size, block_dim_k)
+                    k_single_core_length = _align(hw_single_core_factor, k_one_core_max)
             else:
-                k_one_core_max = max(k_al1, k_bl1, dw_k * self.c0_size)
-                hw_single_core_factor = _ceil_div(hw_pad_1 * self.c0_size, block_dim_k)
-                k_single_core_length = _align(hw_single_core_factor, k_one_core_max)
+                k_single_core_length = _ceil_div(hw_pad_1, block_dim_k) * self.c0_size
 
             # only support loading one batch to L1 at a time for now
             # cout:out->single core(sc)->L1
@@ -1603,12 +1603,12 @@ class CceConv2dBackpropFilterOp:
         batch_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap = cube_util.shape_to_list(fmap.shape)
         fmap_shape = [batch_fmap, cin1_g, height_fmap, width_fmap, c0_fmap]
 
-        if self.var_map and in_dtype == "float32":
+        if self.split_axis_mode == 0 and in_dtype == "float32":
             # grads_matrix axes(fp32): batch, mad_1, cout_1, mad_0->16, cout_0->8
             _, grads_matrix_howo_1, \
             grads_matrix_c1, grads_matrix_c16, grads_matrix_c0 = cube_util.shape_to_list(grads_matrix.shape)
             grads_matrix_howo = grads_matrix_howo_1 * grads_matrix_c16
-        elif self.var_map:
+        elif self.split_axis_mode == 0:
             _, grads_matrix_c1, \
             grads_matrix_howo, grads_matrix_c0 = cube_util.shape_to_list(grads_matrix.shape)
         _, fkk, _, _ = cube_util.shape_to_list(dw_cc.shape)

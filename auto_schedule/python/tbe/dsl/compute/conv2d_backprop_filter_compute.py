@@ -868,8 +868,9 @@ class Conv2dBackpropFilter:
         _set_all_one_case_flag()
         _set_load3d_special_case_flag()
         _set_conv1d_situation_flag()
-        _set_load3d_w_split_case_flag()
-        _check_dma_mode()
+        if not self.var_map:
+            _set_load3d_w_split_case_flag()
+            _check_dma_mode()
 
         if not self.l0b_dma_flag:
             _check_variable_range(kernel_height, 1, 255, "height of filter")
