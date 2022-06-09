@@ -34,8 +34,7 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
   ge::NodePtr AddNewNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, vector<ge::NodePtr>& newNodes,
                          bool& failStatus);
   void AddT0GradNodeEdge(map<std::string, ge::NodePtr>& inputNodes, ge::NodePtr hiddenGradNode,
-                         ge::NodePtr matmulGradNode, ge::NodePtr lastHiddenGradNode, ge::NodePtr lastMatmulNode,
-                         ge::NodePtr dynamicGRUGradNode);
+                         ge::NodePtr matmulGradNode, ge::NodePtr genMaskNode, ge::NodePtr dynamicGRUGradNode);
   ge::NodePtr AddOneHiddenGradNode(const string& gateOrder, ge::NodePtr tSizeConst, ge::NodePtr dynamicGRUGradNode,
                                    ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddT0MatmulNode(ge::NodePtr hiddenGradNode, ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
@@ -46,7 +45,8 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
                              ge::NodePtr dynamicGRUGradNode, vector<ge::NodePtr>& srcNodes, ge::ComputeGraph& graph,
                              vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr BuildT0Cell(const string& gateOrder, ge::GeTensorDesc tStateDesc, ge::NodePtr dynamicGRUGradNode,
-                          ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
+                          ge::ComputeGraph& graph, ge::NodePtr genMaskNode, vector<ge::NodePtr>& newNodes,
+                          bool& failStatus);
   ge::NodePtr AddInputReshapeNode(ge::NodePtr dynamicGRUGradNode, string reshapeName, ge::GeTensorDesc inputDesc,
                                   ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
   // dw_h  matmul(h.T, dgate_h)
@@ -105,6 +105,8 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
                           ge::ComputeGraph& graph);
   ge::NodePtr BuildShape(ge::GeTensorDesc xDesc, ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
                          vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddGenMaskNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
+                             vector<ge::NodePtr> &newNodes, bool &failStatus);
 
   const string FUSED_OP_TYPE = "GRUV2HiddenGradCell_Split_Concat_Matmul_Reduce";
   int64_t t_size = 0;
@@ -118,6 +120,7 @@ class DynamicGRUV2GradDFusionPass : public PatternFusionBasePass {
   int64_t nzHiddenDim = 0;
   ge::DataType inputHType = ge::DT_FLOAT;
   bool fusion_reduce = false;
+  bool hasSeqLength = false;
 };
 }  // namespace fe
 

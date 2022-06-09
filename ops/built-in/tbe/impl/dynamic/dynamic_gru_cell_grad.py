@@ -82,7 +82,7 @@ class DynamicGRUCellGrad(TikOpBase):
     """ DynamicGRUCellGrad
     """
     # 'pylint: disable=too-many-statements,too-many-locals,unused-argument,invalid-name
-    def __init__(self, tik_instance, h, gate_order, kernel_name):
+    def __init__(self, tik_instance, h, seq_mask, gate_order, kernel_name):
         """ init DynamicGRUCellGrad
         """
         super(DynamicGRUCellGrad, self).__init__(tik_instance)
@@ -109,6 +109,7 @@ class DynamicGRUCellGrad(TikOpBase):
         self.t_offset = self.tik_instance.Scalar(self.tiling_dtype, name="t_offset", init_value=0)
         # ht offset for h
         self.ht_offset = self.tik_instance.Scalar(self.tiling_dtype, name="ht_offset", init_value=0)
+        self.has_seq_mask = True if seq_mask else False
 
         # input
         self.dh_pre_t = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), \
@@ -123,6 +124,10 @@ class DynamicGRUCellGrad(TikOpBase):
         tbe_platform.scope_gm, "hidden_new")
         self.init_h = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "init_h")
         self.t_state_gm = self.tik_instance.Tensor(Constant.INT32, (1,), tbe_platform.scope_gm, "t_state")
+        if self.has_seq_mask:
+            self.seq_mask_t = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), \
+                                                       tbe_platform.scope_gm, "seq_mask")
+
         self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM + 2,), \
         tbe_platform.scope_gm, "ddr_arg")
 
@@ -137,8 +142,13 @@ class DynamicGRUCellGrad(TikOpBase):
         build cce
         """
         config_map = {"dump_cce_code": False}
-        input_list = (self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.r2, self.n2, self.n2_mid, self.init_h,
-                      self.t_state_gm)
+        if self.has_seq_mask:
+            input_list = (self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.r2, self.n2, self.n2_mid,
+                          self.init_h, self.t_state_gm, self.seq_mask_t)
+        else:
+            input_list = (self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.r2, self.n2, self.n2_mid,
+                          self.init_h, self.t_state_gm)
+
         output_list = (self.dh_prev, self.d_gate_h, self.dnt_x)
         self.tik_instance.BuildCCE(self.kernel_name,
                                    input_list,
@@ -235,7 +245,12 @@ class DynamicGRUCellGrad(TikOpBase):
                                                 "dh_pre_t",
                                                 max_mem_size=self.max_mem_size)
             self.move_data(dh_pre_t, self.dh_pre_t[input_offset], self.dtype, shape)
-            self.vadd_func(dh, dh, dh_pre_t, shape)
+            self.vadd_func(dh, dh, dh_pre_t, shape)        
+        if self.has_seq_mask:
+            seq_mask_ub = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "seq_mask")
+            self.move_data(seq_mask_ub, self.seq_mask_t[input_offset], self.dtype, shape)
+            self.vmul_func(dh, dh, seq_mask_ub, shape)
+
         with self.tik_instance.if_scope(self.t_state == self.t_size):
             # just cal dh + dh_pre_t in last cell
             self.move_data(self.dh_prev[input_offset], dh, self.dtype, shape)
@@ -369,6 +384,7 @@ def dynamic_gru_cell_grad(dh_pre_t,
                           hidden_new,
                           init_h,
                           t_state,
+                          seq_mask,
                           dh_prev,
                           dgate_h,
                           dnt_x,
@@ -389,6 +405,7 @@ def dynamic_gru_cell_grad(dh_pre_t,
     :param hidden_new: [t, n, out]
     :param init_h: [t, n, out];
     :param t_state: means cur_t
+    :param seq_mask: [t, n, out]
     :param dh_prev:
         output real dh_prev when cur_t == t
         otherwise, output dh_pre_t for next cell
@@ -403,7 +420,7 @@ def dynamic_gru_cell_grad(dh_pre_t,
     _check_attr(gate_order)
 
     tik_instance = tik.Tik(tik.Dprofile())
-    cell = DynamicGRUCellGrad(tik_instance, h, gate_order, kernel_name)
+    cell = DynamicGRUCellGrad(tik_instance, h, seq_mask, gate_order, kernel_name)
     cell.compute()
     cell.build()
     return cell

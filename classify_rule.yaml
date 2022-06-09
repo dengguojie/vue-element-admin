@@ -835,6 +835,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_align_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_align_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/extremum_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gru_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gru_fusion_pass.h
@@ -965,6 +967,7 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic_lstm.py
       - ops/built-in/tbe/impl/dynamic_rnn.py
       - ops/built-in/tbe/impl/fsr_detection_output.py
+      - ops/built-in/tbe/impl/dynamic/dynamic_gru_cell_grad.py
     unrelease:
       - auto_schedule/python/tbe/dsl/compute/avg_pool2d.py
       - auto_schedule/python/tbe/dsl/static_schedule/ascend_anti_quant_schedule.py
@@ -3211,7 +3214,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/fake_quant_with_min_max_vars.py
       - ops/built-in/tbe/impl/dynamic/pack_tik.py
       - ops/built-in/tbe/impl/dynamic/resize_nearest_neighbor_v2.py
-      - ops/built-in/tbe/impl/dynamic/dynamic_gru_cell_grad.py
       - ops/built-in/tbe/impl/dynamic/concat_d.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_rms_prop_d.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop.py
@@ -3760,7 +3762,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/squeeze_unsqueeze_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_grad_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/sub_sample_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_mul_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transposed_update_fusion_pass.cc
@@ -3865,7 +3866,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/max_pool3d_grad_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_maxpool_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mean_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_fusion_pass.cc

@@ -124,7 +124,8 @@ ge::NodePtr DynamicGRUV2GradAlignFusionPass::AddNewNode(ge::ComputeGraph& graph,
 void DynamicGRUV2GradAlignFusionPass::AddHiddenGradNodeEdge(map<std::string, ge::NodePtr>& inputNodes,
                                                             ge::NodePtr hiddenGradNode, ge::NodePtr matmulGradNode,
                                                             ge::NodePtr lastHiddenGradNode, ge::NodePtr lastMatmulNode,
-                                                            ge::NodePtr genMaskNode, ge::NodePtr dynamicGRUGradNode, int64_t curT) {
+                                                            ge::NodePtr genMaskNode, ge::NodePtr dynamicGRUGradNode,
+                                                            int64_t curT) {
   if (curT == 0) {
     // fake connect dh_pre_t
     ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["dh"])->GetPeerOutAnchor(),
@@ -169,7 +170,7 @@ void DynamicGRUV2GradAlignFusionPass::AddHiddenGradNodeEdge(map<std::string, ge:
                           hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["new"]));
   ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["hidden_new"])->GetPeerOutAnchor(),
                           hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["hidden_new"]));
-  if(hasSeqLength){
+  if (hasSeqLength) {
     ge::GraphUtils::AddEdge(genMaskNode->GetOutDataAnchor(0),
                             hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["seq_mask"]));
   }
@@ -215,7 +216,7 @@ ge::NodePtr DynamicGRUV2GradAlignFusionPass::AddOneHiddenGradNode(const string& 
   hiddenGradDesc->AddInputDesc("new", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["new"]).Clone());
   hiddenGradDesc->AddInputDesc("hidden_new", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["hidden_new"]).Clone());
   // seq_mask has same shapeDesc with hidden_new
-  if(hasSeqLength){
+  if (hasSeqLength) {
     hiddenGradDesc->AddInputDesc("seq_mask", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["hidden_new"]).Clone());
   }
 
@@ -323,7 +324,7 @@ vector<vector<ge::NodePtr>> DynamicGRUV2GradAlignFusionPass::AddTLoopNode(map<st
   ge::NodePtr lastMatmulNode = nullptr;
 
   ge::NodePtr genMaskNode = nullptr;
-  if(hasSeqLength){
+  if (hasSeqLength) {
     genMaskNode = AddGenMaskNode(dynamicGRUGradNode, graph, newNodes, failStatus);
   }
 
