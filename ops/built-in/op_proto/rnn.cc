@@ -30,6 +30,27 @@
 #include "op_log.h"
 
 namespace ge {
+static graphStatus GetBasicLSTMCellWeightGradDims(Format outputdw_format, vector<int64_t> &dwDims,
+                                                  vector<int64_t> &dbDims, int64_t inputSize,
+                                                  int64_t hiddenSize) {
+  if (outputdw_format == FORMAT_HWCN) {
+    dwDims = {inputSize + hiddenSize, hiddenSize * 4};
+    dbDims = {hiddenSize * 4};
+  } else if (outputdw_format == FORMAT_ND) {
+    dwDims = {inputSize + hiddenSize, hiddenSize * 4};
+    dbDims = {hiddenSize * 4};
+  } else if (outputdw_format == FORMAT_NCHW) {
+    dwDims = {hiddenSize * 4, inputSize + hiddenSize, 1, 1};
+    dbDims = {hiddenSize * 4, 1, 1, 1};
+  } else if (outputdw_format == FORMAT_NHWC) {
+    dwDims = {hiddenSize * 4, 1, 1, inputSize + hiddenSize};
+    dbDims = {hiddenSize * 4, 1, 1, 1};
+  } else {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 IMPLEMT_VERIFIER(DynamicRNN, DynamicRNNVerify) {
   return GRAPH_SUCCESS;
 }
@@ -644,27 +665,18 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
   Format outputdw_format = outputDwTensorDesc.GetFormat();
   vector<int64_t> dwDims = {};
   vector<int64_t> dbDims = {};
-  if (outputdw_format == FORMAT_HWCN) {
-    dwDims = {inputSize + hiddenSize, hiddenSize * 4};
-    dbDims = {hiddenSize * 4};
-  } else if (outputdw_format == FORMAT_ND) {
-    outputDwTensorDesc.SetFormat(ge::FORMAT_HWCN);
-    outputDwTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
-    dwDims = {inputSize + hiddenSize, hiddenSize * 4};
-    dbDims = {hiddenSize * 4};
-  } else if (outputdw_format == FORMAT_NCHW) {
-    dwDims = {hiddenSize * 4, inputSize + hiddenSize, 1, 1};
-    dbDims = {hiddenSize * 4, 1, 1, 1};
-  } else if (outputdw_format == FORMAT_NHWC) {
-    dwDims = {hiddenSize * 4, 1, 1, inputSize + hiddenSize};
-    dbDims = {hiddenSize * 4, 1, 1, 1};
-  } else {
+  if (GRAPH_FAILED == GetBasicLSTMCellWeightGradDims(outputdw_format, dwDims, dbDims, inputSize, hiddenSize)) {
     string expected_format_list = ConcatString("FORMAT_HWCN, FORMAT_NCHW, FORMAT_NHWC, FORMAT_ND");
     std::string err_msg = GetInputFormatNotSupportErrMsg("outputdw_format", expected_format_list,
                                                          ConcatString(outputdw_format));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
 
+  if (outputdw_format == FORMAT_ND) {
+    outputDwTensorDesc.SetFormat(ge::FORMAT_HWCN);
+    outputDwTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
+  }
+  
   outputDwTensorDesc.SetShape(ge::Shape(dwDims));
   outputDwTensorDesc.SetDataType(inputDgateDtype);
   outputDbTensorDesc.SetShape(ge::Shape(dbDims));
