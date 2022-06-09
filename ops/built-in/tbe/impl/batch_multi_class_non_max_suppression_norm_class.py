@@ -316,26 +316,35 @@ class BatchMultiClassNonMaxSuppressionNormClass:
         sort_each_class
         """
         each_loop_class_num = self.proposal_num_max_ub // self.boxes_num
-        loop_times = self.class_num // each_loop_class_num
+        loop_times, last_loop_class_num = get_loop_info(self.class_num, each_loop_class_num)
         with self.tik_inst.for_range(0, loop_times) as loop_index:
             class_start_index = loop_index * each_loop_class_num
-            proposal_ub_shape = (self.proposal_num_max_ub, self.element_proposal)
-            proposal_ub_0 = self.tik_inst.Tensor(self.data_dtype, proposal_ub_shape, tik.scope_ubuf, "proposal_ub_0")
-            proposal_ub_0 = self.init_proposal_ub_loop(proposal_ub_0, batch_index,
-                                                       class_start_index, each_loop_class_num)
+            with self.tik_inst.if_scope(loop_index < loop_times - 1):
+                self.sort_each_class_each_loop(proposal_l1, batch_index_l1, batch_index,
+                                               class_start_index, each_loop_class_num)
+            with self.tik_inst.else_scope():
+                self.sort_each_class_each_loop(proposal_l1, batch_index_l1, batch_index,
+                                               class_start_index, last_loop_class_num)
 
-            proposal_ub_1 = self.tik_inst.Tensor(self.data_dtype, proposal_ub_shape, tik.scope_ubuf, "proposal_ub_1")
-            self.tik_func.start_tik_compute(each_loop_class_num * self.boxes_num, self.num_repeat_proposal,
-                                            self.tik_func.tik_vrpsort16,
-                                            args=(proposal_ub_1, proposal_ub_0))
-            proposal_ub_0, proposal_ub_1 = self.merge_sort.merge_sort(proposal_ub_0, proposal_ub_1,
-                                                                      self.boxes_num * each_loop_class_num,
-                                                                      self.num_repeat_proposal, self.boxes_num)
-            nburst = each_loop_class_num
-            burst = self.max_size_per_class // self.pro_num_block
-            src_stride = (self.boxes_num - self.max_size_per_class) // self.pro_num_block
-            self.tik_inst.data_move(proposal_l1[batch_index_l1:, class_start_index * self.max_size_per_class:, :],
-                                    proposal_ub_1, 0, nburst, burst, src_stride, 0)
+    def sort_each_class_each_loop(self, proposal_l1, batch_index_l1, batch_index,
+                                  class_start_index, each_loop_class_num):
+        proposal_ub_shape = (self.proposal_num_max_ub, self.element_proposal)
+        proposal_ub_0 = self.tik_inst.Tensor(self.data_dtype, proposal_ub_shape, tik.scope_ubuf, "proposal_ub_0")
+        proposal_ub_0 = self.init_proposal_ub_loop(proposal_ub_0, batch_index,
+                                                   class_start_index, each_loop_class_num)
+
+        proposal_ub_1 = self.tik_inst.Tensor(self.data_dtype, proposal_ub_shape, tik.scope_ubuf, "proposal_ub_1")
+        self.tik_func.start_tik_compute(each_loop_class_num * self.boxes_num, self.num_repeat_proposal,
+                                        self.tik_func.tik_vrpsort16,
+                                        args=(proposal_ub_1, proposal_ub_0))
+        proposal_ub_0, proposal_ub_1 = self.merge_sort.merge_sort(proposal_ub_0, proposal_ub_1,
+                                                                  self.boxes_num * each_loop_class_num,
+                                                                  self.num_repeat_proposal, self.boxes_num)
+        nburst = each_loop_class_num
+        burst = self.max_size_per_class // self.pro_num_block
+        src_stride = (self.boxes_num - self.max_size_per_class) // self.pro_num_block
+        self.tik_inst.data_move(proposal_l1[batch_index_l1:, class_start_index * self.max_size_per_class:, :],
+                                proposal_ub_1, 0, nburst, burst, src_stride, 0)
 
     def sort_all_class(self, proposal_l1, batch_index_l1):
         """
@@ -474,9 +483,9 @@ class MergeSort:
                     valid_num += 1
                     index_start += element_count
             src_list = [proposal_sorted[index_temp, 0] for index_temp in index_start_all]
-            self.tik_inst.vmrgsort4(proposal_next, src_list, element_count_list,
+            self.tik_inst.vmrgsort4(proposal_next[group_index * split_num:, :], src_list, element_count_list,
                                     False, self._valid_bit_all.get(valid_num), 1)
-            proposal_sorted, proposal_next = proposal_next, proposal_sorted
+        proposal_sorted, proposal_next = proposal_next, proposal_sorted
         return proposal_next, proposal_sorted
 
 
