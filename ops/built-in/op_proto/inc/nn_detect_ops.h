@@ -1550,8 +1550,8 @@ REG_OP(DecodeWheelsTarget)
 *@li max_size_per_class: A required attribute of type int, specifying the nms output num per class.
 *@li max_total_size: A required attribute of type int, specifying the the nms output num per batch.
 *@li change_coordinate_frame: A optional attribute of type bool, whether to normalize coordinates after clipping.
-*@li transpose_box: A optional attribute of type bool, whether inserted transpose before this op. must be "false".
-*@li image_size: A optional attribute of type ListInt, the size of the image. \n
+* @li transpose_box: A optional attribute of type bool, whether inserted transpose before this op. must be "false".
+* @li image_size: A optional attribute of type ListInt, the size of the image. \n
 
 *@par Outputs:
 *@li nmsed_boxes: A 3D Tensor of type float16 with shape (batch, max_total_size, 4),
