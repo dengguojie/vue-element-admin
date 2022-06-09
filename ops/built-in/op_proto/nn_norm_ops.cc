@@ -1404,7 +1404,22 @@ IMPLEMT_COMMON_INFERFUNC(GroupNormInferShape) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFERFORMAT_FUNC(GroupNorm, GroupNormInferFormat) {
+  OP_LOGD(TbeGetName(op).c_str(), "Enter GroupNorm op_proto infer format function!");
+  TensorDesc tensordesc_input1 = op.GetInputDescByName("gamma");
+  TensorDesc tensordesc_input2 = op.GetInputDescByName("beta");
+  tensordesc_input1.SetOriginFormat(FORMAT_ND);
+  tensordesc_input1.SetFormat(FORMAT_ND);
+  tensordesc_input2.SetOriginFormat(FORMAT_ND);
+  tensordesc_input2.SetFormat(FORMAT_ND);
+
+  (void)op.UpdateInputDesc("gamma", tensordesc_input1);
+  (void)op.UpdateInputDesc("beta", tensordesc_input2);
+  return GRAPH_SUCCESS;
+}
+
 COMMON_INFER_FUNC_REG(GroupNorm, GroupNormInferShape);
+INFER_FORMAT_FUNC_REG(GroupNorm, GroupNormInferFormat);
 // ----------------------GroupNorm END--------------------------
 
 // ------------------------InstanceNormV2--------------------------

@@ -4179,7 +4179,8 @@ pytorch:
       - ops/built-in/op_tiling/group_norm.cc
       - ops/built-in/tbe/impl/dynamic/group_norm.py
       - ops/built-in/tbe/impl/dynamic/erfinv.py
-
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/group_norm_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/group_norm_fusion_pass.h
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
