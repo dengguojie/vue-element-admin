@@ -56,6 +56,7 @@ TEST_F(prodenvmata_v2_fusion_test, prodenvmata_v2_fusion_test_1) {
   fe::PlatformInfo platformInfo;
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 32;
+  platformInfo.str_info.short_soc_version = "Ascend910";
   optiCompilationInfo.soc_version = "Ascend910A";
   fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);

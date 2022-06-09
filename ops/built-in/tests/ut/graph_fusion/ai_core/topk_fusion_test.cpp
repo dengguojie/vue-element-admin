@@ -55,6 +55,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_1) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
     opti_compilation_info.soc_version = "Ascend910A";
+    platform_info.str_info.short_soc_version = "Ascend910";
     fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
@@ -101,6 +102,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_2) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
     opti_compilation_info.soc_version = "Ascend910A";
+    platform_info.str_info.short_soc_version = "Ascend910";
     fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
@@ -147,6 +149,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_3) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
     opti_compilation_info.soc_version = "Ascend910A";
+    platform_info.str_info.short_soc_version = "Ascend910";
     fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
@@ -192,6 +195,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_4) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.ai_core_spec.cube_vector_split = true;
     opti_compilation_info.soc_version = "Ascend910B2";
+    platform_info.str_info.short_soc_version = "Ascend910B";
     fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
@@ -237,6 +241,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_5) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.ai_core_spec.cube_vector_split = true;
     opti_compilation_info.soc_version = "Ascend910B2";
+    platform_info.str_info.short_soc_version = "Ascend910B";
     fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 
@@ -282,6 +287,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_6) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.ai_core_spec.cube_vector_split = true;
     opti_compilation_info.soc_version = "Ascend910B2";
+    platform_info.str_info.short_soc_version = "Ascend910B";
     fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910B2"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
 

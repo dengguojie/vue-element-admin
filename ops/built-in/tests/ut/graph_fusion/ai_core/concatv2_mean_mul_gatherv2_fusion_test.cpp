@@ -73,6 +73,7 @@ TEST_F(concatv2_mean_mul_gatherv2_fusion_test, concatv2_mean_mul_gatherv2_fusion
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 8;
   platformInfo.soc_info.vector_core_cnt = 7;
+  platformInfo.str_info.short_soc_version = "Ascend310P";
   optiCompilationInfo.soc_version = "Ascend310P3";
   fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);

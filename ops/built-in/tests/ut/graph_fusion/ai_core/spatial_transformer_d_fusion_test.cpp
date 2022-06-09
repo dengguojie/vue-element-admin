@@ -33,6 +33,7 @@ TEST_F(spatial_transformer_d_fusion_test, spatial_transformer_d_fusion_test_0) {
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 1;
     platform_info.str_info.ccec_aic_version = "dav-s200";
+    platform_info.str_info.short_soc_version = "SD3403";
     opti_compilation_info.soc_version = "SD3403";
     fe::PlatformInfoManager::Instance().platform_info_map_["SD3403"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
@@ -108,6 +109,7 @@ TEST_F(spatial_transformer_d_fusion_test, spatial_transformer_d_fusion_test_1) {
   fe::OptionalInfo opti_compilation_info;
   platform_info.soc_info.ai_core_cnt = 1;
   platform_info.str_info.ccec_aic_version = "dav-s200";
+  platform_info.str_info.short_soc_version = "Ascend310P";
   opti_compilation_info.soc_version = "Ascend310P3";
   fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platform_info;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);

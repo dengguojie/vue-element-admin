@@ -76,6 +76,7 @@ TEST_F(attention_score_fusion_pass_test, attention_score_fusion_pass_test_01) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
+  platformInfo.str_info.short_soc_version = "Ascend310P";
   optiCompilationInfo.soc_version = "Ascend310P3";
   fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
@@ -177,6 +178,7 @@ TEST_F(attention_score_fusion_pass_test, attention_score_fusion_pass_test_02) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
+  platformInfo.str_info.short_soc_version = "Ascend310P";
   optiCompilationInfo.soc_version = "Ascend310P3";
   fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
@@ -285,6 +287,7 @@ TEST_F(attention_score_fusion_pass_test, attention_score_fusion_pass_test_03) {
   fe::OptionalInfo optiCompilationInfo;
   platformInfo.soc_info.ai_core_cnt = 1;
   platformInfo.str_info.ccec_aic_version = "dav-s200";
+  platformInfo.str_info.short_soc_version = "Ascend310P";
   optiCompilationInfo.soc_version = "Ascend310P3";
   fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
   fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
