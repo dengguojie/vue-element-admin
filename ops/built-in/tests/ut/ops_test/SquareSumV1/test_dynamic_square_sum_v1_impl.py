@@ -69,7 +69,7 @@ ut_case.add_case(["Ascend310", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310", "Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend910A"], case6)
-ut_case.add_case(["Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310P3", "Ascend910A"], case7)
 
 
 def test_op_select_format(test_arg):
