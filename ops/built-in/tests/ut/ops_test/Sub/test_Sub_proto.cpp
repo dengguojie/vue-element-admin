@@ -22,7 +22,11 @@
 #include <gtest/gtest.h>
 #include "op_proto_test_util.h"
 #include "elewise_calculation_ops.h"
-
+#include "common/utils/ut_op_common.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
 class sub : public testing::Test {
  protected:
   static void SetUpTestCase() {
@@ -145,6 +149,33 @@ TEST_F(sub, sub_infer_shape_3) {
       {2, 100} , {2, 100}, {2, 100}, {60, 60},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+TEST_F(sub, sub_infer_shape_rt2) {
+  ge::op::Sub op;
+  auto tensor_desc = create_desc_shape_range({1,200},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {1,200},
+                                             ge::FORMAT_ND, {});
+  op.UpdateInputDesc("x1", tensor_desc);
+
+  auto tensor_desc_x2 = create_desc_shape_range({2,200},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {2,200},
+                                             ge::FORMAT_ND, {});
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {2,200};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+
+  CommonInferShapeOperator(op, {}, {expected_output_shape});
+  auto output_desc1 = op.GetOutputDesc(0);
+  EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
 }
 
 

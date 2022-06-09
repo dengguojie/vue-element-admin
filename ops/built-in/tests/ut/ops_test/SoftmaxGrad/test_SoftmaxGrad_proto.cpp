@@ -2,6 +2,11 @@
 #include <vector>
 #include "op_proto_test_util.h"
 #include "nn_norm_ops.h"
+#include "common/utils/ut_op_common.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
 
 class SoftmaxGradTest : public testing::Test {
 protected:
@@ -35,4 +40,7 @@ TEST_F(SoftmaxGradTest, softmax_grad_tsest_1) {
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {16, 16};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+    CommonInferShapeOperator(softmax_grad_op, {"axes"}, {expected_output_shape});
+    auto output_desc1 = softmax_grad_op.GetOutputDesc(0);
+    EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
 }

@@ -29,7 +29,16 @@
 #include "error_util.h"
 namespace ops {
 // Do infershape for OP which is single-input single-output and in-shape equal out-shape.
- ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext *context);
-}
+ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext* context);
+
+/*
+ * @brief: get output shape
+ * @param [in] context: gert::InferShapeContext
+ * @param [in] input_idx: constvalue input index
+ * @param [in] output_idx: constvalue output index
+ * @return vector<int64_t>: success or failed
+ */
+ge::graphStatus InferShapeForInIdxAndOutIdx(gert::InferShapeContext* context, int64_t input_idx, int64_t output_idx);
+}  // namespace ops
 
 #endif  // OPS_BUILT_IN_OP_PROTO_RUNTIME_RUNTIME_UTIL_H_

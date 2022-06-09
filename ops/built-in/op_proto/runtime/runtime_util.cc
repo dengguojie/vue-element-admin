@@ -17,12 +17,20 @@
 
 using namespace ge;
 namespace ops {
-ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext *context) {
+ge::graphStatus InferShapeForOneInOneOut(gert::InferShapeContext* context) {
   auto in_shape = context->GetInputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape);
   auto out_shape = context->GetOutputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
 
+  *out_shape = *in_shape;
+  return ge::GRAPH_SUCCESS;
+}
+ge::graphStatus InferShapeForInIdxAndOutIdx(gert::InferShapeContext* context, int64_t input_idx, int64_t output_idx) {
+  auto in_shape = context->GetInputShape(input_idx);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape);
+  auto out_shape = context->GetOutputShape(output_idx);
+  OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
   *out_shape = *in_shape;
   return ge::GRAPH_SUCCESS;
 }

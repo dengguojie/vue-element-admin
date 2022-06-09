@@ -8,9 +8,12 @@
 #include "array_ops.h"
 #include "common/utils/ut_op_util.h"
 #include "test_common.h"
+#include "common_unittest.h"
+#include "drop_out_do_mask.h"
 using namespace ge;
 using namespace ut_util;
 using namespace std;
+
 
 class DropOutDoMaskTiling : public testing::Test {
  protected:
@@ -53,6 +56,14 @@ TEST_F(DropOutDoMaskTiling, dropout_do_mask_tiling_1) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 128 16 ");
+
+  optiling::DropOutDoMaskCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::DropOutDoMaskTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("DropOutDoMask", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "DropOutDoMask", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int64_t, "4 128 16 ");
+
 }

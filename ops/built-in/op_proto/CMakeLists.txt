@@ -45,6 +45,7 @@ set(_op_proto_srcs
   runtime/gatherv2.cc
   runtime/runtime_util.cc
   runtime/elewise.cc
+  runtime/gelugrad.cc
   runtime/moving_sum_with_sigmoid.cc
   runtime/reduce_infer.cc
   runtime/broadcast_infer.cc

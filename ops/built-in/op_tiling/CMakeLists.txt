@@ -25,6 +25,7 @@ set(_optiling_files
   runtime/dynamic_rnn_v3.cc
   runtime/dyn_seq_outer.cc
   runtime/trans_data.cc
+  runtime/drop_out_do_mask.cc
   runtime/trans_data_positive_source_tc_1010.cc
   runtime/trans_data_negative_target_tc_201.cc
   runtime/trans_data_positive_source_ntc_100.cc

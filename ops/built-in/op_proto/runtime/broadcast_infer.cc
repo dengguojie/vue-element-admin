@@ -138,4 +138,12 @@ IMPL_OP(ReadDiv)
     .InferShape(InferShapeForTwoInOneOut);
 IMPL_OP(ClipByValue)
     .InferShape(InferShapeForThreeInOneOut);
+IMPL_OP(SoftmaxGrad)
+    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(Sub)
+    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(MaskedFill)
+    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(ReluGrad)
+    .InferShape(InferShapeForTwoInOneOut);
 }  // namespace ops

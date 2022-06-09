@@ -21,6 +21,11 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "selection_ops.h"
+#include "common/utils/ut_op_common.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
 
 class masked_fill:public testing::Test{
     protected:
@@ -61,4 +66,7 @@ TEST_F(masked_fill,masked_fill_infershape_diff_test){
     EXPECT_EQ(output_y1_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
     std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{15, 16},{8,8},{375,375}};
     EXPECT_EQ(output_shape_range, expected_shape_range);
+    CommonInferShapeOperator(op, {}, {expected_output_shape});
+    auto output_desc = op.GetOutputDesc(0);
+    EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

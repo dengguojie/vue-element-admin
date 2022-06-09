@@ -1614,10 +1614,12 @@ vector_B:
       - ops/built-in/op_proto/runtime/transpose.cc
       - ops/built-in/op_proto/runtime/gatherv2.cc
       - ops/built-in/op_proto/runtime/layer_norm.cc
+      - ops/built-in/op_proto/runtime/gelugrad.cc
       - ops/built-in/op_proto/runtime/concat_d.cc
       - ops/built-in/op_proto/runtime/elewise.cc
       - ops/built-in/op_proto/runtime/trans_data.cc
       - ops/built-in/op_proto/runtime/tile.cc
+      - ops/built-in/op_proto/runtime/drop_out_do_mask.cc
       - ops/built-in/op_tiling/runtime/trans_data.cc
       - ops/built-in/op_tiling/runtime/trans_data.h
       - ops/built-in/op_tiling/runtime/trans_data_negative_target_ntc.cc
@@ -1642,6 +1644,8 @@ vector_B:
       - ops/built-in/op_tiling/runtime/dynamic_rnn_v3.h
       - ops/built-in/op_tiling/runtime/runtime2_util.cc
       - ops/built-in/op_tiling/runtime/runtime2_util.h
+      - ops/built-in/op_tiling/runtime/drop_out_do_mask.cc
+      - ops/built-in/op_tiling/runtime/drop_out_do_mask.h
       - ops/common/inc/context_util.h
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py

@@ -25,8 +25,12 @@ IMPL_OP(ZerosLike)
     .InferShape(InferShapeForOneInOneOut);
 IMPL_OP(Gelu)
     .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(Relu)
+    .InferShape(InferShapeForOneInOneOut);
 IMPL_OP(Neg)
     .InferShape(InferShapeForOneInOneOut);
 IMPL_OP(LogSoftmaxV2)
+    .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(DropOutDoMask)
     .InferShape(InferShapeForOneInOneOut);
 }  // namespace ops
