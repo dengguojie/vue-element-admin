@@ -102,7 +102,7 @@ bool MatmulAtomicAddUbFusion::EnableAtomicAdd(const ge::NodePtr &matmul_node) {
   if (matmul_node->GetInDataNodes().size() > matmul_base_input_num) {
     enable_atomic_add = false;
     OP_LOGD(kFusedOpType.c_str(),
-            "the Matmul node %s's input node number is %i, may have biasadd graph fusion, not support atomic add.",
+            "the Matmul node %s's input node number is %zu, may have biasadd graph fusion, not support atomic add.",
             matmul_name.c_str(), matmul_node->GetInDataNodes().size());
   }
   if (matmul_node->GetType() == kOpTypeFullyConnection) {
@@ -276,13 +276,9 @@ bool MatmulAtomicAddUbFusion::computePerf(vector<int64_t> shapes, vector<int> bl
 bool MatmulAtomicAddUbFusion::getValueByKey(const std::unordered_map<ge::DataType, int> &ori_map,
                                             const ge::DataType target_key, int &target_value) {
   auto iter = ori_map.find(target_key);
-  if (iter != ori_map.end()) {
-    target_value = iter->second;
-  } else {
-    OP_LOGD(kFusedOpType.c_str(), "can't find value by key %s, need add info.", target_key);
-    return false;
-  }
-
+  FUSION_PASS_CHECK(iter == ori_map.end(), OP_LOGD(kFusedOpType.c_str(), "Current data type is not in the map."),
+                    return false);
+  target_value = iter->second;
   return true;
 }
 
@@ -349,7 +345,7 @@ vector<int64_t> MatmulAtomicAddUbFusion::GetMatMulDims(const ge::NodePtr &matmul
 
   vector<int64_t> dims = {m_dim, k_dim, n_dim};
   auto matmul_name = matmul_node->GetName();
-  OP_LOGD(kFusedOpType.c_str(), "the Matmul node %s's shape is {%lld, %lld, %lld}.", matmul_name.c_str(), m_dim, k_dim,
+  OP_LOGD(kFusedOpType.c_str(), "the Matmul node %s's shape is {%ld, %ld, %ld}.", matmul_name.c_str(), m_dim, k_dim,
           n_dim);
   return dims;
 }
@@ -719,10 +715,9 @@ Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mappin
   }
   auto matmul_node = matmul_nodes[0];
   bool ret = IsDynamicMatmul(matmul_node, is_dynamic_flag, is_no_range);
-  if (ret != SUCCESS) {
-    OP_LOGW(kFusedOpType.c_str(), "Get dynamic flag or no range flag fail, end.", matmul_node->GetName().c_str());
-    return SUCCESS;
-  }
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(kFusedOpType.c_str(), "Get dynamic flag or no range flag fail."),
+                    return SUCCESS);
+
   OP_LOGD(kFusedOpType.c_str(), "Current matmul node name is %s.", matmul_node->GetName().c_str());
 
   auto atomic_add_type = AtomicAddType(matmul_node);
