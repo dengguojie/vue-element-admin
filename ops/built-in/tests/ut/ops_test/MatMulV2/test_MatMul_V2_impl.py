@@ -944,6 +944,73 @@ def test_nd_k_full_load_conflict(test_arg):
         cce_build_code(sch, config)
     te_set_version("Ascend310")
 
+def test_requant_full_load(test_arg):
+    from impl.mat_mul import mat_mul_compute
+    from impl.ascend_requant import ascend_requant_compute
+    from tbe.common.platform import platform_info
+    ori_soc_version = platform_info.get_soc_spec('FULL_SOC_VERSION')
+    print('ori sov_version:', ori_soc_version)
+    # for DTS2022050714940
+    te_set_version("Ascend310P3")
+    try:
+        tiling_type = "auto_tiling"
+        tiling_params = {
+            'op_type': 'matmul', 'A_shape': [1, 64, 8, 16, 32], 'B_shape': [2048, 128, 1, 1, 16],
+            'C_shape': None, 'A_dtype': 'int8', 'B_dtype': 'int8', 'C_dtype': 'int32',
+            'mad_dtype': 'int32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
+            "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
+            'group': 1, 'bias_flag': True, 'fused_double_operand_num': 0.0, 'shape_a_align': 1,
+            'shape_b_align': 1, 'kernel_name': "matmul_requant_full_load", 'scalar_size': 0, 'batch_type': 0,
+            'reduce_fusion': 0, "tiling_access_version": 0}
+        tiling_dict = {
+            "matmul_requant_full_load": {
+                'AL0_matrix': [2, 8, 16, 32, 1, 1], 'AL1_shape': [2048, 2, 1, 1], 'AUB_channel_wise_flag': None,
+                'AUB_shape': None, 'A_overhead_opt_flag': 0,
+                'BL0_matrix': [8, 16, 16, 32, 1, 1], 'BL1_shape': [], 'BUB_channel_wise_flag': None,
+                'BUB_shape': None, 'B_overhead_opt_flag': 0,
+                'CL0_matrix': [16, 2, 16, 16, 1, 1], 'CUB_channel_wise_flag': 0, 'CUB_matrix': [16, 2, 16, 16, 1, 1],
+                'batch_bef_group_flag': 0, 'block_dim': [1, 8, 1, 1],
+                'manual_pingpong_buffer': {
+                    'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1,
+                    'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
+                },
+                'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0
+            }
+        }
+        with cce():
+            x1 = tvm.placeholder((64, 8, 16, 32), name="x1",
+                                attrs={'format': "FRACTAL_NZ", 'ori_format': "ND", "ori_shape": (128, 2048)}, dtype="int8")
+            x2 = tvm.placeholder((64, 128, 16,32), name="x2",
+                                attrs={'format': "FRACTAL_Z",'ori_format': "ND", "ori_shape": (2048, 2048)}, dtype="int8")
+            bias = tvm.placeholder((2048,), name="bias",
+                                attrs={'format': "FRACTAL_NZ", 'ori_format': "ND", "ori_shape": (2048,)}, dtype="int32")
+            output_y = {"shape": (128, 8, 16, 16), "dtype": "int32",
+                        "ori_shape": (128, 2048), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, -128, "matmul_requant_full_load")
+
+            shape_out = {"shape": (64, 8, 16, 32), "dtype": 'int8', "format": 'FRACTAL_NZ',
+                        "ori_shape": (128, 2048), "ori_format": 'NHWC'}
+            req_tensor = tvm.placeholder((1, 128, 1, 1, 16), name='req_tensor',
+                        attrs={'format': 'FRACTAL_NZ', "ori_shape": (2048,)}, dtype='uint64')
+            out = ascend_requant_compute(matmul_out, req_tensor, shape_out, relu_flag=False, kernel_name='mm_requant')
+            tensor_list = [x1, x2, bias, req_tensor, out]
+
+            cur_tiling_type = TILING_INSTANCE.get_tiling_type()
+            TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+            sch = auto_schedule(matmul_out)
+            TILING_INSTANCE.instance_refresh(cur_tiling_type, tiling_params, {})
+            config = {
+                "print_ir": False,
+                "need_build": True,
+                "name": "matmul_requant_full_load",
+                "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+    except RuntimeError as e:
+        print(e)
+    finally:
+        TILING_INSTANCE.instance_refresh(tiling_type, tiling_params, {})
+        te_set_version(ori_soc_version)
 
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
@@ -953,6 +1020,7 @@ ut_case.add_cust_test_func(test_func=test_atomic_add_k)
 ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
 ut_case.add_cust_test_func(test_func=test_nd_k_full_load_conflict)
+ut_case.add_cust_test_func(test_func=test_requant_full_load)
 
 
 for case_info in nd_cases:

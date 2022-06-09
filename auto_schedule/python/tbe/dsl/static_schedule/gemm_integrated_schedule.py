@@ -2990,6 +2990,7 @@ class GemmSchedule:
                                          self.cache_tiling, self.status_controller.non_factor_k_flag))
         elif status == Compare.GREATE_EQ:
             self.status_controller.al1_attach_status = "c_gm"
+            l1a2out_affine_shape = self._fix_affine_out_int8(a_l1.dtype, l1a2out_affine_shape)
             self.sch_agent.attach_at(a_l1, self.root_tensor, affine_shape=l1a2out_affine_shape,
                                      ceil_mode_dict=self.tiling_work.get_split_param(
                                          self.cache_tiling, self.status_controller.non_factor_k_flag))
