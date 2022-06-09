@@ -104,6 +104,7 @@ class Net(nn.Cell):
     def __init__(self):
         super(Net, self).__init__()
         self.{op_lower} = {op_name}()
+        {cust_aicpu}
 
     def construct(self,{input_args}):
         return self.{op_lower}({inputs})
@@ -121,6 +122,8 @@ class Net(nn.Cell):
     def __init__(self):
         super(Net, self).__init__()
         self.{op_lower} = {op_name}({attr_value})
+        {cust_aicpu}
+
     {attr_constrct}
 """
     TESTCASE_TEST_NET_INPUT = """

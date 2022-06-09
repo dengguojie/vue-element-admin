@@ -475,6 +475,7 @@ public:
 
     PY_MS_AICPU_REGISTER_OP_INFO = """
 # Define the kernel info of {up_name}.
+# .attr("cust_aicpu", "str") indicate that the attribute is used to obtain *.so file for the kernel name.
 {name}_op_info = AiCPURegOp("{up_name}") \\
     .fusion_type("OPAQUE") \\
     {inputs}

@@ -95,6 +95,14 @@ class MsOpGenerator:
         params = importlib.import_module(op_name_impl)
         return getattr(params, op_name_op_info)
 
+    @staticmethod
+    def _assignment_attr_value(attr_info):
+        attr_name = attr_info.get('name')
+        attr_value = str(attr_info.get('value'))
+        if attr_info.get('type') == 'string':
+            attr_value = "\"{}\"".format(attr_value)
+        return "{}={}".format(attr_name, attr_value)
+
     def _mkdir_output_dir(self):
         ####### [step 1]
         ####### create output_path dir
@@ -187,17 +195,15 @@ class MsOpGenerator:
         _, op_name_lower = self._get_op_name()
         testcase_test_func_content = ''
         testcase_name = testcase_struct.get('case_name')
-        outputs_str = ''
-        output_count = 1
-        for output_desc in testcase_struct.get('output_desc'):
-            output_name = 'output{}'.format(output_count)
-            data_type = getattr(np, output_desc.get('type'))
-            outputs_str += CodeTemplate.TESTCASE_TEST_NET_OUTPUT.format(
-                output_name=output_name,
-                op_lower=op_name_lower,
-                tensor=','.join(tensor_list),
-                np_type=data_type)
-            output_count += 1
+        output_name_list = []
+        if len(testcase_struct.get('output_desc')) == 0:
+            return testcase_test_func_content
+        for output_count in range(len(testcase_struct.get('output_desc'))):
+            output_name_list.append('output{}'.format(output_count))
+        outputs_str = CodeTemplate.TESTCASE_TEST_NET_OUTPUT.format(
+            output_name=', '.join(output_name_list),
+            op_lower=op_name_lower,
+            tensor=','.join(tensor_list))
         testcase_test_func_content += CodeTemplate.TESTCASE_TEST_NET \
             .format(subcase=testcase_name[0].lower() + testcase_name[1:],
                     op_lower=op_name_lower,
@@ -206,7 +212,7 @@ class MsOpGenerator:
         return testcase_test_func_content
 
     def _generate_function_content(self, testcase_struct, input_data_abs_paths):
-        input_count = 1
+        input_count = 0
         inputs_str = ''
         tensor_content_list = []
         input_name_list = []
@@ -216,7 +222,7 @@ class MsOpGenerator:
                 input_name=input_name))
             inputs_str += CodeTemplate.TESTCASE_TEST_NET_INPUT.format(
                 input_name=input_name,
-                file=input_data_abs_paths[input_count - 1],
+                file=input_data_abs_paths[input_count],
                 np_type=input_desc.get('type'),
                 op_shape=input_desc.get('shape'))
             input_name_list.append(input_name)
@@ -232,10 +238,10 @@ class MsOpGenerator:
         inputs_str = ','.join(input_name_list)
         op_name, op_name_lower = self._get_op_name()
         if imply_type == 'AiCPU':
-            cust_aicpu = "{}{}".format(
-                ConstManager.NEXT_LINE * 2,
-                'self.{op_name}.add_prim_attr("cust_aicpu", "cust_aicpu_kernels")'.format(
-                          op_name=op_name_lower))
+            # The value of "cust_aicpu" is a string with removing the lib prefix and .so suffix
+            cust_aicpu = '# The value of \"cust_aicpu\" is a string with removing the lib prefix and .so suffix.\n' \
+                         '        self.{op_name}.add_prim_attr("cust_aicpu", "cust_aicpu_kernels")'.format(
+                             op_name=op_name_lower)
         else:
             cust_aicpu = ''
         if not self.testcase_list[0].get('attr') or \
@@ -252,7 +258,7 @@ class MsOpGenerator:
         else:
             attr_value_list = []
             for attr_info in self.testcase_list[0].get('attr'):
-                attr_value_list.append(str(attr_info.get('value')))
+                attr_value_list.append(self._assignment_attr_value(attr_info))
             attr_value = ", ".join(list(attr_value_list))
             attr_construct = \
                 CodeTemplate.TESTCASE_CLASS_CONTENT_WITH_ATTR_CONSTRUCT.format(

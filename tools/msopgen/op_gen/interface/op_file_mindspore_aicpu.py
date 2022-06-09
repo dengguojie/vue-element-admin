@@ -218,3 +218,11 @@ class OpFileMindSporeAICPU(OpFileAiCpu):
         """
         self.generate_ms_aicpu_impl()
         self.generate_ms_aicpu_op_proto()
+
+    def _generate_op_proto(self):
+        """
+        delete op_proto directory
+        """
+        op_proto_dir = os.path.join(self.output_path, 'op_proto')
+        if os.path.exists(op_proto_dir):
+            shutil.rmtree(op_proto_dir)
