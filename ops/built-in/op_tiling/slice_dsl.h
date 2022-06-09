@@ -71,9 +71,8 @@ namespace optiling {
   template <typename T>
   class SliceDsl {
    public:
-    explicit SliceDsl(T* _context, const OpInfoImpl* _op_info):
-        context(_context), op_info(_op_info){
-    }
+    explicit SliceDsl(T* _context, const OpInfoImpl* _op_info)
+        : context(_context), op_info(_op_info) {}
 
     ~SliceDsl() = default;
     bool DoTiling();

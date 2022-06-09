@@ -297,7 +297,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
     size_t inputs_num = context->GetInputNums();
     if (inputs_num == GATHER_V2_INPUTS_NUM) {
       std::vector <int64_t> values;
-      if(!context->GetConstInput(nullptr, INPUT_AXIS_IDX, values)) {
+      if (!context->GetConstInput(nullptr, INPUT_AXIS_IDX, values)) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "gather v2 axis not exists.");
         return;
       }

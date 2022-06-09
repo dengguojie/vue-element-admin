@@ -74,9 +74,8 @@ namespace optiling {
   template <typename T>
   class GatherDsl {
     public:
-      explicit GatherDsl(T* _context, const OpInfoImpl* _op_info):
-      context(_context), op_info(_op_info){
-      }
+      explicit GatherDsl(T* _context, const OpInfoImpl* _op_info)
+          : context(_context), op_info(_op_info) {}
 
       ~GatherDsl() = default;
 
@@ -163,7 +162,7 @@ namespace optiling {
   class GatherTilingHandler : public AutoTilingHandler {
   public:
     GatherTilingHandler(const std::string &o, const std::string &p, const nlohmann::json &c)
-            : AutoTilingHandler(o, p), gather_compile_info(o, c) {}
+        : AutoTilingHandler(o, p), gather_compile_info(o, c) {}
 
     ~GatherTilingHandler() = default;
 
