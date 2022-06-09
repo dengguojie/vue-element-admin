@@ -414,13 +414,13 @@ void FillRunInfoParas(const BatchmatmulCompileParas &params, const Tiling &tilin
 
 void SetRunInfoForCacheTiling(const BatchmatmulCompileParas &params, const OpRunInfoParas &runinfoparas,
                               utils::OpRunInfo &run_info) {
-  run_info.AddTilingData(runinfoparas.params.m_32);
   // need to get origin_k to limit the k real length in non-factorial segmentation.
   if (params.format_a_nd) {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
   } else {
     run_info.AddTilingData(runinfoparas.params.k_32);
   }
+  run_info.AddTilingData(runinfoparas.params.m_32);
   run_info.AddTilingData(runinfoparas.params.n_32);
   if (runinfoparas.params.is_batch_matmul_mode) {
     run_info.AddTilingData(runinfoparas.params.batch_32);
@@ -486,11 +486,11 @@ void SetRunInfo(const BatchmatmulCompileParas &compile_params, string &tiling_id
     SetRunInfoForCacheTiling(compile_params, runinfoparas, run_info);
   } else {
     if (compile_params.format_a_nd) {
-      run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_m));
       run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
+      run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_m));
     } else {
-      run_info.AddTilingData(runinfoparas.params.m_32);
       run_info.AddTilingData(runinfoparas.params.k_32);
+      run_info.AddTilingData(runinfoparas.params.m_32);
     }
     if (compile_params.format_b_nd) {
       run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.ori_shape_n));

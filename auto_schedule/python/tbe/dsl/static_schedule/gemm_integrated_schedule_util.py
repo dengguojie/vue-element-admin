@@ -636,11 +636,11 @@ class GemmTilingWork:
         # only split by kl0_factor when k_al1/k_bl1 larger than kl0
         if attach_at_flag.get("min_kl1_cmp_kl0"):
             if attach_at_flag.get("abkl1_attach_flag") in (0, 1):
-                self.factor_shape["al12cl0"] = [None, 1, None, 1, 1, 1]
+                self.factor_shape["al12cl0"] = [None, 1, None, 1, cache_tiling.get("kl1_times"), 1]
                 self.factor_shape["bl12cl0"] = [1, None, None, 1, cache_tiling.get("kbl0_factor"), 1]
             else:
                 self.factor_shape["al12cl0"] = [None, 1, None, 1, cache_tiling.get("kal0_factor"), 1]
-                self.factor_shape["bl12cl0"] = [1, None, None, 1, 1, 1]
+                self.factor_shape["bl12cl0"] = [1, None, None, 1, cache_tiling.get("kl1_times"), 1]
         if format_info.get("out") == "ND":
             self.factor_shape["cub"] = [cub_tiling_mc_factor * cub_tiling_m0, cub_tiling_nc_factor * cub_tiling_n0]
             self.factor_shape["cl0"] = [1, cache_tiling.get("n_ub_l0_time")]

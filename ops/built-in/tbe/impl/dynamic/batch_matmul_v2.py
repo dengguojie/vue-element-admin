@@ -977,8 +977,8 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     cache_tiling_flag = get_cache_tiling_flag(input_x1, input_x2, bias)
     m_var_name, k_var_name, n_var_name = _get_var_name(format_a, format_b, cache_tiling_flag)
 
-    m_var = operation.var(m_var_name, m_range)
     k_var = operation.var(k_var_name, k_range)
+    m_var = operation.var(m_var_name, m_range)
     n_var = operation.var(n_var_name, n_range)
     shape_x1, shape_x2 = shape_input
 
