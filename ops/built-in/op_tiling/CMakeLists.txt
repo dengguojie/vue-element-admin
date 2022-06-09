@@ -19,6 +19,8 @@ set(_optiling_files
   runtime/layer_norm.cc
   runtime/moving_sum_with_sigmoid.cc
   runtime/dynamic_atomic_addr_clean.cc
+  runtime/concat_d.cc
+  runtime/tile_d.cc
   runtime/flatten.cc
   runtime/max_pool_v3.cc
   runtime/gatherv2.cc

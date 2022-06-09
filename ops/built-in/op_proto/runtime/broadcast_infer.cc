@@ -134,7 +134,7 @@ IMPL_OP(Add)
     .InferShape(InferShapeForTwoInOneOut);
 IMPL_OP(Mul)
     .InferShape(InferShapeForTwoInOneOut);
-IMPL_OP(ReadDiv)
+IMPL_OP(RealDiv)
     .InferShape(InferShapeForTwoInOneOut);
 IMPL_OP(ClipByValue)
     .InferShape(InferShapeForThreeInOneOut);

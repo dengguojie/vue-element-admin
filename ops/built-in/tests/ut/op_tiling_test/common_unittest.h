@@ -139,166 +139,247 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
 #define TILING_PARSE_JSON_TO_COMPILEINFO_ERROR(optype, json, compile_info) \
   TestTilingParse(optype, json, &compile_info, ge::GRAPH_FAILED)
 
-#define ATTACH_OPERATOR_TO_HOLDER(holder, op, tiling_len, compile_info)                               \
-  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                                        \
-  ASSERT_NE(operator_info, nullptr);                                                                  \
-  size_t input_size = operator_info->GetInputsSize();                                                 \
-  size_t output_size = operator_info->GetOutputsSize();                                               \
-  auto param = gert::TilingData::CreateCap(tiling_len);                                               \
-  auto faker = gert::TilingContextFaker().NodeIoNum(input_size, output_size).TilingData(param.get()); \
-  faker = faker.CompileInfo(&compile_info);                                                           \
-  std::vector<gert::StorageShape> storage_shapes(input_size);                                         \
-  std::vector<void*> input_shapes_ref(input_size);                                                    \
-  std::vector<uint8_t*> const_tensors;                                                                \
-  if (input_size > 0) {                                                                               \
-    for (size_t i = 0; i < input_size; ++i) {                                                         \
-      auto input_desc = operator_info->MutableInputDesc(i);                                           \
-      ASSERT_NE(input_desc, nullptr);                                                                 \
-      ge::Format input_format = input_desc->GetFormat();                                              \
-      ge::Format origin_format = input_desc->GetOriginFormat();                                       \
-      ge::DataType dtype = input_desc->GetDataType();                                                 \
-      faker = faker.NodeInputTd(i, dtype, origin_format, input_format);                               \
-      for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                                    \
-        storage_shapes[i].MutableOriginShape().AppendDim(dim);                                        \
-      }                                                                                               \
-      for (int64_t dim : input_desc->MutableShape().GetDims()) {                                      \
-        storage_shapes[i].MutableStorageShape().AppendDim(dim);                                       \
-      }                                                                                               \
-      input_shapes_ref[i] = &storage_shapes[i];                                                       \
-    }                                                                                                 \
-    faker = faker.InputShapes(input_shapes_ref);                                                      \
-    std::vector<uint32_t> irnum(input_size, 1);                                                       \
-    faker = faker.IrInstanceNum(irnum);                                                               \
-  }                                                                                                   \
-  std::vector<gert::StorageShape> output_shapes(output_size);                                         \
-  std::vector<void*> output_shapes_ref(output_size);                                                  \
-  if (output_size > 0) {                                                                              \
-    for (size_t i = 0; i < output_size; ++i) {                                                        \
-      auto output_desc = operator_info->MutableOutputDesc(i);                                         \
-      ASSERT_NE(output_desc, nullptr);                                                                \
-      ge::Format input_format = output_desc->GetFormat();                                             \
-      ge::Format origin_format = output_desc->GetOriginFormat();                                      \
-      ge::DataType dtype = output_desc->GetDataType();                                                \
-      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);                              \
-      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                                   \
-        output_shapes[i].MutableOriginShape().AppendDim(dim);                                         \
-      }                                                                                               \
-      for (int64_t dim : output_desc->MutableShape().GetDims()) {                                     \
-        output_shapes[i].MutableStorageShape().AppendDim(dim);                                        \
-      }                                                                                               \
-      output_shapes_ref[i] = &output_shapes[i];                                                       \
-    }                                                                                                 \
-    faker = faker.OutputShapes(output_shapes_ref);                                                    \
-  }                                                                                                   \
+#define ATTACH_OPERATOR_TO_HOLDER(holder, op, tiling_len, compile_info)                 \
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                          \
+  ASSERT_NE(operator_info, nullptr);                                                    \
+  size_t input_size = operator_info->GetInputsSize();                                   \
+  size_t output_size = operator_info->GetOutputsSize();                                 \
+  auto param = gert::TilingData::CreateCap(tiling_len);                                 \
+  auto workspace_holder = gert::ContinuousVector::Create<size_t>(8);                    \
+  auto workspace = reinterpret_cast<gert::ContinuousVector*>(workspace_holder.get());   \
+  auto faker = gert::TilingContextFaker()                                               \
+                    .NodeIoNum(input_size, output_size)                                 \
+                    .TilingData(param.get())                                            \
+                    .Workspace(workspace);                                              \
+  faker = faker.CompileInfo(&compile_info);                                             \
+  std::vector<gert::StorageShape> storage_shapes(input_size);                           \
+  std::vector<void *> input_shapes_ref(input_size);                                     \
+  std::vector<uint8_t*> const_tensors;                                                  \
+  if (input_size > 0) {                                                                 \
+    for (size_t i = 0; i < input_size; ++i) {                                           \
+      auto input_desc = operator_info->MutableInputDesc(i);                             \
+      ASSERT_NE(input_desc, nullptr);                                                   \
+      ge::Format input_format = input_desc->GetFormat();                                \
+      ge::Format origin_format = input_desc->GetOriginFormat();                         \
+      ge::DataType dtype = input_desc->GetDataType();                                   \
+      faker = faker.NodeInputTd(i, dtype, origin_format, input_format);                 \
+      for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                      \
+        storage_shapes[i].MutableOriginShape().AppendDim(dim);                          \
+      }                                                                                 \
+      for (int64_t dim : input_desc->MutableShape().GetDims()) {                        \
+        storage_shapes[i].MutableStorageShape().AppendDim(dim);                         \
+      }                                                                                 \
+      input_shapes_ref[i] = &storage_shapes[i];                                         \
+    }                                                                                   \
+    faker = faker.InputShapes(input_shapes_ref);                                        \
+    std::vector<uint32_t> irnum(input_size, 1);                                         \
+    faker = faker.IrInstanceNum(irnum);                                                 \
+  }                                                                                     \
+  std::vector<gert::StorageShape> output_shapes(output_size);                           \
+  std::vector<void *> output_shapes_ref(output_size);                                   \
+  if (output_size > 0) {                                                                \
+    for (size_t i = 0; i < output_size; ++i) {                                          \
+      auto output_desc = operator_info->MutableOutputDesc(i);                           \
+      ASSERT_NE(output_desc, nullptr);                                                  \
+      ge::Format input_format = output_desc->GetFormat();                               \
+      ge::Format origin_format = output_desc->GetOriginFormat();                        \
+      ge::DataType dtype = output_desc->GetDataType();                                  \
+      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);                \
+      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                     \
+        output_shapes[i].MutableOriginShape().AppendDim(dim);                           \
+      }                                                                                 \
+      for (int64_t dim : output_desc->MutableShape().GetDims()) {                       \
+        output_shapes[i].MutableStorageShape().AppendDim(dim);                          \
+      }                                                                                 \
+      output_shapes_ref[i] = &output_shapes[i];                                         \
+    }                                                                                   \
+    faker = faker.OutputShapes(output_shapes_ref);                                      \
+  }                                                                                     \
   auto holder = faker.Build()
 
-#define ATTACH_OPERATOR_TO_HOLDER_ATTRS(holder, op, attrs, tiling_len, compile_info)                  \
-  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                                        \
-  ASSERT_NE(operator_info, nullptr);                                                                  \
-  size_t input_size = operator_info->GetInputsSize();                                                 \
-  size_t output_size = operator_info->GetOutputsSize();                                               \
-  auto param = gert::TilingData::CreateCap(tiling_len);                                               \
-  auto faker = gert::TilingContextFaker().NodeIoNum(input_size, output_size).TilingData(param.get()); \
-  faker = faker.CompileInfo(&compile_info);                                                           \
-  std::vector<gert::StorageShape> storage_shapes(input_size);                                         \
-  std::vector<void*> input_shapes_ref(input_size);                                                    \
-  std::vector<uint8_t*> const_tensors;                                                                \
-  if (input_size > 0) {                                                                               \
-    for (size_t i = 0; i < input_size; ++i) {                                                         \
-      auto input_desc = operator_info->MutableInputDesc(i);                                           \
-      ASSERT_NE(input_desc, nullptr);                                                                 \
-      ge::Format input_format = input_desc->GetFormat();                                              \
-      ge::Format origin_format = input_desc->GetOriginFormat();                                       \
-      ge::DataType dtype = input_desc->GetDataType();                                                 \
-      faker = faker.NodeInputTd(i, dtype, origin_format, input_format);                               \
-      for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                                    \
-        storage_shapes[i].MutableOriginShape().AppendDim(dim);                                        \
-      }                                                                                               \
-      for (int64_t dim : input_desc->MutableShape().GetDims()) {                                      \
-        storage_shapes[i].MutableStorageShape().AppendDim(dim);                                       \
-      }                                                                                               \
-      input_shapes_ref[i] = &storage_shapes[i];                                                       \
-    }                                                                                                 \
-    faker = faker.InputShapes(input_shapes_ref);                                                      \
-    std::vector<uint32_t> irnum(input_size, 1);                                                       \
-    faker = faker.IrInstanceNum(irnum);                                                               \
-  }                                                                                                   \
-  std::vector<gert::StorageShape> output_shapes(output_size);                                         \
-  std::vector<void*> output_shapes_ref(output_size);                                                  \
-  if (output_size > 0) {                                                                              \
-    for (size_t i = 0; i < output_size; ++i) {                                                        \
-      auto output_desc = operator_info->MutableOutputDesc(i);                                         \
-      ASSERT_NE(output_desc, nullptr);                                                                \
-      ge::Format input_format = output_desc->GetFormat();                                             \
-      ge::Format origin_format = output_desc->GetOriginFormat();                                      \
-      ge::DataType dtype = output_desc->GetDataType();                                                \
-      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);                              \
-      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                                   \
-        output_shapes[i].MutableOriginShape().AppendDim(dim);                                         \
-      }                                                                                               \
-      for (int64_t dim : output_desc->MutableShape().GetDims()) {                                     \
-        output_shapes[i].MutableStorageShape().AppendDim(dim);                                        \
-      }                                                                                               \
-      output_shapes_ref[i] = &output_shapes[i];                                                       \
-    }                                                                                                 \
-    faker = faker.OutputShapes(output_shapes_ref);                                                    \
-  }                                                                                                   \
-  ATTACH_ATTRS_TO_FAKER(faker, op, attrs);                                                            \
+#define ATTACH_OPERATOR_TO_HOLDER_ATTRS(holder, op, attrs, tiling_len, compile_info)          \
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                                \
+  ASSERT_NE(operator_info, nullptr);                                                          \
+  size_t input_size = operator_info->GetInputsSize();                                         \
+  size_t output_size = operator_info->GetOutputsSize();                                       \
+  auto param = gert::TilingData::CreateCap(tiling_len);                                       \
+  auto workspace_holder = gert::ContinuousVector::Create<size_t>(8);                          \
+  auto workspace = reinterpret_cast<gert::ContinuousVector*>(workspace_holder.get());         \
+  auto faker = gert::TilingContextFaker()                                                     \
+                    .NodeIoNum(input_size, output_size)                                       \
+                    .TilingData(param.get())                                                  \
+                    .Workspace(workspace);                                                    \
+  faker = faker.CompileInfo(&compile_info);                                                   \
+  std::vector<gert::StorageShape> storage_shapes(input_size);                                 \
+  std::vector<void *> input_shapes_ref(input_size);                                           \
+  std::vector<uint8_t*> const_tensors;                                                        \
+  if (input_size > 0) {                                                                       \
+    for (size_t i = 0; i < input_size; ++i) {                                                 \
+      auto input_desc = operator_info->MutableInputDesc(i);                                   \
+      ASSERT_NE(input_desc, nullptr);                                                         \
+      ge::Format input_format = input_desc->GetFormat();                                      \
+      ge::Format origin_format = input_desc->GetOriginFormat();                               \
+      ge::DataType dtype = input_desc->GetDataType();                                         \
+      faker = faker.NodeInputTd(i, dtype, origin_format, input_format);                       \
+      for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                            \
+        storage_shapes[i].MutableOriginShape().AppendDim(dim);                                \
+      }                                                                                       \
+      for (int64_t dim : input_desc->MutableShape().GetDims()) {                              \
+        storage_shapes[i].MutableStorageShape().AppendDim(dim);                               \
+      }                                                                                       \
+      input_shapes_ref[i] = &storage_shapes[i];                                               \
+    }                                                                                         \
+    faker = faker.InputShapes(input_shapes_ref);                                              \
+    std::vector<uint32_t> irnum(input_size, 1);                                               \
+    faker = faker.IrInstanceNum(irnum);                                                       \
+  }                                                                                           \
+  std::vector<gert::StorageShape> output_shapes(output_size);                                 \
+  std::vector<void *> output_shapes_ref(output_size);                                         \
+  if (output_size > 0) {                                                                      \
+    for (size_t i = 0; i < output_size; ++i) {                                                \
+      auto output_desc = operator_info->MutableOutputDesc(i);                                 \
+      ASSERT_NE(output_desc, nullptr);                                                        \
+      ge::Format input_format = output_desc->GetFormat();                                     \
+      ge::Format origin_format = output_desc->GetOriginFormat();                              \
+      ge::DataType dtype = output_desc->GetDataType();                                        \
+      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);                      \
+      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                           \
+        output_shapes[i].MutableOriginShape().AppendDim(dim);                                 \
+      }                                                                                       \
+      for (int64_t dim : output_desc->MutableShape().GetDims()) {                             \
+        output_shapes[i].MutableStorageShape().AppendDim(dim);                                \
+      }                                                                                       \
+      output_shapes_ref[i] = &output_shapes[i];                                               \
+    }                                                                                         \
+    faker = faker.OutputShapes(output_shapes_ref);                                            \
+  }                                                                                           \
+  ATTACH_ATTRS_TO_FAKER(faker, op, attrs);                                                    \
   auto holder = faker.Build()
 
-#define ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, op, irnum, attrs, tiling_len, compile_info)           \
-  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                                        \
-  ASSERT_NE(operator_info, nullptr);                                                                  \
-  size_t input_size = operator_info->GetInputsSize();                                                 \
-  size_t output_size = operator_info->GetOutputsSize();                                               \
-  auto param = gert::TilingData::CreateCap(tiling_len);                                               \
-  auto faker = gert::TilingContextFaker().NodeIoNum(input_size, output_size).TilingData(param.get()); \
-  faker = faker.CompileInfo(&compile_info);                                                           \
-  std::vector<gert::StorageShape> storage_shapes(input_size);                                         \
-  std::vector<void*> input_shapes_ref(input_size);                                                    \
-  std::vector<uint8_t*> const_tensors;                                                                \
-  size_t count = 0;                                                                                   \
-  for (size_t idx = 0; idx < irnum.size(); idx++) {                                                   \
-    for (size_t i = 0; i < irnum[idx]; ++i) {                                                         \
-      auto input_desc = operator_info->MutableInputDesc(count);                                       \
-      ASSERT_NE(input_desc, nullptr);                                                                 \
-      ge::Format input_format = input_desc->GetFormat();                                              \
-      ge::Format origin_format = input_desc->GetOriginFormat();                                       \
-      ge::DataType dtype = input_desc->GetDataType();                                                 \
-      faker = faker.NodeInputTd(count, dtype, origin_format, input_format);                           \
-      for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                                    \
-        storage_shapes[count].MutableOriginShape().AppendDim(dim);                                    \
-      }                                                                                               \
-      for (int64_t dim : input_desc->MutableShape().GetDims()) {                                      \
-        storage_shapes[count].MutableStorageShape().AppendDim(dim);                                   \
-      }                                                                                               \
-      input_shapes_ref[count] = &storage_shapes[count];                                               \
-      count++;                                                                                        \
-    }                                                                                                 \
-    faker = faker.InputShapes(input_shapes_ref);                                                      \
-    faker = faker.IrInstanceNum(irnum);                                                               \
-  }                                                                                                   \
-  std::vector<gert::StorageShape> output_shapes(output_size);                                         \
-  std::vector<void*> output_shapes_ref(output_size);                                                  \
-  if (output_size > 0) {                                                                              \
-    for (size_t i = 0; i < output_size; ++i) {                                                        \
-      auto output_desc = operator_info->MutableOutputDesc(i);                                         \
-      ASSERT_NE(output_desc, nullptr);                                                                \
-      ge::Format input_format = output_desc->GetFormat();                                             \
-      ge::Format origin_format = output_desc->GetOriginFormat();                                      \
-      ge::DataType dtype = output_desc->GetDataType();                                                \
-      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);                              \
-      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                                   \
-        output_shapes[i].MutableOriginShape().AppendDim(dim);                                         \
-      }                                                                                               \
-      for (int64_t dim : output_desc->MutableShape().GetDims()) {                                     \
-        output_shapes[i].MutableStorageShape().AppendDim(dim);                                        \
-      }                                                                                               \
-      output_shapes_ref[i] = &output_shapes[i];                                                       \
-    }                                                                                                 \
-    faker = faker.OutputShapes(output_shapes_ref);                                                    \
-  }                                                                                                   \
-  ATTACH_ATTRS_TO_FAKER(faker, op, attrs);                                                            \
+#define ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, op, irnum, attrs, tiling_len, compile_info)    \
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                                 \
+  ASSERT_NE(operator_info, nullptr);                                                           \
+  size_t input_size = operator_info->GetInputsSize();                                          \
+  size_t output_size = operator_info->GetOutputsSize();                                        \
+  auto param = gert::TilingData::CreateCap(tiling_len);                                        \
+  auto workspace_holder = gert::ContinuousVector::Create<size_t>(8);                           \
+  auto workspace = reinterpret_cast<gert::ContinuousVector*>(workspace_holder.get());          \
+  auto faker = gert::TilingContextFaker()                                                      \
+                    .NodeIoNum(input_size, output_size)                                        \
+                    .TilingData(param.get())                                                   \
+                    .Workspace(workspace);                                                     \
+  faker = faker.CompileInfo(&compile_info);                                                    \
+  std::vector<gert::StorageShape> storage_shapes(input_size);                                  \
+  std::vector<void *> input_shapes_ref(input_size);                                            \
+  std::vector<uint8_t*> const_tensors;                                                         \
+  size_t count = 0;                                                                            \
+  for (size_t idx = 0; idx < irnum.size(); idx++) {                                            \
+    for (size_t i = 0; i < irnum[idx]; ++i) {                                                  \
+      auto input_desc = operator_info->MutableInputDesc(count);                                \
+      ASSERT_NE(input_desc, nullptr);                                                          \
+      ge::Format input_format = input_desc->GetFormat();                                       \
+      ge::Format origin_format = input_desc->GetOriginFormat();                                \
+      ge::DataType dtype = input_desc->GetDataType();                                          \
+      faker = faker.NodeInputTd(count, dtype, origin_format, input_format);                    \
+      for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                             \
+        storage_shapes[count].MutableOriginShape().AppendDim(dim);                             \
+      }                                                                                        \
+      for (int64_t dim : input_desc->MutableShape().GetDims()) {                               \
+        storage_shapes[count].MutableStorageShape().AppendDim(dim);                            \
+      }                                                                                        \
+      input_shapes_ref[count] = &storage_shapes[count];                                        \
+      count++;                                                                                 \
+    }                                                                                          \
+    faker = faker.InputShapes(input_shapes_ref);                                               \
+    faker = faker.IrInstanceNum(irnum);                                                        \
+  }                                                                                            \
+  std::vector<gert::StorageShape> output_shapes(output_size);                                  \
+  std::vector<void *> output_shapes_ref(output_size);                                          \
+  if (output_size > 0) {                                                                       \
+    for (size_t i = 0; i < output_size; ++i) {                                                 \
+      auto output_desc = operator_info->MutableOutputDesc(i);                                  \
+      ASSERT_NE(output_desc, nullptr);                                                         \
+      ge::Format input_format = output_desc->GetFormat();                                      \
+      ge::Format origin_format = output_desc->GetOriginFormat();                               \
+      ge::DataType dtype = output_desc->GetDataType();                                         \
+      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);                       \
+      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                            \
+        output_shapes[i].MutableOriginShape().AppendDim(dim);                                  \
+      }                                                                                        \
+      for (int64_t dim : output_desc->MutableShape().GetDims()) {                              \
+        output_shapes[i].MutableStorageShape().AppendDim(dim);                                 \
+      }                                                                                        \
+      output_shapes_ref[i] = &output_shapes[i];                                                \
+    }                                                                                          \
+    faker = faker.OutputShapes(output_shapes_ref);                                             \
+  }                                                                                            \
+  ATTACH_ATTRS_TO_FAKER(faker, op, attrs);                                                     \
+  auto holder = faker.Build()
+
+#define ATTACH_OPERATOR_TO_HOLDER_CONST(holder, op, input_const, attrs, tiling_len, info)  \
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);                             \
+  ASSERT_NE(operator_info, nullptr);                                                       \
+  size_t input_size = operator_info->GetInputsSize();                                      \
+  size_t output_size = operator_info->GetOutputsSize();                                    \
+  auto param = gert::TilingData::CreateCap(tiling_len);                                    \
+  auto workspace_holder = gert::ContinuousVector::Create<size_t>(8);                       \
+  auto workspace = reinterpret_cast<gert::ContinuousVector*>(workspace_holder.get());      \
+  auto faker = gert::TilingContextFaker()                                                  \
+                    .NodeIoNum(input_size, output_size)                                    \
+                    .TilingData(param.get())                                               \
+                    .Workspace(workspace);                                                 \
+  faker = faker.CompileInfo(&info);                                                        \
+  std::vector<gert::StorageShape> storage_shapes(input_size);                              \
+  std::vector<void*> input_shapes_ref(input_size);                                         \
+  std::vector<uint8_t*> const_tensors;                                                     \
+  if (input_size > 0) {                                                                    \
+    for (size_t i = 0; i < input_size; ++i) {                                              \
+      if (input_const[i]) {                                                                \
+        uint8_t* input_tensor_holder = GetConstTensor(op, i);                              \
+        if (input_tensor_holder == nullptr) continue;                                      \
+        input_shapes_ref[i] = input_tensor_holder;                                         \
+        const_tensors.push_back(input_tensor_holder);                                      \
+      } else {                                                                             \
+        auto input_desc = operator_info->MutableInputDesc(i);                              \
+        ASSERT_NE(input_desc, nullptr);                                                    \
+        ge::Format input_format = input_desc->GetFormat();                                 \
+        ge::Format origin_format = input_desc->GetOriginFormat();                          \
+        ge::DataType dtype = input_desc->GetDataType();                                    \
+        faker = faker.NodeInputTd(i, dtype, origin_format, input_format);                  \
+        for (int64_t dim : input_desc->GetOriginShape().GetDims()) {                       \
+          storage_shapes[i].MutableOriginShape().AppendDim(dim);                           \
+        }                                                                                  \
+        for (int64_t dim : input_desc->MutableShape().GetDims()) {                         \
+          storage_shapes[i].MutableStorageShape().AppendDim(dim);                          \
+        }                                                                                  \
+        input_shapes_ref[i] = &storage_shapes[i];                                          \
+      }                                                                                    \
+    }                                                                                      \
+    faker = faker.InputShapes(input_shapes_ref);                                           \
+    std::vector<uint32_t> irnum(input_size, 1);                                            \
+    faker = faker.IrInstanceNum(irnum);                                                    \
+  }                                                                                        \
+  std::vector<gert::StorageShape> output_shapes(output_size);                              \
+  std::vector<void *> output_shapes_ref(output_size);                                      \
+  if (output_size > 0) {                                                                   \
+    for (size_t i = 0; i < output_size; ++i) {                                             \
+      auto output_desc = operator_info->MutableOutputDesc(i);                              \
+      ASSERT_NE(output_desc, nullptr);                                                     \
+      ge::Format input_format = output_desc->GetFormat();                                  \
+      ge::Format origin_format = output_desc->GetOriginFormat();                           \
+      ge::DataType dtype = output_desc->GetDataType();                                     \
+      faker = faker.NodeOutputTd(i, dtype, input_format, input_format);                    \
+      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {                        \
+        output_shapes[i].MutableOriginShape().AppendDim(dim);                              \
+      }                                                                                    \
+      for (int64_t dim : output_desc->MutableShape().GetDims()) {                          \
+        output_shapes[i].MutableStorageShape().AppendDim(dim);                             \
+      }                                                                                    \
+      output_shapes_ref[i] = &output_shapes[i];                                            \
+    }                                                                                      \
+    faker = faker.OutputShapes(output_shapes_ref);                                         \
+  }                                                                                        \
+  ATTACH_ATTRS_TO_FAKER(faker, op, attrs);                                                 \
   auto holder = faker.Build()
 
 #define ATTACH_OPERATOR_TO_HOLDER_CONST(holder, op, input_const, attrs, tiling_len, info)             \

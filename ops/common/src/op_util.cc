@@ -56,4 +56,18 @@ std::vector<int64_t> ToVector(const gert::Shape& shape) {
 std::string ToString(const gert::Shape& shape) {
   return ge::DebugString(ToVector(shape));
 }
+
+std::string ToString(const std::vector<int64_t>& shape) {
+  return ge::DebugString(shape);
+}
+
+std::string ToString(const std::vector<gert::Shape>& shapes) {
+  string str = "[";
+  for (gert::Shape shape : shapes) {
+    str += ToString(shape);
+    str += ", ";
+  }
+  str += "]";
+  return str;
+}
 }  // namespace ops

@@ -7,6 +7,8 @@
 #include "split_combination_ops.h"
 #include "array_ops.h"
 #include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
+#include "concat_d.h"
 
 using namespace std;
 using namespace ge;
@@ -35,7 +37,7 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-TEST_F(ConcatTiling, Concat_tiling1) {
+TEST_F(ConcatTiling, Concatd_tiling1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
@@ -60,9 +62,19 @@ TEST_F(ConcatTiling, Concat_tiling1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 32 0 0 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 1 32 0 0 ");
 }
 
-TEST_F(ConcatTiling, Concat_tiling2) {
+TEST_F(ConcatTiling, Concatd_tiling2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
@@ -87,6 +99,16 @@ TEST_F(ConcatTiling, Concat_tiling2) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 4 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "4 1 4 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling3) {
@@ -114,6 +136,16 @@ TEST_F(ConcatTiling, Concat_tiling3) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "4 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling4) {
@@ -153,6 +185,16 @@ TEST_F(ConcatTiling, Concat_tiling4) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 1 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "4 1 1 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling5) {
@@ -192,6 +234,16 @@ TEST_F(ConcatTiling, Concat_tiling5) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 1 192 64 0 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling6) {
@@ -231,6 +283,16 @@ TEST_F(ConcatTiling, Concat_tiling6) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 1 192 64 0 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling7) {
@@ -270,6 +332,16 @@ TEST_F(ConcatTiling, Concat_tiling7) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 1 192 64 0 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling8) {
@@ -309,6 +381,16 @@ TEST_F(ConcatTiling, Concat_tiling8) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 192 64 0 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 1 192 64 0 ");
 }
 
 TEST_F(ConcatTiling, Concat_tiling9) {
@@ -348,6 +430,16 @@ TEST_F(ConcatTiling, Concat_tiling9) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 1 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "4 1 1 ");
 }
 
 static string to_string_int64(const std::stringstream& tiling_data) {
@@ -360,6 +452,18 @@ static string to_string_int64(const std::stringstream& tiling_data) {
     result += " ";
   }
 
+  return result;
+}
+static std::string concatd_tostring(void *buf, size_t size)
+{
+  std::string result;
+  const int64_t *data = reinterpret_cast<const int64_t *>(buf);
+  size_t len = size / sizeof(int64_t);
+  len = (len >= 8) ? data[5] * 2 + 8 : len;
+  for (size_t i = 0; i < len; i++) {
+    result += std::to_string(data[i]);
+    result += " ";
+  }
   return result;
 }
 
@@ -388,6 +492,16 @@ TEST_F(ConcatTiling, Concat_tik_tiling1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), "1 1 384 256 960 3 0 0 256 0 320 256 384 576 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_CUSTOM(holder, concatd_tostring, "1 1 384 256 960 3 0 0 256 0 320 256 384 576 ");
 }
 
 TEST_F(ConcatTiling, Concat_tik_tiling2) {
@@ -415,6 +529,16 @@ TEST_F(ConcatTiling, Concat_tik_tiling2) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), "1 4 96 64 240 3 0 0 64 0 80 64 96 144 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_CUSTOM(holder, concatd_tostring, "1 4 96 64 240 3 0 0 64 0 80 64 96 144 ");
 }
 
 TEST_F(ConcatTiling, Concat_tik_tiling3) {
@@ -499,6 +623,16 @@ TEST_F(ConcatTiling, Concat_tik_tiling3) {
       to_string_int64(runInfo.GetAllTilingData()),
       "1 4 34 5 585 30 0 0 5 0 6 5 7 11 8 18 9 26 10 35 11 45 12 56 13 68 14 81 15 95 16 110 17 126 18 143 19 161 20 "
       "180 21 200 22 221 23 243 24 266 25 290 26 315 27 341 28 368 29 396 30 425 31 455 32 486 33 518 34 551 ");
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {30};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_CUSTOM(holder, concatd_tostring, "1 4 34 5 585 30 0 0 5 0 6 5 7 11 8 18 9 26 10 35 11 45 12 56 13 68 14 81 15 95 16 110 17 126 18 143 19 161 20 180 21 200 22 221 23 243 24 266 25 290 26 315 27 341 28 368 29 396 30 425 31 455 32 486 33 518 34 551 ");
 }
 
 TEST_F(ConcatTiling, Concat_tik_tiling4) {
@@ -525,6 +659,15 @@ TEST_F(ConcatTiling, Concat_tik_tiling4) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_FAILED);
 }
 
 TEST_F(ConcatTiling, Concat_tik_tiling5) {
@@ -551,6 +694,11 @@ TEST_F(ConcatTiling, Concat_tik_tiling5) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO_ERROR("ConcatD", compileInfo, info);
 }
 
 TEST_F(ConcatTiling, Concat_tik_tiling6) {
@@ -577,4 +725,13 @@ TEST_F(ConcatTiling, Concat_tik_tiling6) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+
+  optiling::ConcatDCompileInfo info;
+  int32_t tiling_len = sizeof(optiling::ConcatDTilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("ConcatD", compileInfo, info);
+  std::vector<uint32_t> irnum = {3};
+  std::vector<std::string> attrs;
+  ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_FAILED);
 }

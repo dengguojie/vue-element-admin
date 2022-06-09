@@ -91,6 +91,8 @@ std::string ToString(const ge::Format& format);
  * @return string: shape string
  */
 std::string ToString(const gert::Shape& shape);
+std::string ToString(const std::vector<int64_t>& shape);
+std::string ToString(const std::vector<gert::Shape>& shapes);
 
 /*
  * @brief: trans the gert::Shape to vector<int64_t>

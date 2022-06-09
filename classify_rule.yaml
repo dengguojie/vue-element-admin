@@ -1630,6 +1630,10 @@ vector_B:
       - ops/built-in/op_proto/runtime/reshape_op_impl.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.h
+      - ops/built-in/op_tiling/runtime/concat_d.cc
+      - ops/built-in/op_tiling/runtime/concat_d.h
+      - ops/built-in/op_tiling/runtime/tile_d.cc
+      - ops/built-in/op_tiling/runtime/tile_d.h
       - ops/built-in/op_tiling/runtime/flatten.cc
       - ops/built-in/op_tiling/runtime/flatten.h
       - ops/built-in/op_tiling/runtime/layer_norm.cc

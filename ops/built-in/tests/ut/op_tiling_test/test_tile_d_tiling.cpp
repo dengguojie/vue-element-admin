@@ -19,6 +19,8 @@
 #include "register/op_tiling_registry.h"
 #include "selection_ops.h"
 #include "array_ops.h"
+#include "common_unittest.h"
+#include "tile_d.h"
 
 using namespace std;
 
@@ -74,4 +76,12 @@ TEST_F(TileDTiling, TileD_tiling1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "777 669 2 ");
+
+  optiling::TileDCompileInfo info;
+  int32_t tiling_len = sizeof(int32_t) * 3;
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("TileD", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "TileD", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "777 669 2 ");
 }

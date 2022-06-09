@@ -31,6 +31,7 @@
 #include "register/op_tiling_registry.h"
 #include "common/utils/ut_op_util.h"
 #include "reduce_infer_util.h"
+#include "op_util.h"
 
 using namespace std;
 using namespace ge;
@@ -57,10 +58,7 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
    ASSERT_NE(holder.GetContext<gert::InferShapeContext>(), nullptr);                           \
    auto out_shape = holder.GetContext<gert::InferShapeContext>()->GetOutputShape(index);       \
    ASSERT_NE(out_shape, nullptr);                                                              \
-   ASSERT_EQ(out_shape->GetDimNum(), expect_dims.size());                                      \
-   for (size_t j = 0; j < expect_dims.size(); j++) {                                           \
-     ASSERT_EQ(out_shape->GetDim(j), expect_dims[j]);                                          \
-   }
+   ASSERT_EQ(ops::ToString(*out_shape), ToString(expect_dims))
 
 #define ADD_ATTR_CASE(vttype, datetype)                              \
   case ge::AnyValue::ValueType::vttype: {                            \
