@@ -424,3 +424,4 @@ from .cdist_grad import cdist_grad
 from .group_norm import group_norm
 from .sign_bits_unpack import sign_bits_unpack
 from .erfinv import erfinv
+from .sign_bits_pack import sign_bits_pack

@@ -1785,4 +1785,94 @@ IMPLEMT_COMMON_INFERFUNC(ScaledMaskedSoftmaxGradInferShape) {
 }
 COMMON_INFER_FUNC_REG(ScaledMaskedSoftmaxGrad, ScaledMaskedSoftmaxGradInferShape);
 // ------------------ScaledMaskedSoftmaxGrad END------------------ 
+// ----------------------SignBitsPack Start------------------------------
+IMPLEMT_VERIFIER(SignBitsPack, SignBitsPackVerify) {
+  int32_t dim;
+  if (op.GetAttr("size", dim) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "size tiling attribute must exist.\n");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+int64_t pack_rate = 8;
+int64_t ceil(int64_t num) {
+  if (num % pack_rate == 0) {
+    return num / pack_rate;
+  } else {
+    return num / pack_rate + 1;
+  }
+}
+
+IMPLEMT_COMMON_INFERFUNC(SignBitsPackInferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_info == nullptr) {
+    OP_LOGE(TbeGetName(op).c_str(),"Get op_info failed.");
+    return GRAPH_FAILED;
+  }
+  auto x_desc = op_info->MutableInputDesc("x");
+  auto x_mutable_shape = x_desc->MutableShape();
+  std::vector<int64_t> x_dims = x_mutable_shape.GetDims();
+  int64_t x_shape = x_dims[0];
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  x_desc->GetShapeRange(x_range);
+  auto y_desc = op_info->MutableOutputDesc("y");
+
+  int32_t dim;
+  if (op.GetAttr("size", dim) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (dim <= 0) {
+    std::string err_msg = "dim size must be larger than zero!";
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  int64_t y_shape = 0;
+  std::pair<int64_t, int64_t> y_dim_range;
+  if (x_shape != -1) {
+    y_shape = ceil(x_shape) / dim;
+    y_dim_range = std::pair<int64_t, int64_t>{y_shape, y_shape};
+  } else {
+    y_shape = -1;
+    int64_t first_range = 0;
+    int64_t second_range = 0;
+    if (x_range[0].first == 1) {
+      first_range = 1;
+    } else {
+      first_range = ceil(x_range[0].first) / dim;
+    }
+    if (x_range[0].second == -1) {
+      second_range = -1;
+    } else {
+      second_range = ceil(x_range[0].second) / dim;
+    }
+    y_dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+  
+  DataType y_dtype;
+  y_dtype = DT_UINT8;
+
+  std::vector<int64_t> y_dims;
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  y_dims.push_back(dim);
+  y_dims.push_back(y_shape);
+
+  y_range.push_back(std::pair<int64_t, int64_t>{dim, dim});
+  y_range.push_back(y_dim_range);
+
+  y_desc->SetShape(GeShape(y_dims));
+  y_desc->SetShapeRange(y_range);
+  y_desc->SetDataType(y_dtype);
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(SignBitsPack, SignBitsPackInferShape);
+
+// Registered verify function
+VERIFY_FUNC_REG(SignBitsPack, SignBitsPackVerify);
+// ----------------------SignBitsPack End------------------------------
 }  // namespace ge

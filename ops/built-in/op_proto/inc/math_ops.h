@@ -1335,6 +1335,25 @@ REG_OP(ScaledMaskedSoftmaxGrad)
     .ATTR(scale, Float, 1.0)
     .ATTR(fixed_triu_mask, Bool, false)
     .OP_END_FACTORY_REG(ScaledMaskedSoftmaxGrad)
+    
+/**
+ * @brief SignBitsPack.
+
+ * @par Inputs:
+ * one input, including:
+ * @li x: A 1D Tensor of float32 or float16.
+ * 
+ * @par Attributes:
+ * @li size: first dim value of output tensor.
+ * 
+ * @par Outputs:
+ * @li y: A 2D Tensor of type uint8 with shape (size, N)
+ */
+REG_OP(SignBitsPack)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_UINT8}))
+    .REQUIRED_ATTR(size, Int)
+    .OP_END_FACTORY_REG(SignBitsPack)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

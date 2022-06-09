@@ -1,0 +1,34 @@
+[
+  {
+    "op": "SignBitsPack",
+    "input_desc": [
+      {
+        "shape": [
+          2496
+        ],
+        "format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          312
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "value": 1,
+        "type": "int"
+      }
+    ],
+    "case_name": "SignBitsPack_0"
+  }
+]

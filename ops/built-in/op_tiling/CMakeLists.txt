@@ -186,6 +186,7 @@ set(_optiling_files
   maxpoolgradwithargmaxv2.cc
   maxpoolwithargmaxv2.cc
   sign_bits_unpack.cc
+  sign_bits_pack.cc
   bounding_box_decode.cc
   iou.cc
   layer_norm.cc
