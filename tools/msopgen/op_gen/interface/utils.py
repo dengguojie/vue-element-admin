@@ -423,12 +423,13 @@ def read_file(op_file: str) -> None:
         pass
 
 
-def do_write_file(op_file: str, new_str: str) -> None:
+def do_write_file(op_file: str, new_str: str) -> bool:
     if os.path.exists(op_file):
         print_warn_log(op_file + " already exists!")
-        return
+        return False
     with os.fdopen(os.open(op_file, ConstManager.WRITE_FLAGS, ConstManager.WRITE_MODES), 'w') as fout:
         fout.write(new_str)
+    return True
 
 
 def write_files(op_file: str, new_str: str) -> None:
@@ -439,13 +440,16 @@ def write_files(op_file: str, new_str: str) -> None:
     :return:
     """
     try:
-        do_write_file(op_file, new_str)
+        has_written_file = do_write_file(op_file, new_str)
     except OSError as err:
         print_error_log("Unable to write file(%s): %s." % op_file % str(err))
         raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR) from err
     finally:
         pass
-    print_info_log("File %s generated successfully." % op_file)
+    if has_written_file:
+        print_info_log("File %s generated successfully." % op_file)
+    else:
+        print_warn_log("Cannot write identically named files to the same directory.")
 
 
 def write_json_file(json_path: str, content: str) -> None:

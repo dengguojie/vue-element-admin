@@ -240,12 +240,12 @@ class OPFile(metaclass=ABCMeta):
     def _failed_add_op_in_ms_proj(self: any) -> bool:
         if os.path.isdir(
                 os.path.join(self.output_path, ConstManager.PROJ_MS_NAME)):
+            # indicate that this is a mindspore aicore project
             return True
-        if os.path.isdir(os.path.join(self.output_path, 'framework',
-                                      ConstManager.PROJ_MS_NAME)):
+        if os.path.isdir(os.path.join(self.output_path, 'framework', ConstManager.PROJ_MS_NAME)):
             # indicate that this is a mindspore aicpu project can support add mindspore aicpu operator
-            if self.fmk_type in ConstManager.FMK_MS:
-                return False
+            if self.fmk_type not in ConstManager.FMK_MS:
+                return True
         else:
             if self.fmk_type in ConstManager.FMK_MS:
                 return True
