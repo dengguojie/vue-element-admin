@@ -122,11 +122,10 @@ Status AttentionLnQKVFusionPass::Fusion(ge::ComputeGraph &graph,
     OP_LOGW(FUSED_OP_TYPE, "Fail to get platform info.");
     optional_info.soc_version == "";
   }
-  size_t core_num = platform_info.soc_info.ai_core_cnt;
   const auto &instrinsicMap = platform_info.ai_core_intrinsic_dtype_map["Intrinsic_vln"];
   bool support_fp32_flag =
       find(instrinsicMap.begin(), instrinsicMap.end(), "float32") != instrinsicMap.end();
-  if (!support_fp32_flag || (core_num != kCoreNum8 && core_num != kCoreNum32)) {
+  if (!support_fp32_flag) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "platform not supported.");
     return NOT_CHANGED;
   }
@@ -134,7 +133,6 @@ Status AttentionLnQKVFusionPass::Fusion(ge::ComputeGraph &graph,
   std::vector<ge::NodePtr> conf_trans_list;
   std::vector<ge::NodePtr> matmul_list;
   if (!IsMatch(ln_node, conf_trans_list, matmul_list)) {
-    OP_LOGD(ln_node, "Match AttentionLnQKVFusionPass failed.");
     return NOT_CHANGED;
   }
   ge::NodePtr attention_ln_qkv_node = nullptr;
@@ -188,24 +186,22 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
     out_anchor = reformat_node->GetOutDataAnchor(0);
   }
   if (!UpgradeNodeList(out_anchor, conf_trans_list, matmul_list)) {
-    OP_LOGD(ln_node, "upgrade matmul_list && conf_trans_list failed!");
     return false;
   }
   // shape_check
   if (!ShapeCheck(ln_node, matmul_list[0], conf_trans_list[0])) {
-    OP_LOGD(ln_node, "shape_check failed!");
     return false;
   }
   // dtype check
   auto ln_op_desc = ln_node->GetOpDesc()->GetOutputDesc(0);
   if (ln_op_desc.GetDataType() != ge::DT_FLOAT16) {
-    OP_LOGD(ln_node, "ln_node dtype is not fp16, but [%s]!",
+    OP_LOGI(ln_node, "ln_node dtype is not fp16, but [%s]!",
         ge::TypeUtils::DataTypeToSerialString(ln_op_desc.GetDataType()).c_str());
     return false;
   }
   // format check
   if (ln_op_desc.GetFormat() != ge::FORMAT_FRACTAL_NZ) {
-    OP_LOGD(ln_node, "ln_node output format is not FRACTAL_NZ, but [%s]!",
+    OP_LOGI(ln_node, "ln_node output format is not FRACTAL_NZ, but [%s]!",
         ge::TypeUtils::FormatToSerialString(ln_op_desc.GetFormat()).c_str());
     return false;
   }
@@ -220,23 +216,23 @@ bool AttentionLnQKVFusionPass::ShapeCheck(const ge::NodePtr &ln_node,
   // check shape 16 aligned
   bool shape_not_aligned = ln_out_shape[0] % kC0 != 0 || ln_out_shape[1] % kC0 != 0 || matmul_out_shape[1] % kC0 != 0;
   if (shape_not_aligned) {
-    OP_LOGD(ln_node, "ln_out_shape (%d, %d) not aligned.", ln_out_shape[0], ln_out_shape[1]);
+    OP_LOGI(ln_node, "ln_out_shape (%ld, %ld) not aligned.", ln_out_shape[0], ln_out_shape[1]);
     return false;
   }
   // check n_shape is supported
   bool unsupported_n_shape = matmul_out_shape[1] != ln_out_shape[1] || (matmul_out_shape[1] != kCandidateN1 &&
       matmul_out_shape[1] != kCandidateN2);
   if (unsupported_n_shape) {
-    OP_LOGD(matmul_node, "unsupported n_shape [%d] for matmul_qkv.", matmul_out_shape[1]);
+    OP_LOGI(matmul_node, "unsupported n_shape [%ld] for matmul_qkv.", matmul_out_shape[1]);
     return false;
   }
   if (ln_out_shape[0] % kInferMinMShape != 0) {
-    OP_LOGD(matmul_node, "m_shape should be times of kInferMinMShape [%d] in inference, but is [%d] now.",
+    OP_LOGI(matmul_node, "m_shape should be times of kInferMinMShape [%ld] in inference, but is [%ld] now.",
         kInferMinMShape, ln_out_shape[0]);
     return false;
   }
   if (training_flag && ln_out_shape[0] % kTrainMinMShape != 0) {
-    OP_LOGD(matmul_node, "m_shape should be times of kTrainMinMShape [%d] in training, but is [%d] now.",
+    OP_LOGI(matmul_node, "m_shape should be times of kTrainMinMShape [%ld] in training, but is [%ld] now.",
         kTrainMinMShape, ln_out_shape[0]);
     return false;
   }
@@ -248,8 +244,8 @@ bool AttentionLnQKVFusionPass::ShapeCheck(const ge::NodePtr &ln_node,
                      out_shape[kMInnerIndex] % kCandidateTilingM2 == 0);
   if (out_shape.size() != kOutDimSize || ln_out_shape[0] != out_shape[0] * out_shape[kMInnerIndex] * kC0 ||
       seq_check) {
-    OP_LOGD(conf_trans_node,
-        "out_shape[0] * out_shape[3] * 16 should be equal with ln_out_shape[0], the actual out_shape is [%d, %d].",
+    OP_LOGI(conf_trans_node,
+        "out_shape[0] * out_shape[3] * 16 should be equal with ln_out_shape[0], the actual out_shape is [%ld, %ld].",
         out_shape[0], out_shape[kMInnerIndex]);
     return false;
   }
@@ -293,7 +289,7 @@ bool AttentionLnQKVFusionPass::UpgradeNodeList(const ge::OutDataAnchorPtr &out_a
     FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(next_matmul_node->GetOpDesc(), "transpose_x2", trans_b),
         OP_LOGW(next_matmul_node, "failed to get attr trans_b."), return false);
     if (trans_a || trans_b) {
-      OP_LOGD(next_matmul_node, "trans_a/trans_b should be false/false, the actual trans_flags are [%s] and [%s].",
+      OP_LOGI(next_matmul_node, "trans_a/trans_b should be false/false, the actual trans_flags are [%s] and [%s].",
           kBoolToStr[trans_a].c_str(), kBoolToStr[trans_b].c_str());
       return false;
     }
@@ -421,7 +417,6 @@ Status AttentionLnQKVFusionPass::ProcessLayerNorm(ge::ComputeGraph &graph,
   std::vector<ge::NodePtr> remove_node_list = {ln_node};
   // in training, mean&&variance should be passed to LayerNormBackprop
   if (training_flag && SUCCESS != ProcessLayerNormBackprop(ln_node, attention_ln_qkv_node, remove_node_list)) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessLayerNormBackprop failed in training.");
     return FAILED;
   }
   // remove edge from ln to add
@@ -447,7 +442,6 @@ Status AttentionLnQKVFusionPass::ReplaceAttentionLnQKV(ge::ComputeGraph &graph,
                                                        ge::NodePtr &attention_ln_qkv_node) {
   // process layer_norm
   if (SUCCESS != ProcessLayerNorm(graph, ln_node, attention_ln_qkv_node)) {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to process layer_norm.");
     return FAILED;
   }
   // input starts from x, then kernel_query/key/value

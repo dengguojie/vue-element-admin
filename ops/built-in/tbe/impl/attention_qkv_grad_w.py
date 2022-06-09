@@ -45,7 +45,7 @@ class AttentionQKVGradW:
         self.n1_shape = self.kernel_shape[0]
         self.kernel_name = params.get("kernel_name")
         self.tik_instance = tik.Tik()
-        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.core_num = Constant.BLOCK_NUM_32
         self._init_gm_tensor(self.tik_instance)
         self._tiling_args_compute()
 

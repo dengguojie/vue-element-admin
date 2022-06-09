@@ -37,8 +37,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_1) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");
@@ -164,8 +165,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_2) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // matmul_dx_qkv
     auto query_x_data = op::Data("query_x_data");
@@ -257,8 +259,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_3) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");
@@ -384,8 +387,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_4) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");
@@ -511,8 +515,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_5) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");
@@ -638,8 +643,8 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_6) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 8;
-    opti_compilation_info.soc_version = "Ascend310P";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");
@@ -765,8 +770,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_7) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");
@@ -892,8 +898,9 @@ TEST_F(attention_qkv_gradx_fusion_test, attention_qkv_gradx_fusion_test_8) {
     fe::PlatformInfo platform_info;
     fe::OptionalInfo opti_compilation_info;
     platform_info.soc_info.ai_core_cnt = 32;
-    opti_compilation_info.soc_version = "Ascend910A";
-    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
     fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
     // ln_bp
     auto ln_dy_input_data = op::Data("ln_dy_input_data");

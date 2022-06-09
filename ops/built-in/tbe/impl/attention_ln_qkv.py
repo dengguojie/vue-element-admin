@@ -55,7 +55,8 @@ class AttentionLnQKV:
         self.epsilon = params.get("epsilon")
         self.kernel_name = params.get("kernel_name")
         self.tik_instance = tik.Tik()
-        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        # only support core_num be 32 or 8
+        self.core_num = 8 if tbe_platform.api_check_support("tik.load2dv2") else 32
         self._tiling_args_compute()
         self._init_gm_tensor(self.tik_instance)
         self._init_ln_tensors(self.tik_instance)
@@ -335,7 +336,7 @@ class AttentionLnQKV:
         '''
         data move n1mn0 to mn
         '''
-        if self.core_num == Constant.BLOCK_NUM_32:
+        if tbe_platform.api_check_support("tik.load2dv1"):
             src_ub, cast_ub, trans_ub = ub_tensor_list
             vconv(tik_instance, src_ub, cast_ub, Constant.FRAC_REPEAT_NUM, False)
             tik_instance.vtranspose(trans_ub, cast_ub)
@@ -436,7 +437,7 @@ class AttentionLnQKV:
 
     def _load_2d(self, src, dst, instr_params):
         '''
-        load_2d instr is different in Ascend910 and Ascend310P
+        load_2d instr is different in different platforms
         '''
         tik_instance = self.tik_instance
         start_index, repeat, repeat_stride, sid, is_transpose = instr_params
@@ -477,7 +478,7 @@ def _check_shape_and_dtype(x, kernels, outputs):
         Constant.DTYPE_SIZE.get(data_type)):
         error_manager_cube.raise_err_specific_user("attention_ln_qkv",
                                                    "k1_shape is too large to load once in layer_norm calculation.")
-    if tbe_platform.get_soc_spec(tbe_platform.CORE_NUM) == Constant.BLOCK_NUM_32:
+    if isinstance(mean_shape, list) and len(mean_shape) > 0 and isinstance(var_shape, list) and len(var_shape) > 0:
         check_equal_shape("attention_ln_qkv", [mean_shape[0], input_x_ori_shape[0], var_shape[0]],
                           "invalid mean_out_shape/variance_out_shape.")
     input_x_format = x.get("format").upper()
