@@ -30,8 +30,7 @@ from impl.util.platform_adapter import register_operator_compute
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 # 'pylint: disable=locally-disabled,too-many-arguments
 @register_operator_compute("BNInferGrad", op_mode="dynamic", support_fusion=True)
-def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
-                          epsilon, kernel_name="bn_infer_grad"):
+def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop, epsilon, kernel_name="bn_infer_grad"):
     """
     Compute for bn_infer_grad_compute
     x_norm:(x-input_reserve_space_1)*
@@ -61,18 +60,19 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
     Returns
     -------
     res: x_backprop
-   """
+    """
     shape_x = shape_util.shape_to_list(grads.shape)
 
     is_cast = False
-    if grads.dtype == "float16" and \
-            tbe_platform.api_check_support("tbe.dsl.vdiv", "float32"):
+    if grads.dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vdiv", "float32"):
         is_cast = True
         grads = tbe.cast_to(grads, "float32")
 
     data_adds = tbe.vadds(batch_variance, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
-    data_rsqrts = tbe.vrec(data_rsqrt, "high_precision")
+    shape_var = shape_util.shape_to_list(batch_variance.shape)
+    data_cast = tbe.broadcast(tvm.const(1, "float32"), shape_var)
+    data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
 
     scale_mul = tbe.vmul(scale, data_rsqrts)
     scale_mul_broadcast = tbe.broadcast(scale_mul, shape_x)
@@ -83,55 +83,10 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
     return res
 
 
-def _check_shape(shape_grads, shape_batch_variance):
-    """
-    Function to check if the shape is in line with norms.
-
-    Parameters
-    ----------
-    shape_grads: list or tuple
-        input grads's data shape
-    shape_batch_variance: list or tuple
-        input batch_variance's data shape
-    Returns
-    -------
-    None
-    """
-    para_check.check_shape(shape_grads, param_name="grads")
-
-    para_check.check_shape(shape_batch_variance, param_name="batch_variance")
-
-    dim_c1 = shape_grads[1]
-    dim_c0 = shape_grads[4]
-
-    if len(shape_grads) != 5:
-        error_detail = "This operator can only support 5D"
-        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
-    if dim_c0 != 16:
-        error_detail = "shape_grads last dim must be 16"
-        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "grads", error_detail)
-
-    if len(shape_batch_variance) != 5:
-        error_detail = "This operator can only support 5D"
-        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
-
-    if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1 \
-            or shape_batch_variance[3] != 1:
-        error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
-        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
-
-    if shape_batch_variance[1] != dim_c1 or shape_batch_variance[4] != dim_c0:
-        batch_variance_rule = "Dimension C of grads and batch_variance must be equal"
-        error_manager_vector.raise_err_check_params_rules("bn_infer_grad", batch_variance_rule, "batch_variance",
-                                                          shape_batch_variance[1] * shape_batch_variance[4])
-
-
 @register_operator("BNInferGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def bn_infer_grad(grads, scale, batch_variance,
-                  x_backprop, epsilon=0.0001,
-                  kernel_name="bn_infer_grad"):
+def bn_infer_grad(grads, scale, batch_variance, x_backprop, epsilon=0.0001, kernel_name="bn_infer_grad"):
     """
     algorithm: fused_batch_norm_grad_v2
     bn_infer_grad.
@@ -173,25 +128,23 @@ def bn_infer_grad(grads, scale, batch_variance,
     schedules, tensors = [], []
     for (_grads, _scale, _batch_variance) in ins:
         with tbe.compute():
-            shape_grads, shape_scale, shape_batch_variance = shape_util.variable_shape([_grads,
-                                                                                        _scale,
-                                                                                        _batch_variance])
-            grads_input = tvm.placeholder(shape_grads, name="grads_input",
-                                          dtype=input_grads_dtype)
-            scale_input = tvm.placeholder(shape_scale, name="x_input",
-                                          dtype=input_scale_dtype)
+            shape_grads, shape_scale, shape_batch_variance = shape_util.variable_shape(
+                [_grads, _scale, _batch_variance])
+            grads_input = tvm.placeholder(shape_grads, name="grads_input", dtype=input_grads_dtype)
+            scale_input = tvm.placeholder(shape_scale, name="x_input", dtype=input_scale_dtype)
             batch_variance_input = tvm.placeholder(shape_batch_variance,
                                                    name="batch_variance_input",
                                                    dtype=batch_variance_dtype)
 
-            res = bn_infer_grad_compute(grads_input, scale_input,
+            res = bn_infer_grad_compute(grads_input,
+                                        scale_input,
                                         batch_variance_input,
-                                        x_backprop, epsilon,
+                                        x_backprop,
+                                        epsilon,
                                         kernel_name=kernel_name)
             tensors.append([grads_input, scale_input, batch_variance_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

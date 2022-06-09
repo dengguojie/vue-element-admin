@@ -22,13 +22,16 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
+from impl.util import util_select_op_base
 from impl.util.util_common import is_unknown_rank_input
-from impl.bias_add import op_select_format as bias_add_op_select_format
+from impl.util.util_compute import check_support_fusion
 
 
+# 'pylint: disable=too-many-statements,too-many-branches,invalid-name,too-many-locals,unused-argument
 def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     """
     1.when the length of x's ori_shape is less than or equal
@@ -49,11 +52,83 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")
         bias : Tensor of (shape=(2), "ND")
     """
-    return bias_add_op_select_format(x, bias, y, data_format, kernel_name)
+    shape_bias = bias.get("ori_shape")
+    ori_shape_x = x.get("ori_shape")
+    c0 = 16
+    vmuls_support = tbe_platform.api_check_support("tbe.dsl.vmuls", "float32")
+    if len(ori_shape_x) <= 4:
+        if shape_bias[0] % c0 == 0 and len(ori_shape_x) == 4:
+            if not vmuls_support:
+                dtype_list = "float16, int32, float16"
+                format_list = "NC1HWC0, ND, ND"
+                bias_format_list = "ND, ND, ND"
+            else:
+                dtype_list = "float16, float, int32, float16, float"
+                format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
+                bias_format_list = "ND, ND, ND, ND, ND"
+        elif shape_bias[0] % c0 != 0 and len(ori_shape_x) == 4:
+            if not vmuls_support:
+                # NC1HWC0+NC1HWC0 ND+ND
+                dtype_list = "float16, int32, float16"
+                format_list = "NC1HWC0, ND, ND"
+                bias_format_list = "NC1HWC0, ND, ND"
+            else:
+                dtype_list = "float16, float, int32, float16, float"
+                format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
+                bias_format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
+        else:
+            if not vmuls_support:
+                # ND+ND
+                dtype_list = "int32, float16"
+                format_list = "ND, ND"
+                bias_format_list = "ND, ND"
+            else:
+                # ND+ND
+                dtype_list = "int32, float16, float"
+                format_list = "ND, ND, ND"
+                bias_format_list = "ND, ND, ND"
+    else:
+        if shape_bias[0] % c0 == 0:
+            if not vmuls_support:
+                # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
+                dtype_list = "int32, float16, int32, float16, int32, float16"
+                format_list = "NDHWC, NDHWC, NCDHW, NCDHW, NDC1HWC0, NDC1HWC0"
+                bias_format_list = "ND, ND, ND, ND, ND, ND"
+            else:
+                # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
+                dtype_list = "int32, float16, float, int32, float16, float, int32, float16, float"
+                format_list = "NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0"
+                bias_format_list = "ND, ND, ND, ND, ND, ND, ND, ND, ND"
+        else:
+            if not vmuls_support:
+                # NDHWC+NDHWC NCDHW+NCDHW
+                dtype_list = "int32, float16, int32, float16"
+                format_list = "NDHWC, NDHWC, NCDHW, NCDHW"
+                bias_format_list = "ND, ND, ND, ND"
+            else:
+                # NDHWC+NDHWC NCDHW+NCDHW
+                dtype_list = "int32, float16, float, int32, float16, float"
+                format_list = "NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW"
+                bias_format_list = "ND, ND, ND, ND, ND, ND"
+
+    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                           datatype=dtype_list,
+                                           format=format_list,
+                                           unknownshape_format=format_list)
+    input1 = util_select_op_base.gen_param(classify="input1", name="bias",
+                                           datatype=dtype_list,
+                                           format=bias_format_list,
+                                           unknownshape_format=bias_format_list)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                            datatype=dtype_list,
+                                            format=format_list,
+                                            unknownshape_format=format_list)
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
-# 'pylint: disable=too-many-locals,unused-argument
-# 'pylint: disable=too-many-statements,too-many-branches,invalid-name
 def check_equal(a, b):
     """
     check whether a equal to b or not
@@ -71,7 +146,7 @@ def check_equal(a, b):
     return True
 
 
-@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=check_support_fusion)
 def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
     """
     calculating data's bias add

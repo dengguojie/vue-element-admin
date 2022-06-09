@@ -24,10 +24,13 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_compute import check_support_fusion
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-statements
+@register_operator_compute("TileD", op_mode="dynamic", support_fusion=check_support_fusion)
 def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     """TVM calculation process, used for fusion operation.
 

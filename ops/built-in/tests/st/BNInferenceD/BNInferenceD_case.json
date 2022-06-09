@@ -54,12 +54,12 @@
       "output_desc": [
         {
           "shape": [
-              -2
+            2,
+            10,
+            5,
+            1
           ],
           "ori_shape": [
-            -2
-          ],
-          "typical_shape": [
             2,
             10,
             5,

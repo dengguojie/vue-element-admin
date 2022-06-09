@@ -28,6 +28,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
+from impl.util.util_compute import check_support_fusion
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
@@ -107,7 +108,7 @@ def op_select_format(input_x, input_target, output_y, reduction, kernel_name="kl
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
-@register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=check_support_fusion)
 def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size, kernel_name="kl_div"):
     """
     Parameters

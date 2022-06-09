@@ -32,6 +32,7 @@ from impl.bn_training_reduce_grad import op_select_format as bn_op_select_format
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.util_attr_common import OpAttr
+from impl.util.util_compute import check_support_fusion
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -127,7 +128,7 @@ def _check_format(data_format, origin_foramt):
                                                           "The origin format only supports NCHW when format is NCHW")
 
 
-@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=check_support_fusion)
 def bn_training_reduce_grad_compute(grads,
                                     x,
                                     diff_scale,

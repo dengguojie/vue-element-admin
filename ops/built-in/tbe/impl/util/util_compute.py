@@ -22,6 +22,7 @@ from te.lang.cce.te_compute.elewise_compute import vmuls
 from te.lang.cce.te_compute.elewise_compute import vabs
 from te.lang.cce.te_compute.elewise_compute import vadds
 from te.lang.cce.te_compute.elewise_compute import vdiv
+from impl.util.platform_adapter import tbe_context
 
 BATCH_MATMUL_LENGTH = 5
 
@@ -97,6 +98,13 @@ def check_fc_fuse(input_tensor):
         fc_fuse_max_dim_flag = len(item.shape) == 4 and item.op.attrs["format"] == "FRACTAL_NZ"
         if fc_fuse_min_dim_flag or fc_fuse_max_dim_flag:
             return True
+    return False
+
+
+def check_support_fusion():
+    """check fusion support, only static shape can support ub fusion"""
+    if tbe_context.get_context().get_op_mode() == "static":
+        return True
     return False
 
 

@@ -1531,6 +1531,7 @@ vector_B:
       - ops/built-in/tbe/impl/sqrt_grad.py
       - ops/built-in/tbe/impl/square_sum_v1.py
       - ops/built-in/tbe/impl/strided_slice_d.py
+      - ops/built-in/tbe/impl/bias_add.py
       - ops/built-in/tbe/impl/tile_with_axis.py
       - ops/built-in/tbe/impl/threshold.py
       - ops/built-in/tbe/impl/trans_data.py
@@ -2663,7 +2664,6 @@ unkown:
       - ops/built-in/tbe/impl/nll_loss_grad.py
       - ops/built-in/tbe/impl/fill_d.py
       - ops/built-in/tbe/impl/decode_boundaries_target.py
-      - ops/built-in/tbe/impl/bias_add.py
       - ops/built-in/tbe/impl/im2col.py
       - ops/built-in/tbe/impl/logical_not.py
       - ops/built-in/tbe/impl/scatter_update.py

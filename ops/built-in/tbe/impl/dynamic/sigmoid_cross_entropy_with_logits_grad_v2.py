@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_compute import check_support_fusion
 
 
 def get_cof_by_shape(predict_shape, precision_dtype):
@@ -37,15 +38,15 @@ def get_cof_by_shape(predict_shape, precision_dtype):
             reduce_elts *= i.value
         else:
             reduce_elts *= i
-    
+
     if isinstance(reduce_elts, float):
-        cof = reduce_elts ** (-1)
+        cof = reduce_elts**(-1)
         cof = tvm.const(cof, dtype=precision_dtype)
 
     else:
         cof = tbe.var("cof", dtype=precision_dtype)
         tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", precision_dtype)
-    
+
     return cof
 
 
@@ -61,10 +62,10 @@ def get_weight_shape(weight, predict_shape):
 
 
 # 'pylint: disable=too-many-arguments
-@register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=False)
-def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
-                                                      dout, weight, pos_weight,
-                                                      reduction="mean"):
+@register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2",
+                           op_mode="dynamic",
+                           support_fusion=check_support_fusion)
+def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target, dout, weight, pos_weight, reduction="mean"):
     """
     sigmoid_cross_entropy_with_logits_grad_v2 compute function
 
@@ -156,15 +157,15 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
 
 # 'pylint: disable=too-many-statements,too-many-arguments
 @register_operator("SigmoidCrossEntropyWithLogitsGradV2")
-@para_check.check_op_params(para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT,
-                            para_check.OPTION_INPUT,
-                            para_check.OPTION_INPUT,
-                            para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_STR,
-                            para_check.KERNEL_NAME)
-def sigmoid_cross_entropy_with_logits_grad_v2(predict, target, dout, weight, pos_weight, gradient,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+def sigmoid_cross_entropy_with_logits_grad_v2(predict,
+                                              target,
+                                              dout,
+                                              weight,
+                                              pos_weight,
+                                              gradient,
                                               reduction="mean",
                                               kernel_name="sigmoid_cross_entropy_with_logits_grad_v2"):
     """
@@ -318,7 +319,5 @@ def sigmoid_cross_entropy_with_logits_grad_v2(predict, target, dout, weight, pos
             schedules.append(sch)
 
     # build
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": tensors}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

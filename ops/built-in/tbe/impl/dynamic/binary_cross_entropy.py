@@ -28,6 +28,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_compute import check_support_fusion
 
 
 # 'pylint: disable=too-few-public-methods
@@ -159,7 +160,7 @@ def op_select_format(x, y, weight, output,
 
 # 'pylint: disable=invalid-name,too-many-arguments,too-many-branches
 # 'pylint: disable=unused-argument,too-many-locals,too-many-statements
-@register_operator_compute("BinaryCrossEntropy", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BinaryCrossEntropy", op_mode="dynamic", support_fusion=check_support_fusion)
 def binary_cross_entropy_compute(x, y, weight, output, axis,
                                  reduction, kernel_name):
     """

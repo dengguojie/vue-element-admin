@@ -26,11 +26,12 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.util_compute import check_support_fusion
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=C0103
-@register_operator_compute("TileWithAxis", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("TileWithAxis", op_mode="dynamic", support_fusion=check_support_fusion)
 def tile_with_axis_compute(x, shape_y):
     """TVM calculation process, used for fusion operation.
 

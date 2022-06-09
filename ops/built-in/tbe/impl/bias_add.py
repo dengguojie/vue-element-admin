@@ -16,12 +16,12 @@
 bias_add
 """
 import te.lang.cce as tbe
+import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-import te.platform as tbe_platform
-from impl.util import util_select_op_base
+from impl.dynamic.bias_add import op_select_format as bias_add_op_select_format
 
 
 # 'pylint: disable=too-many-locals,redefined-builtin,unused-argument
@@ -46,81 +46,7 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")
         bias : Tensor of (shape=(2), "ND")
     """
-    shape_bias = bias.get("ori_shape")
-    ori_shape_x = x.get("ori_shape")
-    c0 = 16
-    vmuls_support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls", "float32")
-    if len(ori_shape_x) <= 4:
-        if shape_bias[0] % c0 == 0 and len(ori_shape_x) == 4:
-            if not vmuls_support:
-                dtype_list = "float16, int32, float16"
-                format_list = "NC1HWC0, ND, ND"
-                bias_format_list = "ND, ND, ND"
-            else:
-                dtype_list = "float16, float, int32, float16, float"
-                format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
-                bias_format_list = "ND, ND, ND, ND, ND"
-        elif shape_bias[0] % c0 != 0 and len(ori_shape_x) == 4:
-            if not vmuls_support: 
-                # NC1HWC0+NC1HWC0 ND+ND
-                dtype_list = "float16, int32, float16"
-                format_list = "NC1HWC0, ND, ND"
-                bias_format_list = "NC1HWC0, ND, ND"
-            else:
-                dtype_list = "float16, float, int32, float16, float"
-                format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
-                bias_format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
-        else:
-            if not vmuls_support: 
-                # ND+ND
-                dtype_list = "int32, float16"
-                format_list = "ND, ND"
-                bias_format_list = "ND, ND"
-            else:
-                # ND+ND
-                dtype_list = "int32, float16, float"
-                format_list = "ND, ND, ND"
-                bias_format_list = "ND, ND, ND"
-    else:
-        if shape_bias[0] % c0 == 0:
-            if not vmuls_support:
-                # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
-                dtype_list = "int32, float16, int32, float16, int32, float16"
-                format_list = "NDHWC, NDHWC, NCDHW, NCDHW, NDC1HWC0, NDC1HWC0"
-                bias_format_list = "ND, ND, ND, ND, ND, ND"
-            else:
-                # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
-                dtype_list = "int32, float16, float, int32, float16, float, int32, float16, float"
-                format_list = "NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0"
-                bias_format_list = "ND, ND, ND, ND, ND, ND, ND, ND, ND"
-        else:
-            if not vmuls_support:
-                # NDHWC+NDHWC NCDHW+NCDHW
-                dtype_list = "int32, float16, int32, float16"
-                format_list = "NDHWC, NDHWC, NCDHW, NCDHW"
-                bias_format_list = "ND, ND, ND, ND"
-            else:
-                # NDHWC+NDHWC NCDHW+NCDHW
-                dtype_list = "int32, float16, float, int32, float16, float"
-                format_list = "NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW"
-                bias_format_list = "ND, ND, ND, ND, ND, ND"
-    
-    input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                           datatype=dtype_list,
-                                           format=format_list,
-                                           unknownshape_format=format_list)
-    input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                           datatype=dtype_list,
-                                           format=bias_format_list,
-                                           unknownshape_format=bias_format_list)
-    output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                            datatype=dtype_list,
-                                            format=format_list,
-                                            unknownshape_format=format_list)
-    param_list = [input0, input1, output0]
-    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
-
-    return param_dynamic_in_json
+    return bias_add_op_select_format(x, bias, y, data_format, kernel_name)
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("bias_add")

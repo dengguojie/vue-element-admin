@@ -26,6 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
+from impl.util.util_compute import check_support_fusion
 from impl.util.util_compute import get_cof
 from impl.dynamic.reduce_mean import get_calc_dtype
 
@@ -44,7 +45,7 @@ def get_axes(axes, shape_len, noop_with_empty_axes):
     return axes
 
 
-@register_operator_compute("ReduceMeanD", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("ReduceMeanD", op_mode="dynamic", support_fusion=check_support_fusion)
 def reduce_mean_d_compute(x,
                           y,
                           axes=None,

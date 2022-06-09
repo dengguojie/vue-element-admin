@@ -28,6 +28,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import get_current_build_config
 from impl.scale import op_select_format as static_op_select_format
+from impl.util.util_compute import check_support_fusion
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
@@ -445,7 +446,7 @@ def _fused_scale_bias_compute(x, scale, bias):
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name
-@register_operator_compute("Scale", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Scale", op_mode="dynamic", support_fusion=check_support_fusion)
 def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob, kernel_name="scale"):
     """
     algorithm: Scale
