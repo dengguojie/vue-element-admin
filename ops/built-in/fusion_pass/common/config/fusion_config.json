@@ -6,7 +6,8 @@
             "SplitConvFusionPass":"off",
             "BatchMultiClassNonMaxSuppressionEnableSubgraphFusionPass": "off",
             "BatchMultiClassNonMaxSuppressionInsertNMSBucketizeFusionPass": "off",
-            "BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass": "off"
+            "BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass": "off",
+            "ConcatCOptimize": "off"
         },
         "UBFusion":{
             "TbeMatmulFixpipeFusionPass": "off",
