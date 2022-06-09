@@ -1027,6 +1027,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
       - ops/built-in/framework/tf_plugin/non_zero_with_value_shape_plugin.cc
+      - ops/built-in/framework/tf_plugin/sparse_segment_sum_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
@@ -1233,6 +1234,7 @@ vector_B:
       - ops/built-in/op_tiling/space_to_batch_nd.cc
       - ops/built-in/op_tiling/sparse_apply_ftrl_d.cc
       - ops/built-in/op_tiling/sparse_apply_proximal_adagrad_d.cc
+      - ops/built-in/op_tiling/sparse_segment_sum_grad.cc
       - ops/built-in/op_tiling/split_d.cc
       - ops/built-in/op_tiling/split_v.cc
       - ops/built-in/op_tiling/strided_slice.cc
@@ -1486,6 +1488,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/square.py
       - ops/built-in/tbe/impl/dynamic/square_sum_v1.py
       - ops/built-in/tbe/impl/dynamic/strided_slice_grad.py
+      - ops/built-in/tbe/impl/dynamic/sparse_segment_sum_grad.py
       - ops/built-in/tbe/impl/dynamic/threshold_grad_v2_d.py
       - ops/built-in/tbe/impl/dynamic/threshold_v2_d.py
       - ops/built-in/tbe/impl/dynamic/tile.py
@@ -1579,6 +1582,7 @@ vector_B:
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
       - ops/CMakeLists.txt
       - ops/built-in/op_proto/nn_detect_ops.cc
+      - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
@@ -2521,7 +2525,6 @@ unkown:
       - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
       - ops/built-in/op_proto/inc/ctc_ops.h
       - ops/built-in/op_proto/inc/deep_md.h
-      - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/inc/hvd_ops.h
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
       - ops/built-in/op_proto/inc/nn_ops.h

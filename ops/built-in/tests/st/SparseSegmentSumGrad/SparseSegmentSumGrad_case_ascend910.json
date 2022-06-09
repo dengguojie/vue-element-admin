@@ -1,0 +1,418 @@
+[
+  {
+    "case_name": "test_sparse_segment_sum_grad_0_ascend910a",
+    "calc_expect_func_file": "./test_sparse_segment_sum_grad.py:calc_expect_func",
+    "op": "SparseSegmentSumGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [5,19994],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            100.0
+          ]
+        ],
+        "name": "grad",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape": [5,19994]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            6.0
+          ]
+        ],
+        "name": "indices",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            4.0
+          ]
+        ],
+        "name": "segment_ids",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [1],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value": [7],
+        "is_const": true,
+        "name": "output_dim0",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[1]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [7,19994],
+        "name": "output",
+        "param_type": "output"
+      }
+    ]
+  },
+  {
+    "case_name": "test_sparse_segment_sum_grad_1_ascend910a",
+    "calc_expect_func_file": "./test_sparse_segment_sum_grad.py:calc_expect_func",
+    "op": "SparseSegmentSumGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [50,44],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            100.0
+          ]
+        ],
+        "name": "grad",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[50,44]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            295.0
+          ]
+        ],
+        "name": "indices",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            48.0
+          ]
+        ],
+        "name": "segment_ids",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [1],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value": [300],
+        "is_const": true,
+        "name": "output_dim0",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[1]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [300,44],
+        "name": "output",
+        "param_type": "output"
+      }
+    ]
+  },
+  {
+    "case_name": "test_sparse_segment_sum_grad_2_ascend910a",
+    "calc_expect_func_file": "./test_sparse_segment_sum_grad.py:calc_expect_func",
+    "op": "SparseSegmentSumGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [1,19994],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            100.0
+          ]
+        ],
+        "name": "grad",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[1,19994]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            6.0
+          ]
+        ],
+        "name": "indices",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "name": "segment_ids",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [1],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value": [7],
+        "is_const": true,
+        "name": "output_dim0",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[1]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [7,19994],
+        "name": "output",
+        "param_type": "output"
+      }
+    ]
+  },
+  {
+    "case_name": "test_sparse_segment_sum_grad_3_ascend910a",
+    "calc_expect_func_file": "./test_sparse_segment_sum_grad.py:calc_expect_func",
+    "op": "SparseSegmentSumGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [50,1],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            100.0
+          ]
+        ],
+        "name": "grad",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[50,1]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            295.0
+          ]
+        ],
+        "name": "indices",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [12],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1.0,
+            48.0
+          ]
+        ],
+        "name": "segment_ids",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[12]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [1],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value": [300],
+        "is_const": true,
+        "name": "output_dim0",
+        "ori_format": "ND",
+        "param_type": "input",
+        "ori_shape":[1]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [300,1],
+        "name": "output",
+        "param_type": "output"
+      }
+    ]
+  }
+]

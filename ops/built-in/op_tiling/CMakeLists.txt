@@ -146,6 +146,7 @@ set(_optiling_files
   sparse_apply_ftrl_d.cc
   sparse_apply_proximal_adagrad_d.cc
   sparse_apply_common.cc
+  sparse_segment_sum_grad.cc
   split_dsl.cc
   split_d.cc
   split_v.cc

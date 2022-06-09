@@ -1218,6 +1218,35 @@ REG_OP(DenseCountSparseOutput)
     .OP_END_FACTORY_REG(DenseCountSparseOutput)
 
 /**
+* @brief Computes gradients for SparseSegmentSum . \n
+
+* @par Inputs:
+* The input grad must have be type float or double. Inputs include:
+* @li grad: A Tensor. Must be one of the following types: bfloat16, float16, float32, double.
+  gradient propagated to the SparseSegmentSum op.
+* @li indices: A Tensor. Must be one of the following types: int32, int64.
+  indices passed to the corresponding SparseSegmentSum op.
+* @li segment_ids: A Tensor of type int32, int64. segment_ids passed to the
+  corresponding SparseSegmentSum op.
+* @li output_dim0: A Tensor of type int32. dimension 0 of "x" passed to
+  SparseSegmentSum op . \n
+
+* @par Outputs:
+* output:A Tensor. Has the same type as grad . \n
+
+* @par Third-party framework compatibility
+* Compatible with tensorflow SparseSegmentSumGrad operator
+*/
+
+REG_OP(SparseSegmentSumGrad)
+    .INPUT(grad, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(indices, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(segment_ids, TensorType({DT_INT32, DT_INT64}))
+    .INPUT(output_dim0, TensorType({DT_INT32}))
+    .OUTPUT(output, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(SparseSegmentSumGrad)
+
+/**
  * @brief Count the number of occurrences of each value in the input ragged integer array,
  * and output it according to the sparse matrix. \n
 

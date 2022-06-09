@@ -127,6 +127,7 @@ from .sparse_apply_adagrad import sparse_apply_adagrad
 from .sparse_apply_adagrad_d import sparse_apply_adagrad_d
 from .sparse_apply_ftrl_v2_d import sparse_apply_ftrl_v2_d
 from .sparse_apply_rms_prop_d import sparse_apply_rms_prop_d
+from .sparse_segment_sum_grad import sparse_segment_sum_grad
 from .div import div
 from .sqrt import sqrt
 from .threshold_v2_d import threshold_v2_d

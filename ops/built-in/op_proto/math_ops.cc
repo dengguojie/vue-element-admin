@@ -25,6 +25,7 @@
 #include "util/util.h"
 #include "error_util.h"
 #include "data_preprocess.h"
+#include "util/vector_proto_profiling.h"
 
 namespace ge {
 
@@ -1357,9 +1358,9 @@ VERIFY_FUNC_REG(Cross, CrossVerify);
 
 // ----------------Cdist Begin------------------------
 bool infer_shape_cdist(Operator& op,
-                     const string& input_name1,
-                     const string& input_name2,
-                     const string& output_name) {
+                       const string& input_name1,
+                       const string& input_name2,
+                       const string& output_name) {
 
     TensorDesc output_desc = op.GetOutputDescByName(output_name.c_str());
 
@@ -1599,6 +1600,77 @@ IMPLEMT_COMMON_INFERFUNC(DenseCountSparseOutputInferShape) {
 
 COMMON_INFER_FUNC_REG(DenseCountSparseOutput, DenseCountSparseOutputInferShape);
 // ----------------DenseCountSparseOutput End----------------------------
+
+// ----------------------SparseSegmentSumGrad------------------------
+static void GetSparseSegmentSumGradConstValue(const Tensor& const_tensor, const DataType& dtype, int64_t& const_data) {
+  if (dtype == ge::DT_INT32) {
+    int32_t* const_data_ptr = const_cast<int32_t*>(reinterpret_cast<const int32_t*>(const_tensor.GetData()));
+    const_data = static_cast<int32_t>((*(const_data_ptr + 0)));
+  } else {
+    int64_t* const_data_ptr = const_cast<int64_t*>(reinterpret_cast<const int64_t*>(const_tensor.GetData()));
+    const_data = static_cast<int64_t>(*(const_data_ptr + 0));
+  }
+}
+
+IMPLEMT_COMMON_INFERFUNC(SparseSegmentSumGradInferShape) {
+  vector<string> input_infer_depends = {"output_dim0"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    OP_LOGE(TbeGetName(op).c_str(), "get op_desc failed.");
+    return GRAPH_FAILED;
+  }
+  op_desc->SetOpInferDepends(input_infer_depends);
+
+  Tensor input_output_dim0_tensor;
+  int64_t input_output_dim0;
+  DataType input_output_dim0_dtype = op_desc->GetInputDescPtr(3)->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+
+  if (GRAPH_SUCCESS != op.GetInputConstData("output_dim0", input_output_dim0_tensor)) {
+    input_output_dim0 = -1;
+    out_range.push_back(std::pair<int64_t, int64_t>(0, -1));
+  } else {
+    GetSparseSegmentSumGradConstValue(input_output_dim0_tensor, input_output_dim0_dtype, input_output_dim0);
+    out_range.push_back(std::pair<int64_t, int64_t>(input_output_dim0, input_output_dim0));
+  }
+
+  ge::GeShape shape = op_desc->GetInputDescPtr(0)->GetShape();
+  ge::GeShape shape_id = op_desc->GetInputDescPtr(1)->GetShape();
+  ge::GeShape shape_indices = op_desc->GetInputDescPtr(2)->GetShape();
+
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  ge::GeShape output_shape = output_desc->MutableShape();
+
+  size_t dim_id_size_input = shape_id.GetDimNum();
+  size_t dim_indices_size_input = shape_indices.GetDimNum();
+  DataType input_dtype = op_desc->GetInputDescPtr(0)->GetDataType();
+  if (dim_id_size_input != 1) {
+    OP_LOGE(TbeGetName(op).c_str(), "segment_ids' shape must be 1D.");
+    return GRAPH_FAILED;
+  }
+  if (dim_indices_size_input != 1) {
+    OP_LOGE(TbeGetName(op).c_str(), "segment_ids' shape must be 1D.");
+    return GRAPH_FAILED;
+  }
+  if (shape.IsUnknownDimNum()) {
+    output_desc->SetShape(shape);
+    output_desc->SetDataType(input_dtype);
+    return GRAPH_SUCCESS;
+  }
+  size_t rank = shape.GetDimNum();
+  output_shape.SetDimNum(rank);
+  output_shape.SetDim(0, input_output_dim0);
+  for (size_t i = 1; i < rank; i++) {
+    int64_t x_dim = shape.GetDim(i);
+    output_shape.SetDim(i, x_dim);
+  }
+  output_desc->SetShape(output_shape);
+  output_desc->SetDataType(input_dtype);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SparseSegmentSumGrad, SparseSegmentSumGradInferShape);
+// --------------------SparseSegmentSumGrad END----------------------
 
 // ----------------RaggedCountSparseOutput Begin--------------------------
 IMPLEMT_COMMON_INFERFUNC(RaggedCountSparseOutputInferShape) {
