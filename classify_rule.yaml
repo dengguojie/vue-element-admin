@@ -1606,6 +1606,8 @@ vector_B:
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.h
       - ops/built-in/op_tiling/runtime/flatten.cc
       - ops/built-in/op_tiling/runtime/flatten.h
+      - ops/built-in/op_tiling/runtime/layer_norm.cc
+      - ops/built-in/op_tiling/runtime/layer_norm.h
       - ops/built-in/op_tiling/runtime/max_pool_v3.cc
       - ops/built-in/op_tiling/runtime/max_pool_v3.h
       - ops/built-in/op_tiling/runtime/moving_sum_with_sigmoid.cc

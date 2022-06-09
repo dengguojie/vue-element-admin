@@ -11,6 +11,8 @@
 #include "op_tiling/op_tiling_util.h"
 #include "register/op_tiling_registry.h"
 #include "test_common.h"
+#include "common_unittest.h"
+#include "layer_norm.h"
 
 using namespace std;
 using namespace ge;
@@ -18,12 +20,16 @@ using namespace ut_util;
 
 class LayerNormTiling : public testing::Test {
  protected:
-  static void SetUpTestCase() { std::cout << "LayerNormTiling SetUp" << std::endl; }
+  static void SetUpTestCase() {
+    std::cout << "LayerNormTiling SetUp" << std::endl;
+  }
 
-  static void TearDownTestCase() { std::cout << "LayerNormTiling TearDown" << std::endl; }
+  static void TearDownTestCase() {
+    std::cout << "LayerNormTiling TearDown" << std::endl;
+  }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int32_t tmp = 0;
@@ -146,6 +152,14 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 9);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "132 512 16 16 989855744 ");
+
+  optiling::LayerNormOpInfo info;
+  int32_t tiling_len = 5 * 4;
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("LayerNorm", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "LayerNorm", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "132 512 16 16 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
@@ -258,6 +272,14 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 9);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "132 512 16 16 989855744 ");
+
+  optiling::LayerNormOpInfo info;
+  int32_t tiling_len = 5 * 4;
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("LayerNorm", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "LayerNorm", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "132 512 16 16 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
@@ -1956,7 +1978,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_unknown_rank) {
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  std::string compileInfo = R"({"is_support_vexp_pattern": true, "unknown_mode": true, "_fuse_axis": true, "_input_type": [0, 1, 1], "_reduce_axis_type": 3, "_broadcast_axis_type_list": [2], "_ori_broadcast_axis": [0, 1], "is_support_vexp": true, "reduce_mean_cof_dtype": "float16", "_pattern": "Norm", "_common_info": [32, 16, 256], "_exist_output_after_reduce": true, "_available_ub_size": {"2001": [32560, 32720, 26048, 26048], "4005": [32560, 32720, 32560, 32560], "5006": [32688, 26176, 26144, 26144]}, "_exist_workspace_after_reduce": false, "_workspace_info": {"1000200190": [2], "1000200199": [32], "1300200199": [32], "1000400500": [32], "1000400501": [2], "1200400500": [32], "1300400500": [32], "1000500610": [2], "1000500611": [32]}, "_vars": {"1000200190": ["_dim_0", "_ub_factor", "mean_cof"], "1000200199": ["_dim_0", "mean_cof"], "1300200199": ["_dim_0", "mean_cof"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_normal_vars": {"1000200190": ["_dim_0", "_ub_factor"], "1000200199": ["_dim_0"], "1300200199": ["_dim_0"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_attr_vars": {"1000200190": [], "1000200199": [], "1300200199": [], "1000400500": [], "1000400501": [], "1200400500": [], "1300400500": [], "1000500610": [], "1000500611": []}, "_custom_vars": {"1000200190": ["mean_cof"], "1000200199": ["mean_cof"], "1300200199": ["mean_cof"], "1000400500": ["mean_cof"], "1000400501": ["mean_cof"], "1200400500": ["mean_cof"], "1300400500": ["mean_cof"], "1000500610": [], "1000500611": []}, "_norm_vars": {"1000200190": [20000, 40000], "1000200199": [20000], "1300200199": [20000], "1000400500": [20000, 20001, 30000, 40000], "1000400501": [20000, 20001, 30000, 40000], "1200400500": [20000, 20001, 30000, 40000], "1300400500": [20000, 20001, 30000, 40000], "1000500610": [20001, 30000, 40000], "1000500611": [20001, 30000, 40000]}})";
+  std::string compileInfo =
+      R"({"is_support_vexp_pattern": true, "unknown_mode": true, "_fuse_axis": true, "_input_type": [0, 1, 1], "_reduce_axis_type": 3, "_broadcast_axis_type_list": [2], "_ori_broadcast_axis": [0, 1], "is_support_vexp": true, "reduce_mean_cof_dtype": "float16", "_pattern": "Norm", "_common_info": [32, 16, 256], "_exist_output_after_reduce": true, "_available_ub_size": {"2001": [32560, 32720, 26048, 26048], "4005": [32560, 32720, 32560, 32560], "5006": [32688, 26176, 26144, 26144]}, "_exist_workspace_after_reduce": false, "_workspace_info": {"1000200190": [2], "1000200199": [32], "1300200199": [32], "1000400500": [32], "1000400501": [2], "1200400500": [32], "1300400500": [32], "1000500610": [2], "1000500611": [32]}, "_vars": {"1000200190": ["_dim_0", "_ub_factor", "mean_cof"], "1000200199": ["_dim_0", "mean_cof"], "1300200199": ["_dim_0", "mean_cof"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_normal_vars": {"1000200190": ["_dim_0", "_ub_factor"], "1000200199": ["_dim_0"], "1300200199": ["_dim_0"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_attr_vars": {"1000200190": [], "1000200199": [], "1300200199": [], "1000400500": [], "1000400501": [], "1200400500": [], "1300400500": [], "1000500610": [], "1000500611": []}, "_custom_vars": {"1000200190": ["mean_cof"], "1000200199": ["mean_cof"], "1300200199": ["mean_cof"], "1000400500": ["mean_cof"], "1000400501": ["mean_cof"], "1200400500": ["mean_cof"], "1300400500": ["mean_cof"], "1000500610": [], "1000500611": []}, "_norm_vars": {"1000200190": [20000, 40000], "1000200199": [20000], "1300200199": [20000], "1000400500": [20000, 20001, 30000, 40000], "1000400501": [20000, 20001, 30000, 40000], "1200400500": [20000, 20001, 30000, 40000], "1300400500": [20000, 20001, 30000, 40000], "1000500610": [20001, 30000, 40000], "1000500611": [20001, 30000, 40000]}})";
 
   std::vector<std::vector<int64_t>> inputs{{20, 304, 512}, {512}, {512}};
   std::vector<std::vector<int64_t>> outputs{{20, 304, 512}, {20, 304, 1}, {20, 304, 1}};
@@ -1988,8 +2011,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_unknown_rank) {
   tensor_outputC.SetShape(ge::Shape(outputs[2]));
   tensor_outputC.SetDataType(output_types[2]);
   tensor_outputC.SetFormat(data_format);
-
   auto opParas = op::LayerNorm(op_name);
+  opParas.SetAttr("begin_norm_axis", 1);
   TENSOR_INPUT(opParas, tensor_inputA, x);
   TENSOR_INPUT(opParas, tensor_inputB, gamma);
   TENSOR_INPUT(opParas, tensor_inputC, beta);
@@ -1999,5 +2022,14 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_unknown_rank) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-}
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "20 155648 16 31130 108 ");
 
+  optiling::LayerNormOpInfo info;
+  int32_t tiling_len = 5 * 4;
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("LayerNorm", compileInfo, info);
+  std::vector<std::string> attrs{"begin_norm_axis"};
+  ATTACH_OPERATOR_TO_HOLDER_ATTRS(holder, opParas, attrs, tiling_len, info);
+  HOLDER_DO_TILING(holder, "LayerNorm", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "20 155648 16 31130 108 ");
+}

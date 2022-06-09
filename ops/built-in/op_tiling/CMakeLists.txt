@@ -16,6 +16,7 @@
 # the list of source files
 set(_optiling_files
   runtime/runtime2_util.cc
+  runtime/layer_norm.cc
   runtime/moving_sum_with_sigmoid.cc
   runtime/dynamic_atomic_addr_clean.cc
   runtime/flatten.cc
