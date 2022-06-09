@@ -49,7 +49,7 @@
 #include <string>
 #include <vector>
 
-#include "./util/error_util.h"
+#include "error_util.h"
 #include "common/util/error_manager/error_manager.h"
 #include "graph/utils/type_utils.h"
 #include "op_log.h"

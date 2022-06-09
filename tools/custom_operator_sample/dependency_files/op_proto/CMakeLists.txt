@@ -19,6 +19,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/util)
 include_directories(${CMAKE_SOURCE_DIR}/log)
 include_directories(${CMAKE_SOURCE_DIR}/metadef/inc/external/graph)
 include_directories(${CMAKE_SOURCE_DIR}/metadef/inc/external)
+include_directories(${CMAKE_SOURCE_DIR}/op_proto/common/inc)
 
 if("x${SRCS}" STREQUAL "x")
     add_custom_target(${OP_PROTO_TARGET}

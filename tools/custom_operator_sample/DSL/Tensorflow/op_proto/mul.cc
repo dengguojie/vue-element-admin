@@ -23,7 +23,7 @@
 #include <vector>
 #include "util/util.h"
 #include "op_log.h"
-#include "util/error_util.h"
+#include "error_util.h"
 #include "graph/utils/node_utils.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/debug/ge_attr_define.h"

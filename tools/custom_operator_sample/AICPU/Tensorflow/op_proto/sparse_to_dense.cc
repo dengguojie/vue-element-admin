@@ -22,7 +22,7 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "graph/utils/op_desc_utils.h"
-#include "./util/error_util.h"
+#include "error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(SparseToDense, SparseToDenseInfer) {
