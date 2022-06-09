@@ -1160,6 +1160,7 @@ vector_B:
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/reduce_infer_util.h
+      - ops/built-in/op_tiling/op_tiling_util.h
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
@@ -2474,7 +2475,6 @@ unkown:
       - ops/built-in/op_tiling/batch_multi_class_non_max_suppression.cc
       - ops/built-in/op_tiling/scan_pq_codes.cc
       - ops/built-in/op_tiling/layer_norm_v1.cc
-      - ops/built-in/op_tiling/op_tiling_util.h
       - ops/built-in/op_tiling/resize_common.cc
       - ops/built-in/op_tiling/non_zero.cc
       - ops/built-in/op_tiling/fill.cc

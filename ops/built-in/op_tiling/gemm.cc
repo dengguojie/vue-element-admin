@@ -673,11 +673,15 @@ bool GEMMTiling(const string &op_type, const ge::Operator &op_paras, vector<shar
   }
 }
 
+// register pattern gemm, tiling interface needs to know MatMul or BatchMatMul, so we need two patterns
+REGISTER_OP_TILING_V4_CUBE_PATTERN(MatMul, GEMMTiling, GemmParseFunc, vector<shared_ptr<GemmCompileInfo>>);
+REGISTER_OP_TILING_V4_CUBE_PATTERN(BatchMatMul, GEMMTiling, GemmParseFunc, vector<shared_ptr<GemmCompileInfo>>);
+
 // register tiling interface of the gemm
-REGISTER_OP_TILING_V4_CUSTOM(MatMul, GEMMTiling, GemmParseFunc, vector<shared_ptr<GemmCompileInfo>>);
-REGISTER_OP_TILING_V4_CUSTOM(MatMulV2, GEMMTiling, GemmParseFunc, vector<shared_ptr<GemmCompileInfo>>);
-REGISTER_OP_TILING_V4_CUSTOM(BatchMatMul, GEMMTiling, GemmParseFunc, vector<shared_ptr<GemmCompileInfo>>);
-REGISTER_OP_TILING_V4_CUSTOM(BatchMatMulV2, GEMMTiling, GemmParseFunc, vector<shared_ptr<GemmCompileInfo>>);
+REGISTER_OP_TILING_V4_CUBE(MatMul, MatMul);
+REGISTER_OP_TILING_V4_CUBE(MatMul, MatMulV2);
+REGISTER_OP_TILING_V4_CUBE(BatchMatMul, BatchMatMul);
+REGISTER_OP_TILING_V4_CUBE(BatchMatMul, BatchMatMulV2);
 }  // namespace optiling
 
 namespace gert {

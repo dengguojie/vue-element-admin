@@ -140,6 +140,49 @@
   }                                                                                                                  \
   REGISTER_OP_TILING_V4(optype, Tbe##optype##TilingV4Custom, Tbe##optype##TilingV4CustomParsefunc)
 
+#define REGISTER_OP_TILING_V4_CUBE_PATTERN(oppattern, opfunc, parse_func, struct_name)                              \
+  class Tbe##oppattern##CustomCompileInfo : public CompileInfoBase {                                                \
+   public:                                                                                                          \
+    ~Tbe##oppattern##CustomCompileInfo() = default;                                                                 \
+    struct_name compile_info;                                                                                       \
+  };                                                                                                                \
+  bool Tbe##oppattern##TilingV4Custom(const ge::Operator &para, const std::shared_ptr<CompileInfoBase> op_info_ptr, \
+                                      optiling::utils::OpRunInfo &rinfo) {                                          \
+    OP_TILING_CHECK(op_info_ptr == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(#oppattern, "op_info_ptr is nullptr."), \
+                    return false);                                                                                  \
+    const std::shared_ptr<Tbe##oppattern##CustomCompileInfo> compile_ptr =                                          \
+        dynamic_pointer_cast<Tbe##oppattern##CustomCompileInfo>(op_info_ptr);                                       \
+    OP_TILING_CHECK(                                                                                                \
+        compile_ptr == nullptr,                                                                                     \
+        VECTOR_INNER_ERR_REPORT_TILIING(#oppattern, "change CompileInfoBase to CustomCompileInfo failed."),         \
+        return false);                                                                                              \
+    return opfunc(#oppattern, para, compile_ptr->compile_info, rinfo);                                              \
+  }                                                                                                                 \
+  std::shared_ptr<CompileInfoBase> Tbe##oppattern##TilingV4CustomParsefunc(const ge::Operator &para,                \
+                                                                           const ge::AscendString &compile_info) {  \
+    std::shared_ptr<Tbe##oppattern##CustomCompileInfo> compile_ptr =                                                \
+        ops::make_shared_nothrow<Tbe##oppattern##CustomCompileInfo>();                                              \
+    if (compile_ptr == nullptr) {                                                                                   \
+      OP_LOGE(#oppattern, "make_shared failed, will return nullptr!");                                              \
+      return nullptr;                                                                                               \
+    }                                                                                                               \
+    try {                                                                                                           \
+      bool parse_ret =                                                                                              \
+          parse_func(#oppattern, nlohmann::json::parse(compile_info.GetString()), compile_ptr->compile_info);       \
+      if (parse_ret) {                                                                                              \
+        return compile_ptr;                                                                                         \
+      }                                                                                                             \
+    } catch (nlohmann::json::parse_error& ex) {                                                                     \
+      OP_LOGE(#oppattern, "Failed to set compile_info_value from op_compile_info:%s", compile_info.GetString());    \
+      return nullptr;                                                                                               \
+    }                                                                                                               \
+    OP_LOGE(#oppattern, "do parse_func failed, will return nullptr!");                                              \
+    return nullptr;                                                                                                 \
+  }
+
+#define REGISTER_OP_TILING_V4_CUBE(oppattern, optype) \
+  REGISTER_OP_TILING_V4(optype, Tbe##oppattern##TilingV4Custom, Tbe##oppattern##TilingV4CustomParsefunc)
+
 namespace optiling {
 using optiling::ByteBuffer;
 using namespace ge;
