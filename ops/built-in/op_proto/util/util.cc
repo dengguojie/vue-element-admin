@@ -52,7 +52,9 @@ bool CheckInputDtypeAndShape(const Operator& op, const std::map<std::string, std
     // check input dtype
     auto input_type = input_desc.GetDataType();
     if (input_type != first_input_dtype) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("the op type of param ", iter->first, " must equal with param ", first_name)));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+          TbeGetName(op),
+          OtherErrMsg(ConcatString("the op type of param ", iter->first, " must equal with param ", first_name)));
       return false;
     }
     auto dims = input_desc.GetShape().GetDims();
@@ -107,10 +109,10 @@ bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const
   DataType input_type_x1 = op_desc->MutableInputDesc(input_name1)->GetDataType();
   DataType input_type_x2 = op_desc->MutableInputDesc(input_name2)->GetDataType();
   if (input_type_x1 != input_type_x2) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
-      OtherErrMsg(ConcatString("The ", TbeGetName(op), " op dtype is not same, type1:",
-                               ge::TypeUtils::DataTypeToSerialString(input_type_x1), ", type2:",
-                               ge::TypeUtils::DataTypeToSerialString(input_type_x2))));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+        TbeGetName(op), OtherErrMsg(ConcatString("The ", TbeGetName(op), " op dtype is not same, type1:",
+                                                 ge::TypeUtils::DataTypeToSerialString(input_type_x1),
+                                                 ", type2:", ge::TypeUtils::DataTypeToSerialString(input_type_x2))));
     return false;
   }
 
@@ -144,7 +146,9 @@ bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string
 
     if (input_des.GetDataType() != first_input_des.GetDataType() ||
         input_des.GetShape().GetDims() != first_input_des.GetShape().GetDims()) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("the dtype and shape of param ", first_input_name->c_str(), " must be same as param ", input_name->c_str())));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+          TbeGetName(op), OtherErrMsg(ConcatString("the dtype and shape of param ", first_input_name->c_str(),
+                                                   " must be same as param ", input_name->c_str())));
       return false;
     }
   }
@@ -155,7 +159,7 @@ bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string
 bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& dimVec,
                                           std::vector<std::pair<int64_t, int64_t>>& Vec_range,
                                           std::vector<int64_t> dims, std::vector<std::pair<int64_t, int64_t>> range,
-                                          const string& input_name1, const string& input_name2){
+                                          const string& input_name1, const string& input_name2) {
   if (dimVec.size() < dims.size()) {
     std::vector<int64_t> dimsTmp = dimVec;
     dimVec = dims;
@@ -189,7 +193,7 @@ bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& di
   return true;
 }
 
-std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const std::vector<int64_t>& dimsY){
+std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const std::vector<int64_t>& dimsY) {
   std::vector<int64_t> dimVec;
   // when not dynamic case, do infer shape only
   if (!IsUnknown(dimsY) && !IsUnknown(dimsX)) {
@@ -243,9 +247,8 @@ std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const 
 }
 
 std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
-              const std::vector<int64_t>& dims_out,
-              const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
-              std::vector<std::pair<int64_t, int64_t>>& shape_range_y) {
+    const std::vector<int64_t>& dims_out, const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
+    std::vector<std::pair<int64_t, int64_t>>& shape_range_y) {
   size_t size_shape_out = dims_out.size();
   std::vector<std::pair<int64_t, int64_t>> out_range;
   if (!IsUnknownRankShape(dims_out)) {
@@ -379,7 +382,7 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const int64_t& input_id
   auto input_name2 = op_desc->GetInputNameByIndex(input_idx_2);
   auto output_name = op_desc->GetOutputNameByIndex(output_idx);
   OP_LOGI(TbeGetName(op).c_str(), "get the input name by idx is  %s vs %s vs %s",
-                                 input_name1.c_str(), input_name2.c_str(), output_name.c_str());
+          input_name1.c_str(), input_name2.c_str(), output_name.c_str());
   return InferShapeAndTypeTwoInOneOutBroadcast(op, input_name1, input_name2, output_name, is_dynamic);
 }
 
@@ -415,8 +418,8 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   // unknown rank
   if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
     tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
-    OP_LOGI(TbeGetName(op).c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
-            input_dtype);
+    OP_LOGI(TbeGetName(op).c_str(), "output shape is: %s, output dtype is:%d.",
+            to_string(ge::Shape(UNKNOWN_RANK)).c_str(), input_dtype);
     is_dynamic = false;
     return true;
   }
@@ -644,7 +647,7 @@ static bool BroadCastShapeToOutShape(const GeShape& shape, GeShape& shape_output
         if (dim1 == 1) {
           dim1 = dim2;
         }
-        if ( (dim1 > 1) && (dim2 == -1) ) {
+        if ((dim1 > 1) && (dim2 == -1)) {
           dim1 = -1;
         }
       }
@@ -678,7 +681,7 @@ static bool BroadCastShapeToOutShape(const GeShape& shape, GeShape& shape_output
         if (dim1 == 1) {
           dim1 = dim2;
         }
-        if ( (dim1 > 1) && (dim2 == -1) ) {
+        if ((dim1 > 1) && (dim2 == -1)) {
           dim1 = -1;
         }
         shape_output.SetDim(len_sub + i, dim1);
@@ -1133,13 +1136,13 @@ bool GetConstValue(const Operator& op, const GeTensor* const_tensor,
   if (dtype == ge::DT_INT32) {
     int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
     size = size / sizeof(int32_t);
-    for (size_t i=0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
     }
   } else if (dtype == ge::DT_INT64) {
     int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
     size = size / sizeof(int64_t);
-    for (size_t i=0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
     }
   }
@@ -1147,7 +1150,7 @@ bool GetConstValue(const Operator& op, const GeTensor* const_tensor,
 }
 
 bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
-                          const DataType& dtype, std::vector<int64_t>& const_data) {
+                   const DataType& dtype, std::vector<int64_t>& const_data) {
   return GetConstValue(op, const_tensor.get(), dtype, const_data);
 }
 
@@ -1308,7 +1311,8 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
     } else {
       ShapeTransferAccordingToFormat* global_object = new(std::nothrow) ShapeTransferAccordingToFormat();
       CHECK(global_object == nullptr,
-            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
+            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                                OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
             return false);
       global_object->GetShapeAccordingToFormat(shapeAndFormatInfoOutput);
 
@@ -1343,7 +1347,8 @@ bool IsUnknownRank(const Operator& op, const std::string& tensor_name, const std
   } else if (types == "output") {
     tensor_desc = op_desc->MutableOutputDesc(tensor_name);
   } else {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("invalid params:", types, " of types to judge.")));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                        OtherErrMsg(ConcatString("invalid params:", types, " of types to judge.")));
     return false;
   }
 
@@ -1374,32 +1379,8 @@ bool IsUnknown(const std::vector<int64_t>& shape_vec) {
   return (IsUnKnownShape(shape_vec) || IsUnknownRankShape(shape_vec));
 }
 
-bool IsUnknownShape(const Operator& op, const std::string& tensor_name, const std::string& types) {
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK(op_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")), return false);
-  GeTensorDescPtr tensor_desc;
-  if (types == "input") {
-    tensor_desc = op_desc->MutableInputDesc(tensor_name);
-  } else if (types == "output") {
-    tensor_desc = op_desc->MutableOutputDesc(tensor_name);
-  } else {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("invalid params of types:", types, " to judge.")));
-    return false;
-  }
-
-  std::vector<int64_t> shape_vec = tensor_desc->GetShape().GetDims();
-  std::vector<int64_t>::iterator it_shape;
-  it_shape = find(shape_vec.begin(), shape_vec.end(), -1);
-  if (it_shape == shape_vec.end()) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
 bool IsUnknownVec(std::vector<int64_t>& shape_vec) {
-  std::vector<int64_t>::iterator it_shape;
-  it_shape = find(shape_vec.begin(), shape_vec.end(), -1);
+  std::vector<int64_t>::iterator it_shape = find(shape_vec.begin(), shape_vec.end(), -1);
   if (it_shape == shape_vec.end()) {
     return false;
   } else {

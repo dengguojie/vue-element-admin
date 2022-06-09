@@ -28,6 +28,8 @@ namespace reduce_ops {
 using namespace std;
 using namespace ge;
 
+constexpr int64_t UNKNOWN_DIM_VALUE = -2;
+
 static bool ConvertAxis(std::vector<int64_t>& axis, const int64_t input_length) {
   // Convert reduce axis
   for (size_t i = 0; i < axis.size(); ++i) {
@@ -233,7 +235,7 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
     // case3: all output shape dim is -1, range is (min_range, max_range)
     //            output dim num = (input dim num  - 1), when axes_shape = {} or {1}
     // case4: all output shape dim is -2
-    int64_t output_dim_num = -2;
+    int64_t output_dim_num = UNKNOWN_DIM_VALUE;
     if (!axes_shape.IsUnknownDimNum() && axes_shape.GetDimNum() == 0) {
       OP_LOGD(TbeGetName(op).c_str(), "the axes is scalar, will reduce one dim for input shape");
       output_dim_num = input_length - 1;
@@ -255,9 +257,8 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
         range_max_value = input_shape_range[item].second;
       }
     }
-    constexpr int UNKNOWN_DIM_NUM = -2; 
-    if (output_dim_num == UNKNOWN_DIM_NUM) {
-      output_shape.push_back(UNKNOWN_DIM_NUM);
+    if (output_dim_num == UNKNOWN_DIM_VALUE) {
+      output_shape.push_back(UNKNOWN_DIM_VALUE);
     } else {
       for (int64_t item = 0; item < output_dim_num; ++item) {
         output_shape.push_back(-1);
@@ -304,7 +305,8 @@ bool CommonReduceInferWithInputAxes(const Operator& op, const int64_t input_x_id
     // do infershape with const axes for static op
     GeShape& output_shape = tensordesc_output->MutableShape();
     CHECK(!DoReduceInfershapeWithAxes(input_shape, keep_dims, reduce_axes, output_shape),
-          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infershape failed.")), return false);
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infershape failed.")),
+          return false);
 
     // when output is dynamic shape, will infer range
     if (output_shape.IsUnknownShape()) {
@@ -323,7 +325,7 @@ bool CommonReduceInferWithInputAxes(const Operator& op, const int64_t input_x_id
   }
 
   CHECK(!DoReduceInferShapeWithoutAxes(op, tensordesc_input_x, tensordesc_output, axes_shape, keep_dims),
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infer range failed.")), return false);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("infer reduce range failed.")), return false);
   return true;
 }
 

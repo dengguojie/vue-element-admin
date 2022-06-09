@@ -47,6 +47,7 @@ aicpu:
       - ops/built-in/op_proto/inc/math_ops.h
       - ops/built-in/op_proto/inc/data_flow_ops.h
       - ops/built-in/op_proto/inc/image_ops.h
+      - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.cc
       - ops/built-in/op_proto/math_ops.cc
       - ops/built-in/op_proto/inc/stateless_random_ops.h
       - ops/built-in/op_proto/stateless_random_ops.cc
@@ -1154,6 +1155,9 @@ vector_B:
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
       - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_proto/nonlinear_fuc_ops.cc
+      - ops/built-in/op_proto/warp_perspective_ops.cc
+      - ops/built-in/op_proto/util/reduce_infer_util.cc
+      - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
@@ -2418,6 +2422,7 @@ ops_pub:
       - ops/built-in/op_proto/nn_norm_ops.cc
       - ops/built-in/op_proto/nn_training_ops.cc
       - ops/built-in/op_proto/util/util.cc
+      - ops/built-in/op_proto/util/util.h
     unrelease:
 
 
@@ -2487,7 +2492,6 @@ unkown:
       - ops/built-in/op_proto/act_ulq_clamp_min_grad.cc
       - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
-      - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/acts_ulq.cc
       - ops/built-in/op_proto/nn_ops.cc
       - ops/built-in/op_proto/hvd_ops.cc
@@ -2544,19 +2548,15 @@ unkown:
       - ops/built-in/op_proto/util/nn_shape_fns.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
-      - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_proto/util/common_shape_fns.cc
-      - ops/built-in/op_proto/util/util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
       - ops/built-in/op_proto/util/op_common_util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_proto/util/vector_proto_profiling.h
-      - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
       - ops/built-in/op_proto/util/images_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/util/axis_util.cc
-      - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.cc
       - ops/built-in/tbe/impl/approximate_equal.py
       - ops/built-in/tbe/impl/clip_boxes_d.py
       - ops/built-in/tbe/impl/bn3d_training_update_grad.py

@@ -23,16 +23,6 @@ constexpr size_t TRANSPOSE_IDX_IN_X = 0;
 constexpr size_t TRANSPOSE_IDX_IN_PERM = 1;
 constexpr size_t TRANSPOSE_IDX_OUT_Y = 0;
 
-#define TRANSPOSE_INFERSHAPE_WITH_PERM_TENSOR(DATATYPE, C_TYPE)                                      \
-  case (DATATYPE): {                                                                                 \
-    const C_TYPE* perm_value = perm_tensor->GetData<C_TYPE>();                                       \
-    if (!TransposeInferCommon(context, x_shape, perm_value, y_shape)) {                              \
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "do transpose infershape failed"); \
-      return ge::GRAPH_FAILED;                                                                       \
-    }                                                                                                \
-    break;                                                                                           \
-  }
-
 template <typename T>
 static bool TransposeInferCommon(const gert::InferShapeContext* context, const gert::Shape* x_shape,
                                  const T* perm_value, gert::Shape* y_shape) {
@@ -71,8 +61,22 @@ ge::graphStatus TransposeInferShape(gert::InferShapeContext* context) {
 
   ge::DataType perm_dtype = perm_tensor->GetDataType();
   switch (perm_dtype) {
-    TRANSPOSE_INFERSHAPE_WITH_PERM_TENSOR(ge::DT_INT32, int32_t)
-    TRANSPOSE_INFERSHAPE_WITH_PERM_TENSOR(ge::DT_INT64, int64_t)
+    case ge::DT_INT32: {
+      const int32_t* perm_value = perm_tensor->GetData<int32_t>();
+      if (!TransposeInferCommon(context, x_shape, perm_value, y_shape)) {
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "do transpose infershape failed");
+        return ge::GRAPH_FAILED;
+      }
+      break;
+    }
+    case ge::DT_INT64: {
+      const int64_t* perm_value = perm_tensor->GetData<int64_t>();
+      if (!TransposeInferCommon(context, x_shape, perm_value, y_shape)) {
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "do transpose infershape failed");
+        return ge::GRAPH_FAILED;
+      }
+      break;
+    }
     default:
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
           context->GetNodeName(),

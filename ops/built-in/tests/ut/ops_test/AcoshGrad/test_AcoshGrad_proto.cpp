@@ -64,6 +64,16 @@ TEST_F(acoshgrad, acoshgrad_infer_same_test) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
+TEST_F(acoshgrad, acoshgrad_infer_shape_fp16_unkonw_rank) {
+  ge::op::AcoshGrad op;
 
+  op.UpdateInputDesc("y", create_desc({-2}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("dy", create_desc({-1}, ge::DT_FLOAT16));
 
-
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("z");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}

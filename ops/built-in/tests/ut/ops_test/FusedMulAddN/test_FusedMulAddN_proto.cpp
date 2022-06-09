@@ -75,3 +75,13 @@ TEST_F(fused_mul_add_n, VerifyFusedMulAddN_002) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(fused_mul_add_n, VerifyFusedMulAddN_003) {
+  ge::op::FusedMulAddN op;
+  op.UpdateInputDesc("x1", create_desc({1}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x2", create_desc({1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("x3", create_desc({1}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

@@ -400,8 +400,6 @@ bool IsUnknownRankShape(const GeShape& input_shape);
 
 bool IsUnKnownShape(const std::vector<int64_t>& shape_vec);
 
-bool IsUnknownShape(const Operator& op, const std::string& tensor_name, const std::string& types = "input");
-
 bool IsUnknownVec(std::vector<int64_t>& shape_vec);
 
 bool IsUnknown(const std::vector<int64_t>& shape_vec);

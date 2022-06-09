@@ -75,6 +75,18 @@ TEST_F(KLDivTest, kl_div_verify_success_test_02) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(KLDivTest, kl_div_verify_success_test_03) {
+
+  ge::op::KLDiv op;
+
+  op.UpdateInputDesc("x", create_desc({16, 2, 16, 16}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("target", create_desc({16, 2, 16, 16}, ge::DT_FLOAT));
+  op.SetAttr("reduction", "batchmean");
+
+  auto status = op.VerifyAllAttr(true);
+}
+
+
 TEST_F(KLDivTest, kl_div_infershape_test_dynamic_01){
     
     ge::op::KLDiv op;

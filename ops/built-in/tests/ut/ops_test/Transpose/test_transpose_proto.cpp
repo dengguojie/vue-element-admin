@@ -88,3 +88,63 @@ TEST_F(Transpose, Transpose_const_infer_int64) {
   EXPECT_EQ(output_desc.GetDataType(), input_x_dtype);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(Transpose, Transpose_const_infer_uint64) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({2, 3, 4, 5});
+  auto input_x_dtype = DT_FLOAT;
+  // input perm info
+  auto input_perm_shape = vector<int64_t>({4});
+  auto perm_dtype = DT_UINT64;
+  vector<uint64_t> perm_value = {0, 2, 1, 3};
+
+  // gen Transpose op
+  auto test_op = op::Transpose("Transpose");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, perm, input_perm_shape, perm_dtype, FORMAT_ND, perm_value);
+
+  // cmp the result with runtime op
+  vector<bool> input_const = {false, true};
+  CommonInferShapeOperatorWithConstFail(test_op, input_const, {});
+}
+
+TEST_F(Transpose, Transpose_const_infer_int64_invalid_dim) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({2, 3, 4, 5});
+  auto input_x_dtype = DT_FLOAT;
+  // input perm info
+  auto input_perm_shape = vector<int64_t>({4});
+  auto perm_dtype = DT_INT64;
+  vector<int64_t> perm_value = {4, 2, 1, 3};
+
+  // gen Transpose op
+  auto test_op = op::Transpose("Transpose");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, perm, input_perm_shape, perm_dtype, FORMAT_ND, perm_value);
+
+  // cmp the result with runtime op
+  vector<bool> input_const = {false, true};
+  CommonInferShapeOperatorWithConstFail(test_op, input_const, {});
+}
+
+TEST_F(Transpose, Transpose_const_infer_int32_invalid_dim) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({2, 3, 4, 5});
+  auto input_x_dtype = DT_FLOAT;
+  // input perm info
+  auto input_perm_shape = vector<int64_t>({4});
+  auto perm_dtype = DT_INT32;
+  vector<int32_t> perm_value = {4, 2, 1, 3};
+
+  // gen Transpose op
+  auto test_op = op::Transpose("Transpose");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, perm, input_perm_shape, perm_dtype, FORMAT_ND, perm_value);
+
+  // cmp the result with runtime op
+  vector<bool> input_const = {false, true};
+  CommonInferShapeOperatorWithConstFail(test_op, input_const, {});
+}
