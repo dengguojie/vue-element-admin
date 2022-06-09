@@ -28,7 +28,6 @@
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 #include "anchor_util.h"
-#include "cube_broadcast_fusion_check_util.h"
 
 namespace fe {
 namespace {
@@ -149,11 +148,6 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
   FUSION_PASS_CHECK(add_nodes.empty(),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Elemwise node is not matched."),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "matched BATCH_MATMUL+DROPOUTDOMASKV3D"));
-
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(add_nodes, batch_matmul_nodes, FUSED_OP_TYPE),
-                    OP_LOGD(FUSED_OP_TYPE.c_str(),
-                    "The shape of elemwise node is not matched, matched BATCH_MATMUL+DROPOUTDOMASKV3D."),
-                    add_nodes.clear());
 
   // adjust control-edges to destroy the loop in BERT
   // "dropout_do_mask -> batch_matmul1 (control-node) -> fusion_transpose

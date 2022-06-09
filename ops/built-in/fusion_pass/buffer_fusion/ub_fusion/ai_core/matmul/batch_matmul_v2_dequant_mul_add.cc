@@ -16,8 +16,6 @@
 
 #include <string>
 #include <vector>
-
-#include "cube_broadcast_fusion_check_util.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
@@ -105,10 +103,6 @@ Status BatchMatmulV2DequantMulAddFusionPass::GetFusionNodes(const BufferFusionMa
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Mul output nodes must be one"), return SUCCESS);
   FUSION_PASS_CHECK(elemWiseNodes2[0]->GetAllInDataAnchors().size() != 2,
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add input nodes must be two"), return SUCCESS);
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes1, batchMatmulNodes, kFusedOpType),
-                    OP_LOGW(kFusedOpType.c_str(), "The shape of mul node is not match."), return SUCCESS);
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes2, batchMatmulNodes, kFusedOpType),
-                    OP_LOGW(kFusedOpType.c_str(), "The shape of add node is not match."), return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused
   for (auto &item : mapping) {

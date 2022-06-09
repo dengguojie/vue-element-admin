@@ -394,3 +394,68 @@ TEST_F(TbeFullyconnectionElemwiseFusionPassTest, tbe_fullyconnection_elemwise_fu
   EXPECT_EQ(res, fe::SUCCESS);
 }
 
+TEST_F(TbeFullyconnectionElemwiseFusionPassTest, tbe_fullyconnection_elemwise_fusion_add_unsupport) {
+  ge::Graph graph(this->test_info_->name());
+
+  ge::TensorDesc a_desc(ge::Shape({16, 64}), ge::FORMAT_ND, ge::DT_FLOAT16);
+  auto data_a = op::Data("data_a");
+  data_a.update_input_desc_x(a_desc);
+  data_a.update_output_desc_y(a_desc);
+
+  ge::TensorDesc b_desc(ge::Shape({64, 32}), ge::FORMAT_ND, ge::DT_FLOAT16);
+  auto data_b = op::Data("data_b");
+  data_b.update_input_desc_x(b_desc);
+  data_b.update_output_desc_y(b_desc);
+
+  ge::TensorDesc a_desc_nz(ge::Shape({4, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto transdata_a = op::TransData("transdata_a").set_input_src(data_a);
+  transdata_a.update_input_desc_src(a_desc);
+  transdata_a.update_output_desc_dst(a_desc_nz);
+
+  ge::TensorDesc b_desc_nz(ge::Shape({2, 4, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto transdata_b = op::TransData("transdata_b").set_input_src(data_b);
+  transdata_a.update_input_desc_src(b_desc);
+  transdata_a.update_output_desc_dst(b_desc_nz);
+  ge::TensorDesc matmul_desc(ge::Shape({2, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto matmul_op = op::MatMulV2("MatMulV2")
+      .set_input_x1(transdata_a)
+      .set_input_x2(transdata_b);
+  matmul_op.update_output_desc_y(matmul_desc);
+
+  ge::TensorDesc c_desc(ge::Shape({2, 2, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_c = op::Data("data_c");
+  data_c.update_input_desc_x(c_desc);
+  data_c.update_output_desc_y(c_desc);
+  ge::TensorDesc add_desc(ge::Shape({2, 2, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+
+  auto add_op = op::Add("add_op").set_input_x1(matmul_op).set_input_x2(data_c);
+  add_op.update_output_desc_y(add_desc);
+  std::vector<Operator> inputs{data_a, data_b, data_c};
+  std::vector<Operator> outputs{add_op};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  // set soc_version
+  fe::PlatformInfo platform_info;
+  fe::OptionalInfo opti_compilation_info;
+  vector<string> dtype_list;
+  dtype_list.push_back("f32");
+  dtype_list.push_back("s32");
+  dtype_list.push_back("f16");
+  std::map<string, vector<string>> intrinsic_map = {{"Intrinsic_fix_pipe_l0c2out", dtype_list}};
+  platform_info.ai_core_intrinsic_dtype_map = intrinsic_map;
+  opti_compilation_info.soc_version = "soc_version";
+  fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+  // excute buffer fusion run
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  auto mapping = ConstructFusionMappingOfEltwise(compute_graph_ptr);
+  Status res = fe::FusionPassTestUtils::RunBufferFusionPass(ptr_buffer_fusion_pass_func.get(), patterns,
+                                                            compute_graph_ptr, mapping);
+
+  // clear soc info
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+  EXPECT_EQ(res, fe::SUCCESS);
+}
+

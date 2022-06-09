@@ -23,7 +23,6 @@
 #include <vector>
 #include "op_log.h"
 #include "common/lxfusion_json_util.h"
-#include "cube_broadcast_fusion_check_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "graph/utils/attr_utils.h"
@@ -93,8 +92,6 @@ void TbeMatmulElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping& mappin
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
     return;
   }
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, matmulNodes, FUSED_OP_TYPE),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of elewise node is not match."), return);
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
   OpL1FusionType fusion_type = L1FUSION_DISABLE;
@@ -132,9 +129,8 @@ Status TbeMatmulElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping& ma
     }
   }
   fusionNodes = GetMatchedNodes(mapping);
-
-  // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
+  // buffer fusion do not support dynamic shape now
   for (const auto& matmulNode : matmulNodes) {
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);

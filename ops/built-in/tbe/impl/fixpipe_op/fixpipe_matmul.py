@@ -155,7 +155,7 @@ class FixpipeMatmul(FixpipeBase):
         get input tensor shape
         """
         shape_x1 = shape_to_list(self.x1.shape)
-        if self.x2 is None:
+        if self.x2 is None or self._check_fc_nd_out():
             return shape_x1
         else:
             shape_x2 = shape_to_list(self.x2.shape)

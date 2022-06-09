@@ -17,7 +17,6 @@
 #include "anchor_util.h"
 #include "common/util/platform_info.h"
 #include "common/lxfusion_json_util.h"
-#include "cube_broadcast_fusion_check_util.h"
 #include "fusion_pre_trans_func.h"
 #include "graph/utils/attr_utils.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
@@ -444,8 +443,6 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
   vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
   vector<ge::NodePtr> quantNodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, fcNodes, FUSED_OP_TYPE),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of elewise node is not match."), return SUCCESS);
   // check whether the fc/matmul/batchmatmul op
   for (const auto &fcNode : fcNodes) {
     if (find(matmulWhiteList.begin(), matmulWhiteList.end(), fcNode->GetType()) == matmulWhiteList.end()) {

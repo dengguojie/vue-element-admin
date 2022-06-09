@@ -25,7 +25,6 @@
 
 #include "anchor_util.h"
 #include "common/lxfusion_json_util.h"
-#include "cube_broadcast_fusion_check_util.h"
 #include "fusion_pre_trans_func.h"
 #include "graph/utils/attr_utils.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
@@ -272,12 +271,6 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   }
   FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "matmulNodes's input size can not smaller than 1."), return);
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes, matmulNodes, FUSED_OP_TYPE),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the first elemwise node is not match."), return);
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes1, matmulNodes, FUSED_OP_TYPE),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the second elemwise node is not match."), return);
-  FUSION_PASS_CHECK(!IsBroadcastMatMulSupported(elemWiseNodes2, matmulNodes, FUSED_OP_TYPE),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of the third elemwise node is not match."), return);
   vector<AxisSplitMap> split_maps_prev;
   vector<AxisSplitMap> split_maps_fusion_op;
   vector<AxisSplitMap>* ptr_split_maps_prev;
@@ -323,7 +316,6 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
 Status TbeBatchMatmulElementWiseFusionPass::CheckPattern1(const BufferFusionMapping &mapping) const {
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemNode1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
-
   FUSION_PASS_CHECK(elemNode.empty(), OP_LOGD(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return FAILED);
   auto ret = find(elem_typelist.begin(), elem_typelist.end(), elemNode[0]->GetType());
   if (ret == elem_typelist.end()) {
@@ -349,7 +341,6 @@ Status TbeBatchMatmulElementWiseFusionPass::CheckPattern2(const BufferFusionMapp
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   FUSION_PASS_CHECK(elemNode.empty() || elemNode1.empty() || elemNode2.empty() || matmulNodes.empty(),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return FAILED);
-
   bool is_matched = false;
   FUSION_PASS_CHECK(
       elemNode[0]->GetType() != "Mul" || elemNode1[0]->GetType() != "Mul" || elemNode2[0]->GetType() != "Sigmoid",
