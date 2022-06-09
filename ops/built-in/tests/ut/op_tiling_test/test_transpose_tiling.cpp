@@ -2442,3 +2442,25 @@ TEST_F(TransposeTilingTest, scenario_large_burstlen_core_gt_axis) {
   std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
   run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
 }
+
+TEST_F(TransposeTilingTest, scenario_11_0010) {
+  CompilerInfo compilerInfo;
+  ShapeInfo shapeInfo;
+  RuntimeInfo runtimeInfo;
+  compilerInfo.coreNum = 32;
+  compilerInfo.ubSize = 8192;
+  compilerInfo.dType = ge::DT_FLOAT16;
+  compilerInfo.fp16Times = 1;
+
+  shapeInfo.origDim = 2;
+  shapeInfo.dim = 2;
+  shapeInfo.inShape[0] = 240;
+  shapeInfo.inShape[1] = 128;
+  shapeInfo.outShape[0] = 128;
+  shapeInfo.outShape[1] = 240;
+  shapeInfo.perm[0] = 1;
+  shapeInfo.perm[1] = 0;
+  ReduceAxis("Transpose", compilerInfo, shapeInfo);
+  TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+  EXPECT_EQ(shapeInfo.scenario, 11);
+}

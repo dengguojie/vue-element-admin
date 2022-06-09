@@ -210,7 +210,7 @@ static bool GetPadCompileParams(const string& opType, const ge::Operator& op_par
                     VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetCompileParams, get end_mask error"),
                     return false);
 
-    OP_TILING_CHECK(!ops::GetAttrValue(op_paras, ELLIPSIS_MASK_DIMS_INFO, compile_params.ellipsis_mask ),
+    OP_TILING_CHECK(!ops::GetAttrValue(op_paras, ELLIPSIS_MASK_DIMS_INFO, compile_params.ellipsis_mask),
                     VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetCompileParams, get ellipsis_mask error"),
                     return false);
 
@@ -218,7 +218,7 @@ static bool GetPadCompileParams(const string& opType, const ge::Operator& op_par
                     VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetCompileParams, get new_axis_mask error"),
                     return false);
 
-    OP_TILING_CHECK(!ops::GetAttrValue(op_paras, SHRINK_AXIS_MASK_DIMS_INFO, compile_params.shrink_axis_mask ),
+    OP_TILING_CHECK(!ops::GetAttrValue(op_paras, SHRINK_AXIS_MASK_DIMS_INFO, compile_params.shrink_axis_mask),
                     VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetCompileParams, get shrink_axis_mask error"),
                     return false);
   }
@@ -581,7 +581,7 @@ REGISTER_OP_TILING_V4_WITH_VECTOR(Pad, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL
 REGISTER_OP_TILING_V4_WITH_VECTOR(PadV2, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
 
 // register tiling interface of the StridedSliceGrad op.
-static const std::vector<std::string> STRIDED_COMPILE_INFO_KEY = {
-  "core_num", "ub_size", "dtype_rate", "tiling_two_max_output_size"};
+static const std::vector<std::string> STRIDED_COMPILE_INFO_KEY = {"core_num", "ub_size", "dtype_rate",
+                                                                  "tiling_two_max_output_size"};
 REGISTER_OP_TILING_V4_WITH_VECTOR(StridedSliceGrad, PadTiling, STRIDED_COMPILE_INFO_KEY, OPTIONAL_VALUE);
 }  // namespace optiling

@@ -1234,6 +1234,8 @@ vector_B:
       - ops/built-in/op_tiling/tile_d.cc
       - ops/built-in/op_tiling/tile_with_axis.cc
       - ops/built-in/op_tiling/top_k.cc
+      - ops/built-in/op_tiling/transpose.cc
+      - ops/built-in/op_tiling/transpose.h
       - ops/built-in/op_tiling/trans_data.cc
       - ops/built-in/op_tiling/trans_data_common.h
       - ops/built-in/op_tiling/trans_data_negative_target_ntc.cc
@@ -2421,7 +2423,6 @@ unkown:
       - ops/built-in/op_tiling/ifmr.cc
       - ops/built-in/op_tiling/layer_norm_v1.h
       - ops/built-in/op_tiling/vector_tiling_profiling.h
-      - ops/built-in/op_tiling/transpose.cc
       - ops/built-in/op_tiling/resize_common.h
       - ops/built-in/op_tiling/tile.cc
       - ops/built-in/op_tiling/sigmoid_cross_entropy_with_logits_grad_v2.cc
@@ -2465,7 +2466,6 @@ unkown:
       - ops/built-in/op_tiling/dynamic_gru_cell_grad.cc
       - ops/built-in/op_tiling/dynamic_rnn_v2.cc
       - ops/built-in/op_tiling/resize_nearest_neighbor_v2.cc
-      - ops/built-in/op_tiling/transpose.h
       - ops/built-in/op_tiling/gen_adc.cc
       - ops/built-in/op_tiling/pad_common.cc
       - ops/built-in/op_tiling/avg_poolv2.cc

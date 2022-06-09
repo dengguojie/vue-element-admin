@@ -3476,7 +3476,7 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
 
       if (overflowFlag) {
         for (int j = 0; j < LOOP_FOR_UB_PADDING; j++) {
-          if(!UpdateStep(ci, si, ri, bi, ubSize)) {
+          if (!UpdateStep(ci, si, ri, bi, ubSize)) {
             break;
           }
         }
@@ -5316,7 +5316,8 @@ static int64_t CalcNUnit(const CompilerInfo& ci, const ShapeInfo& si) {
   if (si.reducedInShape[dim - 1] > ROW_UNIT) {
     return 1;
   }
-  int64_t nUnit = (GetColUnit(ci) * ROW_UNIT) / (si.reducedInShape[dim - 2] * si.reducedInShape[dim - 1] * ci.fp16Times) ;
+  int64_t nUnit = (GetColUnit(ci) * ROW_UNIT) /
+                  (si.reducedInShape[dim - 2] * si.reducedInShape[dim - 1] * ci.fp16Times);
   return nUnit == 0 ? 1 : nUnit;
 }
 
