@@ -555,10 +555,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
     :param op_mode: operator mode, default is elewise
     :return:
     """
-    op_type = ""
-    if len(inputs) > 0 and isinstance(inputs[0], dict):
-        op_type = inputs[0].get("input_op_type", "")
-    if op_type == "Conv2DBackpropInput":
+    if op_mode == "conv2d_backprop_input":
         return _dx_variable_shape(inputs)
 
     if op_mode == "conv2d_backprop_filter":
