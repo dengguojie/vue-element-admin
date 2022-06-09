@@ -20,9 +20,8 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
 import te.platform as tbe_platform
+from impl.dynamic.in_training_update_v2 import op_select_format as in_op_select_format
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-arguments
@@ -43,56 +42,19 @@ def op_select_format(x,
     """
     select format dynamically
     """
-    input_format = "NC1HWC0, NC1HWC0"
-    ori_format = x.get("ori_format")
-    if ori_format in ("NDHWC", "NCDHW"):
-        input_format = "NDC1HWC0, NDC1HWC0"
-
-    input0 = gen_param(classify="input0",
-                       name="x",
-                       datatype="float16,float",
-                       format=input_format)
-    input1 = gen_param(classify="input1",
-                       name="sum",
-                       datatype="float,float",
-                       format=input_format)
-    input2 = gen_param(classify="input2",
-                       name="square_sum",
-                       datatype="float,float",
-                       format=input_format)
-    input3 = gen_param(classify="input3",
-                       name="gamma",
-                       datatype="float,float",
-                       format=input_format)
-    input4 = gen_param(classify="input4",
-                       name="beta",
-                       datatype="float,float",
-                       format=input_format)
-    input5 = gen_param(classify="input5",
-                       name="mean",
-                       datatype="float,float",
-                       format=input_format)
-    input6 = gen_param(classify="input6",
-                       name="variance",
-                       datatype="float,float",
-                       format=input_format)
-    output0 = gen_param(classify="output0",
-                        name="y",
-                        datatype="float16,float",
-                        format=input_format)
-    output1 = gen_param(classify="output1",
-                        name="batch_mean",
-                        datatype="float,float",
-                        format=input_format)
-    output2 = gen_param(classify="output2",
-                        name="batch_variance",
-                        datatype="float,float",
-                        format=input_format)
-
-    param_list = [input0, input1, input2, input3, input4, input5, input6, output0, output1, output2]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
-
-    return param_dynamic_in_json
+    return in_op_select_format(x,
+                               sum,
+                               square_sum,
+                               gamma,
+                               beta,
+                               mean,
+                               variance,
+                               y,
+                               batch_mean,
+                               batch_variance,
+                               momentum,
+                               epsilon,
+                               kernel_name="in_training_update_v2")
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("in_training_update_v2")

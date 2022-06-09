@@ -41,7 +41,6 @@ def calc_expect_func(x,
     else:
         axis = [1, 3, 4]
     axis = tuple(axis)
-    print("331111111111, format_x, axis, shape", format_x, axis, shape, flush=True)
 
     if dtype_x == "float16":
         input_x = input_x.astype(np.float32)

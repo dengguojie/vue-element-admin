@@ -2,11 +2,11 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("BNTrainingReduce", "impl.dynamic.bn_training_reduce", "bn_training_reduce")
+ut_case = OpUT("INTrainingReduceV2", "impl.dynamic.in_training_reduce_v2", "in_training_reduce_v2")
 
 
 # pylint: disable=too-many-arguments
-def gen_dynamic_bn_reduce_case(shape_x, shape_sum, shape_square, range_x, dtype_val, format_in, case_name_val, expect):
+def gen_dynamic_in_reduce_case(shape_x, shape_sum, shape_square, range_x, dtype_val, format_in, case_name_val, expect):
     """
     :param shape_x:
     :param shape_sum:
@@ -54,27 +54,24 @@ def gen_dynamic_bn_reduce_case(shape_x, shape_sum, shape_square, range_x, dtype_
     }
 
 
-CASE_1 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
+CASE_1 = gen_dynamic_in_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
                                     ((1, None), (1, None), (1, None), (1, None), (16, 16)), "float16", "NC1HWC0",
-                                    "dynamic_bn_training_reduce_1", "success")
-CASE_2 = gen_dynamic_bn_reduce_case((16, 10, 17, 17, 16), (1, 10, 1, 1, 16), (1, 10, 1, 1, 16),
+                                    "dynamic_in_training_reduce_v2_1", "success")
+CASE_2 = gen_dynamic_in_reduce_case((16, 10, 17, 17, 16), (16, 10, 1, 1, 16), (16, 10, 1, 1, 16),
                                     ((16, 16), (10, 10), (17, 17), (17, 17), (16, 16)), "float32", "NC1HWC0",
-                                    "dynamic_bn_training_reduce_2", "success")
-CASE_3 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
+                                    "dynamic_in_training_reduce_v2_2", "success")
+CASE_3 = gen_dynamic_in_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
                                     ((1, None), (1, None), (1, None), (1, None), (16, 16)), "float32", "NC1HWC0",
-                                    "dynamic_bn_training_reduce_3", "success")
-CASE_4 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
+                                    "dynamic_in_training_reduce_v2_3", "success")
+CASE_4 = gen_dynamic_in_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
                                     ((1, None), (1, None), (1, None), (1, None), (16, 16)), "float16", "NCHW",
-                                    "dynamic_bn_training_reduce_4", "failed")
-CASE_5 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, -1), (-1, -1, -1, -1, -1), (-1, -1, -1, -1, -1),
+                                    "dynamic_in_training_reduce_v2_4", "failed")
+CASE_5 = gen_dynamic_in_reduce_case((-1, -1, -1, -1, -1), (-1, -1, -1, -1, -1), (-1, -1, -1, -1, -1),
                                     ((1, None), (1, None), (1, None), (1, None), (16, 16)), "float32", "NCHW",
-                                    "dynamic_bn_training_reduce_5", "failed")
-CASE_6 = gen_dynamic_bn_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
+                                    "dynamic_in_training_reduce_v2_5", "failed")
+CASE_6 = gen_dynamic_in_reduce_case((-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16), (-1, -1, -1, -1, 16),
                                     ((1, None), (1, None), (1, None), (1, None), (16, 16)), "int32", "NC1HWC0",
-                                    "dynamic_bn_training_reduce_6", "failed")
-CASE_7 = gen_dynamic_bn_reduce_case((-2,), (-2,), (-2,),
-                                    ((1, None), (1, None), (1, None), (1, None), (1, None)), "float16", "NC1HWC0",
-                                    "dynamic_bn_training_reduce_7", "success")
+                                    "dynamic_in_training_reduce_v2_6", "failed")
 
 ut_case.add_case("Ascend910A", CASE_1)
 ut_case.add_case("Ascend910A", CASE_2)
@@ -82,7 +79,6 @@ ut_case.add_case("Ascend910A", CASE_3)
 ut_case.add_case("Ascend910A", CASE_4)
 ut_case.add_case("Ascend910A", CASE_5)
 ut_case.add_case("Ascend910A", CASE_6)
-ut_case.add_case("Ascend910A", CASE_7)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

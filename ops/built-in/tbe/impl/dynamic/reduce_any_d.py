@@ -94,13 +94,13 @@ def reduce_any_d(x, y, axes=None, keepdims=None, kernel_name="reduce_any_d"):
     None
     """
 
-    dtype = x["dtype"]
+    dtype = x.get("dtype")
     dtype_lower = dtype.lower()
-    check_list = ("int8")
+    check_list = ("int8",)
     para_check.check_dtype(dtype_lower, check_list)
     x["rel_pos_to_reduce"] = "before"
 
-    shape = x["shape"]
+    shape = x.get("shape")
     shape_len = len(shape)
     if not axes:
         axes = range(shape_len)

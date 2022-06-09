@@ -1163,7 +1163,7 @@ vector_B:
       - ops/built-in/op_tiling/bias_add_grad.cc
       - ops/built-in/op_tiling/binary_cross_entropy.cc
       - ops/built-in/op_tiling/binary_cross_entropy_grad.cc
-      - ops/built-in/op_tiling/bn_reduce_grad.cc
+      - ops/built-in/op_tiling/bn_training_reduce_grad.cc
       - ops/built-in/op_tiling/bninference_d.cc
       - ops/built-in/op_tiling/bounding_box_decode.cc
       - ops/built-in/op_tiling/broadcast_to.cc
@@ -1202,6 +1202,8 @@ vector_B:
       - ops/built-in/op_tiling/reduce_mean.cc
       - ops/built-in/op_tiling/reduce_std_v2_update.cc
       - ops/built-in/op_tiling/resize_bilinear_v2_grad.cc
+      - ops/built-in/op_tiling/bn_training_update_v2.cc
+      - ops/built-in/op_tiling/bn_training_update_v3.cc
       - ops/built-in/op_tiling/resize_register.cc
       - ops/built-in/op_tiling/reverse.cc
       - ops/built-in/op_tiling/rnn_gen_mask_v2.cc
@@ -1334,6 +1336,10 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bn_training_reduce.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v2.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v3.py
+      - ops/built-in/tbe/impl/dynamic/bn3d_training_reduce.py
+      - ops/built-in/tbe/impl/dynamic/bn3d_training_reduce_grad.py
+      - ops/built-in/tbe/impl/dynamic/bn3d_training_update.py
+      - ops/built-in/tbe/impl/dynamic/bn3d_training_update_grad.py
       - ops/built-in/tbe/impl/dynamic/broadcast_to_d.py
       - ops/built-in/tbe/impl/dynamic/in_training_reduce_v2.py
       - ops/built-in/tbe/impl/dynamic/bninference_d.py
@@ -1345,6 +1351,10 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/cos.py
       - ops/built-in/tbe/impl/dynamic/cosh.py
       - ops/built-in/tbe/impl/dynamic/data_format_dim_map.py
+      - ops/built-in/tbe/impl/dynamic/in_training_reduce_grad.py
+      - ops/built-in/tbe/impl/dynamic/in_training_update_grad.py
+      - ops/built-in/tbe/impl/dynamic/in_training_update_grad_gamma_beta.py
+      - ops/built-in/tbe/impl/dynamic/in_training_update_v2.py
       - ops/built-in/tbe/impl/dynamic/dawsn.py
       - ops/built-in/tbe/impl/dynamic/dequantize.py
       - ops/built-in/tbe/impl/dynamic/div.py
@@ -1514,6 +1524,10 @@ vector_B:
       - ops/built-in/tbe/impl/in_training_reduce_v2.py
       - ops/built-in/tbe/impl/in_training_update_grad.py
       - ops/built-in/tbe/impl/in_training_update_grad_gamma_beta.py
+      - ops/built-in/tbe/impl/bn3d_training_reduce.py
+      - ops/built-in/tbe/impl/bn3d_training_update_grad.py
+      - ops/built-in/tbe/impl/bn3d_training_update.py
+      - ops/built-in/tbe/impl/bn3d_training_reduce_grad.py
       - ops/built-in/tbe/impl/instance_norm.py
       - ops/built-in/tbe/impl/l2_loss.py
       - ops/built-in/tbe/impl/masked_fill_range.py
@@ -1527,6 +1541,7 @@ vector_B:
       - ops/built-in/tbe/impl/prelu_grad.py
       - ops/built-in/tbe/impl/range_d.py
       - ops/built-in/tbe/impl/reduce_mean_d.py
+      - ops/built-in/tbe/impl/in_training_update_v2.py
       - ops/built-in/tbe/impl/relu.py
       - ops/built-in/tbe/impl/sign.py
       - ops/built-in/tbe/impl/sin.py
@@ -2300,7 +2315,6 @@ vector_D:
       - ops/built-in/tbe/impl/max_pool_v3_grad.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
       - ops/built-in/op_tiling/bn_training_update.cc
-      - ops/built-in/op_tiling/bn_update_grad_tiling.cc
       - ops/built-in/tbe/impl/dynamic/bn_training_update.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_grad.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_dynamic_common.py
@@ -2430,8 +2444,6 @@ unkown:
       - ops/built-in/op_tiling/sigmoid_cross_entropy_with_logits_grad_v2.cc
       - ops/built-in/op_tiling/op_tiling_util.cc
       - ops/built-in/op_tiling/error_log.h
-      - ops/built-in/op_tiling/bn_training_update_v2.cc
-      - ops/built-in/op_tiling/bn_training_update_v3.cc
       - ops/built-in/op_tiling/reflection_pad_v3.cc
       - ops/built-in/op_tiling/l1_loss_grad.cc
       - ops/built-in/op_tiling/reflection_pad_v3.h
@@ -2851,7 +2863,6 @@ unkown:
       - ops/built-in/tbe/impl/div.py
       - ops/built-in/tbe/impl/update_tensor_desc.py
       - ops/built-in/tbe/impl/reduce_max_d_tik.py
-      - ops/built-in/tbe/impl/bn3d_training_reduce_grad.py
       - ops/built-in/tbe/impl/resize_bilinear_tik.py
       - ops/built-in/tbe/impl/ceil.py
       - ops/built-in/tbe/impl/reduce_sum_d.py
@@ -3015,7 +3026,6 @@ unkown:
       - ops/built-in/tbe/impl/hard_sigmoid.py
       - ops/built-in/tbe/impl/apply_add_sign_d.py
       - ops/built-in/tbe/impl/batch_norm3d.py
-      - ops/built-in/tbe/impl/in_training_update_v2.py
       - ops/built-in/tbe/impl/constant_util.py
       - ops/built-in/tbe/impl/apply_adam_with_amsgrad_d.py
       - ops/built-in/tbe/impl/relu6.py

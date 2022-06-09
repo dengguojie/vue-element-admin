@@ -93,13 +93,13 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     None
     """
 
-    dtype = x["dtype"]
+    dtype = x.get("dtype")
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_lower, check_list, param_name="x")
     x["rel_pos_to_reduce"] = "before"
 
-    shape = x["shape"]
+    shape = x.get("shape")
     shape_len = len(shape)
     if not axis:
         axis = range(shape_len)

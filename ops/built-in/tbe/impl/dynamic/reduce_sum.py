@@ -87,13 +87,13 @@ def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
     None
     """
     keepdims = False if keepdims is None else keepdims
-    dtype_x = x["dtype"]
+    dtype_x = x.get("dtype")
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")
     para_check.check_dtype(dtype_lower_x, check_list_x, param_name="x")
     x["rel_pos_to_reduce"] = "before"
 
-    dtype_axes = axes["dtype"]
+    dtype_axes = axes.get("dtype")
     dtype_lower_axes = dtype_axes.lower()
     check_list_axes = ("int32", "int64")
     para_check.check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")

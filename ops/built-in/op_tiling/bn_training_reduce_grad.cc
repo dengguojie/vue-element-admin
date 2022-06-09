@@ -32,7 +32,6 @@ const int64_t INDEX_3 = 3;
 const int64_t INDEX_4 = 4;
 struct BnTrainingReduceGradCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
-  bool have_reduce_mean_cof_dtype;
 };
 
 bool BnTrainingReduceGradTiling(const std::string& op_type, const ge::Operator& op_paras,
@@ -42,7 +41,7 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const ge::Operator& 
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"), return false);
   bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
   if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad tiling failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "training_reduce_grad tiling failed.");
     return false;
   }
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
@@ -57,31 +56,36 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const ge::Operator& 
   const GeShape& input_x_shapes = input_desc->MutableShape();
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  float reduce_mean_cof = 1.0;
   int64_t num = 1;
+  float reduce_mean_cof = 1.0;
   ge::Format input_x_format = input_desc->GetFormat();
   if (input_x_format == FORMAT_NDC1HWC0) {
     num = input_x_shapes.GetDim(INDEX_0) * input_x_shapes.GetDim(INDEX_1) *
           input_x_shapes.GetDim(INDEX_3) * input_x_shapes.GetDim(INDEX_4);
+    if (op_type == "INTrainingReduceGrad") {
+      num = input_x_shapes.GetDim(INDEX_1) * input_x_shapes.GetDim(INDEX_3) * input_x_shapes.GetDim(INDEX_4);
+    }
   } else {
     num = input_x_shapes.GetDim(INDEX_0) * input_x_shapes.GetDim(INDEX_2) *
           input_x_shapes.GetDim(INDEX_3);
+    if (op_type == "INTrainingReduceGrad") {
+      num = input_x_shapes.GetDim(INDEX_3) * input_x_shapes.GetDim(INDEX_4);
+    }
   }
 
   if (num == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%s)",
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "training_reduce_grad invalid dim value 0. (%s)",
                                     input_x_shapes.ToString().c_str());
     return false;
   }
   reduce_mean_cof = reduce_mean_cof / num;
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-  if (parsed_info.have_reduce_mean_cof_dtype) {
-    run_info.AddTilingData(reduce_mean_cof);
-    run_info.AddTilingData(-reduce_mean_cof);
+  run_info.AddTilingData(reduce_mean_cof);
+  run_info.AddTilingData(-reduce_mean_cof);
 
-    OP_LOGD(op_type, "bn_training_reduce_grad write tilingdata num_rec= %f", reduce_mean_cof);
-  }
+  OP_LOGD(op_type, "bn_training_reduce_grad write tilingdata num_rec= %f", reduce_mean_cof);
+
   PROFILING_TILING_END();
 
   return true;
@@ -92,17 +96,14 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
-  // get core_num value
-  std::string dtype;
-  bool have_reduce_mean_cof_dtype = false;
-  if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
-    have_reduce_mean_cof_dtype = true;
-  }
-  parsed_info.have_reduce_mean_cof_dtype = have_reduce_mean_cof_dtype;
   return true;
 }
 
 // register tiling interface of the bn_training_reduce_grad op.
 REGISTER_OP_TILING_V3_CUSTOM(BNTrainingReduceGrad, BnTrainingReduceGradTiling, ParseJsonCompileInfo,
+                             BnTrainingReduceGradCompileInfo);
+REGISTER_OP_TILING_V3_CUSTOM(BN3DTrainingReduceGrad, BnTrainingReduceGradTiling, ParseJsonCompileInfo,
+                             BnTrainingReduceGradCompileInfo);
+REGISTER_OP_TILING_V3_CUSTOM(INTrainingReduceGrad, BnTrainingReduceGradTiling, ParseJsonCompileInfo,
                              BnTrainingReduceGradCompileInfo);
 }  // namespace optiling

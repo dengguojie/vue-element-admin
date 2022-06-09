@@ -1,64 +1,37 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use this file
-except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 dynamic bn_training_update_v3
 """
-
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util import fusion_util
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.util_attr_common import OpAttr
 
 
 # 'pylint: disable=redefined-builtin
-def _check_shape_5hd(shape_x, shape_sum, shape_square_sum,
-                     shape_scale, shape_offset):
-    if len(shape_x) != 5 or len(shape_sum) != 5 \
-            or len(shape_square_sum) != 5 or len(shape_scale) != 5 \
-            or len(shape_offset) != 5:
-        param_name = ['len(shape_x), len(shape_sum), len(shape_square_sum), len(shape_scale), len(shape_offset)']
-        real_value = [len(shape_x), len(shape_sum), len(shape_square_sum), len(shape_scale), len(shape_offset)]
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", param_name, 5, real_value)
-    dim_c1 = shape_x[1]
-    dim_c0 = shape_x[4]
-
-    if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_sum[1], shape_sum[4]",
-        str(dim_c1) + ", " + str(dim_c0), str(shape_sum[1]) + ", " + str(shape_sum[4]))
-    if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_square_sum[1], \
-        shape_square_sum[4]",
-        str(dim_c1) + ", " + str(dim_c0), str(shape_square_sum[1]) + ", " + str(shape_square_sum[4]))
-    if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_scale[1], shape_scale[4]",
-        str(dim_c1) + ", " + str(dim_c0), str(shape_scale[1]) + ", " + str(shape_scale[4]))
-    if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
-        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_offset[1], shape_offset[4]",
-        str(dim_c1) + ", " + str(dim_c0), str(shape_offset[1]) + ", " + str(shape_offset[4]))
-
-
-def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
-                 dtype_scale, dtype_offset):
+def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset):
+    """check input dtype"""
     para_check.check_dtype(dtype_x, ("float16", "float32"))
     para_check.check_dtype(dtype_sum, ("float32",))
     para_check.check_dtype(dtype_square_sum, ("float32",))
@@ -66,33 +39,22 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
     para_check.check_dtype(dtype_offset, ("float32",))
 
 
-# 'pylint: disable=too-many-nested-blocks
-def _refine_ins_list(ins_list):
-    for index, ins_list_value in enumerate(ins_list):
-        shape_range = []
-        for dim, dim_val in enumerate(ins_list[index]["shape"]):
-            if dim_val == -1:
-                if "range" in ins_list_value:
-                    range_bottom, range_top = ins_list[index]["range"][dim]
-                    if range_bottom <= 1:
-                        if range_top is not None and range_top <= 1:
-                            range_top = 2
-                        shape_range.append((1, range_top))
-                    else:
-                        shape_range.append((range_bottom, range_top))
-                else:
-                    shape_range.append((1, None))
-            else:
-                shape_range.append((dim_val, dim_val))
-        ins_list[index]["range"] = tuple(shape_range)
-    return ins_list
-
-
 # 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
-def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
-                                  y, batch_mean, batch_variance,
-                                  reserve_1, reserve_2, epsilon,
-                                  kernel_name="bn_training_update_v3"):
+@register_operator_compute("BNTrainingUpdateV3", op_mode="dynamic", support_fusion=True)
+def bn_training_update_v3_compute(x,
+                                  sum,
+                                  square_sum,
+                                  scale,
+                                  offset,
+                                  y,
+                                  batch_mean,
+                                  batch_variance,
+                                  reserve_1,
+                                  reserve_2,
+                                  epsilon,
+                                  kernel_name="bn_training_update_v3",
+                                  reduce_shape=None,
+                                  dyn_flag=True):
     """
     algorithm: fused_batch_norm_v2
     Batch normalization.
@@ -127,20 +89,43 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
         A small float number added to the variance of x.
     kernel_name: str
         kernel name, default value is "bn_training_update_v3"
+    reduce_shape: list
+        reduce shape of input shape
+    dyn_flag: bool
+        flag of dynamic or static shape
 
     Returns
     -------
     res: TVM tensor list
         the result of bn_training_update_v3 compute
     """
-    shape_x = list(x.shape)
+    epsilon = get_attr_by_cls(epsilon, OpAttr(0, "epsilon", "Float", 0.0000001), "float32")
 
-    # runtime tiling: "NCHW" or "NC1HWC0" reduce [0, 2, 3]
-    num_rec = operation.var("num_rec", dtype="float32")
-    batch_var_scaler = operation.var("batch_var_scaler", dtype="float32")
-    epsilon = get_attr_by_cls(epsilon, 
-                              OpAttr(0, "epsilon", "Float", 0.0000001),
-                              "float32")
+    shape_x = shape_util.shape_to_list(x.shape)
+
+    if not dyn_flag:
+        data_format = y.get("format").upper()
+        if not reduce_shape and data_format in ("NC1HWC0",):
+            reduce_dims = [shape_x[0], shape_x[2], shape_x[3]]
+        elif not reduce_shape and data_format in ("NDC1HWC0",):
+            reduce_dims = [shape_x[0], shape_x[1], shape_x[3], shape_x[4]]
+        else:
+            reduce_dims = reduce_shape
+
+        num = 1
+        for dim in reduce_dims:
+            num *= dim
+
+        num_bw = 1.0 / num
+        num_rec = tvm.const(num_bw, dtype="float32")
+
+        if num == 1:
+            batch_var_scalar = 0.0
+        else:
+            batch_var_scalar = float(num) / (num - 1)
+    else:
+        num_rec = tbe.var("num_rec", dtype="float32")
+        batch_var_scalar = tbe.var("batch_var_scalar", dtype="float32")
 
     # compute the saved mean of x
     save_mean_reduce = tbe.vmuls(sum, num_rec)
@@ -170,86 +155,30 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
 
     # compute batch_mean and batch_var
     res_batch_mean = tbe.vmuls(sum, num_rec)
-    res_batch_var = tbe.vmuls(save_variance_reduce, batch_var_scaler)
+    res_batch_var = tbe.vmuls(save_variance_reduce, batch_var_scalar)
 
-    res = [res_y, res_batch_mean, res_batch_var,
-           save_mean_reduce, save_variance_reduce]
+    res = [res_y, res_batch_mean, res_batch_var, save_mean_reduce, save_variance_reduce]
 
     return res
 
 
-def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
-                                         y, batch_mean, batch_variance,
-                                         reserve_1, reserve_2, epsilon,
-                                         kernel_name="bn_training_update_v3"):
-    """
-    algorithm: fused_batch_norm_v2
-    Batch normalization.
-
-    Parameters
-    ----------
-    x: TVM tensor
-        contains x data
-    sum: TVM tensor
-        contains sum data
-    square_sum: TVM tensor
-        contains square_sum data
-    scale: TVM tensor
-        contains scale data
-    offset: TVM tensor
-        contains offset data
-    y: dict
-        dict of output, A `Tensor`. Has the same type as `x`.
-    batch_mean: dict
-        dict of batch_mean, A `Tensor`.
-        One of the result which is called save mean.
-    batch_variance: dict
-        dict of batch_variance, A `Tensor`.
-        Has the same type as `batch_mean`.
-    reserve_1: dict
-        dict of batch_mean, A `Tensor`.
-        Has the same type as `batch_mean`.
-    reserve_2: dict
-        dict of batch_variance, A `Tensor`.
-        Has the same type as `batch_variance`.
-    epsilon: float
-        A small float number added to the variance of x.
-    kernel_name: str
-        kernel name, default value is "bn_training_update_v3"
-
-    Returns
-    -------
-    res: TVM tensor list
-        the result of bn_training_update_v3 compute
-    """
-    fusion_util.check_fusion_input([x, sum])
-    dict_x = fusion_util.extract_dict(x)
-    dict_sum = fusion_util.extract_dict(sum)
-    shape_x, shape_sum = fusion_util.normalize_shape([dict_x, dict_sum])
-
-    in_x = fusion_util.create_placeholder(x, shape_x)
-    in_sum = fusion_util.create_placeholder(sum, shape_sum)
-    in_sqrsum = fusion_util.create_placeholder(square_sum, shape_sum)
-    in_scale = fusion_util.create_placeholder(scale, shape_sum)
-    in_offset = fusion_util.create_placeholder(offset, shape_sum)
-    res = bn_training_update_v3_compute(in_x, in_sum, in_sqrsum,
-                                        in_scale, in_offset,
-                                        y, batch_mean, batch_variance,
-                                        reserve_1, reserve_2,
-                                        epsilon, kernel_name=kernel_name)
-
-    return {"op_placeholder": [in_x, in_sum, in_sqrsum, in_scale, in_offset],
-            "op_res": list(res)}
-
-
+@register_operator("BNTrainingUpdateV3")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def bn_training_update_v3(x, sum, square_sum, scale, offset,
-                          y, batch_mean, batch_variance, reserve_1, reserve_2,
-                          epsilon, kernel_name="bn_training_update_v3"):
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+def bn_training_update_v3(x,
+                          sum,
+                          square_sum,
+                          scale,
+                          offset,
+                          y,
+                          batch_mean,
+                          batch_variance,
+                          reserve_1,
+                          reserve_2,
+                          epsilon,
+                          kernel_name="bn_training_update_v3"):
     """
     algorithm: fused_batch_norm_v2
     Batch normalization.
@@ -296,70 +225,63 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
     dtype_sqrsum = square_sum.get("dtype").lower()
     dtype_scale = scale.get("dtype").lower()
     dtype_offset = offset.get("dtype").lower()
-
-    shape_x = x.get("shape")
-    shape_sum = sum.get("shape")
-    shape_sqrsum = square_sum.get("shape")
-    shape_scale = scale.get("shape")
-    shape_offset = offset.get("shape")
+    _check_dtype(dtype_x, dtype_sum, dtype_sqrsum, dtype_scale, dtype_offset)
 
     data_format = x.get("format").upper()
-    origin_format = x.get("ori_format").upper()
-
-    # check dtype
-    _check_dtype(dtype_x, dtype_sum, dtype_sqrsum,
-                 dtype_scale, dtype_offset)
-
-    # check format
-    check_list = ("NC1HWC0", "NCHW", "NDC1HWC0")
-    para_check.check_format(data_format, check_list, param_name="x")
-    if data_format == "NCHW" and origin_format not in ("NCHW",):
-        error_detail = "The origin format only supports NCHW when format is NCHW, origin_format:", origin_format
-        error_manager_vector.raise_err_specific_reson("bn_training_update_v3", error_detail)
-
-    if is_unknown_rank_input(
-        (x, sum, square_sum, scale, offset)) or epsilon is None:
+    if is_unknown_rank_input((x, sum, square_sum, scale, offset)) or epsilon is None:
+        if data_format == "NC1HWC0":
+            dynamic_shape = [-1, -1, -1, -1, -1]
+            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+        else:
+            dynamic_shape = [-1, -1, -1, -1, -1, -1]
+            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None)]
         for input_dict in (x, sum, square_sum, scale, offset):
-            input_dict["shape"] = [-1, -1, -1, -1, -1]
-            input_dict["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+            input_dict["shape"] = dynamic_shape
+            input_dict["range"] = dynamic_range
 
-        ins = classify([x, sum, square_sum, scale, offset], OpPatternMode.ELEWISE_WITH_BROADCAST,
-                       extra_params={"disable_optimization": True})
-    else:
-        x["shape"] = shape_x
-        sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
-        square_sum["shape"] = [1, shape_sqrsum[1], 1, 1, shape_sqrsum[4]]
-        scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
-        offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
+    shape_x = x.get("shape")
+    reduce_shape = None
+    dyn_flag = util_common.is_unknown([x, sum, square_sum, scale, offset])
+    if not dyn_flag and data_format in ("NC1HWC0",):
+        reduce_shape = [shape_x[0], shape_x[2], shape_x[3]]
+    elif not dyn_flag and data_format in ("NDC1HWC0",):
+        reduce_shape = [shape_x[0], shape_x[1], shape_x[3], shape_x[4]]
 
-        ins_list = [x, sum, square_sum, scale, offset]
-        ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
-                       extra_params={"disable_optimization": True})
+    ins_list = [x, sum, square_sum, scale, offset]
+    ins = classify(ins_list, OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules = []
     tensors = []
 
     for (ins_x, ins_sum, ins_square_sum, ins_scale, ins_offset) in ins:
         with tbe.compute():
-            shape_x, shape_sum, shape_sqrsum, shape_scale, shape_offset = \
-                shape_util.variable_shape([ins_x, ins_sum, ins_square_sum, ins_scale, ins_offset])
+            _shape_x, _shape_sum, _shape_sqrsum, _shape_scale, _shape_offset = shape_util.variable_shape(
+                [ins_x, ins_sum, ins_square_sum, ins_scale, ins_offset])
 
-            in_x = tvm.placeholder(shape_x, name="x", dtype=dtype_x)
-            in_sum = tvm.placeholder(shape_sum, name="sum", dtype=dtype_sum)
-            in_sqrsum = tvm.placeholder(shape_sum, name="sqrsum", dtype=dtype_sum)
-            in_scale = tvm.placeholder(shape_sum, name="scale", dtype=dtype_sum)
-            in_offset = tvm.placeholder(shape_sum, name="offset", dtype=dtype_sum)
-            res = bn_training_update_v3_compute(in_x, in_sum, in_sqrsum,
-                                                in_scale, in_offset,
-                                                y, batch_mean, batch_variance,
-                                                reserve_1, reserve_2,
-                                                epsilon, kernel_name=kernel_name)
+            in_x = tvm.placeholder(_shape_x, name="x", dtype=dtype_x)
+            in_sum = tvm.placeholder(_shape_sum, name="sum", dtype=dtype_sum)
+            in_sqrsum = tvm.placeholder(_shape_sqrsum, name="sqrsum", dtype=dtype_sum)
+            in_scale = tvm.placeholder(_shape_scale, name="scale", dtype=dtype_sum)
+            in_offset = tvm.placeholder(_shape_offset, name="offset", dtype=dtype_sum)
+            res = bn_training_update_v3_compute(in_x,
+                                                in_sum,
+                                                in_sqrsum,
+                                                in_scale,
+                                                in_offset,
+                                                y,
+                                                batch_mean,
+                                                batch_variance,
+                                                reserve_1,
+                                                reserve_2,
+                                                epsilon,
+                                                kernel_name=kernel_name,
+                                                reduce_shape=reduce_shape,
+                                                dyn_flag=dyn_flag)
             tensors.append([in_x, in_sum, in_sqrsum, in_scale, in_offset] + res)
 
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
 
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

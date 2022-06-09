@@ -63,7 +63,7 @@ set(_optiling_files
   max_pool_grad.cc
   bninference_d.cc
   tile_with_axis.cc
-  bn_reduce_grad.cc
+  bn_training_reduce_grad.cc
   bn_training_update_v3.cc
   bn_training_update_v2.cc
   bn_training_update.cc
@@ -192,7 +192,6 @@ set(_optiling_files
   iou.cc
   layer_norm.cc
   layer_norm_v1.cc
-  bn_update_grad_tiling.cc
   roi_align.cc
   roi_align_grad.cc
   smooth_l1_loss_v2.cc

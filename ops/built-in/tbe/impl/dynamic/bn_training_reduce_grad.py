@@ -1,4 +1,4 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,23 +16,23 @@
 dynamic bn_training_reduce_grad
 """
 from impl.util import util_common
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
-from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
-from impl.bn_training_reduce_grad import get_op_support_info as bn_get_op_support_info
-from impl.bn_training_reduce_grad import op_select_format as bn_op_select_format
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.util_attr_common import OpAttr
 from impl.util.util_compute import check_support_fusion
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -45,21 +45,20 @@ def get_op_support_info(grads,
                         batch_mean,
                         batch_variance,
                         y,
-                        epsilon=0.0001,
+                        epsilon,
                         kernel_name="bn_training_reduce_grad"):
     """
     get_op_support_info
     """
-    return bn_get_op_support_info(grads,
-                                  x,
-                                  diff_scale,
-                                  diff_offset,
-                                  scale,
-                                  batch_mean,
-                                  batch_variance,
-                                  y,
-                                  epsilon=0.0001,
-                                  kernel_name="bn_training_reduce_grad")
+    format_grads = grads.get("format").upper()
+    if format_grads == "NC1HWC0":
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+
+    else:
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def op_select_format(grads,
@@ -92,16 +91,95 @@ def op_select_format(grads,
     > batch_mean : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     > batch_variance : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     """
-    return bn_op_select_format(grads,
-                               x,
-                               diff_scale,
-                               diff_offset,
-                               scale,
-                               batch_mean,
-                               batch_variance,
-                               y,
-                               epsilon,
-                               kernel_name="bn_training_reduce_grad")
+    format_grads = grads.get("ori_format").upper()
+    origin_shape = grads.get("ori_shape")
+
+    if format_grads == "NCHW" and len(origin_shape) == 4 and origin_shape[0] == 1 and origin_shape[2] == 1:
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="grads",
+                                               datatype="float16,float,float16,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x",
+                                               datatype="float16,float,float16,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input2 = util_select_op_base.gen_param(classify="input2",
+                                               name="diff_scale",
+                                               datatype="float,float,float,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input3 = util_select_op_base.gen_param(classify="input3",
+                                               name="diff_offset",
+                                               datatype="float,float,float,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input4 = util_select_op_base.gen_param(classify="input4",
+                                               name="scale",
+                                               datatype="float,float,float,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input5 = util_select_op_base.gen_param(classify="input5",
+                                               name="batch_mean",
+                                               datatype="float,float,float,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        input6 = util_select_op_base.gen_param(classify="input6",
+                                               name="batch_variance",
+                                               datatype="float,float,float,float",
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype="float16,float,float16,float",
+                                                format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                                unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="grads",
+                                               datatype="float16,float,float16,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="x",
+                                               datatype="float16,float,float16,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        input2 = util_select_op_base.gen_param(classify="input2",
+                                               name="diff_scale",
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        input3 = util_select_op_base.gen_param(classify="input3",
+                                               name="diff_offset",
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        input4 = util_select_op_base.gen_param(classify="input4",
+                                               name="scale",
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        input5 = util_select_op_base.gen_param(classify="input5",
+                                               name="batch_mean",
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        input6 = util_select_op_base.gen_param(classify="input6",
+                                               name="batch_variance",
+                                               datatype="float,float,float,float",
+                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype="float16,float,float16,float",
+                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0",
+                                                unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+
+    param_list = [input0, input1, input2, input3, input4, input5, input6, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 def _check_format(data_format, origin_foramt):
@@ -186,14 +264,7 @@ def bn_training_reduce_grad_compute(grads,
     -------
     res: TVM tensor
     """
-    if not tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
-        error_reson = "Platform does not support float32 vdiv."
-        error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        return []
-
-    epsilon = get_attr_by_cls(epsilon, 
-                              OpAttr(0, "epsilon", "Float", 0.0000001),
-                              "float32")
+    epsilon = get_attr_by_cls(epsilon, OpAttr(0, "epsilon", "Float", 0.0000001), "float32")
     is_cast = False
     if grads.dtype == "float16":
         is_cast = True
@@ -209,7 +280,7 @@ def bn_training_reduce_grad_compute(grads,
         data_format = y.get("format").upper()
         if not reduce_shape and data_format in ("NC1HWC0", "NCHW"):
             reduce_dims = [shape_grads[0], shape_grads[2], shape_grads[3]]
-        elif not reduce_shape and  data_format in ("NDC1HWC0",):
+        elif not reduce_shape and data_format in ("NDC1HWC0",):
             reduce_dims = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
         else:
             reduce_dims = reduce_shape
@@ -222,7 +293,6 @@ def bn_training_reduce_grad_compute(grads,
         num_rec = tvm.const(num_bw, dtype="float32")
         neg_num_rec = tvm.const(-num_bw, dtype="float32")
     else:
-        tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", "float32")
         num_rec = tbe.var("num_rec", dtype="float32")
         neg_num_rec = tbe.var("neg_num_rec", dtype="float32")
 
@@ -251,50 +321,6 @@ def bn_training_reduce_grad_compute(grads,
     if is_cast:
         res = tbe.cast_to(res, "float16")
     return res
-
-
-def _check_shape(shape_grads, shape_diff_scale, data_format):
-    """
-    Function to check if the shape is in line with norms.
-
-    Parameters
-    ----------
-    shape_grads: list or tuple
-        input grads's data shape
-    shape_diff_scale: list or tuple
-        input diff_scale's data shape
-    Returns
-    -------
-    None
-    """
-    para_check.check_shape(shape_grads, param_name="grads")
-    para_check.check_shape(shape_diff_scale, param_name="diff_scale")
-    if -1 not in shape_grads:
-        dim_c0 = 0
-        if data_format == "NDC1HWC0":
-            dim_c0 = shape_grads[5]
-            n_shape = shape_diff_scale[0] * shape_diff_scale[1]
-            if n_shape != 1 or shape_diff_scale[3] != 1 or shape_diff_scale[4] != 1:
-                error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
-                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-            if shape_diff_scale[5] != dim_c0:
-                error_reson = "Dimension C must be equal"
-                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        else:
-            dim_c0 = shape_grads[4]
-            if shape_diff_scale[0] != 1 or shape_diff_scale[2] != 1 or shape_diff_scale[3] != 1:
-                error_reson = "Dimensions except Dimension C must be one for shape_diff_scale"
-                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-            if shape_diff_scale[4] != dim_c0:
-                error_reson = "Dimension C must be equal"
-                error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-
-        if len(shape_grads) not in (5, 6) or len(shape_diff_scale) not in (5, 6):
-            error_reson = "This operator can only support 5D,6D, but some input's shape length is not 5 or 6"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
-        if dim_c0 != 16:
-            error_reson = "shape_grads last dim must be 16"
-            error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
 
 @register_operator("BNTrainingReduceGrad")
@@ -352,25 +378,13 @@ def bn_training_reduce_grad(grads,
     -------
     None
     """
-
-    shape_grads = grads.get("shape")
-    shape_diff_scale = diff_scale.get("shape")
-
-    dtype_grads = grads.get("dtype")
-    dtype_x = x.get("dtype")
-    dtype_diff_scale = diff_scale.get("dtype")
-    dtype_diff_offset = diff_offset.get("dtype")
-    dtype_scale = scale.get("dtype")
-    dtype_batch_mean = batch_mean.get("dtype")
-    dtype_batch_variance = batch_variance.get("dtype")
-
-    grads_dtype = dtype_grads.lower()
-    x_dtype = dtype_x.lower()
-    diff_scale_dtype = dtype_diff_scale.lower()
-    diff_offset_dtype = dtype_diff_offset.lower()
-    scale_dtype = dtype_scale.lower()
-    batch_mean_dtype = dtype_batch_mean.lower()
-    batch_variance_dtype = dtype_batch_variance.lower()
+    grads_dtype = grads.get("dtype").lower()
+    x_dtype = x.get("dtype").lower()
+    diff_scale_dtype = diff_scale.get("dtype").lower()
+    diff_offset_dtype = diff_offset.get("dtype").lower()
+    scale_dtype = scale.get("dtype").lower()
+    batch_mean_dtype = batch_mean.get("dtype").lower()
+    batch_variance_dtype = batch_variance.get("dtype").lower()
 
     para_check.check_dtype(grads_dtype, ("float32", "float16"), param_name="grads")
     para_check.check_dtype(x_dtype, ("float32", "float16"), param_name="x")
@@ -384,35 +398,7 @@ def bn_training_reduce_grad(grads,
     data_format = grads.get("format").upper()
     _check_format(data_format, ori_format)
 
-    if not is_unknown_rank_input((grads, x, diff_scale, 
-       diff_offset, scale, batch_mean, batch_variance)) and epsilon is not None:
-        if data_format in ("NC1HWC0", "NDC1HWC0"):
-            _check_shape(shape_grads, shape_diff_scale, data_format)
-        else:
-            shape_list = [1, 1, 1, 1]
-            shape_list[1] = shape_grads[1]
-            range_list = util_common.gen_range(shape_list)
-            diff_scale["shape"] = shape_list
-            diff_scale["range"] = range_list
-            diff_offset["shape"] = shape_list
-            diff_offset["range"] = range_list
-            scale["shape"] = shape_list
-            scale["range"] = range_list
-            batch_mean["shape"] = shape_list
-            batch_mean["range"] = range_list
-            batch_variance["shape"] = shape_list
-            batch_variance["range"] = range_list
-
-    dyn_flag = util_common.is_unknown([grads, x])
-
-    reduce_shape = None
-    if not dyn_flag and data_format in ("NC1HWC0", "NCHW"):
-        reduce_shape = [shape_grads[0], shape_grads[2], shape_grads[3]]
-    elif not dyn_flag and data_format in ("NDC1HWC0",):
-        reduce_shape = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
-
-    if is_unknown_rank_input((grads, x, diff_scale, 
-       diff_offset, scale, batch_mean, batch_variance)) or epsilon is None:
+    if is_unknown_rank_input((grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance)) or epsilon is None:
         if data_format == "NC1HWC0":
             dynamic_shape = [-1, -1, -1, -1, -1]
             dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None)]
@@ -423,13 +409,35 @@ def bn_training_reduce_grad(grads,
             dynamic_shape = [-1, -1, -1, -1, -1, -1]
             dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None)]
 
-        for input_dict in (grads, x, diff_scale, diff_offset,
-                           scale, batch_mean, batch_variance):
+        for input_dict in (grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance):
             input_dict["shape"] = dynamic_shape
             input_dict["range"] = dynamic_range
 
+    shape_grads = grads.get("shape")
+    if data_format in ("NCHW",):
+        shape_list = [1, 1, 1, 1]
+        shape_list[1] = shape_grads[1]
+        range_list = util_common.gen_range(shape_list)
+        diff_scale["shape"] = shape_list
+        diff_scale["range"] = range_list
+        diff_offset["shape"] = shape_list
+        diff_offset["range"] = range_list
+        scale["shape"] = shape_list
+        scale["range"] = range_list
+        batch_mean["shape"] = shape_list
+        batch_mean["range"] = range_list
+        batch_variance["shape"] = shape_list
+        batch_variance["range"] = range_list
+
+    reduce_shape = None
+    dyn_flag = util_common.is_unknown([grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance])
+    if not dyn_flag and data_format in ("NC1HWC0", "NCHW"):
+        reduce_shape = [shape_grads[0], shape_grads[2], shape_grads[3]]
+    elif not dyn_flag and data_format in ("NDC1HWC0",):
+        reduce_shape = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
+
     ins = classify([grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance],
-                    OpPatternMode.ELEWISE_WITH_BROADCAST)
+                   OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []
 

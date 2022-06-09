@@ -33,22 +33,22 @@ namespace optiling {
                     return false);
 
     std::vector<int64_t> shape_x = input_x_desc->MutableShape().GetDims();
+    ge::Format format_x = input_x_desc->GetFormat();
 
-    constexpr int n_dim = 0;
-    constexpr int h_dim = 2;
-    constexpr int w_dim = 3;
-    constexpr int len_shape = 5;
-    int64_t N = 1;
-    int64_t H = 1;
-    int64_t W = 1;
-    if (shape_x.size() == len_shape) {
-      N = shape_x[n_dim];
-      H = shape_x[h_dim];
-      W = shape_x[w_dim];
+    constexpr int idx_0 = 0;
+    constexpr int idx_1 = 1;
+    constexpr int idx_2 = 2;
+    constexpr int idx_3 = 3;
+    constexpr int idx_4 = 4;
+
+    int64_t num = 1;
+    float num_rec = 1.0;
+    if (format_x == FORMAT_NDC1HWC0) {
+      num = shape_x[idx_0] * shape_x[idx_1] * shape_x[idx_3] * shape_x[idx_4];
+    } else {
+      num = shape_x[idx_0] * shape_x[idx_2] * shape_x[idx_3];
     }
 
-    float num_rec = 1.0;
-    int64_t num = N * H * W;
     num_rec = 1.0 / static_cast<float>(num);
 
     bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);

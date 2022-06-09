@@ -24,37 +24,22 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from impl.util import util_select_op_base
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
-from impl.util.util_select_op_base import ReduceInput
-from impl.util.util_select_op_base import ReduceOutput
+from impl.dynamic.bn_training_reduce import get_op_support_info as bn_get_op_support_info
+from impl.dynamic.bn_training_reduce import op_select_format as bn_op_select_format
 
 
 # 'pylint: disable = unused-argument
 # 'pylint: disable=invalid-name,redefined-builtin,too-many-statements
-def get_op_support_info(x, sum, square_sum,
-                       kernel_name="bn_training_reduce"):
+def get_op_support_info(x, sum, square_sum, kernel_name="bn_training_reduce"):
     """
     get_op_support_info
     """
-    format_x = x.get("format").upper()
-    if format_x == "NC1HWC0":
-        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]], [1, [1]])]]
-        axis_reduce_list = [[ReduceInput([0, [0]]), ReduceOutput([0, 0, True], [1, 0, True])]]
-
-    else:
-        axis_split_matrix = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
-    return op_cal_info_in_json
+    return bn_get_op_support_info(x, sum, square_sum, kernel_name="bn_training_reduce")
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
 # 'pylint: disable=locally-disabled,redefined-builtin, too-many-locals
-def op_select_format(x, sum, square_sum,
-                     kernel_name="bn_training_reduce"):
+def op_select_format(x, sum, square_sum, kernel_name="bn_training_reduce"):
     """
     1. when input(x)'s ori_shape is [1, ? ,1, ?] and the format is NCHW,
     the Op BNTrainingReduce can support NCHW.
@@ -66,43 +51,7 @@ def op_select_format(x, sum, square_sum,
     > for example:
     > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     """
-    origin_format = x.get("ori_format").upper()
-    origin_shape = x.get("ori_shape")
-
-    # can support Nz + ND
-    if origin_format == "NCHW" and len(origin_shape) == 4 \
-            and origin_shape[0] == 1 and origin_shape[2] == 1:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16, float, float16, float",
-                                               format="NCHW, NCHW, NC1HWC0, NC1HWC0",
-                                               unknownshape_format="NCHW, NCHW, NC1HWC0, NC1HWC0")
-        output0 = util_select_op_base.gen_param(classify="output0", name="sum",
-                                                datatype="float, float, float, float",
-                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0",
-                                                unknownshape_format="NCHW, NCHW, NC1HWC0, NC1HWC0")
-        output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
-                                                datatype="float, float, float, float",
-                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0",
-                                                unknownshape_format="NCHW, NCHW, NC1HWC0, NC1HWC0")
-    # support 5HD + 5HD
-    else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16, float, float16, float",
-                                               format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0",
-                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
-        output0 = util_select_op_base.gen_param(classify="output0", name="sum",
-                                                datatype="float, float, float, float",
-                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0",
-                                                unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
-        output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
-                                                datatype="float, float, float, float",
-                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0",
-                                                unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
-
-    param_list = [input0, output0, output1]
-    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
-
-    return param_dynamic_in_json
+    return bn_op_select_format(x, sum, square_sum, kernel_name="bn_training_reduce")
 
 
 def _check_format(data_format, origin_foramt):

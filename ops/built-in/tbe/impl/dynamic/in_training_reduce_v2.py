@@ -1,4 +1,4 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,43 +24,64 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tuple_sum
-from impl.in_training_reduce_v2 import op_select_format as in_op_select_format
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# 'pylint: disable=unused-argument,invalid-name
-# 'pylint: disable=too-many-locals, too-many-statements,redefined-builtin
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,redefined-builtin
 def op_select_format(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     """
     select format dynamically
     """
-    return in_op_select_format(x, sum, square_sum, kernel_name="in_training_reduce_v2")
+    input_format = "NC1HWC0, NC1HWC0"
+    ori_format = x.get("ori_format")
+    if ori_format in ("NDHWC", "NCDHW"):
+        input_format = "NDC1HWC0, NDC1HWC0"
+
+    input0 = gen_param(classify="input0",
+                       name="x",
+                       datatype="float16,float",
+                       format=input_format,
+                       unknownshape_format=input_format)
+    output0 = gen_param(classify="output0",
+                        name="sum",
+                        datatype="float,float",
+                        format=input_format,
+                        unknownshape_format=input_format)
+    output1 = gen_param(classify="output1",
+                        name="square_sum",
+                        datatype="float,float",
+                        format=input_format,
+                        unknownshape_format=input_format)
+
+    param_list = [input0, output0, output1]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 @register_operator_compute("INTrainingReduceV2", op_mode="dynamic", support_fusion=True)
 def in_training_reduce_v2_compute(x, sum, square_sum, kernel_name="in_training_reduce_v2", reduce_axis=None):
     """
-    algorithm: part of instance_norm
-    The first step of instance_norm
-    which to calculate the sum and square sum of x.
-    The major component of this operator is reduce operation.
+    DSL description of the instancenorm operator's mathematical calculation process
 
     Parameters
     ----------
     x: TVM tensor
-        contains x data
+        the placeholder of input x
     sum: dict
-        dict of sum, A `Tensor`. Sum of x.
+        shape and dtype of input sum
     square_sum: dict
-        dict of square_sum, A `Tensor`. Square sum of x.
+        shape and dtype of input square_sum
     kernel_name: str
-        kernel name, default value is "in_training_reduce_v2"
+        cce kernel name, default value is "in_training_reduce_v2"
     reduce_axis: list
         reduce axis of input shape
 
     Returns
     -------
-    res: TVM tensor list
-        the result of in_training_reduce_v2 compute
+    res_tuple: tuple
+        (sum_x, square_sum_x)
     """
     dtype = x.dtype.lower()
     if dtype == "float16":
@@ -85,21 +106,18 @@ def in_training_reduce_v2_compute(x, sum, square_sum, kernel_name="in_training_r
                             para_check.KERNEL_NAME)
 def in_training_reduce_v2(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     """
-    algorithm: part of instance_norm
-    The first step of batch_norm
-    which to calculate the sum and square sum of x.
-    The major component of this operator is reduce operation.
+    instancenorm operator interface implementation
 
     Parameters
     ----------
     x: dict
-        dict of input, A 5HD Tensor for input data.
+        shape and dtype of input x, only support float16, float32
     sum: dict
-        dict of sum, A `Tensor`. Sum of x.
+        shape and dtype of input sum, only support float32
     square_sum: dict
-        dict of square_sum, A `Tensor`. Square sum of x.
+        shape and dtype of input square_sum, only support float32
     kernel_name: str
-        kernel name, default value is "in_training_reduce_v2"
+        cce kernel name, default value is "in_training_reduce_v2"
 
     Returns
     -------

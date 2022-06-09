@@ -33,31 +33,38 @@ namespace optiling {
                     return false);
 
     std::vector<int64_t> shape_x = input_x_desc->MutableShape().GetDims();
+    ge::Format format_x = input_x_desc->GetFormat();
 
-    constexpr int n_dim = 0;
-    constexpr int h_dim = 2;
-    constexpr int w_dim = 3;
-    constexpr int len_shape = 5;
-    int64_t N = 1;
-    int64_t H = 1;
-    int64_t W = 1;
-    if (shape_x.size() == len_shape) {
-      N = shape_x[n_dim];
-      H = shape_x[h_dim];
-      W = shape_x[w_dim];
-    }
+    constexpr int idx_0 = 0;
+    constexpr int idx_1 = 1;
+    constexpr int idx_2 = 2;
+    constexpr int idx_3 = 3;
+    constexpr int idx_4 = 4;
 
-    float batch_var_scalar = 0.0;
+    int64_t num = 1;
     float num_rec = 1.0;
-    int64_t num = N * H * W;
-    if (num > 1) {
-      batch_var_scalar = static_cast<float>(num) / static_cast<float>((num) - 1);
+    float batch_var_scalar = 0.0;
+    if (format_x == FORMAT_NDC1HWC0) {
+      num = shape_x[idx_0] * shape_x[idx_1] * shape_x[idx_3] * shape_x[idx_4];
+      if (op_type == "INTrainingUpdateV2") {
+        num = shape_x[idx_1] * shape_x[idx_3] * shape_x[idx_4];
+      }
+    } else {
+      num = shape_x[idx_0] * shape_x[idx_2] * shape_x[idx_3];
+      if (op_type == "INTrainingUpdateV2") {
+        num = shape_x[idx_3] * shape_x[idx_4];
+      }
     }
 
     num_rec = 1.0 / static_cast<float>(num);
+
+    if (num > 1) {
+      batch_var_scalar = static_cast<float>(num) / static_cast<float>(num - 1);
+    }
+
     bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
     if (!ret) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_update_v3 tiling failed.");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "training_update tiling failed.");
       return false;
     }
 
@@ -75,5 +82,7 @@ namespace optiling {
     return true;
   }
   REGISTER_OP_TILING_V3_CUSTOM(BNTrainingUpdateV3, BNTrainingUpdateV3Tiling, ParseJsonCompileInfo,
+                               BNTrainingUpdateV3CompileInfo);
+  REGISTER_OP_TILING_V3_CUSTOM(INTrainingUpdateV2, BNTrainingUpdateV3Tiling, ParseJsonCompileInfo,
                                BNTrainingUpdateV3CompileInfo);
 }   // namespace optiling

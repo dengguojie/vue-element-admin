@@ -150,13 +150,13 @@ def reduce_mean_d(input_x,
     -------
     None
     """
-    dtype = input_x["dtype"]
+    dtype = input_x.get("dtype")
     dtype_lower = dtype.lower()
     check_list = ("float16", "float32", "int8", "uint8")
     para_check.check_dtype(dtype_lower, check_list)
     input_x["rel_pos_to_reduce"] = "before"
 
-    shape = input_x["shape"]
+    shape = input_x.get("shape")
     shape_len = len(shape)
     if axes is None or (len(axes) == 0 and not noop_with_empty_axes):
         axes = range(shape_len)

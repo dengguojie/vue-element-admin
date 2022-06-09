@@ -38,6 +38,15 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 from te.utils.error_manager import error_manager_vector
+from impl.dynamic.relu_v2 import get_op_support_info as relu_get_op_support_info
+
+
+# 'pylint: disable=locally-disabled,too-many-argument,unused-argument,invalid-name
+def get_op_support_info(x, y, mask, kernel_name="relu_v2"):
+    """
+    get_op_support_info
+    """
+    return relu_get_op_support_info(x, y, mask, kernel_name="relu_v2")
 
 
 # 'pylint: disable=too-few-public-methods
