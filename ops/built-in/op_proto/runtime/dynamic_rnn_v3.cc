@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,6 @@ ge::graphStatus InferShapeForDynamicRNNV3(gert::InferShapeContext *context) {
   auto hidden_size = w_shape->GetDim(1) / 4;
   auto num_step = x_shape->GetDim(0);
   auto batch_size = x_shape->GetDim(1);
-
   auto outputY_shape = context->GetOutputShape(0);
   auto outputH_shape = context->GetOutputShape(1);
   auto outputC_shape = context->GetOutputShape(2);
@@ -54,7 +53,6 @@ ge::graphStatus InferShapeForDynamicRNNV3(gert::InferShapeContext *context) {
   auto outputF_shape = context->GetOutputShape(5);
   auto outputO_shape = context->GetOutputShape(6);
   auto outputTanhc_shape = context->GetOutputShape(7);
-
   if (outputY_shape == nullptr || outputH_shape == nullptr || outputC_shape == nullptr || outputI_shape == nullptr ||
       outputJ_shape == nullptr || outputF_shape == nullptr || outputO_shape == nullptr ||
       outputTanhc_shape == nullptr) {

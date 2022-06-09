@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ static int32_t GetRnnV3LibItem(const DynamicRNNV3CompileInfo *compile_info, cons
   for (const auto &tune_shape : compile_info->tune_shape_list) {
     if (tune_shape.size() < DEFAULT_SHAPE_LIST_SIZE) {
       VECTOR_INNER_ERR_REPORT_TILIING("DynamicRNNV3", "tune_shape_list's size is illegal. it's %lu.",
-                                      tune_shape.size());     
+                                      tune_shape.size());
       return DEFAULT_RETURN;
     }
     if ((tune_shape[0] == -1) && (tune_shape[1] == -1)) {
