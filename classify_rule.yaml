@@ -2362,6 +2362,9 @@ vector_D:
       - ops/built-in/op_tiling/sparse_apply_common.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop_v2.py
+      - ops/built-in/op_tiling/runtime/layer_norm_x_backprop_v2.cc
+      - ops/built-in/op_tiling/runtime/layer_norm_x_backprop_v2.h
+      - ops/built-in/op_proto/runtime/layer_norm_x_backprop_v2.cc
     unrelease:
       - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py

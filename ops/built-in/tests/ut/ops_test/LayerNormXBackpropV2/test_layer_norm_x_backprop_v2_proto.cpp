@@ -2,6 +2,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "nn_norm_ops.h"
+#include "common/utils/ut_op_common.h"
 
 class layer_norm_x_backprop_v2 : public testing::Test {
  protected:
@@ -30,5 +31,6 @@ TEST_F(layer_norm_x_backprop_v2, layer_norm_x_backprop_v2_infershape_diff_test_1
 
   std::vector<int64_t> expected_output_shape = {16, 512, 512};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  CommonInferShapeOperator(op, {}, {expected_output_shape, expected_output_shape});
 }
 

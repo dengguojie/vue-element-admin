@@ -31,17 +31,6 @@ from impl.util.norm_pattern_adapter import NormPattern
 from impl.util.util_common import is_unknown_rank_input
 
 
-# 'pylint: disable=too-few-public-methods
-class Constant:
-    """
-    The class for Constant
-    """
-    # General limitation of the size for input shape: 2**31
-    SHAPE_SIZE_LIMIT = 2147483648
-    # Minimum positive number greater than 0
-    EPSLON = 1e-12
-
-
 def _update_gamma_shape(shape_x, shape_gamma):
     """
     update shape_gamma for subsequent calculation
@@ -208,7 +197,7 @@ def _get_pd_x(data, params, shape_x, dtype, cast_dtype):
     data_gamma_cast = tbe.broadcast(data.get("data_gamma"), shape_x)
     pd_xl = tbe.vmul(data_gamma_cast, data.get("data_dy"))
 
-    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(Constant.EPSLON, dtype=cast_dtype))
+    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(EPSLON, dtype=cast_dtype))
     var_elta_log = tbe.vlog(var_elta)
     var_elta_mul = tbe.vmuls(var_elta_log, tvm.const(-0.5, dtype=cast_dtype))
     var_elta_2 = tbe.vexp(var_elta_mul)
@@ -477,6 +466,8 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
     format_dy = input_dy.get("format")
     extra_params = {"input_shape_type": [0, 0, 1, 1, 1],
                     "same_input_shape_group": [[0, 1], [2, 3]]}
+    global EPSLON
+    EPSLON = 1e-5 if dtype == "float16" else 1e-12
 
     if is_unknown_rank_input((input_dy, input_x, input_variance,
                               input_mean, input_gamma)):

@@ -33,6 +33,7 @@ set(_optiling_files
   runtime/trans_data_positive_source_ntc_100.cc
   runtime/trans_data_positive_source_tc_1011.cc
   runtime/trans_data_negative_target_ntc.cc
+  runtime/layer_norm_x_backprop_v2.cc
   ../utils/block_store.cc
   ../utils/block_pool.cc
   ../../common/src/error_util.cc

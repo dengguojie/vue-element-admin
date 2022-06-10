@@ -37,18 +37,11 @@ bool LayerNormXBackpropV2ParseFunc(const std::string& op_type, const nlohmann::j
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_NORM, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
-  bool unknown_mode = false;
-  bool reduce_mean_cof = false;
+  parsed_info.unknown_mode = false;
+  parsed_info.reduce_mean_cof = false;
 
-  if (GetCompileValue(compile_info, "unknown_mode", unknown_mode)) {
-    unknown_mode = true;
-  }
-  if (GetCompileValue(compile_info, "reduce_mean_cof", reduce_mean_cof)) {
-    reduce_mean_cof = true;
-  }
-
-  parsed_info.unknown_mode = unknown_mode;
-  parsed_info.reduce_mean_cof = reduce_mean_cof;
+  GetCompileValue(compile_info, "unknown_mode", parsed_info.unknown_mode);
+  GetCompileValue(compile_info, "reduce_mean_cof", parsed_info.reduce_mean_cof);
   OP_LOGI(op_type.c_str(), "GetCompileParams success.");
   return true;
 }
@@ -91,7 +84,7 @@ bool GetReduceAxis(std::vector<int64_t> input_x_shape, std::vector<int64_t> inpu
       if (xtem != mean) {
         reduce_axis.push_back(i);
       }
-    } 
+    }
   }
   return true;
 }
@@ -126,7 +119,7 @@ bool LayerNormXBackpropV2UnknownAxisTiling(const std::string& op_type, const ge:
 
   OpInfo norm_info(shapes, input_x_dtype, axes);
   OP_TILING_CHECK(!parsed_info.tiling_handler->DoTiling(op_paras, run_info, norm_info),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                                   "LayerNormXBackpropV2UnknownAxisTiling, do DoTiling failed"),
                   return false);
   if (parsed_info.reduce_mean_cof) {

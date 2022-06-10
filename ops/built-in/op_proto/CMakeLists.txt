@@ -53,6 +53,7 @@ set(_op_proto_srcs
   runtime/max_pool_v3.cc
   runtime/transpose.cc
   runtime/layer_norm.cc
+  runtime/layer_norm_x_backprop_v2.cc
   runtime/dynamic_rnn_v3.cc
   runtime/squeeze_op_impl.cc
   runtime/unsqueeze_op_impl.cc
