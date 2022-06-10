@@ -1132,8 +1132,3 @@ ut_case.add_cust_test_func(test_func=run_v300_cases)
 ut_case.add_cust_test_func(test_func=run_v300_aipp_fusion_cases)
 print("====> end v300 ut start")
 
-
-
-
-
-

@@ -404,7 +404,8 @@ def get_cube_case_dir(case_dir):
                 'DepthwiseConv2DBackpropInput',
                 'DepthwiseConv2DBackpropInputD',
                 'DepthwiseConv2D_Fused',
-                'Dilation'
+                'Dilation',
+                'FixPipe'
                 ]
     base_ut_dir = os.path.join(repo_root, "ops", "built-in", "tests", "ut", "ops_test")
     if isinstance(case_dir, str):

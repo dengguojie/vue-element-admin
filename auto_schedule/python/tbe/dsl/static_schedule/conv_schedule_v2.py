@@ -2940,7 +2940,7 @@ class Conv2dSchedule:
                 self._sch[self._fixpipe_res].double_buffer()
 
         for key, value in pingpong_buffer.items():
-            if value == 2 and pingpong_map[key] is not None:
+            if value == 2 and pingpong_map.get(key) is not None:
                 self._sch[pingpong_map[key]].double_buffer()
 
         self._pooling_fusion.maxpool_al1_preload(self._sch, pingpong_buffer, al1)
