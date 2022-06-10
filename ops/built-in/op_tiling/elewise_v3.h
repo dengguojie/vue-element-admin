@@ -52,7 +52,6 @@ struct ElewiseCompileInfo : AutoTilingCompileInfo{
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> base_info;
   std::pair<bool, std::vector<int64_t>> const_block_dims;
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars;
-  VarAttrWrap varAttrWrap;
   // rl bank info
   std::pair<bool, std::vector<std::pair<rl::RlPattern, std::vector<rl::RlBankInfo>>>> bank_info_pair;
 

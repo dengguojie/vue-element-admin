@@ -1741,10 +1741,7 @@ bool Norm<T>::ConstPostWriteTilingData() {
     context->SetTilingKey(static_cast<int64_t>(tiling_key));
     context->AddWorkspace(workspace.begin(), workspace_len);
     auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-    if (typeid(*context) == typeid(AutoTilingOp)) {
-      return compileInfo->varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type,
-                                                    *context->GetOpParas(), *context->GetRunInfo());
-    }
+    return context->WriteVarAttrs(tiling_key_uint);
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ConstPostWriteTilingData error. Error message: %s", e.what());
     return false;
@@ -1785,10 +1782,7 @@ bool Norm<T>::WriteTilingData() {
   }
 
   auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-  if (typeid(*context) == typeid(AutoTilingOp)) {
-    return compileInfo->varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type,
-                                                  *context->GetOpParas(), *context->GetRunInfo());
-  }
+  return context->WriteVarAttrs(tiling_key_uint);
 
   return true;
 }
@@ -1923,7 +1917,7 @@ void NormCompileInfo::ParseOtherInfo(const nlohmann::json& parsed_json_obj) {
       norm_vars[std::stoi(single_item.first)] = single_item.second;
     }
   }
-  check_success = check_success && varAttrWrap.ParseVarAttr(parsed_json_obj);
+  check_success = check_success && var_attr_wrap.ParseVarAttr(parsed_json_obj);
 }
 
 NormCompileInfo::NormCompileInfo(const char* op_type, const nlohmann::json& parsed_json_obj) {

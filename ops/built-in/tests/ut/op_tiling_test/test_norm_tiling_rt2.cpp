@@ -888,54 +888,54 @@ TEST_F(NormTilingRt2Test, TilingTest19) {
   EXPECT_EQ(test.GetBlockDims(), 32);
 }
 
-// TEST_F(NormTilingRt2Test, TilingTest20) {
-//   std::vector<std::vector<int64_t>> inputs {
-//     {1968, 32, 512}, {512}, {512}
-//   };
-//   std::vector<std::vector<int64_t>> outputs {
-//     {1968, 32, 512}, {1968, 32, 1}, {1968, 32, 1}
-//   };
-//   ge::DataType dtype = ge::DT_FLOAT;
+ TEST_F(NormTilingRt2Test, TilingTest20) {
+   std::vector<std::vector<int64_t>> inputs {
+     {1968, 32, 512}, {512}, {512}
+   };
+   std::vector<std::vector<int64_t>> outputs {
+     {1968, 32, 512}, {1968, 32, 1}, {1968, 32, 1}
+   };
+   ge::DataType dtype = ge::DT_FLOAT;
 
-//   NormCompileInfo op_compile_info;
-//   op_compile_info.pattern = SchPattern::NORM;
-//   op_compile_info.input_type = {0, 1, 1};
-//   op_compile_info.ori_reduce_axis = {2};
-//   op_compile_info.reduce_axis_type = 3;
-//   op_compile_info.ori_broadcast_axis = {0, 1};
-//   op_compile_info.is_broadcast_axis_known = true;
-//   op_compile_info.core_num = 32;
-//   op_compile_info.min_block_size = 8;
-//   op_compile_info.transpose_max_entire_size = 128;
-//   op_compile_info.exist_output_after_reduce = true;
-//   op_compile_info.exist_workspace_after_reduce = false;
-//   op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864, 15864}}};
-//   op_compile_info.block_size_map = {{4005, 8}};
-//   op_compile_info.workspace_info = {{1300400500, {32}}};
-//   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
-//   op_compile_info.is_fuse_axis = true;
-//   std::string var_attr_list_compileInfo = R"(
-//     {
-//       "_var_attr_mode":0,
-//       "_var_attrs": [
-//         {
-//           "length":1,
-//           "name":"alpha",
-//           "index":0,
-//           "type":"int32",
-//           "src_type":"int64"
-//         }
-//       ]
-//     }
-//   )";
-//   op_compile_info.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
-//   AutoTilingTest test(inputs, outputs, dtype, dtype);
-//   test.SetCompileInfo(&op_compile_info);
-//   std::vector<std::pair<std::string, int64_t>> common_attr = {{"int64", {2}}};
-//   test.SetAttrs<int64_t>(common_attr);
+   NormCompileInfo op_compile_info;
+   op_compile_info.pattern = SchPattern::NORM;
+   op_compile_info.input_type = {0, 1, 1};
+   op_compile_info.ori_reduce_axis = {2};
+   op_compile_info.reduce_axis_type = 3;
+   op_compile_info.ori_broadcast_axis = {0, 1};
+   op_compile_info.is_broadcast_axis_known = true;
+   op_compile_info.core_num = 32;
+   op_compile_info.min_block_size = 8;
+   op_compile_info.transpose_max_entire_size = 128;
+   op_compile_info.exist_output_after_reduce = true;
+   op_compile_info.exist_workspace_after_reduce = false;
+   op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864, 15864}}};
+   op_compile_info.block_size_map = {{4005, 8}};
+   op_compile_info.workspace_info = {{1300400500, {32}}};
+   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
+   op_compile_info.is_fuse_axis = true;
+   std::string var_attr_list_compileInfo = R"(
+     {
+       "_var_attr_mode":0,
+       "_var_attrs": [
+         {
+           "length":1,
+           "name":"alpha",
+           "index":0,
+           "type":"int32",
+           "src_type":"int64"
+         }
+       ]
+     }
+   )";
+   op_compile_info.var_attr_wrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
+   AutoTilingTest test(inputs, outputs, dtype, dtype);
+   test.SetCompileInfo(&op_compile_info);
+   std::vector<std::pair<std::string, int64_t>> common_attr = {{"int64", {2}}};
+   test.SetAttrs<int64_t>(common_attr);
 
-//   EXPECT_EQ(test.Test(), true);
-//   std::string expect_tiling_data = "62976, 512, 1968, 41, 2";
-//   EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
-//   EXPECT_EQ(test.GetBlockDims(), 32);
-// }
+   EXPECT_EQ(test.Test(), true);
+   std::string expect_tiling_data = "62976, 512, 1968, 41, 2";
+   EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+   EXPECT_EQ(test.GetBlockDims(), 32);
+ }

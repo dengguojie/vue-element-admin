@@ -1050,7 +1050,7 @@ TEST_F(NormTilingTest, TilingTest20) {
       ]
     }
   )";
-  op_compile_info.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
+  op_compile_info.var_attr_wrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
 
   AutoTilingOp auto_tiling_op("norm", &op_paras, &op_compile_info, &runInfo);
   Norm<AutoTilingOp> norm(&auto_tiling_op, nullptr);

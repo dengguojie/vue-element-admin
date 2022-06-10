@@ -92,7 +92,6 @@ struct NormCompileInfo : AutoTilingCompileInfo {
   bool is_const{false};
   bool is_const_post{false};
   std::unordered_map<int32_t, int32_t> const_block_dims;
-  VarAttrWrap varAttrWrap;
 
   private:
     void ParseAxisInfo(const nlohmann::json& compile_info);

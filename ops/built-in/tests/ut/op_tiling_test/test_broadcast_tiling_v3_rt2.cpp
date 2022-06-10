@@ -404,7 +404,7 @@ TEST_F(BroadcastTilingV3, broadcast_rt_case22) {
       ]
     }
   )";
-  broadcast_info.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
+  broadcast_info.var_attr_wrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
   std::vector<std::pair<std::string, int64_t>> common_attr = {{"int64", {2}}};
   test.SetAttrs<int64_t>(common_attr);
 
@@ -443,7 +443,7 @@ TEST_F(BroadcastTilingV3, broadcast_rt_case23) {
       ]
     }
   )";
-  actual_ptr.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
+  actual_ptr.var_attr_wrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
 
   actual_ptr.const_shapes_compile.first = true;
   actual_ptr.const_shapes_compile.second = {{1, 40000, 10}};

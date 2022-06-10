@@ -314,11 +314,7 @@ bool Elewise<T>::WriteKnownData() {
   OP_LOGD(op_type, "elewise known tiling key is:%llu and block_dims is:%lld", tiling_key, block_dims);
   context->SetBlockDim(static_cast<uint32_t>(block_dims));
   context->SetTilingKey(tiling_key);
-  if (typeid(*context) == typeid(AutoTilingOp)) {
-    return compile_info->varAttrWrap.WriteVarAttrs(tiling_key, op_type,
-                                                   *context->GetOpParas(), *context->GetRunInfo());
-  }
-  return true;
+  return context->WriteVarAttrs(tiling_key);
 }
 
 template <typename T>
@@ -491,11 +487,8 @@ bool Elewise<T>::WriteTilingData() const {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
-  if (typeid(*context) == typeid(AutoTilingOp)) {
-    return compile_info->varAttrWrap.WriteVarAttrs(tiling_key, op_type,
-                                                   *context->GetOpParas(), *context->GetRunInfo());
-  }
-  return true;
+
+  return context->WriteVarAttrs(tiling_key);
 }
 
 template <typename T>
@@ -726,7 +719,7 @@ void ElewiseCompileInfo::ParseElewiseVar(const nlohmann::json& outer_compile_inf
 }
 
 bool ElewiseCompileInfo::ParseVarsAttr(const nlohmann::json& outer_compile_info) {
-  return varAttrWrap.ParseVarAttr(outer_compile_info);
+  return var_attr_wrap.ParseVarAttr(outer_compile_info);
 }
 
 bool ElewiseCompileInfo::ParseOptionalCompileInfo(const nlohmann::json& outer_compile_info) {

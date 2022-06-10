@@ -1118,11 +1118,7 @@ bool Broadcast<T>::WriteTilingData() const {
     return false;
   }
 
-  if (typeid(*context) == typeid(AutoTilingOp)) {
-    return broadcast_compile_info->varAttrWrap.WriteVarAttrs(static_cast<uint32_t>(key), op_type,
-                                                             *context->GetOpParas(), *context->GetRunInfo());
-  }
-  return true;
+  return context->WriteVarAttrs(static_cast<uint32_t>(key));
 }
 
 template <typename T>
@@ -1580,11 +1576,8 @@ bool Broadcast<T>::WriteConstTiling() {
   OP_LOGD(op_type, "tiling block_dims:%lld", block_dims);
   context->SetBlockDim(static_cast<uint32_t>(block_dims));
   context->SetTilingKey(static_cast<uint32_t>(key));
-  if (typeid(*context) == typeid(AutoTilingOp)) {
-    return broadcast_compile_info->varAttrWrap.WriteVarAttrs(static_cast<uint32_t>(key), op_type,
-                                                             *context->GetOpParas(), *context->GetRunInfo());
-  }
-  return true;
+
+  return context->WriteVarAttrs(static_cast<uint32_t>(key));
 }
 
 void BroadcastCompileInfo::ParseElewiseInfos(const nlohmann::json& outer_compile_info) {
@@ -1651,7 +1644,7 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
     soc_version.second = outer_compile_info.at("_soc_version").get<std::string>();
   }
 
-  if (!varAttrWrap.ParseVarAttr(outer_compile_info)) {
+  if (!var_attr_wrap.ParseVarAttr(outer_compile_info)) {
     VECTOR_INNER_ERR_REPORT_TILIING("AutoTiling","broadcast parse var_attr error");
   }
   // pure elewise compile info parser
@@ -1707,7 +1700,7 @@ bool BroadcastCompileInfo::Parse(const nlohmann::json& outer_compile_info) {
     soc_version.second = outer_compile_info.at("_soc_version").get<std::string>();
   }
 
-  if (!varAttrWrap.ParseVarAttr(outer_compile_info)) {
+  if (!var_attr_wrap.ParseVarAttr(outer_compile_info)) {
     VECTOR_INNER_ERR_REPORT_TILIING("AutoTiling","broadcast parse var_attr error");
   }
   // pure elewise compile info parser

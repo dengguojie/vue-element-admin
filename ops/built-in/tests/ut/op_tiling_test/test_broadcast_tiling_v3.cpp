@@ -956,7 +956,7 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
       ]
     }
   )";
-  actual_ptr.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
+  actual_ptr.var_attr_wrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
 
   actual_ptr.const_shapes_compile.first = true;
   actual_ptr.const_shapes_compile.second = {{1, 40000, 10}};

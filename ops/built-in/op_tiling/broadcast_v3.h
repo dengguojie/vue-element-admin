@@ -51,7 +51,6 @@ struct BroadcastCompileInfo : AutoTilingCompileInfo{
   bool contains_elewise_sch {false};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
   std::pair<bool, std::vector<int64_t>> const_block_dims_compile;
-  VarAttrWrap varAttrWrap;
   std::pair<bool, std::vector<std::vector<int64_t>>> const_shapes_compile;
   std::pair<bool, std::vector<std::vector<size_t>>> fusion_index_compile;
   std::pair<bool, std::vector<bool>> broadcast_axis_compile;
