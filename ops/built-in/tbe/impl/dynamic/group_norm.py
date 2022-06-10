@@ -114,6 +114,42 @@ def op_select_format(x, scale, offset, y, mean, variance, num_groups, data_forma
     return param_dynamic_in_json
 
 
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-locals
+def check_supported(x, scale, offset, y, mean, variance, num_groups, data_format="NCHW", epsilon=1e-5,
+                    is_training=False, kernel_name="group_norm"):
+    """
+    check_supported
+    """
+    format_x = x.get("format")
+    shape_x = x.get("shape")
+    gamma_shape = scale.get("shape")
+    beta_shape = offset.get("shape")
+    c0 = 16
+
+    if num_groups <= 0:
+        return False, "num_groups must bigger than zero"
+
+    if epsilon < 0:
+        return False, "not support eps"
+
+    if shape_x[1] != -1 and gamma_shape[0] != -1 and beta_shape[0] != -1:
+        if format_x == "NC1HWC0":
+            channel = shape_x[1] * c0
+        else:
+            channel = shape_x[1]
+
+        if gamma_shape[0] != channel:
+            return False, "gamma shape is not equal to channel"
+
+        if beta_shape[0] != channel:
+            return False, "beta shape is not equal to channel"
+
+        if channel % num_groups != 0:
+            return False, "channel must can be divided by num_groups"
+
+    return True, ""
+
+
 # 'pylint: disable=unused-argument,too-many-locals
 class GroupNorm5HD(object):
     """
