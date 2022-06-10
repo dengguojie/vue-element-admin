@@ -68,9 +68,9 @@ def inv_compute(input_x, output_y, kernel_name="inv"):
     return res
 
 
+@register_operator("Inv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-@register_operator("Inv")
 def inv(input_x, output_y, kernel_name="inv"):
     """
     algorithm: inv

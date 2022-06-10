@@ -85,6 +85,8 @@ Erf,erf.json
 Exp,exp.json
 Floor,floor.json
 GatherNd,gather_nd.json
+GeluGrad,gelu_grad.json
+Inv,inv.json
 LeakyRelu,leaky_relu.json
 LeakyReluGrad,leaky_relu_grad.json
 LessEqual,less_equal.json
