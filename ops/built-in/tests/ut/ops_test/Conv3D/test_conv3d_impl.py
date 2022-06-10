@@ -764,7 +764,7 @@ weight = {'ori_shape': (1, 3, 2, 1, 4420), 'shape': (1, 3, 2, 1, 4420),
 strides = (1, 5, 3, 3, 1)
 dilations = (1, 1, 6, 2, 1)
 large_batch_default_tiling_case = _run_api_end_with_d(fmap=fmap, weight=weight, strides=strides,
-                                          dilations=dilations, groups=4420)
+                                                      dilations=dilations, groups=4420)
 
 # Test Load2D Case
 fmap = {'ori_shape': (64, 2, 1, 1, 256), 'shape': (64, 2, 1, 1, 256),

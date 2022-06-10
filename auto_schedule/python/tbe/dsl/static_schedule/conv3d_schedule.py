@@ -1475,17 +1475,14 @@ class CceConv3dOp:
 
         c_ub_tiling_factor = tiling["CUB_matrix"]
 
+        c_ub_factor = [
+            compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
+            compute_util.int_ceil_div(c_tiling_factor[1], c_ub_tiling_factor[1] * c_ub_tiling_factor[2])
+        ]
         if self.flag_load3d_special_case:
             c_ub_factor = [
                 compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
-                compute_util.int_ceil_div(c_tiling_factor[1],
-                                    c_ub_tiling_factor[1] * c_ub_tiling_factor[2] // 2)
-            ]
-        else:
-            c_ub_factor = [
-                compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
-                compute_util.int_ceil_div(c_tiling_factor[1],
-                                    c_ub_tiling_factor[1] * c_ub_tiling_factor[2])
+                compute_util.int_ceil_div(c_tiling_factor[1], c_ub_tiling_factor[1] * c_ub_tiling_factor[2] // 2)
             ]
 
         al1_factor, bl1_factor = self._factor_al1_bl1(tiling, c_factor)
@@ -1520,6 +1517,12 @@ class CceConv3dOp:
         else:
             c_outer_g, c_outer = sch[res_c].split(res_c.op.axis[1], cout1_g)
             c_outer_outer, c_outer_inner = sch[res_c].split(c_outer, c_tiling_factor[0])
+
+        # n_cub must be even, so real_g may only bind half cores.
+        bind_half_gdim_flag = self.requant_multi_group_flag and tiling["g_dim"] == group_dict["real_g"]
+        if bind_half_gdim_flag:
+            tiling["g_dim"] = compute_util.int_ceil_div(tiling["g_dim"], 2)
+
         c_outer_g_outer, c_outer_g_inner = sch[res_c].split(c_outer_g, nparts=tiling["g_dim"])
 
         m_outer_outer, m_outer_inner = sch[res_c].split(res_c.op.axis[2], c_tiling_factor[1])
@@ -1651,7 +1654,7 @@ class CceConv3dOp:
 
         _, reduce_kk = sch[c_col].op.reduce_axis
 
-        axis_factor = list(al0_axis_factor["axis_factor"].items())
+        axis_factor = list(al0_axis_factor.get("axis_factor").items())
         # for now
 
         boo, boi = sch[c_col].split(new_c_col_axis[axis_factor[0][0]],
