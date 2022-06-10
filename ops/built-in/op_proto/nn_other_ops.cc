@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
   gtboxes_desc->GetShapeRange(gtboxes_shape_range);
   MakeUpShapeRange(gtboxes_shape, gtboxes_shape_range);
   
-  if (IsUnknownRankShape(bboxes_shape) || IsUnknownRankShape(gtboxes_shape)){
+  if (IsUnknownRankShape(bboxes_shape) || IsUnknownRankShape(gtboxes_shape)) {
     OP_LOGE(TbeGetName(op).c_str(), "op [Iou] InferShape Failed, UnknownRankShape of bboxes or gtboxes.");
     return GRAPH_FAILED;
   }
@@ -198,9 +198,9 @@ IMPLEMT_VERIFIER(BoundingBoxDecode, BoundingBoxDecodeVerify) {
     }
 
     // inputs last dim value must be 4(x1,y1,x2,y2)
-    if (((rois_shape[rois_size - 1] > 0) && (rois_shape[rois_size - 1] != 4)) || 
+    if (((rois_shape[rois_size - 1] > 0) && (rois_shape[rois_size - 1] != 4)) ||
         ((deltas_shape[deltas_size - 1] > 0) && (deltas_shape[deltas_size - 1] != 4))) {
-        OP_LOGE(TbeGetName(op).c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%ld, deltas:%ld) != 4", 
+        OP_LOGE(TbeGetName(op).c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%ld, deltas:%ld) != 4",
         rois_shape[rois_size - 1], deltas_shape[deltas_size - 1]);
         return GRAPH_FAILED;
     }
@@ -314,7 +314,8 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
 
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
-    std::string err_msg = GetAttrSizeErrMsg("xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
+    std::string err_msg = GetAttrSizeErrMsg(
+      "xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -355,7 +356,8 @@ IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
 
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
-    std::string err_msg = GetAttrSizeErrMsg("xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
+    std::string err_msg = GetAttrSizeErrMsg(
+      "xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }

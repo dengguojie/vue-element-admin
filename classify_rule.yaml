@@ -1050,6 +1050,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
@@ -1110,6 +1111,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_ops_pass_util.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tile_fusion_pass.cc
@@ -1155,12 +1157,19 @@ vector_B:
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
+      - ops/built-in/op_proto/util/common_shape_fns.h
+      - ops/built-in/op_proto/util/common_shape_fns.cc
+      - ops/built-in/op_proto/util/nn_shape_fns.cc
+      - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
       - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_proto/nonlinear_fuc_ops.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_tiling/op_tiling_util.h
+      - ops/built-in/op_proto/ctc_ops.cc
+      - ops/built-in/op_proto/nn_ops.cc
+      - ops/built-in/op_proto/nn_other_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
@@ -2506,7 +2515,7 @@ unkown:
       - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/acts_ulq.cc
-      - ops/built-in/op_proto/nn_ops.cc
+      - ops/built-in/op_proto/condtake_ops.cc
       - ops/built-in/op_proto/hvd_ops.cc
       - ops/built-in/op_proto/image_ops.cc
       - ops/built-in/op_proto/split_combination_ops.cc
@@ -2514,13 +2523,15 @@ unkown:
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
-      - ops/built-in/op_proto/ctc_ops.cc
+      - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/set_ops.cc
       - ops/built-in/op_proto/hcom_ops.cc
       - ops/built-in/op_proto/control_flow_ops.cc
       - ops/built-in/op_proto/state_ops.cc
       - ops/built-in/op_proto/no_op.cc
-      - ops/built-in/op_proto/nn_other_ops.cc
+      - ops/built-in/op_proto/copy_ops.cc
+      - ops/built-in/op_proto/sparse_ops.cc
+      - ops/built-in/op_proto/lookup_ops.cc
       - ops/built-in/op_proto/inc/warp_perspective_ops.h
       - ops/built-in/op_proto/inc/save_ops.h
       - ops/built-in/op_proto/inc/swap_co_ops.h
@@ -2557,15 +2568,18 @@ unkown:
       - ops/built-in/op_proto/inc/pad_ops.h
       - ops/built-in/op_proto/inc/split_combination_ops.h
       - ops/built-in/op_proto/util/array_ops_shape_fns.h
-      - ops/built-in/op_proto/util/nn_shape_fns.cc
-      - ops/built-in/op_proto/util/common_shape_fns.h
+      - ops/built-in/op_proto/util/candidate_sampling_shape_fns.cc
+      - ops/built-in/op_proto/util/candidate_sampling_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
-      - ops/built-in/op_proto/util/common_shape_fns.cc
+      - ops/built-in/op_proto/util/reduce_infer_util.h
+      - ops/built-in/op_proto/util/util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
       - ops/built-in/op_proto/util/op_common_util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_proto/util/vector_proto_profiling.h
-      - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
+      - ops/built-in/op_proto/util/reduce_infer_util.cc
+      - ops/built-in/op_proto/util/linalg_ops_shape_fns.cc
+      - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/util/axis_util.cc
@@ -3683,7 +3697,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/arg_max_with_k_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gather_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/sigmoid_cross_entropy_with_logits_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.h
@@ -3865,7 +3878,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/copy_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pooling_matrix_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/argmax_onehot_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_one_hot_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_grad_fusion_pass.h

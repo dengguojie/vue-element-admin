@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,32 +28,32 @@
 
 namespace ge {
 const std::map<std::string, DataType> dtype_maps {
-  { "DT_FLOAT" , DT_FLOAT },
-  { "DT_FLOAT16" , DT_FLOAT16 },
-  { "DT_INT8" , DT_INT8 },
-  { "DT_INT16" , DT_INT16 },
-  { "DT_UINT16" , DT_UINT16 },
-  { "DT_UINT8" , DT_UINT8 },
-  { "DT_INT32" , DT_INT32 },
-  { "DT_INT64" , DT_INT64 },
-  { "DT_UINT32" , DT_UINT32 },
-  { "DT_UINT64" , DT_UINT64 },
-  { "DT_BOOL" , DT_BOOL },
-  { "DT_DOUBLE" , DT_DOUBLE },
-  { "DT_STRING" , DT_STRING },
-  { "DT_DUAL_SUB_INT8" , DT_DUAL_SUB_INT8 },
-  { "DT_DUAL_SUB_UINT8" , DT_DUAL_SUB_UINT8 },
-  { "DT_COMPLEX64" , DT_COMPLEX64 },
-  { "DT_COMPLEX128" , DT_COMPLEX128 },
-  { "DT_QINT8" , DT_QINT8 },
-  { "DT_QINT16" , DT_QINT16 },
-  { "DT_QINT32" , DT_QINT32 },
-  { "DT_QUINT8" , DT_QUINT8 },
-  { "DT_QUINT16" , DT_QUINT16 },
-  { "DT_RESOURCE" , DT_RESOURCE },
-  { "DT_STRING_REF" , DT_STRING_REF },
-  { "DT_DUAL" , DT_DUAL },
-  { "DT_UNDEFINED" , DT_UNDEFINED }
+  { "DT_FLOAT", DT_FLOAT },
+  { "DT_FLOAT16", DT_FLOAT16 },
+  { "DT_INT8", DT_INT8 },
+  { "DT_INT16", DT_INT16 },
+  { "DT_UINT16", DT_UINT16 },
+  { "DT_UINT8", DT_UINT8 },
+  { "DT_INT32", DT_INT32 },
+  { "DT_INT64", DT_INT64 },
+  { "DT_UINT32", DT_UINT32 },
+  { "DT_UINT64", DT_UINT64 },
+  { "DT_BOOL", DT_BOOL },
+  { "DT_DOUBLE", DT_DOUBLE },
+  { "DT_STRING", DT_STRING },
+  { "DT_DUAL_SUB_INT8", DT_DUAL_SUB_INT8 },
+  { "DT_DUAL_SUB_UINT8", DT_DUAL_SUB_UINT8 },
+  { "DT_COMPLEX64", DT_COMPLEX64 },
+  { "DT_COMPLEX128", DT_COMPLEX128 },
+  { "DT_QINT8", DT_QINT8 },
+  { "DT_QINT16", DT_QINT16 },
+  { "DT_QINT32", DT_QINT32 },
+  { "DT_QUINT8", DT_QUINT8 },
+  { "DT_QUINT16", DT_QUINT16 },
+  { "DT_RESOURCE", DT_RESOURCE },
+  { "DT_STRING_REF", DT_STRING_REF },
+  { "DT_DUAL", DT_DUAL },
+  { "DT_UNDEFINED", DT_UNDEFINED }
 };
 
 graphStatus WithRankAtLeast(const TensorDesc& tensor, int64_t rank, Shape& out, const char* op_name) {
@@ -87,7 +87,6 @@ graphStatus WithRankAtLeast(const GeTensorDescPtr& tensorDesc, int64_t rank,
   std::vector<int64_t> dims = s.GetDims();
   // dim.size() convert to be type int64_t can't overflow
   int64_t size = static_cast<int64_t>(dims.size());
-
   if ((dims != UNKNOWN_RANK) && (size < rank)) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(string(op_name),
         ConcatString("rank[", size, "] must be at least [", rank, "]"));
@@ -107,7 +106,7 @@ graphStatus WithRankShape(GeShape& shape, int64_t rank, const char* op_name)
 
   int64_t existing = static_cast<int64_t>(shape.GetDimNum());
 
-  if(shape.GetDims() == UNKNOWN_RANK) {
+  if (shape.GetDims() == UNKNOWN_RANK) {
     std::vector<int64_t> out_shape(rank, UNKNOWN_DIM);
     shape = GeShape(out_shape);
     return GRAPH_SUCCESS;
@@ -117,11 +116,11 @@ graphStatus WithRankShape(GeShape& shape, int64_t rank, const char* op_name)
         ConcatString("rank[", existing, "] must be [", rank, "]"));
     return GRAPH_FAILED;
   }
-  // out = shape;
+
   std::vector<int64_t> dim_values = shape.GetDims();
   shape = GeShape(dim_values);
   return GRAPH_SUCCESS;
-    
+
 }
 
 graphStatus WithRank(const TensorDesc& tensor, int64_t rank, Shape& out, const char* op_name) {
@@ -231,9 +230,9 @@ graphStatus MergePrefix(const Shape& s, const Shape& prefix, Shape &s_out,
   
   const size_t rank_s = s.GetDimNum();
   std::vector<int64_t> dims;
-  dims.reserve(std::max(rank,rank_s));
+  dims.reserve(std::max(rank, rank_s));
   dims.resize(rank);
-  for (size_t i = 0; i < rank; ++i){
+  for (size_t i = 0; i < rank; ++i) {
     if (Merge(s.GetDim(i), prefix.GetDim(i), dims[i]) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(i, "th dim of first shape",
           DebugString(s.GetDims()), " is not same as that of prefix shape",
@@ -563,7 +562,8 @@ graphStatus SubShape(const Shape& s, int64_t start, int64_t end, int64_t stride,
   }
   const int64_t rank = static_cast<int64_t>(s.GetDimNum());
   TensorDesc tensor(s);
-  if (!RankKnown(s) || (start == 0 && ((tensor.GetRealDimCnt() != -1 && end >= rank) || end == std::numeric_limits<int64_t>::max()))) {
+  if (!RankKnown(s) || (start == 0 && ((tensor.GetRealDimCnt() != -1 && end >= rank) ||
+    end == std::numeric_limits<int64_t>::max()))) {
     out = s;
     return GRAPH_SUCCESS;
   }
@@ -733,7 +733,7 @@ graphStatus Concatenate(const GeShape& s1, const GeShape& s2, GeShape& out) {
 
 graphStatus Matrix(int64_t dim1, int64_t dim2, Shape& out) {
   std::vector<int64_t> dims;
-  dims.reserve(2);
+  dims.reserve(2); // The number of dims is 2.
   dims.push_back(dim1);
   dims.push_back(dim2);
   Shape s(dims);
@@ -1022,7 +1022,7 @@ graphStatus ValidateSparseTensor(const TensorDesc& indices, const TensorDesc& va
                                  const char* op_name) {
   // Validate ranks
   Shape unused_shape;
-  if (WithRank(indices, 2, unused_shape, op_name) != GRAPH_SUCCESS) {
+  if (WithRank(indices, 2, unused_shape, op_name) != GRAPH_SUCCESS) { // The rank is 2.
     std::string err_msg = ConcatString(
         "failed to call WithRank function, indices has wrong shape",
         DebugString(indices.GetShape().GetDims()), ", it should be 2D");
@@ -1122,7 +1122,7 @@ void FillOpDesc(TensorDesc& op_desc, const Shape& shape,
 }
 
 void InferShapeErrorReport(const std::string& op_name, const std::string& op_type, const std::string& value,
-                            const std::string& reason) {
+    const std::string& reason) {
   std::string report_error_code = "E14001";
   ErrorManager::GetInstance().ATCReportErrMessage(report_error_code, {"opname", "optype", "value", "reason"},
                                                   {op_name, op_type, value, reason});
@@ -1132,7 +1132,7 @@ std::string DTypeStr(DataType dtype) {
   auto iter = std::find_if(dtype_maps.begin(), dtype_maps.end(),
       [dtype](const std::map<std::string, DataType>::value_type &kv) {
         return (kv.second == dtype);
-      } );
+      });
   if (iter != dtype_maps.end()) {
     return iter->first;
   } else {
@@ -1196,7 +1196,7 @@ graphStatus GetShapeAndRange(Operator& op, ShapeAndRange& out, bool& geted, Infe
   if (!marks.empty()) {
     OP_LOGI(TbeGetName(op).c_str(), "Get marks[0] = %s", marks[0].GetString());
     if (infer_context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), 
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()),
                                          std::string("register relied on resource key failed."));
       return GRAPH_FAILED;
     }

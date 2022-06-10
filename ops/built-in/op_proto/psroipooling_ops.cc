@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,8 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
     auto group_size = op.get_attr_group_size();
     // The value of group_size must be less than 128
     if (group_size <= 0 || group_size >= 128) {
-        std::string err_msg = GetAttrValueErrMsg("group_size", std::to_string(group_size), ConcatString("less than 128 and greater than 0"));
+        std::string err_msg = GetAttrValueErrMsg(
+            "group_size", std::to_string(group_size), ConcatString("less than 128 and greater than 0"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
@@ -45,7 +46,8 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
 
     int64_t c_output_dim = x_shape.GetDim(1) / (group_size * group_size);
     if (c_output_dim != output_dim) {
-        string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
+        string err_msg1 = ConcatString(
+            "c_output_dim shoule be equal to output_dim, c_output_dim:", c_output_dim, ", output_dim:",output_dim);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
@@ -83,7 +85,8 @@ IMPLEMT_VERIFIER(PSROIPooling, PSROIPoolingVerify) {
     // rois shape is (batch, 5, rois_num), shape size is 3
     auto rois_shape = op.get_input_desc_rois().GetShape();
     if (rois_shape.GetDims().size() < 3) {
-        std::string err_msg = GetShapeSizeErrMsg(1, ConcatString(rois_shape.GetDims().size()), ConcatString("more than or equal to 3"));
+        std::string err_msg = GetShapeSizeErrMsg(
+            1, ConcatString(rois_shape.GetDims().size()), ConcatString("more than or equal to 3"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
@@ -111,7 +114,8 @@ IMPLEMT_INFERFUNC(PSROIPoolingV2, PSROIPoolingV2InferShape) {
     int64_t pool_w = group_size;
     int64_t c_output_dim = x_shape.GetDim(1) / (group_size * group_size);
     if (c_output_dim != output_dim) {
-        string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
+        string err_msg1 = ConcatString(
+            "c_output_dim shoule be equal to output_dim, c_output_dim:", c_output_dim, ", output_dim:",output_dim);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
@@ -183,7 +187,8 @@ IMPLEMT_INFERFUNC(PSROIPoolingGradV2D, PSROIPoolingGradV2DInferShape) {
 
     int64_t c_output_dim = x_shape.GetDim(1);
     if (c_output_dim != output_dim) {
-        string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
+        string err_msg1 = ConcatString(
+            "c_output_dim shoule be equal to output_dim, c_output_dim:", c_output_dim, ", output_dim:",output_dim);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;

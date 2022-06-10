@@ -1,5 +1,5 @@
-/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,17 +24,11 @@
 #include <algorithm>
 #include <map>
 #include "inc/correlation.h"
-
-#define CHECK_FORMAT(format)  \
-{                                         \
-  if (ge::FORMAT_RESERVED == format) {    \
-    return false;     \
-  }                     \
-}
+#include "op_log.h"
 
 namespace ge
 {
-//--------------------------Correlation------------------------------
+// --------------------------Correlation------------------------------
 /*
  * Verify the required 2 input tensor, optional bias ignored
  * Verify groups attr
@@ -54,13 +48,17 @@ IMPLEMT_VERIFIER(Correlation, CorrelationVerify) {
 
   auto x_format = x_tensor.GetFormat();
   auto w_format  = w_tensor.GetFormat();
-  CHECK_FORMAT(x_format);
-  CHECK_FORMAT(w_format);
+  if (x_format == ge::FORMAT_RESERVED) {
+    return GRAPH_FAILED;
+  }
+  if (w_format == ge::FORMAT_RESERVED) {
+    return GRAPH_FAILED;
+  }
 
-  int x_batchnum = 0;
-  int w_batchnum = 0;
-  int x_channel_num = 0;
-  int w_channel_num = 0;
+  int64_t x_batchnum = 0;
+  int64_t w_batchnum = 0;
+  int64_t x_channel_num = 0;
+  int64_t w_channel_num = 0;
 
   if (w_format == FORMAT_NCHW) {
     x_batchnum = x_shape[0];
@@ -114,16 +112,20 @@ IMPLEMT_INFERFUNC(Correlation, CorrelationInfer) {
   auto w_shape = w_tensor.GetShape().GetDims();
   auto x_format = x_tensor.GetFormat();
   auto w_format  = w_tensor.GetFormat();
-  CHECK_FORMAT(x_format);
-  CHECK_FORMAT(w_format);
+  if (x_format == ge::FORMAT_RESERVED) {
+    return GRAPH_FAILED;
+  }
+  if (w_format == ge::FORMAT_RESERVED) {
+    return GRAPH_FAILED;
+  }
 
-  int32_t in = 0;
-  int32_t ic = 0;
-  int32_t ih = 0;
-  int32_t iw = 0;
-  int32_t kc = 0;
-  int32_t kh = 0;
-  int32_t kw = 0;
+  int64_t in = 0;
+  int64_t ic = 0;
+  int64_t ih = 0;
+  int64_t iw = 0;
+  int64_t kc = 0;
+  int64_t kh = 0;
+  int64_t kw = 0;
   if (x_format == FORMAT_NCHW) {
     in = x_shape[0];
     ic = x_shape[1];
@@ -158,14 +160,14 @@ IMPLEMT_INFERFUNC(Correlation, CorrelationInfer) {
   if (GRAPH_SUCCESS != op.GetAttr("groups", groups)) {
     return GRAPH_FAILED;
   }
-  int32_t strh = 1;
-  int32_t strw = 1;
-  int32_t dilh = 1;
-  int32_t dilw = 1;
-  int32_t padt = 0;
-  int32_t padb = 0;
-  int32_t padl = 0;
-  int32_t padr = 0;
+  int64_t strh = 1;
+  int64_t strw = 1;
+  int64_t dilh = 1;
+  int64_t dilw = 1;
+  int64_t padt = 0;
+  int64_t padb = 0;
+  int64_t padl = 0;
+  int64_t padr = 0;
   int64_t oh = (ih + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
   int64_t ow = (iw + padl + padr - dilw * (kw - 1) - 1) / strw + 1;
   int64_t oc = 1;
@@ -178,7 +180,9 @@ IMPLEMT_INFERFUNC(Correlation, CorrelationInfer) {
   vector<int64_t> vec_y_shape;
   auto y_tensor = op.GetOutputDesc(0);
   auto y_format = y_tensor.GetFormat();
-  CHECK_FORMAT(y_format);
+  if (y_format == ge::FORMAT_RESERVED) {
+    return GRAPH_FAILED;
+  }
   if (y_format == FORMAT_NCHW) {
     vec_y_shape.push_back(in);
     vec_y_shape.push_back(oc);
@@ -196,7 +200,7 @@ IMPLEMT_INFERFUNC(Correlation, CorrelationInfer) {
   auto x_datatype = x_tensor.GetDataType();
   if (x_datatype == ge::DT_INT8) {
     y_tensor.SetDataType(ge::DT_INT32);
-  }else{
+  } else {
     y_tensor.SetDataType(x_datatype);
   }
   if (GRAPH_SUCCESS != op.update_output_desc_y(y_tensor)) {

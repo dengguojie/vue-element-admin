@@ -38,7 +38,7 @@ struct ShapeAndRange {
   DataType shape_type_;
 };
 
-struct AicpuResourceContext : ResourceContext {
+struct AicpuResourceContext : public ResourceContext {
   std::vector<ShapeAndRange> shape_and_range_;
 };
 

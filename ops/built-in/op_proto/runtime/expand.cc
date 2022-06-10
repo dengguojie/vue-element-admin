@@ -79,7 +79,7 @@ ge::graphStatus ExpandInferShapeFunc(gert::InferShapeContext *context)
     }
 
     auto shape_tensor = context->GetInputTensor(1);
-    int64_t len_shape = shape_tensor->GetShapeSize();  
+    int64_t len_shape = shape_tensor->GetShapeSize();
     std::vector<int64_t> vec_dim;
 
     DataType data_type = shape_tensor->GetDataType();

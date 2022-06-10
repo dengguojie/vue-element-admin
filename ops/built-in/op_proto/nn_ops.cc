@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -169,7 +169,7 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
 }
 
 INFER_FUNC_REG(FusedBatchNormV2, FusedBatchNormV2Infer);
-//-----------------------SegmentSort-------------------------
+// -----------------------SegmentSort-------------------------
 IMPLEMT_COMMON_INFERFUNC(SegmentSortInferShape) {
     TensorDesc tensordesc_output = op.GetOutputDescByName("output_proposal");
     TensorDesc tensordesc_input = op.GetInputDescByName("input_data");
@@ -213,7 +213,7 @@ IMPLEMT_COMMON_INFERFUNC(SegmentSortInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(SegmentSort, SegmentSortInferShape);
-//-----------------------SegmentSort END---------------------
+// -----------------------SegmentSort END---------------------
 // ----------------------MultiMerge----------------------
 IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
     int64_t k_num = 0;
@@ -283,7 +283,7 @@ IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(MultiMerge, MultiMergeInferShape);
-//-----------------------MultiMerge END---------------------
+// -----------------------MultiMerge END---------------------
 // ----------------------SingleMerge----------------------
 IMPLEMT_COMMON_INFERFUNC(SingleMergeInferShape) {
     TensorDesc tensordesc_output_data = op.GetOutputDescByName("output_data");
@@ -466,4 +466,4 @@ IMPLEMT_COMMON_INFERFUNC(MultiHeadAttentionGradInferShape) {
 
 COMMON_INFER_FUNC_REG(MultiHeadAttentionGrad, MultiHeadAttentionGradInferShape);
 // ----------------------MultiHeadAttentionGrad End----------------------
-}//namespace ge
+} // namespace ge

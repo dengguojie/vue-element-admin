@@ -30,5 +30,5 @@ struct DynSeqOuterTilingData {
 struct DynSeqOuterCompileInfo {
   int32_t core_num = 1;
 };
-}  // namespace optiling 
+}  // namespace optiling
 #endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_DYN_SEQ_OUTER_RUNTIME2_H

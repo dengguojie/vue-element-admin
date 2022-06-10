@@ -582,7 +582,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     ge::GeTensorDesc end_desc;
     SetInputDesc(attr_end, end_desc);
     FUSION_PASS_CHECK(reduceDesc->AddInputDesc("end", end_desc) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input end for reduce after valid num is null, fusion failed."),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      "add input end for reduce after valid num is null, fusion failed."),
                       return FAILED);
 
     ge::GeTensorDesc strides_desc;
