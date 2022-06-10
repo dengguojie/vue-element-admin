@@ -1302,6 +1302,7 @@ vector_B:
       - ops/built-in/tbe/impl/top_k_d.py
       - ops/built-in/tbe/impl/top_k_large.py
       - ops/built-in/tbe/impl/ifmr.py
+      - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/tbe/impl/dynamic/__init__.py
       - ops/built-in/tbe/impl/dynamic/abs.py
       - ops/built-in/tbe/impl/dynamic/accumulate_nv2.py
@@ -2523,7 +2524,6 @@ unkown:
       - ops/built-in/op_tiling/avg_poolv2.cc
       - ops/built-in/op_tiling/resize.cc
       - ops/built-in/op_proto/act_ulq_clamp_min_grad.cc
-      - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/acts_ulq.cc
       - ops/built-in/op_proto/condtake_ops.cc

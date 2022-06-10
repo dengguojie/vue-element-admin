@@ -21,7 +21,6 @@
 #include "math_ops.h"
 
 #include <vector>
-#include <string>
 
 namespace ge {
 IMPLEMT_VERIFIER(IFMR, IFMRVerify) {
