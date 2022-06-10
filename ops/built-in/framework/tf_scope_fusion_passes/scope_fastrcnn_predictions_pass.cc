@@ -90,11 +90,14 @@ void ScopeFastrcnnPredictionsPass::GenScopePatterns(ScopeFusionPatterns& pattern
   (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Less", 1));      // Less num is 1
   (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("LoopCond", 1));  // LoopCond num is 1
 
-  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ExpandDims", -1, 0));          // Gather_2 num is -1
-  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("clip_boxes", -1, 0));          // Gather_2 num is -1
-  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("decode_bbox_target", -1, 0));  // Gather_2 num is -1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(
+      NodeOpTypeFeature("ExpandDims", -1, 0));                                          // Gather_2 num is -1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(
+      NodeOpTypeFeature("clip_boxes", -1, 0));                                          // Gather_2 num is -1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(
+      NodeOpTypeFeature("decode_bbox_target", -1, 0));                                  // Gather_2 num is -1
 
-  fastPredictionPattern->SetSubType(kScopeTypeFastrcnnPredictions);
+  (void)fastPredictionPattern->SetSubType(kScopeTypeFastrcnnPredictions);
   OP_LOGI(kOpType, "Add GenScopePatterns fastPredictionPattern.");
   batch.push_back(fastPredictionPattern);
   patterns.push_back(batch);

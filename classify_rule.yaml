@@ -1035,6 +1035,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/top_k_plugin.cc
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_fastrcnn_predictions_pass.cc
       - ops/built-in/fusion_pass/common/fusion_precheck_func.cc
       - ops/built-in/fusion_pass/common/fusion_precheck_func.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
@@ -1168,6 +1169,8 @@ vector_B:
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/reduce_infer_util.h
+      - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
+      -  ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_tiling/op_tiling_util.h
       - ops/built-in/op_proto/ctc_ops.cc
       - ops/built-in/op_proto/nn_ops.cc
@@ -2576,9 +2579,7 @@ unkown:
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
       - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_proto/util/util.h
-      - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
       - ops/built-in/op_proto/util/op_common_util.h
-      - ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_proto/util/vector_proto_profiling.h
       - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/linalg_ops_shape_fns.cc
