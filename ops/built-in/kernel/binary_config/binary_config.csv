@@ -2,6 +2,8 @@ OpType,OpBinaryFile
 Sample,sample.json
 Add,add.json
 AxpyV2,axpy_v2.json
+Addcmul,addcmul.json
+Addcdiv,addcdiv.json
 Atan,atan.json
 Atan2,atan2.json
 Erfc,erfc.json
