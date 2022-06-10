@@ -371,6 +371,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.cc
   graph_fusion/ai_core/correlation_fusion_pass.cc
   graph_fusion/ai_core/cast_cast_fusion_pass.cc
+  graph_fusion/ai_core/partitionedcall_fusion_pass.cc
   graph_fusion/ai_core/globalavgpool_fusion_pass.cc
   graph_fusion/ai_core/transdata_cast_fusion_pass.cc
   graph_fusion/ai_core/padv3d_avgpool_fusion_pass.cc

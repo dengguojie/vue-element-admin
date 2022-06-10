@@ -882,6 +882,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/spp_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/partitionedcall_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/partitionedcall_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v2_detection_output_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v2_detection_output_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v3_detection_output_fusion_pass.cc
