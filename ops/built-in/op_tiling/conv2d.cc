@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include <string>
 #include <bitset>
 #include <cmath>
+#include <memory> // for std::unique_ptr
 
 using namespace std;
 namespace optiling {
@@ -34,49 +35,38 @@ namespace optiling {
  * @param [in] op_paras: inputs/outputs/atts of the conv2d
  * @param [out] valValue: val value
  */
-std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::string> varMap,
-                                 const ge::OpDescPtr& opDesc,
-                                 int32_t nDim, int32_t hDim, int32_t wDim) {
-    auto inputDesc = opDesc->GetInputDescPtr(0);
-    auto outputDesc = opDesc->GetOutputDescPtr(0);
-
-    int32_t batch = inputDesc->GetShape().GetDim(nDim);
-    int32_t hi = inputDesc->GetShape().GetDim(hDim);
-    int32_t wi = inputDesc->GetShape().GetDim(wDim);
-    int32_t ho = outputDesc->GetShape().GetDim(hDim);
-    int32_t wo = outputDesc->GetShape().GetDim(wDim);
-    GELOGD("optiling runing shape is %d, %d, %d, %d, %d", batch, hi, ho, wi, wo);
-
-    std::vector<int64_t> varValue;
+template <typename T>
+void SetValValueCommon(const char* opType, const std::vector<std::string>& varMap,
+    const Conv2DShapesInfo& shapesInfo, int32_t nDim, std::vector<T>& varValue)
+{
     for (auto var : varMap) {
         if (var == "batch_n") {
-            varValue.insert(varValue.end(), batch);
+            varValue.insert(varValue.end(), shapesInfo.batch);
         } else if (var == "fmap_h") {
-            varValue.insert(varValue.end(), hi);
+            varValue.insert(varValue.end(), shapesInfo.hi);
         } else if (var == "fmap_w") {
-            varValue.insert(varValue.end(), wi);
+            varValue.insert(varValue.end(), shapesInfo.wi);
         } else if (var == "ho") {
-            varValue.insert(varValue.end(), ho);
+            varValue.insert(varValue.end(), shapesInfo.ho);
         } else if (var == "wo") {
-            varValue.insert(varValue.end(), wo);
+            varValue.insert(varValue.end(), shapesInfo.wo);
         } else {
             // elewise var name _dim_x_x when conv+add fusion
             int32_t var_index = 0;
             int32_t dim_index = 0;
             int32_t dim_value = 0;
             if (var.find("dim") != std::string::npos) {
-                // dim offset 4 means first 'x' value
-                var_index = var.find("dim") + 4;
+                var_index = var.find("dim") + 4; // dim offset 4 means first 'x' value
                 OP_TILING_CHECK(var_index > static_cast<int32_t>(var.length()),
-                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "elewise var has no valid dim, var_name:%s", var.c_str()),
-                  return varValue);
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "elewise var has no valid dim, var_name:%s", var.c_str()),
+                    return);
                 try {
                     dim_index = std::stoi(var.substr(var_index, 1).c_str());
                 } catch (...) {
-                    CUBE_INNER_ERR_REPORT(opType.c_str(), "elewise var has no valid dim_index, var_name:%s", var.c_str());
-                    return varValue;
+                    CUBE_INNER_ERR_REPORT(opType, "elewise var has no valid dim_index, var_name:%s", var.c_str());
+                    return;
                 }
-                dim_value = (dim_index == nDim) ? batch : ho*wo;
+                dim_value = (dim_index == nDim) ? shapesInfo.batch : (shapesInfo.ho * shapesInfo.wo);
                 varValue.insert(varValue.end(), dim_value);
                 GELOGD("elewise fusion optiling var info, var_name: %s, dim_index: %d", var.c_str(), dim_index);
             } else {
@@ -84,6 +74,46 @@ std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::str
             }
         }
     }
+    return;
+}
+
+std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::string> varMap,
+                                 const ge::OpDescPtr& opDesc,
+                                 int32_t nDim, int32_t hDim, int32_t wDim)
+{
+    auto inputDesc = opDesc->GetInputDescPtr(0);
+    auto outputDesc = opDesc->GetOutputDescPtr(0);
+    Conv2DShapesInfo shapesInfo;
+    shapesInfo.batch = inputDesc->GetShape().GetDim(nDim);
+    shapesInfo.hi = inputDesc->GetShape().GetDim(hDim);
+    shapesInfo.wi = inputDesc->GetShape().GetDim(wDim);
+    shapesInfo.ho = outputDesc->GetShape().GetDim(hDim);
+    shapesInfo.wo = outputDesc->GetShape().GetDim(wDim);
+    GELOGD("optiling runing shape is %d, %d, %d, %d, %d",
+        shapesInfo.batch, shapesInfo.hi, shapesInfo.ho, shapesInfo.wi, shapesInfo.wo);
+
+    std::vector<int64_t> varValue;
+    SetValValueCommon(opType.c_str(), varMap, shapesInfo, nDim, varValue);
+    return varValue;
+}
+
+std::vector<int32_t> SetValValue(const std::vector<std::string>& varMap, int32_t nDim, int32_t hDim, int32_t wDim,
+                                 gert::TilingContext* context)
+{
+    const char* opType = context->GetNodeType();
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    const gert::Shape& yStorageShape = context->GetOutputShape(0)->GetStorageShape();
+    Conv2DShapesInfo shapesInfo;
+    shapesInfo.batch = xStorageShape.GetDim(nDim);
+    shapesInfo.hi = xStorageShape.GetDim(hDim);
+    shapesInfo.wi = xStorageShape.GetDim(wDim);
+    shapesInfo.ho = yStorageShape.GetDim(hDim);
+    shapesInfo.wo = yStorageShape.GetDim(wDim);
+    GELOGD("optiling runing shape is %d, %d, %d, %d, %d",
+        shapesInfo.batch, shapesInfo.hi, shapesInfo.ho, shapesInfo.wi, shapesInfo.wo);
+
+    std::vector<int32_t> varValue;
+    SetValValueCommon(opType, varMap, shapesInfo, nDim, varValue);
     return varValue;
 }
 
@@ -301,7 +331,6 @@ uint32_t Conv2dBinaryTiling::GetMKN(ge::DataType dType, uint32_t idx)
     return MKN_VALUE_DEFAULT;
 }
 
-
 /*
  * @brief: check range
  */
@@ -369,13 +398,216 @@ bool Conv2dBinaryTiling::InitHardwareInfo(const optiling::Conv2DTilingParseInfo&
     return true;
 }
 
-bool Conv2dBinaryTiling::CheckL1SizeBound() {
+bool Conv2dBinaryTiling::CheckL1SizeBound()
+{
     uint32_t hoNum = GetMKN(convParas.bType, 0) / convParas.wo + 2;
     uint32_t hkDilation = (convParas.kh - 1) * convParas.dilations_h + 1;
     float maxFmapL1 = ((hoNum - 1) * convParas.stride_h + hkDilation) * convParas.wi * \
                            GetMKN(convParas.aType, 1) * M_BIT_RATIO[convParas.aType];
 
     return maxFmapL1 > L1_BUFFER_SIZE ? true : false;
+}
+
+bool Conv2dBinaryTiling::InitConv2DParasShapes(gert::TilingContext* context)
+{
+    // Get fmap, filter, result
+    const gert::CompileTimeTensorDesc* inputDesc = context->GetInputDesc(0);
+    const gert::CompileTimeTensorDesc* filterDesc = context->GetInputDesc(1);
+    const gert::Shape& xOriginShape = context->GetInputShape(0)->GetOriginShape();
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    const gert::Shape& wOriginShape = context->GetInputShape(1)->GetOriginShape();
+    const gert::Shape& yStorageShape = context->GetOutputShape(0)->GetStorageShape();
+    // Get groups
+    const gert::RuntimeAttrs* attrs = context->GetAttrs();
+    OP_LOGE_IF(attrs == nullptr, false, context->GetNodeType(), "Get op attrs failed.");
+    uint32_t groupsOri = *(attrs->GetAttrPointer<uint32_t>(3)); // "groups" is the 4th attr.
+
+    // Calculate optimized c1, cout, groups
+    uint32_t c0Val = GetMKN(convParas.bType, 1);
+    uint32_t cout0 = GetMKN(convParas.bType, MKN_NINDEX);
+    uint32_t cinOri = xOriginShape.GetDim(kCDimNHWCIdx) / groupsOri;
+    if (inputDesc->GetOriginFormat() == ge::Format::FORMAT_NCHW) {
+        cinOri = xOriginShape.GetDim(kCDimNCHWIdx) / groupsOri;
+    }
+    uint32_t coutOri = wOriginShape.GetDim(kNDimNHWCIdx) / groupsOri;
+    int32_t enlarge = min(Lcm(Lcm(cinOri, c0Val) / cinOri, Lcm(coutOri, cout0) / coutOri), groupsOri);
+    uint32_t c1Opt = ceil((float)(cinOri * enlarge) / GetMKN(convParas.bType, 1));
+    uint32_t cout1Opt = ceil((float)(coutOri * enlarge) / GetMKN(convParas.bType, 2));
+    uint32_t groupsOpt = ceil((float)groupsOri / max(enlarge, 1));
+    GELOGD("[%s] Get group opt success, enlarge = %d, c1Opt = %u, cout1Opt = %u, groupOpt = %u", \
+           nodeName.c_str(), enlarge, c1Opt, cout1Opt, groupsOpt);
+
+    // Set convParas
+    convParas.groups = groupsOpt;
+    convParas.batch = xStorageShape.GetDim(kNDimNC1HWC0Idx);
+    convParas.fmci = c1Opt * c0Val;
+    convParas.hi = xStorageShape.GetDim(kHDimNC1HWC0Idx);
+    convParas.wi = xStorageShape.GetDim(kWDimNC1HWC0Idx);
+    if (filterDesc->GetOriginFormat() == ge::Format::FORMAT_NCHW) {
+        convParas.kh = wOriginShape.GetDim(kHDimNCHWIdx);
+        convParas.kw = wOriginShape.GetDim(kWDimNCHWIdx);
+    } else {
+        convParas.kh = wOriginShape.GetDim(kHDimNHWCIdx);
+        convParas.kw = wOriginShape.GetDim(kWDimNHWCIdx);
+    }
+    convParas.n = cout1Opt * cout0;
+    convParas.wci = c1Opt * c0Val;
+    convParas.ho = yStorageShape.GetDim(kHDimNC1HWC0Idx);
+    convParas.wo = yStorageShape.GetDim(kWDimNC1HWC0Idx);
+
+    return true;
+}
+
+static bool UpdateConv2DParasPadsWithPadding(const gert::RuntimeAttrs* attrs, optiling::Conv2dParams& convParas)
+{
+    if (attrs->GetAttrNum() <= PADDING_IDX_CONV2D) {
+        return true;
+    }
+    std::string paddingStr = (attrs->GetAttrPointer<char>(PADDING_IDX_CONV2D) == nullptr) ?
+        "NULL" : attrs->GetAttrPointer<char>(PADDING_IDX_CONV2D);
+    if (paddingStr.compare("SAME") == 0) {
+        int64_t tailsH = convParas.hi % convParas.stride_h;
+        int64_t tailsW = convParas.wi % convParas.stride_w;
+        int64_t dkH = convParas.dilations_h * (convParas.kh - 1) + 1;
+        int64_t dkW = convParas.dilations_w * (convParas.kw - 1) + 1;
+        int64_t padH = std::max((tailsH > 0 ? dkH - tailsH : dkH - convParas.stride_h), (int64_t)0);
+        int64_t padW = std::max((tailsW > 0 ? dkW - tailsW : dkW - convParas.stride_w), (int64_t)0);
+        convParas.padu = (padH >> 1);
+        convParas.padd = (padH >> 1) + (padH & 1);
+        convParas.padl = (padW >> 1);
+        convParas.padr = (padW >> 1) + (padW & 1);
+    } else if (paddingStr.compare("VALID") == 0) {
+        convParas.padu = 0;
+        convParas.padd = 0;
+        convParas.padl = 0;
+        convParas.padr = 0;
+    }
+    return true;
+}
+
+static bool UpdateConv2DParasPadsWithAutoPad(const gert::RuntimeAttrs* attrs, optiling::Conv2dParams& convParas)
+{
+    if (attrs->GetAttrNum() <= AUTO_PAD_IDX_CONV2D) {
+        return true;
+    }
+    std::string autoPadStr = (attrs->GetAttrPointer<char>(AUTO_PAD_IDX_CONV2D) == nullptr) ?
+        "NULL" : attrs->GetAttrPointer<char>(AUTO_PAD_IDX_CONV2D);
+    if (autoPadStr.compare("SAME_UPPER") == 0) {
+        int64_t tailsH = convParas.hi % convParas.stride_h;
+        int64_t tailsW = convParas.wi % convParas.stride_w;
+        int64_t dkH = convParas.dilations_h * (convParas.kh - 1) + 1;
+        int64_t dkW = convParas.dilations_w * (convParas.kw - 1) + 1;
+        int64_t padH = std::max((tailsH > 0 ? dkH - tailsH : dkH - convParas.stride_h), (int64_t)0);
+        int64_t padW = std::max((tailsW > 0 ? dkW - tailsW : dkW - convParas.stride_w), (int64_t)0);
+        convParas.padu = (padH >> 1);
+        convParas.padd = (padH >> 1) + (padH & 1);
+        convParas.padl = (padW >> 1);
+        convParas.padr = (padW >> 1) + (padW & 1);
+    } else if (autoPadStr.compare("SAME_LOWER") == 0) {
+        int64_t tailsH = convParas.hi % convParas.stride_h;
+        int64_t tailsW = convParas.wi % convParas.stride_w;
+        int64_t dkH = convParas.dilations_h * (convParas.kh - 1) + 1;
+        int64_t dkW = convParas.dilations_w * (convParas.kw - 1) + 1;
+        int64_t padH = std::max((tailsH > 0 ? dkH - tailsH : dkH - convParas.stride_h), (int64_t)0);
+        int64_t padW = std::max((tailsW > 0 ? dkW - tailsW : dkW - convParas.stride_w), (int64_t)0);
+        convParas.padu = (padH >> 1) + (padH & 1);
+        convParas.padd = (padH >> 1);
+        convParas.padl = (padW >> 1) + (padW & 1);
+        convParas.padr = (padW >> 1);
+    } else if (autoPadStr.compare("VALID") == 0) {
+        convParas.padu = 0;
+        convParas.padd = 0;
+        convParas.padl = 0;
+        convParas.padr = 0;
+    }
+    return true;
+}
+
+bool Conv2dBinaryTiling::InitConv2DParasAttrs(gert::TilingContext* context)
+{
+    const gert::CompileTimeTensorDesc* inputDesc = context->GetInputDesc(0);
+    OP_LOGE_IF(inputDesc == nullptr, false, context->GetNodeName(), "Get input desc failed.");
+    // Get op attrs
+    const gert::RuntimeAttrs* attrs = context->GetAttrs();
+    OP_LOGE_IF(attrs == nullptr, false, context->GetNodeName(), "Get op attrs failed.");
+    auto stridesList = attrs->GetAttrPointer<gert::ContinuousVector>(0); // "strides" is the 1st attr.
+    OP_LOGE_IF(stridesList == nullptr, false, context->GetNodeName(), "Get strides failed.");
+    OP_LOGE_IF(stridesList->GetSize() != STRIDE_SIZE_LIMIT, false, context->GetNodeName(),
+        "unsupported strides size %lu.", stridesList->GetSize());
+    auto padsList = attrs->GetAttrPointer<gert::ContinuousVector>(1); // "pads" is the 2nd attr.
+    OP_LOGE_IF(padsList == nullptr, false, context->GetNodeName(), "Get pads failed.");
+    auto dilationsList = attrs->GetAttrPointer<gert::ContinuousVector>(2); // "dilations" is the 3rd attr.
+    OP_LOGE_IF(dilationsList == nullptr, false, context->GetNodeName(), "Get dilations failed.");
+    OP_LOGE_IF(dilationsList->GetSize() != DILATION_SIZE_LIMIT, false, context->GetNodeName(),
+        "unsupported dilations size %lu.", dilationsList->GetSize());
+    const int64_t* padsArray = reinterpret_cast<const int64_t*>(padsList->GetData());
+    const int64_t* dilationsArray = reinterpret_cast<const int64_t*>(dilationsList->GetData());
+    const int64_t* stridesArray = reinterpret_cast<const int64_t*>(stridesList->GetData());
+
+    if (padsList->GetSize() == PAD_SIZE_LIMIT) {
+        convParas.padu = padsArray[kPadUpDimIdx];
+        convParas.padd = padsArray[kPadDownDimIdx];
+        convParas.padl = padsArray[kPadLeftDimIdx];
+        convParas.padr = padsArray[kPadRightDimIdx];
+    }
+    if (inputDesc->GetOriginFormat() == ge::Format::FORMAT_NCHW) {
+        convParas.dilations_h = dilationsArray[kDilatHDimNCHWIdx];
+        convParas.dilations_w = dilationsArray[kDilatWDimNCHWIdx];
+        convParas.stride_h = stridesArray[kStriHDimNCHWIdx];
+        convParas.stride_w = stridesArray[kStriWDimNCHWIdx];
+    } else {
+        convParas.dilations_h = dilationsArray[kDilatHDimNHWCIdx];
+        convParas.dilations_w = dilationsArray[kDilatWDimNHWCIdx];
+        convParas.stride_h = stridesArray[kStriHDimNHWCIdx];
+        convParas.stride_w = stridesArray[kStriWDimNHWCIdx];
+    }
+
+    // runtime2.0 disallows set pads in infershape. Op_tiling should infer pads by itself.
+    UpdateConv2DParasPadsWithPadding(attrs, convParas);
+    UpdateConv2DParasPadsWithAutoPad(attrs, convParas);
+
+    return true;
+}
+
+static bool CheckConv2DInputOutputValid(gert::TilingContext* context)
+{
+    const char* opType = context->GetNodeType();
+    const gert::CompileTimeTensorDesc* inputDesc = context->GetInputDesc(0);
+    OP_LOGE_IF(inputDesc == nullptr, false, opType, "Get input desc failed.");
+    const gert::CompileTimeTensorDesc* filterDesc = context->GetInputDesc(1);
+    OP_LOGE_IF(filterDesc == nullptr, false, opType, "Get filter desc failed.");
+    const gert::CompileTimeTensorDesc* outputDesc = context->GetOutputDesc(0);
+    OP_LOGE_IF(outputDesc == nullptr, false, opType, "Get output desc failed.");
+    OP_LOGE_IF(context->GetInputShape(0) == nullptr, false, opType, "Get input shape x failed");
+    OP_LOGE_IF(context->GetInputShape(1) == nullptr, false, opType, "Get input shape filter failed.");
+    OP_LOGE_IF(context->GetOutputShape(0) == nullptr, false, opType, "Get output shape y failed.");
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    const gert::Shape& wOriginShape = context->GetInputShape(1)->GetOriginShape();
+    const gert::Shape& wStorageShape = context->GetInputShape(1)->GetStorageShape();
+    const gert::Shape& yStorageShape = context->GetOutputShape(0)->GetStorageShape();
+    if (inputDesc->GetStorageFormat() == ge::Format::FORMAT_NC1HWC0) {
+        OP_LOGE_IF(xStorageShape.GetDimNum() != kNC1HWC0DimSize, false, opType,
+            "Input0 dim num should be %d when input format is NC1HWC0.", kNC1HWC0DimSize);
+        OP_LOGE_IF(outputDesc->GetStorageFormat() != ge::Format::FORMAT_NC1HWC0, false, opType,
+            "Output format should be NC1HWC0 when input format is NC1HWC0.");
+        OP_LOGE_IF(yStorageShape.GetDimNum() != kNC1HWC0DimSize, false, opType,
+            "Output dim num should be %d when output format is NC1HWC0.", kNC1HWC0DimSize);
+    } else if (inputDesc->GetStorageFormat() == ge::Format::FORMAT_NCHW) {
+        OP_LOGE_IF(xStorageShape.GetDimNum() != kNCHWDimSize, false, opType,
+            "Input0 dim num should be %d when input format is NCHW.", kNCHWDimSize);
+        OP_LOGE_IF(outputDesc->GetStorageFormat() != ge::Format::FORMAT_NCHW, false, opType,
+            "Output format should be NCHW when input format is NCHW.");
+        OP_LOGE_IF(yStorageShape.GetDimNum() != kNCHWDimSize, false, opType,
+            "Output dim num should be %d when output format is NCHW.", kNCHWDimSize);
+    } else {
+        OP_LOGE(opType, "Input0 only supports NC1HWC0 or NCHW.");
+    }
+    OP_LOGE_IF(filterDesc->GetStorageFormat() != ge::Format::FORMAT_FRACTAL_Z, false, opType,
+        "Filter only supports FRACZ format.");
+    OP_LOGE_IF(wStorageShape.GetDimNum() != kFRACZDimSize || wOriginShape.GetDimNum() != kNCHWDimSize, false, opType,
+        "Input1 shape only supports FRACZ and ori_shape 4D.");
+
+    return true;
 }
 
 /*
@@ -520,6 +752,47 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
     return true;
 }
 
+bool Conv2dBinaryTiling::ParserConv2DParas(gert::TilingContext* context,
+    const optiling::Conv2DTilingParseInfo& opInfo)
+{
+    // Check fmap, filter, result
+    if (!CheckConv2DInputOutputValid(context)) {
+        return false;
+    }
+    // Get fmap, filter, result
+    const gert::CompileTimeTensorDesc* inputDesc = context->GetInputDesc(0);
+    const gert::CompileTimeTensorDesc* filterDesc = context->GetInputDesc(1);
+    const gert::CompileTimeTensorDesc* biasDesc = context->GetInputDesc(2); // bias is the 3rd input.
+    const gert::CompileTimeTensorDesc* outputDesc = context->GetOutputDesc(0);
+
+    // Set convParas
+    InitConv2DParasShapes(context);
+    InitConv2DParasAttrs(context);
+    InitConvUbUtilize(opInfo);
+    convParas.biasFlag = (biasDesc != nullptr);
+    convParas.aType = inputDesc->GetDataType();
+    convParas.bType = filterDesc->GetDataType();
+    convParas.cType = outputDesc->GetDataType();
+    OP_LOGE_IF(CUBE_MAD_TYPE.find(convParas.aType) == CUBE_MAD_TYPE.end(), false, context->GetNodeType(),
+        "input datatype only supports FP16/INT8/INT4/BFP16/FP32!");
+    convParas.madType = CUBE_MAD_TYPE[convParas.aType];
+    convParas.biasType = CUBE_MAD_TYPE[convParas.aType];
+
+    GELOGD("[%s] ParserConv2DParas success, input shape is [%d, %d, %d, %d], filter shape is [%d, %d, %d, %d], \
+        output shape is [%d, %d, %d, %d], pads is [%d, %d, %d, %d], strides is [%d, %d], dilations is [%d, %d], \
+        groups = %d, preFusionUbUtilize = %.3f, preFusionVectorUtilize = %d, postFusionUbUtilize = %.3f, \
+        postFusionVectorUtilize = %d, bias_flag = %d, fmap dtype: %d, filter dtype: %d, output dtype: %d, \
+        mad type: %d, bias type: %d", context->GetNodeName(), convParas.batch, convParas.fmci, convParas.hi,
+        convParas.wi, convParas.n, convParas.wci, convParas.kh, convParas.kw, convParas.batch, convParas.n,
+        convParas.ho, convParas.wo, convParas.padu, convParas.padd, convParas.padl, convParas.padr,
+        convParas.stride_h, convParas.stride_w, convParas.dilations_h, convParas.dilations_w, convParas.groups,
+        convParas.preFusionUbUtilize, convParas.preFusionVectorUtilize, convParas.postFusionUbUtilize,
+        convParas.postFusionVectorUtilize, convParas.biasFlag, convParas.aType, convParas.bType,
+        convParas.cType, convParas.madType, convParas.biasType);
+
+    return true;
+}
+
 /*
  * @brief: check shape and attr range, check exbound l1_size
  */
@@ -553,8 +826,8 @@ bool Conv2dBinaryTiling::CheckConv2DParas()
         "output H only support range [%d, %d]", FMAP_H_LEN_MIN, FMAP_H_LEN_MAX);
     OP_LOGE_IF(!CheckRange(convParas.wo, FMAP_W_LEN_MIN, FMAP_W_LEN_MAX), false, opType, \
         "output W only support range [%d, %d]", FMAP_W_LEN_MIN, FMAP_W_LEN_MAX);
-    OP_LOGE_IF(!CheckRange(convParas.padu, PAD_MIN, PAD_MAX) || !CheckRange(convParas.padu, PAD_MIN, PAD_MAX) || \
-        !CheckRange(convParas.padu, PAD_MIN, PAD_MAX) || !CheckRange(convParas.padu, PAD_MIN, PAD_MAX),
+    OP_LOGE_IF(!CheckRange(convParas.padu, PAD_MIN, PAD_MAX) || !CheckRange(convParas.padd, PAD_MIN, PAD_MAX) || \
+        !CheckRange(convParas.padl, PAD_MIN, PAD_MAX) || !CheckRange(convParas.padr, PAD_MIN, PAD_MAX),
         false, opType, "output W only support range [%d, %d]", PAD_MIN, PAD_MAX);
     OP_LOGE_IF(!CheckRange(convParas.dilations_h, DILATION_MIN, DILATION_MAX) || \
         !CheckRange(convParas.dilations_w, DILATION_MIN, DILATION_MAX),
@@ -580,7 +853,8 @@ bool Conv2dBinaryTiling::CheckConv2DParas()
     return true;
 }
 
-uint32_t Conv2dBinaryTiling::AlignMN(const uint32_t valueT) {
+uint32_t Conv2dBinaryTiling::AlignMN(const uint32_t valueT)
+{
     return (valueT + GetMKN(convParas.aType, 1) - 1) / GetMKN(convParas.aType, 1);
 }
 
@@ -595,7 +869,7 @@ bool Conv2dBinaryTiling::GenAttachMap()
 
     if (fastTiling.kAl1 == TENSOR_FULL_LOAD && fastTiling.mAl1 == TENSOR_FULL_LOAD) {
         attachMap.al1AttachMode = ATTACH_FULL_LOAD;
-    } else if(fastTiling.kAl1 == fmapReduceK) {
+    } else if (fastTiling.kAl1 == fmapReduceK) {
         attachMap.al1AttachMode = ATTACH_AT_RES;
     } else {
         attachMap.al1AttachMode = ATTACH_AT_CL0;
@@ -704,6 +978,34 @@ bool Conv2dBinaryTiling::GenConv2DTiling(const optiling::Conv2DTilingParseInfo& 
     return true;
 }
 
+uint64_t Conv2dBinaryTiling::GetConv2DTilingId(const Conv2DAttachMap& attachMap)
+{
+    /*
+        tilingId is int64 type, the meaning of each bits as follows:
+        0 ~ 2bit : al1AttachMode
+        3 ~ 5bit : bl1AttachMode
+        6 ~ 8bit : bl0AttachMode
+        9 ~ 10bit : batchSplitMode
+        11 ~ 12bit: groupSplitMode
+        13 ~ 14bit: cubChannelwiseMode
+        15 ~ 16bit: fmapLoadtol0aMode
+    */
+    uint64_t tilingId = 0;
+    tilingId = tilingId | (attachMap.al1AttachMode << 0);
+    tilingId = tilingId | (attachMap.bl1AttachMode << BIT_BL1_LOC);
+    tilingId = tilingId | (attachMap.bl0AttachMode << BIT_BL0_LOC);
+    tilingId = tilingId | (attachMap.batchSplitMode << BIT_BATCH_SPLIT_LOC);
+    tilingId = tilingId | (attachMap.groupSplitMode << BIT_GROUP_SPLIT_LOC);
+    tilingId = tilingId | (attachMap.cubChannelwiseMode << BIT_CHANNELWISE_LOC);
+    tilingId = tilingId | (attachMap.fmapLoadtol0aMode << BIT_LOADMODE_LOC);
+
+    bitset<ATTACH_BITS_LEN> bitValue(tilingId);
+    string bitStr = bitValue.to_string();
+    GELOGD("[%s] Get tilingId bitmap string format : %s", nodeName.c_str(), bitStr.c_str());
+
+    return tilingId;
+}
+
 /*
  * @brief: update conv2d runinfo
  */
@@ -768,27 +1070,7 @@ bool Conv2dBinaryTiling::UpdateRunInfo(utils::OpRunInfo& runInfo)
         convParas.bType == ge::DataType::DT_FLOAT16;
     attachMap.fmapLoadtol0aMode = load2dFlag ? 1 : 0;
 
-    /*
-        tilingId is int64 type, the meaning of each bits as follows:
-        0 ~ 2bit : al1AttachMode
-        3 ~ 5bit : bl1AttachMode
-        6 ~ 8bit : bl0AttachMode
-        9 ~ 10bit : batchSplitMode
-        11 ~ 12bit: groupSplitMode
-        13 ~ 14bit: cubChannelwiseMode
-        15 ~ 16bit: fmapLoadtol0aMode
-    */
-    uint64_t tilingId = 0;
-    tilingId = tilingId | (attachMap.al1AttachMode << 0);
-    tilingId = tilingId | (attachMap.bl1AttachMode << BIT_BL1_LOC);
-    tilingId = tilingId | (attachMap.bl0AttachMode << BIT_BL0_LOC);
-    tilingId = tilingId | (attachMap.batchSplitMode << BIT_BATCH_SPLIT_LOC);
-    tilingId = tilingId | (attachMap.groupSplitMode << BIT_GROUP_SPLIT_LOC);
-    tilingId = tilingId | (attachMap.cubChannelwiseMode << BIT_CHANNELWISE_LOC);
-    tilingId = tilingId | (attachMap.fmapLoadtol0aMode << BIT_LOADMODE_LOC);
-    bitset<ATTACH_BITS_LEN> bitValue(tilingId);
-    string bitStr = bitValue.to_string();
-    GELOGD("[%s] Get tilingId bitmap string format : %s", nodeName.c_str(), bitStr.c_str());
+    uint64_t tilingId = GetConv2DTilingId(attachMap);
 
     runInfo.SetTilingKey(static_cast<uint64_t>(tilingId));
     GELOGD("[%s] SetTilingKey success, tilingId is %d", nodeName.c_str(), tilingId);
@@ -803,16 +1085,53 @@ bool Conv2dBinaryTiling::UpdateRunInfo(utils::OpRunInfo& runInfo)
     return true;
 }
 
+ge::graphStatus Conv2dBinaryTiling::UpdateRunInfo(gert::TilingContext* context)
+{
+    bool load2dFlag = (convParas.padu + convParas.padd + convParas.padl + convParas.padr) == 0 &&
+        convParas.stride_h*convParas.stride_w == 1 && convParas.kh*convParas.kw == 1 &&
+        convParas.bType == ge::DataType::DT_FLOAT16;
+    attachMap.fmapLoadtol0aMode = load2dFlag ? 1 : 0;
+
+    uint64_t tilingId = GetConv2DTilingId(attachMap);
+
+    context->SetTilingKey(tilingId);
+    GELOGD("[%s] SetTilingKey success, tilingId is %d", nodeName.c_str(), tilingId);
+
+    int32_t blockNum = convTiling.batchDim * convTiling.nDim * convTiling.mDim * convTiling.groupDim;
+    context->SetBlockDim(static_cast<uint32_t>(blockNum));
+
+    OP_LOGE_IF(!SetRunInfo(), ge::GRAPH_FAILED, context->GetNodeType(), "SetRunInfo failed.");
+    gert::TilingData* tilingData = context->GetRawTilingData();
+    OP_LOGE_IF(tilingData == nullptr, ge::GRAPH_FAILED, context->GetNodeType(), "GetRawTilingData failed.");
+    tilingData->Append(runParas);
+    tilingData->SetDataSize(sizeof(Conv2DRunInfo));
+
+    return ge::GRAPH_SUCCESS;
+}
+
 bool ProduceBinaryTiling(const ge::OpDescPtr opDesc, optiling::Conv2DTilingParseInfo& opInfo,
                          utils::OpRunInfo& runInfo)
 {
     string opType = opDesc->GetType();
     unique_ptr <Conv2dBinaryTiling> binaryTilingPtr(new Conv2dBinaryTiling());
-    OP_LOGE_IF(!binaryTilingPtr->ParserConv2DParas(opDesc, opInfo), false, opType, "parser conv2d params failed!");
+    OP_LOGE_IF(
+        !binaryTilingPtr->ParserConv2DParas(opDesc, opInfo), false, opType, "parse conv2d params failed!");
     OP_LOGE_IF(!binaryTilingPtr->CheckConv2DParas(), false, opType, "check conv2d params failed!");
     OP_LOGE_IF(!binaryTilingPtr->GenConv2DTiling(opInfo), false, opType, "GenConv2DTiling failed!");
 
     return binaryTilingPtr->UpdateRunInfo(runInfo);
+}
+
+ge::graphStatus ProduceBinaryTiling(gert::TilingContext* context, const optiling::Conv2DTilingParseInfo& opInfo)
+{
+    const char* opType = context->GetNodeType();
+    unique_ptr <Conv2dBinaryTiling> binaryTilingPtr(new Conv2dBinaryTiling());
+    OP_LOGE_IF(!binaryTilingPtr->ParserConv2DParas(context, opInfo),
+        ge::GRAPH_FAILED, opType, "parse conv2d params failed!");
+    OP_LOGE_IF(!binaryTilingPtr->CheckConv2DParas(), ge::GRAPH_FAILED, opType, "check conv2d params failed!");
+    OP_LOGE_IF(!binaryTilingPtr->GenConv2DTiling(opInfo), ge::GRAPH_FAILED, opType, "GenConv2DTiling failed!");
+
+    return binaryTilingPtr->UpdateRunInfo(context);
 }
 
 /*
@@ -823,7 +1142,6 @@ bool ProduceBinaryTiling(const ge::OpDescPtr opDesc, optiling::Conv2DTilingParse
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-
 bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas,
     optiling::Conv2DTilingParseInfo& opInfo, utils::OpRunInfo& runInfo)
 {
@@ -899,3 +1217,248 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas,
 REGISTER_OP_TILING_V4_CUSTOM(Conv2D, Conv2DTiling, Conv2DTilingParseFunc, Conv2DTilingParseInfo);
 REGISTER_OP_TILING_V4_CUSTOM(DepthwiseConv2D, Conv2DTiling, Conv2DTilingParseFunc, Conv2DTilingParseInfo);
 }  // namespace optiling
+
+namespace gert {
+static bool IsShapeInRangeConv2D(TilingContext* context, const std::vector<int64_t>& range)
+{
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    ge::Format xFormat = context->GetInputDesc(0)->GetStorageFormat();
+    const std::vector<int32_t>& shapeDim = (xFormat == ge::Format::FORMAT_NHWC) ?
+        optiling::shapeNHWDimNHWC : optiling::shapeNHWDimNC1HWC0;
+
+    if (range.size() == optiling::rangeNHWDim.size()) {
+        for (size_t i = 0; i < shapeDim.size(); ++i) {
+            if (xStorageShape.GetDim(shapeDim[i]) < range[optiling::rangeNHWDim[i * optiling::kOneRangeSize]] ||
+                xStorageShape.GetDim(shapeDim[i]) > range[optiling::rangeNHWDim[i * optiling::kOneRangeSize + 1]]) {
+                return false;
+            }
+        }
+    } else if (range.size() == optiling::kOneRangeSize) {
+        if (xStorageShape.GetDim(shapeDim[0]) < range[0] || xStorageShape.GetDim(shapeDim[0]) > range[1]) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+static size_t GetTilingIndexBatch(TilingContext* context,
+    const optiling::Conv2DTilingParseInfo* opInfoPtr, size_t tilingIdIndex)
+{
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    if (xStorageShape.GetDimNum() == 0) {
+        return tilingIdIndex;
+    }
+    if (opInfoPtr->tilingRangeList.size() == 0) {
+        CUBE_INNER_ERR_REPORT(context->GetNodeType(), "no tiling_range in compile info struct.");
+        return tilingIdIndex;
+    }
+    for (size_t i = 0; i < opInfoPtr->tilingRangeList.size(); i++) {
+        if (IsShapeInRangeConv2D(context, opInfoPtr->tilingRangeList[i])) {
+            tilingIdIndex = i;
+        }
+    }
+    return tilingIdIndex;
+}
+
+static size_t GetTilingIndexNHW(TilingContext* context,
+    const optiling::Conv2DTilingParseInfo* opInfoPtr, size_t tilingIdIndex)
+{
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    size_t seedHDim = 1;
+    size_t seedWDim = 2;
+    size_t hDim = optiling::kHDimNC1HWC0Idx;
+    size_t wDim = optiling::kWDimNC1HWC0Idx;
+    if (context->GetInputDesc(0)->GetStorageFormat() == ge::Format::FORMAT_NHWC) {
+        hDim = optiling::kHDimNHWCIdx;
+        wDim = optiling::kWDimNHWCIdx;
+    }
+
+    size_t rangeIndex = 0;
+    int64_t minDist = std::numeric_limits<int64_t>::max();
+    for (size_t i = 0; i < opInfoPtr->repoSeedsList.size(); i++) {
+        const std::vector<int32_t>& seeds = opInfoPtr->repoSeedsList[i];
+        auto& range = opInfoPtr->repoRangeList[i];
+        if (IsShapeInRangeConv2D(context, range)) {
+            int32_t dist = abs(xStorageShape.GetDim(hDim) - seeds[seedHDim]) +
+                           abs(xStorageShape.GetDim(wDim) - seeds[seedWDim]);
+            if (dist < minDist) {
+                tilingIdIndex = rangeIndex;
+                minDist = dist;
+            }
+        }
+        rangeIndex++;
+    }
+
+    if (tilingIdIndex >= opInfoPtr->tilingKeyList.size()) {
+        if (opInfoPtr->costRangeList.size() == 0) {
+            CUBE_INNER_ERR_REPORT(context->GetNodeType(), "no cost_range in compile info struct.");
+            return tilingIdIndex;
+        }
+        for (size_t i = 0; i < opInfoPtr->costRangeList.size(); i++) {
+            auto& range = opInfoPtr->costRangeList[i];
+            if (IsShapeInRangeConv2D(context, range)) {
+                tilingIdIndex = rangeIndex;
+                break;
+            }
+            rangeIndex++;
+        }
+    }
+
+    return tilingIdIndex;
+}
+
+ge::graphStatus SelectConv2DTiling(TilingContext* context, const std::vector<int32_t>& varValue,
+    const optiling::Conv2DTilingParseInfo* opInfoPtr)
+{
+    const char* opType = context->GetNodeType();
+
+    OP_LOGE_IF(opInfoPtr->customVarsList.size() == 0, ge::GRAPH_FAILED, opType, "Invalid customVars.");
+    size_t customVarsSize = opInfoPtr->customVarsList.at(0).size();
+
+    size_t tilingIdIndex = opInfoPtr->tilingKeyList.size();
+    if (opInfoPtr->tilingType.compare("default_tiling") == 0) {
+        OP_LOGE_IF(opInfoPtr->defaultRangeList.size() == 0, ge::GRAPH_FAILED, opType, "Invalid default range.");
+        if (IsShapeInRangeConv2D(context, opInfoPtr->defaultRangeList.at(0))) {
+            tilingIdIndex = 0;
+        }
+    } else if (customVarsSize != 1) {
+        tilingIdIndex = GetTilingIndexNHW(context, opInfoPtr, tilingIdIndex);
+    } else {
+        tilingIdIndex = GetTilingIndexBatch(context, opInfoPtr, tilingIdIndex);
+    }
+    // Check selected tiling index
+    if (tilingIdIndex >= opInfoPtr->tilingKeyList.size()) { // invalid tilingIdIndex
+        if (opInfoPtr->correctRangeFlag) {
+            CUBE_INNER_ERR_REPORT(opType, "The original range does not meet requirements,"
+                "new range is generated during op compile, but the shape is not covered by new range.");
+        }
+        CUBE_INNER_ERR_REPORT(opType, "This shape is not covered by any tiling,"
+            "please modify range and recompile.");
+        return ge::GRAPH_FAILED;
+    }
+    if (opInfoPtr->blockDimList.size() == 0 || opInfoPtr->blockDimList.size() <= tilingIdIndex) {
+        CUBE_INNER_ERR_REPORT(opType, "invalid block_dim in compile info struct.");
+        return ge::GRAPH_FAILED;
+    }
+
+    OP_LOGD(opType, "get tiling_id: %s", opInfoPtr->tilingKeyList[tilingIdIndex].c_str());
+    context->SetBlockDim(opInfoPtr->blockDimList[tilingIdIndex]);
+    context->SetTilingKey(std::stoi(opInfoPtr->tilingKeyList[tilingIdIndex]));
+    TilingData* tilingData = context->GetRawTilingData();
+    OP_LOGE_IF(tilingData == nullptr, ge::GRAPH_FAILED, context->GetNodeType(), "GetRawTilingData failed.");
+    for (int32_t var : varValue) {
+        tilingData->Append<int32_t>(var);
+    }
+    tilingData->SetDataSize(sizeof(int32_t) * varValue.size());
+
+    GELOGD("[%s] tiling_data: tilingKey=%s", context->GetNodeName(), opInfoPtr->tilingKeyList[tilingIdIndex].c_str());
+
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus TilingPrepareForConv2D(KernelContext* context)
+{
+    // get op type
+    const ComputeNodeInfo* computeNode = reinterpret_cast<const ComputeNodeInfo*>(context->GetComputeNodeExtend());
+    OP_LOGE_IF(computeNode == nullptr, ge::GRAPH_FAILED, "nil", "Compute node is null.");
+    const char* opType = computeNode->GetNodeType();
+
+    // get compile info json
+    const char* compileStrPtr = context->GetInputValue<char *>(0);
+    OP_LOGE_IF(compileStrPtr == nullptr, ge::GRAPH_FAILED, opType, "Get compileStr from KernelContext failed.");
+    unique_ptr<nlohmann::json> opCompileInfoJsonPtr(new nlohmann::json(nlohmann::json::parse(compileStrPtr)));
+    OP_LOGE_IF(opCompileInfoJsonPtr == nullptr, ge::GRAPH_FAILED, opType, "Change compile info str to json failed.");
+
+    // get compile info struct defined by Conv2D
+    optiling::Conv2DTilingParseInfo* opInfoPtr = context->GetOutputPointer<optiling::Conv2DTilingParseInfo>(0);
+    OP_LOGE_IF(opInfoPtr == nullptr, ge::GRAPH_FAILED, opType, "Get op tiling info struct failed.");
+
+    if ((*opCompileInfoJsonPtr).empty()) {
+        GELOGD("op compile info is empty.");
+        return ge::GRAPH_FAILED;
+    }
+    GELOGD("original compile info is: %s", compileStrPtr);
+    // accurate build has only one item
+    // fuzzy build has multiple items
+    if ((*opCompileInfoJsonPtr).is_array()) {
+        if (!optiling::getFuzzyBuildParseInfo(opType, *opCompileInfoJsonPtr, *opInfoPtr)) {
+            GELOGD("%s Tiling, get fuzzy build parse info failed.", opType);
+            return ge::GRAPH_FAILED;
+        }
+    } else if ((*opCompileInfoJsonPtr).is_object()) {
+        if (!optiling::getParseInfo(opType, *opCompileInfoJsonPtr, *opInfoPtr)) {
+            GELOGD("%s Tiling, get parse info failed.", opType);
+            return ge::GRAPH_FAILED;
+        }
+    }
+    GELOGD("Parse %s CompileInfo successed.", opType);
+    return ge::GRAPH_SUCCESS;
+}
+
+ge::graphStatus TilingForConv2D(TilingContext* context)
+{
+    const string opType = context->GetNodeType();
+    const optiling::Conv2DTilingParseInfo* opInfoPtr =
+        reinterpret_cast<const optiling::Conv2DTilingParseInfo*>(context->GetCompileInfo());
+    OP_LOGE_IF(opInfoPtr == nullptr, ge::GRAPH_FAILED, opType.c_str(), "The parsed op info is null.");
+
+    // Enter binary tiling
+    if (opInfoPtr->tilingType.compare("binary") == 0) {
+        GELOGD("[%s] optiling type is binary_tiling", context->GetNodeName());
+        return optiling::ProduceBinaryTiling(context, (*opInfoPtr));
+    }
+    // Check x format
+    const CompileTimeTensorDesc* inputDesc = context->GetInputDesc(0);
+    OP_LOGE_IF(inputDesc == nullptr, ge::GRAPH_FAILED, opType, "GetInputDescPtr failed.");
+    ge::Format xFormat = inputDesc->GetStorageFormat();
+    if (xFormat != ge::Format::FORMAT_NC1HWC0 && xFormat != ge::Format::FORMAT_NHWC &&
+        xFormat != ge::Format::FORMAT_NCHW) {
+        OP_LOGE(opType.c_str(), "only support NC1HWC0 or NHWC or NCHW format.");
+        return ge::GRAPH_FAILED;
+    }
+    // Set dim index. Default format NC1HWC0.
+    int32_t nDim = optiling::kNDimNC1HWC0Idx;
+    int32_t cDim = optiling::kC1DimNC1HWC0Idx;
+    int32_t hDim = optiling::kHDimNC1HWC0Idx;
+    int32_t wDim = optiling::kWDimNC1HWC0Idx;
+    if (xFormat == ge::Format::FORMAT_NHWC) {
+        nDim = optiling::kNDimNHWCIdx;
+        hDim = optiling::kHDimNHWCIdx;
+        wDim = optiling::kWDimNHWCIdx;
+        cDim = optiling::kCDimNHWCIdx;
+    }
+    GELOGD("optiling xFormat is %s, nDim = %d, cDim = %d, hDim = %d, wDim = %d",
+           ge::TypeUtils::FormatToSerialString(xFormat).c_str(), nDim, cDim, hDim, wDim);
+
+    const gert::Shape& xStorageShape = context->GetInputShape(0)->GetStorageShape();
+    const gert::Shape& yStorageShape = context->GetOutputShape(0)->GetStorageShape();
+    OP_LOGE_IF(context->GetComputeNodeInfo()->GetInputsNum() == 0 ||
+        context->GetComputeNodeInfo()->GetOutputsNum() == 0 || xStorageShape.GetDimNum() == 0 ||
+        yStorageShape.GetDimNum() == 0, ge::GRAPH_FAILED, opType, "inputsize or outputsize is zero.");
+
+    int32_t ho = yStorageShape.GetDim(hDim);
+    int32_t wo = yStorageShape.GetDim(wDim);
+    if (ho != 1 && wo == 1) {
+        OP_LOGE(opType.c_str(), "not support ho != 1 and wo == 1.");
+        return ge::GRAPH_FAILED;
+    }
+    if (opType.compare("Conv2D") == 0 && opInfoPtr->fmapC1 != 0 && xStorageShape.GetDim(cDim) != opInfoPtr->fmapC1) {
+        CUBE_INNER_ERR_REPORT(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups;"
+                              "x_channel=%d, fmap_c1=%d", (int32_t)xStorageShape.GetDim(cDim), opInfoPtr->fmapC1);
+        return ge::GRAPH_FAILED;
+    }
+
+    std::vector<int32_t> varValue = optiling::SetValValue(opInfoPtr->varMap, nDim, hDim, wDim, context);
+    ge::graphStatus res = SelectConv2DTiling(context, varValue, opInfoPtr);
+    GELOGD("[%s] tiling_data: batch=%d, hi=%d, ho=%d, wi=%d, wo=%d", context->GetNodeName(),
+           xStorageShape.GetDim(nDim), xStorageShape.GetDim(hDim), ho, xStorageShape.GetDim(wDim), wo);
+
+    return res;
+}
+
+// Conv2D Op tiling for runtime2.0 cannot be directly used by DepthwiseConv2D because of the different IR attrs' order.
+IMPL_OP(Conv2D).Tiling(TilingForConv2D).TilingParse<optiling::Conv2DTilingParseInfo>(TilingPrepareForConv2D);
+} // namespace gert

@@ -2404,6 +2404,7 @@ cube-conv2d:
       - ops/built-in/framework/caffe_plugin/caffe_conv2d_plugin.cc
       - ops/built-in/op_tiling/conv2d.cc
       - ops/built-in/op_tiling/conv2d.h
+      - ops/built-in/op_proto/runtime/conv2d_infer_fns.cc
     unrelease:
   llt:
     ut_check: true

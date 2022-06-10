@@ -34,9 +34,17 @@
 #include "error_log.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
+#include "register/op_impl_registry.h"
 
-namespace optiling
-{
+namespace optiling {
+const std::vector<int32_t> rangeNHWDim = {0, 1, 2, 3, 4, 5};
+const size_t kOneRangeSize = 2;
+const std::vector<int32_t> shapeNHWDimNC1HWC0 = {0, 2, 3};
+const std::vector<int32_t> shapeNHWDimNHWC = {0, 1, 2};
+const string kCompileRepoSeeds = "repo_seeds";
+const string kCompileRepoRange = "repo_range";
+const string kCompileCostRange = "cost_range";
+
 const int32_t kNCHWDimSize = 4;
 const int32_t kNC1HWC0DimSize = 5;
 const int32_t kFRACZDimSize = 4;
@@ -84,6 +92,11 @@ const int32_t kDilatWDimNCHWIdx = 3;
 const int32_t kDilatHDimNHWCIdx = 1;
 const int32_t kDilatWDimNHWCIdx = 2;
 
+// Attrs IDX
+// customized attribute
+const size_t PADDING_IDX_CONV2D = 6;
+const size_t AUTO_PAD_IDX_CONV2D = 7;
+
 // L1 BUFFER SIZE: 1M
 const int32_t L1_BUFFER_SIZE = 1024 * 1024;
 
@@ -113,6 +126,9 @@ const int32_t STRIDE_MIN = 1;
 const int32_t STRIDE_MAX = 63;
 const int32_t DILATION_MIN = 1;
 const int32_t DILATION_MAX = 255;
+const size_t PAD_SIZE_LIMIT = 4;
+const size_t STRIDE_SIZE_LIMIT = 4;
+const size_t DILATION_SIZE_LIMIT = 4;
 
 const int32_t kModeCoeficient = 10;
 
@@ -160,8 +176,15 @@ std::map<ge::DataType, ge::DataType> CUBE_MAD_TYPE = {
     {ge::DataType::DT_FLOAT, ge::DataType::DT_FLOAT}
 };
 
-struct Conv2DRunInfo
-{
+struct Conv2DShapesInfo {
+    int32_t batch = -1;
+    int32_t hi = -1;
+    int32_t wi = -1;
+    int32_t ho = -1;
+    int32_t wo = -1;
+};
+
+struct Conv2DRunInfo {
     uint32_t batch = 1;
     uint32_t cIn = 1;
     uint32_t hi = 1;
@@ -199,8 +222,7 @@ struct Conv2DRunInfo
     uint32_t kBl1Factor = 0;
 };
 
-struct Conv2DCacheTiling
-{
+struct Conv2DCacheTiling {
     uint32_t batchSingleCore = 0;
     uint32_t nSingleCore = 0;
     uint32_t batchDim = 0;
@@ -221,8 +243,7 @@ struct Conv2DCacheTiling
     uint32_t mAub = 0;
 };
 
-struct Conv2DAttachMap
-{
+struct Conv2DAttachMap {
     uint32_t al1AttachMode = 0;
     uint32_t bl1AttachMode = 0;
     uint32_t bl0AttachMode = 0;
@@ -240,9 +261,12 @@ public:
     virtual ~Conv2dBinaryTiling() {};
 
     bool ParserConv2DParas(const ge::OpDescPtr& op_desc, const optiling::Conv2DTilingParseInfo& opInfo);
+    bool ParserConv2DParas(gert::TilingContext* context,
+        const optiling::Conv2DTilingParseInfo& opInfo); // override for runtime2.0
     bool CheckConv2DParas();
     bool GenConv2DTiling(const optiling::Conv2DTilingParseInfo& opInfo);
     bool UpdateRunInfo(utils::OpRunInfo& runInfo);
+    ge::graphStatus UpdateRunInfo(gert::TilingContext* context); // override for runtime2.0
 
 private:
     uint32_t GetMKN(ge::DataType dType, uint32_t idx);
@@ -250,8 +274,11 @@ private:
     bool InitConvUbUtilize(const optiling::Conv2DTilingParseInfo& opInfo);
     bool InitHardwareInfo(const optiling::Conv2DTilingParseInfo& opInfo);
     bool CheckL1SizeBound();
+    bool InitConv2DParasAttrs(gert::TilingContext* context);
+    bool InitConv2DParasShapes(gert::TilingContext* context);
     uint32_t AlignMN(const uint32_t valueT);
     bool GenAttachMap();
+    uint64_t GetConv2DTilingId(const Conv2DAttachMap& attachMap);
     bool SetRunInfo();
 
     optiling::Conv2dParams convParas;
