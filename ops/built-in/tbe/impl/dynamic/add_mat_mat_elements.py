@@ -17,6 +17,7 @@ limitations under the License.
 
 AddMatMatElements
 """
+from impl.util.util_common import is_unknown
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
@@ -117,9 +118,9 @@ def add_mat_mat_elements(c, a, b, beta, alpha, c_out, kernel_name="add_mat_mat_e
     beta_shape = beta.get("shape")
     alpha_shape = alpha.get("shape")
 
-    if len(beta_shape) != 1 or beta_shape[0] != 1:
+    if tuple(beta_shape) != (1,) and not is_unknown([beta]):
         raise RuntimeError("beta has to be scalar")
-    if len(alpha_shape) != 1 or alpha_shape[0] != 1:
+    if tuple(alpha_shape) != (1,) and not is_unknown([alpha]):
         raise RuntimeError("alpha has to be scalar")
 
     ins = classify([c, a, b], OpPatternMode.ELEWISE)
