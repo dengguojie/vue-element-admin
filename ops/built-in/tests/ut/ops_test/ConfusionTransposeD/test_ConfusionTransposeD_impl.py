@@ -69,21 +69,9 @@ def test_op_select_format(test_arg):
         check_param_format("input0")
         check_param_format("output0")
 
-    result = op_select_format({'shape': (64, 1024, 384), 'ori_shape': (64, 1024, 384), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                              {'shape': (64, 1024, 384), 'ori_shape': (64, 1024, 384), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                              (0, 1, 2), (65536, 384), True, "test_confusion_transpose_d_op_format_1")
-    check_format(support_all_dtype,{"FRACTAL_NZ","ND"},result)
-    result = op_select_format({'shape': (65536, 1536), 'ori_shape': (65536, 1536), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                              {'shape': (65536, 1536), 'ori_shape': (65536, 1536), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                              (0, 1, 2), (64, 1024, 1536), False, "test_dropout_do_mask_v3_d_op_select_format_2")
-    check_format(support_all_dtype,{"FRACTAL_NZ","ND"},result)
-    result =  op_select_format({'shape': (64, 1024, 384), 'ori_shape': (64, 1024, 384), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                               {'shape': (64, 1024, 384), 'ori_shape': (64, 1024, 384), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                               (0, 2, 1, 3), (64, 1024, 6, 64), False, "test_dropout_do_mask_v3_d_op_select_format_3")
-    check_format(support_all_dtype,{"FRACTAL_NZ","ND"},result)
-    result = op_select_format({'shape': (64, 6, 1024, 64), 'ori_shape': (64, 6, 1024, 64), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                              {'shape': (64, 6, 1024, 64), 'ori_shape': (64, 6, 1024, 64), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
-                              (0, 2, 1, 3), (64, 1024, 384), True, "test_dropout_do_mask_v3_d_op_select_format_4")
+    result = op_select_format({'shape': (64, 64, 64, 64), 'ori_shape': (64, 64, 64, 64), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
+                              {'shape': (64, 64, 64, 64), 'ori_shape': (64, 64, 64, 64), 'format': 'ND', 'ori_format': 'ND', 'dtype': 'float32'},
+                              (0, 2, 1, 3), (64, 4096, 64), True, "test_dropout_do_mask_v3_d_op_select_format_4")
     check_format(support_all_dtype,{"FRACTAL_NZ","ND"},result)
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)

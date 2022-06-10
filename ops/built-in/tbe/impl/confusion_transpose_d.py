@@ -462,8 +462,7 @@ def _division_sixteen(shape):
 
 
 def check_shape_4_3(shape_a, shape_b):
-    flag_check = (shape_a[1] * shape_a[2] == shape_b[1] and shape_a[3] == shape_b[2]) or \
-                 (shape_a[2] * shape_a[3] == shape_b[2] and shape_a[1] == shape_b[1])
+    flag_check = (shape_a[1] * shape_a[2] == shape_b[1] and shape_a[3] == shape_b[2])
 
     return flag_check
 
@@ -489,12 +488,6 @@ def check_reshape(in_shape, out_shape):
     return False
 
 
-def check_perm(perm_in):
-    true_perm = [i for i in range(len(perm_in))]
-
-    return list(perm_in) == true_perm
-
-
 def _condition(x, perm, shape, transpose_first):
     shape_x = shape_util.scalar2tensor_one(x.get("ori_shape"))
 
@@ -504,9 +497,6 @@ def _condition(x, perm, shape, transpose_first):
         shape_reshapein = shape_x
         if not _division_sixteen(_shape_after_transpose(shape, perm)):
             return False
-
-    if _division_sixteen(shape_x) and shape_x == tuple(shape_reshapein) and check_perm(perm):
-        return True
 
     if (len(perm) == 4 and _division_sixteen(shape_x) and perm[3] == 3):
         return check_reshape(shape_reshapein, shape)
