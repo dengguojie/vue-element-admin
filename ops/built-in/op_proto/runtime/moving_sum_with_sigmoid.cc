@@ -16,10 +16,14 @@
 #include "runtime_util.h"
 
 using namespace ge;
-namespace ops {
+namespace {
 constexpr size_t INPUT_INDEX_OFFSET = 2;
-constexpr int64_t TWICE = 2;
+constexpr size_t OFFSET_NUM_DIMS = 2;
+constexpr size_t INDEX_BEAM_NUM = 0;
+constexpr size_t INDEX_FRAME_NUM = 1;
+}  // namespace
 
+namespace ops {
 ge::graphStatus InferShapeForMovingSumWithSigmoid(gert::InferShapeContext *context) {
   auto offset_tensor = context->GetInputTensor(INPUT_INDEX_OFFSET);
   OPS_CHECK_NULL_WITH_CONTEXT(context, offset_tensor);
@@ -34,13 +38,15 @@ ge::graphStatus InferShapeForMovingSumWithSigmoid(gert::InferShapeContext *conte
   OPS_CHECK_NULL_WITH_CONTEXT(context, offset_data);
   int64_t beam_sum = 0;
   int64_t frame_sum = 0;
-  int64_t batch_size = offset_tensor->GetShapeSize() / TWICE;
+  int64_t batch_size = offset_tensor->GetShapeSize() / OFFSET_NUM_DIMS;
   for (int64_t i = 0; i < batch_size; i++) {
     beam_sum += offset_data[i];
     frame_sum += offset_data[i + batch_size];
   }
-  out_shape->AppendDim(beam_sum);
-  out_shape->AppendDim(frame_sum);
+
+  out_shape->SetDimNum(OFFSET_NUM_DIMS);
+  out_shape->SetDim(INDEX_BEAM_NUM, beam_sum);
+  out_shape->SetDim(INDEX_FRAME_NUM, frame_sum);
   return ge::GRAPH_SUCCESS;
 }
 
