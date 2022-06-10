@@ -71,6 +71,4 @@ void RandomStandardCpuKernel::Generate(const CpuKernelContext &ctx,
       philoxRandomDist(ctx);
   philoxRandomDist.generate(ctx, output);
 }
-
-REGISTER_CPU_KERNEL(kRandomStandardNormal, RandomStandardCpuKernel);
 }  // namespace aicpu
