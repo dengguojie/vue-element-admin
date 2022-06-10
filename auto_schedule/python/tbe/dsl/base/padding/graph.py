@@ -123,7 +123,6 @@ class Node:
 
         self._simulator.adjust_calc()
 
-        # TODO: middle out
         if self._graph.is_out(self):
             if util.exist_pad(self) and not util.is_0_pvalue(self.get_pvalue()):
                 svalue = m_value.SettingValue(m_value.SettingValueType.NORMAL, self.get_dtype())
