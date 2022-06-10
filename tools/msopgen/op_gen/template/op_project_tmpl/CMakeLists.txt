@@ -56,7 +56,9 @@ endif()
 
 message(STATUS "operation system is ${CMAKE_HOST_SYSTEM_NAME}")
 
-set(ALL_MODULES ${OP_PROTO_TARGET})
+if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/op_proto")
+    set(ALL_MODULES ${OP_PROTO_TARGET})
+endif()
 if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/op_tiling")
     set(ALL_MODULES ${ALL_MODULES} ${OP_TILING_TARGET})
 endif()
