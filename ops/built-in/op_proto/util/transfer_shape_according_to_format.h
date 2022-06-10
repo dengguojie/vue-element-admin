@@ -35,8 +35,6 @@
 
 #include "op_log.h"
 
-#define LOG_ERROR(format, args...) printf(format, ##args)
-#define LOG_INFO(format, args...) printf(format, ##args)
 
 namespace ge {
 

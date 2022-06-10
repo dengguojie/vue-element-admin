@@ -1009,6 +1009,9 @@ vector_B:
       - ops/common/inc/op_attr.h
       - ops/common/src/error_util.cc
       - ops/built-in/CMakeLists.txt
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_batchmulticlass_nms_pass.cc
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_pass.cc
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_v2_pass.cc
       - ops/built-in/framework/tf_plugin/avg_pool3d.cc
       - ops/built-in/framework/tf_plugin/add_n_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
@@ -1157,6 +1160,7 @@ vector_B:
       - ops/built-in/op_proto/ragged_math_ops.cc
       - ops/built-in/op_proto/randomdsa_ops.cc
       - ops/built-in/op_proto/rpn_ops.cc
+      - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
@@ -1164,6 +1168,7 @@ vector_B:
       - ops/built-in/op_proto/util/common_shape_fns.cc
       - ops/built-in/op_proto/util/nn_shape_fns.cc
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
+      - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_proto/nonlinear_fuc_ops.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
@@ -2524,7 +2529,6 @@ unkown:
       - ops/built-in/op_proto/condtake_ops.cc
       - ops/built-in/op_proto/hvd_ops.cc
       - ops/built-in/op_proto/image_ops.cc
-      - ops/built-in/op_proto/split_combination_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/resource_variable_ops.cc
@@ -2585,7 +2589,6 @@ unkown:
       - ops/built-in/op_proto/util/linalg_ops_shape_fns.cc
       - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.h
-      - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/util/axis_util.cc
       - ops/built-in/tbe/impl/approximate_equal.py
       - ops/built-in/tbe/impl/clip_boxes_d.py

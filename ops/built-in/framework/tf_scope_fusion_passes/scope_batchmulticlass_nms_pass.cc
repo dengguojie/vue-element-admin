@@ -108,7 +108,7 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  ScopeBatchMultiClassNMSPattern->SetSubType(kScopeTypeBatchMultiClassNonMaxSuppression);
+  (void)ScopeBatchMultiClassNMSPattern->SetSubType(kScopeTypeBatchMultiClassNonMaxSuppression);
   (void)ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 1, 0));
   static const size_t maximum_num = 4;
   (void)ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", maximum_num, 0));
@@ -120,7 +120,7 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  ScopeSecondBatchMultiClassNMSPattern->SetSubType(kScopeTypeSecondBatchMultiClassNonMaxSuppression);
+  (void)ScopeSecondBatchMultiClassNMSPattern->SetSubType(kScopeTypeSecondBatchMultiClassNonMaxSuppression);
   (void)ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 0, 1));
   static const size_t merge_num = 11;
   (void)ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", merge_num, 0));
@@ -144,7 +144,7 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  ScopeFilteredBatchMultiClassNMSPattern->SetSubType(kScopeTypeFiltereBatchMultiClassNonMaxSuppression);
+  (void)ScopeFilteredBatchMultiClassNMSPattern->SetSubType(kScopeTypeFiltereBatchMultiClassNonMaxSuppression);
   (void)ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV3", 0, 1));
   static const size_t range_step = 5;
   (void)ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 0, range_step));

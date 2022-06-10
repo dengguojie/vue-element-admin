@@ -67,7 +67,7 @@ graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std:
 graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const std::string size_input_name,
                                   const int64_t channel_dim, const std::string output_name) {
   Shape size_shape;
-  graphStatus status = WithRank(op.GetInputDesc(size_input_name), 1, size_shape, TbeGetName(op).c_str());
+  graphStatus status = WithRank(op.GetInputDescByName(size_input_name.c_str()), 1, size_shape, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);

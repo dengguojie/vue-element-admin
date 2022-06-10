@@ -93,8 +93,8 @@ void ScopeDecodeBboxV2Pass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  decodeBboxV2Pattern->SetSubType(kScopeTypeDecodeBboxV2);
-  decodeBboxV2Pattern->AddScopeFeature(ScopeFeature("", 1, "Decode"));
+  (void)decodeBboxV2Pattern->SetSubType(kScopeTypeDecodeBboxV2);
+  (void)decodeBboxV2Pattern->AddScopeFeature(ScopeFeature("", 1, "Decode"));
   (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Exp", 2, 0));        // Exp num is 2
   (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4, 0));        // Mul num is 4
   (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 4, 0));        // Sub num is 4
@@ -114,8 +114,8 @@ void ScopeDecodeBboxV2Pass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  decodeBboxV2SSDPattern->SetSubType(kScopeTypeDecodeBboxV2SSD);
-  decodeBboxV2SSDPattern->AddScopeFeature(ScopeFeature("", 1, "Decode"));
+  (void)decodeBboxV2SSDPattern->SetSubType(kScopeTypeDecodeBboxV2SSD);
+  (void)decodeBboxV2SSDPattern->AddScopeFeature(ScopeFeature("", 1, "Decode"));
   (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Exp", 2, 0));        // Exp num is 2
   (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4, 0));        // Mul num is 4
   (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 10, 0));       // Sub num is 10

@@ -84,12 +84,14 @@ vector<FusionPattern*> RandomDsaFusionPass::DefinePatterns() {
   pattern2->AddOpDesc(PATTERN_FUSEDNODE_UNIFORM, {"RandomUniformInt"}).SetOutput(PATTERN_FUSEDNODE_UNIFORM);
 
   FusionPattern* pattern3 = new (std::nothrow) FusionPattern("RandomDsaFusionPass3");
-  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern3 == nullptr, 
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern3->AddOpDesc(PATTERN_FUSEDNODE_TRUNCATE, {"TruncatedNormal"}).SetOutput(PATTERN_FUSEDNODE_TRUNCATE);
 
   FusionPattern* pattern4 = new (std::nothrow) FusionPattern("RandomDsaFusionPass4");
-  FUSION_PASS_CHECK(pattern4 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern4 == nullptr, 
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern4->AddOpDesc(PATTERN_FUSEDNODE_STANDARDNORM, {"RandomStandardNormal"})
       .SetOutput(PATTERN_FUSEDNODE_STANDARDNORM);
@@ -97,7 +99,7 @@ vector<FusionPattern*> RandomDsaFusionPass::DefinePatterns() {
   patterns.push_back(pattern2);
   // get env to decide whether open
   const char* env_dsa = getenv("DSA_ENABLE");
-  if (env_dsa != nullptr){
+  if (env_dsa != nullptr) {
     std::string s(env_dsa);
     if (s == "True") {
       patterns.push_back(pattern3);
@@ -228,9 +230,13 @@ Status RandomDsaFusionPass::CreateConstOperatorNormal(ge::ComputeGraph& graph, c
   mean_ptr->MutableTensorDesc().SetDataType(ge::DT_FLOAT);
   stddev_ptr->MutableTensorDesc().SetDataType(ge::DT_FLOAT);
   ge::OpDescPtr const_opdesc_mean = ge::OpDescUtils::CreateConstOp(mean_ptr);
-  FUSION_PASS_CHECK(const_opdesc_mean == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"new a const object failed."), return FAILED);
+  FUSION_PASS_CHECK(const_opdesc_mean == nullptr, 
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"new a const object failed."), 
+                    return FAILED);
   ge::OpDescPtr const_opdesc_stddev = ge::OpDescUtils::CreateConstOp(stddev_ptr);
-  FUSION_PASS_CHECK(const_opdesc_stddev == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"new a const object failed."), return FAILED);
+  FUSION_PASS_CHECK(const_opdesc_stddev == nullptr, 
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"new a const object failed."), 
+                    return FAILED);
   const_opdesc_mean->SetName("constop_mean");
   const_opdesc_stddev->SetName("constop_stddev");
   const_node_mean = graph.AddNode(const_opdesc_mean);
@@ -510,24 +516,28 @@ Status RandomDsaFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode_Truncate->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                            dsatruncate_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                 fusedNode_Truncate->GetName().c_str(), 0, dsatruncate_node->GetName().c_str(), 0),
         return FAILED);
 
     if (dsatruncate_node->AddLinkFrom(1, const_node) != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                                      const_node->GetName().c_str(), 1, dsatruncate_node->GetName().c_str(), 1);
       return FAILED;
     }
 
     if (dsatruncate_node->AddLinkFrom(MEAN_NODE_EDGE, const_node_mean) != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                                      const_node_mean->GetName().c_str(), 1, dsatruncate_node->GetName().c_str(), 1);
       return FAILED;
     }
 
     if (dsatruncate_node->AddLinkFrom(STDDEV_NODE_EDGE, const_node_stddev) != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                                      const_node_stddev->GetName().c_str(), 1, dsatruncate_node->GetName().c_str(), 1);
       return FAILED;
     }
@@ -558,7 +568,8 @@ Status RandomDsaFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     // remove dropout node
     FUSION_PASS_CHECK(
         ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode_Truncate),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode_Truncate->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", 
+                                       fusedNode_Truncate->GetName().c_str()),
         return FAILED);
     fusionNodes.push_back(dsatruncate_node);
     return SUCCESS;
@@ -621,24 +632,28 @@ Status RandomDsaFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode_normal->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                            dsanormal_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                 fusedNode_normal->GetName().c_str(), 0, dsanormal_node->GetName().c_str(), 0),
         return FAILED);
 
     if (dsanormal_node->AddLinkFrom(1, const_node) != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                                      const_node->GetName().c_str(), 1, dsanormal_node->GetName().c_str(), 1);
       return FAILED;
     }
 
     if (dsanormal_node->AddLinkFrom(MEAN_NODE_EDGE, const_node_mean) != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                                      const_node_mean->GetName().c_str(), 1, dsanormal_node->GetName().c_str(), 2);
       return FAILED;
     }
 
     if (dsanormal_node->AddLinkFrom(STDDEV_NODE_EDGE, const_node_stddev) != SUCCESS) {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
+                                     "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                                      const_node_stddev->GetName().c_str(), 1, dsanormal_node->GetName().c_str(), 3);
       return FAILED;
     }
@@ -670,7 +685,8 @@ Status RandomDsaFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     // remove dropout node
     FUSION_PASS_CHECK(
         ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode_normal),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode_normal->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", 
+                                       fusedNode_normal->GetName().c_str()),
         return FAILED);
     fusionNodes.push_back(dsanormal_node);
     return SUCCESS;

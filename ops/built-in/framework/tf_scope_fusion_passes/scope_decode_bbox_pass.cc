@@ -83,7 +83,7 @@ void ScopeDecodeBboxPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  decodeBboxPattern->SetSubType(kScopeTypeDecodeBbox);
+  (void)decodeBboxPattern->SetSubType(kScopeTypeDecodeBbox);
 
   (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Reshape", 0, 3));   // Reshape num is 3
   (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Split", 0, 2));     // Split num is 2

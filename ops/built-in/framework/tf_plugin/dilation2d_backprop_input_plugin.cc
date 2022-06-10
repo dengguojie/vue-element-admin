@@ -25,7 +25,7 @@
 
 namespace domi {
 Status ParseDilation2DBackpropInput(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  (void)AutoMappingFn(op_src, op);
 
   ge::TensorDesc input_tensor = op.GetInputDesc("x");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
@@ -65,7 +65,7 @@ Status ParseDilation2DBackpropInput(const Message* op_src, ge::Operator& op) {
 
   std::string padding;
   if (op.GetAttr("padding", padding) == ge::GRAPH_SUCCESS) {
-    op.SetAttr("padding_mode", padding);
+    (void)op.SetAttr("padding_mode", padding);
   }
 
   return SUCCESS;

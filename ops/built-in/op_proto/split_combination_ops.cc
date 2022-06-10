@@ -1032,7 +1032,6 @@ IMPLEMT_COMMON_INFERFUNC(ParallelConcatInferShape) {
   }
   DataType input_dtype = op.GetDynamicInputDesc("values", 0).GetDataType();
   TensorDesc outDesc = op.GetOutputDescByName("output_data");
-  std::string name_out = outDesc.GetName();
   outDesc.SetShape(ge::Shape(shape));
   outDesc.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("output_data", outDesc);
@@ -1488,7 +1487,9 @@ COMMON_INFER_FUNC_REG(ConcatOffsetD, ConcatOffsetDInferShape);
 static int64_t combi(int64_t input_num, int32_t r) {
   int ans = 1;
   for(int i = input_num; i > input_num - r; i--) ans *= i;
-  for(int i = r; i > 1; i--) ans /= i;
+  for(int i = r; i > 1; i--) {
+    ans /= i;
+  } 
   return ans;
 }
 
