@@ -54,6 +54,8 @@ set(_op_proto_srcs
   runtime/transpose.cc
   runtime/layer_norm.cc
   runtime/dynamic_rnn_v3.cc
+  runtime/squeeze_op_impl.cc
+  runtime/unsqueeze_op_impl.cc
   runtime/dyn_seq_outer.cc
   runtime/expand.cc
   runtime/trans_data.cc
