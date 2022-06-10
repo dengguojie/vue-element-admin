@@ -1745,7 +1745,7 @@ class Conv2dDxOptiSchedule:
 
 
     def _get_l0c_and_l1_axis(
-        self, sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, l0c_multi_group_flag
+        self, sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, dx_c1_extend, var_map, l0c_multi_group_flag
     ):
         """
         get l0c and l1 axis
@@ -1798,7 +1798,7 @@ class Conv2dDxOptiSchedule:
 
         # split c_gm according to factor of loc and out_shape
         if not l0c_multi_group_flag:
-            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], nparts=g_extend)
+            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], dx_c1_extend)
         else:
             g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], l0c_factor[0])
 
@@ -2823,7 +2823,7 @@ class Conv2dDxOptiSchedule:
         al0_axis_factor, bl0_axis_factor, reduce_axis_factor = self._get_mmad_factor()
         num_batch = DIM_MAP.get("img_shape")[0]
         self._print_ir_conv("before split", sch)
-        g_extend = DIM_MAP.get(cube_util.GroupDictKeys.g_extend)
+        dx_c1_extend = DIM_MAP.get(cube_util.GroupDictKeys.dx_c1_extend)
         # split and get axis of l0c, al1, bl1
         (
             batch_in_out_axis,
@@ -2842,7 +2842,7 @@ class Conv2dDxOptiSchedule:
             l0c_m_outer,
             reorder_flag
         ) = self._get_l0c_and_l1_axis(
-            sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, l0c_multi_group_flag
+            sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, dx_c1_extend, var_map, l0c_multi_group_flag
         )
         al1_at_c_axis = batch_in_inner_axis
         bl1_at_c_axis = l1_n_outer_outer

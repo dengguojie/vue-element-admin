@@ -766,5 +766,133 @@
         "type": "string"
       }
     ]
+  },
+  {
+    "op": "Conv2DBackpropInputD",
+    "case_name": "test_dx_opti_group",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          120,
+          160,
+          1,
+          1
+        ],
+        "ori_shape": [
+          120,
+          160,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          120,
+          8,
+          8
+        ],
+        "ori_shape": [
+          1,
+          120,
+          8,
+          8
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          480,
+          8,
+          8
+        ],
+        "ori_shape": [
+          1,
+          480,
+          8,
+          8
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "input_size",
+        "value": [
+          1,
+          480,
+          8,
+          8
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 3,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
   }
 ]

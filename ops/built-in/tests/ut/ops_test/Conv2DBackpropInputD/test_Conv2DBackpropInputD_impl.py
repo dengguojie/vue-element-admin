@@ -123,7 +123,6 @@ def _gen_kernel_name(dedy_shape, w_shape, dx_shape, strides, data_flow):
     )
     return kernel_name
 
-
 def _gen_trans_data_case(
     w_dtype,
     dedy_dtype,

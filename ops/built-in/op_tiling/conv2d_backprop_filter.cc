@@ -201,9 +201,9 @@ bool TransformShape(const ge::ConstGeTensorDescPtr& tensor, std::vector<int64_t>
   if (ori_format == ge::FORMAT_NCHW) {
     shape = {ori_shape.GetDim(kPos0), ori_shape.GetDim(kPos1), ori_shape.GetDim(kPos2), ori_shape.GetDim(kPos3)};
   } else if (ori_format == ge::FORMAT_HWCN) {
-    shape = {ori_shape.GetDim(kPos0), ori_shape.GetDim(kPos2), ori_shape.GetDim(kPos3), ori_shape.GetDim(kPos1)};
+    shape = {ori_shape.GetDim(kPos3), ori_shape.GetDim(kPos2), ori_shape.GetDim(kPos0), ori_shape.GetDim(kPos1)};
   } else if (ori_format == ge::FORMAT_NHWC) {
-    shape = {ori_shape.GetDim(kPos0), ori_shape.GetDim(kPos2), ori_shape.GetDim(kPos3), ori_shape.GetDim(kPos1)};
+    shape = {ori_shape.GetDim(kPos0), ori_shape.GetDim(kPos3), ori_shape.GetDim(kPos1), ori_shape.GetDim(kPos2)};
   } else {
     return false;
   }
