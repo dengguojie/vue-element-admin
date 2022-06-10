@@ -100,17 +100,22 @@ class SegmentSort(Base):
 
     def mode_compute(self):
         loop_num, ai_core_num = self._get_aicore_num()
+        multi_core = True
+        if self.k_num < self.block_data_num:
+            ai_core_num = 1
+            loop_num = self.rows
+            multi_core = False
         with self.tik_instance.for_range(0, ai_core_num, block_num=ai_core_num) as core_idx:
             with self.tik_instance.for_range(0, loop_num) as loop_idx:
                 batch_idx = core_idx * loop_num + loop_idx
                 with self.tik_instance.if_scope(batch_idx < self.rows):
-                    self._mode_compute_each_core(batch_idx)
+                    self._mode_compute_each_core(batch_idx, multi_core)
 
         self.tik_instance.BuildCCE(inputs=[self.input_data, self.input_index],
                                    outputs=[self.output_data, self.output_index],
                                    kernel_name=self.kernel_name)
 
-    def _mode_compute_each_core(self, batch_idx):
+    def _mode_compute_each_core(self, batch_idx, multi_core):
         index_l1 = self._index_move_in()
         if self.cols <= self.ub_pro_num_max or self.k_num <= self.ub_sort_num:
             self.merge_sort.get_top_proposal(self.temp_proposal_1, batch_idx, self.cols, self.k_num,
@@ -126,9 +131,9 @@ class SegmentSort(Base):
             with self.tik_instance.for_range(0, loop_time) as loop_idx:
                 data_index_start = loop_idx * each_loop_data_num
                 with self.tik_instance.if_scope(loop_idx != loop_time - 1):
-                    self._result_move_out_each_loop(batch_idx, data_index_start, each_loop_data_num)
+                    self._result_move_out_each_loop(batch_idx, data_index_start, each_loop_data_num, multi_core)
                 with self.tik_instance.else_scope():
-                    self._result_move_out_each_loop(batch_idx, data_index_start, last_loop_data_num)
+                    self._result_move_out_each_loop(batch_idx, data_index_start, last_loop_data_num, multi_core)
 
     def _index_move_in(self):
         index_l1 = self.tik_instance.Tensor(self.index_dtype, (self.index_num,),
@@ -217,13 +222,16 @@ class SegmentSort(Base):
         data_num_align = self.method.get_align_num(data_num, self.int_repeat_data_num, False)
         return data_num_align
 
-    def _result_move_out_each_loop(self, batch_idx, data_index_start, data_num):
+    def _result_move_out_each_loop(self, batch_idx, data_index_start, data_num, multi_core):
         """
         algorithm: get result_data, result_index
             result_data = gm_tensor[0, :, 3]
             result_index = gm_tensor[0, :, 0] + gm_tensor[0, :, 0] * each_loop_index_num
                            + gm_tensor[0, :, 0] * each_loop_index_num * each_loop_index_num
         """
+        if multi_core and data_num < self.block_data_num:
+            data_index_start = data_index_start - self.block_data_num + data_num
+            data_num = self.block_data_num
         proposal_num = self.method.get_align_num(data_num, self.pro_repeat_num)
         data_num_align = self.method.get_align_num(data_num, self.int_repeat_data_num)
         data_shape = (data_num_align, )
@@ -259,22 +267,30 @@ class SegmentSort(Base):
         mul_num = self.each_loop_index_num * self.each_loop_index_num
         self._get_int_index(index_int_ub_0, index_int_ub_1, index_ub_2, index_int_ub_2, mask, repeat_num, mul_num)
 
-        data_block_num = data_num // self.block_data_num
-        index_block_num = data_num // self.int_block_data_num
         out_offset = batch_idx * self.k_num + data_index_start
-        self.tik_instance.data_move(self.output_data[out_offset], score_ub, 0, 1, data_block_num, 0, 0)
-        self.tik_instance.data_move(self.output_index[out_offset], index_int_ub_0, 0, 1, index_block_num, 0, 0)
+        if not multi_core:
+            data_block_num = self.method.ceil_div(data_num, self.block_data_num)
+            index_block_num = self.method.ceil_div(data_num, self.int_block_data_num)
+            self.tik_instance.data_move(self.output_data[out_offset], score_ub, 0, 1, data_block_num, 0, 0)
+            self.tik_instance.data_move(self.output_index[out_offset], index_int_ub_0, 0, 1, index_block_num, 0, 0)
+        else:
+            data_block_num = data_num // self.block_data_num
+            index_block_num = data_num // self.int_block_data_num
+            if data_block_num > 0:
+                self.tik_instance.data_move(self.output_data[out_offset], score_ub, 0, 1, data_block_num, 0, 0)
+            if index_block_num > 0:
+                self.tik_instance.data_move(self.output_index[out_offset], index_int_ub_0, 0, 1, index_block_num, 0, 0)
 
-        if data_num % self.block_data_num != 0:
-            for i in range(self.block_data_num):
-                score_ub[i] = score_ub[data_num - self.block_data_num + i]
-            out_data_offset = out_offset + data_num - self.block_data_num
-            self.tik_instance.data_move(self.output_data[out_data_offset], score_ub, 0, 1, 1, 0, 0)
-        if data_num % self.int_block_data_num != 0:
-            for i in range(self.int_block_data_num):
-                index_int_ub_0[i] = index_int_ub_0[data_num - self.int_block_data_num + i]
-            out_index_offset = out_offset + data_num - self.int_block_data_num
-            self.tik_instance.data_move(self.output_index[out_index_offset], index_int_ub_0, 0, 1, 1, 0, 0)
+            if data_num % self.block_data_num != 0:
+                for i in range(self.block_data_num):
+                    score_ub[i] = score_ub[data_num - self.block_data_num + i]
+                out_data_offset = out_offset + data_num - self.block_data_num
+                self.tik_instance.data_move(self.output_data[out_data_offset], score_ub, 0, 1, 1, 0, 0)
+            if data_num % self.int_block_data_num != 0:
+                for i in range(self.int_block_data_num):
+                    index_int_ub_0[i] = index_int_ub_0[data_num - self.int_block_data_num + i]
+                out_index_offset = out_offset + data_num - self.int_block_data_num
+                self.tik_instance.data_move(self.output_index[out_index_offset], index_int_ub_0, 0, 1, 1, 0, 0)
 
     def _get_int_index(self, result_index, index_int_ub, index_ub, index_int_ub_temp, mask, repeat_num, mul_num):
         self.tik_instance.vconv(mask, "round", index_int_ub, index_ub, repeat_num, 1, 1, 8, 4)
@@ -305,17 +321,22 @@ class SegmentSortV2(Base):
 
     def mode_compute(self):
         loop_num, ai_core_num = self._get_aicore_num()
+        multi_core = True
+        if self.k_num < self.const_value.score_num_block:
+            ai_core_num = 1
+            loop_num = self.rows
+            multi_core = False
         with self.tik_instance.for_range(0, ai_core_num, block_num=ai_core_num) as core_idx:
             with self.tik_instance.for_range(0, loop_num) as loop_idx:
                 batch_idx = core_idx * loop_num + loop_idx
                 with self.tik_instance.if_scope(batch_idx < self.rows):
-                    self._mode_compute_each_core(batch_idx)
+                    self._mode_compute_each_core(batch_idx, multi_core)
 
         self.tik_instance.BuildCCE(inputs=[self.input_data, self.input_index],
                                    outputs=[self.output_data, self.output_index],
                                    kernel_name=self.kernel_name)
 
-    def _mode_compute_each_core(self, batch_idx):
+    def _mode_compute_each_core(self, batch_idx, multi_core):
         fun_args = {
             "batch_index": batch_idx
         }
@@ -329,9 +350,9 @@ class SegmentSortV2(Base):
         with self.tik_instance.for_range(0, loop_time) as loop_idx:
             data_index_start = loop_idx * each_loop_data_num
             with self.tik_instance.if_scope(loop_idx != loop_time - 1):
-                self._result_move_out_each_loop(batch_idx, data_index_start, each_loop_data_num)
+                self._result_move_out_each_loop(batch_idx, data_index_start, each_loop_data_num, multi_core)
             with self.tik_instance.else_scope():
-                self._result_move_out_each_loop(batch_idx, data_index_start, last_loop_data_num)
+                self._result_move_out_each_loop(batch_idx, data_index_start, last_loop_data_num, multi_core)
 
     def _get_score_index_tensor(self, fun_args):
         batch_index = fun_args.get("batch_index")
@@ -394,7 +415,10 @@ class SegmentSortV2(Base):
         data_num_align = self.method.get_align_num(data_num, self.const_value.score_num_repeat, False)
         return data_num_align
 
-    def _result_move_out_each_loop(self, batch_idx, proposal_index_start, proposal_num):
+    def _result_move_out_each_loop(self, batch_idx, proposal_index_start, proposal_num, multi_core):
+        if multi_core and proposal_num < self.const_value.score_num_block:
+            proposal_index_start = proposal_index_start - self.const_value.score_num_block + proposal_num
+            proposal_num = self.const_value.score_num_block
         proposal_num_align = self.method.get_align_num(proposal_num, self.const_value.score_num_repeat)
         element_num_move_in = proposal_num * self.element_num_proposal
         element_num_align = proposal_num_align * self.element_num_proposal
@@ -422,22 +446,30 @@ class SegmentSortV2(Base):
                                   index_src1_pattern, repeat_time, 1, 8, 0)
         index_ub = index_ub.reinterpret_cast_to(self.out_index_dtype)
 
-        score_block_num = proposal_num // self.const_value.score_num_block
-        index_block_num = proposal_num // self.const_value.index_num_block
         out_offset = batch_idx * self.k_num + proposal_index_start
-        self.tik_instance.data_move(self.output_data[out_offset], score_ub, 0, 1, score_block_num, 0, 0)
-        self.tik_instance.data_move(self.output_index[out_offset], index_ub, 0, 1, index_block_num, 0, 0)
+        if not multi_core:
+            score_block_num = self.method.ceil_div(proposal_num, self.const_value.score_num_block)
+            index_block_num = self.method.ceil_div(proposal_num, self.const_value.index_num_block)
+            self.tik_instance.data_move(self.output_data[out_offset], score_ub, 0, 1, score_block_num, 0, 0)
+            self.tik_instance.data_move(self.output_index[out_offset], index_ub, 0, 1, index_block_num, 0, 0)
+        else:
+            score_block_num = proposal_num // self.const_value.score_num_block
+            index_block_num = proposal_num // self.const_value.index_num_block
+            if score_block_num > 0:
+                self.tik_instance.data_move(self.output_data[out_offset], score_ub, 0, 1, score_block_num, 0, 0)
+            if index_block_num > 0:
+                self.tik_instance.data_move(self.output_index[out_offset], index_ub, 0, 1, index_block_num, 0, 0)
 
-        if proposal_num % self.const_value.score_num_block != 0:
-            for i in range(self.const_value.score_num_block):
-                score_ub[i] = score_ub[proposal_num - self.const_value.score_num_block + i]
-            out_data_offset = out_offset + proposal_num - self.const_value.score_num_block
-            self.tik_instance.data_move(self.output_data[out_data_offset], score_ub, 0, 1, 1, 0, 0)
-        if proposal_num % self.const_value.index_num_block != 0:
-            for i in range(self.const_value.index_num_block):
-                index_ub[i] = index_ub[proposal_num - self.const_value.index_num_block + i]
-            out_index_offset = out_offset + proposal_num - self.const_value.index_num_block
-            self.tik_instance.data_move(self.output_index[out_index_offset], index_ub, 0, 1, 1, 0, 0)
+            if proposal_num % self.const_value.score_num_block != 0:
+                for i in range(self.const_value.score_num_block):
+                    score_ub[i] = score_ub[proposal_num - self.const_value.score_num_block + i]
+                out_data_offset = out_offset + proposal_num - self.const_value.score_num_block
+                self.tik_instance.data_move(self.output_data[out_data_offset], score_ub, 0, 1, 1, 0, 0)
+            if proposal_num % self.const_value.index_num_block != 0:
+                for i in range(self.const_value.index_num_block):
+                    index_ub[i] = index_ub[proposal_num - self.const_value.index_num_block + i]
+                out_index_offset = out_offset + proposal_num - self.const_value.index_num_block
+                self.tik_instance.data_move(self.output_index[out_index_offset], index_ub, 0, 1, 1, 0, 0)
 
 
 def top_k_large(input_shape, indices_shape, out_shape, k, input_dtype,
