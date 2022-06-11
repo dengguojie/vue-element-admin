@@ -26,7 +26,95 @@ namespace optiling {
 struct BiasCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   std::vector<int64_t> broadcast_bias_shape;
+  bool is_unknown_rank;
 };
+
+static const std::pair<int64_t, std::string> BIAS_ATTR_INFO_AXIS{0, "axis"};
+static const std::pair<int64_t, std::string> BIAS_ATTR_INFO_NUM_AXES{1, "num_axes"};
+static const std::pair<int64_t, std::string> BIAS_ATTR_INFO_BIAS_FROM_BLOB{2, "bias_from_blob"};
+
+bool GetBiasShape(const std::string& opType, const ge::Operator& op_paras, const std::vector<int64_t>& xShape,
+                  const std::vector<int64_t>& biasShape, std::vector<int64_t>& broadcastBiasShape) {
+  OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) begin");
+
+  int32_t axis;
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BIAS_ATTR_INFO_AXIS, axis, 1),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetBiasShape, get axis error"),
+                  return false);
+  int32_t numAxes;
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BIAS_ATTR_INFO_NUM_AXES, numAxes, 1),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetBiasShape, get num_axes error"),
+                  return false);
+  OP_TILING_CHECK(numAxes < -1,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "num_axes should be greater than -1"),
+                  return false);
+  bool biasFromBlob;
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BIAS_ATTR_INFO_BIAS_FROM_BLOB, biasFromBlob, true),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetBiasShape, get bias_from_blob error"),
+                  return false);
+
+  int32_t xDimNum = xShape.size();
+  int32_t biasDimNum = biasShape.size();
+  OP_TILING_CHECK(axis >= xDimNum or axis < -xDimNum,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "axis should not be greater than the length of shape_x."),
+                  return false);
+  if (axis < 0) {
+    axis += xDimNum;
+  }
+
+  if (biasFromBlob) {
+    OP_TILING_CHECK(numAxes == -1 and biasDimNum != xDimNum - axis,
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "length_bias and bias_num must be equal."),
+                    return false);
+    OP_TILING_CHECK(numAxes == 0 and biasDimNum != 1,
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "bias must be a scalar."),
+                    return false);
+    OP_TILING_CHECK(numAxes > 0 and axis + numAxes > xDimNum,
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "bias shape extends x shape when applied."),
+                    return false);
+    OP_TILING_CHECK(numAxes > 0 and biasDimNum != numAxes,
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "length_bias and num_axes must be equal."),
+                    return false);
+    if (numAxes == -1) {
+      for (int i = 0; i < axis; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+      broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
+    } else if (numAxes == 0) {
+      for (int i = 0; i < xDimNum; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+    } else {
+      for (int i = 0; i < axis; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+      broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
+      for (int i = 0; i < xDimNum - numAxes - axis; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+    }
+  } else {
+    OP_TILING_CHECK(biasDimNum != 1 and axis + biasDimNum > xDimNum,
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "bias shape extends x shape when applied."),
+                    return false);
+    if (biasDimNum == 1 and biasShape.at(0) == 1) {
+      for (int i = 0; i < xDimNum; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+    } else {
+      for (int i = 0; i < axis; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+      broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
+      for (int i = 0; i < xDimNum - biasDimNum - axis; ++i) {
+        broadcastBiasShape.push_back(1);
+      }
+    }
+  }
+
+  OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end");
+  return true;
+}
 
 bool BiasTiling(const std::string& op_type, const ge::Operator& op_paras, const BiasCompileInfo& parsed_info,
                 utils::OpRunInfo& run_info) {
@@ -48,18 +136,25 @@ bool BiasTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   const std::vector<int64_t> input_shape_bias = input_desc->MutableShape().GetDims();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  std::vector<int64_t> broadcast_bias_shape = parsed_info.broadcast_bias_shape;
-  OP_TILING_CHECK(input_shape_x.size() != broadcast_bias_shape.size(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape_x dims size need same with boardcast_bias"),
-                  return false);
-
-  if (input_shape_x.size() == input_shape_bias.size()) {
-    for (size_t i = 0; i < broadcast_bias_shape.size(); i++) {
-      broadcast_bias_shape[i] = broadcast_bias_shape[i] == -1 ? input_shape_bias[i] : broadcast_bias_shape[i];
-    }
+  std::vector<int64_t> broadcast_bias_shape;
+  if (parsed_info.is_unknown_rank) {
+    OP_TILING_CHECK(!GetBiasShape(op_type, op_paras, input_shape_x, input_shape_bias, broadcast_bias_shape),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Failed to get bias new shape."),
+                    return false);
   } else {
-    for (size_t i = 0; i < broadcast_bias_shape.size(); i++) {
-      broadcast_bias_shape[i] = broadcast_bias_shape[i] == -1 ? input_shape_x[i] : broadcast_bias_shape[i];
+    broadcast_bias_shape = parsed_info.broadcast_bias_shape;
+    OP_TILING_CHECK(input_shape_x.size() != broadcast_bias_shape.size(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape_x dims size need same with boardcast_bias"),
+                    return false);
+
+    if (input_shape_x.size() == input_shape_bias.size()) {
+      for (size_t i = 0; i < broadcast_bias_shape.size(); i++) {
+        broadcast_bias_shape[i] = broadcast_bias_shape[i] == -1 ? input_shape_bias[i] : broadcast_bias_shape[i];
+      }
+    } else {
+      for (size_t i = 0; i < broadcast_bias_shape.size(); i++) {
+        broadcast_bias_shape[i] = broadcast_bias_shape[i] == -1 ? input_shape_x[i] : broadcast_bias_shape[i];
+      }
     }
   }
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
@@ -80,10 +175,14 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
-  // get core_num value
-  OP_TILING_CHECK(!GetCompileValue(compile_info, "boardcast_bias_shape", parsed_info.broadcast_bias_shape),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get broadcast_bias_shape error"),
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "is_unknown_rank", parsed_info.is_unknown_rank, false),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get is_unknown_rank error"),
                   return false);
+  if (!parsed_info.is_unknown_rank) {
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "boardcast_bias_shape", parsed_info.broadcast_bias_shape),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get broadcast_bias_shape error"),
+                    return false);
+  }
   return true;
 }
 

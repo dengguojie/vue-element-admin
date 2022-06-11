@@ -372,27 +372,30 @@ def bias(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
 
     length_x_ori = len(x.get("ori_shape"))
 
-    shape_bias_new = []
-
-    if length_x_ori == 4:
-        _param_bias_check(shape_x, shape_bias)
-        shape_bias_new, range_bias_new = _get_param_bias_shape_and_range(shape_x, shape_bias, range_bias)
+    if any((axis is None, num_axes is None, bias_from_blob is None)):
+        tbe_context.get_context().add_compile_info("is_unknown_rank", True)
     else:
-        _check_shape_axis(shape_x, shape_bias, axis, num_axes, bias_from_blob)
+        shape_bias_new = []
 
-        length_x = len(shape_x)
-        if axis < 0:
-            axis_ = length_x + axis
+        if length_x_ori == 4:
+            _param_bias_check(shape_x, shape_bias)
+            shape_bias_new, range_bias_new = _get_param_bias_shape_and_range(shape_x, shape_bias, range_bias)
         else:
-            axis_ = axis
+            _check_shape_axis(shape_x, shape_bias, axis, num_axes, bias_from_blob)
 
-        shape_bias_new, range_bias_new = \
-            get_shape_and_bias(shape_x, shape_bias, axis_, num_axes, bias_from_blob, range_bias)
+            length_x = len(shape_x)
+            if axis < 0:
+                axis_ = length_x + axis
+            else:
+                axis_ = axis
 
-    bias["shape"] = shape_bias_new
-    bias["range"] = range_bias_new
-    bias["ori_shape"] = shape_bias_new
-    tbe_context.get_context().add_compile_info("boardcast_bias_shape", shape_bias_new)
+            shape_bias_new, range_bias_new = \
+                get_shape_and_bias(shape_x, shape_bias, axis_, num_axes, bias_from_blob, range_bias)
+
+        bias["shape"] = shape_bias_new
+        bias["range"] = range_bias_new
+        bias["ori_shape"] = shape_bias_new
+        tbe_context.get_context().add_compile_info("boardcast_bias_shape", shape_bias_new)
 
     ins = classify([x, bias], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

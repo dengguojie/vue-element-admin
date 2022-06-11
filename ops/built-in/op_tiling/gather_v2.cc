@@ -410,19 +410,19 @@ void GetV2GatherCompileParams(const std::string& op_type, const GatherCompileInf
   params.impl_mode = compile_info_vec.impl_mode;
 }
 
-bool ImplModeTiling(const std::string& op_type, GatherV2TilingParams& run_params,
-                    const GatherCompileParams& compile_params) {
+bool DoImplModeTiling(const std::string& op_type, GatherV2TilingParams& run_params,
+                      const GatherCompileParams& compile_params) {
   OP_TILING_CHECK(
       compile_params.impl_mode != IMPL_MODE_HIGH_PERFORMANCE_VALUE,
-      OP_LOGD(op_type.c_str(), "[ImplModeTiling] no need cache params row 0 for impl_mode is not high_performance"),
+      OP_LOGD(op_type.c_str(), "[DoImplModeTiling] no need cache params row 0 for impl_mode is not high_performance"),
       return false);
   OP_TILING_CHECK(
       run_params.params_total * compile_params.params_d_size <= PARAMS_CACHED_UB,
-      OP_LOGD(op_type.c_str(), "[ImplModeTiling] no need cache params row 0 for all params can be cached in UB"),
+      OP_LOGD(op_type.c_str(), "[DoImplModeTiling] no need cache params row 0 for all params can be cached in UB"),
       return false);
   OP_TILING_CHECK(
       run_params.indices_num < compile_params.core_num * BLOCK_SIZE / compile_params.params_d_size,
-      OP_LOGD(op_type.c_str(), "[ImplModeTiling] no need cache params row 0 for the num of indices is small"),
+      OP_LOGD(op_type.c_str(), "[DoImplModeTiling] no need cache params row0 for the num of indices is small"),
       return false);
 
   run_params.need_core_num = compile_params.core_num;
@@ -433,9 +433,9 @@ bool ImplModeTiling(const std::string& op_type, GatherV2TilingParams& run_params
   if (run_params.tail_process_core == 0) {
     run_params.tail_process_core = run_params.need_core_num;
   }
-  OP_LOGD(op_type.c_str(), "[ImplModeTiling] For the core which blockId <= %ld, %ld indices will be process",
+  OP_LOGD(op_type.c_str(), "[DoImplModeTiling] For the core which blockId <= %ld, %ld indices will be process",
           run_params.tail_process_core, run_params.indices_num_each_core);
-  OP_LOGD(op_type.c_str(), "[ImplModeTiling] For the core which blockId > %ld, %ld indices will be process",
+  OP_LOGD(op_type.c_str(), "[DoImplModeTiling] For the core which blockId > %ld, %ld indices will be process",
           run_params.tail_process_core, run_params.indices_num_remaining);
 
   return true;
@@ -785,7 +785,7 @@ bool TilingWithoutBatchDims(const std::string &op_type, GatherV2TilingParams& ru
   // set a gate value for tiling_mode_7 to optimized some data_move processes
   float mode_7_gate_value = ACTUAL_NUM - GATE_VALUE * run_params.params_total / DATA_VALUE;
 
-  if (ImplModeTiling(op_type, run_params, compile_params)) {
+  if (DoImplModeTiling(op_type, run_params, compile_params)) {
     run_params.tiling_mode = TILING_MODE_14;
     OP_LOGD(op_type.c_str(), "[GatherV2TIKTiling] end of tiling for impl_mode is high_performance");
     return true;

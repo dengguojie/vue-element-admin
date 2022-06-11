@@ -162,18 +162,18 @@ bool CheckAndUpdateAxisAndBatchdims(int64_t& axis, gert::Shape& x_shape, gert::S
   return true;
 }
 
-bool ImplModeTiling(GatherV2TilingParams* params, const GatherV2CompileInfo* compile_info) {
+bool DoImplModeTiling(GatherV2TilingParams* params, const GatherV2CompileInfo* compile_info) {
   OP_TILING_CHECK(
       compile_info->impl_mode != IMPL_MODE_HIGH_PERFORMANCE_VALUE,
-      OP_LOGD("GatherV2", "[ImplModeTiling] no need cache params row 0 for impl_mode is not high_performance"),
+      OP_LOGD("GatherV2", "[DoImplModeTiling] no need cache params row 0 for impl_mode is not high_performance"),
       return false);
   OP_TILING_CHECK(
       params->params_total * compile_info->params_dsize <= PARAMS_CACHED_UB,
-      OP_LOGD("GatherV2", "[ImplModeTiling] no need cache params row 0 for all params can be cached in UB"),
+      OP_LOGD("GatherV2", "[DoImplModeTiling] no need cache params row 0 for all params can be cached in UB"),
       return false);
   OP_TILING_CHECK(
       params->indices_num < compile_info->core_num * BLOCK_SIZE / compile_info->params_dsize,
-      OP_LOGD("GatherV2", "[ImplModeTiling] no need cache params row 0 for the num of indices is small"),
+      OP_LOGD("GatherV2", "[DoImplModeTiling] no need cache params row 0 for the num of indices is small"),
       return false);
 
   params->tiling_mode = TILING_MODE_14;
@@ -185,9 +185,9 @@ bool ImplModeTiling(GatherV2TilingParams* params, const GatherV2CompileInfo* com
   if (params->tail_process_core == 0) {
     params->tail_process_core = params->need_core_num;
   }
-  OP_LOGD("GatherV2", "[ImplModeTiling] For the core which blockId <= %ld, %ld indices will be process",
+  OP_LOGD("GatherV2", "[DoImplModeTiling] For the core which blockId <= %ld, %ld indices will be process",
           params->tail_process_core, params->indices_num_each_core);
-  OP_LOGD("GatherV2", "[ImplModeTiling] For the core which blockId > %ld, %ld indices will be process",
+  OP_LOGD("GatherV2", "[DoImplModeTiling] For the core which blockId > %ld, %ld indices will be process",
           params->tail_process_core, params->indices_num_remaining);
 
   return true;
@@ -592,10 +592,12 @@ bool TilingWithoutBatchDims(gert::TilingContext* context, const GatherV2CompileI
   // the data of the formula gained from actual tests
   // set a gate value for tiling_mode_7 to optimized some data_move processes
 
-  if (ImplModeTiling(params, compile_info)) {
+  if (DoImplModeTiling(params, compile_info)) {
     OP_LOGD("GatherV2", "[GatherV2TIKTiling] end of tiling for impl_mode is high_performance");
     return true;
-  } else if (params->params_pre >= (compile_info->core_num) && params_row_ceil <= half_ub_params_elem &&
+  }
+
+  if (params->params_pre >= (compile_info->core_num) && params_row_ceil <= half_ub_params_elem &&
       ((params->params_row) * (compile_info->params_dsize) < BLOCK_SIZE ||
        (params->params_row) * (compile_info->params_dsize) % BLOCK_SIZE == 0)) {
     if (!ParamsPreTiling(params, compile_info, half_ub_size, half_remain_ub_size, params_total_ceil, params_row_ceil)) {
