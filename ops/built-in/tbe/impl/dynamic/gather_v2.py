@@ -15,6 +15,7 @@
 """
 gather_v2
 """
+import collections
 from impl import constant_util as constant
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -30,6 +31,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_tik_comm_func import floor_align
 
 
 # 'pylint: disable=too-few-public-methods
@@ -67,6 +69,11 @@ class Constant:
     INDICES_LARGE_ROW = 2
     INDICES_SMALL_ROW = 3
 
+    # UB for loop which impl_mode is high performance
+    IMPL_MODE_INNER_LOOP_UB_32K = 2 ** 15
+    IMPL_MODE_INNER_LOOP_UB_64K = 2 ** 16
+    IMPL_MODE_INNER_LOOP_UB_128K = 2 ** 17
+
     # A. block tiling: indices tiling
     # paramsRowSize < 32
     # params is not cache in UB
@@ -103,6 +110,9 @@ class Constant:
     TILING_MODE_11 = 11
     # params is not cache in UB or L1
     TILING_MODE_12 = 12
+
+    # impl_mode is high_performance
+    TILING_MODE_14 = 14
 
     # tiling_mode with batch_dims
     # 1.one params row size is smaller than 32B
@@ -183,7 +193,7 @@ class GatherV2():
         Function: use to store concat base parameters
     """
 
-    def __init__(self, params_dict, indices_dict, axis_dict, y_dict, batch_dims, kernel_name):
+    def __init__(self, params_dict, indices_dict, axis_dict, y_dict, batch_dims, kernel_name, impl_mode):
         """
         constructor of GatherV2
 
@@ -197,8 +207,11 @@ class GatherV2():
             shape and dtype of input axis
         y_dict: dict
             shape and dtype of output, should be same dtype as input
+        batch_dims: int
+            an optional int and defaults to 0
         kernel_name: str
             kernel name, default value is "GatherV2"
+        impl_mode: str. The flag for cache data at index 0
 
         Returns
         -------
@@ -232,6 +245,7 @@ class GatherV2():
         self.core_num = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.CORE_NUM)
         self.tik_instance = tik.Tik()
         self.batch_dims = batch_dims
+        self.impl_mode = impl_mode
         self.kernel_name = kernel_name
 
         self.axis_shape = (1,)
@@ -431,6 +445,9 @@ class GatherV2():
                 with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_13):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_13(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_14):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_14(block_id)
 
                 if self.batch_dims != 0:
                     # Tiling mode with batch_dims
@@ -1981,6 +1998,303 @@ class GatherV2():
             pre_i = self.need_core_num * self.params_pre_each_core + block_id
             self.compute_mode_32b_aligned_tiling_params(pre_i, indices_ub, res_ub, self.x)
 
+    def compute_mode_14(self, block_id):
+        """
+        compute for tiling mode 14
+
+        Parameters
+        ----------
+        block_id: id of ai core
+
+        Returns
+        -------
+        None
+        """
+        tik_inst = self.tik_instance
+
+        idx_start = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_start",
+                                    init_value=block_id * self.indices_num_each_core)
+        idx_num_cur_core = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_num_cur_core",
+                                           init_value=self.indices_num_each_core)
+        with tik_inst.if_scope(block_id >= self.tail_process_core):
+            idx_start.set_as(block_id * self.indices_num_remaining + self.tail_process_core - 1)
+            idx_num_cur_core.set_as(self.indices_num_remaining)
+        indices_value = tik_inst.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
+        CurIdxTuple = collections.namedtuple("CurIdxTuple", ["idx_start", "idx_num_cur_core", "indices_value"])
+        cur_idx_tuple = CurIdxTuple(idx_start, idx_num_cur_core, indices_value)
+
+        row_inner_loop_elem = Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.params_dsize
+        x_pre_offset = tik_inst.Scalar(dtype=self.tiling_dtype, name="x_pre_offset")
+        y_pre_offset = tik_inst.Scalar(dtype=self.tiling_dtype, name="y_pre_offset")
+        y_offset = tik_inst.Scalar(dtype=self.tiling_dtype, name="y_offset")
+        RowOffsetTuple = collections.namedtuple("RowOffsetTuple", ["x_pre_offset", "y_pre_offset", "y_offset"])
+        row_offset_tuple = RowOffsetTuple(x_pre_offset, y_pre_offset, y_offset)
+
+        with tik_inst.if_scope(tik.all(self.params_row <= row_inner_loop_elem,
+                                       self.params_row % self.block_elem == 0)):
+            with tik_inst.new_stmt_scope():
+                self.compute_mode_14_x32b_le64k(row_offset_tuple, cur_idx_tuple)
+        with tik_inst.elif_scope(self.params_row > self.block_elem):
+            with tik_inst.new_stmt_scope():
+                self.compute_mode_14_gt32b(row_offset_tuple, cur_idx_tuple)
+        with tik_inst.else_scope():
+            with tik_inst.new_stmt_scope():
+                self.compute_mode_14_lt32b(row_offset_tuple, cur_idx_tuple)
+
+    def compute_mode_14_x32b_le64k(self, row_offset_tuple, cur_idx_tuple):
+        """
+        compute_mode_14 branch for cases which params row is aligned 32B but less than or equal to 64KB
+        """
+        tik_inst = self.tik_instance
+        (x_pre_offset, y_pre_offset, y_offset) = row_offset_tuple
+        (idx_start, idx_num_cur_core, indices_value) = cur_idx_tuple
+
+        x0_ub = tik_inst.Tensor(self.params_dtype, (Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.params_dsize,),
+                                name="x0_ub", scope=tik.scope_ubuf)
+        res_ub = tik_inst.Tensor(self.params_dtype, (Constant.IMPL_MODE_INNER_LOOP_UB_128K // self.params_dsize,),
+                                 name="res_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_inst.Tensor(self.indices_dtype,
+                                     (Constant.IMPL_MODE_INNER_LOOP_UB_32K // self.indices_dsize,),
+                                     name="indices_ub", scope=tik.scope_ubuf)
+
+        row_size = tik_inst.Scalar(dtype=self.tiling_dtype, name="row_size",
+                                   init_value=self.params_row * self.params_dsize)
+        row_burst = tik_inst.Scalar(dtype=self.tiling_dtype, name="row_burst",
+                                    init_value=row_size // constant.BLOCK_SIZE)
+        self.row_num_once_ub.set_as(Constant.IMPL_MODE_INNER_LOOP_UB_128K // row_size)
+
+        idx_num_per_loop = Constant.IMPL_MODE_INNER_LOOP_UB_32K // self.indices_dsize
+        idx_num_cur_loop = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_num_cur_loop")
+        idx_num_cur_batch = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_num_cur_batch")
+
+        # unroll num is 16
+        idx_values = tik_inst.ScalarArray(dtype=self.indices_dtype, length=16, name="idx_values", init_value=0)
+
+        def compute_for_once_ub(idx_loop_i, idx_batch_i):
+            """
+            compute for once ub
+            """
+            with tik_inst.for_range(0, idx_num_cur_batch // 16) as idx_i:
+                for roll_i in range(16):
+                    idx_values[roll_i].set_as(indices_ub[idx_batch_i * self.row_num_once_ub + idx_i * 16 + roll_i])
+                with tik_inst.if_scope(tik.all(idx_values[0] == 0, idx_values[1] == 0, idx_values[2] == 0,
+                                               idx_values[3] == 0, idx_values[4] == 0, idx_values[5] == 0,
+                                               idx_values[6] == 0, idx_values[7] == 0, idx_values[8] == 0,
+                                               idx_values[9] == 0, idx_values[10] == 0, idx_values[11] == 0,
+                                               idx_values[12] == 0, idx_values[13] == 0, idx_values[14] == 0,
+                                               idx_values[15] == 0)):
+                    for roll_i in range(16):
+                        tik_inst.data_move(res_ub[(idx_i * 16 + roll_i) * self.params_row], x0_ub,
+                                           0, 1, row_burst, 0, 0)
+                with tik_inst.else_scope():
+                    for roll_i in range(16):
+                        with tik_inst.if_scope(idx_values[roll_i] == 0):
+                            tik_inst.data_move(res_ub[(idx_i * 16 + roll_i) * self.params_row], x0_ub,
+                                               0, 1, row_burst, 0, 0)
+                        with tik_inst.else_scope():
+                            tik_inst.data_move(res_ub[(idx_i * 16 + roll_i) * self.params_row],
+                                               self.x[x_pre_offset + idx_values[roll_i] * self.params_row],
+                                               0, 1, row_burst, 0, 0)
+            with tik_inst.for_range(floor_align(idx_num_cur_batch, 16), idx_num_cur_batch) as idx_i:
+                indices_value.set_as(indices_ub[idx_batch_i * self.row_num_once_ub + idx_i])
+                with tik_inst.if_scope(indices_value == 0):
+                    tik_inst.data_move(res_ub[idx_i * self.params_row], x0_ub, 0, 1, row_burst, 0, 0)
+                with tik_inst.else_scope():
+                    tik_inst.data_move(res_ub[idx_i * self.params_row],
+                                       self.x[x_pre_offset + indices_value * self.params_row],
+                                       0, 1, row_burst, 0, 0)
+            y_offset.set_as(y_pre_offset + (idx_loop_i * idx_num_per_loop +
+                                            idx_batch_i * self.row_num_once_ub) * self.params_row)
+            tik_inst.data_move(self.y[y_offset], res_ub, 0, 1, idx_num_cur_batch * row_burst, 0, 0)
+
+        def compute_for_one_idx_loop(idx_loop_i):
+            """
+            compute for one idx loop
+            """
+            tik_inst.data_move(indices_ub, self.indices[idx_start + idx_loop_i * idx_num_per_loop], 0, 1,
+                               ceil_value(idx_num_cur_loop * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
+
+            idx_num_cur_batch.set_as(self.row_num_once_ub)
+            with tik_inst.for_range(0, idx_num_cur_loop // self.row_num_once_ub) as idx_batch_i:
+                compute_for_once_ub(idx_loop_i, idx_batch_i)
+            with tik_inst.if_scope(idx_num_cur_loop % self.row_num_once_ub != 0):
+                idx_num_cur_batch.set_as(idx_num_cur_loop % self.row_num_once_ub)
+                compute_for_once_ub(idx_loop_i, idx_num_cur_loop // self.row_num_once_ub)
+
+        with tik_inst.for_range(0, self.params_pre) as pre_i:
+            x_pre_offset.set_as(pre_i * self.params_axis * self.params_row)
+            y_pre_offset.set_as((pre_i * self.indices_num + idx_start) * self.params_row)
+
+            tik_inst.data_move(x0_ub, self.x[x_pre_offset], 0, 1, row_burst, 0, 0)
+
+            idx_num_cur_loop.set_as(idx_num_per_loop)
+            with tik_inst.for_range(0, idx_num_cur_core // idx_num_per_loop) as idx_loop_i:
+                compute_for_one_idx_loop(idx_loop_i)
+            with tik_inst.if_scope(idx_num_cur_core % idx_num_per_loop != 0):
+                idx_num_cur_loop.set_as(idx_num_cur_core % idx_num_per_loop)
+                compute_for_one_idx_loop(idx_num_cur_core // idx_num_per_loop)
+
+    def compute_mode_14_gt32b(self, row_offset_tuple, cur_idx_tuple):
+        """
+        compute_mode_14 branch for cases which params row is great than 32B
+        """
+        tik_inst = self.tik_instance
+        (x_pre_offset, y_pre_offset, y_offset) = row_offset_tuple
+        (idx_start, idx_num_cur_core, indices_value) = cur_idx_tuple
+
+        x0_ub = tik_inst.Tensor(self.params_dtype, (Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.params_dsize,),
+                                name="x0_ub", scope=tik.scope_ubuf)
+        res_ub = tik_inst.Tensor(self.params_dtype, (Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.params_dsize,),
+                                 name="res_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_inst.Tensor(self.indices_dtype,
+                                     (Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.indices_dsize,),
+                                     name="indices_ub", scope=tik.scope_ubuf)
+
+        row_inner_loop_elem = Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.params_dsize
+        row_tail_size = tik_inst.Scalar(dtype=self.tiling_dtype, name="row_tail_size",
+                            init_value=self.params_row * self.params_dsize % Constant.IMPL_MODE_INNER_LOOP_UB_64K)
+
+        idx_num_per_loop = Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.indices_dsize
+        idx_num_cur_loop = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_num_cur_loop")
+
+        def compute_for_one_idx_loop(row_inner_offset, row_inner_burst, idx_loop_i):
+            """
+            compute for one idx loop
+            """
+            tik_inst.data_move(indices_ub, self.indices[idx_start + idx_loop_i * idx_num_per_loop], 0, 1,
+                               ceil_value(idx_num_cur_loop * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
+
+            with tik_inst.for_range(0, idx_num_cur_loop) as idx_i:
+                indices_value.set_as(indices_ub[idx_i])
+                y_offset.set_as(y_pre_offset + (idx_loop_i * idx_num_per_loop + idx_i) * self.params_row +
+                                row_inner_offset)
+                with self.tik_instance.if_scope(indices_value == 0):
+                    self.tik_instance.data_move(self.y[y_offset], x0_ub, 0, 1, row_inner_burst, 0, 0)
+                with self.tik_instance.else_scope():
+                    x_offset = x_pre_offset + indices_value * self.params_row + row_inner_offset
+                    self.tik_instance.data_move(res_ub, self.x[x_offset], 0, 1, row_inner_burst, 0, 0)
+                    self.tik_instance.data_move(self.y[y_offset], res_ub, 0, 1, row_inner_burst, 0, 0)
+
+        def compute_for_incomplete_row(row_inner_offset, row_inner_burst):
+            """
+            compute for incomplete row
+            """
+            self.tik_instance.data_move(x0_ub, self.x[x_pre_offset + row_inner_offset], 0, 1, row_inner_burst, 0, 0)
+
+            idx_num_cur_loop.set_as(idx_num_per_loop)
+            with tik_inst.for_range(0, idx_num_cur_core // idx_num_per_loop) as idx_loop_i:
+                compute_for_one_idx_loop(row_inner_offset, row_inner_burst, idx_loop_i)
+            with tik_inst.if_scope(idx_num_cur_core % idx_num_per_loop != 0):
+                idx_num_cur_loop.set_as(idx_num_cur_core % idx_num_per_loop)
+                compute_for_one_idx_loop(row_inner_offset, row_inner_burst, idx_num_cur_core // idx_num_per_loop)
+
+        with tik_inst.for_range(0, self.params_pre) as pre_i:
+            x_pre_offset.set_as(pre_i * self.params_axis * self.params_row)
+            y_pre_offset.set_as((pre_i * self.indices_num + idx_start) * self.params_row)
+
+            with tik_inst.for_range(0, self.params_row // row_inner_loop_elem) as row_inner_loop_i:
+                compute_for_incomplete_row(row_inner_loop_i * row_inner_loop_elem,
+                                           Constant.IMPL_MODE_INNER_LOOP_UB_64K // constant.BLOCK_SIZE)
+            with tik_inst.if_scope(row_tail_size >= constant.BLOCK_SIZE):
+                compute_for_incomplete_row(floor_align(self.params_row, row_inner_loop_elem),
+                                           row_tail_size // constant.BLOCK_SIZE)
+            with tik_inst.if_scope(row_tail_size % constant.BLOCK_SIZE > 0):
+                compute_for_incomplete_row(self.params_row - self.block_elem, 1)
+
+    def compute_mode_14_lt32b(self, row_offset_tuple, cur_idx_tuple):
+        """
+        compute_mode_14 branch for cases which params row is less than 32B
+        """
+        tik_inst = self.tik_instance
+        (x_pre_offset, y_pre_offset, y_offset) = row_offset_tuple
+        (idx_start, idx_num_cur_core, indices_value) = cur_idx_tuple
+
+        x0_ub = tik_inst.Tensor(self.params_dtype, (self.block_elem,), name="x0_ub", scope=tik.scope_ubuf)
+        xi_ub = tik_inst.Tensor(self.params_dtype, (self.block_elem,), name="xi_ub", scope=tik.scope_ubuf)
+        res_ub = tik_inst.Tensor(self.params_dtype, (Constant.IMPL_MODE_INNER_LOOP_UB_128K // self.params_dsize,),
+                                 name="res_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_inst.Tensor(self.indices_dtype,
+                                     (Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.indices_dsize,),
+                                     name="indices_ub", scope=tik.scope_ubuf)
+
+        row_size = tik_inst.Scalar(dtype=self.tiling_dtype, name="row_size",
+                                   init_value=self.params_row * self.params_dsize)
+        self.row_num_once_ub.set_as(floor_align(Constant.IMPL_MODE_INNER_LOOP_UB_128K,
+                                                row_size * constant.BLOCK_SIZE) // row_size)
+
+        res_tail_offset = tik_inst.Scalar(dtype=self.tiling_dtype, name="res_tail_offset")
+
+        idx_num_per_loop = Constant.IMPL_MODE_INNER_LOOP_UB_64K // self.indices_dsize
+        idx_num_cur_loop = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_num_cur_loop")
+        idx_num_cur_batch = tik_inst.Scalar(dtype=self.tiling_dtype, name="idx_num_cur_batch")
+
+        def compute_for_once_ub(idx_loop_i, idx_batch_i):
+            """
+            compute for once ub
+            """
+            with self.tik_instance.for_range(0, idx_num_cur_batch) as idx_i:
+                indices_value.set_as(indices_ub[idx_batch_i * self.row_num_once_ub + idx_i])
+                with self.tik_instance.if_scope(indices_value == 0):
+                    with self.tik_instance.for_range(0, self.params_row) as elem_i:
+                        res_ub[idx_i * self.params_row + elem_i].set_as(x0_ub[elem_i])
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(xi_ub, self.x[x_pre_offset + indices_value * self.params_row],
+                                                0, 1, 1, 0, 0)
+                    with self.tik_instance.for_range(0, self.params_row) as elem_i:
+                        res_ub[idx_i * self.params_row + elem_i].set_as(xi_ub[elem_i])
+            y_offset.set_as(y_pre_offset + (idx_loop_i * idx_num_per_loop +
+                                            idx_batch_i * self.row_num_once_ub) * self.params_row)
+            self.tik_instance.data_move(self.y[y_offset], res_ub, 0, 1,
+                                        idx_num_cur_batch * row_size // constant.BLOCK_SIZE, 0, 0)
+
+        def compute_for_tail():
+            """
+            compute for tail 32B
+            """
+            with self.tik_instance.for_range(0, idx_num_cur_batch) as idx_i:
+                res_tail_offset.set_as(self.block_elem * 2 - (idx_i + 1) * self.params_row)
+                indices_value.set_as(indices_ub[idx_num_cur_loop - idx_num_cur_batch + idx_i])
+                with self.tik_instance.if_scope(indices_value == 0):
+                    with self.tik_instance.for_range(0, self.params_row) as elem_i:
+                        res_ub[res_tail_offset + elem_i].set_as(x0_ub[elem_i])
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(xi_ub, self.x[x_pre_offset + indices_value * self.params_row],
+                                                0, 1, 1, 0, 0)
+                    with self.tik_instance.for_range(0, self.params_row) as elem_i:
+                        res_ub[res_tail_offset + elem_i].set_as(xi_ub[elem_i])
+            y_offset.set_as(y_pre_offset + self.indices_num * self.params_row - self.block_elem)
+            self.tik_instance.data_move(self.y[y_offset], res_ub[self.block_elem], 0, 1, 1, 0, 0)
+
+        def compute_for_one_idx_loop(idx_loop_i):
+            """
+            compute for one idx loop
+            """
+            tik_inst.data_move(indices_ub, self.indices[idx_start + idx_loop_i * idx_num_per_loop], 0, 1,
+                               ceil_value(idx_num_cur_loop * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
+
+            idx_num_cur_batch.set_as(self.row_num_once_ub)
+            with tik_inst.for_range(0, idx_num_cur_loop // self.row_num_once_ub) as idx_batch_i:
+                compute_for_once_ub(idx_loop_i, idx_batch_i)
+            with tik_inst.if_scope(idx_num_cur_loop % self.row_num_once_ub * row_size >= constant.BLOCK_SIZE):
+                idx_num_cur_batch.set_as(idx_num_cur_loop % self.row_num_once_ub)
+                compute_for_once_ub(idx_loop_i, idx_num_cur_loop // self.row_num_once_ub)
+            with tik_inst.if_scope(idx_num_cur_loop % self.row_num_once_ub * row_size % constant.BLOCK_SIZE != 0):
+                idx_num_cur_batch.set_as(ceil_value(constant.BLOCK_SIZE, row_size))
+                compute_for_tail()
+
+        with tik_inst.for_range(0, self.params_pre) as pre_i:
+            x_pre_offset.set_as(pre_i * self.params_axis * self.params_row)
+            y_pre_offset.set_as((pre_i * self.indices_num + idx_start) * self.params_row)
+
+            self.tik_instance.data_move(x0_ub, self.x[x_pre_offset], 0, 1, 1, 0, 0)
+
+            idx_num_cur_loop.set_as(idx_num_per_loop)
+            with self.tik_instance.for_range(0, idx_num_cur_core // idx_num_per_loop) as idx_loop_i:
+                compute_for_one_idx_loop(idx_loop_i)
+            with tik_inst.if_scope(idx_num_cur_core % idx_num_per_loop != 0):
+                idx_num_cur_loop.set_as(idx_num_cur_core % idx_num_per_loop)
+                compute_for_one_idx_loop(idx_num_cur_core // idx_num_per_loop)
+
     # 'pylint:disable=E1136
     def params_row_less_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
@@ -2543,6 +2857,7 @@ class GatherV2():
                                                   name="ddr_arg", scope=tik.scope_gm)
         self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
                                           name="y", scope=tik.scope_gm)
+        impl_mode_value = "" if self.impl_mode is None else self.impl_mode
 
         self.gather_v2_compute_tiling()
         # add compile info
@@ -2550,7 +2865,8 @@ class GatherV2():
                                                             "ub_size": self.ub_size,
                                                             "l1_size": self.l1_size,
                                                             "params_dsize": self.params_dsize,
-                                                            "indices_dsize": self.indices_dsize
+                                                            "indices_dsize": self.indices_dsize,
+                                                            "impl_mode": impl_mode_value
                                                             })
         # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
         tbe_context.get_context().add_compile_info("is_tik", True)
@@ -2599,17 +2915,17 @@ class GatherV2():
         self.cached_types["cached_types_indices"] = cached_types_indices
 
 
-def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
     """
     gather_v2 interface for tik
     """
     tbe_context.get_context().add_compile_info("is_gather_v2", True)
-    obj = GatherV2(x, indices, axis, y, batch_dims, kernel_name)
+    obj = GatherV2(x, indices, axis, y, batch_dims, kernel_name, impl_mode)
     return obj.gather_v2_compute()
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-arguments
-def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
     """
     get_op_support_info
     """
@@ -2630,7 +2946,7 @@ def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2
     return op_cal_info_in_json
 
 
-def check_supported(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+def check_supported(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
     """
     Judge whether the current input specification supports
     """
@@ -2699,7 +3015,7 @@ def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
     tbe_context.get_context().add_compile_info("attr_name", "batch_dims")
     tbe_context.get_context().add_compile_info("batch_dims_attr_idx", 0)
 
-    ins = classify([x, indices, real_axis, batch_dims],  OpPatternMode.GATHER, {"gather_type": "gather"})
+    ins = classify([x, indices, real_axis, batch_dims], OpPatternMode.GATHER, {"gather_type": "gather"})
     schedules, tensors = [], []
     for shape_x, shape_indices, shape_axis, batch_dims_input in ins:
         with tbe.compute():
@@ -2719,8 +3035,9 @@ def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
 
 @register_operator("GatherV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME,
+                            para_check.OPTION_ATTR_STR)
+def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
     """
     gather_v2 interface
 
@@ -2732,12 +3049,13 @@ def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
     y: output shape, dtype and range
     batch_dims: the number of batch dimensions
     kernel_name: kernel name of gather_v2 op
+    impl_mode: str. The flag for cache data at index 0. No need to add into ops_info file
 
     Returns
     -------
     None
     """
-    if tbe_platform_adapter.api_check_support("tbe.dsl.vexp", "float32"):
+    if tbe_platform_adapter.api_check_support("tbe.dsl.vexp", "float32") and impl_mode != "high_performance":
         gather_v2_dsl(x, indices, axis, y, batch_dims, kernel_name)
     else:
-        gather_v2_tik(x, indices, axis, y, batch_dims, kernel_name)
+        gather_v2_tik(x, indices, axis, y, batch_dims, kernel_name, impl_mode)

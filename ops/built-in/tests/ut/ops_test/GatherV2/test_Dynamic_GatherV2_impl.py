@@ -88,6 +88,15 @@ def gen_dynamic_gather_v2_case(dict_params, dict_indices, dict_axis, dict_y, bat
             "support_expect": True}
 
 
+def gen_dynamic_gather_v2_with_impl_mode_case(dict_params, dict_indices, dict_axis, dict_y, batch_dims,
+                                              kernel_name_val, impl_mode, expect):
+    return {"params": [dict_params, dict_indices, dict_axis, dict_y, batch_dims],
+            'addition_params': {'impl_mode': impl_mode},
+            "case_name": kernel_name_val,
+            "expect": expect,
+            "support_expect": True}
+
+
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_v2_case(
                      {"shape": (163623, 80), "dtype": "float32", "ori_shape": (163623, 80),
@@ -184,6 +193,18 @@ ut_case.add_case("all",
                      {"shape": (-1, 1), "dtype": "float16", "ori_shape": (-1, 1),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      0, "dynamic_gather_v2_06", RuntimeError))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_dynamic_gather_v2_with_impl_mode_case(
+                     {"shape": (81358, 16), "dtype": "bool", "ori_shape": (81358, 16),
+                      "format": "ND", "ori_format": "ND", "range": ((81358, 81358), (16, 16))},
+                     {"shape": (5120, 222), "dtype": "int64", "ori_shape": (5120, 222),
+                      "format": "ND", "ori_format": "ND", "range": ((5120, 5120), (222, 222))},
+                     {"shape": (1,), "dtype": "int32", "ori_shape": (1,),
+                      "format": "ND", "ori_format": "ND", "range": ((1, 1),)},
+                     {"shape": (5120, 222, 16), "dtype": "bool", "ori_shape": (5120, 222, 16),
+                      "format": "ND", "ori_format": "ND", "range": ((5120, 5120), (222, 222), (16, 16))},
+                     1, "dynamic_gather_v2_07", "high_performance", "success"))
 
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)

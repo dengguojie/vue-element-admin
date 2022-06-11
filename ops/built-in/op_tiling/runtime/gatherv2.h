@@ -30,6 +30,7 @@ struct GatherV2CompileInfo {
   int64_t indices_dsize{1};
   bool is_tik{false};
   bool is_gather_v2{true};
+  std::string impl_mode{""};
 };
 
 struct GatherV2TilingParams {

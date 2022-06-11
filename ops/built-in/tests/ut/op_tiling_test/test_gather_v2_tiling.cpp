@@ -304,6 +304,70 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
           compileInfo, expectTilingData, batch_dims);
 }
 
+TEST_F(GatherV2Tiling, gather_v2_tiling_14) {
+  int32_t testIdx = 0;
+  {
+    std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":8, "
+      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":\"high_performance\"}, \"is_tik\": true, "
+      "\"is_gather_v2\": true}";
+    std::vector<int64_t> inputA{822891, 16};
+    std::vector<int64_t> inputB{5120, 820};
+    std::vector<int64_t> inputC{1};
+    std::vector<int32_t> axis{0};
+    std::vector<int64_t> output{5120, 820, 16};
+    ge::DataType dtypeA = ge::DT_FLOAT;
+    ge::DataType dtypeB = ge::DT_INT64;
+    ge::DataType dtypeC = ge::DT_INT32;
+    ge::DataType dtypeOutput = dtypeA;
+    int64_t batch_dims = 0;
+    string expectTilingData = "14 1 822891 16 4198400 0 32 32 131200 131200 0 0 0 0 0 0 0 0 0 13166256 0 0 0 0 1 1 0 1 ";
+    Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput,
+            this->test_info_->name() + std::to_string(++testIdx),
+            compileInfo, expectTilingData, batch_dims);
+  }
+  {
+    std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":8, "
+      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":\"high_performance\"}, \"is_tik\": true, "
+      "\"is_gather_v2\": true}";
+    std::vector<int64_t> inputA{822891, 11};
+    std::vector<int64_t> inputB{5120, 820};
+    std::vector<int64_t> inputC{1};
+    std::vector<int32_t> axis{0};
+    std::vector<int64_t> output{5120, 820, 11};
+    ge::DataType dtypeA = ge::DT_FLOAT;
+    ge::DataType dtypeB = ge::DT_INT64;
+    ge::DataType dtypeC = ge::DT_INT32;
+    ge::DataType dtypeOutput = dtypeA;
+    int64_t batch_dims = 0;
+    string expectTilingData = "14 1 822891 11 4198400 0 32 32 131200 131200 0 0 0 0 0 0 0 0 0 9051801 0 0 0 0 1 1 0 1 ";
+    Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput,
+            this->test_info_->name() + std::to_string(++testIdx),
+            compileInfo, expectTilingData, batch_dims);
+  }
+  {
+    std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":8, "
+      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":\"high_performance\"}, \"is_tik\": true, "
+      "\"is_gather_v2\": true}";
+    std::vector<int64_t> inputA{822891, 5};
+    std::vector<int64_t> inputB{5120, 820};
+    std::vector<int64_t> inputC{1};
+    std::vector<int32_t> axis{0};
+    std::vector<int64_t> output{5120, 820, 5};
+    ge::DataType dtypeA = ge::DT_FLOAT;
+    ge::DataType dtypeB = ge::DT_INT64;
+    ge::DataType dtypeC = ge::DT_INT32;
+    ge::DataType dtypeOutput = dtypeA;
+    int64_t batch_dims = 0;
+    string expectTilingData = "14 1 822891 5 4198400 0 32 32 131200 131200 0 0 0 0 0 0 0 0 0 4114455 0 0 0 0 1 1 0 1 ";
+    Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput,
+            this->test_info_->name() + std::to_string(++testIdx),
+            compileInfo, expectTilingData, batch_dims);
+  }
+}
+
 TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "

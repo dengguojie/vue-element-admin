@@ -77,6 +77,9 @@ const int64_t TILING_MODE_11 = 11;
 // params is cache in L1
 const int64_t TILING_MODE_12 = 12;
 
+// tiling_mode with impl_mode
+const int64_t TILING_MODE_14 = 14;
+
 // tiling_mode with batch_dims
 // 1.one params row size is smaller than 32B
 // 1.1 params is cached in UB
@@ -116,6 +119,9 @@ const int64_t TILING_MODE_39 = 39;
 const int64_t TILING_MODE_40 = 40;
 const int64_t TILING_MODE_41 = 41;
 
+// define impl_mode of gather_v2 attr
+static const string IMPL_MODE_HIGH_PERFORMANCE_VALUE = "high_performance";
+
 bool CheckAndUpdateAxisAndBatchdims(int64_t& axis, gert::Shape& x_shape, gert::Shape& indies_shape, int64_t& batch_dims,
                                     int64_t params_dims, int64_t indices_dims) {
   OP_TILING_CHECK(params_dims <= 0 || indices_dims <= 0,
@@ -153,6 +159,37 @@ bool CheckAndUpdateAxisAndBatchdims(int64_t& axis, gert::Shape& x_shape, gert::S
       }
     }
   }
+  return true;
+}
+
+bool ImplModeTiling(GatherV2TilingParams* params, const GatherV2CompileInfo* compile_info) {
+  OP_TILING_CHECK(
+      compile_info->impl_mode != IMPL_MODE_HIGH_PERFORMANCE_VALUE,
+      OP_LOGD("GatherV2", "[ImplModeTiling] no need cache params row 0 for impl_mode is not high_performance"),
+      return false);
+  OP_TILING_CHECK(
+      params->params_total * compile_info->params_dsize <= PARAMS_CACHED_UB,
+      OP_LOGD("GatherV2", "[ImplModeTiling] no need cache params row 0 for all params can be cached in UB"),
+      return false);
+  OP_TILING_CHECK(
+      params->indices_num < compile_info->core_num * BLOCK_SIZE / compile_info->params_dsize,
+      OP_LOGD("GatherV2", "[ImplModeTiling] no need cache params row 0 for the num of indices is small"),
+      return false);
+
+  params->tiling_mode = TILING_MODE_14;
+  params->need_core_num = compile_info->core_num;
+  params->indices_num_each_core = (params->indices_num + params->need_core_num - 1) / params->need_core_num;
+  params->indices_num_remaining = params->indices_num / params->need_core_num;
+
+  params->tail_process_core = params->indices_num % params->need_core_num;
+  if (params->tail_process_core == 0) {
+    params->tail_process_core = params->need_core_num;
+  }
+  OP_LOGD("GatherV2", "[ImplModeTiling] For the core which blockId <= %ld, %ld indices will be process",
+          params->tail_process_core, params->indices_num_each_core);
+  OP_LOGD("GatherV2", "[ImplModeTiling] For the core which blockId > %ld, %ld indices will be process",
+          params->tail_process_core, params->indices_num_remaining);
+
   return true;
 }
 
@@ -555,7 +592,10 @@ bool TilingWithoutBatchDims(gert::TilingContext* context, const GatherV2CompileI
   // the data of the formula gained from actual tests
   // set a gate value for tiling_mode_7 to optimized some data_move processes
 
-  if (params->params_pre >= (compile_info->core_num) && params_row_ceil <= half_ub_params_elem &&
+  if (ImplModeTiling(params, compile_info)) {
+    OP_LOGD("GatherV2", "[GatherV2TIKTiling] end of tiling for impl_mode is high_performance");
+    return true;
+  } else if (params->params_pre >= (compile_info->core_num) && params_row_ceil <= half_ub_params_elem &&
       ((params->params_row) * (compile_info->params_dsize) < BLOCK_SIZE ||
        (params->params_row) * (compile_info->params_dsize) % BLOCK_SIZE == 0)) {
     if (!ParamsPreTiling(params, compile_info, half_ub_size, half_remain_ub_size, params_total_ceil, params_row_ceil)) {
@@ -1031,6 +1071,9 @@ ge::graphStatus TilingPrepareForGatherV2(gert::TilingParseContext* context) {
         !GetCompileValue(all_vars, "core_num", compile_info->core_num),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get core_num error"),
         return ge::GRAPH_FAILED);
+    OP_TILING_CHECK(compile_info->core_num < 1,
+        VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "GatherParseFunc, core_num should be greater than 0"),
+        return false);
     OP_TILING_CHECK(
         !GetCompileValue(all_vars, "ub_size", compile_info->ub_size),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get ub_size error"),
@@ -1047,6 +1090,9 @@ ge::graphStatus TilingPrepareForGatherV2(gert::TilingParseContext* context) {
         !GetCompileValue(all_vars, "indices_dsize", compile_info->indices_dsize),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get indices_dsize error"),
         return ge::GRAPH_FAILED);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", compile_info->impl_mode, ""),
+        VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "GatherParseFunc, get impl_mode error"),
+        return false);
     OP_TILING_CHECK(
         !GetCompileValue(*parsed_object_cinfo, "is_gather_v2", compile_info->is_gather_v2),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get is_gather_v2 error"),

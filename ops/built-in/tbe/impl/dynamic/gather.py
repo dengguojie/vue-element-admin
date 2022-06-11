@@ -33,7 +33,7 @@ from impl.dynamic.gather_v2 import GatherV2
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-arguments
-def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather"):
+def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather", impl_mode=None):
     """
     get_op_support_info
     """
@@ -54,13 +54,13 @@ def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kern
     return op_cal_info_in_json
 
 
-def gather_tik(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather"):
+def gather_tik(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather", impl_mode=None):
     """
     gather interface for tik
     """
     tbe_context.get_context().add_compile_info("is_gather_v2", False)
     axis_dict = {"dtype": "int32"}
-    obj = GatherV2(x, indices, axis_dict, y, batch_dims, kernel_name)
+    obj = GatherV2(x, indices, axis_dict, y, batch_dims, kernel_name, impl_mode)
     return obj.gather_compute()
 
 
@@ -123,8 +123,9 @@ def gather_dsl(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="
 
 @register_operator("Gather")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def gather(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="gather"):
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME,
+                            para_check.OPTION_ATTR_STR)
+def gather(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="gather", impl_mode=None):
     """
     gather interface
 
@@ -136,12 +137,13 @@ def gather(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="gath
     validate_indices: Whether to verify the values of indices, not currently enabled
     batch_dims: the number of batch dimensions
     kernel_name: kernel name of gather op
+    impl_mode: str. The flag for cache data at index 0. No need to add into ops_info file
 
     Returns
     -------
     None
     """
-    if tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and impl_mode != "high_performance":
         gather_dsl(x, indices, y, validate_indices, batch_dims, kernel_name)
     else:
-        gather_tik(x, indices, y, validate_indices, batch_dims, kernel_name)
+        gather_tik(x, indices, y, validate_indices, batch_dims, kernel_name, impl_mode)

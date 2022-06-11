@@ -82,6 +82,9 @@ const int64_t TILING_MODE_11 = 11;
 // params is cache in L1
 const int64_t TILING_MODE_12 = 12;
 
+// tiling_mode with impl_mode
+const int64_t TILING_MODE_14 = 14;
+
 // tiling_mode with batch_dims
 // 1.one params row size is smaller than 32B
 // 1.1 params is cached in UB
@@ -127,6 +130,10 @@ const struct ops::AttrBase GATHER_V2_BATCH_DIMS_INFO(0, "batch_dims");
 const struct ops::AttrBase GATHER_BATCH_DIMS_INFO(1, "batch_dims");
 static const int64_t BATCH_DIMS_DEFAULT_VALUE = 0;
 
+// define impl_mode of gather_v2 attr
+static const string IMPL_MODE_DEFAULT_VALUE = "";
+static const string IMPL_MODE_HIGH_PERFORMANCE_VALUE = "high_performance";
+
 struct GatherCompileInfo  {
   std::shared_ptr<AutoTilingHandler> outer_compile_info;
   int64_t ub_size{1};
@@ -136,6 +143,7 @@ struct GatherCompileInfo  {
   int64_t indices_d_size{1};
   bool is_tik{false};
   bool is_gather_v2{false};
+  string impl_mode{IMPL_MODE_DEFAULT_VALUE};
 };
 
 struct GatherCompileParams {
@@ -145,6 +153,7 @@ struct GatherCompileParams {
   int64_t params_d_size;
   int64_t indices_d_size;
   int64_t batch_dims;
+  string impl_mode;
 };
 
 struct GatherShapeInfo {
@@ -195,6 +204,7 @@ void InitGatherCompileParams(GatherCompileParams& params) {
   params.params_d_size = 0;
   params.indices_d_size = 0;
   params.batch_dims = 0;
+  params.impl_mode = IMPL_MODE_DEFAULT_VALUE;
 }
 
 void InitGatherShapeInfo(const std::string& op_type, GatherShapeInfo& params, const ge::Operator& op_paras) {
@@ -397,6 +407,38 @@ void GetV2GatherCompileParams(const std::string& op_type, const GatherCompileInf
   params.l1_size = compile_info_vec.l1_size;
   params.params_d_size = compile_info_vec.params_d_size;
   params.indices_d_size = compile_info_vec.indices_d_size;
+  params.impl_mode = compile_info_vec.impl_mode;
+}
+
+bool ImplModeTiling(const std::string& op_type, GatherV2TilingParams& run_params,
+                    const GatherCompileParams& compile_params) {
+  OP_TILING_CHECK(
+      compile_params.impl_mode != IMPL_MODE_HIGH_PERFORMANCE_VALUE,
+      OP_LOGD(op_type.c_str(), "[ImplModeTiling] no need cache params row 0 for impl_mode is not high_performance"),
+      return false);
+  OP_TILING_CHECK(
+      run_params.params_total * compile_params.params_d_size <= PARAMS_CACHED_UB,
+      OP_LOGD(op_type.c_str(), "[ImplModeTiling] no need cache params row 0 for all params can be cached in UB"),
+      return false);
+  OP_TILING_CHECK(
+      run_params.indices_num < compile_params.core_num * BLOCK_SIZE / compile_params.params_d_size,
+      OP_LOGD(op_type.c_str(), "[ImplModeTiling] no need cache params row 0 for the num of indices is small"),
+      return false);
+
+  run_params.need_core_num = compile_params.core_num;
+  run_params.indices_num_each_core = (run_params.indices_num + run_params.need_core_num - 1) / run_params.need_core_num;
+  run_params.indices_num_remaining = run_params.indices_num / run_params.need_core_num;
+
+  run_params.tail_process_core = run_params.indices_num % run_params.need_core_num;
+  if (run_params.tail_process_core == 0) {
+    run_params.tail_process_core = run_params.need_core_num;
+  }
+  OP_LOGD(op_type.c_str(), "[ImplModeTiling] For the core which blockId <= %ld, %ld indices will be process",
+          run_params.tail_process_core, run_params.indices_num_each_core);
+  OP_LOGD(op_type.c_str(), "[ImplModeTiling] For the core which blockId > %ld, %ld indices will be process",
+          run_params.tail_process_core, run_params.indices_num_remaining);
+
+  return true;
 }
 
 // compute tiling params for tiling_mode 8&9
@@ -695,8 +737,9 @@ void CalNeedCoreWithBatchDims(GatherV2TilingParams& run_params, const GatherComp
   }
 }
 
-bool TilingWithoutBatchDims(GatherV2TilingParams& run_params, const GatherCompileParams& compile_params,
-                            const GatherShapeInfo& shape_info, int64_t axis) {
+bool TilingWithoutBatchDims(const std::string &op_type, GatherV2TilingParams& run_params,
+                            const GatherCompileParams& compile_params, const GatherShapeInfo& shape_info,
+                            int64_t axis) {
   int64_t available_ub_size = compile_params.ub_size - 2 * 1024;  // reserved 2K
   int64_t half_ub_size = available_ub_size / 2;
   int64_t block_num = BLOCK_SIZE / compile_params.params_d_size;
@@ -742,7 +785,11 @@ bool TilingWithoutBatchDims(GatherV2TilingParams& run_params, const GatherCompil
   // set a gate value for tiling_mode_7 to optimized some data_move processes
   float mode_7_gate_value = ACTUAL_NUM - GATE_VALUE * run_params.params_total / DATA_VALUE;
 
-  if (run_params.params_pre >= compile_params.core_num && params_row_ceil <= half_ub_params_elem &&
+  if (ImplModeTiling(op_type, run_params, compile_params)) {
+    run_params.tiling_mode = TILING_MODE_14;
+    OP_LOGD(op_type.c_str(), "[GatherV2TIKTiling] end of tiling for impl_mode is high_performance");
+    return true;
+  } else if (run_params.params_pre >= compile_params.core_num && params_row_ceil <= half_ub_params_elem &&
       (run_params.params_row * compile_params.params_d_size < BLOCK_SIZE ||
        run_params.params_row * compile_params.params_d_size % BLOCK_SIZE == 0)) {
     // block tiling: params_pre tiling
@@ -1150,7 +1197,7 @@ bool GatherTIKTiling(const std::string &op_type, const ge::Operator &op_paras, c
   GatherV2TilingParams run_params;
   InitGatherV2Params(run_params);
   if (compile_params.batch_dims == 0) {
-    if (!TilingWithoutBatchDims(run_params, compile_params, shape_info, axis)) {
+    if (!TilingWithoutBatchDims(op_type, run_params, compile_params, shape_info, axis)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op GatherV2Tiling: [TilingWithoutBatchDims] failed.");
       return false;
     }
@@ -1200,6 +1247,9 @@ bool GatherParseFunc(const std::string &op_type, const nlohmann::json &compile_i
     OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", op_info.core_num),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get core_num error"),
                     return false);
+    OP_TILING_CHECK(op_info.core_num < 1,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, core_num should be greater than 0"),
+                    return false);
     OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", op_info.ub_size),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get ub_size error"),
                     return false);
@@ -1211,6 +1261,9 @@ bool GatherParseFunc(const std::string &op_type, const nlohmann::json &compile_i
                     return false);
     OP_TILING_CHECK(!GetCompileValue(all_vars, "indices_dsize", op_info.indices_d_size),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get indices_d_size error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", op_info.impl_mode, ""),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get impl_mode error"),
                     return false);
   } else {
     op_info.outer_compile_info = CreateGatherTilingHandler(op_type, "Gather", compile_info);
