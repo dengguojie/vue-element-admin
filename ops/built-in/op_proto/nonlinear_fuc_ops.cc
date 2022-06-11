@@ -519,7 +519,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftsignGradInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "features", "output")) {
+  if (!InferShapeRangeTwoInOneOutBroadcast(op, "gradients", "features", "output")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -556,7 +556,7 @@ IMPLEMT_COMMON_INFERFUNC(SeluGradInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "outputs", "y")) {
+  if (!InferShapeRangeTwoInOneOutBroadcast(op, "gradients", "outputs", "y")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -578,7 +578,7 @@ IMPLEMT_COMMON_INFERFUNC(ReluGradInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "backprops")) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "features", "backprops")) {
+  if (!InferShapeRangeTwoInOneOutBroadcast(op, "gradients", "features", "backprops")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1119,7 +1119,7 @@ IMPLEMT_COMMON_INFERFUNC(HardSigmoidGradInferShape) {
     (void)op.UpdateOutputDesc("y", output_desc);
     return GRAPH_SUCCESS;
 }
-    
+
 IMPLEMT_VERIFIER (HardSigmoidGrad, HardSigmoidGradVerify) {
     return GRAPH_SUCCESS;
 }

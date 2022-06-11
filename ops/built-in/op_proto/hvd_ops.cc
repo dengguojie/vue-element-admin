@@ -24,7 +24,9 @@
 #include <vector>
 #include <algorithm>
 
+#include "error_util.h"
 #include "op_log.h"
+#include "util/common_shape_fns.h"
 
 namespace ge {
 
@@ -63,7 +65,9 @@ IMPLEMT_INFERFUNC(HorovodAllgather, HorovodAllgatherInferShape) {
   ge::DataType outputDtype = inTensorDesc.GetDataType();
   outTensorDesc.SetShape(outputShape);
   outTensorDesc.SetDataType(outputDtype);
-  op.update_output_desc_y(outTensorDesc);
+  OP_CHECK(GRAPH_SUCCESS != op.update_output_desc_y(outTensorDesc),
+           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), UpdateParamErrMsg("output desc")),
+           return GRAPH_FAILED)
   OP_LOGI(TbeGetName(op).c_str(), "the op infershape end");
   return GRAPH_SUCCESS;
 }
@@ -82,7 +86,7 @@ IMPLEMT_VERIFIER(HorovodAllgather, HorovodAllgatherVerify) {
   // check supported data type in HCCL
   ge::DataType inputDtype = op.get_input_desc_x().GetDataType();
   if (!CheckSupportDateTpye(inputDtype)) {
-    OP_LOGE(TbeGetName(op).c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
+    OP_LOGE(TbeGetName(op).c_str(), "dataType [%s] is not supported in HCCL.", DTypeStr(inputDtype).c_str());
   }
   OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
@@ -94,20 +98,20 @@ VERIFY_FUNC_REG(HorovodAllgather, HorovodAllgatherVerify);
 // HorovodAllreduce op
 IMPLEMT_VERIFIER(HorovodAllreduce, HorovodAllreduceVerify) {
   // check supported reduce op in HCCL
-  int reduction = op.get_attr_reduce_op();
+  int64_t reduction = static_cast<int64_t>(op.get_attr_reduce_op());
   OP_LOGI(TbeGetName(op).c_str(), "reduce type is [%d]", reduction);
-  const std::vector<int> SUPPORTED_REDUCTION = {
+  const std::vector<int64_t> SUPPORTED_REDUCTION = {
       1, 3, 4, 5  // corresponding sum, min, max, prod
   };
   auto it = std::find(SUPPORTED_REDUCTION.begin(), SUPPORTED_REDUCTION.end(), reduction);
   if (it == SUPPORTED_REDUCTION.end()) {
-    OP_LOGE(TbeGetName(op).c_str(), "Attr reduction [%d] is not supported. expecttd: min, max, prod, sum", reduction);
+    OP_LOGE(TbeGetName(op).c_str(), "Attr reduction [%ld] is not supported. expected: min, max, prod, sum", reduction);
     return GRAPH_FAILED;
   }
   // check supported data type in HCCL
   ge::DataType inputDtype = op.get_input_desc_x().GetDataType();
   if (!CheckSupportDateTpye(inputDtype)) {
-    OP_LOGE(TbeGetName(op).c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
+    OP_LOGE(TbeGetName(op).c_str(), "dataType [%s] is not supported in HCCL.", DTypeStr(inputDtype).c_str());
   }
   OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;

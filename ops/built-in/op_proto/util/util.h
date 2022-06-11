@@ -185,7 +185,7 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const int64_t& input_id
 bool InferShapeAndTypeBroadcast(Operator& op, std::vector<int64_t> input_idxs, const int64_t& output_idx,
                                 bool& is_dynamic);
 
-bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1, const string& input_name2,
+bool InferShapeRangeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                          const string& output_name);
 
 bool CheckInputDataType(const Operator& op, std::string* data_type, const std::string& input_name,

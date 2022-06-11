@@ -2461,6 +2461,7 @@ ops_pub:
       - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
       - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/common/fp16_t.cc
+      - ops/built-in/op_proto/hvd_ops.cc
       - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/op_proto/inc/rnn.h
@@ -2539,7 +2540,6 @@ unkown:
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/acts_ulq.cc
       - ops/built-in/op_proto/condtake_ops.cc
-      - ops/built-in/op_proto/hvd_ops.cc
       - ops/built-in/op_proto/image_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
@@ -2594,7 +2594,6 @@ unkown:
       - ops/built-in/op_proto/util/candidate_sampling_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
       - ops/built-in/op_proto/util/reduce_infer_util.h
-      - ops/built-in/op_proto/util/util.h
       - ops/built-in/op_proto/util/op_common_util.h
       - ops/built-in/op_proto/util/vector_proto_profiling.h
       - ops/built-in/op_proto/util/reduce_infer_util.cc

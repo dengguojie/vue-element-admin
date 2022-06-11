@@ -41,7 +41,7 @@ IMPLEMT_COMMON_INFERFUNC(LessInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
+    if (!InferShapeRangeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
       return GRAPH_FAILED;
     }
   }

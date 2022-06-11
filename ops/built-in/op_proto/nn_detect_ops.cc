@@ -2033,7 +2033,7 @@ IMPLEMT_COMMON_INFERFUNC(IoUGradInferShape) {
   return GRAPH_SUCCESS;
 }
 
-static bool IoUGradVerify(ge::Operator& op) {
+static bool IoUGradVerify(const ge::Operator& op) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto dy_desc = op_desc->GetInputDescPtr(0);
   auto bboxes_desc = op_desc->GetInputDescPtr(1);

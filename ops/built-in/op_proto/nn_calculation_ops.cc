@@ -177,7 +177,7 @@ struct StrideDilationHW {
 IMPLEMT_VERIFIER(LSTM, LSTMVerify) {
   return GRAPH_SUCCESS;
 }
-IMPLEMT_VERIFIER(LSTM, LSTMInferShape) {
+IMPLEMT_INFERFUNC(LSTM, LSTMInferShape) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
 
@@ -950,7 +950,7 @@ COMMON_INFER_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DVerify);
 
-static graphStatus VerifyDepthwiseConv2DbpPadding(ge::Operator& op) {
+static graphStatus VerifyDepthwiseConv2DbpPadding(const ge::Operator& op) {
   string op_name = TbeGetName(op);
 
   std::string pad;
@@ -964,7 +964,7 @@ static graphStatus VerifyDepthwiseConv2DbpPadding(ge::Operator& op) {
   return GRAPH_SUCCESS;
 }
 
-static graphStatus VerifyDepthwiseConv2DbpPads(ge::Operator& op) {
+static graphStatus VerifyDepthwiseConv2DbpPads(const ge::Operator& op) {
   string op_name = TbeGetName(op);
 
   std::vector<int64_t> pads;
@@ -6240,7 +6240,7 @@ static bool GetPadConv3D(ge::Operator& op, int32_t id, int32_t ih, int32_t iw,
   auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
   bool unknown_rank = IsUnknownRankShape(x_shape);
   bool unknown_shape = IsUnKnownShape(x_shape);
-  bool negative_pad = std::any_of(pad_vec.begin(), pad_vec.end(), [](int32_t val){ return val < 0;});
+  bool negative_pad = std::any_of(pad_vec.begin(), pad_vec.end(), [](int32_t val) { return val < 0;});
   // dynamic shape pad maybe negative
   CHECK_OP_FUNC((!unknown_shape) && (!unknown_rank) && negative_pad, return false,
                 "The value of the pads attribute should >= 0, but it is actually %s.", DebugString(pad_list).c_str());
@@ -10439,7 +10439,7 @@ IMPLEMT_COMMON_INFERFUNC(IsotonicRegressionInferShape) {
   if (op.GetAttr("output_dtype", output_dtype) != GRAPH_SUCCESS) {
     OP_LOGD(TbeGetName(op), "get attr output_dtype failed, use output_dtype as float32");
   }
-  if (output_dtype != ge::DT_FLOAT16 && output_dtype != ge::DT_FLOAT && output_dtype != ge::DT_DOUBLE){
+  if (output_dtype != ge::DT_FLOAT16 && output_dtype != ge::DT_FLOAT && output_dtype != ge::DT_DOUBLE) {
     std::string err_msg =
       ConcatString("The output_dtype only support DT_FLOAT16, DT_FLOAT and DT_DOUBLE, but got ", output_dtype);
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);

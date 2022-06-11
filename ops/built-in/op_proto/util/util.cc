@@ -266,7 +266,7 @@ std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
         } else if (shape_range_x[i].second == 1 && shape_range_y[i].second == -1) {
           out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
         } else if (shape_range_x[i].first == 1 || shape_range_y[i].first == 1) {
-          // one shape size maybe 1, so will support boardcast
+          // one shape size maybe 1, so will support broadcast
           // first_range == max first
           int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
           int64_t second_range = shape_range_x[i].first == 1 ? shape_range_y[i].second : shape_range_x[i].second;
@@ -276,7 +276,7 @@ std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
           }
           out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
         } else {
-          // no 1 in range.first, mean no boardcast for range
+          // no 1 in range.first, mean no broadcast for range
           // get intersect range
           int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
           int64_t second_range = std::min(shape_range_x[i].second, shape_range_y[i].second);
@@ -505,7 +505,7 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   is_dynamic = IsUnknown(dimVec);
 
   if (is_dynamic) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, input_name1, input_name2, output_name)) {
+    if (!InferShapeRangeTwoInOneOutBroadcast(op, input_name1, input_name2, output_name)) {
       return false;
     }
   }
@@ -903,7 +903,35 @@ std::string ToFormatString(ge::Format format) {
   return ge::TypeUtils::FormatToSerialString(format);
 }
 
-bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1, const string& input_name2,
+static void AddToOutputRange(std::vector<std::pair<int64_t, int64_t>>& out_range,
+                             const std::pair<int64_t, int64_t>& shape_range_x,
+                             const std::pair<int64_t, int64_t>& shape_range_y) {
+  // first_range == max first
+  int64_t first_range = (shape_range_x.first * shape_range_y.first == 0)
+                        ? 0 : std::max(shape_range_x.first, shape_range_y.first);
+
+  if (shape_range_x.second * shape_range_y.second == -1) {
+    out_range.push_back(std::pair<int64_t, int64_t>(first_range, -1));
+  } else if (shape_range_x.first == 1 && shape_range_y.first == 1) {
+    int64_t second_range = (shape_range_x.second == -1 || shape_range_y.second == -1)
+                            ? -1 : std::max(shape_range_x.second, shape_range_y.second);
+    out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
+  } else if (shape_range_x.first == 1 || shape_range_y.first == 1) {
+    // one shape size maybe 1, so will support broadcast
+    int64_t second_range = shape_range_x.first == 1 ? shape_range_y.second : shape_range_x.second;
+    out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
+  } else {
+    // no 1 in range.first, mean no broadcast for range
+    // get intersect range
+    int64_t second_range = std::min(shape_range_x.second, shape_range_y.second);
+    second_range = (shape_range_x.second == -1 || shape_range_y.second == -1)
+                    ? std::max(shape_range_x.second, shape_range_y.second)
+                    : second_range;
+    out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
+  }
+}
+
+bool InferShapeRangeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                          const string& output_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_desc == nullptr || op_desc->MutableInputDesc(input_name1) == nullptr ||
@@ -953,32 +981,7 @@ bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1
         continue;
       }
       if (i < shape_range_x.size() && i < shape_range_y.size()) {
-        // first_range == max first
-        int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
-        if (shape_range_x[i].first == 0 || shape_range_y[i].first == 0) {
-          first_range = 0;
-        }
-        if (shape_range_x[i].second == -1 && shape_range_y[i].second == 1) {
-          out_range.push_back(std::pair<int64_t, int64_t>(first_range, -1));
-        } else if (shape_range_x[i].second == 1 && shape_range_y[i].second == -1) {
-          out_range.push_back(std::pair<int64_t, int64_t>(first_range, -1));
-        } else if (shape_range_x[i].first == 1 || shape_range_y[i].first == 1) {
-          // one shape size maybe 1, so will support boardcast
-          int64_t second_range = shape_range_x[i].first == 1 ? shape_range_y[i].second : shape_range_x[i].second;
-          if (shape_range_x[i].first == 1 && shape_range_y[i].first == 1) {
-            second_range = std::max(shape_range_x[i].second, shape_range_y[i].second);
-            second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1) ? -1 : second_range;
-          }
-          out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
-        } else {
-          // no 1 in range.first, mean no boardcast for range
-          // get intersect range
-          int64_t second_range = std::min(shape_range_x[i].second, shape_range_y[i].second);
-          second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1)
-                         ? std::max(shape_range_x[i].second, shape_range_y[i].second)
-                         : second_range;
-          out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
-        }
+        AddToOutputRange(out_range, shape_range_x[i], shape_range_y[i]);
       }
     }
   }

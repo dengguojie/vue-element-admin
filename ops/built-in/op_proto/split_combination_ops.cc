@@ -88,7 +88,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
         out_range.push_back(std::pair<int64_t, int64_t>(0, ceil((float)x_shape_range[0].second / (float)num_split)));
       }
     } else {
-      for(size_t i = 0; i < x_shape_range.size(); ++i) {
+      for (size_t i = 0; i < x_shape_range.size(); ++i) {
         out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[i].second));
       }
     }
@@ -112,7 +112,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   CalcSplit(split_dim_data->GetData(), split_dim_dtype, split_dim_vec);
 
   int64_t split_dim = -1;
-  if(split_dim_vec.size() > 0){
+  if (split_dim_vec.size() > 0) {
     split_dim = split_dim_vec[0];
   } else {
     OP_LOGE(TbeGetName(op), "size of split_dim_vec must be larger than 0");
@@ -123,7 +123,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   }
 
  for(size_t i = 0; i < x_shape_range.size(); ++i) {
-    if(split_dim == static_cast<int>(i)) {
+    if (split_dim == static_cast<int>(i)) {
       int64_t range_left = -1;
       if(x_shape_range[i].first == 1) {
         range_left = x_shape_range[i].first;
@@ -132,7 +132,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
       }
 
       int64_t range_right = -1;
-      if(x_shape_range[i].second == -1 ){
+      if (x_shape_range[i].second == -1) {
         range_right = x_shape_range[i].second;
       } else {
         range_right = ceil((float)x_shape_range[i].second / (float)num_split);
@@ -209,7 +209,8 @@ IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
   // check attr
   int64_t dim_num = x_shape.GetDimNum();
   if ((split_dim < -dim_num) || (split_dim >= dim_num)) {
-    std::string err_msg = GetParamOutRangeErrMsg("split_dim", ConcatString("[", -dim_num, ", ", dim_num, ")"), ConcatString(split_dim));
+    std::string err_msg = GetParamOutRangeErrMsg("split_dim", ConcatString("[", -dim_num, ", ", dim_num, ")"),
+                                                 ConcatString(split_dim));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -232,7 +233,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
       }
 
       int64_t range_right = -1;
-      if(x_shape_range[i].second == -1 ){
+      if (x_shape_range[i].second == -1) {
         range_right = x_shape_range[i].second;
       } else {
         range_right = ceil((float)x_shape_range[i].second / (float)num_split);
@@ -470,7 +471,8 @@ IMPLEMT_INFERFUNC(SplitVD, SplitVDInferShape) {
   }
   int64_t dim_num = shape.GetDimNum();
   if ((split_dim < -dim_num) || (split_dim >= dim_num)) {
-    std::string err_msg = GetParamOutRangeErrMsg("split_dim", ConcatString("[", -dim_num, ", ", dim_num, ")"), ConcatString(split_dim));
+    std::string err_msg = GetParamOutRangeErrMsg("split_dim", ConcatString("[", -dim_num, ", ", dim_num, ")"),
+                                                 ConcatString(split_dim));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -848,7 +850,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
   return GRAPH_SUCCESS;
 }
 
-static graphStatus ConcatInputsVerify(Operator &op) {
+static graphStatus ConcatInputsVerify(const Operator &op) {
   std::vector<std::string> inputs;
   const string input_name = "x";
   string input_name_i = "x63";
@@ -1462,7 +1464,7 @@ IMPLEMT_COMMON_INFERFUNC(ConcatOffsetDInferShape) {
   int num_concat;
   op.GetAttr("N", num_concat);
   if (num_concat < 2) {
-      std::string err_msg = GetAttrSizeErrMsg("num_concat", std::to_string(num_concat), ConcatString("more than or equal to 2"));
+      std::string err_msg = GetAttrSizeErrMsg("num_concat", std::to_string(num_concat), "more than or equal to 2");
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
   }
@@ -1489,7 +1491,7 @@ static int64_t combi(int64_t input_num, int32_t r) {
   for(int i = input_num; i > input_num - r; i--) ans *= i;
   for(int i = r; i > 1; i--) {
     ans /= i;
-  } 
+  }
   return ans;
 }
 

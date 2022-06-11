@@ -5709,7 +5709,7 @@ static bool GetDimInFormat(const std::string& format_str, const std::string& dim
   return dim_position != std::string::npos;
 }
 
-static bool GetOriOutput(ge::Operator& op, std::vector<std::string::size_type> position,
+static bool GetOriOutput(const ge::Operator& op, std::vector<std::string::size_type> position,
                          std::vector<int64_t> input_shape, std::vector<int64_t> filter, std::vector<int64_t> strides,
                          std::string pad_str, std::vector<int64_t>& ori_output_shape) {
   int64_t input_h = 0;
