@@ -179,6 +179,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/matrix_diag_part_v3.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/matrix_diag_v3.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/multinomial_alias_draw.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/multinomial_alias_setup.cc
@@ -389,6 +390,7 @@ set(_cpu_kernels_ut_files
   testcase/matrix_band_part/src/matrix_band_part_utest.cpp
   testcase/matrix_determinant/src/matrix_determinant_utest.cpp
   testcase/matrix_diag_part_v3/src/matrix_diag_part_v3_utest.cpp
+  testcase/matrix_diag_v3/src/matrix_diag_v3_utest.cpp
   testcase/matrix_set_diag_v2/src/matrix_set_diag_v2_utest.cpp
   testcase/matrix_triangular_solve/src/matrix_triangular_solve_utest.cpp
   testcase/minimum/src/minimum_utest.cpp

@@ -1668,6 +1668,51 @@ REG_OP(TensorScatterMin)
     .ATTR(align,String ,"RIGHT_LEFT")
     .OP_END_FACTORY_REG(MatrixDiagPartV3)
 
+/**
+* @brief Returns a batched diagonal tensor with given batched diagonal values . \n
+
+* @par Inputs:
+* Five inputs, including:
+* @li x: Rank `r`, where `r >= 1` \n
+
+* @li k:
+* Diagonal offset(s). Positive value means superdiagonal, 0 refers to the main
+* diagonal, and negative value means subdiagonals. `k` can be a single integer
+* (for a single diagonal) or a pair of integers specifying the low and high ends
+* of a matrix band. `k[0]` must not be larger than `k[1]`. \n
+
+* @li num_rows:
+* The number of rows of the output matrix. If it is not provided, the op assumes
+* the output matrix is a square matrix and infers the matrix size from k and the
+* innermost dimension of `diagonal`. \n
+
+* @li num_cols: An NCHW, NHWC, or ND Tensor.
+* The number of columns of the output matrix. If it is not provided, the op
+* assumes the output matrix is a square matrix and infers the matrix size from
+* k and the innermost dimension of `diagonal`. \n
+
+* @li padding_value: The number to fill the area outside the specified diagonal band with. \n
+
+* @par Attributes:
+* @li align: An optional string from: "LEFT_RIGHT", "RIGHT_LEFT", "LEFT_LEFT", "RIGHT_RIGHT".
+* Defaults to "RIGHT_LEFT" \n
+
+* @par Outputs:
+* @li y: Has rank `r+1` when `k` is an integer or `k[0] == k[1]`, rank `r` otherwise . \n
+
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator ScatterUpdate.
+*/
+REG_OP(MatrixDiagV3)
+    .INPUT(x, TensorType::BasicType())
+    .INPUT(k, TensorType({DT_INT32}))
+    .INPUT(num_rows, TensorType({DT_INT32}))
+    .INPUT(num_cols, TensorType({DT_INT32}))
+    .INPUT(padding_value, TensorType::BasicType())
+    .OUTPUT(y, TensorType::BasicType())
+    .ATTR(align, String, "RIGHT_LEFT")
+    .OP_END_FACTORY_REG(MatrixDiagV3)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATRIX_CALCULATION_OPS_H_

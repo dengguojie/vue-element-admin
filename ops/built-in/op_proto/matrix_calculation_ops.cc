@@ -3716,6 +3716,246 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
 
 INFER_FUNC_REG(MatrixDiagV2, MatrixDiagV2InferShape);
 
+// ---------------MatrixDiagV3 Begin-------------------
+graphStatus GetDiagIndex(Operator& op, Tensor k_tensor, Shape k_shape,
+                         int32_t &lower_diag_index, int32_t &upper_diag_index)
+{
+  if (k_shape.GetDimNum() == 0) {
+    lower_diag_index = *(reinterpret_cast<int32_t*>(k_tensor.GetData()));
+    upper_diag_index = lower_diag_index;
+  } else {
+    auto k_dims = k_shape.GetDims();
+    int32_t num_elements = k_dims[0];
+    if (num_elements == 1) {
+      int32_t* data = reinterpret_cast<int32_t*>(k_tensor.GetData());
+      lower_diag_index = *data;
+      upper_diag_index = lower_diag_index;
+    } else if (num_elements == kInputNumRowsIndex) {
+      int32_t* data = reinterpret_cast<int32_t*>(k_tensor.GetData());
+      lower_diag_index = *(data);
+      upper_diag_index = *(data + 1);
+    } else {
+      std::string err_msg = ConcatString(
+          "the input[k] must be scalar or a vector with one or two elements, ",
+          "but it has [", num_elements, "] elements. ");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_PARAM_INVALID;
+    }
+  }
+  if (lower_diag_index > upper_diag_index) {
+    std::string err_msg = ConcatString(
+        "the variable [lower_diag_index] of input[k] 1th value[",
+        lower_diag_index, "] must be ",
+        "not greater than [upper_diag_index] of input[k] 2th value[",
+        upper_diag_index, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus GetRowsAndCols(Operator& op, Shape diagonal_shape,
+                           int32_t lower_diag_index, int32_t upper_diag_index,
+                           int32_t num_rows, int32_t num_cols)
+{
+  auto diagonal_dims = diagonal_shape.GetDims();
+  const int32_t diagonal_rank = diagonal_shape.GetDimNum();
+  if (lower_diag_index < upper_diag_index) {
+    const int64_t num_diags = diagonal_dims[diagonal_rank - 2];
+    const int64_t other_dim = diagonal_dims[diagonal_rank - 1];
+    if (num_diags != (upper_diag_index - lower_diag_index + 1)) {
+      std::string err_msg = ConcatString(
+          "the number of rows of [diagonal] doesn't match the number of ",
+          "diagonals implied from [d_lower] and [d_upper].",
+          " num_diags is [", num_diags, "], d_lower is [", lower_diag_index,
+          "], d_upper is [", upper_diag_index, "], other_dim is [", other_dim, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+      return GRAPH_PARAM_INVALID;
+    }
+  }
+
+  Tensor num_rows_tensor;
+  if (op.GetInputConstData("num_rows", num_rows_tensor) == GRAPH_SUCCESS) {
+    num_rows = *(reinterpret_cast<int32_t*>(num_rows_tensor.GetData()));
+  }
+
+  Tensor num_cols_tensor;
+  if (op.GetInputConstData("num_cols", num_cols_tensor) == GRAPH_SUCCESS) {
+    num_cols = *(reinterpret_cast<int32_t*>(num_cols_tensor.GetData()));
+  }
+
+  const int32_t max_diag_len = diagonal_dims[diagonal_rank - 1];
+  const int32_t min_num_rows = max_diag_len - std::min(upper_diag_index, 0);
+  const int32_t min_num_cols = max_diag_len + std::max(lower_diag_index, 0);
+
+  if (num_rows == ge::UNKNOWN_DIM && num_cols == ge::UNKNOWN_DIM) {
+    num_rows = std::max(min_num_rows, min_num_cols);
+    num_cols = num_rows;
+  }
+  if (num_rows == ge::UNKNOWN_DIM) {
+    num_rows = min_num_rows;
+  }
+  else if (num_rows < min_num_rows) {
+    std::string err_msg = ConcatString(
+        "input[num_rows] value[", num_rows, "] must be not less than ",
+        "min_num_rows[", min_num_rows, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+
+  if (num_cols == ge::UNKNOWN_DIM) {
+    num_cols = min_num_cols;
+  } else if (num_cols < min_num_cols) {
+    std::string err_msg = ConcatString(
+        "input[num_cols] value[", num_cols, "] must be not less than ",
+        "min_num_cols[", min_num_cols, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+
+  if (num_rows != min_num_rows && num_cols != min_num_cols &&
+    min_num_rows != ge::UNKNOWN_DIM && min_num_cols != ge::UNKNOWN_DIM) {
+    std::string err_msg = ConcatString(
+        "input[num_rows] value[", num_rows, "] and ",
+        "input[num_cols] value[", num_cols, "] ",
+        "are not equal with min_num_rows[", min_num_rows, "] and min_num_cols[",
+        min_num_rows, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus GetAndCheckShapeDiag(Operator& op, Shape &diagonal_shape, Shape &k_shape) {
+  auto diagonal_tensor_desc = op.GetInputDescByName("x");
+  if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("failed to call WithRankAtLeast function, ",
+        "input[x] rank must be at least 1D, but got rank[",
+        op.GetInputDescByName("x").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  auto k_tensor_desc = op.GetInputDescByName("k");
+  if (WithRankAtMost(k_tensor_desc, 1, k_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString(
+        "failed to call WithRankAtMost function, ",
+        "input[k] rank must be at most 1D, but got rank[",
+        op.GetInputDescByName("k").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape num_rows_shape;
+  auto num_rows_tensor_desc = op.GetInputDescByName("num_rows");
+  if (WithRank(num_rows_tensor_desc, 0, num_rows_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+        "input[num_rows] rank must be 0, but got rank[",
+        op.GetInputDescByName("num_rows").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape num_cols_shape;
+  auto num_cols_tensor_desc = op.GetInputDescByName("num_cols");
+  if (WithRank(num_cols_tensor_desc, 0, num_cols_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+        "input[num_cols] rank must be 0, but got rank[",
+        op.GetInputDescByName("num_cols").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape padding_value_shape;
+  auto padding_value_tensor_desc = op.GetInputDescByName("padding_value");
+  if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+        "input[padding_value] rank must be 0, but got rank[",
+        op.GetInputDescByName("padding_value").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(MatrixDiagV3InferShape) {
+  Shape diagonal_shape;
+  Shape k_shape;
+  if (GetAndCheckShapeDiag(op, diagonal_shape, k_shape) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  auto diagonal_tensor_desc = op.GetInputDescByName("x");
+  auto output_desc = op.GetOutputDescByName("y");
+  Tensor k_tensor;
+  std::vector<std::string> input_infer_depends = { "k", "num_rows", "num_cols" };
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
+  if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS || !RankKnown(diagonal_shape) || !FullyDefined(k_shape)) {
+    output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+    output_desc.SetDataType(diagonal_tensor_desc.GetDataType());
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+  }
+
+  int32_t lower_diag_index = 0;
+  int32_t upper_diag_index = 0;
+  if (GetDiagIndex(op, k_tensor, k_shape, lower_diag_index, upper_diag_index) != GRAPH_SUCCESS) {
+    return GRAPH_PARAM_INVALID;
+  }
+  int32_t num_cols = ge::UNKNOWN_DIM;
+  int32_t num_rows = ge::UNKNOWN_DIM;
+  if (GetRowsAndCols(op, diagonal_shape, lower_diag_index, upper_diag_index, num_rows, num_cols) != GRAPH_SUCCESS) {
+    return GRAPH_PARAM_INVALID;
+  }
+
+  const int32_t diagonal_rank = diagonal_shape.GetDimNum();
+  Shape output_shape;
+  OP_LOGI(TbeGetName(op), "num_rows: ", num_rows, " num_cols: ", num_cols);
+  if (lower_diag_index == upper_diag_index) {
+    if (ReplaceDim(diagonal_shape, diagonal_rank - 1, num_rows, output_shape, TbeGetName(op).c_str()) !=
+          GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, replace input[diagonal] dim, ",
+        "index[", diagonal_rank - 1, "],  replace value[", num_rows, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+      return GRAPH_FAILED;
+    }
+    if (Concatenate(output_shape, Shape({ num_cols }), output_shape) != GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString(
+        "failed to call Concatenate function, output shape",
+        DebugString(output_shape.GetDims()),
+        " and another shape", DebugString(Shape({ num_cols }).GetDims()));
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+      return GRAPH_FAILED;
+    }
+  } else {
+    if (ReplaceDim(diagonal_shape, diagonal_rank - 2, num_rows, output_shape, TbeGetName(op).c_str()) !=
+          GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, replace input[diagonal] dim, ",
+        "index[", diagonal_rank - 2, "], replace value[", num_rows, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+      return GRAPH_FAILED;
+    }
+    if (ReplaceDim(output_shape, diagonal_rank - 1, num_cols, output_shape, TbeGetName(op).c_str()) != 
+          GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, replace output[output] dim, ",
+        "index[", diagonal_rank - 1, "], replace value[", num_cols, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+      return GRAPH_FAILED;
+    }
+  }
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(diagonal_tensor_desc.GetDataType());
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(MatrixDiagV3, MatrixDiagV3InferShape);
+// ---------------MatrixDiagV3 End-------------------
+
 // ----------------IndexAdd Begin-------------------
 bool InferShapeAndTypeIndexAdd(Operator& op) {
   TensorDesc output_desc = op.GetOutputDescByName("var_out");

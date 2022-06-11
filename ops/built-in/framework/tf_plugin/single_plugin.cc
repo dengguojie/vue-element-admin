@@ -1684,4 +1684,11 @@ REGISTER_CUSTOM_OP("RaggedCountSparseOutput")
     .OriginOpType("RaggedCountSparseOutput")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register MatrixDiagV3 op to GE
+REGISTER_CUSTOM_OP("MatrixDiagV3")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("MatrixDiagV3")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
