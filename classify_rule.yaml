@@ -1153,6 +1153,7 @@ vector_B:
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/boosted_trees_ops.cc
+      - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/data_flow_ops.cc
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
@@ -2541,7 +2542,6 @@ unkown:
       - ops/built-in/op_proto/image_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
-      - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/set_ops.cc

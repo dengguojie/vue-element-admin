@@ -546,7 +546,6 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
   vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
   auto input_type = input_desc->GetDataType();
   size_t input_length = input_shape.size();
-
   /* Main Process:
    * 1. Special Branch
    * 2. DoKnown Branch
@@ -877,7 +876,8 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     if (dimNum == 4) {
       oShapeVector.push_back(shapeVector[3]);
     } else {
-      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 4 when NHWC."));
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",
+                                                     shapeVector.size(), "] can only support 4 when NHWC."));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -885,7 +885,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     if (dimNum >= 2 && dimNum <= 4) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
-      string err_msg1 = ConcatString("Input x rank[", shapeVector.size(),"] can only support 2-4 when NCHW.");
+      string err_msg1 = ConcatString("Input x rank[", shapeVector.size(), "] can only support 2-4 when NCHW.");
       std::string err_msg = OtherErrMsg(err_msg1);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
@@ -894,7 +894,8 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     if (dimNum == 5) {
       oShapeVector.push_back(shapeVector[4]);
     } else {
-      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NDHWC."));
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",
+                                                     shapeVector.size(), "] can only support 5 when NDHWC."));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -907,7 +908,8 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       oShapeVector.push_back(1);
       oShapeVector.push_back(shapeVector[5]);
     } else {
-      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NDC1HWC0."));
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",
+                                                     shapeVector.size(), "] can only support 5 when NDC1HWC0."));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -915,7 +917,8 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     if (dimNum == 5) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
-      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NCDHW."));
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",
+                                                     shapeVector.size(), "] can only support 5 when NCDHW."));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -975,8 +978,9 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateInferShape) {
   auto output_batch_mean_desc = op_desc->MutableOutputDesc(3);
   auto output_batch_variance_desc = op_desc->MutableOutputDesc(4);
 
-  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
-      output_mean_desc == nullptr || output_variance_desc == nullptr || output_batch_mean_desc == nullptr ||output_batch_variance_desc == nullptr) {
+  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr ||
+      output_mean_desc == nullptr || output_variance_desc == nullptr ||
+      output_batch_mean_desc == nullptr ||output_batch_variance_desc == nullptr) {
     std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -1023,7 +1027,7 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV2, BNTrainingUpdateV2InferShape) {
   auto output_batch_mean_desc = op_desc->MutableOutputDesc(1);
   auto output_batch_variance_desc = op_desc->MutableOutputDesc(2);
 
-  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
+  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr ||
       output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr) {
     std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -1070,8 +1074,8 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV3, BNTrainingUpdateV3InferShape) {
   auto output_reserve_1_desc = op_desc->MutableOutputDesc(3);
   auto output_reserve_2_desc = op_desc->MutableOutputDesc(4);
 
-  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
-      output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr || 
+  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr ||
+      output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr ||
       output_reserve_1_desc == nullptr || output_reserve_2_desc == nullptr) {
     std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -1213,8 +1217,8 @@ IMPLEMT_VERIFIER(BNInfer, BNInferVerify) {
   return GRAPH_SUCCESS;
 }
 VERIFY_FUNC_REG(BNInfer, BNInferVerify);
-IMPLEMT_COMMON_INFERFUNC(BNInferInferShape){
-  if(OneInOneOutDynamicInfer(op, "x", {"y"})){
+IMPLEMT_COMMON_INFERFUNC(BNInferInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -1290,8 +1294,8 @@ IMPLEMT_VERIFIER(BNInferGrad, BNInferGradVerify) {
   return GRAPH_SUCCESS;
 }
 VERIFY_FUNC_REG(BNInferGrad, BNInferGradVerify);
-IMPLEMT_COMMON_INFERFUNC(BNInferGradInferShape){
-  if(OneInOneOutDynamicInfer(op, "grads", {"x_backprop"})){
+IMPLEMT_COMMON_INFERFUNC(BNInferGradInferShape) {
+  if (OneInOneOutDynamicInfer(op, "grads", {"x_backprop"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -1714,7 +1718,8 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
     string expected_format_list = ConcatString("NHWC, NCHW");
-    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
+                                                         expected_format_list, ConcatString(input_format));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -1779,7 +1784,8 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
     string expected_format_list = ConcatString("NHWC, NCHW");
-    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
+                                                         expected_format_list, ConcatString(input_format));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -1816,8 +1822,8 @@ IMPLEMT_INFERFUNC(ReduceJoin, ReduceJoinInfer) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceJoin proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "input", "reduction_indices", "keep_dims", result_desc)) {
-    std::string err_msg = ConcatString("failed to call InferReduceShape function,", 
-                                        "input[input], input[reduction_indices], attr[keep_dims]");
+    std::string err_msg = ConcatString("failed to call InferReduceShape function,",
+                                       "input[input], input[reduction_indices], attr[keep_dims]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -2055,7 +2061,7 @@ IMPLEMT_INFERFUNC(ReduceStdV2Update, ReduceStdV2UpdateInferShape) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(ReduceStdV2Update, ReduceStdV2UpdateVerify){
+IMPLEMT_VERIFIER(ReduceStdV2Update, ReduceStdV2UpdateVerify) {
   if (op.GetInputDescByName("x").GetDataType() != op.GetInputDescByName("mean").GetDataType()) {
     return GRAPH_FAILED;
   }
