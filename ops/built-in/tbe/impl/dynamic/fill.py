@@ -15,6 +15,7 @@ fill
 """
 from functools import reduce
 from operator import mul
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
@@ -84,20 +85,23 @@ def fill(dims, value, y, kernel_name="fill"):
     tmp_dtype = value.get("dtype").lower()
     dtype = tmp_dtype if tmp_dtype != "bool" else "int8"
     dtype_dims = dims.get("dtype").lower()
-    dims["shape"] = [-1]
-    dims['range'] = [[1, None]]
-
-    const_value = dims.get('const_value')
-    if const_value:
-        const_value = list(const_value)
-        shape_shape_adapt = [reduce(mul, const_value)]
-        shape_range_adapt = gen_range(const_value)
+    if is_unknown_rank_input([dims, value]):
+        dims, value = [dims, dims] if is_unknown_rank_input(dims) else [value, value]
     else:
-        shape_shape_adapt = [-1]
-        shape_range_adapt = [[1, None]]
+        dims["shape"] = [-1]
+        dims['range'] = [[1, None]]
 
-    dims["shape"] = shape_shape_adapt
-    dims['range'] = shape_range_adapt
+        const_value = dims.get('const_value')
+        if const_value:
+            const_value = list(const_value)
+            shape_shape_adapt = [reduce(mul, const_value)]
+            shape_range_adapt = gen_range(const_value)
+        else:
+            shape_shape_adapt = [-1]
+            shape_range_adapt = [[1, None]]
+
+        dims["shape"] = shape_shape_adapt
+        dims['range'] = shape_range_adapt
 
     # check whether dtypes are right
     check_list = ("int8", "int32", "float16", "float32")
