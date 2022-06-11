@@ -17,11 +17,19 @@
 THREAD_CFG="build_thread_config.env"
 
 function get_thread_num {
-  # op_type=$1
   local _thread_num=1
   local _op_type=$1
   _thread_num=`awk -F '=' '/'^${_op_type}='/{print $2;exit}' ${THREAD_CFG}`
-  echo ${_thread_num}
+  if [ "${_thread_num}" == "" ];then
+     return 1
+  fi
+  return ${_thread_num}
+}
+
+function get_thread_num_with_json_config {
+  local _thread_num=1
+  local _binary_config_full_path=$1
+  _thread_num=`cat ${_binary_config_full_path} | grep bin_filename | wc -l`
   if [ "${_thread_num}" == "" ];then
      return 1
   fi

@@ -62,8 +62,11 @@ main() {
   {
     cmd_task=`sed -n ''${i}'p;' ${opc_cmd_file}`
     echo "[INFO]exe_task: begin to build kernel with cmd: ${cmd_task}."
+    start_time=$(date +%s)
     ${cmd_task}
-    echo "[INFO]exe_task: end to build kernel with cmd: ${cmd_task}."
+    end_time=$(date +%s)
+    exe_time=$((end_time-start_time))
+    echo "[INFO]exe_task: end to build kernel with cmd: ${cmd_task} --exe_time=${exe_time}"
     echo >&8
   }&
   done

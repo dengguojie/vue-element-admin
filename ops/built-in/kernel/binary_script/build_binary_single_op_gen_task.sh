@@ -125,7 +125,12 @@ main() {
   # step 6: do opc compile all kernel
   impl_list_array=(${impl_list//,/ })
 
-  get_thread_num ${op_type}
+  # 根据配置文件 确认某个算子kernel编译时拆分个数
+  # get_thread_num ${op_type}
+
+  # 所有算子的kernel  onebyone 进行编译
+  get_thread_num_with_json_config ${binary_config_full_path}
+
   thread_num=$?
   echo "[INFO]op:${op_type} thread_num = ${thread_num}"
   opc_json_list=()

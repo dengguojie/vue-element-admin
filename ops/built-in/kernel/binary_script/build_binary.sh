@@ -14,8 +14,8 @@
 # limitations under the License.
 # ============================================================================
 # bash build_binary.sh {opp_run_path} {output_path} {short_soc_version}
-export ASCEND_SLOG_PRINT_TO_STDOUT=0
-export ASCEND_GLOBAL_LOG_LEVEL=3
+export ASCEND_SLOG_PRINT_TO_STDOUT=1
+export ASCEND_GLOBAL_LOG_LEVEL=1
 
 OPP_RUN_PATH=$1
 OUTPUT_PATH=$2
@@ -113,4 +113,3 @@ done
 bash build_binary_single_op_exe_task.sh ${task_path} ${PRONUM}
 
 echo "run build_binary.sh SUCCESS"
-
