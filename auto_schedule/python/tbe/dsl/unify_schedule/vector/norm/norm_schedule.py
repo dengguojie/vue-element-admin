@@ -21,7 +21,9 @@ from tbe import tvm
 from tbe.dsl.base.operation import add_build_arg
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
+from tbe.dsl.base.padding.padding import ActionValueType
 
+from .norm_helper import SubGraphsAndActionsMapping
 from .norm_tilingcase import BLOCK_SIZE_BYTE
 from .norm_tilingcase import NormComputeGraphInfo
 from .norm_tilingcase import NormInfo
@@ -269,6 +271,8 @@ class NormNormalSchedule:
 
         self._do_tiling()
 
+        self._do_set_value()
+
         self._calc_reorder()
         self._do_reorder()
 
@@ -436,6 +440,33 @@ class NormNormalSchedule:
         self._ub_split_result["factor"] = ub_split_factor
 
         self._is_last_common_axis_split_ub = ub_split_axis_index > max(self._norm_info.reduce_axis_indices)
+
+    def _do_set_value(self):
+        def __do_single_tensor_set_value():
+            _cur_tensor = self._cache_read_tensor_and_buffer_map.get(ori_tensor, ori_tensor)
+            _cur_tensor = self._cache_write_tensor_and_buffer_map.get(ori_tensor, _cur_tensor)
+            if target_tensors:
+                _consumer_tensors = []
+                for _single_target_tensor in target_tensors:
+                    _consumer_tensors.append(
+                        self._cache_write_tensor_and_buffer_map.get(_single_target_tensor, _single_target_tensor))
+                _cache_read_tensor = self._sch.cache_read(_cur_tensor, self._scope, _consumer_tensors)
+                self._cache_read_tensor_and_buffer_map[ori_tensor] = _cache_read_tensor
+                self._cache_read_buffer_and_tensor_map[_cache_read_tensor] = ori_tensor
+                _cur_value = value(_cache_read_tensor) if value_type == ActionValueType.TENSOR else value
+                self._sch[_cache_read_tensor].set_value(condition, _cur_value)
+            else:
+                _cur_value = value(_cur_tensor) if value_type == ActionValueType.TENSOR else value
+                self._sch[_cur_tensor].set_value(condition, _cur_value)
+
+        for _, actions in self._graph_info.tensor_and_set_value_actions_map.items():
+            for single_action in actions:
+                ori_tensor = single_action.get_tensor()
+                condition = single_action.get_condition()
+                value = single_action.get_value()
+                target_tensors = single_action.get_target_tensors()
+                value_type = single_action.get_value_type()
+                __do_single_tensor_set_value()
 
     def _calc_reorder(self):
         def __calc_split_tensor_reorder_axis(tensor):
@@ -1033,6 +1064,8 @@ class NormWorkspaceSchedule:
 
         self._do_tiling()
 
+        self._do_set_value()
+
         self._calc_reorder()
         self._do_reorder()
 
@@ -1283,6 +1316,84 @@ class NormWorkspaceSchedule:
     def _do_compute_inline(self):
         for compute_inline_tensor in self._compute_inline_tensors:
             self._sch[compute_inline_tensor].compute_inline()
+
+    def _get_ub_tensor(self, single_tensor, split_tensor):
+        for buffer, tensor_and_split_tensor_map in self._cache_clone_buffer_and_tensor_dual_map.items():
+            local_tensor = list(tensor_and_split_tensor_map.keys())[0]
+            local_split_tensor = list(tensor_and_split_tensor_map.values())[0]
+            if local_split_tensor == split_tensor and local_tensor == single_tensor:
+                single_tensor = buffer
+
+        for buffer, tensor_and_split_tensor_map in self._cache_read_buffer_and_tensor_dual_map.items():
+            local_tensor = list(tensor_and_split_tensor_map.keys())[0]
+            local_split_tensor = list(tensor_and_split_tensor_map.values())[0]
+            if local_split_tensor == split_tensor and local_tensor == single_tensor:
+                single_tensor = buffer
+
+        for buffer, tensor_and_split_tensor_map in self._cache_write_buffer_and_tensor_dual_map.items():
+            local_tensor = list(tensor_and_split_tensor_map.keys())[0]
+            local_split_tensor = list(tensor_and_split_tensor_map.values())[0]
+            if local_split_tensor == split_tensor and local_tensor == single_tensor:
+                single_tensor = buffer
+
+        if single_tensor in self._workspace_map:
+            if single_tensor == split_tensor:
+                single_tensor = self._workspace_map.get(single_tensor).get("ub_tensor")
+            else:
+                reread_workspace_ub_tensor_map = self._workspace_map.get(single_tensor).get("reread_ub_tensor")
+                for reread_tensor, cur_split_tensor in reread_workspace_ub_tensor_map.items():
+                    if cur_split_tensor == split_tensor:
+                        single_tensor = reread_tensor
+
+        return single_tensor
+
+    def _do_set_value(self):
+        def __handle_with_target_tensor(_ub_tensor, _ori_tensor, _split_tensor):
+            _consumer_tensors = [self._get_ub_tensor(t, _split_tensor) for t in target_tensors]
+            _cache_read_buffer = self._sch.cache_read(_ub_tensor, self._scope, _consumer_tensors)
+            _add_sub_dict_to_dict(self._cache_read_buffer_and_tensor_dual_map, _cache_read_buffer,
+                                  _ori_tensor, _split_tensor)
+            _add_sub_dict_to_dict(self._cache_read_tensor_and_buffer_dual_map, _ori_tensor,
+                                  _cache_read_buffer, _split_tensor)
+            _cur_value = value(_ub_tensor) if value_type == ActionValueType.TENSOR else value
+            self._sch[_ub_tensor].set_value(condition, _cur_value)
+
+        def __do_workspace_set_value():
+            _reread_workspace_ub_tensor_map = self._workspace_map.get(ori_tensor).get("reread_ub_tensor")
+            for _reread_tensor, _cur_split_tensor in _reread_workspace_ub_tensor_map.items():
+                if _cur_split_tensor != split_tensor:
+                    continue
+                if target_tensors:
+                    __handle_with_target_tensor(_reread_tensor, ori_tensor, _cur_split_tensor)
+                else:
+                    _cur_value = value(_reread_tensor) if value_type == ActionValueType.TENSOR else value
+                    self._sch[_reread_tensor].set_value(condition, _cur_value)
+
+        def __do_common_set_value():
+            _cur_tensor = self._get_ub_tensor(ori_tensor, split_tensor)
+            if target_tensors:
+                __handle_with_target_tensor(_cur_tensor, ori_tensor, split_tensor)
+            else:
+                _cur_value = value(_cur_tensor) if value_type == ActionValueType.TENSOR else value
+                self._sch[_cur_tensor].set_value(condition, _cur_value)
+
+        def __do_single_tensor_set_value():
+            if ori_tensor in self._workspace_map:
+                __do_workspace_set_value()
+            else:
+                __do_common_set_value()
+
+        for _, actions in self._graph_info.tensor_and_set_value_actions_map.items():
+            split_tensors_and_actions_list = SubGraphsAndActionsMapping(actions, self._split_tensor_and_sub_graph_map,
+                                                                        self._res_tensor).get_mapping()
+            for single_item in split_tensors_and_actions_list:
+                split_tensor = single_item.split_tensor
+                ori_tensor = single_item.cur_tensor
+                condition = single_item.condition
+                value = single_item.value
+                target_tensors = single_item.target_tensors
+                value_type = single_item.value_type
+                __do_single_tensor_set_value()
 
     def _do_tiling(self):
         block_split_axis_index = self._tiling_case.block_split_axis_index

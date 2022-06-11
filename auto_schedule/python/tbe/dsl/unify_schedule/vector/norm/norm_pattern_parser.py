@@ -107,11 +107,6 @@ class NormPatternParser(PatternParser):
                 if illegal_condition:
                     return False
 
-        if broadcast_size > 1:
-            for i in range(1, broadcast_size):
-                if not __judge_tvm_shape_equal(after_broadcast_shape, broadcast_tensor_list[i].shape):
-                    return False
-
         return True
 
     def get_pattern(self):

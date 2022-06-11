@@ -233,6 +233,47 @@ TEST_F(NormTilingRt2Test, ParseTest3) {
   ASSERT_TRUE(compare_norm_struct(actual_struct, expect_struct));
 }
 
+TEST_F(NormTilingRt2Test, TilingTest5hd) {
+  std::vector<std::vector<int64_t>> inputs {
+    {85, 2, 11, 7, 16}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {85, 2, 11, 7, 16}
+  };
+  std::vector<std::vector<int64_t>> ori_inputs {
+    {85, 11, 7, 22}
+  };
+  std::vector<std::vector<int64_t>> ori_outputs {
+    {85, 11, 7, 22}
+  };
+  std::vector<ge::DataType> dtype = {ge::DT_FLOAT16};
+  std::vector<ge::Format> format = {ge::FORMAT_ND};
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.pattern = SchPattern::NORM;
+  op_compile_info.input_type = {0};
+  op_compile_info.ori_reduce_axis = {1, 4};
+  op_compile_info.ori_disable_fuse_axes = {1, 4};
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.transpose_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = false;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{20000, {15824, 16360, 15760, 15824}}};
+  op_compile_info.block_size_map = {{20000, 16}};
+  op_compile_info.workspace_info = {{302000000, {32}}};
+  op_compile_info.norm_vars = {{302000000, {20000, 20001, 20002, 50003, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  AutoTilingTest test(ori_inputs, inputs, ori_outputs, outputs, dtype, dtype, format, format, format, format);
+  test.SetCompileInfo(&op_compile_info);
+
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "85, 2, 77, 22, 3, 3";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 29);
+}
+
 TEST_F(NormTilingRt2Test, TilingTest1) {
   std::vector<std::vector<int64_t>> inputs {
     {2, 10496, 41}

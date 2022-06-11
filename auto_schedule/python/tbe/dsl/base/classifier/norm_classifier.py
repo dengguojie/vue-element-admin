@@ -18,6 +18,7 @@
 classifier of shape in norm
 """
 import copy
+import dataclasses
 from enum import Enum
 from itertools import product
 
@@ -33,6 +34,19 @@ UNKNOWN = "unknown"
 
 MAX_DIM_LEN = 8
 REDUCE_PATTERN_KEY_WEIGHT = 1000
+
+DTYPE_AND_5HD_LAST_DIM_MAP = {
+    "float32": (8, 16),
+    "int32": (8, 16),
+    "float16": (16, ),
+    "int16": (16, ),
+    "int8": (32, ),
+    "uint8": (32, )
+}
+
+FORMAT_AND_ARRAY_MAP = {"NC1HWC0": ["N", "C1", "H", "W", "C0"]}
+
+FORMAT_AND_NP_MAP = {"NC1HWC0": {"C1": "C", "C0": "C"}}
 
 
 def _is_true(expr, dict_args):
@@ -322,6 +336,7 @@ class NormClassifyInfo:
         self.reduce_axis_obj = self._parse_reduce_axis(reduce_axis)
         self.input_type_list = self._parse_input_type()
         self.broadcast_axis_list_obj = self._parse_broadcast_axis_list()
+        self.is_ignore_fractal_format = self._parse_ignore_fractal_format()
         self._check_current_axis_types_is_supported()
         self._add_input_type_list_to_compile_info()
         self._add_reduce_axis_to_compile_info()
@@ -504,6 +519,16 @@ class NormClassifyInfo:
 
         return NormBroadcastAxisList(broadcast_axis_list)
 
+    def _parse_ignore_fractal_format(self):
+        is_ignore_fractal_format = True
+        if self.extra_params is None:
+            return is_ignore_fractal_format
+
+        if "ignore_fractal_format" in self.extra_params:
+            is_ignore_fractal_format = self.extra_params.get("ignore_fractal_format")
+
+        return is_ignore_fractal_format
+
     def _check_current_axis_types_is_supported(self):
         """
         check axis types combination is supported
@@ -629,6 +654,32 @@ def _cal_norm_pattern(mode_str_list, broadcast_axis, reduce_axis, shape_len):
     return reduce_pattern_key * REDUCE_PATTERN_KEY_WEIGHT + broadcast_pattern_key
 
 
+def _check_5hd(single_5hd_input):
+    cur_shape = single_5hd_input.get("shape")
+    _is_true(cur_shape != (-2, ),
+             {"errCode": "E90001",
+              "detailed_cause": "norm classifier do not support -2 in 5HD process."})
+
+    _is_true(len(cur_shape) == 5,
+             {"errCode": "E90001",
+              "detailed_cause": "length of input shape should be 5 when format is NC1HWC0."})
+
+    cur_dtype = single_5hd_input.get("dtype")
+    _is_true(isinstance(cur_shape[-1], int) and cur_shape[-1] in DTYPE_AND_5HD_LAST_DIM_MAP.get(cur_dtype),
+             {"errCode": "E90001",
+              "detailed_cause": "last dim is illegal when format is NC1HWC0."})
+
+    ori_format = single_5hd_input.get("ori_format")
+    _is_true(ori_format in ("NCHW", "NHWC"),
+             {"errCode": "E90001",
+              "detailed_cause": "ori format should be NHWC or NCHW when format is NC1HWC0."})
+
+    ori_shape = single_5hd_input.get("ori_shape")
+    _is_true(len(ori_shape) == 4,
+             {"errCode": "E90001",
+              "detailed_cause": "length of input ori shape should be 4 when format is NC1HWC0."})
+
+
 def _infer_negative_two_and_pre_process(ins: dict, classify_info: NormClassifyInfo):
     """
     infer -2 in inputs and do some pre process
@@ -720,6 +771,19 @@ def _judge_is_const_and_dynamic_mixed(norm_classify_out):
     return is_const_and_dynamic_mixed
 
 
+@dataclasses.dataclass
+class InputInfo:
+    """
+    input info
+    """
+    shape: list = dataclasses.field(default_factory=list)
+    shape_range: list = dataclasses.field(default_factory=list)
+    reduce_axis: list = dataclasses.field(default_factory=list)
+    broadcast_axis: list = dataclasses.field(default_factory=list)
+    s_format: list = dataclasses.field(default_factory=list)
+    disable_fuse_axes: list = dataclasses.field(default_factory=list)
+
+
 def classify(ins: list, extra_params: dict):
     """
     classify
@@ -745,8 +809,9 @@ def classify(ins: list, extra_params: dict):
                             Operators can add reduce axis attr name and dtype to compile info. Example:
                             add_compile_info("reduce_axis_attr_name", "axis")
                             add_compile_info("reduce_axis_attr_dtype", "ListInt")
-        "broadcast_axes_type":str, the type of broadcast axis, support "opposite_reduce" and
+        "broadcast_axes_type": str, the type of broadcast axis, support "opposite_reduce" and
                               "same_reduce", At the same time, compile_broadcast_axes must be "unknown".
+        "ignore_fractal_format": bool, determine schedule whether or not to ignore 5HD process. Default is True.
     :return:
     """
     get_context().set_pattern(NORM)
@@ -809,18 +874,40 @@ class NormClassifier:
         self.reduce_axis = classify_info.reduce_axis_obj.value
         self.unreduce_axis = None
         self.broadcast_axis_list = classify_info.broadcast_axis_list_obj.broadcast_axis_list
-
-        self.disable_fuse_axes_after_fuse = []
         self.disable_fuse_axes_list = []
-
-        self.inputs_after_bro, self.inputs_before_bro, self.inputs_bro_axis = self._inputs_classify()
-        self.shape_before_fuse, self.range_before_fuse, self.inputs_before_bro_info = self._infer_and_extract_info()
-        self.reduce_and_broadcast_combination = self._handle_variable_axis()
         self.unify_broadcast_axis = None
-        self.shape_after_fuse = None
-        self.range_after_fuse = None
-        self.reduce_axis_after_fuse = None
-        self.broadcast_axis_after_fuse = None
+
+        self.before_fuse_info = InputInfo(disable_fuse_axes=classify_info.disable_fuse_axes)
+        self.after_fuse_info = InputInfo()
+
+        self.is_process_5hd, self.index_and_value_of_split_axis = self._exist_and_process_5hd()
+        self.inputs_after_bro, self.inputs_before_bro, self.inputs_bro_axis = self._inputs_classify()
+        self.before_fuse_info.shape, self.before_fuse_info.shape_range, self.inputs_before_bro_info = \
+            self._infer_and_extract_info()
+        self.reduce_and_broadcast_combination = self._handle_variable_axis()
+
+    def _exist_and_process_5hd(self):
+        exist_5hd = False
+        index_and_value_of_split_axis = []
+        if self.classify_info.is_ignore_fractal_format:
+            return exist_5hd, index_and_value_of_split_axis
+
+        exist_5hd = any(single_input.get("format") == "NC1HWC0" for single_input in self.ins)
+        if exist_5hd:
+            for single_input in self.ins:
+                _is_true(single_input.get("format") == "NC1HWC0",
+                        {"errCode": "E90001",
+                        "detailed_cause": "norm classifier only support 5HD + 5HD."})
+                _check_5hd(single_input)
+                c_index = single_input.get("ori_format").index("C")
+                c_value = single_input.get("ori_shape")[c_index]
+                index_and_value_of_split_axis.append({"C": [c_index, c_value]})
+            array_5hd = FORMAT_AND_ARRAY_MAP.get("NC1HWC0")
+            self.before_fuse_info.s_format = array_5hd
+            self.before_fuse_info.disable_fuse_axes = [idx for idx, val in enumerate(array_5hd) if "C" in val]
+            add_compile_info_inner("_disable_fuse_axes", self.before_fuse_info.disable_fuse_axes)
+
+        return exist_5hd, index_and_value_of_split_axis
 
     def _inputs_classify(self):
         """
@@ -1066,14 +1153,22 @@ class NormClassifier:
 
             return "common"
 
+        def __combine_format(_cur_format, _next_format):
+            if isinstance(_cur_format, list):
+                return _cur_format.append(_next_format)
+
+            return [_cur_format, _next_format]
+
         if not self.classify_info.is_fuse_axis:
-            res = (self.shape_before_fuse, self.range_before_fuse, self.reduce_axis, self.unify_broadcast_axis)
+            res = (self.before_fuse_info.shape, self.before_fuse_info.shape_range,
+                   self.reduce_axis, self.unify_broadcast_axis,
+                   self.before_fuse_info.disable_fuse_axes, self.before_fuse_info.s_format)
             return res
 
-        f_shape, f_ranges, f_reduce_axis, f_broadcast_axis, f_pad_axis = [], [], [], [], []
+        f_shape, f_ranges, f_reduce_axis, f_broadcast_axis, f_pad_axis, f_format = [], [], [], [], [], []
         state = "init"
-        for i, (d, r) in enumerate(zip(self.shape_before_fuse, self.range_before_fuse)):
-            is_pad_axis = i in self.classify_info.disable_fuse_axes
+        for i, (d, r) in enumerate(zip(self.before_fuse_info.shape, self.before_fuse_info.shape_range)):
+            is_pad_axis = i in self.before_fuse_info.disable_fuse_axes
             is_reduce_axis = i in self.reduce_axis
             is_broadcast_axis = i in self.unify_broadcast_axis if self.unify_broadcast_axis is not None else False
             state_i = __obtain_state()
@@ -1081,18 +1176,24 @@ class NormClassifier:
             if state == state_i:
                 f_shape[-1] = util.combine_dim([f_shape[-1], d])
                 f_ranges[-1] = util.combine_range([f_ranges[-1], r])
+                if self.before_fuse_info.s_format:
+                    f_format[-1] = __combine_format(f_format[-1], self.before_fuse_info.s_format[i])
             else:
                 f_shape.append(d)
                 f_ranges.append(r)
+                if self.before_fuse_info.s_format:
+                    f_format.append(self.before_fuse_info.s_format[i])
 
             if is_reduce_axis:
                 reduce_axis = len(f_shape) - 1
-                if not f_reduce_axis or f_reduce_axis[-1] != reduce_axis:
+                append_reduce_axis = not f_reduce_axis or f_reduce_axis[-1] != reduce_axis
+                if append_reduce_axis:
                     f_reduce_axis.append(reduce_axis)
 
             if is_broadcast_axis:
                 broadcast_axis = len(f_shape) - 1
-                if not f_broadcast_axis or f_broadcast_axis[-1] != broadcast_axis:
+                append_broadcast_axis = not f_broadcast_axis or f_broadcast_axis[-1] != broadcast_axis
+                if append_broadcast_axis:
                     f_broadcast_axis.append(broadcast_axis)
 
             if is_pad_axis:
@@ -1100,8 +1201,7 @@ class NormClassifier:
 
             state = state_i
 
-        self.disable_fuse_axes_after_fuse.append(f_pad_axis)
-        res = (f_shape, f_ranges, f_reduce_axis, f_broadcast_axis)
+        res = (f_shape, f_ranges, f_reduce_axis, f_broadcast_axis, f_pad_axis, f_format)
 
         return res
 
@@ -1117,7 +1217,7 @@ class NormClassifier:
         # return: is append remove last one case and is desert origin case
         is_no_after_broadcast_input = 0 not in self.classify_info.input_type_list
         is_no_fuse_axis = not self.classify_info.is_fuse_axis
-        is_disable_fuse_axes = len(self.classify_info.disable_fuse_axes) > 0
+        is_disable_fuse_axes = len(self.before_fuse_info.disable_fuse_axes) > 0
         is_unify_broadcast_axis_unknown = \
             self.unify_broadcast_axis is None and \
             self.classify_info.input_type_list != [0] * len(self.classify_info.input_type_list)
@@ -1126,11 +1226,11 @@ class NormClassifier:
             is_unify_broadcast_axis_unknown or is_disable_fuse_axes
         if is_cannot_remove_one:
             return False, False
-        if len(self.shape_after_fuse) <= 1:
+        if len(self.after_fuse_info.shape) <= 1:
             return False, False
 
-        last_dim = self.shape_after_fuse[-1]
-        last_range = self.range_after_fuse[-1]
+        last_dim = self.after_fuse_info.shape[-1]
+        last_range = self.after_fuse_info.shape_range[-1]
         # append remove last one case and desert origin case
         if last_dim == 1:
             return True, True
@@ -1144,12 +1244,12 @@ class NormClassifier:
         """
         generate remove last one case
         """
-        last_index = len(self.shape_after_fuse) - 1
+        last_index = len(self.after_fuse_info.shape) - 1
 
-        shape_after_fuse = self.shape_after_fuse[:]
-        range_after_fuse = self.range_after_fuse[:]
-        reduce_axis_after_fuse = self.reduce_axis_after_fuse[:]
-        broadcast_axis_after_fuse = self.broadcast_axis_after_fuse[:]
+        shape_after_fuse = self.after_fuse_info.shape[:]
+        range_after_fuse = self.after_fuse_info.shape_range[:]
+        reduce_axis_after_fuse = self.after_fuse_info.reduce_axis[:]
+        broadcast_axis_after_fuse = self.after_fuse_info.broadcast_axis[:]
 
         shape_after_fuse.pop()
         range_after_fuse.pop()
@@ -1171,10 +1271,10 @@ class NormClassifier:
             if not ori_broadcast_axis_is_empty:
                 broadcast_axis_after_fuse.insert(0, 0)
 
-        self.shape_after_fuse = shape_after_fuse
-        self.range_after_fuse = range_after_fuse
-        self.reduce_axis_after_fuse = reduce_axis_after_fuse
-        self.broadcast_axis_after_fuse = broadcast_axis_after_fuse
+        self.after_fuse_info.shape = shape_after_fuse
+        self.after_fuse_info.shape_range = range_after_fuse
+        self.after_fuse_info.reduce_axis = reduce_axis_after_fuse
+        self.after_fuse_info.broadcast_axis = broadcast_axis_after_fuse
 
     def _gen_classify_out(self):
         """
@@ -1274,64 +1374,69 @@ class NormClassifier:
 
                 return __out_list
 
-            _out_shape = []
-            _out_range = []
+            def ___add_s_format_of_5hd(__res):
+                if self.is_process_5hd:
+                    # can not fuse axis
+                    if __res.get("mode") in ("no_fuse", "broadcast_unknown", "single_broadcast_known_and_no_fuse"):
+                        __res["s_format"] = self.before_fuse_info.s_format
+                    else:
+                        __res["s_format"] = self.after_fuse_info.s_format
+
+            _out_shape, _out_range = self.after_fuse_info.shape[:], self.after_fuse_info.shape_range[:]
             _out_broadcast_axis = None
             if _mode == ModeType.ALL_BROADCAST:
-                _out_shape = [1] * len(self.shape_after_fuse)
-                _out_range = [(1, 1)] * len(self.range_after_fuse)
-                _out_broadcast_axis = list(range(len(self.shape_after_fuse)))
+                _out_shape = [1] * len(self.after_fuse_info.shape)
+                _out_range = [(1, 1)] * len(self.after_fuse_info.shape_range)
+                _out_broadcast_axis = list(range(len(self.after_fuse_info.shape)))
             elif _mode == ModeType.BROADCAST_REDUCE_EQUAL:
-                _out_shape = ___gen_single_out_shape_or_range(self.shape_after_fuse, self.reduce_axis_after_fuse, 1)
-                _out_range = ___gen_single_out_shape_or_range(self.range_after_fuse, self.reduce_axis_after_fuse,
-                                                              (1, 1))
-                _out_broadcast_axis = self.reduce_axis_after_fuse[:]
+                _out_shape = ___gen_single_out_shape_or_range(self.after_fuse_info.shape,
+                                                              self.after_fuse_info.reduce_axis, 1)
+                _out_range = ___gen_single_out_shape_or_range(self.after_fuse_info.shape_range,
+                                                              self.after_fuse_info.reduce_axis, (1, 1))
+                _out_broadcast_axis = self.after_fuse_info.reduce_axis[:]
             elif _mode == ModeType.BROADCAST_REDUCE_OPPOSITE:
-                _out_shape = ___gen_single_out_shape_or_range(self.shape_after_fuse, self.reduce_axis_after_fuse, 1,
-                                                              False)
-                _out_range = ___gen_single_out_shape_or_range(self.range_after_fuse, self.reduce_axis_after_fuse,
-                                                              (1, 1), False)
-                _out_broadcast_axis = sorted(set(range(len(self.shape_after_fuse))) -
-                                             set(self.reduce_axis_after_fuse))
+                _out_shape = ___gen_single_out_shape_or_range(self.after_fuse_info.shape,
+                                                              self.after_fuse_info.reduce_axis, 1, False)
+                _out_range = ___gen_single_out_shape_or_range(self.after_fuse_info.shape_range,
+                                                              self.after_fuse_info.reduce_axis, (1, 1), False)
+                _out_broadcast_axis = sorted(set(range(len(self.after_fuse_info.shape))) -
+                                             set(self.after_fuse_info.reduce_axis))
             elif _mode == ModeType.BROADCAST_UNKNOWN:
                 _out_shape = _ori_before_bro_shape[:]
                 _out_range = _ori_before_bro_range[:]
             elif _mode == ModeType.SINGLE_BROADCAST_KNOWN_AND_NO_FUSE:
-                _out_shape = ___gen_single_out_shape_or_range(self.shape_before_fuse, _single_broadcast_axis, 1)
-                _out_range = ___gen_single_out_shape_or_range(self.range_before_fuse, _single_broadcast_axis,
-                                                              (1, 1))
+                _out_shape = ___gen_single_out_shape_or_range(self.before_fuse_info.shape, _single_broadcast_axis, 1)
+                _out_range = ___gen_single_out_shape_or_range(self.before_fuse_info.shape_range,
+                                                              _single_broadcast_axis, (1, 1))
                 _out_broadcast_axis = _single_broadcast_axis[:]
             elif _mode == ModeType.BROADCAST_AXIS_KNOWN:
-                _out_shape = ___gen_single_out_shape_or_range(self.shape_after_fuse, self.broadcast_axis_after_fuse,
-                                                              1)
-                _out_range = ___gen_single_out_shape_or_range(self.range_after_fuse, self.broadcast_axis_after_fuse,
-                                                              (1, 1))
-                _out_broadcast_axis = self.broadcast_axis_after_fuse[:]
+                _out_shape = ___gen_single_out_shape_or_range(self.after_fuse_info.shape,
+                                                              self.after_fuse_info.broadcast_axis, 1)
+                _out_range = ___gen_single_out_shape_or_range(self.after_fuse_info.shape_range,
+                                                              self.after_fuse_info.broadcast_axis, (1, 1))
+                _out_broadcast_axis = self.after_fuse_info.broadcast_axis[:]
             elif _mode == ModeType.NO_BROADCAST:
-                _out_shape = self.shape_after_fuse[:]
-                _out_range = self.range_after_fuse[:]
                 _out_broadcast_axis = []
             elif _mode == ModeType.NO_FUSE:
-                _out_shape = self.shape_before_fuse[:]
-                _out_range = self.range_before_fuse[:]
-            # ModeType.COMMON
-            else:
-                _out_shape = self.shape_after_fuse[:]
-                _out_range = self.range_after_fuse[:]
+                _out_shape = self.before_fuse_info.shape[:]
+                _out_range = self.before_fuse_info.shape_range[:]
 
-            return {
+            _res = {
                 "shape": _out_shape,
                 "range": _out_range,
                 "mode": _mode.value,
                 "input_type": _input_type,
                 "broadcast_axis": _out_broadcast_axis
             }
+            ___add_s_format_of_5hd(_res)
+
+            return _res
 
         def __gen_reduce_axis_out(_is_fuse):
             """
             generate reduce axis output
             """
-            return self.reduce_axis_after_fuse if _is_fuse else self.reduce_axis
+            return self.after_fuse_info.reduce_axis if _is_fuse else self.reduce_axis
 
         def __pruning(_input_dict):
             """
@@ -1368,6 +1473,16 @@ class NormClassifier:
                         return True
 
             return False
+
+        def __add_pad_axes_and_np_mapping_of_5hd(_total_classify_out):
+            if self.is_process_5hd:
+                for _single_out in _total_classify_out:
+                    # last axis is reduce axis
+                    for _index, _single_item in enumerate(_single_out[:-1]):
+                        _single_item["np_mapping"] = FORMAT_AND_NP_MAP.get("NC1HWC0")
+                        _single_item["pad_axes_and_value"] = self.index_and_value_of_split_axis[_index]
+                        _single_item["format"] = "NC1HWC0"
+                        _single_item["in_5hd_process"] = True
 
         exist_unknown_broadcast_case = False
         exist_no_fuse_case = False
@@ -1450,6 +1565,8 @@ class NormClassifier:
             no_fuse_case.append(__gen_reduce_axis_out(False))
             total_classify_out.append(no_fuse_case)
 
+        __add_pad_axes_and_np_mapping_of_5hd(total_classify_out)
+
         return total_classify_out
 
     def classify(self):
@@ -1458,7 +1575,7 @@ class NormClassifier:
         """
         def _add_pattern_to_output(_classify_out):
             for single_out in _classify_out:
-                self.disable_fuse_axes_list.extend(self.disable_fuse_axes_after_fuse)
+                self.disable_fuse_axes_list.append(self.after_fuse_info.disable_fuse_axes)
                 mode_non_duplicate_list = []
                 input_type_non_duplicate_list = []
                 reduce_axis = None
@@ -1493,8 +1610,9 @@ class NormClassifier:
                     {"all_broadcast_axis": single_broadcast_axis})
                 broadcast_axis_index += 1
             self.unify_broadcast_axis = self._get_unify_broadcast_axis()
-            self.shape_after_fuse, self.range_after_fuse,\
-                self.reduce_axis_after_fuse, self.broadcast_axis_after_fuse = self._simplify()
+            self.after_fuse_info.shape, self.after_fuse_info.shape_range, self.after_fuse_info.reduce_axis,\
+                self.after_fuse_info.broadcast_axis, self.after_fuse_info.disable_fuse_axes, \
+                self.after_fuse_info.s_format = self._simplify()
             is_append_remove_one, is_desert_origin = self._judge_remove_last_one()
             if not is_desert_origin:
                 classify_out = self._gen_classify_out()

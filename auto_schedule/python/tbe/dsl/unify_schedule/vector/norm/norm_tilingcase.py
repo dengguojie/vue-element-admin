@@ -41,11 +41,13 @@ from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import get_op_context
 from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base.padding import padding
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
 
+from .norm_helper import classify_actions
 from ... import util
 from ...computation import Computation
 from ...constants import BROADCAST_INSNS
@@ -170,7 +172,7 @@ def _judge_current_compute_is_const():
     current_compute_shapes = current_compute.get("_input_shapes")
     for single_shape in current_compute_shapes:
         for single_dim in single_shape:
-            if not isinstance(single_dim, int):
+            if not isinstance(single_dim, (int, IntImm)):
                 return False
 
     return True
@@ -567,8 +569,8 @@ def _gen_const_tiling_case(norm_info, graph_info):
         ops_input_shapes = current_compute.get("_input_shapes")
         for single_shape in ops_input_shapes:
             for single_tensor in graph_info.input_tensor_set:
-                if util.shape_to_list(single_tensor.shape) == list(single_shape):
-                    inputs.append({"shape": single_shape, "dtype": single_tensor.dtype})
+                if judge_tvm_shape_equal(single_tensor.shape, single_shape):
+                    inputs.append({"shape": util.shape_to_list(single_tensor.shape), "dtype": single_tensor.dtype})
                     break
 
         for single_tensor in graph_info.real_output_tensor_set:
@@ -685,7 +687,7 @@ def _gen_const_tiling_case(norm_info, graph_info):
         _block_index = const_tiling_case.block_split_axis_index
         _ub_index = const_tiling_case.ub_split_axis_index
         _need_rollback_double_buffer = False
-    
+
         if _block_index is None or _ub_index is None:
             _need_rollback_double_buffer = True
         else:
@@ -972,6 +974,8 @@ def _norm_post_build():
                 after_encode_name.append(30000)
             elif names[0] == 'ub':
                 after_encode_name.append(40000)
+            elif names[0] == 'ori' and names[1] == 'dim':
+                after_encode_name.append(50000 + int(names[2]) * 100 + int(names[3]))
             else:
                 raise_error("unknown var name in norm schedule, please check")
 
@@ -1043,6 +1047,8 @@ class NormComputeGraphInfo:
         self.other_tensor_set: Optional[Set[Tensor]] = set()
         # special cast tensor that need reuse
         self.special_cast_tensor_and_ori_tensor_map: Dict[Tensor, Tensor] = {}
+        # tensor and set value actions map
+        self.tensor_and_set_value_actions_map = {}
         # max type and min type in graph
         self.max_type: Optional[str] = None
         self.min_type: Optional[str] = None
@@ -1051,6 +1057,7 @@ class NormComputeGraphInfo:
         # do info collection
         self.collect_info(output_tensors)
         self.fake_node()
+        self.get_sch_set_value_tensors()
         self.get_tensors_before_and_after_reduce()
         self.get_tensors_in_fork()
         self.get_mid_out_special_tensors()
@@ -1217,6 +1224,15 @@ class NormComputeGraphInfo:
                            hooks)
 
         return list(visited_list), tensor_consumers_map, tensor_producers_map
+
+    def get_sch_set_value_tensors(self):
+        """
+        get set value tensors that schedule need to handle
+        """
+        current_compute = get_context().get_current_compute()
+        if current_compute and current_compute.get("_in_5hd_process"):
+            sch_set_value_actions = padding.calc_padding([self.endpoint_output_tensor])
+            self.tensor_and_set_value_actions_map = classify_actions(sch_set_value_actions)
 
     def get_tensors_before_and_after_reduce(self):
         """
@@ -1697,6 +1713,10 @@ class NormInfo:
 
             if util.is_unified_broadcast(_tensor):
                 _current_coexist_node = __handle_unified_broadcast(_current_coexist_node)
+
+            for _set_value_tensor, set_value_actions in self.graph_info.tensor_and_set_value_actions_map.items():
+                if _set_value_tensor in _tensor.op.input_tensors and len(set_value_actions) > 1:
+                    _current_coexist_node = _current_coexist_node + len(set_value_actions)
 
             return _current_coexist_node
 

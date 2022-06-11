@@ -192,6 +192,7 @@ class Norm {
     bool IsNeedWorkspace() const;
     bool IsNeedReduceTranspose() const;
     bool IsNeedAlignedInUb() const;
+    bool GetOriginalC(const std::size_t& input_type_index, const std::size_t& dim_index, int32_t& ori_c_value);
     bool GetVarValue();
     bool CalcInputAlignShape();
     NormBroadcastMode JudgeBroadcastMode(const std::array<int64_t, NORM_MAX_DIM_LEN>& before_broadcast_shape) const;
@@ -208,6 +209,7 @@ class Norm {
     NormTilingInfo tilingInfo;
     NormReorderInfo reorderInfo;
 
+    std::array<std::size_t, NORM_MAX_DIM_LEN> input_type_index_to_input_index{};
     std::array<std::array<int64_t, NORM_MAX_DIM_LEN>, NORM_MAX_INPUT_NUMS> before_broadcast_shapes{};
 
     std::array<int64_t, NORM_MAX_DIM_LEN> input_shape_ori{};

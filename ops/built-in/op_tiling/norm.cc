@@ -182,6 +182,7 @@ bool Norm<T>::GetInput() {
       continue;
     }
     const auto& cur_input_shape = context->GetInputShape(i);
+    input_type_index_to_input_index[single_input_type] = i;
     std::size_t cur_dim_len = cur_input_shape.GetDimNum();
     input_flag[single_input_type] = true;
     if (single_input_type == 0) {
@@ -1582,6 +1583,19 @@ bool Norm<T>::CalcWorkspace() {
 }
 
 template <typename T>
+bool Norm<T>::GetOriginalC(const std::size_t& input_type_index, const std::size_t& dim_index, int32_t& ori_c_value) {
+  std::size_t input_index = input_type_index_to_input_index[input_type_index];
+  const auto& ori_input_shape = context->GetOriginInputShape(input_index);
+  V_OP_TILING_CHECK((!ori_input_shape.Empty()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get ori input shape"),
+                    return false);
+
+  ori_c_value = static_cast<int32_t>(ori_input_shape.GetDim(dim_index));
+
+  return true;
+}
+
+template <typename T>
 bool Norm<T>::GetVarValue() {
   var_value_len = 0;
   if (compileInfo->is_const) {
@@ -1590,6 +1604,7 @@ bool Norm<T>::GetVarValue() {
 
   // obtain var value
   try {
+    int32_t ori_dim_encode = 50000;
     int32_t ub_tiling_factor_encode = 40000;
     int32_t block_tiling_factor_encode = 30000;
     int32_t known_broadcast_encode = 20000;
@@ -1597,7 +1612,14 @@ bool Norm<T>::GetVarValue() {
     int32_t dim_encode = 100;
     const auto& var_pattern = compileInfo->norm_vars.at(tiling_key);
     for (const auto& var : var_pattern) {
-      if (var >= ub_tiling_factor_encode) {
+      if (var >= ori_dim_encode) {
+        bool ret = GetOriginalC((var % ori_dim_encode) / dim_encode,
+                                (var % ori_dim_encode) % dim_encode, var_value[var_value_len]);
+        if (!ret) {
+          return false;
+        }
+        var_value_len++;
+      } else if (var >= ub_tiling_factor_encode) {
         var_value[var_value_len] = static_cast<int32_t>(tilingInfo.ub_tiling_factor);
         var_value_len++;
       } else if (var >= block_tiling_factor_encode) {
@@ -1608,7 +1630,7 @@ bool Norm<T>::GetVarValue() {
         var_value_len++;
       } else {
         var_value[var_value_len] = static_cast<int32_t>(before_broadcast_shapes[
-          (var % unknown_broadcast_encode) / dim_encode][(var % unknown_broadcast_encode) % dim_encode]);
+          (var % unknown_broadcast_encode) / dim_encode - 1][(var % unknown_broadcast_encode) % dim_encode]);
         var_value_len++;
       }
     }
