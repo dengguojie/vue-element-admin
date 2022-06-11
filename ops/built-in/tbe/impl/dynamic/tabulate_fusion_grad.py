@@ -38,6 +38,7 @@ class TabulateFusionGrad:
     NUM_16 = 16
     NUM_32 = 32
     NUM_64 = 64
+    NUM_128 = 128
     MIN_FLOAT = -3.0e+38
 
     def __init__(self, table, table_info, em_x, em_, dy_, descriptor, dy_dem_x, dy_dem,
@@ -65,6 +66,7 @@ class TabulateFusionGrad:
         self.tik_inst = tik.Tik()
 
         self.op_dtype = "float32"
+        self.dtype_fp16 = "float16"
 
         self.split_count = split_count
         self.split_index = split_index
@@ -112,6 +114,10 @@ class TabulateFusionGrad:
         self.descriptor_gm = None
         self.dy_dem_x_gm = None
         self.dy_dem_gm = None
+
+        self.lower_ub = None
+        self.upper_ub = None
+        self.max_ub = None
 
         self.em_x = None
         self.offset = None
@@ -229,11 +235,16 @@ class TabulateFusionGrad:
 
         self.size_batch_num.set_as((self.size + self.size_tile - 1) // self.size_tile)
 
+        self.lower_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_64,), name="lower_ub", scope=tik.scope_ubuf)
+        self.upper_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_64,), name="upper_ub", scope=tik.scope_ubuf)
+        self.max_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_64,), name="max_ub", scope=tik.scope_ubuf)
+        self.tik_inst.vector_dup(self.NUM_64, self.lower_ub, self.lower, 1, 1, 8)
+        self.tik_inst.vector_dup(self.NUM_64, self.upper_ub, self.upper, 1, 1, 8)
+        self.tik_inst.vector_dup(self.NUM_64, self.max_ub, self._max, 1, 1, 8)
+
     def _locate_em_x(self, nei_mask, in_ub, out_ub):
         em_x = in_ub[0]
         em_x_new, offset = out_ub[0], out_ub[1]
-        
-        cmp_mask = self.tik_inst.Tensor("uint64", (1,), name="cmp_mask", scope=tik.scope_ubuf)
 
         em_x_tmp = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="em_x_tmp", scope=tik.scope_ubuf)
         offset_fp32 = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile,), name="offset_fp32", scope=tik.scope_ubuf)
@@ -251,9 +262,9 @@ class TabulateFusionGrad:
         self.tik_inst.vadds(nei_mask, em_x_tmp, em_x_tmp, self.lower, 1, 1, 1, 8, 8)
         self.tik_inst.vsub(nei_mask, em_x_tmp, em_x, em_x_tmp, 1, 1, 1, 1, 8, 8, 8)
         # 'mask and selection: x >= lower
-        self.tik_inst.vcmpvs_ge(cmp_mask, em_x, self.lower, 1, 1, 8)
-        self.tik_inst.vsel(nei_mask, 2, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsel(nei_mask, 2, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
+        cmp_mask = self.tik_inst.vcmp_ge(self.NUM_64, em_x, self.lower_ub, 1, 1)
+        self.tik_inst.vsel(nei_mask, 0, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsel(nei_mask, 0, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
 
         # 'condition 2: x >= upper
         # 'table_offset = (x - upper) // s1
@@ -268,9 +279,9 @@ class TabulateFusionGrad:
         # 'table_offset = table_offset + first_stride
         self.tik_inst.vadds(nei_mask, offset_fp32, offset_fp32, self.first_stride, 1, 1, 1, 8, 8)
         # 'mask and selection: x >= upper
-        self.tik_inst.vcmpvs_ge(cmp_mask, em_x, self.upper, 1, 1, 8)
-        self.tik_inst.vsel(nei_mask, 2, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsel(nei_mask, 2, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
+        cmp_mask = self.tik_inst.vcmp_ge(self.NUM_64, em_x, self.upper_ub, 1, 1)
+        self.tik_inst.vsel(nei_mask, 0, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsel(nei_mask, 0, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
 
         # 'condition 3: x >= max
         # 'table_offset = max_tbl_idx
@@ -278,9 +289,9 @@ class TabulateFusionGrad:
         # 'x = 0
         self.tik_inst.vec_dup(nei_mask, em_x_tmp, 0, 1, 8)
         # 'mask and selection: x >= max
-        self.tik_inst.vcmpvs_ge(cmp_mask, em_x, self._max, 1, 1, 8)
-        self.tik_inst.vsel(nei_mask, 2, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsel(nei_mask, 2, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
+        cmp_mask = self.tik_inst.vcmp_ge(self.NUM_64, em_x, self.max_ub, 1, 1)
+        self.tik_inst.vsel(nei_mask, 0, table_idx_ub, cmp_mask, offset_fp32, table_idx_ub, 1, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsel(nei_mask, 0, em_x_new, cmp_mask, em_x_tmp, em_x_new, 1, 1, 1, 1, 8, 8, 8)
 
         self.tik_inst.vconv(nei_mask, "floor", offset, table_idx_ub, 1, 1, 1, 8, 8)
 
@@ -443,6 +454,194 @@ class TabulateFusionGrad:
                            nei_mask // constant.REPEAT_STRIDE_EIGHT,
                            nei_mask // constant.REPEAT_STRIDE_EIGHT)
 
+    def _vnchwconv_fp32_8_4_second(self, dst_ub_fp16, src_list):
+        """
+        the second step of transpose fp32 data from (8, 4) to (4, 8) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            dst_list = [dst_ub_fp16[16 * 4 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list, src_list, 4, 16 // 16, 16 * 2 // 16)
+
+    def _vnchwconv_fp32_16_4_second(self, dst_ub_fp16, src_list):
+        """
+        the second step of transpose fp32 data from (16, 4) to (4, 16) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            dst_list = [dst_ub_fp16[0], dst_ub_fp16[16]]
+            for i in range(2, 9):
+                dst_list = dst_list + [dst_ub_fp16[64 * i], dst_ub_fp16[64 * i + 16]]
+            self.tik_inst.vnchwconv(False, False, dst_list, src_list, 4, 16 * 2 // 16, 16 * 2 // 16)
+
+    def _vnchwconv_fp32_32_4_second(self, dst_ub_fp16, src_list):
+        """
+        the second step of transpose fp32 data from (32, 4) to (4, 32) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            dst_list = [dst_ub_fp16[16 * i] for i in range(4)]
+            dst_list = dst_list + [dst_ub_fp16[64 * 4 + 16 * i] for i in range(12)]
+            self.tik_inst.vnchwconv(False, False, dst_list, src_list, 4, 16 * 4 // 16, 16 * 2 // 16)
+
+    def _vnchwconv_fp32_64_4_second(self, dst_ub_fp16, src_list):
+        """
+        the second step of transpose fp32 data from (64, 4) to (4, 64) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            dst_list = [dst_ub_fp16[16 * i] for i in range(8)]
+            dst_list = dst_list + [dst_ub_fp16[64 * 8 + 16 * i] for i in range(8)]
+            self.tik_inst.vnchwconv(False, False, dst_list, src_list, 4, 16 * 8 // 16, 16 * 2 // 16)
+
+    def _vnchwconv_fp32_8x_4_second(self, dst_ub_fp16, src_ub_fp16, nei_mask):
+        """
+        the second step of transpose fp32 data from (64/32/16/8, 4) to (4, 64/32/16/8) by using vnchwconv
+        """
+        src_list = []
+        for i in range(8):
+            src_list = src_list + [src_ub_fp16[128 * i], src_ub_fp16[128 * i + 16]]
+
+        with self.tik_inst.if_scope(nei_mask == self.NUM_8):
+            self._vnchwconv_fp32_8_4_second(dst_ub_fp16, src_list)
+
+        with self.tik_inst.if_scope(nei_mask == self.NUM_16):
+            self._vnchwconv_fp32_16_4_second(dst_ub_fp16, src_list)
+
+        with self.tik_inst.if_scope(nei_mask == self.NUM_32):
+            self._vnchwconv_fp32_32_4_second(dst_ub_fp16, src_list)
+
+        with self.tik_inst.if_scope(nei_mask == self.NUM_64):
+            self._vnchwconv_fp32_64_4_second(dst_ub_fp16, src_list)
+
+    def _vnchwconv_fp32_8x_4(self, em_t, em, nei_mask):
+        """
+        transpose fp32 data from (64/32/16/8, 4) to (4, 64/32/16/8) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            trans_dst_ub = self.tik_inst.Tensor(self.dtype_fp16, (self.NUM_16 * self.NUM_64,),
+                                                name="trans_dst_ub", scope=tik.scope_ubuf)
+            trans_src_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_16 * self.NUM_32,),
+                                                name="trans_src_ub", scope=tik.scope_ubuf)
+            self.tik_inst.vadds(64, trans_src_ub, em, 0, (nei_mask * 4 + 64 - 1) // 64, 1, 1, 8, 8)
+            trans_ub_fp16 = trans_src_ub.reinterpret_cast_to(self.dtype_fp16)
+
+            src_list0 = [trans_ub_fp16[16 * 4 * i] for i in range(16)]
+            dst_list0 = [trans_dst_ub[16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 4, 16 * 16 // 16, 16 // 16)
+
+            self._vnchwconv_fp32_8x_4_second(trans_ub_fp16, trans_dst_ub, nei_mask)
+
+            self.tik_inst.vadds(64, em_t, trans_src_ub, 0, (nei_mask * 4 + 64 - 1) // 64, 1, 1, 8, 8)
+
+    def _trans_fp32_8x_4(self, em_t, em, nei_mask):
+        """
+        transpose fp32 data from (64/32/16/8, 4) to (4, 64/32/16/8)
+        """
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(False, em_t, em, nei_mask, self.NUM_4)
+        else:
+            self._vnchwconv_fp32_8x_4(em_t, em, nei_mask)
+
+    def _vnchwconv_fp32_8_or_16_second(self, dst_ub_fp16, offset, trans_ub):
+        """
+        the second step of transpose fp32 data from (64, 8/16) to (8/16, 64) by using vnchwconv
+        """
+        src_list = []
+        for i in range(8):
+            src_list = src_list + [trans_ub[256 * i], trans_ub[256 * i + 16]]
+        dst_list = [dst_ub_fp16[offset + 16 * i] for i in range(8)]
+        dst_list = dst_list + [dst_ub_fp16[offset + 8 * 128 + 16 * i] for i in range(8)]
+        self.tik_inst.vnchwconv(False, False, dst_list, src_list, 8, 8 * 16 // 16, 16 * 2 // 16)
+
+    def _vnchwconv_fp32_64_8(self, dst_ub_fp16, offset, src_ub_fp16, trans_ub):
+        """
+        transpose fp32 data from (64, 8) to (8, 64) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            src_list0 = [src_ub_fp16[128 * i] for i in range(16)]
+            dst_list0 = [trans_ub[16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 8, 16 * 16 // 16, 16 // 16)
+
+            self._vnchwconv_fp32_8_or_16_second(dst_ub_fp16, offset, trans_ub)
+
+    def _vnchwconv_fp32_64_16(self, dst_ub_fp16, offset, src_ub_fp16, trans_ub):
+        """
+        transpose fp32 data from (64, 16) to (16, 64) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            src_list0 = [src_ub_fp16[256 * i] for i in range(8)]
+            src_list0 = src_list0 + [src_ub_fp16[256 * i + 16] for i in range(8)]
+            dst_list0 = [trans_ub[16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 8, 16 * 16 // 16, 16 * 2 // 16)
+
+            self._vnchwconv_fp32_8_or_16_second(dst_ub_fp16, offset, trans_ub)
+
+    def _vnchwconv_fp32_32_or_64_second(self, dst_ub_fp16, offset, trans_ub, loop_idx):
+        """
+        the second step of transpose fp32 data from (64, 32/64) to (32/64, 64) by using vnchwconv
+        """
+        src_list = []
+        for i in range(8):
+            src_list = src_list + [trans_ub[256 * i], trans_ub[256 * i + 16]]
+        dst_list = [dst_ub_fp16[offset + 16 * i + 16 * 64 * 2 * loop_idx] for i in range(8)]
+        dst_list = dst_list + [dst_ub_fp16[offset + 8 * 128 + 16 * i + 16 * 64 * 2 * loop_idx] for i in range(8)]
+        self.tik_inst.vnchwconv(False, False, dst_list, src_list, 8, 8 * 16 // 16, 16 * 2 // 16)
+
+    def _vnchwconv_fp32_64_32(self, dst_ub_fp16, offset, src_ub_fp16, trans_ub):
+        """
+        transpose fp32 data from (64, 32) to (32, 64) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            with self.tik_inst.for_range(0, 2) as loop_idx:
+                src_list0 = [src_ub_fp16[512 * i + 16 * 2 * loop_idx] for i in range(8)]
+                src_list0 = src_list0 + [src_ub_fp16[512 * i + 16 + 16 * 2 * loop_idx] for i in range(8)]
+                dst_list0 = [trans_ub[16 * i] for i in range(16)]
+                self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 8, 16 * 16 // 16, 32 * 2 // 16)
+
+                self._vnchwconv_fp32_32_or_64_second(dst_ub_fp16, offset, trans_ub, loop_idx)
+
+    def _vnchwconv_fp32_64_64(self, dst_ub_fp16, offset, src_ub_fp16, trans_ub):
+        """
+        transpose fp32 data from (64, 64) to (64, 64) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            with self.tik_inst.for_range(0, 4) as loop_idx:
+                src_list0 = [src_ub_fp16[1024 * i + 16 * 2 * loop_idx] for i in range(8)]
+                src_list0 = src_list0 + [src_ub_fp16[1024 * i + 16 + 16 * 2 * loop_idx] for i in range(8)]
+                dst_list0 = [trans_ub[16 * i] for i in range(16)]
+                self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 8, 16 * 16 // 16, 64 * 2 // 16)
+
+                self._vnchwconv_fp32_32_or_64_second(dst_ub_fp16, offset, trans_ub, loop_idx)
+
+    def _vnchwconv_fp32_64_8x(self, dst_ub, offset, src_ub, nei_mask):
+        """
+        transpose fp32 data from (64, 64/32/16/8) to (64/32/16/8, 64) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            offset_fp16 = offset * 2
+            src_ub_fp16 = src_ub.reinterpret_cast_to(self.dtype_fp16)
+            dst_ub_fp16 = dst_ub.reinterpret_cast_to(self.dtype_fp16)
+            trans_ub = self.tik_inst.Tensor(self.dtype_fp16, (self.NUM_16 * self.NUM_128,),
+                                            name="trans_ub", scope=tik.scope_ubuf)
+
+            with self.tik_inst.if_scope(nei_mask == self.NUM_8):
+                self._vnchwconv_fp32_64_8(dst_ub_fp16, offset_fp16, src_ub_fp16, trans_ub)
+
+            with self.tik_inst.if_scope(nei_mask == self.NUM_16):
+                self._vnchwconv_fp32_64_16(dst_ub_fp16, offset_fp16, src_ub_fp16, trans_ub)
+
+            with self.tik_inst.if_scope(nei_mask == self.NUM_32):
+                self._vnchwconv_fp32_64_32(dst_ub_fp16, offset_fp16, src_ub_fp16, trans_ub)
+
+            with self.tik_inst.if_scope(nei_mask == self.NUM_64):
+                self._vnchwconv_fp32_64_64(dst_ub_fp16, offset_fp16, src_ub_fp16, trans_ub)
+
+    def _trans_fp32_64_8x(self, em_bc, offset, em_bc_t, m_len, nei_mask):
+        """
+        transpose fp32 data from (64, 64/32/16/8) to (64/32/16/8, 64)
+        """
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(False, em_bc[offset], em_bc_t, m_len, nei_mask)
+        else:
+            self._vnchwconv_fp32_64_8x(em_bc, offset, em_bc_t, nei_mask)
+
     def _em_load(self, loc, nei_offset, nei_mask, in_ub, out_ub):
         em_bc = out_ub[0]
 
@@ -454,34 +653,74 @@ class TabulateFusionGrad:
 
             self.tik_inst.data_move(em, self.em_gm[loc * self.em_row_size + nei_offset * self.NUM_4],
                                     0, 1, (nei_mask * self.NUM_4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
-            self.tik_inst.v4dtrans(False, em_tmp, em, nei_mask, self.NUM_4)
+            self._trans_fp32_8x_4(em_tmp, em, nei_mask)
 
             self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp, 0, self.size_tile, 1, 1,
                                 nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
-            self.tik_inst.v4dtrans(False, em_bc, em_bc_tmp, self.size_tile, nei_mask)
+            self._trans_fp32_64_8x(em_bc, 0, em_bc_tmp, self.size_tile, nei_mask)
 
             self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp[nei_mask], 0, self.size_tile, 1, 1,
                                 nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
-            self.tik_inst.v4dtrans(False, em_bc[self.tile_size], em_bc_tmp, self.size_tile, nei_mask)
+            self._trans_fp32_64_8x(em_bc, self.tile_size, em_bc_tmp, self.size_tile, nei_mask)
 
             self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp[nei_mask * self.NUM_2], 0, self.size_tile, 1, 1,
                                 nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
-            self.tik_inst.v4dtrans(False, em_bc[self.tile_size * self.NUM_2], em_bc_tmp, self.size_tile, nei_mask)
+            self._trans_fp32_64_8x(em_bc, self.tile_size * self.NUM_2, em_bc_tmp, self.size_tile, nei_mask)
 
             self.tik_inst.vadds(nei_mask, em_bc_tmp, em_tmp[nei_mask * self.NUM_3], 0, self.size_tile, 1, 1,
                                 nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
-            self.tik_inst.v4dtrans(False, em_bc[self.tile_size * self.NUM_3], em_bc_tmp, self.size_tile, nei_mask)
+            self._trans_fp32_64_8x(em_bc, self.tile_size * self.NUM_3, em_bc_tmp, self.size_tile, nei_mask)
+
+    def _vnchwconv_fp32_4_8x(self, dy_dem_out, dem_update, nei_mask):
+        """
+        transpose fp32 data from (4, 64/32/16/8) to (64/32/16/8, 4) by using vnchwconv
+        """
+        with self.tik_inst.new_stmt_scope():
+            trans_dst_ub = self.tik_inst.Tensor(self.dtype_fp16, (self.NUM_128 * self.NUM_2 * self.NUM_4,),
+                                                name="trans_dst_ub", scope=tik.scope_ubuf)
+            trans_src_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_128 * self.NUM_4,),
+                                                name="trans_src_ub", scope=tik.scope_ubuf)
+            self.tik_inst.vadds(nei_mask, trans_src_ub, dem_update, 0, 4, 1, 1, 128 // 8, nei_mask // 8)
+            trans_ub_fp16 = trans_src_ub.reinterpret_cast_to(self.dtype_fp16)
+
+            src_list0 = [trans_ub_fp16[16 * i] for i in range(16)]
+            dst_list0 = [trans_dst_ub[16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 4, 16 * 16 // 16, 128 * 2 // 16)
+
+            src_list1 = []
+            for i in range(4):
+                src_list1 = src_list1 + [trans_dst_ub[256 * i], trans_dst_ub[256 * i + 16]]
+            for i in range(4):
+                src_list1 = src_list1 + [trans_dst_ub[256 * i + 32], trans_dst_ub[256 * i + 48]]
+            dst_list1 = [trans_ub_fp16[16 * 4 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list1, src_list1, 4, 16 // 16, 16 * 4 // 16)
+
+            self.tik_inst.vadds(32, dy_dem_out, trans_src_ub, 0, nei_mask // 8, 1, 1, 32 // 8, 32 // 8)
+
+    def _trans_fp32_4_8x(self, dy_dem_out, dem_update, nei_mask):
+        """
+        transpose fp32 data from (4, 64/32/16/8) to (64/32/16/8, 4)
+        """
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(True, dy_dem_out, dem_update, nei_mask, self.NUM_4)
+        else:
+            self._vnchwconv_fp32_4_8x(dy_dem_out, dem_update, nei_mask)
 
     def _process_last_nei(self, loc, nei_offset, nei_mask, loop_break):
-        last_nei = self.tik_inst.Scalar(self.op_dtype, name="last_nei",
-                                        init_value=self.em_x_gm[(loc + 1) * self.nnei - 1])
+        last_nei = self.tik_inst.Scalar(self.op_dtype, name="last_nei")
+        em_x_block_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_8,), name="em_x_block_ub", scope=tik.scope_ubuf)
+        self.tik_inst.data_move(em_x_block_ub, self.em_x_gm[(loc + 1) * self.nnei - 1], 0, 1, 1, 0, 0)
+        last_nei.set_as(em_x_block_ub[0])
+
         dy_dem_out = self.tik_inst.Tensor(self.op_dtype, (self.nei_tile * self.NUM_4,),
                                           name="dy_dem_out", scope=tik.scope_ubuf)
+        last_nei_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_64,), name="last_nei_ub", scope=tik.scope_ubuf)
+        self.tik_inst.vector_dup(self.NUM_64, last_nei_ub, last_nei, 1, 1, 8)
 
         with self.tik_inst.if_scope(self.em_x[nei_mask - 1] == last_nei):
             cmp_mask = self.tik_inst.Tensor("uint64", (1,), name="cmp_mask", scope=tik.scope_ubuf)
             s_num_bit1 = self.tik_inst.Scalar("uint64", name="s_num_bit1")
-            self.tik_inst.vcmpvs_eq(cmp_mask, self.em_x, last_nei, 1, 1, 8)
+            self.tik_inst.vcmpv_eq(cmp_mask, self.em_x, last_nei_ub, 1, 1, 1, 8, 0)
             s_cmp_mask = self.tik_inst.Scalar("uint64", name="s_cmp_mask", init_value=cmp_mask[0])
             self.tik_inst.scalar_countbit1(s_num_bit1, s_cmp_mask)
             s_num_bit1.set_as(nei_mask - s_num_bit1)
@@ -517,7 +756,7 @@ class TabulateFusionGrad:
             self.tik_inst.vadd(s_num_bit1 + 1, dem_update[nei_mask * self.NUM_3], dem_update[nei_mask * self.NUM_3],
                                self.dy_dem[nei_mask * self.NUM_3], 1, 1, 1, 1, 8, 8, 8)
 
-            self.tik_inst.v4dtrans(True, dy_dem_out, dem_update, nei_mask, self.NUM_4)
+            self._trans_fp32_4_8x(dy_dem_out, dem_update, nei_mask)
             self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size +
                                                    nei_offset * self.NUM_4],
                                     dy_dem_out, 0, 1, (nei_mask * self.NUM_4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
@@ -525,7 +764,7 @@ class TabulateFusionGrad:
                                     dem_x_update, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT, 0, 0)
             loop_break.set_as(1)
         with self.tik_inst.else_scope():
-            self.tik_inst.v4dtrans(True, dy_dem_out, self.dy_dem, nei_mask, self.NUM_4)
+            self._trans_fp32_4_8x(dy_dem_out, self.dy_dem, nei_mask)
             self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size
                                                    + nei_offset * self.NUM_4],
                                     dy_dem_out, 0, 1, (nei_mask * self.NUM_4) // constant.REPEAT_STRIDE_EIGHT, 0, 0)
@@ -535,10 +774,12 @@ class TabulateFusionGrad:
     def _process_last_nei_tail(self, loc):
         last_nei = self.tik_inst.Scalar(self.op_dtype, name="last_nei", init_value=self.em_x[7])
         dy_dem_out = self.tik_inst.Tensor(self.op_dtype, (self.NUM_32,), name="dy_dem_out", scope=tik.scope_ubuf)
+        last_nei_ub = self.tik_inst.Tensor(self.op_dtype, (self.NUM_64,), name="last_nei_ub", scope=tik.scope_ubuf)
+        self.tik_inst.vector_dup(self.NUM_64, last_nei_ub, last_nei, 1, 1, 8)
 
         cmp_mask = self.tik_inst.Tensor("uint64", (1,), name="cmp_mask", scope=tik.scope_ubuf)
         s_num_bit1 = self.tik_inst.Scalar("uint64", name="s_num_bit1")
-        self.tik_inst.vcmpvs_eq(cmp_mask, self.em_x, last_nei, 1, 1, 8)
+        self.tik_inst.vcmpv_eq(cmp_mask, self.em_x, last_nei_ub, 1, 1, 1, 8, 0)
         s_cmp_mask = self.tik_inst.Scalar("uint64", name="s_cmp_mask", init_value=cmp_mask[0])
         self.tik_inst.scalar_countbit1(s_num_bit1, s_cmp_mask)
         times = self.tik_inst.Scalar("int64", name="times", init_value=s_num_bit1)
@@ -573,7 +814,7 @@ class TabulateFusionGrad:
         self.tik_inst.vadd(s_num_bit1 + 1, dem_update[self.NUM_8 * self.NUM_3], dem_update[self.NUM_8 * self.NUM_3],
                            self.dy_dem[self.NUM_8 * self.NUM_3], 1, 1, 1, 1, 8, 8, 8)
 
-        self.tik_inst.v4dtrans(True, dy_dem_out, dem_update, self.NUM_8, self.NUM_4)
+        self._trans_fp32_4_8x(dy_dem_out, dem_update, self.NUM_8)
 
         self.tik_inst.data_move(self.dy_dem_gm[(loc - self.loc_offset) * self.em_row_size
                                                + (self.nnei - self.NUM_8) * self.NUM_4],
@@ -594,7 +835,7 @@ class TabulateFusionGrad:
                                            scope=tik.scope_ubuf)
             self.tik_inst.vadds(nei_mask, em_x_bc, em_x_new, 0, self.size_tile, 1, 1,
                                 nei_mask // constant.REPEAT_STRIDE_EIGHT, 0)
-            self.tik_inst.v4dtrans(False, self.em_x_tile, em_x_bc, self.size_tile, nei_mask)
+            self._trans_fp32_64_8x(self.em_x_tile, 0, em_x_bc, self.size_tile, nei_mask)
 
         self.tik_inst.vec_dup(nei_mask, self.dy_dem_x, 0, 1, nei_mask // constant.REPEAT_STRIDE_EIGHT)
         self.tik_inst.vec_dup(nei_mask, self.dy_dem, 0, self.NUM_4, nei_mask // constant.REPEAT_STRIDE_EIGHT)

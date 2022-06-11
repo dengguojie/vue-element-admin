@@ -862,6 +862,10 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/rnn_fusion_pass.cc
@@ -911,6 +915,7 @@ vector_A:
       - ops/built-in/op_tiling/dynamic_gru_v2.cc
       - ops/built-in/op_tiling/softmax_tiling.cc
       - ops/built-in/op_tiling/tabulate_fusion.cc
+      - ops/built-in/op_tiling/tabulate_fusion_grad.cc
       - ops/built-in/tbe/impl/aipp.py
       - ops/built-in/tbe/impl/aipp_comm.py
       - ops/built-in/tbe/impl/ascend_quant.py
@@ -943,6 +948,7 @@ vector_A:
       - ops/built-in/tbe/impl/mvn.py
       - ops/built-in/tbe/impl/prior_box_d_v2.py
       - ops/built-in/tbe/impl/dynamic/tabulate_fusion.py
+      - ops/built-in/tbe/impl/dynamic/tabulate_fusion_grad.py
       - ops/built-in/tbe/impl/softmax_grad.py
       - ops/built-in/tbe/impl/yolo_boxes_encode.py
       - ops/built-in/tbe/impl/anchor_response_flags.py
@@ -2497,7 +2503,6 @@ unkown:
       - ops/built-in/op_tiling/layer_norm_beta_gamma_backprop.cc
       - ops/built-in/op_tiling/avg_pool_1d.cc
       - ops/built-in/op_tiling/dyn_seq_outer.cc
-      - ops/built-in/op_tiling/tabulate_fusion_grad.cc
       - ops/built-in/op_tiling/extract_image_patches.cc
       - ops/built-in/op_tiling/ger.cc
       - ops/built-in/op_tiling/batch_multi_class_non_max_suppression.cc
@@ -3209,7 +3214,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/real_div.py
       - ops/built-in/tbe/impl/dynamic/prod_force_se_a.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_d.py
-      - ops/built-in/tbe/impl/dynamic/tabulate_fusion_grad.py
       - ops/built-in/tbe/impl/dynamic/l2_loss.py
       - ops/built-in/tbe/impl/dynamic/scan_pq_codes_expand.py
       - ops/built-in/tbe/impl/dynamic/softplus_grad.py
@@ -3759,9 +3763,7 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/cast_remove_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deep_md_fusion_pass_util.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lars_v2_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/decode_bbox_v2_insert_transpose_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/sigmoid_cross_entropy_with_logits_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/remove_node_fusion_pass.h
@@ -3832,8 +3834,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lin_space_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorm_bert_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/momentum_lossscale_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_transdatarnn_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/remap_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/im2col_fusion_pass.h

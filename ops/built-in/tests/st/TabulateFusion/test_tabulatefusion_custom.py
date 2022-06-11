@@ -44,7 +44,7 @@ def tabulate_fusion_test(nloc, nnei, last_layer_size, table_dim0, split_count=1,
                       "ori_shape": (nloc, 4, last_layer_size), "ori_format": "ND",
                       "range": ((nloc, nloc), (4, 4), (last_layer_size, last_layer_size))}
         tabulate_fusion(table, table_info, em_x, em, descriptor, last_layer_size, split_count, split_index,
-                        kernel_name="tabulate_fusion_ut")
+                        kernel_name="tabulate_fusion_st")
 
 
 def test_tabulate_fusion_case001(nloc, nnei, last_layer_size, table_dim0):

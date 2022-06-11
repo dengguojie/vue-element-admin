@@ -137,6 +137,9 @@ Status TabulateFusionGradFusionPass::UpdateTabulateFusionGradNode(
  */
 Status TabulateFusionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into TabulateFusionGrad fusion pass");
+  bool isSupport = false;
+  FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSupportVectorCore(FUSED_OP_TYPE, isSupport) != SUCCESS || !isSupport,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit for no support vector core"), return NOT_CHANGED);
 
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_TABULATEFUSIONGRAD, mapping);
   FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to get TabulateFusionGrad Node"),

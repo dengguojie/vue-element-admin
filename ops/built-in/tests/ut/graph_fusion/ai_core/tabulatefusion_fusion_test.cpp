@@ -135,6 +135,8 @@ TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_01) {
   }
   EXPECT_EQ(findAiCoreNode, true);
   EXPECT_EQ(findVectorCoreNode, true);
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 }
 
 TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_02) {
@@ -203,4 +205,6 @@ TEST_F(tabulatefusion_fusion_test, tabulatefusion_fusion_test_02) {
   }
   EXPECT_EQ(findAiCoreNode, true);
   EXPECT_EQ(findVectorCoreNode, true);
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 }

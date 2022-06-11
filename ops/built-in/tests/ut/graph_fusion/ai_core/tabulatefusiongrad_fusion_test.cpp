@@ -28,6 +28,8 @@
 #include "split_combination_ops.h"
 #include "deep_md.h"
 #include "fusion_pass_test_utils.h"
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -63,6 +65,15 @@ Data CreateDataNode(const std::string& nodeName, const std::vector<int64_t>& dim
 }
 
 TEST_F(tabulatefusiongrad_fusion_test, tabulatefusiongrad_fusion_test_01) {
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  platformInfo.str_info.short_soc_version = "Ascend310P";
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
   std::string testCaseName = "tabulatefusiongrad_fusion_test_01";
   int32_t nloc = 12288;
   int32_t nnei = 138;
@@ -125,9 +136,20 @@ TEST_F(tabulatefusiongrad_fusion_test, tabulatefusiongrad_fusion_test_01) {
   }
   EXPECT_EQ(findAiCoreNode, true);
   EXPECT_EQ(findVectorCoreNode, true);
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 }
 
 TEST_F(tabulatefusiongrad_fusion_test, tabulatefusiongrad_fusion_test_02) {
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  platformInfo.str_info.short_soc_version = "Ascend310P";
+  optiCompilationInfo.soc_version = "Ascend310P3";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend310P3"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
   std::string testCaseName = "tabulatefusiongrad_fusion_test_02";
   int32_t nloc = -1;
   int32_t nnei = 138;
@@ -190,4 +212,6 @@ TEST_F(tabulatefusiongrad_fusion_test, tabulatefusiongrad_fusion_test_02) {
   }
   EXPECT_EQ(findAiCoreNode, true);
   EXPECT_EQ(findVectorCoreNode, true);
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 }
