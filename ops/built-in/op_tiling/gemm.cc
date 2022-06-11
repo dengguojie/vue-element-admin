@@ -35,7 +35,6 @@
 #include "cache_tiling.h"
 #include "op_log.h"
 #include "op_tiling.h"
-#include "op_tiling_util.h"
 #include "exe_graph/runtime/tiling_context.h"
 #include "register/op_impl_registry.h"
 using namespace std;

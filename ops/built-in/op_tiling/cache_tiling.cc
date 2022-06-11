@@ -349,7 +349,7 @@ void Tiling::GetTilingId(const BatchmatmulParas &params)
     tilingIDLongLong = tilingIDLongLong * kDecimal + bub_multi_flag;
   }
   tilingIDLongLong = tilingIDLongLong * kDecimal + min_kl1_cmp_kl0 + ((run_params.non_factor_k ? 1 : 0) << 1);
-  this->tiling_id = to_string(tilingIDLongLong);
+  this->tiling_id = std::to_string(tilingIDLongLong);
 }
 
 void GetFactors(int32_t *cnt, int32_t *factorList, const int32_t &num, const int32_t &maxNum)
@@ -1680,21 +1680,34 @@ void GetABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bu
   }
 }
 
-void GetABUbStorageSize(const UbStatus& ubStatus, int32_t& aub_storage_size, int32_t& bub_storage_size,
-                        int32_t& aub_bank_storage_size, int32_t& bub_bank_storage_size) {
+void GetABUbStorageSize(const UbStatus& ubStatus, int32_t storage_array[2][2]) {
   // After Reused, the storage size is the actual tensor storage size used.
-  aub_storage_size = ubStatus.cub_reuse_aub_flag ? max(ubStatus.aub_size, ubStatus.min_dma_size) : ubStatus.aub_size;
-  bub_storage_size = ubStatus.cub_reuse_bub_flag ? max(ubStatus.bub_size, ubStatus.min_dma_size) : ubStatus.bub_size;
-  aub_bank_storage_size =
-      ubStatus.cub_reuse_aub_flag ? max(ubStatus.aub_bank_size, ubStatus.min_dma_size) : ubStatus.aub_bank_size;
-  bub_bank_storage_size =
-      ubStatus.cub_reuse_bub_flag ? max(ubStatus.bub_bank_size, ubStatus.min_dma_size) : ubStatus.bub_bank_size;
+  // storage_array[0] contains aub_storage_size and aub_bank_storage_size;
+  // storage_array[1] contains bub_storage_size and bub_bank_storage_size;
+  storage_array[0][0] = ubStatus.cub_reuse_aub_flag
+                            ? max(ubStatus.aub_size, ubStatus.min_dma_size) + ubStatus.cub_aub_ratio * ubStatus.aub_size
+                            : ubStatus.aub_size;
+  storage_array[1][0] = ubStatus.cub_reuse_bub_flag
+                            ? max(ubStatus.bub_size, ubStatus.min_dma_size) + ubStatus.cub_bub_ratio * ubStatus.bub_size
+                            : ubStatus.bub_size;
+  storage_array[0][1] = ubStatus.cub_reuse_aub_flag
+                            ? max(ubStatus.aub_bank_size, ubStatus.min_dma_size) +
+                                  (ubStatus.aub_bank_size - ubStatus.cub_aub_ratio * ubStatus.aub_size)
+                            : ubStatus.aub_bank_size;
+  storage_array[1][1] = ubStatus.cub_reuse_bub_flag
+                            ? max(ubStatus.bub_bank_size, ubStatus.min_dma_size) +
+                                  (ubStatus.bub_bank_size - ubStatus.cub_bub_ratio * ubStatus.bub_size)
+                            : ubStatus.bub_bank_size;
 }
 
 int GetAllUbReusedAlignMode(const UbStatus& ubStatus, const int& aub_bank_storage_size,
                             const int& bub_bank_storage_size) {
   int align_mode = kNumZero;
   int32_t max_bank_storage_size = max(max(ubStatus.aub_bank_size, ubStatus.min_dma_size), ubStatus.bub_bank_size);
+  // When K_dim is split, the nd_to_nz tensor cannot be reused.
+  max_bank_storage_size = max_bank_storage_size +
+                          (ubStatus.aub_bank_size - ubStatus.cub_aub_ratio * ubStatus.aub_size) +
+                          (ubStatus.bub_bank_size - ubStatus.cub_bub_ratio * ubStatus.bub_size);
   if (max_bank_storage_size <= ubStatus.ub_rest_size) {
     align_mode = kNumThree;
   } else if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
@@ -1711,8 +1724,15 @@ int GetAllUbReusedAlignMode(const UbStatus& ubStatus, const int& aub_bank_storag
 
 int GetAlignMode(const UbStatus& ubStatus) {
   int align_mode = kNumZero;
-  int32_t aub_storage_size, bub_storage_size, aub_bank_storage_size, bub_bank_storage_size;
-  GetABUbStorageSize(ubStatus, aub_storage_size, bub_storage_size, aub_bank_storage_size, bub_bank_storage_size);
+  // storage_array[0] contains aub_storage_size and aub_bank_storage_size;
+  // storage_array[1] contains bub_storage_size and bub_bank_storage_size;
+  int32_t storage_array[2][2] = {0};
+  GetABUbStorageSize(ubStatus, storage_array);
+  // Parse the storage info from storage array.
+  int32_t aub_storage_size = storage_array[0][0];
+  int32_t bub_storage_size = storage_array[1][0];
+  int32_t aub_bank_storage_size = storage_array[0][1];
+  int32_t bub_bank_storage_size = storage_array[1][1];
   // Process storage_size when all ub tensors are reused together.
   bool a_b_c_ub_reused_together = ubStatus.cub_reuse_aub_flag && ubStatus.cub_reuse_bub_flag;
   // There‘s 4 align_mode here, 0->neither align, 1->AUB align and BUB not, 2->AUB not and BUB align, 3-> all aligned
@@ -1788,23 +1808,24 @@ void GetCUbFactors(const L0Status& l0Status, const BatchmatmulCompileParas& para
 }
 
 void UpdateUbLoadSize(const BatchmatmulCompileParas& params, const L0Status& l0Status, UbStatus& ubStatus) {
-  // Only valid when fused_double_operand_num is smaller than aub_double_num / bub_double_num
-  float cub_aub_ratio = (params.fused_double_operand_num + 1) / (params.aub_double_num + 1);
-  float cub_bub_ratio = (params.fused_double_operand_num + 1) / (params.bub_double_num + 1);
   if (!ubStatus.cub_reuse_aub_flag && !ubStatus.cub_reuse_bub_flag) {
     ubStatus.min_load_size = ubStatus.aub_size + ubStatus.bub_size;
   } else if (ubStatus.cub_reuse_aub_flag && !ubStatus.cub_reuse_bub_flag) {
-    ubStatus.min_load_size = ubStatus.bub_size + static_cast<int32_t>(ubStatus.aub_size * (1.0 - cub_aub_ratio));
-    ubStatus.max_dma_size = max(ubStatus.max_dma_size, static_cast<int32_t>(ubStatus.aub_size * cub_aub_ratio));
-  } else if (!ubStatus.cub_reuse_aub_flag && ubStatus.cub_reuse_bub_flag) {
-    ubStatus.min_load_size = ubStatus.aub_size + static_cast<int32_t>(ubStatus.bub_size * (1.0 - cub_bub_ratio));
-    ubStatus.max_dma_size = max(ubStatus.max_dma_size, static_cast<int32_t>(ubStatus.bub_size * cub_bub_ratio));
-  } else {
-    ubStatus.min_load_size = static_cast<int32_t>(ubStatus.aub_size * (1.0 - cub_aub_ratio)) +
-                             static_cast<int32_t>(ubStatus.bub_size * (1.0 - cub_bub_ratio));
+    ubStatus.min_load_size =
+        ubStatus.bub_size + static_cast<int32_t>(ubStatus.aub_size * (1.0 - ubStatus.cub_aub_ratio));
     ubStatus.max_dma_size =
-        max(ubStatus.max_dma_size,
-            static_cast<int32_t>(max(ubStatus.aub_size * cub_aub_ratio, ubStatus.bub_size * cub_bub_ratio)));
+        max(ubStatus.max_dma_size, static_cast<int32_t>(ubStatus.aub_size * ubStatus.cub_aub_ratio));
+  } else if (!ubStatus.cub_reuse_aub_flag && ubStatus.cub_reuse_bub_flag) {
+    ubStatus.min_load_size =
+        ubStatus.aub_size + static_cast<int32_t>(ubStatus.bub_size * (1.0 - ubStatus.cub_bub_ratio));
+    ubStatus.max_dma_size =
+        max(ubStatus.max_dma_size, static_cast<int32_t>(ubStatus.bub_size * ubStatus.cub_bub_ratio));
+  } else {
+    ubStatus.min_load_size = static_cast<int32_t>(ubStatus.aub_size * (1.0 - ubStatus.cub_aub_ratio)) +
+                             static_cast<int32_t>(ubStatus.bub_size * (1.0 - ubStatus.cub_bub_ratio));
+    ubStatus.max_dma_size =
+        max(ubStatus.max_dma_size, static_cast<int32_t>(max(ubStatus.aub_size * ubStatus.cub_aub_ratio,
+                                                            ubStatus.bub_size * ubStatus.cub_bub_ratio)));
   }
 }
 
@@ -1850,7 +1871,7 @@ int32_t GetUbMTE2Cost(const BatchmatmulCompileParas& params, const SingleCoreSta
   return aub_mte2_cost * bub_mte2_cost;
 }
 
-void GetUbFactorsInND(const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
+void GetUbFactorsInND(const string &op_type, const CoreStatus& coreStatus, const BatchmatmulCompileParas& params,
                       SingleCoreStatus& singleCoreStatus) {
   const L0Status& l0Status = singleCoreStatus.l0Status;
   const L1Status& l1Status = singleCoreStatus.l1Status;
@@ -1882,6 +1903,11 @@ void GetUbFactorsInND(const CoreStatus& coreStatus, const BatchmatmulCompilePara
       UpdateUbLoadSize(params, l0Status, ubStatus);
       GetCUbFactors(l0Status, params, ubStatus);
       // Calculate CUB cost
+      OP_TILING_CHECK(ubStatus.n_cub == 0,
+                      OP_LOGW(op_type.c_str(),
+                              "The current Tiling Candidate in MatMul/BatchMatMaul optiling exist "
+                              "one invalid zero n_cub tiling result."),
+                      continue);
       int32_t multi_n_ub_l0 = l0Status.n_l0 / ubStatus.n_cub;
       int32_t tmp_ub_cost = GetUbMTE2Cost(params, singleCoreStatus);
       int8_t tmp_bank_conflict_level =
@@ -1972,7 +1998,10 @@ void GetUbFactors(const string &op_type, const BatchmatmulCompileParas &params, 
 
   if (params.nd_flag) {
     ubStatus.safe_ub_rest_size = kUbFp16Size - ubStatus.min_dma_size;
-    GetUbFactorsInND(coreStatus, params, singleCoreStatus);
+    // Only valid when fused_double_operand_num is smaller than aub_double_num and bub_double_num
+    ubStatus.cub_aub_ratio = (params.fused_double_operand_num + 1) / (params.aub_double_num + 1);
+    ubStatus.cub_bub_ratio = (params.fused_double_operand_num + 1) / (params.bub_double_num + 1);
+    GetUbFactorsInND(op_type, coreStatus, params, singleCoreStatus);
   } else {
     // Get CUB factors for NZ in Mode
     GetCUbFactors(l0Status, params, ubStatus);

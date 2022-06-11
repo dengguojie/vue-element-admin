@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <vector>
 #include "op_log.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
 struct BatchmatmulCompileParas {
@@ -253,6 +254,8 @@ struct UbStatus {
   bool cub_reuse_bub_flag = false;
   bool a_bank_conflict = false;
   bool b_bank_conflict = false;
+  float cub_aub_ratio = 1.0f;
+  float cub_bub_ratio = 1.0f;
 };
 
 struct SingleCoreStatus {
