@@ -97,7 +97,6 @@ class OneHot:
         self.dtype_depth = depth.get('dtype')
         self.dtype_on_value = on_value.get('dtype')
         self.dtype_off_value = off_value.get('dtype')
-        self.axis = axis
         self.kernel_name = kernel_name
         self.tiling_dtype = 'int32'
 
@@ -290,7 +289,7 @@ class OneHot:
                     self.one_hot_middle_axis_third_mode(block_id)
                 with self.tik_instance.if_scope(mode_of_cal_with_axis == Constant.TILING_MODE_13):
                     self.one_hot_middle_axis_fourth_mode(block_id)
-        tbe_context.get_context().add_compile_info('vars', {'core_num': self.total_core_number, 'axis': self.axis})
+        tbe_context.get_context().add_compile_info('vars', {'core_num': self.total_core_number})
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name, inputs=[
                 self.x_gm, self.depth_gm, self.on_value_gm, self.off_value_gm], outputs=[

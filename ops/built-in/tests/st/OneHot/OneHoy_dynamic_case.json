@@ -1,0 +1,164 @@
+[
+    {
+      "op": "OneHot",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [2, 2],
+          "format": "ND",
+          "param_type": "input",
+          "name": "x",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "depth",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "on_value",
+          "type": "float32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "off_value",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [2, 2, 20],
+          "format": "ND",
+          "param_type": "output",
+          "name": "y",
+          "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+          "name": "axis",
+          "type": "int",
+          "value": -1
+        }
+      ],
+      "case_name": "test_one_hot_float32_case"
+    },
+    {
+      "op": "OneHot",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [2, 2],
+          "format": "ND",
+          "param_type": "input",
+          "name": "x",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "depth",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "on_value",
+          "type": "float16"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "off_value",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [2, 2, 20],
+          "format": "ND",
+          "param_type": "output",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "axis",
+          "type": "int",
+          "value": -1
+        }
+      ],
+      "case_name": "test_one_hot_float16_case"
+    },
+    {
+      "op": "OneHot",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [2, 2],
+          "format": "ND",
+          "param_type": "input",
+          "name": "x",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "depth",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "on_value",
+          "type": "int32"
+        },
+        {
+          "shape":[-2],
+          "typical_shape": [1],
+          "format": "ND",
+          "param_type": "input",
+          "name": "off_value",
+          "type": "int32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [2, 2, 20],
+          "format": "ND",
+          "param_type": "output",
+          "name": "y",
+          "type": "int32"
+        }
+      ],
+      "attr": [
+        {
+          "name": "axis",
+          "type": "int",
+          "value": -1
+        }
+      ],
+      "case_name": "test_one_hot_int32_case"
+    }
+]

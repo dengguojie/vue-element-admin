@@ -570,7 +570,15 @@ def test_check_supported(test_arg):
                      {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                      {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                      {"shape": (2048,2), "dtype": "float32", "format": "NCHW", "ori_shape": (2048,2),"ori_format": "NCHW"},-1)
+
+# 'pylint: disable=unused-argument
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
 ut_case.add_cust_test_func(test_func=test_check_supported)
+ut_case.add_cust_test_func(test_func=test_import_lib)
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)

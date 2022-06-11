@@ -28,6 +28,39 @@ constexpr int32_t DEPTH_SIZE = 1;
 constexpr int32_t RADIO_UB_SIZE_MIN = 19792;
 // Calcuted acording to the max size of radio of ub and tensor
 constexpr int32_t RADIO_UB_SIZE_MAX = 39584;
+// default tiling mode
+const int64_t TILING_MODE_DEFAULT = 0;
+
+// last axis && enough ub size for both input and output
+const int64_t TILING_MODE_LAST_AXIS_ENOUGH_SPACE = 1;
+// last axis && only enough ub size for input and partial output
+const int64_t TILING_MODE_LAST_AXIS_PARTIAL_SPACE = 2;
+// last axis && only enough ub size for input
+const int64_t TILING_MODE_LAST_AXIS_ENOUGH_INPUT = 3;
+// last axis && only enough ub size for partial input and partial output
+const int64_t TILING_MODE_LAST_AXIS_PARTIAL_INPUT = 4;
+// last axis && no enough ub size for input and output
+const int64_t TILING_MODE_LAST_AXIS_NO_SPACE = 5;
+
+// first axis && enough ub size for both input and output
+const int64_t TILING_MODE_FIRST_AXIS_ENOUGH_SPACE = 6;
+// first axis && only enough ub size for input and partial output
+const int64_t TILING_MODE_FIRST_AXIS_PARTIAL_SPACE = 7;
+// first axis && only enough ub size for input
+const int64_t TILING_MODE_FIRST_AXIS_ENOUGH_INPUT = 8;
+// first axis && no enough ub size for input and output
+const int64_t TILING_MODE_FIRST_AXIS_NO_SPACE = 9;
+
+// middle axis && enough ub size for both input and output
+const int64_t TILING_MODE_MIDDLE_AXIS_ENOUGH_SPACE = 10;
+// middle axis && only enough ub size for input and partial output
+const int64_t TILING_MODE_MIDDLE_AXIS_PARTIAL_SPACE = 11;
+// middle axis && only enough ub size for input
+const int64_t TILING_MODE_MIDDLE_AXIS_ENOUGH_INPUT = 12;
+// middle axis && no enough ub size for input and output
+const int64_t TILING_MODE_MIDDLE_AXIS_NO_SPACE = 13;
+
+const struct ops::AttrBase AXIS_INFO(0, "axis");
 }  // namespace
 
 namespace optiling {
@@ -155,32 +188,32 @@ int32_t CalTilingMode(std::vector<int64_t> x_shape, int32_t depth, int32_t axis,
   OP_LOGD("CalTilingMode is running");
   int32_t x_shape_size = x_shape.size();
   int32_t x_numel = CalTensorNumel(x_shape);
-  int32_t tiling_mode = 0;
+  int32_t tiling_mode = TILING_MODE_DEFAULT;
 
   if (axis == -1 || axis == x_shape_size) {
     auto core_used = get_core_num(x_numel, x_shape, depth, axis, core_num);
     auto per_core_numel = CeilDiv(x_numel, core_used);
     if (per_core_numel <= RADIO_UB_SIZE_MIN && per_core_numel * depth <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 1;
+      tiling_mode = TILING_MODE_LAST_AXIS_ENOUGH_SPACE;
     } else if (per_core_numel <= RADIO_UB_SIZE_MIN && per_core_numel * depth > RADIO_UB_SIZE_MAX &&
                depth >= DEPTH_SIZE && depth <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 2;
+      tiling_mode = TILING_MODE_LAST_AXIS_PARTIAL_SPACE;
     } else if (per_core_numel <= RADIO_UB_SIZE_MIN && depth > RADIO_UB_SIZE_MAX) {
-      tiling_mode = 3;
+      tiling_mode = TILING_MODE_LAST_AXIS_ENOUGH_INPUT;
     } else if (per_core_numel > RADIO_UB_SIZE_MIN && depth >= DEPTH_SIZE && depth <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 4;
+      tiling_mode = TILING_MODE_LAST_AXIS_PARTIAL_INPUT;
     } else {
-      tiling_mode = 5;
+      tiling_mode = TILING_MODE_LAST_AXIS_NO_SPACE;
     }
   } else if (axis == 0) {
     if (x_numel <= RADIO_UB_SIZE_MIN && x_numel * depth <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 6;
+      tiling_mode = TILING_MODE_FIRST_AXIS_ENOUGH_SPACE;
     } else if (x_numel <= RADIO_UB_SIZE_MIN && x_numel * depth > RADIO_UB_SIZE_MAX) {
-      tiling_mode = 7;
+      tiling_mode = TILING_MODE_FIRST_AXIS_PARTIAL_SPACE;
     } else if (x_numel <= RADIO_UB_SIZE_MAX && x_numel > RADIO_UB_SIZE_MIN && x_numel * depth > RADIO_UB_SIZE_MAX) {
-      tiling_mode = 8;
+      tiling_mode = TILING_MODE_FIRST_AXIS_ENOUGH_INPUT;
     } else {
-      tiling_mode = 9;
+      tiling_mode = TILING_MODE_FIRST_AXIS_NO_SPACE;
     }
   } else if (axis < x_shape_size && axis > 0) {
     std::vector<int64_t> merged_x_shape;
@@ -190,17 +223,17 @@ int32_t CalTilingMode(std::vector<int64_t> x_shape, int32_t depth, int32_t axis,
     auto per_core_numel = CeilDiv(first_dim_x, core_used);
     auto last_dim_x = merged_x_shape[2];
     if (per_core_numel * last_dim_x <= RADIO_UB_SIZE_MIN && per_core_numel * last_dim_x * depth <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 10;
+      tiling_mode = TILING_MODE_MIDDLE_AXIS_ENOUGH_SPACE;
     } else if (per_core_numel * last_dim_x <= RADIO_UB_SIZE_MIN &&
                per_core_numel * last_dim_x * depth > RADIO_UB_SIZE_MAX && last_dim_x >= 1 &&
                last_dim_x <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 11;
+      tiling_mode = TILING_MODE_MIDDLE_AXIS_PARTIAL_SPACE;
     } else if (per_core_numel * last_dim_x > RADIO_UB_SIZE_MIN &&
                per_core_numel * last_dim_x * depth > RADIO_UB_SIZE_MAX && last_dim_x >= 1 &&
                last_dim_x <= RADIO_UB_SIZE_MAX) {
-      tiling_mode = 12;
+      tiling_mode = TILING_MODE_MIDDLE_AXIS_ENOUGH_INPUT;
     } else {
-      tiling_mode = 13;
+      tiling_mode = TILING_MODE_MIDDLE_AXIS_NO_SPACE;
     }
   }
 
@@ -305,7 +338,7 @@ void PrintTilingParams(const OneHotTilingParams& tiling_params) {
   OP_LOGD("OneHotTiling", "last_core_index=%d.", tiling_params.last_core_index);
 }
 
-static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "axis"};
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num"};
 
 bool OneHotTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                   utils::OpRunInfo& run_info) {
@@ -315,7 +348,10 @@ bool OneHotTiling(const std::string& op_type, const ge::Operator& op_paras, cons
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_info.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse op_info failed."), return false);
   int32_t core_num = static_cast<int32_t>(op_info[0]);
-  int32_t axis = static_cast<int32_t>(op_info[1]);
+  int32_t axis = 0;
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, AXIS_INFO, axis),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "GetCompileParams, get axis error"),
+                  return false);
 
   OneHotTilingParams tiling_params;
   InitTilingParams(tiling_params);

@@ -34,6 +34,7 @@ Minimum,minimum.json
 Mul,mul.json
 Muls,muls.json
 Neg,neg.json
+OneHot,one_hot.json
 Pad,pad.json
 Pow,pow.json
 RealDiv,real_div.json
