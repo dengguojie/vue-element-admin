@@ -69,6 +69,8 @@ Tanh,tanh.json
 Tile,tile.json
 Transpose,transpose.json
 ZerosLike,zeros_like.json
+Atanh,atanh.json
+AtanGrad,atan_grad.json
 Abs,abs.json
 ApplyAdagradD,apply_adagrad_d.json
 ApplyGradientDescent,apply_gradient_descent.json
