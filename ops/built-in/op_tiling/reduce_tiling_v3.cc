@@ -66,6 +66,7 @@ namespace {
   // each core need 32 + 4 int64_t size
   constexpr int32_t SINGLE_SYNC_CORE_BYTES = 288;
   constexpr int32_t REDUCE_MAX_WORKSPACE_NUMS = 20;
+  constexpr int32_t MODULO = 10;
 }
 
 namespace v3 {
@@ -111,6 +112,14 @@ bool ReduceCompileInfo::GetCompileInfoForProcessControl(const nlohmann::json& js
   if (json_info.count("_workspace_size") > 0) {
     workspace_size = json_info.at("_workspace_size").get<std::int32_t>();
   }
+  
+  if(json_info.count("_reduce_vars") > 0) {
+    const auto& local_reduce_vars =
+      json_info.at("_reduce_vars").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+    for (const auto& single_item: local_reduce_vars) {
+      reduce_vars[std::stoull(single_item.first)] = single_item.second;
+    }
+  }
   return true;
 }
 
@@ -128,40 +137,8 @@ bool ReduceCompileInfo::GetCompileInfoForConst(const nlohmann::json& json_info) 
 bool ReduceCompileInfo::GetCompileInfoForCalculate(const char* op_type, const nlohmann::json& json_info) {
   // Required info from SCH that do for calculating
   if (json_info.count("_common_info") > 0) {
-    std::vector<int32_t> common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
-    if (common_info.size() < LEAST_LENGTH_OF_COMMON_FIVE) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_common_info length in json compile info should be at least 5.");
+    if(!GetCompileCommonInfo(op_type, json_info)) {
       return false;
-    }
-    // Get Data
-    core_num = common_info[ARRAY_INDEX_0];
-    is_keep_dims = (bool)common_info[ARRAY_INDEX_1];
-    min_block_size = common_info[ARRAY_INDEX_2];
-    atomic = (bool)common_info[ARRAY_INDEX_3];
-    coef = common_info[ARRAY_INDEX_4];
-
-    if (common_info.size() >= LENGTH_OF_COMMON_SIX) {
-      pad_max_entire_size = common_info[ARRAY_INDEX_5];
-      if (pad_max_entire_size <= 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad max entire size is %d that is illegal.", pad_max_entire_size);
-        return false;
-      }
-    }
-
-    if (common_info.size() >= LENGTH_OF_COMMON_SEVEN) {
-      support_transpose = (bool)common_info[ARRAY_INDEX_6];
-    }
-
-    if (common_info.size() >= LENGTH_OF_COMMON_EIGHT) {
-      reduce_dtype_byte = common_info[LENGTH_OF_COMMON_EIGHT - 1];
-      if (reduce_dtype_byte <= 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "reduce dtype byte is %d that is illegal.", reduce_dtype_byte);
-        return false;
-      }
-    }
-
-    if (common_info.size() >= LENGTH_OF_COMMON_NINE) {
-      group_reduce = (bool)common_info[LENGTH_OF_COMMON_NINE - 1];
     }
   }
 
@@ -185,8 +162,56 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const char* op_type, const nl
     ub_info_transpose = json_info.at("_ub_info_transpose").get<std::vector<int32_t>>();
   }
 
+  if (json_info.count("_disable_fuse_axes") > 0) {
+    disable_fuse_axes = json_info.at("_disable_fuse_axes").get<std::vector<int32_t>>();
+  }
+
+  ori_dim_index =
+        json_info.count("_ori_dim_index") > 0 ? json_info.at("_ori_dim_index").get<uint32_t>() : -1;
+
   return true;
 }
+
+bool ReduceCompileInfo::GetCompileCommonInfo(const char* op_type, const nlohmann::json& json_info) {
+  std::vector<int32_t> common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
+  if (common_info.size() < LEAST_LENGTH_OF_COMMON_FIVE) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_common_info length in json compile info should be at least 5.");
+    return false;
+  }
+  // Get Data
+  core_num = common_info[ARRAY_INDEX_0];
+  is_keep_dims = (bool)common_info[ARRAY_INDEX_1];
+  min_block_size = common_info[ARRAY_INDEX_2];
+  atomic = (bool)common_info[ARRAY_INDEX_3];
+  coef = common_info[ARRAY_INDEX_4];
+
+  if (common_info.size() >= LENGTH_OF_COMMON_SIX) {
+    pad_max_entire_size = common_info[ARRAY_INDEX_5];
+    if (pad_max_entire_size <= 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad max entire size is %d that is illegal.", pad_max_entire_size);
+      return false;
+    }
+  }
+
+  if (common_info.size() >= LENGTH_OF_COMMON_SEVEN) {
+    support_transpose = (bool)common_info[ARRAY_INDEX_6];
+  }
+
+  if (common_info.size() >= LENGTH_OF_COMMON_EIGHT) {
+    reduce_dtype_byte = common_info[LENGTH_OF_COMMON_EIGHT - 1];
+    if (reduce_dtype_byte <= 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "reduce dtype byte is %d that is illegal.", reduce_dtype_byte);
+      return false;
+    }
+  }
+
+  if (common_info.size() >= LENGTH_OF_COMMON_NINE) {
+    group_reduce = (bool)common_info[LENGTH_OF_COMMON_NINE - 1];
+  }
+
+  return true;
+}
+
 bool ReduceCompileInfo::GetCompileInfoForRunInfo(const nlohmann::json& json_info) {
   return var_attr_wrap.ParseVarAttr(json_info);
 }
@@ -330,6 +355,10 @@ int32_t Reduce<T>::CalcTilingKey() {
 
 template <typename T>
 void Reduce<T>::EliminateOne() {
+  // not elminate one if is 5hd case
+  if (!compileInfo->disable_fuse_axes.empty()) {
+    return;
+  }
   for (auto item : reduce_axis_ori) {
     reduce_flag[item] = 1;
   }
@@ -388,7 +417,6 @@ void Reduce<T>::FusedReduceAxis() {
   size_t first = ARRAY_FIRST_POS;
   size_t second = ARRAY_FIRST_POS;
   int64_t value_input = 0;
-  int32_t value_axis = 0;
   size_t length = input_shape_ori.size();
   bool cond_0 = false;
   bool cond_1 = false;
@@ -409,28 +437,30 @@ void Reduce<T>::FusedReduceAxis() {
     capacity_shape++;
   }
 
+  // deal 5hd case
+  if (!compileInfo->disable_fuse_axes.empty()) {
+     DealDisableFuseAxes(pos);
+  }
   while (second <= length) {
     if (second <= length - 1 and pos[first] == pos[second]) {
       // look for unequal idx
       second += 1;
-      continue;
     } else {
       // fused serial axises
       value_input = std::accumulate(input_shape_ori.begin() + first, input_shape_ori.begin() + second, 1,
                                     std::multiplies<int64_t>());
       input_shape[capacity_shape] = value_input;
-      capacity_shape++;
 
       // cond_0: [first, second) is serial reduce_axises
       // cond_1: [first: ] is serial reduce_axises.
-      cond_0 = second <= length - 1 and pos[second] == 0;
-      cond_1 = second == length and pos[second - 1] == 1;
+      cond_0 = second <= length - 1 and pos[first] % MODULO == 1;
+      cond_1 = second == length and pos[second - 1] % MODULO == 1;
       if (cond_0 or cond_1) {
-        value_axis = capacity_shape - 1;
-        reduce_axis[capacity_axis] = value_axis;
+        reduce_axis[capacity_axis] = capacity_shape;
         capacity_axis++;
       }
       first = second;
+      capacity_shape++;
       second += 1;
       continue;
     }
@@ -438,6 +468,25 @@ void Reduce<T>::FusedReduceAxis() {
 
   input_shape.resize(capacity_shape);
   reduce_axis.resize(capacity_axis);
+}
+
+template <typename T>
+void Reduce<T>::DealDisableFuseAxes(std::vector<int32_t>& pos) {
+    int32_t cnt = 1;
+
+    bool no_reduce = reduce_axis_ori.size() == 0 ? true: false;
+    bool all_reduce = reduce_axis_ori.size() == input_shape_ori.size() ? true: false;
+    bool is_ori_dim_aligned = original_input_shape[compileInfo->ori_dim_index] % compileInfo->min_block_size == 0;
+    bool is_nd_case = false;
+    if (is_ori_dim_aligned && (no_reduce || all_reduce)) {
+      is_nd_case = true;
+    }
+
+    if(!is_nd_case) {
+      for (const auto& idx: compileInfo->disable_fuse_axes) {
+        pos[idx] += MODULO * (cnt++);
+      }
+    }
 }
 
 template <typename T>
@@ -868,7 +917,7 @@ void Reduce<T>::GetNotMulCoreBlockTiling() {
 }
 
 template <typename T>
-bool Reduce<T>::GetBlockTilingInfoLessThanCoreNum(int32_t left_block_dim, uint32_t i, int64_t right_total_num ) {
+bool Reduce<T>::GetBlockTilingInfoLessThanCoreNum(int32_t left_block_dim, uint32_t i, int64_t right_total_num) {
   if (left_block_dim > 1) {
     int64_t cur_block_factor = (block_size + right_total_num - 1) / right_total_num;
     if (GetBlockTilingInfoX(cur_block_factor, i, right_total_num)) {
@@ -1376,6 +1425,36 @@ bool Reduce<T>::WriteConstTilingData() {
 }
 
 template <typename T>
+bool Reduce<T>::GetVarValue(uint64_t tiling_key) {
+  var_value_len = 0;
+  try {
+    int32_t ub_tiling_factor_encode = 40000;
+    int32_t block_tiling_factor_encode = 30000;
+    int32_t reduce_dim_encode = 20000;
+    int32_t reduce_ori_dim_encode = 10000;
+
+    const auto& var_pattern = compileInfo->reduce_vars.at(tiling_key);
+    for (const auto& var: var_pattern) {
+      if (var >=ub_tiling_factor_encode) {
+        var_value[var_value_len] = reduceTilingInfo.ub_tiling_factor;
+      } else if (var >=block_tiling_factor_encode) {
+        var_value[var_value_len] = reduceTilingInfo.block_tiling_factor;
+      } else if (var >=reduce_dim_encode) {
+        var_value[var_value_len] = input_shape[var % reduce_dim_encode];
+      } else {
+        var_value[var_value_len] = original_input_shape[var % reduce_ori_dim_encode];
+      }
+      var_value_len++;
+    }
+  } catch (const std::exception &e) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type,"get var value error. Error message: %s", e.what());
+    return false;
+  }
+  return true;
+}
+
+
+template <typename T>
 bool Reduce<T>::WriteDynamicTilingData() {
   // tiling_key
   context->SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
@@ -1383,18 +1462,14 @@ bool Reduce<T>::WriteDynamicTilingData() {
   uint32_t tiling_key_uint = static_cast<uint32_t>(tiling_key);
   context->SetTilingKey(tiling_key_uint);
 
-  // pure dma_copy, must skip "1".
-  uint32_t offset = 0;
-  if (input_shape[0] == 1 && reduce_axis[0] == 0) {
-    offset = 1;
-  }
-  for (uint32_t i = offset; i < input_shape.size(); i++) {
-    context->Append((int32_t)input_shape[i]);
-    OP_LOGD(op_type.c_str(), "input shape:%d", input_shape[i]);
+  if(!GetVarValue(tiling_key_uint)) {
+    return false;
   }
 
-  context->Append((int32_t)reduceTilingInfo.block_tiling_factor);
-  context->Append((int32_t)reduceTilingInfo.ub_tiling_factor);
+  for (std::size_t i = 0; i < var_value_len; i++) {
+    context->Append(static_cast<int32_t>(var_value[i]));
+  }
+  
   OP_LOGD(op_type.c_str(), "block/res_ub tilling axis:%d", reduceTilingInfo.block_tiling_axis);
   OP_LOGD(op_type.c_str(), "block/res_ub tilling factor:%d", reduceTilingInfo.block_tiling_factor);
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", reduceTilingInfo.ub_tiling_axis);
@@ -1438,8 +1513,10 @@ bool Reduce<T>::GetGeInfo() {
   V_OP_TILING_CHECK(!(inputs_num <= compileInfo->idx_before_reduce),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                     return false);
-  GetInputShapeOri();
 
+  if (!GetInputShapeOri()) {
+    return false;
+  }
   return true;
 }
 
@@ -1462,6 +1539,10 @@ bool Reduce<T>::SetInit() {
     if (reduce_axis_ori[i] < 0) {
       reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
     }
+  }
+
+  if(!GetOriginInputShape()) {
+    return false;
   }
   return true;
 }
@@ -1592,11 +1673,15 @@ bool Reduce<T>::DoReduceTiling(const OpInfoImpl& op_info) {
   */
   // Get Input
   compileInfo = dynamic_cast<const ReduceCompileInfo *>(context->GetCompileInfo());
-  if(!GetInputShapeOri(op_info)){
+  if (!GetInputShapeOri(op_info)) {
     return false;
   }
 
-  if(!GetReduceAxisOri(op_info)){
+  if (!GetOriginInputShape()) {
+    return false;
+  }
+
+  if (!GetReduceAxisOri(op_info)) {
     return false;
   }
 
@@ -1651,7 +1736,9 @@ bool Reduce<T>::GetInputShapeOri(const OpInfoImpl& op_info) {
     V_OP_TILING_CHECK(!(inputs_num <= compileInfo->idx_before_reduce),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                       return false);
-    GetInputShapeOri();
+    if (!GetInputShapeOri()) {
+      return false;
+    }
   }
   return true;
 }
@@ -1688,16 +1775,37 @@ bool Reduce<T>::GetReduceAxisOri(const OpInfoImpl& op_info) {
 
 template <typename T>
 bool Reduce<T>::GetInputShapeOri() {
-  OpShape shape = context->GetInputShape(compileInfo->idx_before_reduce);
-  V_OP_TILING_CHECK((!shape.Empty()), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape error"),
+  OpShape input_shape = context->GetInputShape(compileInfo->idx_before_reduce);
+  V_OP_TILING_CHECK(!input_shape.Empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape error"),
                     return false);
-  auto dim_len = static_cast<int64_t>(shape.GetDimNum());
+  auto dim_len = static_cast<int64_t>(input_shape.GetDimNum());
   input_shape_ori.resize(dim_len);
   for (int i = 0; i < dim_len; i++) {
-    input_shape_ori[i] = shape.GetDim(i);
+    input_shape_ori[i] = input_shape.GetDim(i);
   }
   return true;
 }
+
+template <typename T>
+bool Reduce<T>::GetOriginInputShape() {
+  if (compileInfo->disable_fuse_axes.empty()) {
+    OP_LOGD(op_type.c_str(), "No need get original input shape when disable_fuse_axes is empty,so return.");
+    return true;
+  }
+
+  OpShape origin_shape = context->GetOriginInputShape(compileInfo->idx_before_reduce);
+  V_OP_TILING_CHECK(!origin_shape.Empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get origin input shape error."),
+                    return false);
+  auto dim_len = static_cast<int64_t>(origin_shape.GetDimNum());
+  original_input_shape.resize(dim_len);
+  for (int i = 0; i < dim_len; i++) {
+    original_input_shape[i] = origin_shape.GetDim(i);
+  }
+  return true;
+}
+
 
 template <typename T>
 bool Reduce<T>::DoTiling() {

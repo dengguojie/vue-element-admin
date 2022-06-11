@@ -50,7 +50,9 @@ TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling1) {
   vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {7}, ge::DT_FLOAT, ge::FORMAT_ND, {}); 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "attr_unbiased":"false"})";
+  std::string compileInfo = R"({ "_ori_axis": [1],
+  "_reduce_vars": {"4294966896": [20000,20001,30000, 40000]},
+  "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "attr_unbiased":"false"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -70,7 +72,9 @@ TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling2) {
   vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16};
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {7}, ge::DT_FLOAT16, ge::FORMAT_ND, {}); 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
+  std::string compileInfo = R"({ "_ori_axis": [1],
+   "_reduce_vars": {"4294966896": [20000,20001,30000, 40000]},
+   "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -90,7 +94,9 @@ TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling3) {
   vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {3}, ge::DT_FLOAT, ge::FORMAT_ND, {}); 
-  std::string compileInfo = R"({ "_ori_axis": [1, 2], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
+  std::string compileInfo = R"({ "_ori_axis": [1, 2],
+  "_reduce_vars": {"4294966896": [20000,20001,30000, 40000]},
+  "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -110,7 +116,9 @@ TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling4) {
   vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16};
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {3}, ge::DT_FLOAT16, ge::FORMAT_ND, {}); 
-  std::string compileInfo = R"({ "_ori_axis": [1, 2], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
+  std::string compileInfo = R"({ "_ori_axis": [1, 2],
+  "_reduce_vars": {"4294966896": [20000,20001,30000, 40000]},
+  "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;

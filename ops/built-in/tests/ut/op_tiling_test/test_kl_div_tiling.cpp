@@ -50,7 +50,9 @@ TEST_F(KLDivTiling, KLDivTiling_test_1)
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({ "_ori_axis": [0, 1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float16", "reduce_mode": 1})";
+  std::string compileInfo = R"({ "_ori_axis": [0, 1],
+   "_reduce_vars": {"1000400": [20000,20001,30000, 40000]},
+  "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float16", "reduce_mode": 1})";
 
   ge::Graph graph("KLDivTiling_test_1");
 
@@ -97,7 +99,9 @@ TEST_F(KLDivTiling, KLDivTiling_test_2)
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({ "_ori_axis": [0, 1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "reduce_mode": 1})";
+  std::string compileInfo = R"({ "_ori_axis": [0, 1],
+  "_reduce_vars": {"1100900": [20000,20001,20002, 30000, 40000]},
+  "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "reduce_mode": 1})";
 
   ge::Graph graph("KLDivTiling_test_2");
 

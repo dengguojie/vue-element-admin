@@ -30,6 +30,8 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import var_inner
+from tbe.dsl.base.padding.padding import Action
+from tbe.dsl.base.padding.padding import ActionType
 
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import INSN_MAPPING
@@ -85,6 +87,9 @@ class _VectorSchedule:
         self._ori_and_align_pad_tensor_map = {}
         self._align_pad_tensor_list = []
         self.remove_pad_tensor = None
+
+        self._set_value_action_set = []
+        self._set_value_cache_read_tensor_map = {}
 
     def _create_schedule(self):
         self.schedule = tvm.create_schedule([tensor.op for tensor in self.graph_info.output_tensor_set])
@@ -152,15 +157,15 @@ class _VectorSchedule:
 
     def _do_compute_at(self):
         for stage in self.compute_at_map:
-            parent_stage = self.compute_at_map[stage]["parent"]
-            scope_iter_var = self.compute_at_map[stage]["scope"]
+            parent_stage = self.compute_at_map.get(stage).get("parent")
+            scope_iter_var = self.compute_at_map.get(stage).get("scope")
             self.schedule[stage].compute_at(parent_stage, scope_iter_var)
 
     def _do_emit_insn(self):
         for stage in self.emit_insn_map:
-            scope_iter_var = self.emit_insn_map[stage]["scope"]
-            instruction = self.emit_insn_map[stage]["instruction"]
-            extra_space = self.emit_insn_map[stage].get("extra_space")
+            scope_iter_var = self.emit_insn_map.get(stage).get("scope")
+            instruction = self.emit_insn_map.get(stage).get("instruction")
+            extra_space = self.emit_insn_map.get(stage).get("extra_space")
             if extra_space:
                 self.schedule[stage].emit_insn(scope_iter_var, instruction,
                                                attrs={'storage_bound': [extra_space]})
@@ -242,6 +247,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
         self.tiling_case = tiling_case
         self._create_schedule()
         self._do_cache_read()
+        self._calc_set_value()
         self._do_set_scope()
 
         self._calculate_tiling()
@@ -262,6 +268,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         self._calculate_compute_at()
         self._do_compute_at()
+
+        self._do_set_value()
 
         self._calculate_emit_insn()
         self._do_emit_insn()
@@ -569,7 +577,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             return self.ComputeAlignInfo(_tensor, None, _factor)
 
         def _set_reduce_align(_reduce):
-            factor = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[_reduce.dtype])
+            factor = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(_reduce.dtype))
             self._compute_align_list.append(_set_align(_reduce, factor))
 
         # No distinction between N_last and last
@@ -714,6 +722,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
                         emit_insn_axis_index = -2
                     else:
                         emit_insn_axis_index = 0
+                elif tensor in self._set_value_cache_read_tensor_map.values():
+                    insn = "dma_copy"
+                    emit_insn_axis_index = 0
                 else:
                     insn = INSN_MAPPING.get(get_dsl_insn(tensor), get_dsl_insn(tensor))
                     if insn == "":
@@ -1067,7 +1078,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             # add a1 inner, a1 may be continuous
             ub_rf_reordered_axis_list.append(res_ub_inner)
             for i in range(ub_split_axis + 1, a1_end_index + 1):
-                none_reduce_index = none_reduce_index_map[i]
+                none_reduce_index = none_reduce_index_map.get(i)
                 ub_rf_reordered_axis_list.append(
                     self.schedule[out_tensor_ub_rf].op.axis[
                         none_reduce_index + self._axis_offset])
@@ -1428,3 +1439,61 @@ class ReduceAtomicSchedule(_VectorSchedule):
         if len(self._align_pad_tensor_list) != 0 and block_split_axis == 1 and ub_split_axis == 0:
             return True
         return False
+
+    def _get_cache_buffer_action(self, tensor: Tensor, action_graph: Action):
+        action = Action(tensor, action_graph.get_value_type())
+        action.set_condition(action_graph.get_condition())
+        action.set_value(action_graph.get_value())
+
+        for tensor in action_graph.get_target_tensors():
+            action.add_target_tensor(tensor)
+        return action
+
+    def _calc_set_value(self):
+        if not self.graph_info.need_set_value_action_set:
+            return
+
+        tmp_need_cache_read_action_map = {}
+        for action_graph in self.graph_info.need_set_value_action_set:
+            tensor = action_graph.get_tensor()
+            action_type = action_graph.get_action_type()
+
+            # if is placeholder, we should use cache read tensor
+            # if is output tensor, we should use cache write tensor
+            if tensor in self.cache_read_tensors_and_buffer_map.keys():
+                cache_read_tensor = self.cache_read_tensors_and_buffer_map.get(tensor)
+                action = self._get_cache_buffer_action(cache_read_tensor, action_graph)
+            elif tensor in self.cache_write_tensors_and_buffer_map.keys():
+                cache_write_tensor = self.cache_write_tensors_and_buffer_map.get(tensor)
+                action = self._get_cache_buffer_action(cache_write_tensor, action_graph)
+            else:
+                action = action_graph
+
+        if action_type == ActionType.SET_VALUE:
+            self._set_value_action_set.append(action)
+        else:
+            action_list = tmp_need_cache_read_action_map.get(tensor)
+            if action_list:
+                action_list.add(action)
+            else:
+                action_list = [action]
+            tmp_need_cache_read_action_map[tensor] = action_list
+
+        for tensor, action_list in tmp_need_cache_read_action_map.items():
+            for idx, action_graph in enumerate(action_list):
+                result: Tensor = self.schedule.cache_read(tensor, "local.UB", action_graph.get_target_tensors())
+                self.update_stage(result, tensor, False)
+                action = self._get_cache_buffer_action(result, action_graph)
+                self._set_value_action_set.append(action)
+                self._set_value_cache_read_tensor_map[tensor] = result
+
+    def _do_set_value(self):
+        if not self._set_value_action_set:
+            return
+
+        for action in self._set_value_action_set:
+            tensor = action.get_tensor()
+            value = action.get_value()
+            condition = action.get_condition()
+
+            self.schedule[tensor].set_value(condition, value)

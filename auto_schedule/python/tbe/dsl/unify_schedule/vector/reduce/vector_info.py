@@ -54,6 +54,9 @@ from ...util import get_reduce_axes
 from ...util import is_placeholder
 from ...util import shape_to_list
 from .....common.utils.errormgr import get_error_message
+from .....dsl.base.padding.padding import calc_padding
+from .....dsl.base.padding.padding import Action
+from .....dsl.base.padding.padding import ActionType
 
 ASCEND_SHISI = "smallhisi"
 BLOCK = 16
@@ -109,10 +112,17 @@ class ComputeGraphInfo:
         self.pad_available_ub_size_before_reduce = 0
         self.pad_available_ub_size_after_reduce = 0
         self.pad_max_entire_size = 0
+        self.need_set_value_action_set: List[Action] = None
         # Do info collection
         self._collect_info(output_tensors)
         self._fake_node()
+        self._get_set_value_tensor(output_tensors)
         self._init_max_ub_count()
+
+    def _get_set_value_tensor(self, output_tensors):
+        current_compute = operation.get_context().get_current_compute()
+        if current_compute.get("is_5hd_pattern"):
+            self.need_set_value_action_set = calc_padding(output_tensors)
 
     def _collect_info(self, output_tensors: Iterable[Tensor]):
         self.output_tensor_set = set(output_tensors)
@@ -195,7 +205,7 @@ class ComputeGraphInfo:
         get pure endpoint output tensors without middle output tensors
         """
         for output_tensor in self.output_tensor_set:
-            if not self.tensor_consumers_map[output_tensor]:
+            if not self.tensor_consumers_map.get(output_tensor):
                 self.endpoint_output_tensor_set.add(output_tensor)
 
     def gen_mid_tensor_sets(self):
@@ -439,6 +449,19 @@ class ComputeGraphInfo:
                     if size > 0:
                         for i in range(0, size):
                             _dict["_sNodeNum"].append(dtype)
+
+            def _calc_cache_read_set_value(_dict):
+                current_compute = operation.get_context().get_current_compute()
+                if current_compute.get("is_5hd_pattern"):
+                    for action in self.need_set_value_action_set:
+                        if _tensor == action.get_tensor() and action.get_action_type ==  \
+                                ActionType.CACHE_READ_AND_SET_VALUE:
+                            if _tensor in self.tensors_before_reduce:
+                                _dict["_bNodeNum"].append(dtype)
+                            else:
+                                _dict["_sNodeNum"].append(dtype)
+
+            _calc_cache_read_set_value(_dict)
 
         def _refresh_dependent(_tensor):
             for _tensor_i in _tensor.op.input_tensors:

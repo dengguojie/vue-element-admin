@@ -313,6 +313,8 @@ class ShapeSimplifier:
         """
         the axis type
         """
+        # dim is init
+        INIT = auto()
         # dim is one
         ONE = auto()
         # not reduce axis

@@ -57,7 +57,10 @@ TEST_F(SquareSumV1Tiling, test_SquareSumV1Tiling_1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_1
-std::string compileInfo = R"({ "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256]})";
+std::string compileInfo = R"({ "_pattern": "CommReduce",
+"_reduce_vars": {"1000400": [20000, 20001,30000, 40000]},
+ "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256],
+ "_ub_info_rf": [16256, 16000, 16256]})";
   std::vector<int64_t> input{16, 16, 16, 16};
   std::vector<int64_t> output{1};
   std::vector<int32_t> axis = {0, 1, 2, 3};
@@ -80,7 +83,10 @@ TEST_F(SquareSumV1Tiling, test_SquareSumV1Tiling_2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_1
-std::string compileInfo = R"({ "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256]})";
+std::string compileInfo = R"({ "_pattern": "CommReduce",
+"_reduce_vars": {"1000400": [20000, 20001,30000, 40000]},
+ "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256],
+ "_ub_info_rf": [16256, 16000, 16256]})";
   std::vector<int64_t> input{16, 16, 16, 16};
   std::vector<int64_t> output{1};
   std::vector<int32_t> axis{};

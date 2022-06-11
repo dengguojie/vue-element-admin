@@ -516,6 +516,38 @@ def build_pointcut(func, *args, **kwargs):
     _find_idx_in_tensor_list()
     _add_fake_workspace(args)
     func(*args, **kwargs)
+    _reduce_post_build()
+
+
+def _reduce_post_build():
+    """
+    encode reduce vars in reduce sch
+    """
+    def _encode_var_name(_var_names):
+        after_encode_name = []
+        for name in _var_names:
+            names = name[1:].split('_')
+            if names[0] == 'ori':
+                if len(names) == 3:
+                    after_encode_name.append(10000 + int(names[2]))
+                else:
+                    raise_error("unknown var name begin with ori in reduce schedule, please check")
+            elif names[0] == 'dim':
+                after_encode_name.append(20000 + int(names[1]))
+            elif names[0] == 'block':
+                after_encode_name.append(30000)
+            elif names[0] == 'ub':
+                after_encode_name.append(40000)
+            else:
+                raise_error("unknown var name in reduce schedule, please check")
+
+        return after_encode_name
+
+    normal_vars = get_compile_info().get(CompileInfo.NORMAL_VARS)
+    reduce_vars = {}
+    for tiling_key, var_names in normal_vars.items():
+        reduce_vars[tiling_key] = _encode_var_name(var_names)
+    add_compile_info_inner("_reduce_vars", reduce_vars)
 
 
 def apply_common_compile_info(graph_info, reduce_info):
@@ -1001,14 +1033,14 @@ def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index
                                     reduce_axis_index)
     tiling_case_list = []
     for i in range(0, len(reordered_shape)):
-        orignal_axis = reorder_to_orignal_axis_map[i]
+        orignal_axis = reorder_to_orignal_axis_map.get(i)
         if orignal_axis in reduce_axis_index:
             block_split_axis = orignal_axis
             for j in range(0, len(reordered_shape)):
-                orignal_axis = reorder_to_orignal_axis_map[j]
+                orignal_axis = reorder_to_orignal_axis_map.get(j)
                 if orignal_axis in reduce_axis_index and j < i:
                     continue
-                ub_split_axis = reorder_to_orignal_axis_map[j]
+                ub_split_axis = reorder_to_orignal_axis_map.get(j)
                 tiling_case = ReduceTilingCase()
                 tiling_case.type = tiling_case.Type.ATOMIC_REDUCE
                 tiling_case.block_split_axis_index = block_split_axis
@@ -1243,3 +1275,11 @@ def get_block_size(dtype):
     if dtype not in DTYPE_AND_BLOCK_SIZE_MAP:
         _raise_error("[%s] is not support type in norm" % dtype)
     return DTYPE_AND_BLOCK_SIZE_MAP.get(dtype)
+
+
+def raise_error(message):
+    """
+    raise error
+    """
+    dict_args = {"errCode": "E90003", "detailed_cause": message}
+    raise RuntimeError(dict_args, get_error_message(dict_args))

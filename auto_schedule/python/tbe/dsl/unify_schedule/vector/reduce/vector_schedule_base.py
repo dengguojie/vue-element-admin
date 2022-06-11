@@ -79,6 +79,7 @@ class VectorScheduleBase(ABC):
         self._do_storage_align()
         self._do_compute_align()
         self._do_compute_at()
+        self._do_set_value()
         self._do_emit_insn()
         self._do_pragma()
         # DB is currently unavailable
@@ -141,6 +142,10 @@ class VectorScheduleBase(ABC):
         """"""
 
     @abstractmethod
+    def _calc_set_value(self):
+        """"""
+
+    @abstractmethod
     def _do_data_flow_control(self):
         """"""
 
@@ -186,4 +191,8 @@ class VectorScheduleBase(ABC):
 
     @abstractmethod
     def _do_double_buffer(self):
+        """"""
+
+    @abstractmethod
+    def _do_set_value(self):
         """"""

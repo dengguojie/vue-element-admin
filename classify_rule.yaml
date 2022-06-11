@@ -194,6 +194,8 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
       - auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/softmax_norm_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier_5hd.py
+      - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper_5hd.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py

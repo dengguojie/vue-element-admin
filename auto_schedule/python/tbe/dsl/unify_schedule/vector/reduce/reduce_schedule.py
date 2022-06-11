@@ -31,6 +31,8 @@ from tbe.tvm.tensor import Tensor
 from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.dsl.base.padding.padding import Action
+from tbe.dsl.base.padding.padding import ActionType
 
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import INSN_MAPPING
@@ -52,6 +54,7 @@ from .vector_info import ComputeGraphInfo
 from .vector_schedule import VectorSchedule
 from .empty_schedule import EmptySchedule
 from ...schedule import Schedule
+
 
 CONST = "const"
 DEFAULT = "default"
@@ -331,7 +334,12 @@ class ReduceSchedule(VectorSchedule):
 
         # Construct reorder target
         if is_nlast_reduce:
-            reorder_target = [*non_reduce_axis_indexes[:-1], *reduce_axis_indexes, non_reduce_axis_indexes[-1]]
+            # to support several continuous common axis at the end of shape
+            a1_start_index, a1_end_index = self._find_last_none_reduce_axis(self.reduce_info.shape_before_reduce,
+                                                                            self.reduce_info.reduce_axis_indexes)
+            a1_start_index_from_back = a1_start_index - len(self.reduce_info.shape_before_reduce)
+            reorder_target = [*non_reduce_axis_indexes[:a1_start_index_from_back], *reduce_axis_indexes,
+                              *non_reduce_axis_indexes[a1_start_index_from_back:len(non_reduce_axis_indexes)]]
         else:
             if self._last_reduction_rf_optimization():
                 # Only reduce_rf needs special reorder,
@@ -376,7 +384,7 @@ class ReduceSchedule(VectorSchedule):
 
         def func(_ub_tiling_tensor: Tensor, ) -> list:
             # shape after reorder must follow:
-            # [R,A],[A,R],[A,R,A],[A,R,A,R],...,[A,R,...,A,R]
+            # "R,A","A,R","A,R,A","A,R,A,R",...,"A,R,...,A,R"
             in_shape = self.reduce_info.shape_before_reduce
             reduce_indexes = self.reduce_info.reduce_axis_indexes
             i_length, r_length = len(in_shape), len(reduce_indexes)
@@ -501,7 +509,7 @@ class ReduceSchedule(VectorSchedule):
             if reduce_tensor in self._data_flow_control:
                 # reduce tensor has performed cache_write()
                 reduce_tensor = self.get_buffers_of(reduce_tensor)[0]
-            align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[reduce_tensor.dtype])
+            align_num = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(reduce_tensor.dtype))
             reduce_storage_align_info = self.StorageAlignInfo(reduce_tensor,
                                                               align_axis_index,
                                                               align_num)
@@ -811,6 +819,42 @@ class ReduceSchedule(VectorSchedule):
         compute = get_context().get_current_compute()
         return compute.get("_mode") == "zero"
 
+    @staticmethod
+    def _find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index):
+        """
+        :param shape_before_reduce:
+        :param reduce_axis_index:
+        :return:
+        """
+        # shape_before_reduce:(ak+1,rk,..,r2,a2,r1,a1) or (ak,rk,..,r2,a1,r1),
+        # find a1 position, a1 may contain continues axis
+        a1_end_index = None
+        for i in range(len(shape_before_reduce) - 1, -1, -1):
+            if i not in reduce_axis_index:
+                a1_end_index = i
+                break
+        a1_start_index = a1_end_index
+        if a1_end_index is None:
+            return a1_start_index, a1_end_index
+        for i in range(a1_end_index, -1, -1):
+            if i in reduce_axis_index:
+                a1_start_index = i + 1
+                break
+            if i == 0:
+                a1_start_index = i
+
+        return a1_start_index, a1_end_index
+
+    @staticmethod
+    def _get_cache_buffer_action(tensor: Tensor, action_graph: Action):
+        action = Action(tensor, action_graph.get_value_type())
+        action.set_condition(action_graph.get_condition())
+        action.set_value(action_graph.get_value())
+
+        for tensor in action_graph.get_target_tensors():
+            action.add_target_tensor(tensor)
+        return action
+
     def _emit_zero_reduce_insn(self, reduce_ub_tensor, emit_insn_axis):
         compute = get_context().get_current_compute()
         insn = "phony_insn"
@@ -825,3 +869,51 @@ class ReduceSchedule(VectorSchedule):
                 in self.reduce_info.reduce_axes:
             return True
         return False
+
+    def _calc_set_value(self):
+        if not self.graph_info.need_set_value_action_set:
+            return
+
+        tmp_need_cache_read_action_map = {}
+        for action_graph in self.graph_info.need_set_value_action_set:
+            tensor = action_graph.get_tensor()
+            action_type = action_graph.get_action_type()
+
+            # if is placeholder, we should use cache read tensor
+            # if is output tensor, we should use cache write tensor
+            if tensor in self._cache_read_tensor_and_buffer_map.keys():
+                cache_read_tensor = self._cache_read_tensor_and_buffer_map.get(tensor)
+                action = self._get_cache_buffer_action(cache_read_tensor, action_graph)
+            elif tensor in self._cache_write_tensor_and_buffer_map.keys():
+                cache_write_tensor = self._cache_write_tensor_and_buffer_map.get(tensor)
+                action = self._get_cache_buffer_action(cache_write_tensor, action_graph)
+            else:
+                action = action_graph
+
+        if action_type == ActionType.SET_VALUE:
+            self._set_value_action_set.append(action)
+        else:
+            action_list = tmp_need_cache_read_action_map.get(tensor)
+            if action_list:
+                action_list.add(action)
+            else:
+                action_list = [action]
+            tmp_need_cache_read_action_map[tensor] = action_list
+
+        for tensor, action_list in tmp_need_cache_read_action_map.items():
+            for idx, action_graph in enumerate(action_list):
+                result: Tensor = self.schedule.cache_read(tensor, "local.UB", action_graph.get_target_tensors())
+                action = self._get_cache_buffer_action(result, action_graph)
+                self._set_value_action_set.append(action)
+                self._set_value_cache_read_tensor_map[tensor] = result
+
+    def _do_set_value(self):
+        if not self._set_value_action_set:
+            return
+
+        for action in self._set_value_action_set:
+            tensor = action.get_tensor()
+            value = action.get_value()
+            condition = action.get_condition()
+
+            self.schedule[tensor].set_value(condition, value)

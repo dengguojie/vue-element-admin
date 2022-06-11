@@ -263,6 +263,14 @@ class VectorSchedule(VectorScheduleBase, ABC):
         self._ori_and_align_pad_tensor_map = {}
         # fro remove pad
         self._ori_and_remove_pad_tensor_map = {}
+        # for cache read, only for gm tensor
+        self._cache_read_tensor_and_buffer_map = {}
+        # for cache write, only for gm tensor
+        self._cache_write_tensor_and_buffer_map = {}
+        # for set value
+        self._set_value_action_set = []
+        # for cache read set value
+        self._set_value_cache_read_tensor_map = {}
 
     def _do_create_schedule(self) -> NoReturn:
         self.schedule: Schedule = tvm.create_schedule([tensor.op for tensor in self.graph_info.output_tensor_set])
@@ -270,6 +278,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def _do_data_flow_control(self) -> NoReturn:
         self._do_set_scope()
         self._do_cache_read_and_cache_write()
+        self._calc_set_value()
 
     def _do_set_scope(self) -> NoReturn:
         for tensor in self._tensor_to_scope_map:
@@ -288,6 +297,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
                         if self.tiling_case.need_remove_pad:
                             remove_pad_buffer = self.schedule.cache_write(tensor, source_buffer_scope)
                             self._ori_and_remove_pad_tensor_map[tensor] = remove_pad_buffer
+                            self._cache_write_tensor_and_buffer_map[tensor] = remove_pad_buffer
+                        else:
+                            self._cache_write_tensor_and_buffer_map[tensor] = result
 
                     else:
                         list_consumers = list(consumers)
@@ -295,6 +307,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
                             if isinstance(consumer, VectorSchedule.Placeholder):
                                 list_consumers[idx] = self.solve_placeholder(consumer)
                         result: Tensor = self.schedule.cache_read(tensor, source_buffer_scope, list_consumers)
+                        self._cache_read_tensor_and_buffer_map[tensor] = result
 
                         if self.tiling_case.is_reduce_pad_case:
                             align_pad_buffer = self.schedule.cache_read(result, source_buffer_scope, list_consumers)
@@ -319,6 +332,16 @@ class VectorSchedule(VectorScheduleBase, ABC):
             stage.set_buffer_size(ub_count)
         for _, tensor in self._ori_and_remove_pad_tensor_map.items():
             ub_count = self.tiling_case.tensor_ub_size_after_reduce
+            stage: Stage = self.schedule[tensor]
+            stage.set_buffer_size(ub_count)
+
+        for source_tensor, tensor in self._set_value_cache_read_tensor_map.items():
+            if source_tensor in self.graph_info.tensors_before_reduce:
+                ub_count = self.tiling_case.tensor_ub_size_before_reduce
+            elif source_tensor in self.graph_info.tensors_after_reduce:
+                ub_count = self.tiling_case.tensor_ub_size_after_reduce
+            else:
+                ub_count = self.tiling_case.tensor_ub_size_before_reduce
             stage: Stage = self.schedule[tensor]
             stage.set_buffer_size(ub_count)
 
@@ -499,19 +522,34 @@ class VectorSchedule(VectorScheduleBase, ABC):
                     producer_stage.compute_at(anchor_stage, anchor_axis)
                     self.compute_at_map[producer] = anchor_point
 
-                    if compute_at_pattern == "ub_anchor":
-                        for _, tensor in self._ori_and_align_pad_tensor_map.items():
-                            if tensor not in self.compute_at_map:
-                                stage: Stage = self.schedule[tensor]
-                                stage.compute_at(anchor_stage, anchor_axis)
-                                self.compute_at_map[tensor] = anchor_point
+            if compute_at_pattern == "ub_anchor":
+                def _do_extra_ub_anchor_compute_at():
+                    for _, tensor in self._ori_and_align_pad_tensor_map.items():
+                        if tensor not in self.compute_at_map:
+                            stage: Stage = self.schedule[tensor]
+                            stage.compute_at(anchor_stage, anchor_axis)
+                            self.compute_at_map[tensor] = anchor_point
 
-                    if compute_at_pattern == "block_anchor":
-                        for _, tensor in self._ori_and_remove_pad_tensor_map.items():
+                    for source_tensor, tensor in self._set_value_cache_read_tensor_map.items():
+                        if source_tensor in self.graph_info.tensors_before_reduce or \
+                                source_tensor in self._cache_read_tensor_and_buffer_map.values():
                             if tensor not in self.compute_at_map:
-                                stage: Stage = self.schedule[tensor]
-                                stage.compute_at(anchor_stage, anchor_axis)
                                 self.compute_at_map[tensor] = anchor_point
+                _do_extra_ub_anchor_compute_at()
+
+            if compute_at_pattern == "block_anchor":
+                def _do_extra_block_anchor_compute_at():
+                    for _, tensor in self._ori_and_remove_pad_tensor_map.items():
+                        if tensor not in self.compute_at_map:
+                            stage: Stage = self.schedule[tensor]
+                            stage.compute_at(anchor_stage, anchor_axis)
+                            self.compute_at_map[tensor] = anchor_point
+                    for source_tensor, tensor in self._set_value_cache_read_tensor_map.items():
+                        if source_tensor in self.graph_info.tensors_after_reduce or \
+                                source_tensor in self._cache_write_tensor_and_buffer_map.values():
+                            if tensor not in self.compute_at_map:
+                                self.compute_at_map[tensor] = anchor_point
+                _do_extra_block_anchor_compute_at()
 
     def _do_emit_insn(self):
         for emitinsninfo in self.emit_insn_list:
@@ -538,6 +576,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
         for _, tensor in self._ori_and_remove_pad_tensor_map.items():
             stage: Stage = self.schedule[tensor]
             stage.emit_insn(tensor.op.axis[0], "remove_pad")
+        for _, tensor in self._set_value_cache_read_tensor_map.items():
+            stage: Stage = self.schedule[tensor]
+
+            stage.emit_insn(tensor.op.axis[0], "dma_copy")
 
     def _do_pragma(self):
         for pragmainfo in self.pragma_list:
@@ -547,7 +589,6 @@ class VectorSchedule(VectorScheduleBase, ABC):
             if isinstance(itervar, int):
                 itervar = self.get_itervar_by_original_index(pragmainfo.tensor, itervar)
             stage.pragma(itervar, pragmainfo.pragma, pragmainfo.value)
-
 
     def _do_double_buffer(self):
         pass

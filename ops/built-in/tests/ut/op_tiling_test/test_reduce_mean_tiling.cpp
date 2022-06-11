@@ -55,7 +55,7 @@ TEST_F(ReduceMeanTiling, ReduceMeanDTiling1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_reduce_vars": {"4293966796": [20000, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   std::vector<int64_t> input{1};
   std::vector<int64_t> output{1};
@@ -75,7 +75,9 @@ TEST_F(ReduceMeanTiling, ReduceMeanDTiling2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
+  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+  "_reduce_vars": {"4294966896": [20000,20001, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4,
+   9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
 
   std::vector<int64_t> input{7, 2};
   std::vector<int64_t> output{7};
@@ -95,7 +97,8 @@ TEST_F(ReduceMeanTiling, ReduceMeanDTiling3) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16"})";
+  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+  "_reduce_vars": {"4294966896": [20000,20001, 30000, 40000]}, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16"})";
 
   std::vector<int64_t> input{7, 2};
   std::vector<int64_t> output{7};

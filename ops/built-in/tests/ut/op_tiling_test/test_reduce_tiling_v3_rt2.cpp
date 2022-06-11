@@ -269,7 +269,8 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling1) {
     {1}
   };
 
-  std::string compile_info = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+  std::string compile_info = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8,
+   1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256],"_reduce_vars": {"4293966796": [20000, 30000, 40000]}, "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   ge::DataType dtype = ge::DT_FLOAT;
   AutoTilingTest test(inputs, outputs, dtype, dtype);
@@ -397,6 +398,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling8) {
                                "_pattern_info": [5,4,9], "_ub_info":[21632, 21376, 21632],
                                "_ub_info_rf": [21632,16000,21632],
                                "_pattern": "CommReduce",
+                               "_reduce_vars": {"4292866396": [20000,20001,20002, 30000, 40000]},
                                "_vars": {"1": []}})";
 
   std::vector<std::vector<int64_t>> inputs {
@@ -423,6 +425,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling9) {
                                "_pattern_info": [5,4,9], "_ub_info":[32512, 32128, 16128],
                                "_ub_info_rf": [32512, 21376, 32512],
                                "_pattern": "CommReduce",
+                               "_reduce_vars": {"1100900": [20000,20001,20002,20003, 30000, 40000]},
                                "_vars": {"1": []}})";
   std::vector<std::vector<int64_t>> inputs {
     {16, 1, 8, 38, 1, 16, 16}
@@ -483,6 +486,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling11) {
                                 "_pattern_info": [5],
                                 "_ub_info": [16256],
                                 "_ub_info_rf": [16256],
+                                "_reduce_vars": {"4293966796": [20000,20001,20002, 30000, 40000]},
                                 "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   // new interface
@@ -719,7 +723,8 @@ static void ReduceSumComputeInt64(std::vector<int64_t> inputA, std::vector<int64
 TEST_F(ReduceTilingV3_RT2, ReduceSumTiling1) {
   std::string caseName = "ReduceSumTiling1";
   std::string compile_info = R"({"_pattern": "CommReduce", "_common_info": [32,1,8,1,1], "_pattern_info": [5, 4, 9],
-  "axes_idx":1, "_ub_info_rf": [32512, 21376, 32512], "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
+  "axes_idx":1, "_ub_info_rf": [32512, 21376, 32512],"_reduce_vars": {"1000900": [20000,20001, 30000, 40000]},
+  "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
   std::vector<int64_t> inputA{32,256};
   std::vector<int64_t> inputB{1};
   int32_t axes[1] = {0};
@@ -734,7 +739,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceSumTiling1) {
 TEST_F(ReduceTilingV3_RT2, ReduceSumTiling2) {
   std::string caseName = "ReduceSumTiling2";
   std::string compile_info = R"({"_pattern": "CommReduce", "_common_info": [32,1,8,1,1], "axes_idx":1, "_pattern_info":
-  [5, 4, 9], "_ub_info_rf": [32512, 21376, 32512], "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
+  [5, 4, 9], "_ub_info_rf": [32512, 21376, 32512],"_reduce_vars": {"1000900": [20000,20001, 30000, 40000]}, "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
   std::vector<int64_t> inputA{{32,256}};
   std::vector<int64_t> inputB{1};
   int32_t axes[1] = {0};
@@ -749,7 +754,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceSumTiling2) {
 TEST_F(ReduceTilingV3_RT2, ReduceSumTiling3) {
   std::string caseName = "ReduceSumTiling3";
   std::string compile_info = R"({"_pattern": "CommReduce", "_common_info": [32,1,8,1,1], "axes_idx":1, "_pattern_info":
-  [5, 4, 9], "_ub_info_rf": [32512, 21376, 32512], "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
+  [5, 4, 9], "_ub_info_rf": [32512, 21376, 32512], "_reduce_vars": {"1000900": [20000,20001, 30000, 40000]},"_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
   std::vector<int64_t> inputA{32,256};
   std::vector<int64_t> inputB{1};
   int64_t axes[1] = {0};
@@ -780,6 +785,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling_var_attr) {
                                  "_common_info": [32, 1, 8, 1, 1],
                                  "_pattern_info": [5],
                                  "_ub_info": [16256], "_ub_info_rf": [16256],
+                                 "_reduce_vars": {"4293966796": [20000, 30000, 40000]},
                                  "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   AutoTilingTest test(inputs, outputs, dtype, dtype);
@@ -831,7 +837,7 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling_reduce_all_rt3) {
   ge::DataType dtype = ge::DT_FLOAT;
 
   std::string compile_info = R"({"_reduce_axes_type": 0, "_pattern": "CommReduce", "_zero_ub_factor": 32512,
-  "_common_info":[32,1,8,1,1,256], "_pattern_info": [5,4,9], "_ub_info":[32512, 32128, 16128],
+  "_common_info":[32,1,8,1,1,256], "_pattern_info": [5,4,9], "_ub_info":[32512, 32128, 16128],"_reduce_vars": {"1100400": [20000, 30000, 40000]},
   "_ub_info_rf": [32512, 21376, 32512]})";
 
   AutoTilingTest test(inputs, outputs, dtype, dtype);
@@ -839,4 +845,64 @@ TEST_F(ReduceTilingV3_RT2, ReduceTiling_reduce_all_rt3) {
   test.SetCompileInfo(compile_info, &reduce_info);
   EXPECT_EQ(test.Test(), true);
   EXPECT_EQ(test.GetTilingKey(), 1100400);
+}
+
+
+TEST_F(ReduceTilingV3_RT2, ReduceTilingGroupReduce) {
+  using namespace optiling;
+  std::vector<std::vector<int64_t>> inputs {
+    {32, 544, 512}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {1, 1, 512}
+  };
+  std::string compile_info = R"({"_ori_axis": [0, 1],"_pattern": "CommReduce",
+                               "_zero_ub_factor": 32512, "_common_info": [32,1,16,0,1,256,1,4,1],
+                               "_pattern_info": [5,4,9], "_ub_info":[21632, 15488, 21632],
+                               "_ub_info_rf": [21632, 15488, 21632],
+                               "_ub_info_pad": [0, 17664, 19560],
+                               "_workspace_size": 2,
+                               "_reduce_vars": {"4293866396": [20000, 20001,20002,30000, 40000]},
+                               "_vars": {"4293866396": []}})";
+
+  std::vector<ge::DataType> dtype = {ge::DT_FLOAT16};
+
+  AutoTilingTest test(inputs, outputs, dtype, dtype);
+  optiling::v3::ReduceCompileInfo reduce_info;
+  test.SetCompileInfo(compile_info, &reduce_info);
+  EXPECT_EQ(test.Test(), true);
+  EXPECT_EQ(test.GetTilingKey(), 4293866396);
+  EXPECT_EQ(test.GetInt32TilingData(), "1, 17408, 512, 544, 42");
+}
+
+TEST_F(ReduceTilingV3_RT2, ReduceTiling_reduce_5HD_rt2) {
+  using namespace optiling;
+  std::vector<std::vector<int64_t>> inputs {
+    {85, 2, 11, 7, 16}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {85, 2, 11, 7, 16}
+  };
+  std::vector<std::vector<int64_t>> ori_inputs {
+    {85, 11, 7, 22}
+  };
+  std::vector<std::vector<int64_t>> ori_outputs {
+    {85, 11, 7, 22}
+  };
+
+  std::vector<ge::DataType> dtype = {ge::DT_FLOAT16};
+  std::vector<ge::Format> format = {ge::FORMAT_ND};
+
+  std::string compile_info = R"({"_disable_fuse_axes": [1, 4], "_ori_axis": [1, 4], "_ori_dim_index": 3, "_pattern":
+  "CommReduce", "_common_info": [32, 1, 32, 0, 1, 1024, 1, 2, true], "_pattern_info": [20], "_ub_info_rf": [27648],
+  "_ub_info": [35456], "_ub_info_pad": [0], "_ub_info_transpose": [0], "_idx_before_reduce": 0, "_vars": {"4294965296":
+  ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294765296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294865296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294665296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292765296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292865296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292665296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "2147483647": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2"]}, "_normal_vars": {"4294965296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294765296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294865296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294665296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292765296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292865296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292665296": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "2147483647": ["_ori_dim_3", "_dim_0", "_dim_1", "_dim_2"]}, "_custom_vars": {"4294965296": [], "4294765296": [], "4294865296": [], "4294665296": [], "4292765296": [], "4292865296": [], "4292665296": [], "2147483647": []}, "_reduce_vars": {"4294965296": [10003, 20000, 20001, 20002, 30000, 40000], "4294765296": [10003, 20000, 20001, 20002, 30000, 40000], "4294865296": [10003, 20000, 20001, 20002, 30000, 40000], "4294665296": [10003, 20000, 20001, 20002, 30000, 40000], "4292765296": [10003, 20000, 20001, 20002, 30000, 40000], "4292865296": [10003, 20000, 20001, 20002, 30000, 40000], "4292665296": [10003, 20000, 20001, 20002, 30000, 40000], "2147483647": [10003, 20000, 20001, 20002]}})";
+
+  AutoTilingTest test(ori_inputs, inputs, ori_outputs, outputs, dtype, dtype, format, format, format, format);
+  optiling::v3::ReduceCompileInfo reduce_info;
+  test.SetCompileInfo(compile_info, &reduce_info);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "22, 85, 2, 77, 3, 3";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+
 }

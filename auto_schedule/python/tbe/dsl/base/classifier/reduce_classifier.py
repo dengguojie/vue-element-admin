@@ -24,11 +24,16 @@ from typing import Optional
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.buildcfg import get_current_build_config
 from tbe.dsl.base.operation import add_compile_info_inner
+from .reduce_classifier_5hd import ReduceClassifier5HD
 
 from .known_reduce_classifier import KnownReduceClassifier
 from .unknown_reduce_classifier import UnknownReduceClassifier
 from .mixed_reduce_classifier import MixedReduceClassifier
 from ..expr_compare import is_true
+
+NC1HWC0_SHAPE_LENGTH = 5
+NC1HWC0_ORI_SHAPE_LENGTH = 4
+DISABLE_FUSE_AXES_5HD = [1, 4]
 
 
 class InputType:
@@ -44,6 +49,15 @@ class ReduceMode:
     mode of reduce
     """
     ALL_REDUCE = "all"
+
+
+LAST_DIM_DTYPE_MAP_5HD = {
+    "float32": (8, 16),
+    "float16": 16,
+    "int8": 32,
+    "uint8": 32,
+    "int32": (8, 16)
+}
 
 
 def _need_process(ins):
@@ -76,6 +90,8 @@ def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
 
     _known_axis, neg_two = _need_process(ins)
     if neg_two:
+        _check_binary_mode_not_support_fractal_format(ins)
+
         # if reduce mode is all , ignore axis value.
         if reduce_axes_type and reduce_axes_type == ReduceMode.ALL_REDUCE:
             add_compile_info_inner("_reduce_axes_type", 0)
@@ -87,7 +103,6 @@ def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
         return [ins_classify[0]] if get_current_build_config("enable_op_prebuild") else ins_classify
 
     _check_keepdims(keepdims)
-    result = None
 
     # for reduce case not -2, if reduce mode is all,
     # we should change value of axis to all shape dimension to do all reduce
@@ -104,6 +119,84 @@ def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
 
     _fill_reduce_axis_for_all_reduce()
 
+    def _is_5hd_case(extra_params):
+        """
+        check if satisfy 5HD case.
+        """
+        # process fractal format business
+        ignore_fractal_format = extra_params.get("ignore_fractal_format")
+        if ignore_fractal_format is None:
+            ignore_fractal_format = True
+        else:
+            _check_ignore_fractal_format(ignore_fractal_format)
+        if ignore_fractal_format:
+            return False, []
+
+        disable_fuse_axes = []
+        is_5hd = False
+        # check if all input before reduce is 5HD format
+        contains_5hd_format = False
+        contains_nd_format = False
+        for ins_single_input in ins:
+            if ins_single_input.get("rel_pos_to_reduce") == InputType.BEFORE_REDUCE:
+                if ins_single_input.get("format") == "NC1HWC0":
+                    contains_5hd_format = True
+                else:
+                    contains_nd_format = True
+
+        if contains_5hd_format:
+            is_true(not contains_nd_format,
+                    {"errCode": "E90001",
+                     "detailed_cause": "Format NC1HWC0 can not together with other formats at inputs before reduce."})
+            is_5hd = True
+            for ins_single_input in ins:
+                if ins_single_input.get("rel_pos_to_reduce") == InputType.BEFORE_REDUCE:
+                    shape = ins_single_input.get("shape")
+
+                    # 1. check shape length
+                    is_true(len(shape) == NC1HWC0_SHAPE_LENGTH,
+                            {"errCode": "E90001",
+                             "detailed_cause": "Input shape length of format NC1HWC0 should be 5."})
+
+                    # 2. check shape last dim
+                    last_dim = shape[-1]
+                    dtype = ins_single_input.get("dtype")
+                    is_true(isinstance(last_dim, int) and str(last_dim) in str(LAST_DIM_DTYPE_MAP_5HD.get(dtype)),
+                            {"errCode": "E90001",
+                             "detailed_cause": "Shape last dim of format NC1HWC0 is illegal."})
+
+                    # 3. check ori_format
+                    ori_format = ins_single_input.get("ori_format")
+                    is_true(ori_format in ("NCHW", "NHWC"),
+                            {"errCode": "E90001",
+                             "detailed_cause": "Input ori_format of format NC1HWC0 should be NHWC or NCHW."})
+
+                    # 4. check ori_shape
+                    ori_shape = ins_single_input.get("ori_shape")
+                    is_true(len(ori_shape) == NC1HWC0_ORI_SHAPE_LENGTH,
+                            {"errCode": "E90001",
+                             "detailed_cause": "Input ori_shape of format NC1HWC0 should be 4."})
+
+            add_compile_info_inner("_disable_fuse_axes", DISABLE_FUSE_AXES_5HD)
+            disable_fuse_axes.append(DISABLE_FUSE_AXES_5HD)
+        return is_5hd, disable_fuse_axes
+
+    is_5hd_case, disable_fuse_axes = _is_5hd_case(extra_params)
+
+    # process reduce classify
+    if is_5hd_case:
+        result = ReduceClassifier5HD(ins, keepdims, disable_fuse_axes).classify()
+    else:
+        result = _classify_nd_format(ins, keepdims)
+    ins_classify = [ins] if not result else result
+
+    return [ins_classify[0]] if get_current_build_config("enable_op_prebuild") else ins_classify
+
+
+def _classify_nd_format(ins, keepdims):
+    """
+    classify nd format
+    """
     for single_input in ins:
         if single_input.get("rel_pos_to_reduce") == InputType.REDUCE_AXIS:
             if single_input.get("value"):
@@ -111,10 +204,8 @@ def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
                 result = KnownReduceClassifier(ins, keepdims).classify()
             else:
                 result = UnknownReduceClassifier(ins, keepdims).classify()
-    ins_classify = [ins] if not result else result
 
-    return [ins_classify[0]] if get_current_build_config("enable_op_prebuild") else ins_classify
-
+    return result
 
 
 def _check_keepdims(keepdims: bool):
@@ -126,5 +217,32 @@ def _check_keepdims(keepdims: bool):
     if not isinstance(keepdims, bool):
         dict_args = {}
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "keepdims in reduce_classifier must be the bool type"
+        dict_args["detailed_cause"] = "Keepdims in reduce classifier must be the bool type."
         raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _check_ignore_fractal_format(ignore_fractal_format: bool):
+    """
+    check the type of ignore_fractal_format
+    :param ignore_fractal_format: bool
+    :return:
+    """
+    if not isinstance(ignore_fractal_format, bool):
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Ignore_fractal_format in reduce classifier must be the bool type."
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _check_binary_mode_not_support_fractal_format(ins):
+    """
+     neg two not support 5HD format
+    """
+    for ins_single_input in ins:
+        if ins_single_input.get("rel_pos_to_reduce") == InputType.BEFORE_REDUCE:
+            if ins_single_input.get("format") == "NC1HWC0":
+                dict_args = {}
+                dict_args["errCode"] = "E90001"
+                dict_args["detailed_cause"] = "Binary mode not support format of NC1HWC0."
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+

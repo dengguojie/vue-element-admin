@@ -69,7 +69,9 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling1) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+      R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,
+      "_reduce_vars": {"4293966796": [20001,30000, 40000]}, "_common_info": [32, 1, 8, 1, 1],
+      "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -90,7 +92,9 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling2) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+      "_reduce_vars": {"4294966396": [20000,20001,20002, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1],
+      "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -115,7 +119,8 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling3) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+      "_reduce_vars": {"4294966396": [20000,20001,20002, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -140,7 +145,8 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling4) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+      "_reduce_vars": {"4292866396": [20000,20001,20002, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -165,7 +171,8 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling5) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+      "_reduce_vars": {"4292866396": [20000,20001,20002, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -190,7 +197,9 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling6) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41], "_ub_info": [16256, 16000, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+      "_reduce_vars": {"3304100": [20000,20001,20002,20003,20004, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1],
+      "_pattern_info": [5, 4, 9, 41], "_ub_info": [16256, 16000, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -215,7 +224,8 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling7) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+      "_reduce_vars": {"1100900": [20000,20001,20002, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -278,7 +288,9 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling8) {
         TENSOR_INPUT(opParas, tensorInput, x);
         TENSOR_OUTPUT_WITH_SHAPE(opParas, y, shape, ge::DT_FLOAT16, origin_formats[j], {});
         std::string compileInfo =
-            R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+            R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,
+            "_reduce_vars": {"4293966796": [20001, 30000, 40000], "4293866796": [20001, 30000, 40000], "500": [20001,30000, 40000], "100500": [20001, 30000, 40000], "2147483647": [20001], "4294966896": [20000, 20001, 30000, 40000], "4284966896": [20000, 20001, 30000, 40000], "4274966896": [20000, 20001, 30000, 40000], "4294866896": [20000, 20001, 30000, 40000], "1000400": [20000, 20001, 30000, 40000], "1100400": [20000, 20001, 30000, 40000], "4294966396": [20000, 20001, 20002, 30000, 40000], "4284966396": [20000, 20001, 20002, 30000, 40000], "4294866396": [20000, 20001, 20002, 30000, 40000], "4284866396": [20000, 20001, 20002, 30000, 40000], "4294766396": [20000, 20001, 20002, 30000, 40000], "4292866396": [20000, 20001, 20002, 30000, 40000], "4292766396": [20000, 20001, 20002, 30000, 40000], "1000900": [20000, 20001, 20002, 30000, 40000], "11000900": [20000, 20001, 20002, 30000, 40000], "1100900": [20000, 20001, 20002, 30000, 40000], "11100900": [20000, 20001, 20002, 30000, 40000], "1200900": [20000, 20001, 20002, 30000, 40000], "4294965296": [20000, 20001, 20002, 20003, 30000, 40000], "4294765296": [20000, 20001, 20002, 20003, 30000, 40000], "4294865296": [20000, 20001, 20002, 20003, 30000, 40000], "4294665296": [20000, 20001, 20002, 20003, 30000, 40000], "4292765296": [20000, 20001, 20002, 20003, 30000, 40000], "4292865296": [20000, 20001, 20002, 20003, 30000, 40000], "4292665296": [20000, 20001, 20002, 20003, 30000, 40000], "1002000": [20000, 20001, 20002, 20003, 30000, 40000], "1202000": [20000, 20001, 20002, 20003, 30000, 40000], "1102000": [20000, 20001, 20002, 20003, 30000, 40000], "1302000": [20000, 20001, 20002, 20003, 30000, 40000], "3002000": [20000, 20001, 20002, 20003, 30000, 40000], "3202000": [20000, 20001, 20002, 20003, 30000, 40000], "3302000": [20000, 20001, 20002, 20003, 30000, 40000], "4294963196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4294763196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4294863196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4294663196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4294563196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4292763196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4292863196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4292663196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4292563196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4290863196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4290663196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "4290563196": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "1004100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "1204100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "1104100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "1304100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "1404100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "3004100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "3204100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "3304100": [20000, 20001, 20002, 20003, 20004, 30000, 40000], "3404100": [20000, 20001, 20002, 20003, 20004, 30000, 40000]},
+            "_common_info": [32, 1, 8, 1, 1], "_pattern_info":[5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
         // do tilling, get runInfo
         optiling::utils::OpRunInfo runInfo;
@@ -345,7 +357,7 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling9) {
         TENSOR_INPUT(opParas, tensorInput, x);
         TENSOR_OUTPUT_WITH_SHAPE(opParas, y, shape, ge::DT_FLOAT16, origin_formats[j], {});
         std::string compileInfo =
-            R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+            R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_reduce_vars": {"4293966796": [20000, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
         // do tilling, get runInfo
         optiling::utils::OpRunInfo runInfo;
@@ -373,7 +385,7 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling10) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,"_reduce_vars": {"4293966796": [20000, 30000, 40000]},  "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -421,7 +433,7 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling12) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z_3D, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,"_reduce_vars": {"3304100": [20000, 30000, 40000]},  "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -445,7 +457,7 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling13) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_NCDHW, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_reduce_vars": {"3002000": [20000, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -469,7 +481,7 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling14) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_NDHWC, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0,"_reduce_vars": {"1000900": [20000, 30000, 40000]},  "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -493,7 +505,7 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling15) {
   TENSOR_INPUT(opParas, tensorInput, x);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_ND, {});
   std::string compileInfo =
-      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_reduce_vars": {"4292866396": [20000, 30000, 40000]}, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
