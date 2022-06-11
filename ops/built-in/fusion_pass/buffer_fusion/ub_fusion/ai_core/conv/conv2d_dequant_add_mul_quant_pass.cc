@@ -26,6 +26,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "tbe_aipp_fusion_rule.h"
 
 namespace fe {
 
@@ -75,6 +76,28 @@ vector<BufferFusionPattern*> TbeConv2DAddMulQuantPass::DefinePatterns() {
       .SetOutputs(kPatternAdd, {kPatternQuant, kPatternOutput1, kPatternOutput2}, TBE_OUTPUT_BRANCH_MULTI);
   patterns.push_back(pattern1);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
+
+  string pass_name2 = "TbeConv2DAddBroadcastMutioutQuantFusion";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "create new pattern failed."),
+                    return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
+  pattern2->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternDeq, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternAdd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternOutput1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternOutput2, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDeq})
+      .SetOutputs(kPatternOtherInput, {kPatternDeq})
+      .SetOutputs(kPatternDeq, {kPatternAdd})
+      .SetOutputs(kPatternOtherInput1, {kPatternAdd})
+      .SetOutputs(kPatternAdd, {kPatternQuant, kPatternOutput1, kPatternOutput2}, TBE_OUTPUT_BRANCH_MULTI);
+  patterns.push_back(pattern2);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
 
   return patterns;
 }
@@ -134,7 +157,6 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
   }
   SetSplitMap(split_maps, fusion_nodes, fused_op_type_, L1_fusion_type, min_tbe_L1Space);
 }
-
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -151,8 +173,10 @@ Status TbeConv2DAddMulQuantPass::GetFusionNodes(const BufferFusionMapping& mappi
                     return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
   SetSplitInfo(mapping, fusion_nodes);
+  FUSION_PASS_CHECK(!BroadcastPatternRule::CheckBroadcastFusionScenario(mapping, fusion_nodes),
+                    OP_LOGD(fused_op_type_.c_str(), "The fusion scenario is not applicable"),
+                    return NOT_CHANGED);
   OP_LOGD(fused_op_type_.c_str(), "End to do Conv2DAddMulQuant!");
-
   return SUCCESS;
 }
 

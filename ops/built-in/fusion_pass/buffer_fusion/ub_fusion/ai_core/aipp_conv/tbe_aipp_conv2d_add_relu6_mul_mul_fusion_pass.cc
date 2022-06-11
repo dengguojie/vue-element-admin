@@ -69,6 +69,34 @@ vector<BufferFusionPattern*> AippConv2dAddRelu6MulMulFusionPass::DefinePatterns(
   patterns.push_back(pattern1);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
 
+  string pattern_name2 = "TbeAippConv2dAddRelu6MulMulBroadcastFusionPattern2";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pattern_name2);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name2.c_str());
+
+  /* define pattern  aipp -->  conv2d   -->     add  -->  relu6  -->   mul1   -->    mul2
+  *                              |  otherinput1--/           otherInput2/             /
+  *                              |---------------------------------------------------/
+  */
+  pattern2->AddOpDesc(kPatternAipp, {OP_PATTERN_AIPP}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternAdd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternRelu6, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternMul1, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternMul2, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .SetHead({kPatternAipp})
+          .SetOutputs(kPatternAipp, {kPatternConv})
+          .SetOutputs(kPatternConv, {kPatternAdd, kPatternMul1}, TBE_OUTPUT_BRANCH_MULTI, true)
+          .SetOutputs(kPatternOtherInput1, {kPatternAdd})
+          .SetOutputs(kPatternAdd, {kPatternRelu6}, TBE_OUTPUT_BRANCH_SINGLE)
+          .SetOutputs(kPatternRelu6, {kPatternMul1}, TBE_OUTPUT_BRANCH_SINGLE)
+          .SetOutputs(kPatternMul1, {kPatternMul2}, TBE_OUTPUT_BRANCH_SINGLE)
+          .SetOutputs(kPatternOtherInput2, {kPatternMul2});
+  patterns.push_back(pattern2);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name2.c_str());
+
   return patterns;
 }
 
@@ -141,6 +169,9 @@ Status AippConv2dAddRelu6MulMulFusionPass::GetFusionNodes(const BufferFusionMapp
 
   TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, false, L1FUSION_BASIC);
 
+  FUSION_PASS_CHECK(!BroadcastPatternRule::CheckBroadcastFusionScenario(mapping, fusion_nodes),
+                    OP_LOGD(fused_op_type_.c_str(), "The fusion scenario is not applicable"),
+                    return NOT_CHANGED);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippConv2dAddRelu6MulMulFusionPass.");
   return SUCCESS;
 }

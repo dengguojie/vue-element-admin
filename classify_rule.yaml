@@ -678,7 +678,6 @@ cube-tiling:
       - auto_schedule/python/tbe/dsl/static_schedule/strided_write_schedule.py
       - auto_schedule/python/lang/dynamic/schedule/conv2d_tilingcase.py
       - auto_schedule/python/lang/dynamic/schedule/conv2d_schedule.py
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.h
@@ -688,7 +687,6 @@ cube-tiling:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_double_in_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_double_in_fusion_pass.h
@@ -699,11 +697,9 @@ cube-tiling:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_common_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv2d_add_relu6_mul_mul_fusion_pass.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_common_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv2d_add_relu6_mul_mul_fusion_pass.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_clip_mul_div.cc
@@ -2406,6 +2402,12 @@ cube-conv2d:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_relu6_mul_mul.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_clipByValue_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_relu6_mul_mul.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_bnreduce_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_elemwise_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_elemwise_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_conv2d_mul_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.h

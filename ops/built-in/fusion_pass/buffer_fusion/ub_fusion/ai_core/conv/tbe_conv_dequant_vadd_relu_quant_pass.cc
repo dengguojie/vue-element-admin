@@ -28,6 +28,7 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "conv2d_slice_info_cal_base.h"
 #include "common/util/platform_info.h"
+#include "tbe_aipp_fusion_rule.h"
 
 using namespace ge;
 
@@ -218,6 +219,159 @@ vector<BufferFusionPattern*> ConvDequantVaddReluQuantFusionPass::DefinePatterns(
   patterns.push_back(pattern6);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name6.c_str());
 
+  string pass_name7 = "TbeConvDequantVaddQuantBroadcastFusion";
+  BufferFusionPattern* pattern7 = new (std::nothrow) BufferFusionPattern(pass_name7, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern7 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name7.c_str());
+  // conv2d --> dequant --> vadd --> quant
+  pattern7->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternEltwise, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternEltwise})
+      .SetOutputs(kPatternEltwise, {kPatternQuant})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternEltwise});
+  patterns.push_back(pattern7);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name7.c_str());
+
+  string pass_name8 = "TbeConvDequantVaddReluQuantBroadcastFusion";
+  BufferFusionPattern* pattern8 = new (std::nothrow) BufferFusionPattern(pass_name8, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern8 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name8.c_str());
+  // conv2d --> dequant --> vadd --> relu --> quant
+  pattern8->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternRelu})
+      .SetOutputs(kPatternRelu, {kPatternQuant})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern8);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name8.c_str());
+
+  string pass_name9 = "TbeConvDequantVaddMultiOutReluQuantBroadcastFusion";
+  BufferFusionPattern* pattern9 = new (std::nothrow) BufferFusionPattern(pass_name9, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern9 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name9.c_str());
+  // conv2d --> dequant --> vadd -->relu --> quant
+  pattern9->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherOutput, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternVadd})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternRelu})
+      .SetOutputs(kPatternRelu, {kPatternQuant, kPatternOtherOutput}, TBE_OUTPUT_BRANCH_MULTI);
+  patterns.push_back(pattern9);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name9.c_str());
+
+  string pass_name10 = "TbeConvDequantLeakyReluVaddQuantBroadcastFusion";
+  BufferFusionPattern* pattern10 = new (std::nothrow) BufferFusionPattern(pass_name10, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern10 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name10.c_str());
+  // conv2d --> dequant --> leakyrelu -->vadd --> quant
+  pattern10->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternLeakyRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternLeakyRelu})
+      .SetOutputs(kPatternLeakyRelu, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternQuant})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern10);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name10.c_str());
+
+  string pass_name11 = "TbeConvDequantLeakyReluVaddMultiOutQuantBroadcastFusion";
+  BufferFusionPattern* pattern11 = new (std::nothrow) BufferFusionPattern(pass_name11, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern11 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name11.c_str());
+  // conv2d --> dequant --> leakyrelu -->vadd --> quant
+  pattern11->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternLeakyRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherOutput, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternLeakyRelu})
+      .SetOutputs(kPatternLeakyRelu, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternQuant, kPatternOtherOutput}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern11);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name11.c_str());
+
+  string pass_name12 = "TbeConvDequantLeakyreluMultiOutVaddQuantBroadcastFusion";
+  BufferFusionPattern* pattern12 = new (std::nothrow) BufferFusionPattern(pass_name12, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern12 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name12.c_str());
+  // conv2d --> dequant --> vadd -->relu --> quant
+  pattern12->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternLeakyRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherOutput, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternLeakyRelu, kPatternOtherOutput}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternLeakyRelu, {kPatternQuant})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern12);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name12.c_str());
+
+  string pass_name13 = "TbeConvDequantMultiOutVaddQuantBroadcastFusion";
+  BufferFusionPattern* pattern13 = new (std::nothrow) BufferFusionPattern(pass_name13, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern13 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name13.c_str());
+  // conv2d --> dequant --> vadd --> quant
+  pattern13->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherOutput, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternVadd})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternQuant, kPatternOtherOutput}, TBE_OUTPUT_BRANCH_MULTI);
+  patterns.push_back(pattern13);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name13.c_str());
   return patterns;
 }
 
@@ -539,6 +693,9 @@ Status ConvDequantVaddReluQuantFusionPass::GetFusionNodes(const BufferFusionMapp
   if (use_common_rules_flag) {
     fusion_nodes.clear();
   }
+  FUSION_PASS_CHECK(!BroadcastPatternRule::CheckBroadcastFusionScenario(mapping, fusion_nodes),
+                    OP_LOGD(fused_op_type_.c_str(), "The fusion scenario is not applicable"),
+                    return NOT_CHANGED);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeConvDequantVaddReluQuant!");
   return SUCCESS;
 }

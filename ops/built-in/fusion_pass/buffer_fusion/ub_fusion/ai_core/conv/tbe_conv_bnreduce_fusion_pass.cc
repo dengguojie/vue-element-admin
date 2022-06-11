@@ -33,6 +33,7 @@ static const char kPatternOutput1[] = "OUTPUT1";
 static const char kPatternOutput2[] = "OUTPUT2";
 static const char kPatternOutput3[] = "OUTPUT3";
 static const string kFusedOpType = "FusedOp";
+static const string OP_PATTERN_TUPLEREDUCE = "tuple_reduce";
 }
 
 /*
@@ -78,6 +79,37 @@ vector<BufferFusionPattern *> ConvBnreduceFusionPass::DefinePatterns() {
                   TBE_OUTPUT_BRANCH_MULTI);
   patterns.push_back(pattern1);
   OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
+
+  string pass_name2 = "TbeConvBNReduceTuplePatternFusionPass";
+  BufferFusionPattern *pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
+  FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
+  // define pattern rules
+  pattern2->AddOpDesc(kPatternBnreduce, {OP_PATTERN_TUPLEREDUCE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput2, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput3, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternBnreduce, kPatternOutput1, kPatternOutput2, kPatternOutput3},
+                  TBE_OUTPUT_BRANCH_MULTI);
+  patterns.push_back(pattern2);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
+
+  // define pattern rules
+  string pass_name3 = "TbeConvBNReduce3TuplePatternoutputFusionPass";
+  BufferFusionPattern *pattern3 = new (std::nothrow) BufferFusionPattern(pass_name3);
+  FUSION_PASS_CHECK(pattern3 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name3.c_str());
+  pattern3->AddOpDesc(kPatternBnreduce, {OP_PATTERN_TUPLEREDUCE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOutput2, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternBnreduce, kPatternOutput1, kPatternOutput2},
+                  TBE_OUTPUT_BRANCH_MULTI);
+  patterns.push_back(pattern3);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name3.c_str());
   return patterns;
 }
 
@@ -98,6 +130,20 @@ Status ConvBnreduceFusionPass::GetFusionNodes(const BufferFusionMapping &mapping
       for (auto &node : item.second) {
         auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
         fusion_nodes.erase(node_ptr);
+      }
+    }
+  }
+  for (auto &item : mapping) {
+    const BufferFusionOpDesc *op_desc = item.first;
+    if (op_desc != nullptr && op_desc->types[0] == OP_PATTERN_TUPLEREDUCE) {
+      ge::NodePtr node = item.second[0];
+      if (node == nullptr) {
+        return FAILED;
+      }
+      if (node->GetType() != "BNTrainingReduce") {
+        fusion_nodes.clear();
+        OP_LOGD(fused_op_type_.c_str(), "BNReduce is op [%s, %s], skip fusion.", node->GetName().c_str(), node->GetType().c_str());
+        break;
       }
     }
   }

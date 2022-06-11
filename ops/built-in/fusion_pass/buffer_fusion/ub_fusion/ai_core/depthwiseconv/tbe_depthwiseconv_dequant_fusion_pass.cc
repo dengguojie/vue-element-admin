@@ -20,6 +20,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "tbe_aipp_fusion_rule.h"
 
 namespace fe {
 using std::vector;
@@ -187,7 +188,105 @@ vector<BufferFusionPattern *> DepthwiseConvDequantFusionPass::DefinePatterns() {
   patterns.push_back(pattern6);
   OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name6.c_str());
 
+  string pass_name7 = "TbeDepthwiseConvDequantReluBroadcastFusion";
+  BufferFusionPattern *pattern7 = new (std::nothrow) BufferFusionPattern(pass_name7);
+  FUSION_PASS_CHECK(pattern7 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name7.c_str());
+  // define pattern rules Convolution-->AcendDeQuant
+  pattern7->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternRelu})
+      .SetOutputs(kPatternRelu, {kPatternQuant})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant});
+  patterns.push_back(pattern7);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name7.c_str());
 
+
+  string pass_name8 = "TbeDepthwiseConvDequantMulQuantBroadcastFusion";
+  BufferFusionPattern *pattern8 = new (std::nothrow) BufferFusionPattern(pass_name8);
+  FUSION_PASS_CHECK(pattern8 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name8.c_str());
+  // define pattern rules Convolution-->AcendDeQuant
+  pattern8->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternMul, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternMul})
+      .SetOutputs(kPatternOtherInput2, {kPatternMul})
+      .SetOutputs(kPatternMul, {kPatternQuant})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant});
+  patterns.push_back(pattern8);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name8.c_str());
+
+  string pass_name9 = "TbeDepthwiseConvDequantMulBroadcastFusion";
+  BufferFusionPattern *pattern9 = new (std::nothrow) BufferFusionPattern(pass_name9);
+  FUSION_PASS_CHECK(pattern9 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name9.c_str());
+  // define pattern rules Convolution-->AcendDeQuant
+  pattern9->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternMul, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternMul})
+      .SetOutputs(kPatternOtherInput2, {kPatternMul})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant});
+  patterns.push_back(pattern9);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name9.c_str());
+
+  string pass_name10 = "TbeDepthwiseConvDequantSigmoidMulBroadcastFusion";
+  BufferFusionPattern *pattern10 = new (std::nothrow) BufferFusionPattern(pass_name10);
+  FUSION_PASS_CHECK(pattern10 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name10.c_str());
+  // define pattern rules Convolution-->AcendDeQuant
+  pattern10->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternSigmoid, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternMul, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternSigmoid, kPatternMul}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternSigmoid, {kPatternMul})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant});
+  patterns.push_back(pattern10);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name10.c_str());
+
+  string pass_name11 = "TbeDepthwiseConvDequantPowerBroadcastFusion";
+  BufferFusionPattern *pattern11 = new (std::nothrow) BufferFusionPattern(pass_name11);
+  FUSION_PASS_CHECK(pattern11 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name11.c_str());
+  // define pattern rules Convolution-->AcendDeQuant
+  pattern11->AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternConv, {OP_PATTERN_DEPTHWISE_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternPower1, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternRelu6, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternPower2, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternElemwise, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternPower1, kPatternElemwise}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternPower1, {kPatternRelu6})
+      .SetOutputs(kPatternRelu6, {kPatternPower2})
+      .SetOutputs(kPatternPower2, {kPatternElemwise})
+      .SetOutputs(kPatternElemwise, {kPatternQuant}, kTbeOutputBranchSingle, kIgnoreInputNum, kIgnoreOutputNum)
+      .SetOutputs(kPatternOtherInput, {kPatternDequant});
+  patterns.push_back(pattern11);
+  OP_LOGD(kFusedOpType.c_str(), "End to define %s pass pattern.", pass_name11.c_str());
   return patterns;
 }
 
@@ -204,7 +303,6 @@ void SearchMatchNode(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fu
         }
     }
 }
-
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -269,7 +367,9 @@ Status DepthwiseConvDequantFusionPass::GetFusionNodes(const BufferFusionMapping 
   fusion_nodes = GetMatchedNodes(mapping);
   // the output_data can't be fused
   SearchMatchNode(mapping, fusion_nodes);
-
+  FUSION_PASS_CHECK(!BroadcastPatternRule::CheckBroadcastFusionScenario(mapping, fusion_nodes),
+                    OP_LOGD(fused_op_type_.c_str(), "The fusion scenario is not applicable"),
+                    return NOT_CHANGED);
   OP_LOGD(kFusedOpType.c_str(), "End to do TbeDepthwiseConvDequantFusion!");
   return SUCCESS;
 }

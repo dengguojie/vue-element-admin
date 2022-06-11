@@ -52,6 +52,8 @@ class DepthwiseConvElemwiseFusionPass : public BufferFusionPassBase {
    * @return bool: fusion status ok or not.
    */
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
+ private:
+  const string fused_op_type_ = "FusedDepthwiseconvElemwiseOp";
 };
 
 }  // namespace fe

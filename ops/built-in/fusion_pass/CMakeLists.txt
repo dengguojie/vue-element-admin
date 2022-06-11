@@ -21,6 +21,7 @@ protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 set(_common_fusion_pass_inc
   ${OPS_DIR}/built-in/fusion_pass/common
+  ${OPS_DIR}/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv
   ${OPS_DIR}/built-in/op_proto/util
   ${OPS_INCLUDE}
   ${FWKACLLIB_INCLUDE}

@@ -23,6 +23,9 @@
 #include <string>
 #include "graph/node.h"
 #include "graph_optimizer/fusion_common/op_slice_info.h"
+#include "op_log.h"
+#include "pattern_fusion_util.h"
+#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 
 namespace fe {
 
@@ -37,6 +40,13 @@ class TbeAippFusionRule {
 private:
   static int64_t CalcMinAIPPTbeL1Space(const ge::NodePtr& conv_node);
 };
+
+class BroadcastPatternRule {
+ public:
+  static bool CheckTensorData(const ge::GeTensorDesc tensor_0, const ge::GeTensorDesc tensor_1);
+  static bool CheckBroadcastFusionScenario(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes);
+};
+
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_AIPP_CONV_TBE_AIPP_FUSION_RULE_H_
 

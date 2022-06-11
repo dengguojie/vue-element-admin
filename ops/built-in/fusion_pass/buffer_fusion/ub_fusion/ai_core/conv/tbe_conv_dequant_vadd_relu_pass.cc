@@ -26,6 +26,7 @@
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "conv2d_slice_info_cal_base.h"
+#include "tbe_aipp_fusion_rule.h"
 
 namespace fe {
 
@@ -116,9 +117,68 @@ vector<BufferFusionPattern*> ConvDequantVaddReluFusionPass::DefinePatterns() {
   patterns.push_back(pattern2);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
 
+  string pass_name3 = "TbeConvDequantVaddReluBroadcastFusion";
+  BufferFusionPattern* pattern3 = new (std::nothrow) BufferFusionPattern(pass_name3, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK(pattern3 == nullptr, OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name3.c_str());
+  // conv2d --> dequant --> vadd --> relu
+  pattern3->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherOutput, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternVadd})
+      .SetOutputs(kPatternVadd, {kPatternRelu})
+      .SetOutputs(kPatternRelu, {kPatternOtherOutput})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern3);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name3.c_str());
+
+  string pass_name4 = "TbeConvDequantLeakyreluVaddBroadcastFusion";
+  BufferFusionPattern* pattern4 = new (std::nothrow) BufferFusionPattern(pass_name4, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK(pattern4 == nullptr, OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name4.c_str());
+  // conv2d --> dequant --> leakyrelu --> vadd
+  pattern4->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternLeakyRelu, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternLeakyRelu})
+      .SetOutputs(kPatternLeakyRelu, {kPatternVadd})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern4);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name4.c_str());
+
+  string pass_name5 = "TbeConvDequantVaddBroadcastFusion";
+  BufferFusionPattern* pattern5 = new (std::nothrow) BufferFusionPattern(pass_name5, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK(pattern5 == nullptr, OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name5.c_str());
+  // conv2d --> dequant --> vadd
+  pattern5->AddOpDesc(kPatternConvolution, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternVadd, {OP_PATTERN_BROAD_CAST}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID)
+      .SetHead({kPatternConvolution})
+      .SetOutputs(kPatternConvolution, {kPatternDequant})
+      .SetOutputs(kPatternDequant, {kPatternVadd})
+      .SetOutputs(kPatternOtherInput, {kPatternDequant})
+      .SetOutputs(kPatternOtherInput1, {kPatternVadd});
+  patterns.push_back(pattern5);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name5.c_str());
+
   return patterns;
 }
-
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -164,6 +224,9 @@ Status ConvDequantVaddReluFusionPass::GetFusionNodes(const BufferFusionMapping &
   if (use_common_rules_flag) {
     fusion_nodes.clear();
   }
+  FUSION_PASS_CHECK(!BroadcastPatternRule::CheckBroadcastFusionScenario(mapping, fusion_nodes),
+                    OP_LOGD(fused_op_type_.c_str(), "The fusion scenario is not applicable"),
+                    return NOT_CHANGED);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeConvDequantVaddRelu!");
   return SUCCESS;
 }
