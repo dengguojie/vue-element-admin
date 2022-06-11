@@ -36,6 +36,7 @@ from .constants import TERNARY_INSNS
 
 from . import util
 from .softmax_cross_entropy_with_logits_tilingcase import TilingStrategy
+from .vector.softmax_norm.softmax_norm_schedule import SoftmaxNormSchedule
 
 
 # block size in D architecture
@@ -99,7 +100,11 @@ def schedule(outs, tiling_case):
     :param tiling_case:
     :return:
     """
-    return SoftmaxCrossEntropyWithLogitsSchedule(outs, tiling_case).do_schedule()
+    mode = operation.get_context().get("mode")
+    if "cut" not in mode:
+        return SoftmaxNormSchedule(outs, tiling_case)
+    else:
+        return SoftmaxCrossEntropyWithLogitsSchedule(outs, tiling_case).do_schedule()
 
 
 # 'pylint: disable=R0902, R0903
@@ -300,7 +305,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                     self._tensor_list_dst_tensor_map[tensor]
             else:
                 self._mid_tensor_dst_tensor_map[tensor] = \
-                    self._tensor_list_dst_tensor_map[tensor]
+                    self._tensor_list_dst_tensor_map.get(tensor)
 
     def _do_cache_read(self):
         for tensor in self._input_tensor_dst_tensor_map:
@@ -359,7 +364,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         ub_axes = []
         inner_axes = []
         b_o, b_i = sch[res].split(res.op.axis[0],
-                                  nparts=self._block_tiling_vars[0])
+                                  nparts=self._block_tiling_vars.get(0))
         block_axes.append([b_o, b_idx])
         u_o, u_i = sch[res].split(b_i, factor=self._ub_tiling_vars[u_idx])
         ub_axes.append([u_o, u_idx])
@@ -395,11 +400,11 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
 
         # UB on 910 needs to align
         soc_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
-                           not cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
+            not cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
 
         # UB on Ascend310P doesn't need to align
         soc_not_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
-                               cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
+            cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
 
         cond1 = isinstance(tensor_tmp.shape[1], tvm.expr.IntImm) and (int(tensor_tmp.shape[1]) != 1)
         cond2 = isinstance(tensor_tmp.shape[1], tvm.expr.Max)
@@ -461,7 +466,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
             sch[tensor_ub].compute_at(sch[self._out], self._compute_at_axis)
 
         for tensor in self._mid_out_tensor_list:
-            tensor_ub = self._mid_out_buffer_tensor_list[tensor]
+            tensor_ub = self._mid_out_buffer_tensor_list.get(tensor)
             sch[tensor].compute_at(sch[self._out], self._compute_at_axis)
             sch[tensor_ub].compute_at(sch[self._out], self._compute_at_axis)
 
@@ -505,12 +510,12 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         for tensor_i in (self._pure_middle_tensors - self._compute_inline_tensors):
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], get_insn(tensor_i)]
             if tensor_i in self._compute_inline_broadcast:
-                self._emit_insn_map[tensor_i].append("phony_insn")
+                self._emit_insn_map.get(tensor_i).append("phony_insn")
 
         for source, target in self._cache_write_buffer_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
             if target in self._compute_inline_broadcast:
-                self._emit_insn_map[source].append("phony_insn")
+                self._emit_insn_map.get(source).append("phony_insn")
 
         if len(self._out_tensors) > 1:
             for tensor_i in self._out_tensors:

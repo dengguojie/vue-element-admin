@@ -104,6 +104,8 @@ def _calc_general(outs, base_key):
     # and multi-core axis
     # ub tiling axis >= block tiling axis
     base = base_key
+    # is_align: case last dim is aligned each block size 
+    align_base_key = 10000
     for i in range(dim_len):
         for j in range(i, dim_len):
             if i < 1 and j < 1:
@@ -111,6 +113,15 @@ def _calc_general(outs, base_key):
                     "key": base + i * 10 + j,
                     "block_tiling_axis": i,
                     "ub_tiling_axis": j,
+                    "is_align": True,
+                    "tiling_strategy": TilingStrategy.ONE_CUT,
+                })
+                
+                cases.append({
+                    "key": base + i * 10 + j + align_base_key,
+                    "block_tiling_axis": i,
+                    "ub_tiling_axis": j,
+                    "is_align": False,
                     "tiling_strategy": TilingStrategy.ONE_CUT,
                 })
 

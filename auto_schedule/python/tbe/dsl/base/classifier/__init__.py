@@ -20,7 +20,7 @@ shape classifier
 from .elewise_classifier import classify as classify_elewise
 from .reduce_classifier import classify as classify_reduction
 from .norm_classifier import classify as classify_norm
-from .softmax_cross_entropy_with_logits_classifier import classify as classify_softmax_cross_entropy_with_logits
+from .softmax_norm_classifier import classify as classify_softmax_norm
 from .gather_classifier import classify_gather
 from .gather_classifier import classify_gather_nd
 from .transpose_classifier import classify as classify_transpose

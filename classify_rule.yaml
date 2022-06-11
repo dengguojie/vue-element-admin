@@ -192,8 +192,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/tuple_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
       - auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/softmax_cross_entropy_with_logits_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/with_reduce_softmax_cross_entropy_with_logits_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/softmax_norm_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py

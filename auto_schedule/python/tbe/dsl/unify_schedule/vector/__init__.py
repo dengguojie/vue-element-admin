@@ -28,3 +28,4 @@ from . import concat
 from . import transdata
 from . import split
 from . import tuple_reduce
+from . import softmax_norm

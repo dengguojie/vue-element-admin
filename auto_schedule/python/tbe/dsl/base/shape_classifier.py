@@ -25,7 +25,7 @@ from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.classifier import classify_elewise
 from tbe.dsl.base.classifier import classify_norm
 from tbe.dsl.base.classifier import classify_reduction
-from tbe.dsl.base.classifier import classify_softmax_cross_entropy_with_logits
+from tbe.dsl.base.classifier import classify_softmax_norm
 from tbe.dsl.base.classifier import classify_gather
 from tbe.dsl.base.classifier import classify_gather_nd
 from tbe.dsl.base.classifier import classify_slice
@@ -41,7 +41,7 @@ ELEWISE = "elewise"
 BROADCAST = "broadcast"
 NORM = "norm"
 REDUCE = "reduce"
-SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entropy_with_logits_with_reduce"
+SOFTMAX_NORM = "softmax_norm"
 GATHER = "gather"
 GATHER_ND = "gather_nd"
 SLICE = "slice"
@@ -56,7 +56,7 @@ CLASSIFY_SAME_PATTERN_MAP = {
     "ElemWise": ELEWISE,
     "Broadcast": BROADCAST,
     "CommReduce": REDUCE,
-    "SoftmaxCrossEntropyWithLogitsWithReduce": SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE
+    "SoftmaxNorm": SOFTMAX_NORM
 }
 
 
@@ -79,8 +79,8 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_elewise(ins, support_broadcast=True, extra_params=extra_params)
     if mode == REDUCE:
         return classify_reduction(ins, extra_params)
-    if mode == SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE:
-        return classify_softmax_cross_entropy_with_logits(ins, support_reduce=True)
+    if mode == SOFTMAX_NORM:
+        return classify_softmax_norm(ins, support_reduce=True, extra_params=extra_params)
     if mode == NORM:
         return classify_norm(ins, extra_params)
     if mode == GATHER:

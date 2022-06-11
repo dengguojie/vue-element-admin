@@ -25,7 +25,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import operation
 
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
@@ -88,28 +87,43 @@ def softmax_cross_entropy_with_logits_compute(
     else:
         shape_broadcast = shape_features
 
-    has_improve_precision = False
-    if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vexp",
-                                           "float32"):
-        input_features_cast_fp32 = tbe.cast_to(input_features, "float32")
-        input_features = input_features_cast_fp32
-        input_labels_cast_fp32 = tbe.cast_to(input_labels, "float32")
-        input_labels = input_labels_cast_fp32
-        has_improve_precision = True
+    is_workspace = "cut" in mode
+    if is_workspace:
+        has_improve_precision = False
+        if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+            input_features_cast_fp32 = tbe.cast_to(input_features, "float32")
+            input_features = input_features_cast_fp32
+            input_labels_cast_fp32 = tbe.cast_to(input_labels, "float32")
+            input_labels = input_labels_cast_fp32
+            has_improve_precision = True
 
-    fp32_use_fp16_reduce_max = False
-    if input_features.dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.reduce_max", "float32"):
-        input_features_cast_fp16 = tbe.cast_to(input_features, "float16")
-        input_features = input_features_cast_fp16
-        fp32_use_fp16_reduce_max = True
+        fp32_use_fp16_reduce_max = False
+        if input_features.dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.reduce_max",
+                                                                                    "float32"):
+            input_features_cast_fp16 = tbe.cast_to(input_features, "float16")
+            input_features = input_features_cast_fp16
+            fp32_use_fp16_reduce_max = True
 
-    data_max = tbe.reduce_max(input_features, axis=-1, keepdims=True)
+        data_max = tbe.reduce_max(input_features, axis=-1, keepdims=True)
 
-    if fp32_use_fp16_reduce_max:
-        data_max = tbe.cast_to(data_max, "float32")
+        if fp32_use_fp16_reduce_max:
+            data_max = tbe.cast_to(data_max, "float32")
 
-    data_max_broadcast = tbe.broadcast(data_max, shape_broadcast)
+        data_max_broadcast = tbe.broadcast(data_max, shape_broadcast)
+    else:
+        data_max = tbe.reduce_max(input_features, axis=-1, keepdims=True)
+        data_max_broadcast = tbe.broadcast(data_max, shape_broadcast)
+        has_improve_precision = False
+        if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+            input_features_cast_fp32 = tbe.cast_to(input_features, "float32")
+            input_features = input_features_cast_fp32
+            input_labels_cast_fp32 = tbe.cast_to(input_labels, "float32")
+            input_labels = input_labels_cast_fp32
+            has_improve_precision = True
+
+        if has_improve_precision:
+            data_max_broadcast = tbe.cast_to(data_max_broadcast, "float32")
+
     data_sub = tbe.vsub(input_features, data_max_broadcast)
     data_exp = tbe.vexp(data_sub)
     data_sum = tbe.reduce_sum(data_exp, axis=-1, keepdims=True)
@@ -117,7 +131,10 @@ def softmax_cross_entropy_with_logits_compute(
     data_div = tbe.vdiv(data_exp, data_sum_broadcast)
     data_log_tmp = tbe.vlog(data_sum_broadcast)
     data_log = tbe.vsub(data_sub, data_log_tmp)
-    data_mul = tbe.vmul(input_labels, data_log)
+    if is_workspace:
+        data_mul = tbe.vmul(input_labels, data_log)
+    else:
+        data_mul = tbe.vmul(data_log, input_labels)
     data_muls = tbe.vmuls(data_mul, Constant.SCALAR_MINUS_ONE)
     loss = tbe.reduce_sum(data_muls, axis=-1, keepdims=True)
     backprop = tbe.vsub(data_div, input_labels)
@@ -128,17 +145,17 @@ def softmax_cross_entropy_with_logits_compute(
 
     is_data_features_broadcast = mode in ("vec6_and_cut", "vec9_and_cut", "vec1_and_cut", "vec2_and_cut")
     is_data_labels_broadcast = mode in ("vec6_and_cut", "vec9_and_cut", "vec4_and_cut", "vec8_and_cut")
-    is_workspace = "cut" in mode
+
     res = [loss, backprop]
     if is_workspace:
         res += [data_sub, data_exp, data_sum_broadcast]
-    if is_data_features_broadcast and dtype == "float32":
-        res.append(input_features_broad)
-    if is_data_labels_broadcast and dtype == "float32":
-        res.append(input_labels_broad)
-    if dtype == "float16":
-        res.append(input_features_cast_fp32)
-        res.append(input_labels_cast_fp32)
+        if is_data_features_broadcast and dtype == "float32":
+            res.append(input_features_broad)
+        if is_data_labels_broadcast and dtype == "float32":
+            res.append(input_labels_broad)
+        if dtype == "float16":
+            res.append(input_features_cast_fp32)
+            res.append(input_labels_cast_fp32)
     return res
 
 
@@ -198,8 +215,11 @@ def softmax_cross_entropy_with_logits(
 
     input_features["shape"] = shape_features
     input_labels["shape"] = shape_labels
-
-    ins = classify([input_features, input_labels], "softmax_cross_entropy_with_logits_with_reduce")
+    # 0: not need align, 1: low dim_axis align, 2: high dim_axis align
+    extra_params = {
+        "dimension_align_ward": [2, 2]
+    }
+    ins = classify([input_features, input_labels], "SoftmaxNorm", extra_params)
 
     if len(shape_features) == 1 and len(shape_labels) == 1:
         error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits",

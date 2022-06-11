@@ -15,9 +15,8 @@
 # limitations under the License.
 # ============================================================================
 """
-classifier of softmax_cross_entropy_with_logits
+classifier of shape in softmax_cross_entropy_with_logits op
 """
-import re
 from enum import Enum, auto
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -40,15 +39,26 @@ MAX_COEXIST_NUM = 10
 BLOCK_SIZE_BYTE = 32
 
 
-class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
+def classify(ins: list, support_reduce: bool, extra_params: dict):
+    """
+    classify
+    :param ins:
+    :param support_reduce:
+    :return:
+    """
+    return SoftmaxNormClassifier(ins, extra_params).classify()
+
+
+class SoftmaxNormClassifier:
     """
     Elewise with broadcast classifier
     """
 
-    def __init__(self, ins: list):
+    def __init__(self, ins: list, extra_params: dict):
         """
         init
         :param ins:
+        :param extra_params: dict
         """
         if len(ins) != 2:
             dict_args = dict()
@@ -56,8 +66,9 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
             dict_args["detailed_cause"] = "The size of input parameter [%s] must be 2, " \
                                           "when support broadcast." % len(ins)
             raise RuntimeError(dict_args, get_error_message(dict_args))
-
+        self._check_extra_params(extra_params)
         self.ins = ins
+        self._preprocess_ins()
         self.format = self.ins[0]["format"]
         self.dtype = self.ins[0]["dtype"]
         self.dtype_size = 2 if self.dtype == "float16" else 4
@@ -67,15 +78,60 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         f_shape1, f_range1, f_shape2, f_range2, = _simplify_shape(*self.normalized_ins)
         self.f_shapes = [f_shape1, f_shape2]
         self.f_ranges = [f_range1, f_range2]
+        self.extra_params = extra_params
+        self._add_compile_info()
+
+    @staticmethod
+    def _check_extra_params(extra_params):
+        """
+        check extra_params
+        """
+        if not (extra_params is None or isinstance(extra_params, dict)):
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "extra_params must be a dict or None when mode is softmax_norm."}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    def _preprocess_ins(self):
+        """
+        update range and shape
+        """
+        def _update_range(shape, shape_range):
+            for i, dim_num in enumerate(shape):
+                if dim_num not in (-1, -2):
+                    rangei = list(shape_range[i])
+                    rangei[0] = dim_num
+                    rangei[1] = dim_num
+                    shape_range[i] = tuple(rangei)
+
+        def _update_shape(shape, shape_range):
+            for i, dim_range in enumerate(shape_range):
+                if dim_range[0] == dim_range[1]:
+                    shape[i] = dim_range[0]
+
+        for input_dict in self.ins:
+            shape = input_dict.get("shape")
+            shape_range = input_dict.get("range")
+            shape = list(shape) if isinstance(shape, tuple) else shape
+            shape_range = list(shape_range) if isinstance(shape_range, tuple) else shape_range
+            _update_range(shape, shape_range)
+            _update_shape(shape, shape_range)
+            input_dict["shape"] = shape
+            input_dict["range"] = shape_range
+
+    def _add_compile_info(self):
+        # 0: not need align, 1: low dim_axis align, 2: high dim_axis align
+        if self.extra_params and "dimension_align_ward" in self.extra_params:
+            operation.add_compile_info_inner("_dimension_align_ward", self.extra_params.get("dimension_align_ward"))
+        operation.add_compile_info_inner("_max_dim_len", self.dim_length)
 
     def classify(self):
         """
         classify
         :return:
         """
-        def gen_template(shape, range, mode):
+        def gen_template(shape, shape_range, mode):
             return {"shape": shape,
-                    "range": range,
+                    "range": shape_range,
                     "mode": mode
                     }
 
@@ -212,11 +268,10 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         batch_not_broadcast = (r00_l > 1 and r10_l > 1) or (r00_l == r00_r == 1 and r10_l == r10_r == 1)
         batch_may_broadcast = not batch_not_broadcast
         ub_size = get_soc_spec("UB_SIZE")
-        num_per_block = BLOCK_SIZE_BYTE // self.dtype_size
         bound_size = (ub_size // 4 // MAX_COEXIST_NUM) // 16 * 16
         range0, range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
         r01_r = range0[0][1]
-        r11_r = range0[1][1]
+        r11_r = range1[1][1]
         self.f_ranges = [range0, range1]
         may_cut_reduce = (r01_r >= bound_size or r11_r >= bound_size)
         not_cut_reduce = not may_cut_reduce
@@ -747,7 +802,6 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                                 gen_template(special_shape1, special_range1, "vec6")])
                 return res
 
-
     def _normalize(self):
         def clone_complete(_in):
             _shape, _range = list(_in["shape"]), _in.get("range")
@@ -794,7 +848,7 @@ def _simplify_shape(d_1, d_2):
         if state_i != ShapeSimplifier.State.ONE:
             state = state_i
 
-    return shape1, range1, shape2, range2
+    return [shape1, range1, shape2, range2]
 
 
 class ShapeSimplifier:
