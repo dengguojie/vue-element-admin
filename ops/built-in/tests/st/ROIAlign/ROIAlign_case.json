@@ -4,12 +4,8 @@
     "op": "ROIAlign",
     "input_desc": [
       {
-        "format": [
-          "NCHW"
-        ],
-        "type": [
-          "float32"
-        ],
+        "format":  "NCHW",
+        "type": "float32",
         "shape": [
           2,
           256,
@@ -28,12 +24,8 @@
         "name": "features"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
+        "format": "ND",
+        "type": "float32",
         "shape": [
           1280,
           5
@@ -50,12 +42,8 @@
         "name": "rois"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
+        "format": "ND",
+        "type": "int32",
         "shape": [
           1280
         ],
@@ -73,12 +61,8 @@
     ],
     "output_desc": [
       {
-        "format": [
-          "NCHW"
-        ],
-        "type": [
-          "float32"
-        ],
+        "format":  "NCHW",
+        "type": "float32",
         "shape": [
           1280,
           256,

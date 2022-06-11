@@ -19,7 +19,7 @@ ut_case.add_case("all", {
 })
 
 
-def test_op_select_format(test_args):
+def test_op_select_format(test_arg):
     """
     test_op_select_format
     """
@@ -56,7 +56,7 @@ def test_op_select_format(test_args):
 #                      "ori_format": "HWCN", "sub_format" : 1},
 #                     "test_add_op_select_format_3")
 
-def test_axpy_v2(test_args):
+def test_axpy_v2(test_arg):
     """
     test_op_select_format
     """
@@ -91,7 +91,7 @@ def test_axpy_v2(test_args):
                       "ori_shape": (20, 28, 16, 16), "ori_format": "NCHW"})
 
 
-def test_infer_shape(test_args):
+def test_infer_shape(test_arg):
     """
     test_op_select_format
     """

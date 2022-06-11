@@ -6,24 +6,72 @@ from te import platform as cce_conf
 from impl.util.platform_adapter import tbe_context
 from impl.roi_align import roi_align as roi_align_static
 from impl.dynamic.roi_align import roi_align as roi_align_dynamic
-
+from tbe.common.context import op_context
 
 
 def test_roi_align_static():
-    input_list = [{"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 260, 1, 16),
-                     "ori_format": "NHWC"},
-                    {"shape": (256, 5), "dtype": "float32", "format": "NHWC", "ori_shape": (256, 5),
-                     "ori_format": "NHWC"},
-                    None,
-                    {"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format": "NHWC",
-                     "ori_shape": (2, 260, 1, 1, 16), "ori_format": "NHWC"},
-                    0.25,
-                    7,
-                    7,
-                    2,
-                    1,
-                    "roi_align_static"]
-    roi_align_static(*input_list)
+    def test_roi_align_static_001():
+        input_list = [{"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 260, 1, 16),
+                        "ori_format": "NHWC"},
+                        {"shape": (256, 5), "dtype": "float32", "format": "NHWC", "ori_shape": (256, 5),
+                        "ori_format": "NHWC"},
+                        None,
+                        {"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format": "NHWC",
+                        "ori_shape": (2, 260, 1, 1, 16), "ori_format": "NHWC"},
+                        0.25,
+                        7,
+                        7,
+                        2,
+                        1,
+                        "roi_align_static"]
+        roi_align_static(*input_list)
+        input_list[7] = -2
+        roi_align_static(*input_list)
+
+    def test_roi_align_static_002():
+        input_list = [{"shape": (1, 16, 38, 64, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 260, 1, 16),
+                        "ori_format": "NHWC"},
+                        {"shape": (256, 5), "dtype": "float16", "format": "NHWC", "ori_shape": (256, 5),
+                        "ori_format": "NHWC"},
+                        None,
+                        {"shape": (1, 16, 38, 64, 16), "dtype": "float16", "format": "NHWC",
+                        "ori_shape": (2, 260, 1, 1, 16), "ori_format": "NHWC"},
+                        0.25,
+                        7,
+                        7,
+                        2,
+                        1,
+                        "roi_align_static"
+                        ]
+        roi_align_static(*input_list,impl_mode="high_precision")
+        input_list[7] = -2
+        roi_align_static(*input_list,impl_mode="high_precision")
+
+    def test_roi_align_static_003():
+        input_list = [{"shape": (1, 16, 38, 64, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 260, 1, 16),
+                        "ori_format": "NHWC"},
+                        {"shape": (256, 5), "dtype": "float16", "format": "NHWC", "ori_shape": (256, 5),
+                        "ori_format": "NHWC"},
+                        None,
+                        {"shape": (1, 16, 38, 64, 16), "dtype": "float16", "format": "NHWC",
+                        "ori_shape": (2, 260, 1, 1, 16), "ori_format": "NHWC"},
+                        0.25,
+                        7,
+                        7,
+                        2,
+                        1,
+                        "roi_align_static"]
+        roi_align_static(*input_list)
+        input_list[7] = -2
+        roi_align_static(*input_list)
+
+    with op_context.OpContext():
+        TEST_PLATFORM = ["Ascend610", "Ascend910"]
+        for soc in TEST_PLATFORM:
+            cce_conf.te_set_version(soc)
+            test_roi_align_static_001()
+            test_roi_align_static_002()
+            test_roi_align_static_003()
 
 def test_roi_align_dynamic():
     input_list = [{"shape": (2, 16, 336, 336, 16), "dtype": "float32", "format": "NC1HWC0",
@@ -41,6 +89,7 @@ def test_roi_align_dynamic():
 
 
 if __name__ == '__main__':
+    test_roi_align_static()
     soc_version = cce_conf.get_soc_spec("SHORT_SOC_VERSION")
     cce_conf.te_set_version("Ascend310P3")
     vals = {("tik.vextract", "float16"): False,
