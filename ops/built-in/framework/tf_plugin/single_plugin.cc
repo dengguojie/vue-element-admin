@@ -1691,4 +1691,18 @@ REGISTER_CUSTOM_OP("MatrixDiagV3")
     .OriginOpType("MatrixDiagV3")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register SobolSample op to GE
+REGISTER_CUSTOM_OP("SobolSample")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("SobolSample")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register SparseCountSparseOutput op to GE
+REGISTER_CUSTOM_OP("SparseCountSparseOutput")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("SparseCountSparseOutput")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

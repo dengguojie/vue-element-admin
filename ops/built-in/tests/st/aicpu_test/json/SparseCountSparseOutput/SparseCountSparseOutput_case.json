@@ -1,0 +1,2594 @@
+[
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_512B",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_512B",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_1K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_1K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_4K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_4K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_8K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_8K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_16K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_16K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_32K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_32K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_64K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_64K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_128K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_128K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_256K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_256K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_512K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_512K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_1M",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_1M",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_2M",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_2M",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [300000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [300000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int64_8M",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int64_8M",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [800000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_512B",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_512B",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_1K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_1K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_4K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_4K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_8K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_8K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_16K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_16K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_32K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_32K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_64K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_64K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_128K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_128K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_256K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_256K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_512K",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_512K",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [100000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_1M",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_1M",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [200000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [200000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_2M",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_2M",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [600000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [600000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+        "case_name": "Test_SparseCountSparseOutput_int32_8M",
+        "op": "SparseCountSparseOutput",
+        "fuzz_impl": "./fuzz_data.py:int32_8M",
+        "fuzz_case_num": 1,
+        "input_desc": [
+            {
+                "name": "indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            },
+            {
+                "name": "weights",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": "fuzz",
+                "data_distribute": "fuzz",
+                "value_range": "fuzz",
+                "value": "fuzz"
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_indices",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1600000, 2]
+            },
+            {
+                "name": "output_values",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [1600000]
+            },
+            {
+                "name": "output_dense_shape",
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "minlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "maxlength",
+                "type": "int",
+                "value": -1
+            },
+            {
+                "name": "binary_output",
+                "type": "bool",
+                "value": true
+            }
+        ]
+    },
+    {
+      "case_name": "Example_1",
+      "op": "SparseCountSparseOutput",
+      "fuzz_impl": "./fuzz_data.py:example_int64",
+      "fuzz_case_num": 1,
+      "input_desc": [
+          {
+              "name": "indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "weights",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          }
+      ],
+      "output_desc": [
+          {
+              "name": "output_indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000, 2]
+          },
+          {
+              "name": "output_values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000]
+          },
+          {
+              "name": "output_dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [2]
+          }
+      ],
+      "attr": [
+          {
+              "name": "minlength",
+              "type": "int",
+              "value": -1
+          },
+          {
+              "name": "maxlength",
+              "type": "int",
+              "value": -1
+          },
+          {
+              "name": "binary_output",
+              "type": "bool",
+              "value": true
+          }
+      ]
+    },
+    {
+      "case_name": "Example_2",
+      "op": "SparseCountSparseOutput",
+      "fuzz_impl": "./fuzz_data.py:example_int64",
+      "fuzz_case_num": 1,
+      "input_desc": [
+          {
+              "name": "indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "weights",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          }
+      ],
+      "output_desc": [
+          {
+              "name": "output_indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000, 2]
+          },
+          {
+              "name": "output_values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000]
+          },
+          {
+              "name": "output_dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [2]
+          }
+      ],
+      "attr": [
+          {
+              "name": "minlength",
+              "type": "int",
+              "value": 1
+          },
+          {
+              "name": "maxlength",
+              "type": "int",
+              "value": 10
+          },
+          {
+              "name": "binary_output",
+              "type": "bool",
+              "value": false
+          }
+      ]
+    },
+    {
+      "case_name": "Example_3",
+      "op": "SparseCountSparseOutput",
+      "fuzz_impl": "./fuzz_data.py:example_int64",
+      "fuzz_case_num": 1,
+      "input_desc": [
+          {
+              "name": "indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "weights",
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          }
+      ],
+      "output_desc": [
+          {
+              "name": "output_indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000, 2]
+          },
+          {
+              "name": "output_values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000]
+          },
+          {
+              "name": "output_dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [2]
+          }
+      ],
+      "attr": [
+          {
+              "name": "minlength",
+              "type": "int",
+              "value": -1
+          },
+          {
+              "name": "maxlength",
+              "type": "int",
+              "value": 10
+          },
+          {
+              "name": "binary_output",
+              "type": "bool",
+              "value": true
+          }
+      ]
+    },
+    {
+      "case_name": "Example_4",
+      "op": "SparseCountSparseOutput",
+      "fuzz_impl": "./fuzz_data.py:example_int64",
+      "fuzz_case_num": 1,
+      "input_desc": [
+          {
+              "name": "indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "weights",
+              "format": ["ND"],
+              "type": ["float"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          }
+      ],
+      "output_desc": [
+          {
+              "name": "output_indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000, 2]
+          },
+          {
+              "name": "output_values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000]
+          },
+          {
+              "name": "output_dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [2]
+          }
+      ],
+      "attr": [
+          {
+              "name": "minlength",
+              "type": "int",
+              "value": 1
+          },
+          {
+              "name": "maxlength",
+              "type": "int",
+              "value": 10
+          },
+          {
+              "name": "binary_output",
+              "type": "bool",
+              "value": true
+          }
+      ]
+    },
+    {
+      "case_name": "Example_5",
+      "op": "SparseCountSparseOutput",
+      "fuzz_impl": "./fuzz_data.py:example_int32",
+      "fuzz_case_num": 1,
+      "input_desc": [
+          {
+              "name": "indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "values",
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "weights",
+              "format": ["ND"],
+              "type": ["double"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          }
+      ],
+      "output_desc": [
+          {
+              "name": "output_indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000, 2]
+          },
+          {
+              "name": "output_values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000]
+          },
+          {
+              "name": "output_dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [2]
+          }
+      ],
+      "attr": [
+          {
+              "name": "minlength",
+              "type": "int",
+              "value": -1
+          },
+          {
+              "name": "maxlength",
+              "type": "int",
+              "value": -1
+          },
+          {
+              "name": "binary_output",
+              "type": "bool",
+              "value": false
+          }
+      ]
+    },
+    {
+      "case_name": "Example_6",
+      "op": "SparseCountSparseOutput",
+      "fuzz_impl": "./fuzz_data.py:example_int32",
+      "fuzz_case_num": 1,
+      "input_desc": [
+          {
+              "name": "indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "values",
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          },
+          {
+              "name": "weights",
+              "format": ["ND"],
+              "type": ["double"],
+              "shape": "fuzz",
+              "data_distribute": "fuzz",
+              "value_range": "fuzz",
+              "value": "fuzz"
+          }
+      ],
+      "output_desc": [
+          {
+              "name": "output_indices",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000, 2]
+          },
+          {
+              "name": "output_values",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [100000]
+          },
+          {
+              "name": "output_dense_shape",
+              "format": ["ND"],
+              "type": ["int64"],
+              "shape": [2]
+          }
+      ],
+      "attr": [
+          {
+              "name": "minlength",
+              "type": "int",
+              "value": 1
+          },
+          {
+              "name": "maxlength",
+              "type": "int",
+              "value": -1
+          },
+          {
+              "name": "binary_output",
+              "type": "bool",
+              "value": false
+          }
+      ]
+    }
+  ]

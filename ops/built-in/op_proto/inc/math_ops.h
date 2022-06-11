@@ -1383,6 +1383,68 @@ REG_OP(SignBitsPack)
     .OUTPUT(y, TensorType({DT_UINT8}))
     .REQUIRED_ATTR(size, Int)
     .OP_END_FACTORY_REG(SignBitsPack)
+
+/**
+* @brief  Get sobol samples. \n
+
+* @par Inputs:
+* Three inputs, including:
+* @li dim: Dimension of results, which must be a scalar of type int32.
+* @li num_results: Number of results, which must be a scalar of type int32.
+* @li skip: Number of initial points, which must be a scalar of type int32. \n
+
+* @par Attributes:
+* @li dtype: Data type of output samples. \n
+
+* @par Outputs:
+* @li y: A Tensor with the DT_FLOAT or DT_DOUBLE type generated samples. \n
+
+* @par Third-party framework compatibility
+* @li compatible with tensorflow SobolSample operator.
+**/
+REG_OP(SobolSample)
+    .INPUT(dim, TensorType({DT_INT32}))
+    .INPUT(num_results, TensorType({DT_INT32}))
+    .INPUT(skip, TensorType({DT_INT32}))
+    .OUTPUT(samples, TensorType({DT_FLOAT,DT_DOUBLE}))
+    .ATTR(dtype, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(SobolSample)
+
+/**
+ * @brief Count the number of occurrences of each value in the input sparse integer array,
+ * and output it according to the sparse matrix. \n 
+
+ * @par Inputs:
+ * @li indices: A tensor of type int64.
+ * @li values: A tensor of type int32 or int64. 
+ * @li dense_shape: A tensor of type int64.
+ * @li weights: A tensor of type int32 or int64 or float or double. \n
+ 
+ * @par Attributes:
+ * @li minlength: An optional int >=-1. Defaults to -1. 
+ * @li maxlength: An optional int >=-1. Defaults to -1. 
+ * @li binary_output: A required bool. \n
+
+ * @par Outputs:
+ * @li output_indices: A tensor of type int64. 
+ * @li output_values: A tensor of the same type as "weights".
+ * @li output_dense_shape: A tensor of type int64. \n
+
+ * @par Third-party framework compatibility
+ * Compatible with the TensorFlow operator SparseCountSparseOutput. \n
+ */
+REG_OP(SparseCountSparseOutput)
+    .INPUT(indices, TensorType({DT_INT64}))
+    .INPUT(values, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(dense_shape, TensorType({DT_INT64}))
+    .INPUT(weights, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output_indices, TensorType({DT_INT64}))
+    .OUTPUT(output_values, TensorType({DT_INT32,DT_INT64,DT_FLOAT,DT_DOUBLE}))
+    .OUTPUT(output_dense_shape, TensorType({DT_INT64}))
+    .ATTR(minlength, Int, -1)
+    .ATTR(maxlength, Int, -1)
+    .REQUIRED_ATTR(binary_output, Bool)
+    .OP_END_FACTORY_REG(SparseCountSparseOutput)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

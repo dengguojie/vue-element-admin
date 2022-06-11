@@ -1,0 +1,632 @@
+[
+    {
+        "case_name": "TEST_CASE_DOUBLE_512B",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [1]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_1K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_4K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [8]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_8K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [16]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_16K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [32]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_32K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [64, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_64K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [128]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [128, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_128K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [256]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [256, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_256K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [512]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [512, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_512K",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [1024]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1024, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_1M",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2048]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2048, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_2M",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [4096]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4096, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "TEST_CASE_DOUBLE_8M",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [16384]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [64]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16384, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    },
+    {
+        "case_name": "UT_CASE_FLOAT",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [1]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [10]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [4096, 64]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 0
+            }
+        ]
+    },
+    {
+        "case_name": "UT_CASE_DOUBLE",
+        "op": "SobolSample",
+        "input_desc": [
+            {
+                "name": "dim",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [1]
+            },
+            {
+                "name": "num_results",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [10]
+            },
+            {
+                "name": "skip",
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "value": [2]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "samples",
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1, 10]
+            }
+        ],
+        "attr": [
+            {
+                "name": "dtype",
+                "type": "int",
+                "value": 11
+            }
+        ]
+    }
+]

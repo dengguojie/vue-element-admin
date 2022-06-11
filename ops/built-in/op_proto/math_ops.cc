@@ -1947,4 +1947,133 @@ COMMON_INFER_FUNC_REG(SignBitsPack, SignBitsPackInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(SignBitsPack, SignBitsPackVerify);
 // ----------------------SignBitsPack End------------------------------
+
+// ----------------SobolSample Begin------------------------
+IMPLEMT_COMMON_INFERFUNC(SobolSampleInferShape) {
+  TensorDesc tensordesc_output = op.GetOutputDescByName("samples");
+  Tensor dim_tensor;
+  Tensor num_results_tensor;
+  if(op.GetInputConstData("dim", dim_tensor) == GRAPH_SUCCESS &&
+      op.GetInputConstData("num_results", num_results_tensor) == GRAPH_SUCCESS) {
+    auto dim_data = reinterpret_cast<int32_t*>(dim_tensor.GetData());
+    auto num_results_data =
+        reinterpret_cast<int32_t*>(num_results_tensor.GetData());
+    if (*dim_data < 1 || *num_results_data < 1) {
+      OP_LOGE(TbeGetName(op).c_str(),
+              "Both dim and num_results should be bigger than or equal to 1");
+      return GRAPH_FAILED;
+    }
+    tensordesc_output.SetShape(Shape({*num_results_data, *dim_data}));
+  } else {
+    tensordesc_output.SetShape(Shape({ge::UNKNOWN_DIM, ge::UNKNOWN_DIM}));
+  }
+
+  DataType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    dtype = DT_FLOAT;
+  }
+  if ((dtype != DT_FLOAT) && (dtype != DT_DOUBLE)) {
+    OP_LOGE(TbeGetName(op).c_str(),
+            "The attr 'dtype' must be one of DT_FLOAT, DT_DOUBLE");
+    return GRAPH_FAILED;
+  }
+  (void)tensordesc_output.SetDataType(dtype);
+  (void)op.UpdateOutputDesc("samples", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(SobolSample, SobolSampleVerify)
+{
+  auto dim_type = op.GetInputDescByName("dim").GetDataType();
+  auto num_results_type = op.GetInputDescByName("num_results").GetDataType();
+  auto skip_type = op.GetInputDescByName("skip").GetDataType();
+  auto dim_dims = op.GetInputDescByName("dim").GetShape().GetDimNum();
+  auto num_results_dims = op.GetInputDescByName("num_results").GetShape().GetDimNum();
+  auto skip_dims = op.GetInputDescByName("skip").GetShape().GetDimNum();
+
+  if (!(dim_dims == 0 && num_results_dims == 0 && skip_dims == 0)) {
+    string err_msg1 = ConcatString("All the inputs should be scalars.");
+    std::string err_msg = OtherErrMsg(err_msg1);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (!(dim_type == DT_INT32 && num_results_type == DT_INT32 &&
+        skip_type == DT_INT32)) {
+    string err_msg1 = ConcatString("Dtype of all the inputs should be int32.");
+    std::string err_msg = OtherErrMsg(err_msg1);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SobolSample, SobolSampleInferShape);
+VERIFY_FUNC_REG(SobolSample, SobolSampleVerify);
+// ----------------SobolSample END---------------------------------
+
+// ----------------SparseCountSparseOutput Begin--------------------------
+IMPLEMT_COMMON_INFERFUNC(SparseCountSparseOutputInferShape) {
+    TensorDesc output_indices_desc = op.GetOutputDescByName("output_indices");
+    TensorDesc output_values = op.GetOutputDescByName("output_values");
+    TensorDesc output_dense_shape_desc = op.GetOutputDescByName("output_dense_shape");
+
+    Format values_format = op.GetInputDescByName("values").GetFormat();
+    ge::Shape values_shape = op.GetInputDescByName("values").GetShape();
+    ge::Shape indices_shape = op.GetInputDescByName("indices").GetShape();
+    ge::Shape weights_shape = op.GetInputDescByName("weights").GetShape();
+    DataType indices_datatype = op.GetInputDescByName("indices").GetDataType();
+    DataType values_datatype = op.GetInputDescByName("values").GetDataType();
+    DataType dense_shape_datatype = op.GetInputDescByName("dense_shape").GetDataType();
+    DataType weights_datatype = op.GetInputDescByName("weights").GetDataType();
+
+    if (indices_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'indices' should have dtype int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (values_datatype != DT_INT32 && values_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'values' should have dtype int32 or int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (dense_shape_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'dense_shape' should have dtype int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (weights_datatype != DT_FLOAT && weights_datatype != DT_DOUBLE &&
+        weights_datatype != DT_INT32 && weights_datatype != DT_INT64) {
+      OP_LOGE(TbeGetName(op).c_str(), "'weights' should have dtype float, double, int32 or int64.");
+      return GRAPH_FAILED;
+    }
+
+    if (indices_shape.GetDimNum() != 2){
+      OP_LOGE(TbeGetName(op).c_str(), "'indices' must be a 2D tensor.");
+      return GRAPH_FAILED;
+    }
+
+    int64_t dim = indices_shape.GetDim(1);
+    std::vector<int64_t> output_indices_dims = { ge::UNKNOWN_DIM, dim };
+    std::vector<int64_t> output_values_dims = { ge::UNKNOWN_DIM };
+    std::vector<int64_t> output_dense_shape_dims = { dim };
+
+    output_indices_desc.SetShape(Shape(output_indices_dims));
+    output_values.SetShape(Shape(output_values_dims));
+    output_dense_shape_desc.SetShape(Shape(output_dense_shape_dims));
+
+    output_indices_desc.SetDataType(DT_INT64);
+    output_values.SetDataType(weights_datatype);
+    output_dense_shape_desc.SetDataType(DT_INT64);
+
+    output_indices_desc.SetFormat(values_format);
+    output_values.SetFormat(values_format);
+    output_dense_shape_desc.SetFormat(values_format);
+
+    op.UpdateOutputDesc("output_indices", output_indices_desc);
+    op.UpdateOutputDesc("output_values", output_values);
+    op.UpdateOutputDesc("output_dense_shape", output_dense_shape_desc);
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(SparseCountSparseOutput, SparseCountSparseOutputInferShape);
+// ----------------SparseCountSparseOutput End----------------------------
 }  // namespace ge
