@@ -850,4 +850,50 @@ IMPLEMT_VERIFIER(BandedTriangularSolve, BandedTriangularSolveVerify) {
 COMMON_INFER_FUNC_REG(BandedTriangularSolve, BandedTriangularSolveInfer);
 VERIFY_FUNC_REG(BandedTriangularSolve, BandedTriangularSolveVerify);
 // ----------------------BandedTriangularSolve End---------------------
+
+// ------------------ConjugateTranspose---------------------
+IMPLEMT_COMMON_INFERFUNC(ConjugateTransposeInferShape) {
+  Tensor perm_tensor;
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
+  Shape output_shape(input_shape.GetDims());
+  Format input_format = op.GetInputDescByName("x").GetFormat();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  auto result_perm = op.GetInputConstData("perm", perm_tensor);
+  if (result_perm != GRAPH_SUCCESS) {
+    OP_LOGI("GetInputConstData perm failed. Set unkonwn format.");
+    auto input_format = op.GetInputDescByName("x").GetOriginFormat();
+    auto output_format = op.GetOutputDescByName("y").GetOriginFormat();
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+    tensordesc_output.SetOriginFormat(output_format);
+    tensordesc_output.SetFormat(output_format);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+    TensorDesc tensordesc_input = op.GetInputDescByName("x");
+    tensordesc_input.SetOriginFormat(input_format);
+    tensordesc_input.SetFormat(input_format);
+    (void)op.UpdateInputDesc("x", tensordesc_input);
+    return GRAPH_SUCCESS;
+  }
+  DataType dtype = perm_tensor.GetTensorDesc().GetDataType();
+  if (dtype == ge::DT_INT32) {
+    int32_t* const_data_ptr = (int32_t*)perm_tensor.GetData();
+    size_t const_num = perm_tensor.GetSize() / sizeof(int32_t);
+    for (size_t i = 0; i < const_num; ++i) {
+      output_shape.SetDim(i, input_shape.GetDim((int32_t)((*(const_data_ptr + i)))));
+    }
+  } else if (dtype == ge::DT_INT64) {
+    int64_t* const_data_ptr = (int64_t*)perm_tensor.GetData();
+    size_t const_num = perm_tensor.GetSize() / sizeof(int64_t);
+    for (size_t i = 0; i < const_num; ++i) {
+      output_shape.SetDim(i, input_shape.GetDim((int64_t)((*(const_data_ptr + i)))));
+    }
+  }
+  TensorDesc td = op.GetOutputDescByName("y");
+  td.SetShape(output_shape);
+  td.SetDataType(input_dtype);
+  td.SetFormat(input_format);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ConjugateTranspose, ConjugateTransposeInferShape);
+// --------------ConjugateTranspose END------------------
 }  // namespace ge

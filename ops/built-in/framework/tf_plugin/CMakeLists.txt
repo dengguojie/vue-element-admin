@@ -124,6 +124,7 @@ set(_tf_plugins
   concat_plugin.cc
   concat_v2_plugin.cc
   confusion_matrix_plugin.cc
+  conjugate_transpose_plugin.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input_cce.cc
   conv2d_plugin.cc

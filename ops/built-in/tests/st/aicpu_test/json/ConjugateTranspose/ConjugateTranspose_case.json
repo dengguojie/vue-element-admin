@@ -1,0 +1,1409 @@
+[
+  {
+    "case_name" : "Perf_Double_512",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [1, 128],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [128, 1],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_1K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [1, 256],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [256, 1],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_4K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [1, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 1],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_8K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [2, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 2],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_16K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [4, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 4],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_32K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [8, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 8],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_64K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [16, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 16],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_128K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [32, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 32],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_256K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+
+      {
+        "shape" : [64, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 64],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_512K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [128, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 128],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_1M",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [256, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 256],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_2M",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [512, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 512],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_Double_8M",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [2, 1024, 1024],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [2, 1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 1024, 2],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_512",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [1, 128],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [128, 1],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_1K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [1, 256],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [256, 1],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_4K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [1, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 1],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_8K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [2, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 2],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_16K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [4, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 4],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_32K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [8, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 8],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_64K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [16, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 16],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_128K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [32, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 32],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_256K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [64, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 64],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_512K",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [128, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 128],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_1M",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [256, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 256],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_2M",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [512, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 512],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Perf_int64_8M",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [2, 1024, 1024],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [2, 1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [1024, 1024, 2],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Int8",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [7, 12],
+        "format" : "ND",
+        "type" : "int8",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -100,
+            100
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [12, 7],
+        "format" : "ND",
+        "type" : "int8"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Int16",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [7, 6],
+        "format" : "ND",
+        "type" : "int16",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            6000
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [6, 12],
+        "format" : "ND",
+        "type" : "int16"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Int32",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [3, 12],
+        "format" : "ND",
+        "type" : "int32",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [12, 3],
+        "format" : "ND",
+        "type" : "int32"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Int64",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [13, 10, 4],
+        "format" : "ND",
+        "type" : "int64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -10000,
+            10000
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [0, 2, 1]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [13, 4, 10],
+        "format" : "ND",
+        "type" : "int64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Uint8",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [7, 12],
+        "format" : "ND",
+        "type" : "uint8",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            200
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [12, 7],
+        "format" : "ND",
+        "type" : "uint8"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Uint16",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [2, 3],
+        "format" : "ND",
+        "type" : "uint16",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [3, 2],
+        "format" : "ND",
+        "type" : "uint16"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Float",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [15, 12, 30],
+        "format" : "ND",
+        "type" : "float",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            100
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [2, 1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [30, 12, 15],
+        "format" : "ND",
+        "type" : "float"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Float16",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [12, 130],
+        "format" : "ND",
+        "type" : "float16",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            2000
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [130, 12],
+        "format" : "ND",
+        "type" : "float16"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Double",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [7, 12, 30],
+        "format" : "ND",
+        "type" : "double",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -100,
+            100
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [1, 0, 2]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [12, 7, 30],
+        "format" : "ND",
+        "type" : "double"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Complex64",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [12, 130],
+        "format" : "ND",
+        "type" : "complex64",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            100
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [2],
+        "name" : "perm1",
+        "value" : [1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [130, 12],
+        "format" : "ND",
+        "type" : "complex64"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Complex128",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [7, 12, 30],
+        "format" : "ND",
+        "type" : "complex128",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            2000
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [0, 2, 1]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [7, 30, 12],
+        "format" : "ND",
+        "type" : "complex128"
+      }
+    ]
+  },
+  {
+    "case_name" : "Func_Bool",
+    "op" : "ConjugateTranspose",
+    "calc_expect_func_file" :
+    "./test_conjugate_transpose.py:test_conjugate_transpose",
+    "input_desc" : [
+      {
+        "shape" : [15, 12, 30],
+        "format" : "ND",
+        "type" : "bool",
+        "name" : "x1",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0,
+            100
+          ]
+        ]
+      },
+      {
+        "format" : ["ND"],
+        "type" : ["int32"],
+        "shape" : [3],
+        "name" : "perm1",
+        "value" : [2, 1, 0]
+      }
+    ],
+    "output_desc" : [
+      {
+        "shape" : [30, 12, 15],
+        "format" : "ND",
+        "type" : "bool"
+      }
+    ]
+  }
+]

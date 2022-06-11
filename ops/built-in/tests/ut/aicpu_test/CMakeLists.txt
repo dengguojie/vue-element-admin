@@ -101,6 +101,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/compute_accidental_hits.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/conj.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/conjugate_transpose.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cosh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/crop_and_resize.cc
@@ -338,6 +339,7 @@ set(_cpu_kernels_ut_files
   testcase/compute_accidental_hits/src/compute_accidental_hits_kernel_utest.cpp
   testcase/concatv2/src/concatv2_utest.cpp
   testcase/conj/src/conj_utest.cpp
+  testcase/conjugate_transpose/src/conjugate_transpose_utest.cpp
   testcase/coordinates_1d_to_2d/src/coordinates_1d_to_2d_utest.cpp
   testcase/cos/src/cos_utest.cpp
   testcase/cosh/src/cosh_utest.cpp
