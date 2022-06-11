@@ -59,7 +59,8 @@ def get_op_select_format(soc, select_format, tensor_num, attrs):
     """
     get_op_select_format, do op_select_format to get ops info
     """
-    soc = "Ascend910B" if soc == "Ascend910B" else soc
+    soc = "Ascend310P1" if soc == "Ascend310P" else soc
+    soc = "Ascend310B1" if soc == "Ascend310B" else soc
     set_current_compile_soc_info(soc)
     sys.path.append(PATH.IMPL_PATH)
 
