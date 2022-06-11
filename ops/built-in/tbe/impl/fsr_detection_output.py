@@ -2181,7 +2181,7 @@ class FsrProcess:
                         (cur_batch_index, self.rois, input_tensor,
                          self.prior_box_gm, self.score_gm), self.output_box)
 
-                with self.tik_instance.for_range(Constant.DATA_ONE, self.num_classes) \
+                with self.tik_instance.for_range(0, self.num_classes) \
                         as class_index:
 
                     topk_output_actual_proposal_num = \
@@ -2238,7 +2238,7 @@ class FsrProcess:
                         one_core_process_object.one_core_process_decode_rois((
                             cur_batch_index, self.rois, input_tensor,
                             self.prior_box_gm, self.score_gm), self.output_box)
-                    with self.tik_instance.for_range(Constant.DATA_ONE, self.num_classes) \
+                    with self.tik_instance.for_range(0, self.num_classes) \
                             as class_index:
                         topk_output_actual_proposal_num = \
                             self.tik_instance.Scalar(dtype="int32")
