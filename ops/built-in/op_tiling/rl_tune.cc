@@ -87,8 +87,8 @@ void PackageRlBankInfo(const nlohmann::json bank_info_json, const int idx, RlBan
   rl_bank_info.rl_block_tiling_info = rl_block_tiling_info;
   // parse ub tiling info
   std::vector<RlUbTilingInfo> rl_ub_tiling_infos;
-  int size_count = 1;
-  while (size_count < int(bank_info_json[idx][TILING_INFO_INDEX].size() - 1)) {
+  size_t size_count = 1;
+  while (size_count < bank_info_json[idx][TILING_INFO_INDEX].size() - 1) {
     RlUbTilingInfo rl_ub_tiling_info;
     rl_ub_tiling_info.ub_split_axis = bank_info_json[idx][TILING_INFO_INDEX][size_count][0].get<int64_t>();
     rl_ub_tiling_info.ub_calc_axes =

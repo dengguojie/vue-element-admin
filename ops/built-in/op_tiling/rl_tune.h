@@ -28,12 +28,6 @@
 namespace optiling {
 namespace v3 {
 namespace rl {
-#define LE(j, k) ((j) <= (k))
-#define GE(j, k) ((j) >= (k))
-#define EE(j, k) ((j) == (k))
-#define NE(j, k) ((j) != (k))
-#define LGE(j, k, z) (((j) >= (k)) && ((j) <= (z)))
-
 constexpr int64_t DYNC_AXIS_MAX_NUM = 20;
 constexpr int64_t RL_MAX_VARS_NUM = 256;
 constexpr int64_t RL_TOTAL_SHAPE_DIM_LEN = 70 * 16;
@@ -43,7 +37,7 @@ constexpr int LE_SYMBOL = 0;
 constexpr int GE_SYMBOL = 1;
 constexpr int EE_SYMBOL = 2;
 constexpr int NE_SYMBOL = 3;
-constexpr int LGE_SYMBOL = 4;
+constexpr int GLE_SYMBOL = 4;
 
 struct RlPattern {
   std::vector<int64_t> inputs_shape_bank;
@@ -85,28 +79,32 @@ struct RlBankInfo {
 void ParseRlBankInfo(const nlohmann::json& outer_compile_info,
                      std::pair<bool, std::vector<std::pair<RlPattern, std::vector<RlBankInfo>>>>& bank_info_pair);
 
-inline bool CalcExpr(const RangeInfo& range_info, const std::array<int64_t, DYNC_AXIS_MAX_NUM>& vars_value) {
+inline bool CalcExpr(const RangeInfo& range_info, const std::string& op_type,
+                     const std::array<int64_t, DYNC_AXIS_MAX_NUM>& vars_value, const int& vars_size) {
   bool result = true;
   int i = 0;
   for (const auto& val : range_info.right_val) {
     // *
-    int64_t left_value = vars_value[range_info.dync_axis_inds[i][0]];
-    for (size_t k = 1, len = range_info.dync_axis_inds[i].size(); k < len; k++) {
+    int64_t left_value = 1;
+    for (size_t k = 0, len = range_info.dync_axis_inds[i].size(); k < len; k++) {
+      V_OP_TILING_CHECK((range_info.dync_axis_inds[i][k] < vars_size),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dync_axis_inds is out of index."),
+                        return false);
       left_value *= vars_value[range_info.dync_axis_inds[i][k]];
     }
     // %
     left_value = range_info.mod_val[i] > 0 ? left_value & (range_info.mod_val[i] - 1) : left_value;
     // compare and &&
-    if (range_info.cmp_symbol[i] == LGE_SYMBOL) {  // >=&&<=
-      result &= LGE(left_value, val[0], val[1]);
+    if (range_info.cmp_symbol[i] == GLE_SYMBOL) {  // >=&&<=
+      result &= (left_value >= val[0] && left_value <= val[1]);
     } else if (range_info.cmp_symbol[i] == LE_SYMBOL) {  // <=
-      result &= LE(left_value, val[0]);
+      result &= (left_value <= val[0]);
     } else if (range_info.cmp_symbol[i] == GE_SYMBOL) {  // >=
-      result &= GE(left_value, val[0]);
+      result &= (left_value >= val[0]);
     } else if (range_info.cmp_symbol[i] == EE_SYMBOL) {  // ==
-      result &= EE(left_value, val[0]);
+      result &= (left_value == val[0]);
     } else if (range_info.cmp_symbol[i] == NE_SYMBOL) {  // !=
-      result &= NE(left_value, val[0]);
+      result &= (left_value != val[0]);
     }
     if (!result) {
       return result;

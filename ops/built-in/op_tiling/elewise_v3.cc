@@ -519,6 +519,9 @@ bool Elewise<T>::DoRlTiling(const rl::RlBankInfo& rl_bank_info) {
   bool ret = true;
   // ub tiling
   // elewise only has one time ub split
+  V_OP_TILING_CHECK((rl_bank_info.rl_ub_tiling_infos.size() > 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "rl_ub_tiling_infos is empty."),
+                    return false);
   rl_ub_factor = rl_bank_info.rl_ub_tiling_infos[0].ub_count;
   // elewise factor need to align
   int64_t ele_in_block = GetElementByType(out_dtype);
@@ -594,7 +597,7 @@ bool Elewise<T>::TryMatchRlBank() {
   // calc vars_value by dynamic_axis_loc, elewise only have one dynamic axis
   std::array<int64_t, rl::DYNC_AXIS_MAX_NUM> vars_value{out_shape};
   for (const auto& rl_bank_info : compile_info->bank_info_pair.second[pattern_id].second) {
-    if (rl::CalcExpr(rl_bank_info.range_info, vars_value)) {
+    if (rl::CalcExpr(rl_bank_info.range_info, op_type, vars_value, 1)) {
       OP_LOGD(op_type, "Hit rl bank.");
       // do rl tiling
       ret = ret && DoRlTiling(rl_bank_info);

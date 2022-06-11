@@ -135,7 +135,7 @@ class Broadcast {
 
     bool TryMatchRlBank();
     bool WriteRlTilingData(const rl::RlBankInfo& rl_bank_info);
-    bool DoRlUbTiling(const rl::RlBankInfo& rl_bank_info, 
+    bool DoRlUbTiling(const rl::RlBankInfo& rl_bank_info,
                       const int64_t rl_ub_split_axis, const int64_t rl_block_split_axis,
                       std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN>& fused_output_shape,
                       int64_t& under_ub_split_shape);

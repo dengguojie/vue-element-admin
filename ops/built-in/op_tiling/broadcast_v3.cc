@@ -1214,6 +1214,9 @@ bool Broadcast<T>::DoRlTiling(const rl::RlBankInfo& rl_bank_info) {
   // ub tiling
   std::array<int64_t, rl::RL_TOTAL_SHAPE_DIM_LEN> fused_output_shape{};
   int64_t under_ub_split_shape = 1;
+  V_OP_TILING_CHECK((rl_bank_info.rl_ub_tiling_infos.size() > 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "rl_ub_tiling_infos is empty."),
+                    return false);
   int64_t rl_ub_split_axis = rl_bank_info.rl_ub_tiling_infos[0].ub_split_axis;
   int64_t rl_block_split_axis = rl_bank_info.rl_block_tiling_info.block_split_axis;
   ret = ret && DoRlUbTiling(rl_bank_info, rl_ub_split_axis,
@@ -1247,7 +1250,7 @@ bool Broadcast<T>::DoRlTiling(const rl::RlBankInfo& rl_bank_info) {
       before_block_split_shape *= fused_output_shape[bind_axis];
     }
     int64_t split_axis_left_value = rl_block_split_axis != rl_ub_split_axis ?
-                                    fused_output_shape[rl_block_split_axis] : 
+                                    fused_output_shape[rl_block_split_axis] :
                                     std::ceil(fused_output_shape[rl_ub_split_axis] * 1.0 / rl_ub_factor);
     int64_t tmp_outer = std::ceil(rl_bank_info.rl_block_tiling_info.core_num * 1.0 / before_block_split_shape);
     V_OP_TILING_CHECK((tmp_outer != 0),
@@ -1308,7 +1311,7 @@ bool Broadcast<T>::TryMatchRlBank() {
     vars_value[loc++] = fusion_shapes[dync_axis_loc.first][dync_axis_loc.second];
   }
   for (const auto& rl_bank_info : broadcast_compile_info->bank_info_pair.second[pattern_id].second) {
-    if (rl::CalcExpr(rl_bank_info.range_info, vars_value)) {
+    if (rl::CalcExpr(rl_bank_info.range_info, op_type, vars_value, loc)) {
       OP_LOGD(op_type, "Hit rl bank.");
       // do rl tiling
       ret = ret && DoRlTiling(rl_bank_info);
