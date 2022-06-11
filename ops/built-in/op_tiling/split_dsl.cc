@@ -645,5 +645,5 @@ std::shared_ptr<AutoTilingHandler> CreateSplitDslTilingHandler(const std::string
   return std::make_shared<SplitDslTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-REGISTER_AUTO_TILING(SchPattern::SPLIT, CreateSplitDslTiling, CreateSplitDslParser)
+REGISTER_AUTO_TILING(SchPattern::SPLIT, CreateSplitDslTiling, CreateSplitDslParser);
 }  // namespace optiling

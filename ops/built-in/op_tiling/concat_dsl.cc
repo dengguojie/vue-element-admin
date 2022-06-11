@@ -803,5 +803,5 @@ std::shared_ptr<AutoTilingHandler> CreateConcatDslTilingHandler(const std::strin
   return std::make_shared<ConcatDslTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-REGISTER_AUTO_TILING(SchPattern::CONCAT, CreateConcatDslTiling, CreateConcatDslParser)
+REGISTER_AUTO_TILING(SchPattern::CONCAT, CreateConcatDslTiling, CreateConcatDslParser);
 }  // namespace optiling

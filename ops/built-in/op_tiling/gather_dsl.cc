@@ -963,5 +963,5 @@ template <typename T>
     return std::make_shared<GatherTilingHandler>(op_type, pattern, parsed_compile_info);
   }
 
-  REGISTER_AUTO_TILING(SchPattern::GATHER, CreateGatherDslTiling, CreateGatherDslParser)
+  REGISTER_AUTO_TILING(SchPattern::GATHER, CreateGatherDslTiling, CreateGatherDslParser);
 }  // namespace optiling

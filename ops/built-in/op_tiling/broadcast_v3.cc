@@ -1838,5 +1838,5 @@ std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::strin
   return std::make_shared<BroadcastTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-REGISTER_AUTO_TILING(SchPattern::BROADCAST, CreateBroadcastDslTiling, CreateBroadcastDslParser)
+REGISTER_AUTO_TILING(SchPattern::BROADCAST, CreateBroadcastDslTiling, CreateBroadcastDslParser);
 }  // namespace optiling

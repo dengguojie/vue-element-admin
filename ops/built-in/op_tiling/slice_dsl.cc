@@ -743,6 +743,6 @@ std::shared_ptr<AutoTilingHandler> CreateSliceTilingHandler(const std::string &o
   return std::make_shared<SliceTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-REGISTER_AUTO_TILING(SchPattern::SLICE, CreateSliceDslTiling, CreateSliceDslParser)
+REGISTER_AUTO_TILING(SchPattern::SLICE, CreateSliceDslTiling, CreateSliceDslParser);
 } // namespace optiling
 

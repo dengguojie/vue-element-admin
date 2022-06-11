@@ -1050,5 +1050,5 @@ std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(const std::st
   return std::make_shared<TransposeDslTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-REGISTER_AUTO_TILING(SchPattern::TRANSPOSE, CreateTransposeDslTiling, CreateTransposeDslParser)
+REGISTER_AUTO_TILING(SchPattern::TRANSPOSE, CreateTransposeDslTiling, CreateTransposeDslParser);
 }  // namespace optiling

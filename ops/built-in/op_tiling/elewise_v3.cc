@@ -798,5 +798,5 @@ std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string&
   return std::make_shared<ElewiseTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-REGISTER_AUTO_TILING(SchPattern::ELETWISE, CreateElewiseDslTiling, CreateElewiseDslParser)
+REGISTER_AUTO_TILING(SchPattern::ELETWISE, CreateElewiseDslTiling, CreateElewiseDslParser);
 }  // namespace optiling

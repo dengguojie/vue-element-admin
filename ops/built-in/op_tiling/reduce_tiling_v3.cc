@@ -1870,5 +1870,5 @@ std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& 
                         reduceCompileInfoV3_ptr : std::shared_ptr<AutoTilingHandler>(nullptr);
 }
 
-REGISTER_AUTO_TILING(SchPattern::COMMONREDUCE, CreateReduceDslTiling, CreateReduceDslParser)
+REGISTER_AUTO_TILING(SchPattern::COMMONREDUCE, CreateReduceDslTiling, CreateReduceDslParser);
 }  // namespace optiling

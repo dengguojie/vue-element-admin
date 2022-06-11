@@ -1998,5 +1998,5 @@ std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op
   return compile_info_ptr;
 }
 
-REGISTER_AUTO_TILING(SchPattern::NORM, CreateNormDslTiling, CreateNormDslParser)
+REGISTER_AUTO_TILING(SchPattern::NORM, CreateNormDslTiling, CreateNormDslParser);
 }  // namespace optiling

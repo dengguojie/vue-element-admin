@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@
 #include <unordered_map>
 
 using AutoTilingFunc = bool (*) (gert::TilingContext*, const optiling::OpInfoImpl*);
-using AutoTilingParseFunc = optiling::AutoTilingCompileInfo*
-    (*) (const char* op_type, const nlohmann::json& json_compile_info);
+using AutoTilingParseFunc = optiling::AutoTilingCompileInfo* (*) (const char* op_type, 
+                                                                  const nlohmann::json& json_compile_info);
 
 #define REGISTER_AUTO_TILING(pattern, tilingfunc, parsefunc)                                                           \
-  static AutoTilingRegister g_auto_tiling_register_##__COUNTER__(pattern, tilingfunc, parsefunc);
+  static AutoTilingRegister g_auto_tiling_register_##__COUNTER__(pattern, tilingfunc, parsefunc)
 
 class AutoTilingRegister {
 public:
