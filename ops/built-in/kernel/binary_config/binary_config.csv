@@ -6,6 +6,8 @@ Addcmul,addcmul.json
 Addcdiv,addcdiv.json
 Atan,atan.json
 Atan2,atan2.json
+BesselI0e,bessel_i0e.json
+BesselI1e,bessel_i1e.json
 Erfc,erfc.json
 Expint,expint.json
 ApplyAdamD,apply_adam_d.json
