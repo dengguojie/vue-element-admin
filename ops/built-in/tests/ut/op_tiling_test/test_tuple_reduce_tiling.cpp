@@ -69,7 +69,7 @@ static bool compare_map(const std::unordered_map<T1, T2>& map1, const std::unord
 static bool compare_tuple_reduce_struct(const optiling::TupleReduce::TupleReduceCompileInfo ptr1,
                                         const optiling::TupleReduce::TupleReduceCompileInfo ptr2) {
   if (ptr1.is_const != ptr2.is_const) {
-    std::cout << "ERROR1";
+    std::cout << "ERROR: is_const";
     return false;
   }
   return true;
@@ -77,46 +77,41 @@ static bool compare_tuple_reduce_struct(const optiling::TupleReduce::TupleReduce
 
 TEST_F(TupleReduceTilingTest, ParseTest1) {
   std::string compileInfo = R"({
-    "_disable_fuse_axes": [],
     "_reduce_axis": [0, 2, 3],
-    "_shapes_length": [5],
-    "_max_shape_len": 5,
-    "_fusible_code": [11, 10, 11, 11, 10],
-    "_fused_reduce_axis": [0, 2],
-    "_fused_broadcast_axis": [0, 1, 2, 3],
-    "_fused_disable_fuse_axes": [],
-    "_pattern": "TupleReduce",
     "_is_const": true,
-    "_common_info": [32, 262144, 32, true, 0, 2048, false, false, true, false, false],
+    "_fused_reduce_axis": [0, 2],
+    "_fusible_code": [11, 10, 11, 11, 10],
+    "_pattern": "TupleReduce",
+    "_common_info": [32, 32, true, 2048],
+    "_graph_info": [1, 2, 4, 4],
     "_runtime": false,
-    "_graph_info": [1, 21672, 4, 2, 4, true]
+    "_buffer_size": [16224, 12976, 12976],
+    "_dim_var_code": {"104": 0}
     })";
 
   nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
 
   optiling::TupleReduce::TupleReduceCompileInfo actual_struct("tuple_reduce", op_info);
   optiling::TupleReduce::TupleReduceCompileInfo expect_struct;
-  expect_struct.common_info = {32, 262144, 32, 1, 0, 2048, 0, 0, 1, 0, 0};
-  expect_struct.core_num = 32;
-  expect_struct.ub_size = 262144;
-  expect_struct.block_size = 32;
-  expect_struct.atomic_support = true;
   expect_struct.reduce_axis = {0, 2, 3};
+  expect_struct.is_const = true;
   expect_struct.fused_reduce_axis = {0, 2};
   expect_struct.fusible_code = {11, 10, 11, 11, 10};
-  expect_struct.is_const = true;
+  expect_struct.common_info = {32, 32, 1, 2048};
+  expect_struct.graph_info = {1, 2, 4, 4};
   expect_struct.runtime = false;
-  expect_struct.graph_info = {1, 21672, 4, 2, 4, 1};
-  expect_struct.shapes_length = {5};
-  expect_struct.max_shape_len = 5;
-  expect_struct.parsed_success = true;
+  expect_struct.buffer_size = {16224, 12976, 12976};
+  const auto& local_dim_var_code = op_info.at("_dim_var_code").get<std::unordered_map<std::string, int32_t>>();
+  for (const auto& item: local_dim_var_code) {
+    expect_struct.dim_var_code[std::stoi(item.first)] = item.second;
+  }
 
   ASSERT_TRUE(compare_tuple_reduce_struct(actual_struct, expect_struct));
 }
 
 TEST_F(TupleReduceTilingTest, TilingTest1) {
-  std::vector<std::vector<int64_t>> inputs{{32, 128, 8, 8, 16}};
-  std::vector<std::vector<int64_t>> outputs{{1, 128, 1, 1, 16}, {1, 128, 1, 1, 16}};
+  std::vector<std::vector<int64_t>> inputs{{32, 4, 112 * 112, 16}};
+  std::vector<std::vector<int64_t>> outputs{{1, 4, 1, 16}, {1, 4, 1, 16}};
   ge::DataType dtype = ge::DT_FLOAT;
   ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
   for (std::size_t i = 0; i < inputs.size(); i++) {
@@ -128,35 +123,40 @@ TEST_F(TupleReduceTilingTest, TilingTest1) {
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
 
-  optiling::TupleReduce::TupleReduceCompileInfo compileInfo;
-  compileInfo.core_num = 32;
-  compileInfo.ub_size = 262144;
-  compileInfo.block_size = 32;
-  compileInfo.atomic_support = true;
-  compileInfo.dim_var = 0;
+  std::string StrCompileInfo = R"({"_dim_var_code": {"104": 0}})";
+  nlohmann::json op_info = nlohmann::json::parse(StrCompileInfo.c_str());
 
+  optiling::TupleReduce::TupleReduceCompileInfo compileInfo;
   compileInfo.reduce_axis = {0, 2, 3};
+  compileInfo.is_const = true;
   compileInfo.fused_reduce_axis = {0, 2};
   compileInfo.fusible_code = {11, 10, 11, 11, 10};
+  compileInfo.common_info = {32, 32, 1, 2048};
+  compileInfo.core_num = 32;
+  compileInfo.block_size = 32;
+  compileInfo.atomic_support = 32;
+  compileInfo.atomic_threshold = 32;
 
-  compileInfo.is_const = true;
-  compileInfo.runtime = true;
-
+  compileInfo.graph_info = {1, 2, 4, 4};
   compileInfo.inputs_num = 1;
-  compileInfo.max_dtype_size = 4;
   compileInfo.min_dtype_size = 2;
-  compileInfo.keep_dims = true;
-  compileInfo.shapes_length = {5};
-  compileInfo.max_shape_len = 5;
-  compileInfo.buffer_size = 21672;
+  compileInfo.max_dtype_size = 4;
+  compileInfo.reduce_dtype_size = 4;
+
+  compileInfo.runtime = false;
+  compileInfo.buffer_size = {16224, 12976, 12976};
+  const auto& local_dim_var_code = op_info.at("_dim_var_code").get<std::unordered_map<std::string, int32_t>>();
+  for (const auto& item: local_dim_var_code) {
+    compileInfo.dim_var_code[std::stoi(item.first)] = item.second;
+  }
 
   optiling::TupleReduce::TupleReduce tupleReduce("TupleReduce", op_paras, compileInfo, runInfo);
   ASSERT_TRUE(tupleReduce.DoTiling());
 }
 
 TEST_F(TupleReduceTilingTest, TilingTest2) {
-  std::vector<std::vector<int64_t>> inputs{{32, 1280, 8, 8, 16}};
-  std::vector<std::vector<int64_t>> outputs{{1, 1280, 1, 1, 16}, {1, 1280, 1, 1, 16}};
+  std::vector<std::vector<int64_t>> inputs{{32, 1280, 64, 16}};
+  std::vector<std::vector<int64_t>> outputs{{1, 1280, 1, 16}, {1, 1280, 1, 16}};
   ge::DataType dtype = ge::DT_FLOAT;
   ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
   for (std::size_t i = 0; i < inputs.size(); i++) {
@@ -168,107 +168,32 @@ TEST_F(TupleReduceTilingTest, TilingTest2) {
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
 
-  optiling::TupleReduce::TupleReduceCompileInfo compileInfo;
-  compileInfo.core_num = 32;
-  compileInfo.ub_size = 262144;
-  compileInfo.block_size = 32;
-  compileInfo.atomic_support = true;
-  compileInfo.dim_var = 0;
+  std::string StrCompileInfo = R"({"_dim_var_code": {"104": 0}})";
+  nlohmann::json op_info = nlohmann::json::parse(StrCompileInfo.c_str());
 
+  optiling::TupleReduce::TupleReduceCompileInfo compileInfo;
   compileInfo.reduce_axis = {0, 2, 3};
+  compileInfo.is_const = true;
   compileInfo.fused_reduce_axis = {0, 2};
   compileInfo.fusible_code = {11, 10, 11, 11, 10};
+  compileInfo.common_info = {32, 32, 1, 2048};
+  compileInfo.core_num = 32;
+  compileInfo.block_size = 32;
+  compileInfo.atomic_support = 32;
+  compileInfo.atomic_threshold = 32;
 
-  compileInfo.is_const = true;
-  compileInfo.runtime = true;
-
+  compileInfo.graph_info = {1, 2, 4, 4};
   compileInfo.inputs_num = 1;
-  compileInfo.max_dtype_size = 4;
   compileInfo.min_dtype_size = 2;
-  compileInfo.keep_dims = true;
-  compileInfo.shapes_length = {5};
-  compileInfo.max_shape_len = 5;
-  compileInfo.buffer_size = 21672;
+  compileInfo.max_dtype_size = 4;
+  compileInfo.reduce_dtype_size = 4;
 
-  optiling::TupleReduce::TupleReduce tupleReduce("TupleReduce", op_paras, compileInfo, runInfo);
-  ASSERT_TRUE(tupleReduce.DoTiling());
-}
-
-TEST_F(TupleReduceTilingTest, TilingTest3) {
-  std::vector<std::vector<int64_t>> inputs{{32, 1280, 8, 8, 16}};
-  std::vector<std::vector<int64_t>> outputs{{1, 1280, 1, 1, 16}, {1, 1280, 1, 1, 16}};
-  ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
-
-  optiling::TupleReduce::TupleReduceCompileInfo compileInfo;
-  compileInfo.core_num = 32;
-  compileInfo.ub_size = 262144;
-  compileInfo.block_size = 32;
-  compileInfo.atomic_support = true;
-  compileInfo.dim_var = 0;
-
-  compileInfo.reduce_axis = {0, 2, 3};
-  compileInfo.fused_reduce_axis = {0, 2};
-  compileInfo.fusible_code = {11, 10, 11, 11, 10};
-
-  compileInfo.is_const = true;
   compileInfo.runtime = false;
-
-  compileInfo.inputs_num = 1;
-  compileInfo.max_dtype_size = 4;
-  compileInfo.min_dtype_size = 2;
-  compileInfo.keep_dims = true;
-  compileInfo.shapes_length = {5};
-  compileInfo.max_shape_len = 5;
-  compileInfo.buffer_size = 21672;
-
-  optiling::TupleReduce::TupleReduce tupleReduce("TupleReduce", op_paras, compileInfo, runInfo);
-  ASSERT_TRUE(tupleReduce.DoTiling());
-}
-
-TEST_F(TupleReduceTilingTest, TilingTest4) {
-  std::vector<std::vector<int64_t>> inputs{{3200, 2, 3, 3, 16}};
-  std::vector<std::vector<int64_t>> outputs{{1, 2, 1, 1, 16}, {1, 2, 1, 1, 16}};
-  ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
+  compileInfo.buffer_size = {13000, 10832, 10832};
+  const auto& local_dim_var_code = op_info.at("_dim_var_code").get<std::unordered_map<std::string, int32_t>>();
+  for (const auto& item: local_dim_var_code) {
+    compileInfo.dim_var_code[std::stoi(item.first)] = item.second;
   }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
-
-  optiling::TupleReduce::TupleReduceCompileInfo compileInfo;
-  compileInfo.core_num = 32;
-  compileInfo.ub_size = 262144;
-  compileInfo.block_size = 32;
-  compileInfo.atomic_support = true;
-  compileInfo.dim_var = 0;
-
-  compileInfo.reduce_axis = {0, 2, 3};
-  compileInfo.fused_reduce_axis = {0, 2};
-  compileInfo.fusible_code = {11, 10, 11, 11, 10};
-
-  compileInfo.is_const = true;
-  compileInfo.runtime = false;
-
-  compileInfo.inputs_num = 1;
-  compileInfo.max_dtype_size = 4;
-  compileInfo.min_dtype_size = 2;
-  compileInfo.keep_dims = true;
-  compileInfo.shapes_length = {5};
-  compileInfo.max_shape_len = 5;
-  compileInfo.buffer_size = 21672;
 
   optiling::TupleReduce::TupleReduce tupleReduce("TupleReduce", op_paras, compileInfo, runInfo);
   ASSERT_TRUE(tupleReduce.DoTiling());

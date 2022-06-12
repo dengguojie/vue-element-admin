@@ -20,12 +20,16 @@ tuple reduce tilingcase
 # Standard Packages
 from typing import List
 from enum import Enum
+# TBE Packages
+from tbe.tvm.tensor import Tensor
+from tbe.dsl.base.operation import add_compile_info_inner
+from tbe.dsl.base.operation import get_compile_info
+# Tuple Reduce
+from .tuple_reduce_tilingcase_info import Info
 # Local Packages
 from ...constants import Pattern
 from ...computation import Computation
 from ...constants import TupleReducePattern
-# Tuple Reduce
-from . import tuple_reduce_tilingcase_info
 
 DEFAULT = "default"
 CONST = "const"
@@ -70,15 +74,22 @@ class CalcTupleReduceTilingCase(Computation):
         @return:
         """
         tiling_case_list: List[TupleReduceTilingCase] = []
-        outs = list(self.outs) if isinstance(
-            self.outs, (list, tuple)) else [self.outs]
-        info = tuple_reduce_tilingcase_info.Info(outs)
-        self.tiling_shape = info.max_shape
+        outs: List[Tensor] = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
+        info: Info = Info(outs)
+        self.tiling_shape: List = info.max_shape
         for block_idx in range(len(self.tiling_shape)):
             for ub_idx in range(len(self.tiling_shape)):
-                case = TupleReduceTilingCase(info, block_idx, ub_idx)
-                if case.check_validity:
-                    tiling_case_list.append(case)
+                for options in [0, 1, 2]:
+                    case: TupleReduceTilingCase = TupleReduceTilingCase(info, block_idx, ub_idx, options)
+                    if case.check_validity:
+                        tiling_case_list.append(case)
+
+        # save all tilingkeys
+        tilingkeys = get_compile_info().get("_tilingkeys")
+        if tilingkeys is None:
+            tilingkeys = []
+        tilingkeys = tilingkeys + [case.tiling_key for case in tiling_case_list]
+        add_compile_info_inner("_tilingkeys", tilingkeys)
 
         return tiling_case_list
 
@@ -95,20 +106,14 @@ class TupleReduceTilingCase:
         SPATIAL_TILING = "spatial-dependent schedule"
         TIME_TILING = "time-dependent schedule"
 
-    def __init__(self, info: tuple_reduce_tilingcase_info.Info, block_axis: int, ub_axis: int):
-        self.info = info
-        self.block_axis = block_axis
-        self.ub_axis = ub_axis
+    def __init__(self, info: Info, block_axis: int, ub_axis: int, options: int):
+        self.info: Info = info
+        self.block_axis: int = block_axis
+        self.ub_axis: int = ub_axis
+        self.options: int = options
         self.block_factor = None
         self.ub_factor = None
 
-        self.double_buffer = info.double_buffer
-        self.compute_root = info.compute_root
-        self.mem_unique = info.mem_unique
-        self.transpose_reduce = info.transpose_reduce
-        self.align_pad = info.align_pad
-
-        self.dynamic_mode = CONST if self.info.is_const else DYNAMIC
         if self.block_axis in self.info.reduce_axis:
             self.schedule_type = self.ScheduleType.TIME_TILING
         else:
@@ -129,32 +134,23 @@ class TupleReduceTilingCase:
                 and self.ub_axis not in self.info.reduce_axis \
                 and self.block_axis > self.ub_axis:
             return False
-        return True
 
-    @staticmethod
-    def _calc_reduce_axis(reduce_axis):
-        one_hot = [0 for _ in range(8)]
-        for i in reduce_axis:
-            one_hot[i] = 1
-        pattern = 0
-        for v in one_hot:
-            pattern = 2 * pattern + v
-        return pattern
+        # only AR on UB transpose reduce
+        if self.options == 1:
+            if not self.info.last_reduce:
+                return False
+            if self.ub_axis in self.info.reduce_axis:
+                return False
+
+        return True
 
     def calc_tiling_key(self):
         block_axis, ub_axis = self.block_axis, self.ub_axis
         atomic = 0 if self.schedule_type == self.ScheduleType.SPATIAL_TILING else 1
-        mem_unique = 1 if self.mem_unique else 0
-        compute_root = 1 if self.compute_root else 0
-        double_buffer = 1 if self.double_buffer else 0
-        transpose_reduce = 1 if self.transpose_reduce else 0
-        align_pad = 1 if self.align_pad else 0
-        reduce_pattern = self._calc_reduce_axis(self.info.reduce_axis)
+        options = self.options
+        reduce_pattern = self.info.compile_info.calc_reduce_pattern(self.info.max_shape, self.info.reduce_axis)
 
-        sch_modes = double_buffer * 1 + compute_root * 2 + \
-            mem_unique * 4 + transpose_reduce * 8 + align_pad * 16
-        key_values = (reduce_pattern, sch_modes, atomic, block_axis, ub_axis)
-        key_weights = (10**5, 10**3, 10**2, 10**1, 10**0)
-        tiling_key = [value * weight for value,
-                      weight in zip(key_values, key_weights)]
+        key_values = (reduce_pattern, options, atomic, block_axis, ub_axis)
+        key_weights = (10**4, 10**3, 10**2, 10**1, 10**0)
+        tiling_key = [value * weight for value, weight in zip(key_values, key_weights)]
         return sum(tiling_key)

@@ -31,6 +31,7 @@ from enum import auto
 # Ascend Packages
 from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.unify_schedule.util import shape_to_list
 
 
 def _raise_error(message: AnyStr):
@@ -77,27 +78,27 @@ class Schedule:
         self.stages_not_on_ub: Set[tvm.schedule.Stage] = set()
         self.cache_read_stages: Dict[tvm.schedule.Stage, tvm.tensor.Tensor] = {}
         self.cache_write_stages: Dict[tvm.schedule.Stage, tvm.tensor.Tensor] = {}
-    
+
     def __getitem__(self, stage: tvm.schedule.Stage):
         return self.sch[stage]
-    
+
     @property
     def stages(self) -> List[tvm.schedule.Stage]:
         return self.sch.stages
-    
+
     @property
     def stage_map(self) -> tvm.container.Map or Mapping[tvm.tensor.ComputeOp or tvm.tensor.PlaceholderOp,
                                                         tvm.schedule.Stage]:
         return self.sch.stage_map
-    
+
     @property
     def outputs(self) -> List[tvm.tensor.ComputeOp]:
         return self.sch.outputs
-    
+
     @property
     def real_outputs(self) -> List[tvm.tensor.ComputeOp]:
         return list(set(self.outputs))
-    
+
     @property
     def tensors(self) -> List[tvm.tensor.Tensor]:
         tensors = set(self.outs)
@@ -105,11 +106,11 @@ class Schedule:
             for tensor in stage.op.input_tensors:
                 tensors.add(tensor)
         return list(tensors)
-    
+
     @property
     def placeholder(self) -> List[tvm.tensor.Tensor]:
         return [tensor for tensor in self.tensors if isinstance(tensor.op, tvm.tensor.PlaceholderOp)]
-    
+
     @property
     def stages_on_ub(self) -> Set[tvm.schedule.Stage]:
         return set(self.stages) - self.stages_not_on_ub
@@ -140,7 +141,7 @@ class Schedule:
     @property
     def broadcast_stages(self) -> List[tvm.schedule.Stage]:
         return list(filter(lambda stage: stage.op.tag.find("broadcast") != -1, self.stages))
-    
+
     @property
     def broadcast_tensors(self) -> List[tvm.tensor.Tensor]:
         return list(filter(lambda tensor: tensor.op.tag.find("broadcast") != -1, self.tensors))
@@ -156,26 +157,39 @@ class Schedule:
     @staticmethod
     def get_insn(stage: tvm.schedule.Stage):
         pass
-    
+
     @staticmethod
     def create_schedule(outs: List[tvm.tensor.Tensor]) -> tvm.schedule.Schedule:
         ops = [t.op for t in outs]
         return tvm.create_schedule(ops)
-    
+
     @staticmethod
     def data_parallel_iteration(stage: tvm.schedule.Stage) -> List[tvm.schedule.IterVar]:
         return [iter_var for iter_var in stage.leaf_iter_vars if iter_var.iter_type == IterType.kDataPar.value]
-    
+
     @staticmethod
     def comm_reduce(stage: tvm.schedule.Stage) -> List[tvm.schedule.IterVar]:
         return [iter_var for iter_var in stage.leaf_iter_vars if iter_var.iter_type == IterType.kCommReduce.value]
-    
+
     @staticmethod
-    def reduce_emit_axis(stage: tvm.schedule.Stage) -> tvm.schedule.IterVar:
+    def reduce_emit_axis(stage: tvm.schedule.Stage, start_iter_var: tvm.schedule.IterVar) -> tvm.schedule.IterVar:
+        meet_starter = False
         for iter_var in stage.leaf_iter_vars:
+            if not meet_starter:
+                if iter_var == start_iter_var:
+                    meet_starter = True
+                else:
+                    continue
+
             if iter_var.iter_type == IterType.kCommReduce.value:
                 return iter_var
         return iter_var
+
+    @staticmethod
+    def is_scalar_broadcast(stage: tvm.schedule.Stage):
+        if not stage.op.input_tensors:
+            return True
+        return False
 
     def poset(self, stage: tvm.schedule.Stage) -> Set[tvm.schedule.Stage]:
         """
@@ -193,7 +207,7 @@ class Schedule:
         for tensor in tensors:
             stages.add(self.get_stage(tensor))
         return stages
-    
+
     def producer(self, stage: tvm.schedule.Stage) -> List[tvm.schedule.Stage]:
         all_producers = [self.get_stage(tensor) for tensor in stage.op.input_tensors]
         producers = []
@@ -201,14 +215,14 @@ class Schedule:
             if p not in producers:
                 producers.append(p)
         return producers
-    
+
     def consumer(self, stage: tvm.schedule.Stage) -> List[tvm.schedule.Stage]:
         all_consumers = [_stage for _stage in self.stages if stage in self.producer(_stage)]
         consumers = set()
         for c in all_consumers:
             consumers.add(c)
         return list(consumers)
-    
+
     def get_tensor(self, stage: tvm.schedule.Stage) -> tvm.tensor.Tensor:
         for tensor in self.tensors:
             if tensor.op == stage.op:
@@ -217,7 +231,7 @@ class Schedule:
             if tensor.op == stage.origin_op:
                 return tensor
         return tensor
-    
+
     def get_ori_tensor(self, stage: tvm.schedule.Stage) -> tvm.tensor.Tensor:
         for tensor in self.ori_tensors:
             if tensor.op == stage.origin_op:
@@ -226,7 +240,7 @@ class Schedule:
             if tensor.op == stage.op:
                 return tensor
         return tensor
-    
+
     def get_stage(self, tensor: tvm.tensor.Tensor) -> tvm.schedule.Stage:
         for stage in self.stages:
             if tensor.op == stage.op:
@@ -234,32 +248,45 @@ class Schedule:
             if tensor.op == stage.origin_op:
                 return stage
         return stage
-    
+
     def cache_read(self, tensor, scope, readers) -> tvm.tensor.Tensor:
-        self.stages_not_on_ub.add(self.get_stage(tensor))
+        if self.get_stage(tensor).scope != "local.UB":
+            self.stages_not_on_ub.add(self.get_stage(tensor))
         ub_tensor: tvm.tensor.Tensor = self.sch.cache_read(tensor, scope, readers)
         self.cache_read_stages.update({self.get_stage(ub_tensor): tensor})
         self.ori_tensors.append(ub_tensor)
         return ub_tensor
-    
+
     def cache_write(self, tensor, scope) -> tvm.tensor.Tensor:
         for t in tensor:
-            self.stages_not_on_ub.add(self.get_stage(t))
+            if self.get_stage(t).scope != "local.UB":
+                self.stages_not_on_ub.add(self.get_stage(t))
         ub_tensor: tvm.tensor.Tensor = self.sch.cache_write(tensor, scope)
         for t in ub_tensor:
             self.cache_write_stages.update({self.get_stage(t): tensor})
             self.ori_tensors.append(t)
         return ub_tensor
-    
+
     def rfactor(self, tensor, axis, factor_axis=0):
         tfactor = self.sch.rfactor(tensor, axis, factor_axis)
         return tfactor
 
-    def info(self):
-        pass
+    def is_last_broadcast(self, stage: tvm.schedule.Stage):
+        if self.is_scalar_broadcast(stage):
+            return True
+        before = shape_to_list(stage.op.input_tensors[0].shape)
+        after = shape_to_list(stage.op.output(0).shape)
+        broadcast_axis = []
 
-    def ir(self):
-        pass
+        for idx, (left, right) in enumerate(zip(before, after)):
+            if left == 1 and left != right:
+                broadcast_axis.append(idx)
+
+        if not broadcast_axis:
+            return False
+        if max(broadcast_axis) + 1 == len(after):
+            return True
+        return False
 
 
 class Compute:
@@ -299,7 +326,7 @@ class Compute:
         visited = set()
         traversal(self.outs[0])
         return postorder
-    
+
     @staticmethod
     def producer(tensor: tvm.tensor.Tensor):
         """
@@ -377,4 +404,3 @@ class Compute:
             tensor_alive = dict(filter(lambda x: len(x[1]) > 0 or x[0] in unique, tensor_alive.items()))
 
         return [grande_buffer_count, short_buffer_count]
-

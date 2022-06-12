@@ -20,13 +20,10 @@ def test_static(_):
 
 def test_ranked_dynamic(_):
     with op_context.OpContext("dynamic"):
-        inputs = [{"shape": (-1, -1, -1)},
-                  {"shape": (-1, -1, -1)},
-                  [0, 1]]
+        inputs = [{"shape": (-1, -1, -1, -1, -1)}, [0, 2, 3]]
         ins = classify_tuple_reduce(inputs, extra_params=None)
-        expect_ins = [[{'shape': [-1, -1], 'range':[(1, None), (1, None)]},
-                       {'shape': [-1, -1], 'range':[(1, None), (1, None)]},
-                       [0]]]
+        expect_ins = [[{'shape': [-1, -1, -1, -1], 'range':[(1, None), (1, None), (1, None), (1, None)]}, [0, 2]],
+                      [{'shape': [-1, -1, -1], 'range':[(1, None), (1, None), (1, None)]}, [0, 2]]]
         return ins == expect_ins
 
 ut_case.add_cust_test_func(["Ascend910A", "Ascend310P3"], test_static)

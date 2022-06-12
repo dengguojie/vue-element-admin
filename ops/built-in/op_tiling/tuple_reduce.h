@@ -48,56 +48,28 @@ struct TupleReduceCompileInfo {
  public:
   // COMMON INFORMATION
   std::vector<int32_t> common_info;
-  size_t core_num_idx = 0;
   int32_t core_num{-1};
-  size_t ub_size_idx = 1;
-  int32_t ub_size{-1};
-  size_t block_size_idx = 2;
   int32_t block_size{-1};
-  size_t atomic_support_idx = 3;
   bool atomic_support{false};
-  size_t dim_var_idx = 4;
-  int32_t dim_var{-1};
-  size_t atomic_threshold_idx = 5;
   int32_t atomic_threshold{1024};
-  size_t compute_root_idx = 6;
-  bool compute_root{false};
-  size_t double_buffer_idx = 7;
-  bool double_buffer{false};
-  size_t mem_unique_idx = 8;
-  bool mem_unique{false};
-  size_t transpose_reduce_idx = 9;
-  bool transpose_reduce{false};
-  size_t align_pad_idx = 10;
-  bool align_pad{false};
 
   // AXIS INFORMATION
   std::vector<int32_t> reduce_axis;
-  std::vector<int32_t> disable_fuse_axes;
-  std::vector<int32_t> fused_broadcast_axis;
-  std::vector<int32_t> fused_reduce_axis;
   std::vector<int32_t> fusible_code;
+  std::vector<int32_t> fused_reduce_axis;
 
   // DYNAMIC INFORMATION
   bool is_const{false};
   bool runtime{false};
+  std::unordered_map<int32_t, int32_t> dim_var_code;
 
   // GRAPH INFORMATION
   std::vector<int32_t> graph_info;
-  std::size_t inputs_num_idx = 0;
   std::uint32_t inputs_num{0};
-  std::size_t buffer_size_idx = 1;
-  std::int32_t buffer_size{0};
-  std::size_t max_dtype_size_idx = 2;
-  std::int32_t max_dtype_size{0};
-  std::size_t min_dtype_size_idx = 3;
   std::int32_t min_dtype_size{0};
-  std::size_t reduce_dtype_size_idx = 4;
+  std::int32_t max_dtype_size{0};
   std::int32_t reduce_dtype_size{0};
-  std::size_t keep_dims_idx = 5;
-  bool keep_dims{false};
-  std::vector<int32_t> shapes_length;
-  std::int32_t max_shape_len{0};
+  std::vector<int32_t> buffer_size;
 
   // PARSE STATUS
   bool parsed_success{true};
@@ -107,7 +79,6 @@ struct TupleReduceCompileInfo {
   bool GetAxisInfo(const std::string& op_type, const nlohmann::json& json_info);
   bool GetDynamicMode(const std::string& op_type, const nlohmann::json& json_info);
   bool GetGraphInfo(const std::string& op_type, const nlohmann::json& json_info);
-  bool CheckParseStatus(const std::string& op_type, const nlohmann::json& json_info);
 };  // TupleReduceCompileInfo
 
 // TupleReduceTilingInfo
@@ -142,8 +113,11 @@ class TupleReduce {
   TupleReduceTilingInfo tupleReduceTilingInfo;
 
  private:
+  size_t max_shape_len{0};
   bool last_axis_reduce{false};
+  bool last_axis_align{false};
   std::int64_t reduce_pattern = 0;
+  std::int64_t opt_mode = 0;
   std::int64_t tmp_product = 1;
   std::size_t block_axis_lb = 0;
   std::size_t block_axis_ub = 0;
@@ -169,6 +143,8 @@ class TupleReduce {
   bool FuseAxis();
   bool EliminateTailOnes();
   bool PickScheduleStrategy();
+  bool ReducePattern();
+  bool PickOptMode();
   bool Reorder();
   bool TimeTiling_block();
   bool TimeTiling_ub();
