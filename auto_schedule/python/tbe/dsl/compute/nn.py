@@ -41,6 +41,7 @@ from .util import in_dynamic_and_static_unify
 from .util import judge_var
 from .util import shape_to_list
 from .util import disable_broadcast_optimization
+from ..base import d_format_util
 
 NAME_INDEX = [0]
 
@@ -387,10 +388,103 @@ def _scalar_broadcast(var, shape, output_dtype):
     return out
 
 
+def _tensor_broadcast_5hd(var, shape):
+    tensor = var
+    orig_shape = list(tensor.shape)
+    shape = list(shape)
+    check_input_tensor_shape(orig_shape)
+    if len(orig_shape) > len(shape):
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "Length of original shape must be " \
+                                      "smaller than target shape, but src shape is %s, " \
+                                      "and dst shape is %s" % (str(orig_shape), str(shape))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    valid_types = (tvm.expr.ConstExpr, tvm.expr.Var, tvm.expr.Max, tvm.expr.Mul)
+    difference = len(shape) - len(orig_shape)
+    align_shape = difference * [1] + orig_shape
+    check_equal = 0
+    is_unknown_broadcast = False
+    for src_shape, dst_shape in zip(align_shape, shape):
+        if equal(src_shape, dst_shape):
+            axis_type = d_format_util.get_axis_type(src_shape)
+            is_pad_axis = d_format_util.eq_axis_type(axis_type, "C0") or d_format_util.eq_axis_type(axis_type, "C1")
+            if is_pad_axis:
+                ori_c_src = d_format_util.get_original(src_shape)
+                ori_c_dst = d_format_util.get_original(dst_shape)
+                if equal(ori_c_src, ori_c_dst):
+                    check_equal += 1
+            continue
+        if equal(src_shape, 1):
+            continue
+        if isinstance(src_shape, valid_types) or \
+                isinstance(dst_shape, valid_types):
+            is_unknown_broadcast = True
+            continue
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "For tensor broadcasting, shape must " \
+                                      "be the same or corresponding shape of" \
+                                      " src tensor is 1 while src shape is %s," \
+                                      " and dst shape is %s" % (str(align_shape), str(shape))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    if check_equal == len(shape):
+        return tensor
+
+    name = "broadcast_tensor_" + str(NAME_INDEX[0])
+    NAME_INDEX[0] += 1
+
+    def _get_op_tag():
+        op = "broadcast_for_tensor"
+        if in_dynamic_and_static_unify():
+            if orig_shape == [1] and not disable_broadcast_optimization():
+                op = "one_shape_broadcast"
+            elif len(orig_shape) == 1 and not disable_broadcast_optimization():
+                op = "one_rank_broadcast"
+            elif is_unknown_broadcast:
+                op = "unknown_broadcast"
+            else:
+                op = "unified_broadcast"
+
+        return op
+
+    _op = _get_op_tag()
+
+    def lambda_func(*indices):
+        if _op == 'one_rank_broadcast':
+            index = [tvm.select(equal(orig_shape[0], 1), 0, indices[0])]
+            return tensor(*(index[difference:]))
+        elif _op == "one_shape_broadcast":
+            return tensor(0)
+        elif _op == "unknown_broadcast":
+            index = []
+            for i, align_shape_i in enumerate(align_shape):
+                if equal(align_shape_i, 1):
+                    index.append(0)
+                elif equal(align_shape_i, shape[i]):
+                    index.append(indices[i])
+                else:
+                    index.append(tvm.select(equal(orig_shape[0], 1), 0, indices[i]))
+            return tensor(*(index[difference:]))
+        else:
+            return tensor(*([0 if equal(align_shape[i], 1) else indices[i]
+                             for i in range(len(align_shape))][difference:]))
+
+    with tvm.tag_scope(_op):
+        out = tvm.compute(shape, lambda_func, name=name)
+
+    return out
+
+
 def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
     """
     broadcast tensor to tensor
     """
+
+    if d_format_util.is_5hd_format(shape):
+        return _tensor_broadcast_5hd(var, shape)
+
     tensor = var
     orig_shape = shape_to_list(tensor.shape)
     check_input_tensor_shape(orig_shape)

@@ -24,9 +24,9 @@ from tbe.common.context import get_context
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils.varshape import get_variable
-from tbe.dsl.base import operation
+from tbe.dsl.base import operation, d_format_util
 from tbe.dsl.base import var_api
-from tbe.dsl.base.expr_compare import expr_equal
+from tbe.dsl.base.expr_compare import expr_equal, expr_greater
 from tbe.tvm import api as tvm
 from tbe.tvm import expr as _expr
 from tbe.tvm import make as _make
@@ -149,7 +149,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
             return _value > 1
         return False
 
-    def _max(_shape):
+    def calc_max(_shape):
         no_one_shape = [s for s in _shape if not expr_equal(s, 1)]
         if len(no_one_shape) == 0:
             max_value = var_api.max(*_shape)
@@ -168,7 +168,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
     for shape in shapes:
         input_shapes.append(shape_to_list([tvm.const(1) for _ in range(max_dim_length - len(shape))] + list(shape)))
     input_shapes = list(map(list, zip(*input_shapes)))
-    max_shape = [_max(shape) for shape in input_shapes]
+    max_shape = [calc_max(shape) for shape in input_shapes]
     const_type = (_expr.IntImm, _expr.UIntImm, int)
     for value, shape in zip(max_shape, input_shapes):
         if isinstance(value, const_type):
@@ -182,7 +182,7 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
                         error_info,
                         "In op[%s], the inputs[%s] could not be broadcast "
                         "together with shapes[%s]."
-                        % (op_name, error_info['input1_shape'], error_info['input2_shape']))
+                        % (op_name, error_info.get('input1_shape'), error_info.get('input2_shape')))
     input_shapes = list(map(list, zip(*input_shapes)))
     return (*input_shapes, max_shape)
 
@@ -192,6 +192,113 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
     """
     two input shapes produce third output shape
     """
+
+    def unify_broadcast_shapes_5hd(shapes, op_name):
+        if not op_name:
+            op_name = para_check.OP_NAME
+
+        def _greater_one(_value):
+            if isinstance(_value, (_expr.IntImm, _expr.UIntImm)):
+                return _value.value > 1
+            if isinstance(_value, int):
+                return _value > 1
+            return False
+
+        def calc_max(_shape):
+            no_one_shape = [s for s in _shape if not expr_equal(s, 1)]
+            if len(no_one_shape) == 0:
+                max_value = var_api.max(*_shape)
+            elif len(no_one_shape) == 1:
+                max_value = no_one_shape[0]
+            else:
+                max_value = var_api.max(*no_one_shape)
+                for value in no_one_shape:
+                    if _greater_one(value):
+                        max_value = value
+                        break
+            return max_value
+
+        input_shapes = []
+        for shape in shapes:
+            input_shapes.append(list(shape))
+        input_shapes = list(map(list, zip(*input_shapes)))
+        max_shapes = []
+        for shape in input_shapes:
+            axis_type = d_format_util.get_axis_type(shape[0])
+            is_pad_axis = d_format_util.eq_axis_type(axis_type, "C0") or d_format_util.eq_axis_type(axis_type, "C1")
+            max_shape = calc_max([shape[0], shape[1]])
+            if isinstance(max_shape, _expr.Max):
+                d_format_util.set_axis_type(max_shape, axis_type)
+            if is_pad_axis:
+                ori_c_0 = d_format_util.get_original(shape[0])
+                ori_c_1 = d_format_util.get_original(shape[1])
+                max_ori_c = calc_max([ori_c_0, ori_c_1])
+                if isinstance(max_ori_c, _expr.Max):
+                    d_format_util.set_axis_type(max_ori_c, "C")
+                d_format_util.set_original(max_shape, max_ori_c)
+            max_shapes.append(max_shape)
+
+        const_type = (_expr.IntImm, _expr.UIntImm, int)
+        for value, shape in zip(max_shapes, input_shapes):
+            if isinstance(value, const_type):
+                for _shape in shape:
+                    if isinstance(_shape, const_type) and not expr_equal(_shape, value) and not expr_equal(_shape, 1):
+                        error_info = {
+                            'errCode': para_check.OP_ERROR_CODE_013, 'op_name': op_name,
+                            'input1_shape': ",".join(str(i) for i in shape),
+                            'input2_shape': ",".join(str(i) for i in max_shapes)}
+                        raise RuntimeError(
+                            error_info,
+                            "In op[%s], the inputs[%s] could not be broadcast "
+                            "together with shapes[%s]."
+                            % (op_name, error_info.get('input1_shape'), error_info.get('input2_shape')))
+        input_shapes = list(map(list, zip(*input_shapes)))
+        return (*input_shapes, max_shapes)
+
+    def broadcast_shapes_5hd(shape1, shape2, op_name, param_name_input1, param_name_input2):
+        if not op_name:
+            op_name = para_check.OP_NAME
+
+        if operation.in_dynamic():
+            return unify_broadcast_shapes_5hd([shape1, shape2], op_name)
+
+        out_shape = []
+        for i, (shape1_i, shape2_i) in enumerate(zip(shape1, shape2)):
+            shape_invalid = not expr_equal(shape1_i, shape2_i) and \
+                            (isinstance(shape1_i, int) and shape1_i != 1) \
+                            and (isinstance(shape2_i, int) and shape2_i != 1)
+
+            if shape_invalid:
+                error_info = {
+                    'errCode': para_check.OP_ERROR_CODE_013, 'op_name': op_name,
+                    'input1_name': param_name_input1,
+                    'input2_name': param_name_input2,
+                    'input1_shape': ",".join(str(i) for i in shape1),
+                    'input2_shape': ",".join(str(i) for i in shape2)}
+                raise RuntimeError(
+                    error_info,
+                    "In op[%s], the inputs[%s][%s] could not be broadcast "
+                    "together with shapes[%s][%s]."
+                    % (op_name, param_name_input1, param_name_input2,
+                       error_info['input1_shape'], error_info['input2_shape']))
+
+            axis_type = d_format_util.get_axis_type(shape1_i)
+            is_pad_axis = d_format_util.eq_axis_type(axis_type, "C0") or d_format_util.eq_axis_type(axis_type, "C1")
+            if expr_equal(shape1_i, shape2_i) and is_pad_axis:
+                ori_shape1_i = d_format_util.get_original(shape1_i)
+                ori_shape2_i = d_format_util.get_original(shape2_i)
+                if expr_greater(ori_shape1_i, ori_shape2_i):
+                    out_shape.append(shape1_i)
+                else:
+                    out_shape.append(shape2_i)
+                continue
+            out_shape.append(shape1_i if expr_equal(shape2_i, 1) else shape2_i)
+
+        return shape1, shape2, out_shape
+
+    if d_format_util.is_5hd_format(shape1):
+        return broadcast_shapes_5hd(shape1, shape2, op_name, param_name_input1, param_name_input2)
+
     # refresh value of OP_NAME after the assignment
     if not op_name:
         op_name = para_check.OP_NAME
@@ -580,7 +687,7 @@ def simplify_axis_shape(shape, axis):
     merge_num = 0
     length = shape[0]
 
-    for i in range(len(axis)):
+    for i, _ in enumerate(axis):
         if axis[i] < 0:
             axis_i = axis[i] + length(shape)
             if axis_i < 0:

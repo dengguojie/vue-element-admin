@@ -64,3 +64,19 @@ def expr_equal(expr_a, expr_b, condition=None):
     sympy_a = _te_expr2sympy_expr(expr_a)
     sympy_b = _te_expr2sympy_expr(expr_b)
     return sympy_a == sympy_b
+
+
+def expr_greater(expr_a, expr_b, condition=None):
+    """
+    Judge greater for expr, not support for condition now.
+    :param expr_a:
+    :param expr_b:
+    :param condition:
+    :return:
+    """
+    is_true(condition is None,
+            {"errCode": "E90001",
+             "detailed_cause": "Now, not support condition"})
+    sympy_a = _te_expr2sympy_expr(expr_a)
+    sympy_b = _te_expr2sympy_expr(expr_b)
+    return sympy_a > sympy_b

@@ -107,6 +107,8 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
                 current_space += 1
             if _vcmp_complex_instructions(_tensor):
                 current_space += SPECIAL_VCMP_NODE
+            if self._5hd_actions is not None and len(self._5hd_actions) > 0:
+                current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
             return current_space

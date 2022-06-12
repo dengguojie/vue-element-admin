@@ -112,6 +112,8 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
                 current_space += 1
             if util.is_unified_broadcast(_tensor) and self._broadcast_axis_num.get(_tensor, 0) > 1:
                 current_space += 1
+            if self._5hd_actions is not None and len(self._5hd_actions) > 0:
+                current_space += 1
             if _vcmp_complex_instructions(_tensor):
                 current_space += SPECIAL_VCMP_NODE
             if _need_external_space(_tensor):
@@ -220,10 +222,10 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
         for tensor_i in inline_tensors:
             if tensor_i in self._remove_pad_map:
                 self._remove_pad_tensors.remove(tensor_i)
-                self._remove_pad_cache_read_buffer.remove(self._remove_pad_map[tensor_i])
-                self._middle_tensors.remove(self._remove_pad_map[tensor_i])
-                self._pure_middle_tensors.remove(self._remove_pad_map[tensor_i])
-                self._compute_inline_tensors.add(self._remove_pad_map[tensor_i])
+                self._remove_pad_cache_read_buffer.remove(self._remove_pad_map.get(tensor_i))
+                self._middle_tensors.remove(self._remove_pad_map.get(tensor_i))
+                self._pure_middle_tensors.remove(self._remove_pad_map.get(tensor_i))
+                self._compute_inline_tensors.add(self._remove_pad_map.get(tensor_i))
 
         compute_align_tensors = set()
         storage_align_tensors = set()

@@ -327,6 +327,8 @@ def _after_build():
                 new_var_names.append(20000 + int(names[2]))
             elif names[0] == 'ub':
                 new_var_names.append(30000 + int(names[2]))
+            if names[0] == 'ori':
+                new_var_names.append(40000 + int(names[2]) * 100 + int(names[3]))
         return new_var_names
 
     normal_vars = operation.get_compile_info().get(CompileInfo.NORMAL_VARS)

@@ -49,12 +49,15 @@ struct BroadcastCompileInfo : AutoTilingCompileInfo{
   std::vector<bool> flag_info_compile;
   int64_t ub_factor_align {-1};
   bool contains_elewise_sch {false};
+  int64_t pad_axis_index {3};
+  bool contains_need_pad_compute {true};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
   std::pair<bool, std::vector<int64_t>> const_block_dims_compile;
   std::pair<bool, std::vector<std::vector<int64_t>>> const_shapes_compile;
   std::pair<bool, std::vector<std::vector<size_t>>> fusion_index_compile;
   std::pair<bool, std::vector<bool>> broadcast_axis_compile;
   std::pair<bool, std::string> soc_version;
+  std::pair<bool, std::vector<int64_t>> disable_fuse_axes_compile;
 
   // rl bank info
   std::pair<bool, std::vector<std::pair<rl::RlPattern, std::vector<rl::RlBankInfo>>>> bank_info_pair;
@@ -176,6 +179,9 @@ class Broadcast {
     bool need_double_buffer{false};
     bool need_block_align{false};
     bool is_milan_soc{false};
+    bool is_aligned_in_5hd {true};
+    bool use_special_in_5hd {false};
+    std::vector<ge::DataType> input_dtypes{};
 
     int64_t max_dtype_compile{0};
     int64_t core_num_compile{0};

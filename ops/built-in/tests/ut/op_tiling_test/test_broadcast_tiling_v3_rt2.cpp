@@ -484,3 +484,62 @@ TEST_F(BroadcastTilingV3, broadcast_rt_case25) {
   test.SetCompileInfo(compileInfo, &broadcast_info);
   EXPECT_EQ(test.Test(), false);
 }
+
+TEST_F(BroadcastTilingV3, broadcast_rt_case26) {
+  std::vector<std::vector<int64_t>> inputs {{2, 1, 128, 16, 16}, {2, 1, 128, 1, 16}};
+  std::vector<std::vector<int64_t>> outputs {{2, 1, 128, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_inputs {{2, 128, 16, 1}, {2, 128, 1, 16}};
+  std::vector<std::vector<int64_t>> ori_outputs {{2, 128, 16, 16}};
+  std::vector<ge::DataType> dtype = {ge::DT_FLOAT};
+  std::vector<ge::Format> format = {ge::FORMAT_ND};
+
+  AutoTilingTest test(ori_inputs, inputs, ori_outputs, outputs, dtype, dtype, format, format, format, format);
+
+  v3::BroadcastCompileInfo actual_ptr;
+  actual_ptr.pattern = SchPattern::BROADCAST;
+  actual_ptr.base_info_compile.first = true;
+  actual_ptr.base_info_compile.second = {{"100", {32, 4, 21840, 10920}}, {"121", {32, 4, 16376, 8184}}, {"210", {32, 4, 16376, 8184}},  {"000", {32, 4, 16376, 8184}}, {"999", {32, 4, 16376, 8184}}};
+  actual_ptr.flag_info_compile = {false, false, true, true, false, false, true};
+  actual_ptr.ub_factor_align = 128;
+  actual_ptr.elewise_vars_compile.first = true;
+  actual_ptr.elewise_vars_compile.second = {{"3", {40300, 40301, 10000, 10001, 10100, 10101, 10200, 10201, 10300, 10301, 20000, 30002}}, };
+  actual_ptr.const_block_dims_compile.first = false;
+  actual_ptr.const_block_dims_compile.second = {};
+
+  actual_ptr.const_shapes_compile.first = false;
+  actual_ptr.const_shapes_compile.second = {};
+
+  actual_ptr.fusion_index_compile.first = true;
+  actual_ptr.fusion_index_compile.second = {{0}, {1}, {2}, {3}, {4}};
+
+  actual_ptr.broadcast_axis_compile.first = false;
+  actual_ptr.broadcast_axis_compile.second = {};
+
+  actual_ptr.contains_need_pad_compute = true;
+
+  actual_ptr.pad_axis_index = 3;
+
+  actual_ptr.disable_fuse_axes_compile.first = true;
+  actual_ptr.disable_fuse_axes_compile.second = {1, 4};
+
+  actual_ptr.soc_version.first = true;
+  actual_ptr.soc_version.second = "Ascend910";
+
+  test.SetCompileInfo(&actual_ptr);
+  EXPECT_EQ(test.Test(), true);
+}
+
+TEST_F(BroadcastTilingV3, broadcast_rt_case27) {
+  std::string compileInfo = R"({"_ub_factor_align": 128, "_pad_axis_index": 3, "_contains_need_pad_compute": true, "_disable_fuse_axes": [1, 4] ,"_pattern": "Broadcast", "_fusion_index": [[0],[1],[2],[3],[4]],"_soc_version": "Ascend910", "push_status": 0, "_flag_info": [false, false, true, true, false, false, true], "_base_info": {"0": [32, 4, 16376, 8184]}, "_elewise_vars": {"3": [40300, 40301, 10000, 10001, 10100, 10101, 10200, 10201, 10300, 10301, 20000, 30002]} })";
+  std::vector<std::vector<int64_t>> inputs {{2, 1, 128, 16, 16}, {2, 1, 128, 1, 16}};
+  std::vector<std::vector<int64_t>> outputs {{2, 1, 128, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_inputs {{2, 128, 16, 1}, {2, 128, 1, 16}};
+  std::vector<std::vector<int64_t>> ori_outputs {{2, 128, 16, 16}};
+  std::vector<ge::DataType> dtype = {ge::DT_FLOAT};
+  std::vector<ge::Format> format = {ge::FORMAT_ND};
+
+  AutoTilingTest test(ori_inputs, inputs, ori_outputs, outputs, dtype, dtype, format, format, format, format);
+  optiling::v3::BroadcastCompileInfo broadcast_info;
+  test.SetCompileInfo(compileInfo, &broadcast_info);
+  EXPECT_EQ(test.Test(), false);
+}

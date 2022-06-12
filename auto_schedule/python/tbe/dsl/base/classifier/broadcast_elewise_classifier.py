@@ -44,6 +44,116 @@ VAR_BOUND_LIMIT = 2147483647
 MAX_BROADCAST_INPUT = 70
 UNKNOWN_RANK = -2
 MAX_RANK = 8
+CONST_5HD_FORMATS = ["N", "C1", "H", "W", "C0"]
+PAD_C0_MAPPING = {
+    "int64": 4,
+    "uint64": 4,
+    "float32": 16,
+    "int32": 16,
+    "uint32": 16,
+    "float16": 16,
+    "int16": 16,
+    "uint16": 16,
+    "int8": 32,
+    "uint8": 32,
+    "bool": 32,
+    "uint1": 256,
+}
+
+
+def is_5hd_input(inputs):
+    """
+    5hd condition, all input must be NC1HWC0
+    @param inputs: input tensor list
+    @return whether is 5hd condition
+    """
+    input_formats = set(x.get("format") for x in inputs)
+
+    if input_formats == {"NC1HWC0"}:
+        return True
+
+    return False
+
+
+def parse_pad_axes(inputs):
+    """
+    get original C axis index
+    @param inputs: input tensor list
+    """
+    if len(inputs) < 1:
+        dict_args = {"errCode" : "E90001",
+                     "detailed_cause" : "input tensor num must be more than 0"}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    ori_formats = set(x.get("ori_format") for x in inputs)
+
+    if len(ori_formats) > 1 or len(ori_formats) == 0:
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": "input tensor num must be same ori_format"}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    pad_axis_index = -1
+    if ori_formats == {"NHWC"}:
+        pad_axis_index = 3
+    elif ori_formats == {"NCHW"}:
+        pad_axis_index = 1
+    operation.add_compile_info_inner("_pad_axis_index", pad_axis_index)
+    return {"C" : pad_axis_index}
+
+
+def parse_np_mapping(is_5hd):
+    if is_5hd:
+        return {"C1" : "C", "C0" : "C"}
+    return {"C1" : "C", "C0" : "C"}
+
+
+def check_5hd(inputs, is_binary):
+    """
+    check whether is valid 5hd input
+    @param inputs: input tensor list
+    @param is_binary: whether input contains -2
+    """
+    if is_binary:
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": "5hd inputs shape can not contain -2"}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    ori_formats = set([input_i.get("ori_format") for input_i in inputs])
+    # all input ori_format must be same
+    if len(ori_formats) > 1:
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": "5hd all input ori_format must be same."}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    for input_i in inputs:
+        shape = input_i.get("shape")
+        ori_shape = input_i.get("ori_shape")
+        ori_format = input_i.get("ori_format")
+        dtype = input_i.get("dtype")
+
+        # shape length must be 5
+        if shape is None or len(shape) != 5:
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "5hd inputs shape length must be 5."}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        # c axis must be aligned
+        last_axis = shape[-1]
+        if last_axis != PAD_C0_MAPPING.get(dtype):
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "5hd inputs last axis must be one block aligned."}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        # ori_shape length must be 4
+        if ori_shape is None or len(ori_shape) != 4:
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "5hd inputs ori_shape length must be 4."}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        # ori_format must be NHWC or NCHW
+        if ori_format is None or ori_format not in {"NCHW", "NHWC"}:
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "5hd inputs ori_format  must be NCHW or NHWC."}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
 class BroadcastElewiseClassifier:
@@ -59,8 +169,20 @@ class BroadcastElewiseClassifier:
         self.ins = ins
         extra_params = {} if extra_params is None else extra_params
         self.disable_optimization = extra_params.get("disable_optimization", False)
+        self.ignore_fractal_format = extra_params.get("ignore_fractal_format", True)
+        operation.get_context().add("_ignore_fractal_format", self.ignore_fractal_format)
         self.is_unknown_rank = False
         self.maybe_empty_tensor = False
+        self.f_shapes = None
+        self.f_ranges = None
+        self.fusion_index = None
+
+        self.disable_fuse_axes = None
+        self.formats = None
+        self.dtypes = None
+        self.pad_axes = None
+        self.np_mapping = None
+        self.is_5hd_input = False
 
     def _init(self):
         shapes = [x["shape"] for x in self.ins]
@@ -70,11 +192,22 @@ class BroadcastElewiseClassifier:
         self.completed_ins = self._complete()
         self.completed_shapes = [x["shape"] for x in self.completed_ins]
         self.completed_ranges = [x["range"] for x in self.completed_ins]
+        self.formats = [x.get("format") for x in self.completed_ins]
+        self.dtypes = [x.get("dtype") for x in self.completed_ins]
 
         self._update_shape_range()
-        self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes,
-                                                                     self.completed_ranges, self.disable_optimization)
-        operation.add_compile_info_inner("_fusion_index", fusion_index)
+
+        self.is_5hd_input = is_5hd_input(self.ins) and not self.ignore_fractal_format
+        if self.is_5hd_input:
+            check_5hd(self.ins, self.is_unknown_rank)
+            self.disable_fuse_axes = [1, 4]
+            operation.add_compile_info_inner("_disable_fuse_axes", self.disable_fuse_axes)
+            self.pad_axes = parse_pad_axes(self.ins)
+            self.np_mapping = parse_np_mapping(True)
+
+        self.f_shapes, self.f_ranges, self.fusion_index = _simplify_shape(self.completed_shapes, self.completed_ranges,
+                                                          self.disable_optimization, self.disable_fuse_axes)
+        operation.add_compile_info_inner("_fusion_index", self.fusion_index)
 
         self.normalize_shapes = self._normalize()
 
@@ -265,10 +398,44 @@ class BroadcastElewiseClassifier:
                 ranges.append([(s, s) for s in shape])
             return ranges
 
+        def classify_const_5hd():
+            ret = []
+            for shapes in divide(0, [[] for _ in self.completed_ins]):
+                const_range = gen_const_range(shapes)
+                const_disable_fuse_axes = self.disable_fuse_axes.copy()
+                ori_c_index = self.pad_axes.get("C")
+                c_values = [input_i.get("ori_shape")[ori_c_index] for input_i in self.completed_ins]
+                ori_shapes = [input_i.get("ori_shape") for input_i in self.completed_ins]
+
+                # disable_fuse_axes can be empty when all C axis is aligned, deal as ND format
+                all_c_aligned = True
+                for index, c_value in enumerate(c_values):
+                    if c_value % PAD_C0_MAPPING.get(self.dtypes[index]) != 0:
+                        all_c_aligned = False
+                        break
+                const_disable_fuse_axes = None if all_c_aligned else const_disable_fuse_axes
+
+                fused_shape, _, fusion_index = _simplify_shape(shapes, const_range,
+                                                               self.disable_optimization, const_disable_fuse_axes)
+                fused_shape = list(map(list, zip(*fused_shape)))
+                s_formats = []
+                if self.is_5hd_input and const_disable_fuse_axes is not None:
+                    for f_index in fusion_index:
+                        s_formats.append([CONST_5HD_FORMATS[index] for index in f_index])
+                    ret.append([ConstMode5HD.gen_in(fused_shape[i], shapes[i], self.formats[i], ori_shapes[i],
+                               s_formats, self.pad_axes, self.np_mapping, True) for i in range(len(fused_shape))])
+                else:
+                    ret.append([ConstMode.gen_in(fused_shape[i], shapes[i]) for i in range(len(fused_shape))])
+
+            return ret
+
+        if self.is_5hd_input:
+            return classify_const_5hd()
+
         ret = []
         for shapes in divide(0, [[] for _ in self.completed_ins]):
             const_range = gen_const_range(shapes)
-            fused_shape, _, _ = _simplify_shape(shapes, const_range, self.disable_optimization)
+            fused_shape, _, _ = _simplify_shape(shapes, const_range, self.disable_optimization, None)
             fused_shape = list(map(list, zip(*fused_shape)))
             ret.append([ConstMode.gen_in(fused_shape[i], shapes[i]) for i in range(len(fused_shape))])
 
@@ -473,6 +640,23 @@ class BroadcastElewiseClassifier:
             return ins_list
 
         def add_original():
+            def add_original_5hd():
+                t_shapes = list(map(list, zip(*self.f_shapes)))
+                t_ranges = list(map(list, zip(*self.f_ranges)))
+                ins = []
+                s_formats = []
+
+                for f_index in self.fusion_index:
+                    s_formats.append([CONST_5HD_FORMATS[index] for index in f_index])
+                ori_shapes = [input_i.get("ori_shape") for input_i in self.completed_ins]
+                for index, (shape, _range) in enumerate(zip(t_shapes, t_ranges)):
+                    in_x = OriginalMode5HD.gen_in(shape, _range, self.formats[index], ori_shapes[index], s_formats,
+                                               self.pad_axes, self.np_mapping, self.is_5hd_input)
+                    ins.append(in_x)
+                return [ins]
+            if self.is_5hd_input:
+                return add_original_5hd()
+
             if _get_broadcast_axis_size(self.normalize_shapes) <= 1 and not self.disable_optimization:
                 return []
 
@@ -575,7 +759,7 @@ class BroadcastElewiseClassifier:
         return ret
 
 
-def _simplify_shape(completed_shapes, completed_ranges, disable_optimization):
+def _simplify_shape(completed_shapes, completed_ranges, disable_optimization, disable_fuse_axes=None):
     input_length = len(completed_shapes)
     transpose_shapes = list(map(list, zip(*completed_shapes)))
     transpose_ranges = list(map(list, zip(*completed_ranges)))
@@ -592,10 +776,15 @@ def _simplify_shape(completed_shapes, completed_ranges, disable_optimization):
 
     all_one = str(ShapeValueType.ONE) * input_length
     state = all_one
+    pre_index = -1
     for index, (s, r) in enumerate(zip(transpose_shapes, transpose_ranges)):
         status = ShapeSimplifier.get_state(s, r)
         state_i = ''.join(list(map(str, status)))
-        operator = ShapeSimplifier.get_operator(state, state_i)
+        operator = None
+        if disable_fuse_axes is not None and (pre_index in disable_fuse_axes or index in disable_fuse_axes):
+            operator = ShapeSimplifier.Operator.ALONE
+        else:
+            operator = ShapeSimplifier.get_operator(state, state_i)
 
         if operator == ShapeSimplifier.Operator.FUSED:
             f_shapes[-1] = ShapeSimplifier.combine_dim(f_shapes[-1], s)
@@ -609,6 +798,7 @@ def _simplify_shape(completed_shapes, completed_ranges, disable_optimization):
 
         if state_i != all_one:
             state = state_i
+        pre_index = index
 
     fusion_index.append(current_index)
     return f_shapes, f_ranges, fusion_index
@@ -737,6 +927,32 @@ class SpecialScalarMode:
                 }
 
 
+class OriginalMode5HD:
+    """
+    Original Mode
+    """
+
+    @classmethod
+    def gen_in(cls, shape, _range, formats=None, ori_shape=None, s_format=None, pad_axes=None,
+               np_mapping=None, mode_5hd=False):
+        """
+        generate input
+        :param shape:
+        :return:
+        """
+        return {"shape": shape,
+                "range": _range,
+                "support_broadcast": True,
+                "mode": ORIGINAL,
+                "format":formats,
+                "ori_shape":ori_shape,
+                "s_format":s_format,
+                "pad_axes":pad_axes,
+                "np_mapping":np_mapping,
+                "mode_5hd":mode_5hd
+                }
+
+
 class OriginalMode:
     """
     Original Mode
@@ -791,6 +1007,33 @@ class ConstMode:
                 "const_shape": const_shape,
                 "mode": CONST,
                 "support_broadcast": True,
+                }
+
+
+class ConstMode5HD:
+    """
+    Const Mode
+    """
+
+    @classmethod
+    def gen_in(cls, shape, const_shape, formats=None, ori_shape=None, s_format=None, pad_axes=None,
+               np_mapping=None, mode_5hd=False):
+        """
+        generate input
+        :param shape:
+        :return:
+        """
+        return {"shape": shape,
+                "range": util.generate_range(shape),
+                "const_shape": const_shape,
+                "mode": CONST,
+                "support_broadcast": True,
+                "format": formats,
+                "ori_shape": ori_shape,
+                "s_format": s_format,
+                "pad_axes": pad_axes,
+                "np_mapping": np_mapping,
+                "mode_5hd": mode_5hd
                 }
 
 

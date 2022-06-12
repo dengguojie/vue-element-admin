@@ -40,6 +40,20 @@ const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS {
     {8, 8191},
 };
 
+const std::unordered_map<ge::DataType, int64_t> PAD_C0_MAPPING {
+    {ge::DataType::DT_INT64, 4},
+    {ge::DataType::DT_UINT64, 4},
+    {ge::DataType::DT_FLOAT, 16},
+    {ge::DataType::DT_INT32, 16},
+    {ge::DataType::DT_UINT32, 16},
+    {ge::DataType::DT_FLOAT16, 16},
+    {ge::DataType::DT_INT16, 16},
+    {ge::DataType::DT_UINT16, 16},
+    {ge::DataType::DT_INT8, 32},
+    {ge::DataType::DT_UINT8, 32},
+    {ge::DataType::DT_BOOL, 32},
+};
+
 const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN {
     {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
     {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
@@ -82,6 +96,7 @@ constexpr std::int32_t TILING_LEN = 8;
 
 constexpr std::int32_t MIN_BLOCK_CUT_INDEX = 20000;
 constexpr std::int32_t MIN_UB_CUT_INDEX = 30000;
+constexpr std::int32_t MIN_ORI_DIM_INEDEX = 40000;
 
 constexpr int64_t BLOCK_SIZE_BYTES = 32;
 constexpr size_t MAX_UNKNOWN_RANK = 8;
@@ -143,6 +158,23 @@ bool Broadcast<T>::Init() {
     is_milan_soc = soc_version == MILAN;
   }
 
+  // init use_special_in_5hd when disable_fuse_axes is not empty
+  if (!only_const_tiling && broadcast_compile_info->disable_fuse_axes_compile.second.size() > 0) {
+    std::vector<int64_t> pad_values;
+    pad_values.reserve(input_num);
+    bool all_pad_aligned = true;
+    for (size_t i = 0; i < input_num; i++) {
+      int64_t pad_value_i = context->GetOriginInputShape(i).GetDim(broadcast_compile_info->pad_axis_index);
+      int64_t align_value_i = PAD_C0_MAPPING.at(input_dtypes[i]);
+      V_OP_TILING_CHECK((align_value_i != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "c align value cannot be zero."),
+                        return false);
+      if (pad_value_i % align_value_i != 0) {
+        all_pad_aligned = false;
+        break;
+      }
+    }
+    use_special_in_5hd = all_pad_aligned || !broadcast_compile_info->contains_need_pad_compute;
+  }
   return true;
 }
 
@@ -431,12 +463,14 @@ bool Broadcast<T>::GenerateOutputShape() {
         original_dim_len = broadcast_compile_info->fusion_index_compile.second.size();
       }
     }
-    if (!is_support_broadcast_compile) {
-      TrySwitchToElewise();
-    } else if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
-      TrySwitchToPerfPattern();
-    } else {
-      MulTrySwitchToPerfPattern();
+    if (broadcast_compile_info->disable_fuse_axes_compile.second.size() == 0 || use_special_in_5hd) {
+      if (!is_support_broadcast_compile) {
+        TrySwitchToElewise();
+      } else if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
+        TrySwitchToPerfPattern();
+      } else {
+        MulTrySwitchToPerfPattern();
+      }
     }
     if (s_pattern == Pattern::ORIGINAL) {
       ret = ret && RefineShapesForBroadcast();
@@ -652,7 +686,9 @@ bool Broadcast<T>::RefineShapesForBroadcast() {
       broadcast_axis[i] = true;
     }
   }
-  bool maybe_all_unknown = !is_milan_soc && has_all_unknown_compile;
+
+  bool maybe_all_unknown = !is_milan_soc && has_all_unknown_compile &&
+                           (broadcast_compile_info->disable_fuse_axes_compile.second.size() == 0 || use_special_in_5hd);
   if (maybe_all_unknown && use_special_pattern_compile) {
     return TryMatchAllUnknown();
   }
@@ -1089,7 +1125,14 @@ bool Broadcast<T>::WriteTilingData() const {
   try {
     const auto& all_vars = broadcast_compile_info->elewise_vars_compile.second.at(str_key);
     for (const auto& var : all_vars) {
-      if (var >= MIN_UB_CUT_INDEX) {
+      if (var >= MIN_ORI_DIM_INEDEX) {
+        int64_t var_value = var;
+        size_t input_index = var_value % NUM_ONE_HUNDRED;
+        var_value /= NUM_ONE_HUNDRED;
+        size_t dim_index = var_value % NUM_ONE_HUNDRED;
+        OpShape ori_shape = context->GetOriginInputShape(input_index);
+        context->Append(static_cast<int32_t>(ori_shape.GetDim(dim_index)));
+      }else if (var >= MIN_UB_CUT_INDEX) {
         V_CHECK_GE(ub_axis, 0,
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut ub"),
                    return false);
@@ -1652,6 +1695,20 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   }
   // pure elewise compile info parser
   ParseElewiseInfos(outer_compile_info);
+
+  if (outer_compile_info.contains("_disable_fuse_axes")) {
+    disable_fuse_axes_compile.first = true;
+    disable_fuse_axes_compile.second = outer_compile_info.at("_disable_fuse_axes").get<std::vector<int64_t>>();
+  }
+
+  if (outer_compile_info.contains("_contains_need_pad_compute")) {
+    contains_need_pad_compute = outer_compile_info.at("_contains_need_pad_compute").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_pad_axis_index")) {
+    pad_axis_index = outer_compile_info.at("_pad_axis_index").get<int64_t>();
+  }
+
   rl::ParseRlBankInfo(outer_compile_info, bank_info_pair);
 }
 
@@ -1708,6 +1765,20 @@ bool BroadcastCompileInfo::Parse(const nlohmann::json& outer_compile_info) {
   }
   // pure elewise compile info parser
   ParseElewiseInfos(outer_compile_info);
+
+  if (outer_compile_info.contains("_disable_fuse_axes")) {
+    disable_fuse_axes_compile.first = true;
+    disable_fuse_axes_compile.second = outer_compile_info.at("_disable_fuse_axes").get<std::vector<int64_t>>();
+  }
+
+  if (outer_compile_info.contains("_contains_need_pad_compute")) {
+    contains_need_pad_compute = outer_compile_info.at("_contains_need_pad_compute").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_pad_axis_index")) {
+    pad_axis_index = outer_compile_info.at("_pad_axis_index").get<int64_t>();
+  }
+
   rl::ParseRlBankInfo(outer_compile_info, bank_info_pair);
   return true;
 }
@@ -1733,6 +1804,12 @@ bool Broadcast<T>::InitOpInOutInfo() {
     ret = ret && context->GetInputDataType(op_info, in_type);
     input_num = context->GetInputNums();
   }
+
+  input_dtypes.resize(input_num);
+  for (size_t i = 0; i< input_num; i++) {
+    context->GetInputDataType(i, input_dtypes[i]);
+  }
+
   is_multi_output = context->GetOutputNums() > 1;
   return GetOutputType();
 }

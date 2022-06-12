@@ -30,6 +30,9 @@ from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform import ASCEND_910B
 from tbe.common.platform.platform_info import get_soc_spec
 
+from tbe.dsl.base import d_format_util
+from tbe.dsl.base.padding import padding
+from tbe.dsl.base.padding.padding import ActionValueType, ActionType
 from ... import util
 from ...constants import CompileInfo
 from ...constants import DTYPE_BYTE_MAPPING
@@ -176,6 +179,8 @@ class BaseBroadcastSchedule:
         self._emit_insn_map = {}
         self._compute_align_map = {}
         self._remove_pad_map = {}
+        self._5hd_actions = set()
+        self._set_value_cache_read_map = {}
 
     def do_schedule(self):
         """
@@ -204,6 +209,7 @@ class BaseBroadcastSchedule:
             self._calc_store_predicate()
             self._calc_storage_bound()
             self._calc_tiling()
+        self._calc_set_value()
         self._calc_compute_inline()
         self._calc_multi_core()
         self._calc_ub_align()
@@ -216,6 +222,7 @@ class BaseBroadcastSchedule:
         self._do_tiling()
         self._do_storage_bound()
         self._do_compute_inline()
+        self._do_set_value()
         self._do_multi_core()
         self._do_ub_align()
         self._do_remove_pad()
@@ -990,7 +997,9 @@ class BaseBroadcastSchedule:
             _u_idx = self._ub_split_axis
             _src_shapes = util.shape_to_list(_tensor_i.op.input_tensors[0].shape[_u_idx:])
             _dst_shapes = util.shape_to_list(_tensor_i.shape[_u_idx:])
-            return not util.is_v220() and is_original() and not is_last_align() and is_more_var_shape()
+            enable_fuse_axis = not operation.get_context().get_current_compute().get("_is_5hd_pattern")
+            return not util.is_v220() and is_original() and not is_last_align() \
+                   and is_more_var_shape() and enable_fuse_axis
 
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
@@ -1023,6 +1032,8 @@ class BaseBroadcastSchedule:
                 attrs = {"no_overlap":0}
             if param[1] in (VECTOR_BROADCAST, UNKNOWN_BROADCAST) and tensor_i in self._compute_align_map:
                 attrs["last_src_valid_element"] = self._compute_align_map.get(tensor_i)[1]
+            if param[1] == "vector_dup":
+                attrs = {"trans_assign_opt" : True}
             sch[tensor_i].emit_insn(emit_insn_axis, param[1], attrs)
 
     def _add_compile_info(self):
@@ -1100,6 +1111,37 @@ class BaseBroadcastSchedule:
             visited_tensors.add(tensor_i)
 
             self.__dfs_sub_graph(tensor_i, visited_tensors)
+
+    def _calc_set_value(self):
+        if operation.get_context().get_current_compute().get("_is_5hd_pattern"):
+            self._5hd_actions = padding.calc_padding(self._outs)
+
+            if self._5hd_actions is not None and len(self._5hd_actions) > 0:
+                operation.add_compile_info_inner(CompileInfo.CONTAINS_NEED_PAD_COMPUTE, True)
+
+    def _do_set_value(self):
+        if self._5hd_actions is not None and len(self._5hd_actions) > 0:
+            for action in self._5hd_actions:
+                action_type = action.get_action_type()
+                tensor = action.get_tensor()
+                shape = tensor.shape
+                ori_shape = d_format_util.get_original(shape[1])
+                conditon = action.get_condition()
+                value = action.get_value()
+                target_tensors = action.get_target_tensors()
+                value_type = action.get_value_type()
+
+                if value_type == ActionValueType.TENSOR:
+                    value = value(self._get_ub_tensor(tensor))
+
+                if action_type == ActionType.SET_VALUE:
+                    self._schedule[self._get_ub_tensor(tensor)].set_value(conditon, value)
+                elif action_type == ActionType.CACHE_READ_AND_SET_VALUE:
+                    set_value_cache_read_buffer = self._schedule.cache_read(tensor, self._scope, target_tensors)
+                    # add dma copy emit insn
+                    self._emit_insn_map[set_value_cache_read_buffer] = \
+                        [set_value_cache_read_buffer.op.axis[0], DMA_COPY]
+                    self._schedule[set_value_cache_read_buffer].set_value(conditon, value)
 
 
 def _fake_node(tensors):

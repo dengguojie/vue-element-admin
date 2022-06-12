@@ -22,7 +22,7 @@ from functools import reduce
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils.varshape.variable_shape import register_variable
-from tbe.dsl.base import operation
+from tbe.dsl.base import operation, var_api
 
 
 @register_variable("elewise")
@@ -153,6 +153,59 @@ def variable_shape(inputs):
     _mode_process()
 
     d_shapes = [[] for _ in shapes]
+
+    # 5hd need define var with axis_type
+    if all(input.get("mode_5hd") for input in inputs):
+        c_values = []
+        for index, _ in enumerate(inputs):
+            pad_axes = inputs[index].get("pad_axes")
+            ori_shape = inputs[index].get("ori_shape")
+
+            for pad_axis in pad_axes:
+                pad_axis_type = pad_axis
+                pad_axis_ori_index = pad_axes.get(pad_axis_type)
+                pad_axis_ori_value = ori_shape[pad_axis_ori_index]
+                c_value = None
+                if pad_axis_ori_value == -1:
+                    c_value = operation.var_inner("_ori_dim_{}_{}".format(str(pad_axis_ori_index), str(index)),
+                                                  [1, None], dtype="int32",
+                                                  addition={"annotation": {"axis_type": pad_axis_type}})
+                else:
+                    c_value = var_api.const(pad_axis_ori_value, annotation={"axis_type": pad_axis_type})
+                c_values.append(c_value)
+
+        for i in range(len(shapes[0])):
+            _var = None
+            need_two_vars = _maybe_broadcast()
+            _suffix = 0
+            for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
+                annot = dict()
+                axis_type = inputs[_suffix].get("s_format")[i]
+                annot["axis_type"] = axis_type
+                if axis_type == ["C1"] or axis_type == ["C0"]:
+                    annot["original"] = c_values[_suffix]
+
+                if shape[i] == -1 and _range[i][0] == _range[i][1]:
+                    shape_const = var_api.const(_range[i][0], annotation = annot)
+                    d_shape.append(shape_const)
+                elif shape[i] == -1:
+                    if _var is None or need_two_vars:
+                        _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)), _range[i],
+                               dtype="int32", addition={"annotation":annot})
+                    d_shape.append(_var)
+                elif shape[i] == -77:
+                    # no broadcast
+                    if _var is None:
+                        _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)), _range[i],
+                               dtype="int32", addition={"annotation":annot})
+                    d_shape.append(_var)
+                else:
+                    shape_const = var_api.const(shape[i], annotation = annot)
+                    d_shape.append(shape_const)
+                _suffix += 1
+        operation.get_context().get_current_compute().add("_is_5hd_pattern", True)
+        return d_shapes
+
     for i in range(len(shapes[0])):
         _var = None
         need_two_vars = _maybe_broadcast()
