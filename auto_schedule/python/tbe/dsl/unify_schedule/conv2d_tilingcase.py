@@ -263,7 +263,31 @@ def get_hardware_info():
         "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
         "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
         "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910B1"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
     platform_info_dict["Ascend910B2"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910B3"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910B4"] = {
         "ddr_read_rate": 32, "ddr_write_rate": 32,
         "l2_rate": 110, "l2_read_rate": 110,
         "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
