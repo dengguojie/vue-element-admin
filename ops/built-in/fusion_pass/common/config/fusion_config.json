@@ -50,7 +50,8 @@
                 "ArgMaxV2FusionPass":"4165",
                 "MaskedSelectFusionPass":"4169",
                 "RefreshInt64ToInt32FusionPass":"4170",
-                "ConstToAttrPass":"4171",
+                "CommonGRUFusionPass": "4171",
+                "ConstToAttrPass":"4172",
                 "FusedBatchNormGradFusionPass":"4180",
                 "PadMaxPoolFusionPass":"4189",
                 "PadConv2dFusionPass":"4190",
@@ -87,10 +88,7 @@
                 "BatchNormBnInferFusionPass": "5140",
                 "HostBNFusionPass": "5150",
                 "ZBNupdateReluV2Conv2DBNreducePass": "5160",
-                "CommonGRUFusionPass": "5170",
-                "DynamicGRUV2TransFusionPass":"5175",
-                "DynamicGRUV2AddSeqPass":"5176",
-                "ZConcatV2DAlignedFusionPass": "5180"
+                "ZConcatV2DAlignedFusionPass": "5170"
             }
         },
         "UBFusion":{

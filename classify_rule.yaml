@@ -942,6 +942,7 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic_gru_v2_hidden.py
       - ops/built-in/tbe/impl/dynamic/swish.py
       - ops/built-in/tbe/impl/deformable_offsets.py
+      - ops/built-in/tbe/impl/deformable_offsets_grad.py
       - ops/built-in/tbe/impl/leaky_relu.py
       - ops/built-in/tbe/impl/log_softmax_grad.py
       - ops/built-in/tbe/impl/log_softmax_v2.py
@@ -2867,7 +2868,6 @@ unkown:
       - ops/built-in/tbe/impl/hwcn_2_fractal_z_g.py
       - ops/built-in/tbe/impl/binary_cross_entropy.py
       - ops/built-in/tbe/impl/basic_lstm_cell_c_state_grad_v2.py
-      - ops/built-in/tbe/impl/deformable_offsets_grad.py
       - ops/built-in/tbe/impl/max_pool.py
       - ops/built-in/tbe/impl/soft_shrink_grad.py
       - ops/built-in/tbe/impl/fused_mul_add_add.py

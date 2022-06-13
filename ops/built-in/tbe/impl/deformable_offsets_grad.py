@@ -200,7 +200,7 @@ def check_supported(grad, x, offsets, helper, grad_x, grad_offsets, strides, pad
                          Constant.BLOCK_FP32_SIZE * Constant.BLOCK_FP32_SIZE
     ub_size = (Constant.MAX_UB_SIZE - Constant.RESERVED_UB_SIZE) // dsize
     size = _get_ub_need_size(min_grad_size, min_offsets_align, group_c)
-    if size > ub_size:
+    if size > ub_size or min_offsets_size < Constant.BLOCK_FP32_SIZE:
         reason = "size needed exceed ub_size"
         return False, reason
 

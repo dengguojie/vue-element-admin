@@ -40,6 +40,24 @@ case3 = {"params": [{"shape": (8,192,192,64), "dtype": "float32", "format": "NHW
          "expect": "success",
          "support_expect": True}
 
+def test_check_supported(test_arg):
+    from impl.deformable_offsets_grad import check_supported
+    check_supported(
+        {"shape": (8, 192, 192, 64), "dtype": "float32", "format": "NHWC", "ori_shape": (8, 192, 192, 64),
+         "ori_format": "NHWC"},
+        {"shape": (8, 64, 64, 64), "dtype": "float32", "format": "NHWC", "ori_shape": (8, 64, 64, 64),
+         "ori_format": "NHWC"},
+        {"shape": (8, 64, 64, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (8, 64, 64, 27),
+         "ori_format": "NHWC"},
+        {"shape": (1, 64, 64, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 64, 64, 27),
+         "ori_format": "NHWC"},
+        {"shape": (8, 64, 64, 64), "dtype": "float32", "format": "NHWC", "ori_shape": (8, 64, 64, 64),
+         "ori_format": "NHWC"},
+        {"shape": (8, 64, 64, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (8, 64, 64, 27),
+         "ori_format": "NHWC"},
+        [1, 1, 1, 1], [1, 1, 1, 1], [3, 3], [1, 1, 1, 1], "NHWC", 1, True)
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_cust_test_func(test_func=test_check_supported)

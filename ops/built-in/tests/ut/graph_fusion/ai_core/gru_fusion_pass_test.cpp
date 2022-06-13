@@ -90,14 +90,10 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
   for (auto node: computeGraphPtr->GetAllNodes()) {
     if (node->GetType() == "DynamicGRUV2" || node->GetType() == "DynamicGRUV2Hidden") {
        findDynamicGRUV2 = true;
-     }
-
-     if (node->GetType() == "SplitD") {
-         findSplitD = true;
+       break;
      }
   }
   EXPECT_EQ(findDynamicGRUV2, true);
-  EXPECT_EQ(findSplitD, true);
 }
 
 TEST_F(common_gru_fusion_test, common_gru_fusion_test_2) {
