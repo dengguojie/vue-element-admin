@@ -781,6 +781,7 @@ class Conv2dBackpropFilter:
 
             w_split_support_flag = ((not self.var_map)
                                     and (not conv1d_flag)
+                                    and (not self.flag_load3d_special_case)
                                     and (al1_min_byte + bl1_min_byte) < l1_size
                                     and _check_attr_range([kernel_height, kernel_width], FILTER_HW_MIN, FILTER_HW_MAX)
                                     and _check_attr_range(self.stride, STRIDE_HW_MIN, STRIDE_HW_MAX)
