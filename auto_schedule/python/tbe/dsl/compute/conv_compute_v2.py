@@ -167,15 +167,15 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         if bias_tensor is None:
             return None, bias_tensor_map
 
-        bias_shape = group_opt, 1, co1_opt, 1, block_n0
+        bias_shape = 1, group_opt*co1_opt, 1, 1, block_n0
         bias_co_ori = bias_tensor.shape[0]
         bias_dtype = bias_tensor.dtype
         bias_l1 = tvm.compute(bias_shape,
-                              lambda group_idx, n_idx, co1_idx, hw_idx, co0_idx:
+                              lambda n_idx, co1_idx, h_idx, w_idx, co0_idx:
                                   tvm.select(
-                                      (group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx) >= bias_co_ori,
+                                      (co1_idx*block_n0 + co0_idx) >= bias_co_ori,
                                       tvm.const(0, bias_dtype),
-                                      bias_tensor(group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx)),
+                                      bias_tensor(co1_idx*block_n0 + co0_idx)),
                               name="bias_l1",
                               tag=OP_TAG + "bias_l1")
         bias_l1_to_bt_map = {
@@ -524,7 +524,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                         co1_idx,
                                         co0_idx,
                                         axis_k0]).astype(mad_dtype) +
-                        bias_bt[group_idx, 0, co1_idx, 0, co0_idx],
+                        bias_bt[0, group_idx*co1_opt + co1_idx, 0, 0, co0_idx],
                         (fmap_im2col[group_idx,
                                      batch_idx,
                                      howo_idx // block_m0,

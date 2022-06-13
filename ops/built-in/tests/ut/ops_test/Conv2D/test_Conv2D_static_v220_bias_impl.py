@@ -50,7 +50,7 @@ def test_static_v220_conv2d_bias(test_arg):
         with op_context.OpContext():
             fmap = tvm.placeholder(fm_5hd, name='fmap', dtype=input_dtype)
             weight = tvm.placeholder(shape_w_fracz, name='weight', dtype=input_dtype,
-                                        attrs={'ori_shape': filter_shape, 'ori_format': "NCHW"})
+                                     attrs={'ori_shape': filter_shape, 'ori_format': "NCHW"})
             bias_dtype = "float16" if input_dtype == "bfloat16" else input_dtype
             bias = tvm.placeholder((Cout,), name='bias', dtype=bias_dtype) if bias_flag else None
             out = conv2d_compute(fmap, weight, bias, None, None, strides, pads, dilations, groups=groups, kernel_name=kernel_name)
