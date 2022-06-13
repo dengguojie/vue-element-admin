@@ -33,4 +33,6 @@ IMPL_OP(LogSoftmaxV2)
     .InferShape(InferShapeForOneInOneOut);
 IMPL_OP(DropOutDoMask)
     .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(SoftmaxV2)
+    .InferShape(InferShapeForOneInOneOut);
 }  // namespace ops

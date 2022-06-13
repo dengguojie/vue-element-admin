@@ -55,9 +55,9 @@ bool CheckAndUpdateAxis(gert::InferShapeContext* context, int64_t& batch_dims, i
   return true;
 }
 
-ge::graphStatus GatgerV2Impl(gert::InferShapeContext* context, int64_t& axes_data, const gert::Shape* x_shape,
-                             const gert::Shape* indies_shape, gert::Shape* out_shape) {
-  OP_LOGD("GatgerV2Impl", "gatherv2 infershape impl is begin");
+ge::graphStatus GatherV2Infer(gert::InferShapeContext* context, int64_t& axes_data, const gert::Shape* x_shape,
+                              const gert::Shape* indies_shape, gert::Shape* out_shape) {
+  OP_LOGD("GatherV2Infer", "gatherv2 infershape impl is begin");
   int64_t x_real_dim_cnt = x_shape->GetDimNum();
   int64_t rank_indices = indies_shape->GetDimNum();
   auto attrs = context->GetAttrs();
@@ -97,7 +97,7 @@ ge::graphStatus InferShapeForGatherV2(gert::InferShapeContext* context) {
   OPS_CHECK_NULL_WITH_CONTEXT(context, axes_tensor);
   auto out_shape = context->GetOutputShape(INPUT_IDX_X);
   OPS_CHECK_NULL_WITH_CONTEXT(context, out_shape);
-
+  out_shape->SetDimNum(0);
   auto axes_size = static_cast<int32_t>(axes_tensor->GetShapeSize());
   OP_LOGD(context->GetNodeName(), "axes_size is %d", axes_size);
   OP_CHECK(axes_size < 1, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "axes size must big than 0!"),
@@ -106,7 +106,7 @@ ge::graphStatus InferShapeForGatherV2(gert::InferShapeContext* context) {
   OP_CHECK(!GetConstInt(context, INPUT_IDX_AXIS, axis),
            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(context->GetNodeName(), "get axis failed"), return ge::GRAPH_FAILED);
 
-  return GatgerV2Impl(context, axis, x_shape, indies_shape, out_shape);
+  return GatherV2Infer(context, axis, x_shape, indies_shape, out_shape);
   OP_LOGD(context->GetNodeName(), "infershape is success");
 }
 
