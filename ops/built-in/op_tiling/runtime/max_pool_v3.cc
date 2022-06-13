@@ -48,84 +48,18 @@ static void CalCoreNum(MaxPoolV3TilingData* param, int32_t total_ele, int32_t co
   param->last_core_ele = total_ele - (param->act_core_num - 1) * param->one_core_ele;
 }
 
-static void CalTilingParam(MaxPoolV3TilingData* param, const gert::Shape& input_shape,
-                           const MaxPoolV3CompileInfo* compile_info, int32_t ksize_h, int32_t ksize_w) {
+static void CalTilingMode(MaxPoolV3TilingData* param, const gert::Shape& input_shape,
+                          const MaxPoolV3CompileInfo* compile_info, int32_t ksize_h, int32_t ksize_w) {
   int32_t ub_ele = compile_info->ub_ele;
   int32_t core_num = compile_info->core_num;
   int32_t strides_h = compile_info->strides_h;
   int32_t strides_w = compile_info->strides_w;
-  int32_t padding = compile_info->padding;      // SAME
-  int32_t ceil_mode = compile_info->ceil_mode;  // floor
-  int32_t pad_top = compile_info->pad_top;
-  int32_t pad_bottom = compile_info->pad_bottom;
-  int32_t pad_left = compile_info->pad_left;
-  int32_t pad_right = compile_info->pad_right;
   OP_TILING_CHECK(strides_h == 0, VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolV3", "strides_h = 0 is unsupported"),
-                  return );
+                  return);
   OP_TILING_CHECK(strides_w == 0, VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolV3", "strides_w = 0 is unsupported"),
-                  return );
-  // calc output height and width, pad infos
-  param->c_factor = 1;
-  param->h_factor = 1;
-  param->w_factor = 1;
-  if (padding == 0) {
-    param->output_h = (param->input_h + strides_h - 1) / strides_h;
-    param->output_w = (param->input_w + strides_w - 1) / strides_w;
-    param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
-    param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
-    param->pad_t = (param->pad_h - param->input_h) / TWICE > 0 ? (param->pad_h - param->input_h) / TWICE : 0;
-    param->pad_b = param->pad_h - param->input_h - param->pad_t > 0 ? param->pad_h - param->input_h - param->pad_t : 0;
-    param->pad_l = (param->pad_w - param->input_w) / TWICE > 0 ? (param->pad_w - param->input_w) / TWICE : 0;
-    param->pad_r = param->pad_w - param->input_w - param->pad_l > 0 ? param->pad_w - param->input_w - param->pad_l : 0;
-  } else if (padding == PADDING_VALUE) {
-    if (ceil_mode == 1) {
-      param->output_h = (param->input_h + pad_top + pad_bottom - ksize_h + strides_h + strides_h - 1) / strides_h;
-      param->output_w = (param->input_w + pad_left + pad_right - ksize_w + strides_w + strides_w - 1) / strides_w;
-      if (pad_top != 0 || pad_left != 0) {
-        if ((param->output_h - 1) * strides_h >= param->input_h + pad_top) {
-          param->output_h -= 1;
-        }
-        if ((param->output_w - 1) * strides_w >= param->input_w + pad_left) {
-          param->output_w -= 1;
-        }
-      }
-      param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
-      param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
-      param->pad_t = pad_top;
-      param->pad_b = (param->pad_h - param->input_h - pad_top) > 0 ? (param->pad_h - param->input_h - pad_top) : 0;
-      param->pad_l = pad_left;
-      param->pad_r = (param->pad_w - param->input_w - pad_left) > 0 ? (param->pad_w - param->input_w - pad_left) : 0;
-    } else {
-      param->output_h = (param->input_h + pad_top + pad_bottom - ksize_h + strides_h) / strides_h;
-      param->output_w = (param->input_w + pad_left + pad_right - ksize_w + strides_w) / strides_w;
-      if (pad_top != 0 || pad_left != 0) {
-        if ((param->output_h - 1) * strides_h >= param->input_h + pad_top) {
-          param->output_h -= 1;
-        }
-        if ((param->output_w - 1) * strides_w >= param->input_w + pad_left) {
-          param->output_w -= 1;
-        }
-      }
-      param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
-      param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
-      param->pad_t = pad_top;
-      param->pad_b = (param->pad_h - param->input_h - pad_top) > 0 ? (param->pad_h - param->input_h - pad_top) : 0;
-      param->pad_l = pad_left;
-      param->pad_r = (param->pad_w - param->input_w - pad_left) > 0 ? (param->pad_w - param->input_w - pad_left) : 0;
-    }
-  } else {
-    param->output_h = (param->input_h - (ksize_h - 1) + strides_h - 1) / strides_h;
-    param->output_w = (param->input_w - (ksize_w - 1) + strides_w - 1) / strides_w;
-    param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
-    param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
-    param->pad_t = 0;
-    param->pad_b = 0;
-    param->pad_l = 0;
-    param->pad_r = 0;
-  }
+                  return);
 
   // calc core_num, core_ele, loop_num and loop_left
-  // global pooling max_pool_v3
   if (ksize_h == param->input_h && ksize_w == param->input_w) {
     param->n_c1 = input_shape.GetDim(INDEX_0) * input_shape.GetDim(INDEX_1);
     CalCoreNum(param, param->n_c1, core_num);
@@ -197,6 +131,75 @@ static void CalTilingParam(MaxPoolV3TilingData* param, const gert::Shape& input_
       }
     }
   }
+}
+
+static void CalTilingParam(MaxPoolV3TilingData* param, const gert::Shape& input_shape,
+                           const MaxPoolV3CompileInfo* compile_info, int32_t ksize_h, int32_t ksize_w) {
+  int32_t strides_h = compile_info->strides_h;
+  int32_t strides_w = compile_info->strides_w;
+  int32_t padding = compile_info->padding;      // SAME
+  int32_t ceil_mode = compile_info->ceil_mode;  // floor
+  int32_t pad_top = compile_info->pad_top;
+  int32_t pad_bottom = compile_info->pad_bottom;
+  int32_t pad_left = compile_info->pad_left;
+  int32_t pad_right = compile_info->pad_right;
+  OP_TILING_CHECK(strides_h == 0, VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolV3", "strides_h = 0 is unsupported"),
+                  return);
+  OP_TILING_CHECK(strides_w == 0, VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolV3", "strides_w = 0 is unsupported"),
+                  return);
+  // calc output height and width, pad infos
+  param->c_factor = 1;
+  param->h_factor = 1;
+  param->w_factor = 1;
+  if (padding == 0) {
+    param->output_h = (param->input_h + strides_h - 1) / strides_h;
+    param->output_w = (param->input_w + strides_w - 1) / strides_w;
+    param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
+    param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
+    param->pad_t = (param->pad_h - param->input_h) / TWICE > 0 ? (param->pad_h - param->input_h) / TWICE : 0;
+    param->pad_b = param->pad_h - param->input_h - param->pad_t > 0 ? param->pad_h - param->input_h - param->pad_t : 0;
+    param->pad_l = (param->pad_w - param->input_w) / TWICE > 0 ? (param->pad_w - param->input_w) / TWICE : 0;
+    param->pad_r = param->pad_w - param->input_w - param->pad_l > 0 ? param->pad_w - param->input_w - param->pad_l : 0;
+  } else if (padding == PADDING_VALUE) {
+    if (ceil_mode == 1) {
+      param->output_h = (param->input_h + pad_top + pad_bottom - ksize_h + strides_h + strides_h - 1) / strides_h;
+      param->output_w = (param->input_w + pad_left + pad_right - ksize_w + strides_w + strides_w - 1) / strides_w;
+      if (pad_top != 0 || pad_left != 0) {
+        param->output_h -= ((param->output_h - 1) * strides_h >= param->input_h + pad_top) ? 1 : 0;
+        param->output_w -= ((param->output_w - 1) * strides_w >= param->input_w + pad_left) ? 1 : 0;
+      }
+      param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
+      param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
+      param->pad_t = pad_top;
+      param->pad_b = (param->pad_h - param->input_h - pad_top) > 0 ? (param->pad_h - param->input_h - pad_top) : 0;
+      param->pad_l = pad_left;
+      param->pad_r = (param->pad_w - param->input_w - pad_left) > 0 ? (param->pad_w - param->input_w - pad_left) : 0;
+    } else {
+      param->output_h = (param->input_h + pad_top + pad_bottom - ksize_h + strides_h) / strides_h;
+      param->output_w = (param->input_w + pad_left + pad_right - ksize_w + strides_w) / strides_w;
+      if (pad_top != 0 || pad_left != 0) {
+        param->output_h -= ((param->output_h - 1) * strides_h >= param->input_h + pad_top) ? 1 : 0;
+        param->output_w -= ((param->output_w - 1) * strides_w >= param->input_w + pad_left) ? 1 : 0;
+      }
+      param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
+      param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
+      param->pad_t = pad_top;
+      param->pad_b = (param->pad_h - param->input_h - pad_top) > 0 ? (param->pad_h - param->input_h - pad_top) : 0;
+      param->pad_l = pad_left;
+      param->pad_r = (param->pad_w - param->input_w - pad_left) > 0 ? (param->pad_w - param->input_w - pad_left) : 0;
+    }
+  } else {
+    param->output_h = (param->input_h - (ksize_h - 1) + strides_h - 1) / strides_h;
+    param->output_w = (param->input_w - (ksize_w - 1) + strides_w - 1) / strides_w;
+    param->pad_h = (param->output_h - 1) * strides_h + ksize_h;
+    param->pad_w = (param->output_w - 1) * strides_w + ksize_w;
+    param->pad_t = 0;
+    param->pad_b = 0;
+    param->pad_l = 0;
+    param->pad_r = 0;
+  }
+
+  CalTilingMode(param, input_shape, compile_info, ksize_h, ksize_w);
 }
 
 ge::graphStatus TilingForMaxPoolV3(gert::TilingContext* context) {

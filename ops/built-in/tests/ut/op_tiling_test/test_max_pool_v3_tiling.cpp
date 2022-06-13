@@ -187,3 +187,55 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_global) {
   HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
   TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "6 32 1 1 3 3 1 1 3 3 0 0 0 0 1 1 1 0 0 0 0 32 ");
 }
+
+TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_mode7) {
+  std::string op_name = "MaxPoolV3";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 3, \"strides_h\": 1, "
+      "\"strides_w\": 1, \"padding\": 1, \"ceil_mode\": 0, \"pad_top\": 0, \"pad_bottom\": 0, \"pad_left\": 0, "
+      "\"pad_right\": 0, \"global\": 1}}";
+
+  std::vector<int64_t> input{32, 48, 1024, 16};
+
+  auto opParas = op::MaxPoolV3("MaxPoolV3");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
+
+  optiling::MaxPoolV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MaxPoolV3TilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MaxPoolV3", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "7 32 1 1 48 1024 1 1 48 1024 0 0 0 0 1 7936 1 6 1536 6 1536 32 ");
+}
+
+TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_mode1) {
+  std::string op_name = "MaxPoolV3";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 2031616, \"core_num\": 32, \"ksize_h\": 3, \"ksize_w\": 3, \"strides_h\": 2, "
+      "\"strides_w\": 2, \"padding\": 2, \"ceil_mode\": 0, \"pad_top\": 1, \"pad_bottom\": 1, \"pad_left\": 1, "
+      "\"pad_right\": 1, \"global\": 0}}";
+
+  std::vector<int64_t> input{1, 56, 56, 64};
+
+  auto opParas = op::MaxPoolV3("MaxPoolV3");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
+
+  optiling::MaxPoolV3CompileInfo info;
+  int32_t tiling_len = sizeof(optiling::MaxPoolV3TilingData);
+  // prepare compile info from json string to compile struct members
+  TILING_PARSE_JSON_TO_COMPILEINFO("MaxPoolV3", compileInfo, info);
+  ATTACH_OPERATOR_TO_HOLDER(holder, opParas, tiling_len, info);
+  HOLDER_DO_TILING(holder, "MaxPoolV3", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 4 1 1 56 56 28 28 57 57 1 0 1 0 6 1 1 0 1 0 1 4 ");
+}

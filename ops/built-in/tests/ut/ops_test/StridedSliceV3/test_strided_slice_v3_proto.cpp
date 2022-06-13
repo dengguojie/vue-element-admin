@@ -376,6 +376,35 @@ TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_zero_input) {
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 
+TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_unknown_rank) {
+  std::vector<int64_t> output_shape;
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  test_dynamic<int32_t>({-2},
+                {-3, -3, -3},
+                {-6, -6, -6},
+                {-1, -1, -1},
+                {0, 1, 2},
+                {{2, 100}, {4, 100}, {6, 100}},
+                output_shape, output_shape_range);
+
+  std::vector<int64_t> expected_output_shape = {-2};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape, expected_output_shape);
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_no_end) {
+  std::vector<int64_t> output_shape;
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  test_dynamic<int32_t>({3,6,9},
+                {-3, -3, -3},
+                {},
+                {-1, -1, -1},
+                {0, 1, 2},
+                {{2, 100}, {4, 100}, {6, 100}},
+                output_shape, output_shape_range);
+}
+
 TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_net1) {
   std::vector<int64_t> output_shape;
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;

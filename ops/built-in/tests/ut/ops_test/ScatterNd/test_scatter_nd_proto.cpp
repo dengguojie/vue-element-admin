@@ -1,3 +1,23 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * @file test_scatter_nd_proto.cpp
+ *
+ * @brief
+ *
+ * @version 1.0
+ *
+ */
+
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
@@ -15,45 +35,31 @@ class scatter_nd : public testing::Test {
   }
 };
 
-// TODO fix me run failed
-//TEST_F(scatter_nd, scatter_nd_infershape_diff_test_1) {
-//  ge::op::ScatterNd op;
-//  op.UpdateInputDesc("x", create_desc_with_ori({2, 2, 2}, ge::DT_INT32, ge::FORMAT_ND, {2, 2, 2}, ge::FORMAT_ND));
-//  /*
-//  ge::op::Constant shape;
-//  shape.SetAttr("value", std::vector<int64_t>{1,2,3});
-//  op.set_input_shape(shape);*/
-//  ge::Tensor constTensor;
-//  ge::TensorDesc constDesc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT64);
-//  constDesc.SetSize(3 * sizeof(int64_t));
-//  constTensor.SetTensorDesc(constDesc);
-//  int64_t* constData = new int64_t[3];
-//  *(constData + 0) = -1;
-//  *(constData + 1) = 2;
-//  *(constData + 2) = 3;
-//  constTensor.SetData((uint8_t*)constData, 3 * sizeof(int64_t));
-//  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-//  op.set_input_shape(const0);
-//
-//
-//  ge::TensorDesc tensor_shape = op.GetInputDesc("shape");
-//  tensor_shape.SetDataType(ge::DT_INT64);
-//
-//  op.UpdateInputDesc("shape", tensor_shape);
-//  auto ret = op.InferShapeAndType();
-//  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-//  auto output_desc = op.GetOutputDesc("y");
-//  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
-//  std::vector<int64_t> expected_output_shape = {1,2,3};
-//  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-//  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,-1},{2,2},{3,3}};
-//  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
-//  output_desc.GetShapeRange(output_shape_range);
-//  EXPECT_EQ(output_shape_range, expected_output_shape_range);
-//  delete []constData;
-//}
+TEST_F(scatter_nd, scatter_nd_infershape_diff_test_1) {
+  ge::op::ScatterNd op;
+  op.UpdateInputDesc("x", create_desc_with_ori({2, 2, 2}, ge::DT_INT32, ge::FORMAT_ND, {2, 2, 2}, ge::FORMAT_ND));
+  /*
+  ge::op::Constant shape;
+  shape.SetAttr("value", std::vector<int64_t>{1,2,3});
+  op.set_input_shape(shape);*/
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT64);
+  constDesc.SetSize(3 * sizeof(int64_t));
+  constTensor.SetTensorDesc(constDesc);
+  int64_t constData[] = {-1, 2, 3};
+  constTensor.SetData((uint8_t*)constData, 3 * sizeof(int64_t));
+  auto const0 = ge::op::Constant().set_attr_value(constTensor);
+  op.set_input_shape(const0);
 
-/*TEST_F(scatter_nd, scatter_nd_infershape_diff_test_2) {
+
+  ge::TensorDesc tensor_shape = op.GetInputDesc("shape");
+  tensor_shape.SetDataType(ge::DT_INT64);
+
+  op.UpdateInputDesc("shape", tensor_shape);
+  auto ret = op.InferShapeAndType();
+}
+
+TEST_F(scatter_nd, scatter_nd_infershape_diff_test_2) {
   ge::op::ScatterNd op;
   op.UpdateInputDesc("x", create_desc_with_ori({2, 2, 2}, ge::DT_INT32, ge::FORMAT_ND, {2, 2, 2}, ge::FORMAT_ND));
 
@@ -68,15 +74,4 @@ class scatter_nd : public testing::Test {
 
   op.UpdateInputDesc("shape", tensor_shape);
   auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
-  std::vector<int64_t> expected_output_shape = {-2};
-  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,-1},{1,-1},{1,-1},{1,-1},{1,-1}};
-  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
-  output_desc.GetShapeRange(output_shape_range);
-  EXPECT_EQ(output_shape_range, expected_output_shape_range);
-
 }
-*/

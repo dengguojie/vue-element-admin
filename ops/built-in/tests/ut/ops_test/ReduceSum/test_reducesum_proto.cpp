@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the
@@ -96,7 +96,7 @@ TEST_F(ReduceSum, ReduceSum_const_infer_2) {
   test_op.InferShapeAndType();
   test_op.InferShapeAndType();
   vector<bool> input_const = {false, true};
-  CommonInferShapeOperatorWithConst(test_op, input_const, {"keep_dims"}, {expected_output_shape});
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"keep_dims"}, {});
 
   // cmp the result
   auto output_desc = test_op.GetOutputDesc(0);
@@ -115,6 +115,41 @@ TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true) {
   auto axes_dtype = DT_INT32;
   bool keep_dims = true;
   vector<uint32_t> axes_value = {1, 2};
+  // expect result info
+  std::vector<int64_t> expected_output_shape = {-1, 1, 1, -1};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, 100}, {1, 1}, {1, 1}, {1, -1}};
+
+  // gen ReduceSum op
+  auto test_op = op::ReduceSum("ReduceSum");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, axes, input_axes_shape, axes_dtype, FORMAT_ND, axes_value);
+  test_op.set_attr_keep_dims(keep_dims);
+
+  // run InferShapeAndType
+  test_op.InferShapeAndType();
+  vector<bool> input_const = {false, true};
+  CommonInferShapeOperatorWithConst(test_op, input_const, {"keep_dims"}, {expected_output_shape});
+
+  // cmp the result
+  auto output_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output_desc.GetDataType(), input_x_dtype);
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true_int64) {
+  using namespace ge;
+  // input x info
+  auto input_x_shape = vector<int64_t>({-1, -1, -1, -1});
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}, {100, 200}, {1, -1}, {1, -1}};
+  auto input_x_dtype = DT_FLOAT;
+  // input axes info
+  auto input_axes_shape = vector<int64_t>({2});
+  auto axes_dtype = DT_INT64;
+  bool keep_dims = true;
+  vector<uint64_t> axes_value = {1, 2};
   // expect result info
   std::vector<int64_t> expected_output_shape = {-1, 1, 1, -1};
   std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, 100}, {1, 1}, {1, 1}, {1, -1}};

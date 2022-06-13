@@ -1,3 +1,23 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * @file test_gather_v2_proto.cpp
+ *
+ * @brief
+ *
+ * @version 1.0
+ *
+ */
+
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
@@ -146,41 +166,6 @@ TEST_F(gather_v2, gather_v2_infershape_diff_test_1) {
   //delete []constData;
 }
 
-// TODO fix me
-//TEST_F(gather_v2, gather_v2_infershape_diff_test_2) {
-//  ge::op::GatherV2 op;
-//  op.UpdateInputDesc("x", create_desc_with_ori({2, 2, 2}, ge::DT_INT32, ge::FORMAT_ND, {2, 2, 2}, ge::FORMAT_ND));
-//  op.UpdateInputDesc("indices", create_desc_with_ori({2, 2, 2}, ge::DT_INT32, ge::FORMAT_ND, {2, 2, 2}, ge::FORMAT_ND));
-//
-//  ge::Tensor constTensor;
-//  ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-//  constDesc.SetSize(1 * sizeof(int32_t));
-//  constTensor.SetTensorDesc(constDesc);
-//  int32_t constData[1] = {2};
-//  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-//  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-//  op.set_input_axis(const0);
-//
-//  ge::TensorDesc tensor_x = op.GetInputDesc("x");
-//  tensor_x.SetRealDimCnt(3);
-//  op.UpdateInputDesc("x", tensor_x);
-//
-//  ge::TensorDesc tensor_indices = op.GetInputDesc("indices");
-//  tensor_indices.SetRealDimCnt(3);
-//  op.UpdateInputDesc("indices", tensor_indices);
-//
-//  auto ret = op.InferShapeAndType();
-//  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-//  auto output_desc = op.GetOutputDesc("y");
-//  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
-//  std::vector<int64_t> expected_output_shape = {2, 2, 2, 2, 2};
-//  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-//  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {};
-//  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
-//  output_desc.GetShapeRange(output_shape_range);
-//  EXPECT_EQ(output_shape_range, expected_output_shape_range);
-//}
-
 TEST_F(gather_v2, gather_v2_infershape_diff_test_5) {
   ge::op::GatherV2 op;
   op.UpdateInputDesc("x", create_desc_shape_range({-2}, ge::DT_INT32, ge::FORMAT_ND, {-2}, ge::FORMAT_ND, {{1,3},{4,5},{9,10}}));
@@ -316,34 +301,6 @@ TEST_F(gather_v2, gather_v2_infershape_diff_test_8) {
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
 }
-// TODO fix me run failed
-//TEST_F(gather_v2, gather_v2_infershape_diff_test_9) {
-//  ge::op::GatherV2 op;
-//  op.UpdateInputDesc("x", create_desc_shape_range({3, -1, 5, 6, 7}, ge::DT_INT32, ge::FORMAT_ND, {3, -1, 5, 6, 7}, ge::FORMAT_ND,{{3,3},{4,4},{5,5},{6,6},{7,7}}));
-//  op.UpdateInputDesc("indices", create_desc_shape_range({3, -1}, ge::DT_INT32, ge::FORMAT_ND, {3, -1}, ge::FORMAT_ND,{{3,3},{1,10}}));
-//
-//  auto data0 = ge::op::Data().set_attr_index(0);
-//  op.set_input_axis(data0);
-//
-//  ge::TensorDesc tensor_x = op.GetInputDesc("x");
-//  tensor_x.SetRealDimCnt(5);
-//  op.UpdateInputDesc("x", tensor_x);
-//
-//  ge::TensorDesc tensor_indices = op.GetInputDesc("indices");
-//  tensor_indices.SetRealDimCnt(2);
-//  op.UpdateInputDesc("indices", tensor_indices);
-//
-//  auto ret = op.InferShapeAndType();
-//  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-//  auto output_desc = op.GetOutputDesc("y");
-//  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
-//  std::vector<int64_t> expected_output_shape = {-1,-1,-1,-1,-1,-1};
-//  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-//  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,-1},{3,3},{1,10},{1,-1}};
-//  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
-//  output_desc.GetShapeRange(output_shape_range);
-//  EXPECT_EQ(output_shape_range, expected_output_shape_range);
-//}
 
 TEST_F(gather_v2, gather_v2_infershape_diff_test_10) {
   ge::op::GatherV2 op;
@@ -432,6 +389,77 @@ TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_1) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
+}
+
+TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_2) {
+  ge::op::GatherV2 op;
+  op.UpdateInputDesc("x", create_desc_shape_range({3, 4, 5, 6, 7}, ge::DT_INT32, ge::FORMAT_ND,
+                                                  {3, 4, 5, 6, 7}, ge::FORMAT_ND,
+                                                  {{3,3},{4,4},{5,5},{6,6},{7,7}}));
+  op.UpdateInputDesc("indices", create_desc_shape_range({3,4,32}, ge::DT_INT32, ge::FORMAT_ND,
+                                                        {3,4,32}, ge::FORMAT_ND,{{3,3}, {4,4},{32,32}}));
+
+  auto data0 = ge::op::Data().set_attr_index(2);
+  op.set_input_axis(data0);
+
+  op.SetAttr("batch_dims", 100);
+
+  ge::TensorDesc tensor_x = op.GetInputDesc("x");
+  tensor_x.SetRealDimCnt(5);
+  op.UpdateInputDesc("x", tensor_x);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_3) {
+  ge::op::GatherV2 op;
+  op.UpdateInputDesc("x", create_desc_shape_range({3, 4, 5, 6, 7}, ge::DT_INT32, ge::FORMAT_ND,
+                                                  {3, 4, 5, 6, 7}, ge::FORMAT_ND,
+                                                  {{3,3},{4,4},{5,5},{6,6},{7,7}}));
+  op.UpdateInputDesc("indices", create_desc_shape_range({3,4,32}, ge::DT_INT32, ge::FORMAT_ND,
+                                                        {3,4,32}, ge::FORMAT_ND,{{3,3}, {4,4},{32,32}}));
+
+  auto data0 = ge::op::Data().set_attr_index(2);
+  op.set_input_axis(data0);
+
+  // op.SetAttr("batch_dims", 2);
+
+  ge::TensorDesc tensor_x = op.GetInputDesc("x");
+  tensor_x.SetRealDimCnt(5);
+  op.UpdateInputDesc("x", tensor_x);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1, -1, -1, -1, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{{3,32},{3,32},{3,32},{3,32},{3,32},{3,32},{3,32}}};
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  output_desc.GetShapeRange(output_shape_range);
+  EXPECT_EQ(output_shape_range, expected_output_shape_range);
+}
+
+TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_4) {
+  ge::op::GatherV2 op;
+  op.UpdateInputDesc("x", create_desc_shape_range({3, 4, 5, 6, 7}, ge::DT_INT32, ge::FORMAT_ND,
+                                                  {3, 4, 5, 6, 7}, ge::FORMAT_ND,
+                                                  {{3,3},{4,4},{5,5},{6,6},{7,7}}));
+  op.UpdateInputDesc("indices", create_desc_shape_range({3,4,32}, ge::DT_INT32, ge::FORMAT_ND,
+                                                        {3,4,32}, ge::FORMAT_ND,{{3,3}, {4,4},{32,32}}));
+
+  auto data0 = ge::op::Data().set_attr_index(2);
+  op.set_input_axis(data0);
+
+  op.SetAttr("batch_dims", -100);
+
+  ge::TensorDesc tensor_x = op.GetInputDesc("x");
+  tensor_x.SetRealDimCnt(5);
+  op.UpdateInputDesc("x", tensor_x);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(gather_v2, GatherV2_data_slice_infer1) {

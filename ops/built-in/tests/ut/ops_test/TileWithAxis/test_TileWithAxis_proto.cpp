@@ -97,3 +97,56 @@ TEST_F(TileWithAxis, TileWithAxis_infershape_test_2) {
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{2, 10},{6,20},{4,10}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(TileWithAxis, TileWithAxis_infershape_test_3) {
+  ge::op::TileWithAxis op;
+
+  auto tensor_desc_x = create_desc_shape_range({4,2,32,64,16},
+                                               ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,
+                                               {4,32,64,32},
+                                               ge::FORMAT_NHWC, {{2, 10},{3,10},{4,10}});
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.SetAttr("axis", 1);
+  op.SetAttr("tiles", 2);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(TileWithAxis, TileWithAxis_infershape_test_4) {
+  ge::op::TileWithAxis op;
+
+  auto tensor_desc_x = create_desc_shape_range({4,2,32,64,16},
+                                               ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,
+                                               {4,32,32,64},
+                                               ge::FORMAT_NCHW, {{2, 10},{3,10},{4,10}});
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.SetAttr("axis", -1);
+  op.SetAttr("tiles", 2);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(TileWithAxis, TileWithAxis_infershape_test_5) {
+  ge::op::TileWithAxis op;
+
+  auto tensor_desc_x = create_desc_shape_range({4,2,32,64,16},
+                                               ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,
+                                               {4,32,32,64},
+                                               ge::FORMAT_ND, {{2, 10},{3,10},{4,10}});
+
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.SetAttr("axis", -1);
+  op.SetAttr("tiles", 2);
+  
+  auto ret = op.InferShapeAndType();
+}

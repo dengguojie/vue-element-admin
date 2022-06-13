@@ -28,18 +28,16 @@ ge::graphStatus ReduceDims(const T *axes_dims, int32_t axes_size, const gert::Sh
       if (dim < 0 || dim >= dim_num) return ge::GRAPH_FAILED;
       output_shape->SetDim(dim, 1);
     }
-  } else {
-    bool reduce = false;
-    for (T j = 0; j < dim_num; j++, reduce = false) {
-      for (int32_t i = 0; i < axes_size; i++) {
-        T dim = axes_dims[i] < 0 ? axes_dims[i] + dim_num : axes_dims[i];
-        if (dim < 0 || dim >= dim_num) return ge::GRAPH_FAILED;
-        if (dim == j) {
-          reduce = true;
-          break;
-        }
+    return ge::GRAPH_SUCCESS;
+  }
+  for (T j = 0; j < dim_num; j++) {
+    for (int32_t i = 0; i < axes_size; i++) {
+      T dim = axes_dims[i] < 0 ? axes_dims[i] + dim_num : axes_dims[i];
+      if (dim < 0 || dim >= dim_num) return ge::GRAPH_FAILED;
+      if (dim == j) {
+        output_shape->AppendDim(x_shape->GetDim(j));
+        break;
       }
-      if (!reduce) output_shape->AppendDim(x_shape->GetDim(j));
     }
   }
   return ge::GRAPH_SUCCESS;

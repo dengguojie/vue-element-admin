@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2022. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
@@ -45,6 +45,39 @@ TEST_F(Range, Range_infer_shape_0) {
 TEST_F(Range, Range_infer_shape_1) {
   ge::op::Range op;
   op.UpdateInputDesc("start", create_desc_with_ori({1, 1, 1, 1}, ge::DT_INT32, ge::FORMAT_NHWC, {1, 1, 1,1}, ge::FORMAT_NHWC));
+  op.UpdateOutputDesc("delta", create_desc_with_ori({1, 1, 1,1}, ge::DT_FLOAT, ge::FORMAT_NDHWC,{1, 1, 1,1}, ge::FORMAT_NDHWC));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Range, Range_infer_shape_2) {
+  ge::op::Range op;
+  op.UpdateInputDesc("start", create_desc_with_ori({1, 1, 1, 1}, ge::DT_INT64, ge::FORMAT_NHWC, {1, 1, 1,1}, ge::FORMAT_NHWC));
+  op.UpdateOutputDesc("delta", create_desc_with_ori({1, 1, 1,1}, ge::DT_FLOAT, ge::FORMAT_NDHWC,{1, 1, 1,1}, ge::FORMAT_NDHWC));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Range, Range_infer_shape_3) {
+  ge::op::Range op;
+  op.UpdateInputDesc("start", create_desc_with_ori({1, 1, 1, 1}, ge::DT_DOUBLE, ge::FORMAT_NHWC, {1, 1, 1,1}, ge::FORMAT_NHWC));
+  op.UpdateOutputDesc("delta", create_desc_with_ori({1, 1, 1,1}, ge::DT_FLOAT, ge::FORMAT_NDHWC,{1, 1, 1,1}, ge::FORMAT_NDHWC));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Range, Range_infer_shape_4) {
+  ge::op::Range op;
+  op.UpdateInputDesc("start", create_desc_with_ori({1, 1, 1, 1}, ge::DT_UINT32, ge::FORMAT_NHWC, {1, 1, 1,1}, ge::FORMAT_NHWC));
+  op.UpdateOutputDesc("delta", create_desc_with_ori({1, 1, 1,1}, ge::DT_FLOAT, ge::FORMAT_NDHWC,{1, 1, 1,1}, ge::FORMAT_NDHWC));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Range, Range_infer_shape_5) {
+  ge::op::Range op;
+  op.UpdateInputDesc("start", create_desc_with_ori({}, ge::DT_INT32, ge::FORMAT_NHWC, {1, 1, 1,1}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc("limit", create_desc_with_ori({2, 2}, ge::DT_INT32, ge::FORMAT_NHWC, {2, 2}, ge::FORMAT_NHWC));
   op.UpdateOutputDesc("delta", create_desc_with_ori({1, 1, 1,1}, ge::DT_FLOAT, ge::FORMAT_NDHWC,{1, 1, 1,1}, ge::FORMAT_NDHWC));
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
