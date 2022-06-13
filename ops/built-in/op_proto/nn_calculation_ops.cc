@@ -144,22 +144,28 @@ struct AttrDataInfo {
   int32_t pads;
   int64_t kernel;
 };
+
 struct AttrInfo {
   AttrDataInfo h_attr;
   AttrDataInfo w_attr;
 };
+
 struct PosInfo {
   int32_t n_position;
   int32_t h_position;
   int32_t w_position;
   int32_t c_position;
 };
+
 struct ShapeValInfo {
   int64_t n_value;
   int64_t h_value;
   int64_t w_value;
   int64_t c_value;
+  bool unknownRank = false;
+  bool unknownShape = false;
 };
+
 struct OpDetailInfo {
   AscendString op_name;
   OpDescPtr op_desc;
@@ -172,6 +178,28 @@ struct StrideDilationHW {
   int32_t dilation_h;
   int32_t dilation_w;
 };
+struct OpStrideInfo {
+    int32_t strideH;
+    int32_t strideW;
+};
+
+struct OpDilationInfo {
+    int32_t dilationH;
+    int32_t dilationW;
+};
+
+struct OpPadsInfo {
+    int32_t padt;
+    int32_t padb;
+    int32_t padl;
+    int32_t padr;
+};
+
+struct InputTensorShape {
+    ShapeValInfo xShape;
+    ShapeValInfo wShape;
+};
+
 // ----------------LSTM begin-------------------
 
 IMPLEMT_VERIFIER(LSTM, LSTMVerify) {
@@ -3064,6 +3092,16 @@ static bool GetPosInfoByFormat(const Format &format, PosInfo &format_pos) {
   return true;
 }
 
+static bool GetPosByFormat(Format format, string pos, size_t &posIdx)
+{
+    string formatStr = format2str[format];
+    CHECK(formatStr.length() != kConv2dDimSizeLimit, OP_LOGE("", "the format is not 4D"), return false);
+    CHECK(pos.length() != 1 || formatStr.find(pos) == string::npos,
+        OP_LOGE("", "pos %s not in [N, C, H, W]", pos.c_str()), return false);
+    posIdx = formatStr.find(pos);
+    return true;
+}
+
 static bool ResetInputRange(const AscendString &op_name, const GeTensorDescPtr &input_desc, const GeShape &input_shape,
                             std::vector<std::pair<int64_t, int64_t>> &input_range) {
   CHECK(input_shape.IsUnknownDimNum(), OP_LOGD(op_name.GetString(), "input shape is -2"), return true);
@@ -4007,6 +4045,299 @@ VERIFY_FUNC_REG(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify);
 INFER_DATA_SLICE_FUNC_REG(Conv2DBackpropFilterD, Conv2DBackpropFilterDInferDataSlice);
 
 // --------------------------Conv2D------------------------------
+static inline bool IsConv2dOpType(const ge::OpDescPtr& opDesc)
+{
+    AscendString opType = opDesc->GetType().c_str();
+    return string(opType.GetString()) == "Conv2D";
+}
+
+
+static inline int32_t CalcPadConv2d(int32_t input, int32_t kernel, int32_t stride, int32_t dilation)
+{
+    int32_t tails = input % stride;
+    int32_t dkInput = dilation * (kernel - 1) + 1;
+    int32_t pad = std::max((tails > 0? dkInput - tails : dkInput - stride), 0);
+
+    return pad;
+}
+
+
+static bool SetPadListConv2dForPadding(const string &padStr,
+                                       const AscendString &opName,
+                                       ge::OpDescPtr &opDesc,
+                                       const OpStrideInfo &strides,
+                                       const OpDilationInfo &dilations,
+                                       const InputTensorShape &inputShapes)
+{
+    int32_t ih = inputShapes.xShape.h_value;
+    int32_t iw = inputShapes.xShape.w_value;
+    int32_t kh = inputShapes.wShape.h_value;
+    int32_t kw = inputShapes.wShape.w_value;
+    int32_t strh = strides.strideH;
+    int32_t strw = strides.strideW;
+    int32_t dilh = dilations.dilationH;
+    int32_t dilw = dilations.dilationW;
+    int32_t padt = -1;
+    int32_t padb = -1;
+    int32_t padl = -1;
+    int32_t padr = -1;
+    std::vector<int32_t> padList;
+    std::vector<int32_t> validPadsList = {0, 0, 0, 0};
+    bool isHDynamic = (ih < 0 || kh < 0) && IsConv2dOpType(opDesc);
+    bool isWDynamic = (iw < 0 || kw < 0) && IsConv2dOpType(opDesc);
+
+    if (padStr.compare("SAME") == 0) {
+        if (!isHDynamic) {
+            int32_t padH = CalcPadConv2d(ih, kh, strh, dilh);
+            padt = padH >> 1;
+            padb = (padH >> 1) + (padH & 1);
+        }
+
+        if (!isWDynamic) {
+            int32_t padW = CalcPadConv2d(iw, kw, strw, dilw);
+            padl = padW >> 1;
+            padr = (padW >> 1) + (padW & 1);
+        }
+        std::vector<int32_t> padListTmp = {padt, padb, padl, padr};
+        padList.assign(padListTmp.begin(), padListTmp.end());
+    } else if (padStr.compare("VALID") == 0) {
+        padList.assign(validPadsList.begin(), validPadsList.end());
+    } else {
+        OP_LOGE(opName.GetString(), "padding should be SAME or VALID. actual is: %s.", padStr.c_str());
+        map<string, string> errMap;
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_pad_mode"] = "SAME or VALID";
+        errMap["actual_pad_mode"] = padStr;
+        std::string reportErrorCode = "E50050";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return false;
+    }
+
+    OP_LOGD(opName.GetString(), "pads info is %s.", ops::to_string(padList).c_str());
+    ge::AttrUtils::SetListInt(opDesc, "pads", padList);
+
+    return true;
+}
+
+
+static bool SetPadListConv2dForAutoPad(const string &padStr,
+                                       const AscendString &opName,
+                                       ge::OpDescPtr &opDesc,
+                                       const OpStrideInfo &strides,
+                                       const OpDilationInfo &dilations,
+                                       const InputTensorShape &inputShapes)
+{
+    int32_t ih = inputShapes.xShape.h_value;
+    int32_t iw = inputShapes.xShape.w_value;
+    int32_t kh = inputShapes.wShape.h_value;
+    int32_t kw = inputShapes.wShape.w_value;
+    int32_t strh = strides.strideH;
+    int32_t strw = strides.strideW;
+    int32_t dilh = dilations.dilationH;
+    int32_t dilw = dilations.dilationW;
+    int32_t padt = -1;
+    int32_t padb = -1;
+    int32_t padl = -1;
+    int32_t padr = -1;
+    std::vector<int32_t> padList;
+    std::vector<int32_t> validPadsList = {0, 0, 0, 0};
+    bool isHDynamic = (ih < 0 || kh < 0) && IsConv2dOpType(opDesc);
+    bool isWDynamic = (iw < 0 || kw < 0) && IsConv2dOpType(opDesc);
+
+    if (padStr.compare("SAME_UPPER") == 0) {
+        if (!isHDynamic) {
+            int32_t padH = CalcPadConv2d(ih, kh, strh, dilh);
+            padt = padH >> 1;
+            padb = (padH >> 1) + (padH & 1);
+        }
+
+        if (!isWDynamic) {
+            int32_t padW = CalcPadConv2d(iw, kw, strw, dilw);
+            padl = padW >> 1;
+            padr = (padW >> 1) + (padW & 1);
+        }
+        std::vector<int32_t> padListTmp = {padt, padb, padl, padr};
+        padList.assign(padListTmp.begin(), padListTmp.end());
+    } else if (padStr.compare("SAME_LOWER") == 0) {
+        if (!isHDynamic) {
+            int32_t padH = CalcPadConv2d(ih, kh, strh, dilh);
+            padt = (padH >> 1) + (padH & 1);
+            padb = padH >> 1;
+        }
+
+        if (!isWDynamic) {
+            int32_t padW = CalcPadConv2d(iw, kw, strw, dilw);
+            padl = (padW >> 1) + (padW & 1);
+            padr = padW >> 1;
+        }
+        std::vector<int32_t> padListTmp = {padt, padb, padl, padr};
+        padList.assign(padListTmp.begin(), padListTmp.end());
+    } else if (padStr.compare("NOTSET") == 0) {
+        return true;
+    } else if (padStr.compare("VALID") == 0) {
+        padList.assign(validPadsList.begin(), validPadsList.end());
+    } else {
+        OP_LOGE(opName.GetString(), "padding should be NOTSET, SAME_UPPER, SAME_LOWER or VALID."
+                " actual is: %s.", padStr.c_str());
+        map<string, string> errMap;
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_pad_mode"] = "NOTSET, SAME_UPPER, SAME_LOWER or VALID";
+        errMap["actual_pad_mode"] = padStr;
+        std::string reportErrorCode = "E50050";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return false;
+    }
+
+    OP_LOGD(opName.GetString(), "pads info is %s.", ops::to_string(padList).c_str());
+    ge::AttrUtils::SetListInt(opDesc, "pads", padList);
+
+    return true;
+}
+
+
+static bool SetPadListConv2d(const AscendString &opName,
+                             ge::OpDescPtr &opDesc,
+                             const OpStrideInfo &strides,
+                             const OpDilationInfo &dilations,
+                             const InputTensorShape &inputShapes)
+{
+    string padStr;
+    if (ge::AttrUtils::GetStr(opDesc, "padding", padStr) && padStr.compare("EXPLICIT") != 0) {
+        return SetPadListConv2dForPadding(padStr, opName, opDesc, strides, dilations, inputShapes);
+    }
+
+    // handle attr auto_pad from ONNX
+    if (ge::AttrUtils::GetStr(opDesc, "auto_pad", padStr)) {
+        return SetPadListConv2dForAutoPad(padStr, opName, opDesc, strides, dilations, inputShapes);
+    }
+
+    return true;
+}
+
+
+static inline bool CheckPadListDimsConv2d(const AscendString &opName,
+                                          const std::vector<int32_t> &padsList)
+{
+    auto padSize = padsList.size();
+    if (padsList.empty() || padSize != kConv2dPadSizeLimit) {
+        OP_LOGE(opName.GetString(), "pads list should be 4D. actual is: %lu.", padSize);
+        map<string, string> errMap;
+        errMap["param_name"] = "pads";
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_value"] = "4D";
+        errMap["input_value"] = std::to_string(padSize) + "D.";
+        std::string reportErrorCode = "E50029";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return false;
+    }
+
+    return true;
+}
+
+
+static bool CheckNegativePadConv2d(const AscendString &opName,
+                                   const ge::OpDescPtr &opDesc,
+                                   const std::vector<int32_t> &padsList)
+{
+    int32_t padt = padsList[kConv2dPadUpIdx];
+    int32_t padb = padsList[kConv2dPadDownIdx];
+    int32_t padl = padsList[kConv2dPadLeftIdx];
+    int32_t padr = padsList[kConv2dPadRightIdx];
+
+    bool negativePadFlag = (padt < 0 || padb < 0 || padl < 0 || padr < 0);
+    auto &xShape = opDesc->MutableInputDesc(0)->MutableShape();
+    auto &wShape = opDesc->MutableInputDesc(1)->MutableShape();
+    bool unknownShapeX = xShape.IsUnknownShape();
+    bool unknownRankX = xShape.IsUnknownDimNum();
+    bool unknownShapeW = wShape.IsUnknownShape();
+    bool unknownRankW = wShape.IsUnknownDimNum();
+    if (!unknownShapeX && !unknownRankX && !unknownShapeW && !unknownRankW && negativePadFlag) {
+        OP_LOGE(opName.GetString(), "pads should be positive,  actual is [%d,%d,%d,%d].", padt, padb, padl, padr);
+        map<string, string> errMap;
+        errMap["param_name"] = "pads";
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_value"] = "positive";
+        errMap["input_value"] = std::to_string(padt) + ", " + std::to_string(padb) + ", " +
+            std::to_string(padl) + ", " + std::to_string(padr);
+        std::string reportErrorCode = "E50029";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return false;
+    }
+
+    return true;
+}
+
+
+static bool GetPadConv2dNew(const AscendString &opName,
+                            const InputTensorShape &inputShapes,
+                            const OpStrideInfo &strides,
+                            const OpDilationInfo &dilations,
+                            ge::OpDescPtr &opDesc,
+                            OpPadsInfo &padsInfo)
+{
+    if (!SetPadListConv2d(opName, opDesc, strides, dilations, inputShapes)) {
+        return false;
+    }
+
+    std::vector<int32_t> padsList;
+    ge::AttrUtils::GetListInt(opDesc, "pads", padsList);
+    if (!CheckPadListDimsConv2d(opName, padsList)) {
+        return false;
+    }
+
+    int32_t padt = padsList[kConv2dPadUpIdx];
+    int32_t padb = padsList[kConv2dPadDownIdx];
+    int32_t padl = padsList[kConv2dPadLeftIdx];
+    int32_t padr = padsList[kConv2dPadRightIdx];
+    int32_t ih = inputShapes.xShape.h_value;
+    int32_t iw = inputShapes.xShape.w_value;
+    int32_t kh = inputShapes.wShape.h_value;
+    int32_t kw = inputShapes.wShape.w_value;
+    int32_t strh = strides.strideH;
+    int32_t strw = strides.strideW;
+    int32_t dilh = dilations.dilationH;
+    int32_t dilw = dilations.dilationW;
+    // cut off right/bottom pad when output size is 1
+    bool valid = IsConv2dOpType(opDesc);
+    if (valid) {
+        bool cutPad = false;
+        if (ih != -1 && kh != -1) {
+            int32_t ho = (ih + padt + padb - (kh - 1) * dilh - 1) / strh + 1;
+            int32_t hr = (ih + padt + padb - (kh - 1) * dilh - 1) % strh;
+            cutPad = ho == 1 && hr <= padb;
+            if (cutPad) {
+                padb -= hr;
+            }
+        }
+        if (iw != -1 && kw != -1) {
+            int32_t wo = (iw + padl + padr - (kw - 1) * dilw - 1) / strw + 1;
+            int32_t wr = (iw + padl + padr - (kw - 1) * dilw - 1) % strw;
+            cutPad = wo == 1 && wr <= padr;
+            if (cutPad) {
+                padr -= wr;
+            }
+        }
+        cutPad = padsList[kConv2dPadDownIdx] != padb || padsList[kConv2dPadRightIdx] != padr;
+        if (cutPad) {
+            padsList[kConv2dPadDownIdx] = padb;
+            padsList[kConv2dPadRightIdx] = padr;
+            OP_LOGD(opName.GetString(), "pads after cutting off is %s.", ops::to_string(padsList).c_str());
+            ge::AttrUtils::SetListInt(opDesc, "pads", padsList);
+        }
+    }
+
+    if (!CheckNegativePadConv2d(opName, opDesc, padsList)) {
+        return false;
+    }
+
+    padsInfo.padt = padt;
+    padsInfo.padb = padb;
+    padsInfo.padl = padl;
+    padsInfo.padr = padr;
+
+    return true;
+}
+
 /*!
   * @brief Convert different framework pad param to ir pads:
   *
@@ -4368,71 +4699,488 @@ static bool SetConv2dOutShapeRange(const AscendString& op_name,
   return true;
 }
 
-static graphStatus CheckConv2DBias(const AscendString& op_name, const OpDescPtr& op_desc, int32_t outChannel)
+
+static ShapeValInfo GetShapeValueInfoConv2d(const GeShape &shape, const PosInfo &posInfo)
 {
-  auto bias_tensor = op_desc->MutableInputDesc(2); // bias is the third value of input
-  if (bias_tensor == nullptr) {
-    return GRAPH_SUCCESS;
-  }
-
-  auto &bias_shape = bias_tensor->MutableShape();
-  size_t bias_dim_num = bias_shape.GetDimNum();
-  if (bias_dim_num != 1 && bias_dim_num != 4) { // bias shape should be 1D or 4D
-    OP_LOGE(op_name.GetString(), "input bias shape should be 1D or 4D.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "input bias shape should be 1D or 4D.";
-    std::string report_error_code = "E50060";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
- // The index of the C dimension in 4D, default value is 0
-  size_t idx_c = 0;
-  if (bias_dim_num == 4) {  // bias shape is 4D
-    auto bias_format = bias_tensor->GetFormat();
-    if (bias_format == FORMAT_NCHW) {
-      idx_c = 1;
-    } else if (bias_format == FORMAT_NHWC) {
-      idx_c = 3; // The 4th index of the C dimension in 4D
-    } else {
-      OP_LOGE(op_name.GetString(), "input bias format should be NCHW or NHWC when shape is 4D.");
-      map<string, string> err_map;
-      err_map["op_name"] = op_name.GetString();
-      err_map["description"] = "input bias format should be NCHW or NHWC when shape is 4D.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
+    ShapeValInfo shapeValue;
+    bool unknownRank = shape.IsUnknownDimNum();
+    bool unknownShape = shape.IsUnknownShape();
+    shapeValue.n_value = -1;
+    shapeValue.c_value = -1;
+    shapeValue.h_value = -1;
+    shapeValue.w_value = -1;
+    shapeValue.unknownRank = unknownRank;
+    shapeValue.unknownShape = unknownShape;
+    if (unknownRank) {
+        return shapeValue;
     }
-  }
+    shapeValue.n_value = shape.GetDim(posInfo.n_position);
+    shapeValue.c_value = shape.GetDim(posInfo.c_position);
+    shapeValue.h_value = shape.GetDim(posInfo.h_position);
+    shapeValue.w_value = shape.GetDim(posInfo.w_position);
 
-  for (size_t i = 0; i < bias_dim_num; i++) {
-    if (i == idx_c) {
-      if (bias_shape.GetDim(i) != outChannel) {
-        OP_LOGE(op_name.GetString(), "input bias size of dim_c should be equal to out_channels.");
-        map<string, string> err_map;
-        err_map["op_name"] = op_name.GetString();
-        err_map["description"] = "input bias size of dim_c should be equal to out_channels.";
-        std::string report_error_code = "E50060";
-        ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-        return GRAPH_FAILED;
-      }
-
-      continue;
-    }
-
-    if (bias_shape.GetDim(i) != 1) {
-        OP_LOGE(op_name.GetString(), "input bias size of dim[N, H, W] should be equal to 1.");
-        map<string, string> err_map;
-        err_map["op_name"] = op_name.GetString();
-        err_map["description"] = "input bias size of dim[N, H, W] should be equal to 1.";
-        std::string report_error_code = "E50060";
-        ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-        return GRAPH_FAILED;
-    }
-  }
-
-  return GRAPH_SUCCESS;
+    return shapeValue;
 }
+
+
+static graphStatus CheckConv2DBias(const AscendString& opName, const OpDescPtr& opDesc, int32_t outChannel)
+{
+    auto biasTensor = opDesc->MutableInputDesc(2); // 2: bias is the third value of input
+    if (biasTensor == nullptr || outChannel == -1) { // no bias or cout dynamic
+        return GRAPH_SUCCESS;
+    }
+
+    auto &biasShape = biasTensor->MutableShape();
+    bool unknownRankBias = biasShape.IsUnknownDimNum();
+    if (unknownRankBias) {
+        OP_LOGD(opName.GetString(), "input bias's shape is [-2].");
+        return GRAPH_SUCCESS;
+    }
+    size_t biasDimNum = biasShape.GetDimNum();
+    if (biasDimNum != 1 && biasDimNum != kConv2dDimSizeLimit) { // bias shape should be 1D or 4D
+        OP_LOGE(opName.GetString(), "input bias shape should be 1D or 4D.");
+        map<string, string> errMap;
+        errMap["op_name"] = opName.GetString();
+        errMap["description"] = "input bias shape should be 1D or 4D.";
+        std::string reportErrorCode = "E50060";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return GRAPH_FAILED;
+    }
+    // The index of the C dimension in 4D, default value is 0
+    size_t idx_c = 0;
+    auto biasFormat = biasTensor->GetFormat();
+    if (biasDimNum == kConv2dDimSizeLimit) {  // bias shape is 4D
+        if (biasFormat != FORMAT_NCHW && biasFormat != FORMAT_NHWC) {
+            OP_LOGE(opName.GetString(), "input bias format should be NCHW or NHWC when shape is 4D.");
+            map<string, string> errMap;
+            errMap["op_name"] = opName.GetString();
+            errMap["description"] = "input bias format should be NCHW or NHWC when shape is 4D.";
+            std::string reportErrorCode = "E50060";
+            ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+            return GRAPH_FAILED;
+        }
+        // get the index of C dim in 4D
+        if (!GetPosByFormat(biasFormat, "C", idx_c)) {
+            return GRAPH_FAILED;
+        }
+    }
+
+    for (size_t i = 0; i < biasDimNum; i++) {
+        if (i == idx_c) {
+            int32_t biasCout = biasShape.GetDim(i);
+            // bias dynamic
+            if (biasCout == -1) {
+                biasShape.SetDim(i, outChannel);
+                continue;
+            }
+            if (biasCout != outChannel) {
+                OP_LOGE(opName.GetString(), "input bias size of dim_c[%d] should be equal to out_channels[%d].",
+                        biasCout, outChannel);
+                map<string, string> errMap;
+                errMap["op_name"] = opName.GetString();
+                errMap["description"] = "input bias size of dim_c should be equal to out_channels.";
+                std::string reportErrorCode = "E50060";
+                ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+                return GRAPH_FAILED;
+            }
+            continue;
+        }
+
+        if (biasShape.GetDim(i) != 1) {
+            OP_LOGE(opName.GetString(), "input bias size of dim[N, H, W] should be equal to 1.");
+            map<string, string> errMap;
+            errMap["op_name"] = opName.GetString();
+            errMap["description"] = "input bias size of dim[N, H, W] should be equal to 1.";
+            std::string reportErrorCode = "E50060";
+            ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+            return GRAPH_FAILED;
+        }
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus CheckConv2dFormat(Format xFormat, Format wFormat, Format yFormat, const AscendString &opName)
+{
+    CHECK(FORMAT_RESERVED == xFormat, OP_LOGE(opName.GetString(), "get x format failed: %d", xFormat),
+        return GRAPH_FAILED);
+    CHECK(FORMAT_RESERVED == wFormat, OP_LOGE(opName.GetString(), "get w format failed: %d", wFormat),
+        return GRAPH_FAILED);
+    CHECK(FORMAT_RESERVED == yFormat, OP_LOGE(opName.GetString(), "get y format failed: %d", yFormat),
+        return GRAPH_FAILED);
+
+    if (xFormat != FORMAT_NCHW && xFormat != FORMAT_NHWC) {
+        OP_LOGE(opName.GetString(), "input x format should be NCHW or NHWC. actual is: %s",
+                TypeUtils::FormatToSerialString(xFormat).c_str());
+        map<string, string> errMap;
+        errMap["param"] = "x";
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_format_list"] = "NCHW or NHWC";
+        errMap["format"] = TypeUtils::FormatToSerialString(xFormat);
+        std::string reportErrorCode = "E50002";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return GRAPH_FAILED;
+    }
+
+    if (wFormat != FORMAT_NCHW && wFormat != FORMAT_NHWC && wFormat != FORMAT_HWCN) {
+        OP_LOGE(opName.GetString(), "input filter format should be NCHW, NHWC or HWCN."
+                " actual is: %s", TypeUtils::FormatToSerialString(wFormat).c_str());
+        map<string, string> errMap;
+        errMap["param"] = "filter";
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_format_list"] = "NCHW, NHWC or HWCN";
+        errMap["format"] = TypeUtils::FormatToSerialString(wFormat);
+        std::string reportErrorCode = "E50002";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return GRAPH_FAILED;
+    }
+
+    if (yFormat != FORMAT_NCHW && yFormat != FORMAT_NHWC) {
+        OP_LOGE(opName.GetString(), "output y format should be NCHW or NHWC. actual is: %s",
+                TypeUtils::FormatToSerialString(yFormat).c_str());
+        map<string, string> errMap;
+        errMap["param"] = "y";
+        errMap["op_name"] = opName.GetString();
+        errMap["expected_format_list"] = "NCHW or NHWC";
+        errMap["format"] = TypeUtils::FormatToSerialString(yFormat);
+        std::string reportErrorCode = "E50002";
+        ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        return GRAPH_FAILED;
+    }
+
+    if (xFormat != yFormat) {
+        OP_LOGE(opName.GetString(), "input x format should be same as y format. x format is: %s, y format is: %s",
+                TypeUtils::FormatToSerialString(xFormat).c_str(),
+                TypeUtils::FormatToSerialString(yFormat).c_str());
+        return GRAPH_FAILED;
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static void SetDataFormatConv2d(const OpDescPtr& opDesc, Format xFormat)
+{
+    // set data_format: copy value of xFormat to data_format
+    // data_format will be used to infer position of H/W
+    // in strides and dilations(previously used ori_format)
+    std::string dataFormat;
+    std::string attrDataFormat = "data_format";
+
+    if (ge::AttrUtils::GetStr(opDesc, attrDataFormat, dataFormat)) {
+        OP_LOGD(dataFormat.c_str(), "conv before set data_format");
+    }
+
+    if (xFormat == ge::FORMAT_NCHW) {
+        ge::AttrUtils::SetStr(opDesc, attrDataFormat, "NCHW");
+    } else {
+        ge::AttrUtils::SetStr(opDesc, attrDataFormat, "NHWC");
+    }
+
+    ge::AttrUtils::GetStr(opDesc, attrDataFormat, dataFormat);
+    OP_LOGD(dataFormat.c_str(), "conv after set data_format");
+}
+
+
+static graphStatus ProcessInputChannelAndGroup(const AscendString &opName,
+                                               int64_t ic,
+                                               int64_t kc,
+                                               int64_t &groups,
+                                               OpDescPtr &opDesc)
+{
+    bool icUpdateFlag = ic < 0 && kc > 0 && groups > 0;
+    if (icUpdateFlag) {
+        ic = kc * groups;
+        OP_LOGW(opName.GetString(), "input x channel is unknow, fixed channel = %ld, "
+                "in_channels should be kc*grous[%ld * %ld]", ic, kc, groups);
+    }
+
+    if (ic > 0 && kc > 0) {
+        if (groups != -1) {
+            if (groups == 1 && ic % kc == 0) {
+                groups = ic / kc;
+                ge::AttrUtils::SetInt(opDesc, "groups", groups);
+                OP_LOGD(opName.GetString(), "parameter groups is implicitly changed.");
+            }
+
+            if (ic != kc * groups) {
+                OP_LOGE(opName.GetString(), "x channel should be equal to filter channel*groups. "
+                "x channel is: %ld, filter channel is: %ld, groups is: %ld.", ic, kc, groups);
+                return GRAPH_FAILED;
+            }
+
+            return GRAPH_SUCCESS;
+        }
+        // group is dynamic
+        if (ic % kc != 0) {
+            OP_LOGE(opName.GetString(), "ic mod kc should be equal to zero. "
+            "x channel(ic) is %ld, filter channel(kc) is %ld", ic, kc);
+            return GRAPH_FAILED;
+        }
+
+        groups = ic % kc;
+        ge::AttrUtils::SetInt(opDesc, "groups", groups);
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus ProcessGroupParamConv2d(const AscendString &opName,
+                                           const InputTensorShape &inputShapes,
+                                           OpDescPtr &opDesc)
+{
+    bool unknownRank = inputShapes.xShape.unknownRank || inputShapes.wShape.unknownRank;
+    if (unknownRank) {
+        return GRAPH_SUCCESS;
+    }
+
+    int64_t ic = inputShapes.xShape.c_value;
+    int64_t kc = inputShapes.wShape.c_value;
+    int64_t groups = 1;
+    ge::AttrUtils::GetInt(opDesc, "groups", groups);
+    if (groups == 0) {
+        OP_LOGE(opName.GetString(), "groups cannot be zero.");
+        return GRAPH_FAILED;
+    }
+
+    if (ProcessInputChannelAndGroup(opName, ic, kc, groups, opDesc) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
+    }
+
+    int64_t kn = inputShapes.wShape.n_value;
+    if (kn > 0 && groups > 0) {
+        if (kn % groups != 0) {
+            OP_LOGE(opName.GetString(), "out_channels should be divisible by groups.");
+            map<string, string> errMap;
+            errMap["op_name"] = opName.GetString();
+            errMap["description"] = "out_channels should be divisible by groups.";
+            std::string reportErrorCode = "E50060";
+            ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+            return GRAPH_FAILED;
+        }
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus CheckShapeDimsConv2d(const AscendString &opName,
+                                        const GeShape &xShape,
+                                        const GeShape &wShape)
+{
+    bool unknownRankX = xShape.IsUnknownDimNum();
+    if (!unknownRankX && xShape.GetDimNum() != kConv2dDimSizeLimit) {
+        OP_LOGE(opName.GetString(), "x shape dimnum is %lu, should be 4", xShape.GetDimNum());
+        return GRAPH_FAILED;
+    }
+
+    bool unknownRankW = wShape.IsUnknownDimNum();
+    if (!unknownRankW && wShape.GetDimNum() != kConv2dDimSizeLimit) {
+        OP_LOGE(opName.GetString(), "filter shape dimnum is %lu, should be 4", wShape.GetDimNum());
+        return GRAPH_FAILED;
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus SetShapeConv2d(Format format, const ShapeValInfo &shapeValue, GeShape &shape)
+{
+    PosInfo formatPos;
+    CHECK(!GetPosInfoByFormat(format, formatPos), OP_LOGE("", "get position info failed."), return GRAPH_FAILED);
+
+    shape.SetDimNum(kConv2dDimSizeLimit);
+    shape.SetDim(formatPos.n_position, shapeValue.n_value);
+    shape.SetDim(formatPos.h_position, shapeValue.h_value);
+    shape.SetDim(formatPos.w_position, shapeValue.w_value);
+    shape.SetDim(formatPos.c_position, shapeValue.c_value);
+
+    return GRAPH_SUCCESS;
+}
+
+
+static void SetOutputDtypeConv2d(const ge::GeTensorDescPtr &xTensor, ge::GeTensorDescPtr &yTensor)
+{
+    auto xDtype = xTensor->GetDataType();
+    if (xDtype == ge::DT_INT8) {
+        yTensor->SetDataType(ge::DT_INT32);
+    } else if (xDtype == ge::DT_INT4) {
+        yTensor->SetDataType(ge::DT_INT32);
+    } else {
+        yTensor->SetDataType(xDtype);
+    }
+}
+
+
+static graphStatus GetAttrsInfoConv2d(const AscendString &opName,
+                                      OpDescPtr &opDesc,
+                                      Format xFormat,
+                                      OpStrideInfo &strideInfo,
+                                      OpDilationInfo &dilationInfo)
+{
+    int32_t strh = 0;
+    int32_t strw = 0;
+    int32_t dilh = 0;
+    int32_t dilw = 0;
+    if (!GetAttrsConv2D(opName, opDesc, xFormat, strh, strw, dilh, dilw)) {
+        return GRAPH_FAILED;
+    }
+
+    strideInfo.strideH = strh;
+    strideInfo.strideW = strw;
+    dilationInfo.dilationH = dilh;
+    dilationInfo.dilationW = dilw;
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus CalcOutputShapeConv2d(const AscendString &opName,
+                                         const OpStrideInfo &strideInfo,
+                                         const OpDilationInfo &dilationInfo,
+                                         const InputTensorShape &inputShape,
+                                         const OpPadsInfo &padsInfo,
+                                         ShapeValInfo &yShapeValue)
+{
+    int64_t ih = inputShape.xShape.h_value;
+    int64_t iw = inputShape.xShape.w_value;
+    int64_t kh = inputShape.wShape.h_value;
+    int64_t kw = inputShape.wShape.w_value;
+    int64_t oh = -1;
+    int64_t ow = -1;
+    int64_t ihPad = -1;
+    int64_t iwPad = -1;
+
+    if (ih > 0 && kh > 0) {
+        ihPad = (ih + padsInfo.padt + padsInfo.padb - dilationInfo.dilationH * (kh - 1) - 1);
+        oh = ihPad / strideInfo.strideH + 1;
+    }
+
+    if (iw > 0 && kw > 0) {
+        iwPad = (iw + padsInfo.padl + padsInfo.padr - dilationInfo.dilationW * (kw - 1) - 1);
+        ow = iwPad / strideInfo.strideW + 1;
+    }
+
+    if ((ih > 0) && (kh > 0) && (iw > 0) && (kw > 0)) {
+        if ((ihPad < 0) || (iwPad < 0)) {
+            OP_LOGE(opName.GetString(), "image size after padding should be greater than or equal to filter size.");
+            map<string, string> errMap;
+            errMap["op_name"] = opName.GetString();
+            errMap["description"] = "image size after padding should be greater than or equal to filter size.";
+            std::string reportErrorCode = "E50060";
+            ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+        }
+    }
+
+    yShapeValue.h_value = oh;
+    yShapeValue.w_value = ow;
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus ProcessFuzzyBuildConv2d(const AscendString &opName,
+                                           const OpDescPtr &opDesc,
+                                           const GeShape &xShape)
+{
+    // fuzz_build switch
+    bool unknownRankX = xShape.IsUnknownDimNum();
+    bool fuzzBuild = false;
+    ge::AttrUtils::GetBool(opDesc, ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzBuild);
+    // fuzz build allow shape dim -1 with range
+    if ((!unknownRankX) && fuzzBuild) {
+        OP_LOGD(opName.GetString(), "start fuzz build.");
+        // change pad to -1 when padding is SAME
+        std::string padStr;
+        ge::AttrUtils::GetStr(opDesc, "padding", padStr);
+        if (padStr == "SAME") {
+            ge::AttrUtils::SetListInt(opDesc, "pads", {-1, -1, -1, -1});
+            OP_LOGD(opName.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
+        }
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static graphStatus SetDynamicOutputShapeRangeConv2d(const AscendString &opName,
+                                                    const InputTensorShape &inputShape,
+                                                    const OpStrideInfo &strideInfo,
+                                                    const OpDilationInfo &dilationInfo,
+                                                    const OpPadsInfo &padsInfo,
+                                                    OpDescPtr &opDesc)
+{
+    bool isDynamic = (inputShape.xShape.unknownShape && !inputShape.xShape.unknownRank) ||
+                     (inputShape.wShape.unknownShape && !inputShape.wShape.unknownRank);
+    if (isDynamic) {
+        auto yTensor = opDesc->MutableOutputDesc(0);
+        auto xTensor = opDesc->MutableInputDesc(0);
+        auto &yShape = yTensor->MutableShape();
+        vector<int32_t> attrParams = {strideInfo.strideH,
+                                      strideInfo.strideW,
+                                      dilationInfo.dilationH,
+                                      dilationInfo.dilationW,
+                                      padsInfo.padt + padsInfo.padb,
+                                      padsInfo.padl + padsInfo.padr,
+                                      static_cast<int32_t>(inputShape.wShape.n_value),
+                                      static_cast<int32_t>(inputShape.wShape.h_value),
+                                      static_cast<int32_t>(inputShape.wShape.w_value)
+                                      };
+        if (!SetConv2dOutShapeRange(opName, opDesc, attrParams, yShape, xTensor, yTensor)) {
+            return GRAPH_FAILED;
+        }
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+
+static bool CheckZeroShapeConv2d(const ShapeValInfo &shapeValue)
+{
+    if (shapeValue.unknownRank) {
+        return false;
+    }
+
+    if (shapeValue.n_value == 0 || shapeValue.h_value == 0  ||
+        shapeValue.w_value == 0 || shapeValue.c_value == 0) {
+        OP_LOGE("", "shape cannot be 0, shape is [%ld, %ld, %ld, %ld] in format NCHW",
+                shapeValue.n_value, shapeValue.c_value, shapeValue.h_value, shapeValue.w_value);
+        return true;
+    }
+
+    return false;
+}
+
+
+static graphStatus GetInputShapeInfoConv2d(const GeShape &xShape,
+                                           const GeShape &wShape,
+                                           Format xFormat,
+                                           Format wFormat,
+                                           InputTensorShape &inputShapes)
+{
+    PosInfo xFormatPos;
+    PosInfo wFormatPos;
+    if (!GetPosInfoByFormat(xFormat, xFormatPos)) {
+        return GRAPH_FAILED;
+    }
+    if (!GetPosInfoByFormat(wFormat, wFormatPos)) {
+        return GRAPH_FAILED;
+    }
+
+    ShapeValInfo xShapeValue = GetShapeValueInfoConv2d(xShape, xFormatPos);
+    ShapeValInfo wShapeValue = GetShapeValueInfoConv2d(wShape, wFormatPos);
+    if (CheckZeroShapeConv2d(xShapeValue) || CheckZeroShapeConv2d(wShapeValue)) {
+        return GRAPH_FAILED;
+    }
+
+    inputShapes.xShape = xShapeValue;
+    inputShapes.wShape = wShapeValue;
+
+    return GRAPH_SUCCESS;
+}
+
 
 /*!
   * @brief Infer output shape and dtype, dtype is same to first input tensor, Output
@@ -4441,280 +5189,105 @@ static graphStatus CheckConv2DBias(const AscendString& op_name, const OpDescPtr&
   * @return Status The processing flow result.
   */
 IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
+    auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+    CHECK_PTR_NULL(opDesc, "op desc", return GRAPH_FAILED);
 
-  AscendString op_name = op_desc->GetName().c_str();
-  PROFILING_PROTO_INIT(op_name.GetString());
-  OP_LOGD(op_name.GetString(), "Enter Conv2DInfer.");
+    AscendString opName = opDesc->GetName().c_str();
+    PROFILING_PROTO_INIT(opName.GetString());
+    OP_LOGD(opName.GetString(), "Enter Conv2DInfer.");
 
-  auto x_tensor = op_desc->MutableInputDesc(0);
-  auto w_tensor = op_desc->MutableInputDesc(1);
-  CHECK_PTR_NULL(x_tensor, "tensor x desc", return GRAPH_FAILED);
-  CHECK_PTR_NULL(w_tensor, "tensor filter desc", return GRAPH_FAILED);
+    auto yTensor = opDesc->MutableOutputDesc(0);
+    auto xTensor = opDesc->MutableInputDesc(0);
+    auto wTensor = opDesc->MutableInputDesc(1);
+    CHECK_PTR_NULL(xTensor, "tensor x desc", return GRAPH_FAILED);
+    CHECK_PTR_NULL(wTensor, "tensor filter desc", return GRAPH_FAILED);
+    CHECK_PTR_NULL(yTensor, "tensor y desc", return GRAPH_FAILED);
 
-  auto &x_shape = x_tensor->MutableShape();
-  auto &w_shape = w_tensor->MutableShape();
-  bool unknown_rank = x_shape.IsUnknownDimNum();
-  if ((!unknown_rank && x_shape.GetDimNum() != 4) || w_shape.GetDimNum() != 4) {
-    OP_LOGE(op_name.GetString(), "x_shape dimnum is %lu", x_shape.GetDimNum());
-    return GRAPH_FAILED;
-  }
-  auto x_format = x_tensor->GetFormat();
-  auto w_format = w_tensor->GetFormat();
-  CHECK_OP_FUNC(FORMAT_RESERVED == x_format, return GRAPH_FAILED, "get format failed: %d", x_format);
-  CHECK_OP_FUNC(FORMAT_RESERVED == w_format, return GRAPH_FAILED, "get format failed: %d", w_format);
-
-  int32_t in = -1;
-  int32_t ic = -1;
-  int32_t ih = -1;
-  int32_t iw = -1;
-  int32_t kn = 0;
-  int32_t kc = 0;
-  int32_t kh = 0;
-  int32_t kw = 0;
-  if (x_format == FORMAT_NCHW) {
-    if (!unknown_rank) {
-      in = x_shape.GetDim(0);
-      ic = x_shape.GetDim(1);
-      ih = x_shape.GetDim(2);
-      iw = x_shape.GetDim(3);
+    // check format
+    auto xFormat = xTensor->GetFormat();
+    auto wFormat = wTensor->GetFormat();
+    auto yFormat = yTensor->GetFormat();
+    if (CheckConv2dFormat(xFormat, wFormat, yFormat, opName) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
     }
-  } else if (x_format == FORMAT_NHWC) {
-    if (!unknown_rank) {
-      in = x_shape.GetDim(0);
-      ic = x_shape.GetDim(3);
-      ih = x_shape.GetDim(1);
-      iw = x_shape.GetDim(2);
+
+    auto &xShape = xTensor->MutableShape();
+    auto &wShape = wTensor->MutableShape();
+
+    // check shape dims
+    if (CheckShapeDimsConv2d(opName, xShape, wShape) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
     }
-  } else {
-    OP_LOGE(op_name.GetString(),
-            "input x format should be NCHW or NHWC."
-            " actual is: %s",
-            TypeUtils::FormatToSerialString(x_format).c_str());
-    map<string, string> err_map;
-    err_map["param"] = "x";
-    err_map["op_name"] = op_name.GetString();
-    err_map["expected_format_list"] = "NCHW or NHWC";
-    err_map["format"] = TypeUtils::FormatToSerialString(x_format);
-    std::string report_error_code = "E50002";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
 
-  if (w_format == FORMAT_NCHW) {
-    kn = w_shape.GetDim(0);
-    kc = w_shape.GetDim(1);
-    kh = w_shape.GetDim(2);
-    kw = w_shape.GetDim(3);
-  } else if (w_format == FORMAT_NHWC) {
-    kn = w_shape.GetDim(0);
-    kc = w_shape.GetDim(3);
-    kh = w_shape.GetDim(1);
-    kw = w_shape.GetDim(2);
-  } else if (w_format == FORMAT_HWCN) {
-    kn = w_shape.GetDim(3);
-    kc = w_shape.GetDim(2);
-    kh = w_shape.GetDim(0);
-    kw = w_shape.GetDim(1);
-  } else {
-    OP_LOGE(op_name.GetString(),
-            "input filter format should be NCHW, NHWC or HWCN."
-            " actual is: %s",
-            TypeUtils::FormatToSerialString(w_format).c_str());
-    map<string, string> err_map;
-    err_map["param"] = "filter";
-    err_map["op_name"] = op_name.GetString();
-    err_map["expected_format_list"] = "NCHW, NHWC or HWCN";
-    err_map["format"] = TypeUtils::FormatToSerialString(w_format);
-    std::string report_error_code = "E50002";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-
-  if (CheckConv2DBias(op_name, op_desc, kn) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-
-  // set data_format: copy value of x_format to data_format
-  // data_format will be used to infer position of H/W
-  // in strides and dilations(previously used ori_format)
-  std::string data_format;
-  std::string attr_data_format = "data_format";
-  std::string data_format_NCHW = "NCHW";
-  std::string data_format_NHWC = "NHWC";
-
-  if (ge::AttrUtils::GetStr(op_desc, attr_data_format, data_format)) {
-    OP_LOGI(data_format.c_str(), "conv before set data_format");
-  }
-
-  if (x_format == ge::FORMAT_NCHW) {
-    ge::AttrUtils::SetStr(op_desc, attr_data_format, data_format_NCHW);
-  } else {
-    ge::AttrUtils::SetStr(op_desc, attr_data_format, data_format_NHWC);
-  }
-
-  ge::AttrUtils::GetStr(op_desc, attr_data_format, data_format);
-  OP_LOGI(data_format.c_str(), "conv after set data_format");
-
-  int64_t groups = 1;
-  ge::AttrUtils::GetInt(op_desc, "groups", groups);
-  bool is_dynamic = false;
-  // when static op or dynamic op phase_running, is_dynamic == False
-  if (x_shape.IsUnknownShape() && (!x_shape.IsUnknownDimNum())) {
-    is_dynamic = true;
-  }
-  if (is_dynamic && (ic == -1)) {
-    ic = kc * groups;
-    OP_LOGW(op_name.GetString(),
-            "input x channel is unknow, fixed channel = %d, "
-            "in_channels should be kc*grous[%d * %d]", (int)ic, (int)kc, (int)groups);
-  }
-  if ((!unknown_rank) && (groups == 1)) {
-    if ((ic > 0) && (ic % kc == 0)) {
-      groups = ic / kc;
-      ge::AttrUtils::SetInt(op_desc, "groups", groups);
-      OP_LOGD(op_name.GetString(), "parameter groups is implicitly changed.");
-    } else {
-      OP_LOGE(op_name.GetString(), "in_channels(>0) should be divisible by kernel_channels when groups = 1.");
-      map<string, string> err_map;
-      err_map["op_name"] = op_name.GetString();
-      err_map["description"] = "in_channels(>0) should be divisible by kernel_channels when groups = 1.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
+    // get shape values
+    InputTensorShape inputShapes;
+    if (GetInputShapeInfoConv2d(xShape, wShape, xFormat, wFormat, inputShapes) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
     }
-  }
-  if ((!unknown_rank) && (ic != kc * groups)) {
-    OP_LOGE(op_name.GetString(),
-            "x channel should be equal to filter channel*groups. "
-            "x format is: %s, filter format is: %s, "
-            "x shape is: [%ld,%ld,%ld,%ld], filter shape is: [%ld,%ld,%ld,%ld], "
-            "groups is: %d.",
-            TypeUtils::FormatToSerialString(x_format).c_str(), TypeUtils::FormatToSerialString(w_format).c_str(),
-            x_shape.GetDim(0), x_shape.GetDim(1), x_shape.GetDim(2),
-            x_shape.GetDim(3), w_shape.GetDim(0), w_shape.GetDim(1),
-            w_shape.GetDim(2), w_shape.GetDim(3), (int)groups);
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["x_shape"] = std::to_string(x_shape.GetDim(0)) + ", " + std::to_string(x_shape.GetDim(1)) + ", " +
-                         std::to_string(x_shape.GetDim(2)) + ", " + std::to_string(x_shape.GetDim(3));
-    err_map["filter_shape"] = std::to_string(w_shape.GetDim(0)) + ", " + std::to_string(w_shape.GetDim(1)) + ", " +
-                              std::to_string(w_shape.GetDim(2)) + ", " + std::to_string(w_shape.GetDim(3));
-    err_map["groups"] = std::to_string(groups);
 
-    std::string report_error_code = "E50059";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  if (kn % groups != 0) {
-    OP_LOGE(op_name.GetString(), "out_channels should be divisible by groups.");
-    map<string, string> err_map;
-    err_map["op_name"] = op_name.GetString();
-    err_map["description"] = "out_channels should be divisible by groups.";
-    std::string report_error_code = "E50060";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  PROFILING_PROTO_AFTER_GET_SHAPE_REG()
-  int32_t strh = 0;
-  int32_t strw = 0;
-  int32_t dilh = 0;
-  int32_t dilw = 0;
-  int32_t padt = 0;
-  int32_t padb = 0;
-  int32_t padl = 0;
-  int32_t padr = 0;
-  if (!GetAttrsConv2D(op_name, op_desc, x_format, strh, strw, dilh, dilw) ||
-      !GetPadConv2D(op_name, op_desc, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr)) {
-    return GRAPH_FAILED;
-  }
-
-  int64_t ihPad = (ih + padt + padb - dilh * (kh - 1) - 1);
-  int64_t iwPad = (iw + padl + padr - dilw * (kw - 1) - 1);
-  int64_t oh = ihPad / strh + 1;
-  int64_t ow = iwPad / strw + 1;
-  if (unknown_rank) {
-    oh = -1;
-    ow = -1;
-  }
-  if ((ih > 0) && (kh > 0) && (iw > 0) && (kw > 0)) {
-    if ((ihPad < 0) || (iwPad < 0)) {
-      OP_LOGE(op_name.GetString(), "image size after padding should be greater than or equal to filter size.");
-      map<string, string> err_map;
-      err_map["op_name"] = op_name.GetString();
-      err_map["description"] = "image size after padding should be greater than or equal to filter size.";
-      std::string report_error_code = "E50060";
-      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    // check bias
+    if (CheckConv2DBias(opName, opDesc, inputShapes.wShape.n_value) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
     }
-  }
-  PROFILING_PROTO_AFTER_INFER_SHAPE_REG()
-  auto y_tensor = op_desc->MutableOutputDesc(0);
-  auto y_format = y_tensor->GetFormat();
-  auto &y_shape = y_tensor->MutableShape();
-  y_shape.SetDimNum(4);
-  CHECK_OP_FUNC(FORMAT_RESERVED == y_format, return GRAPH_FAILED, "get format failed: %d", y_format)
-  if (y_format == FORMAT_NCHW) {
-    y_shape.SetDim(0, in);
-    y_shape.SetDim(1, kn);
-    y_shape.SetDim(2, oh);
-    y_shape.SetDim(3, ow);
-  } else if (y_format == FORMAT_NHWC) {
-    y_shape.SetDim(0, in);
-    y_shape.SetDim(1, oh);
-    y_shape.SetDim(2, ow);
-    y_shape.SetDim(3, kn);
-  } else {
-    OP_LOGE(op_name.GetString(),
-            "output y format should be NCHW or NHWC."
-            " actual is: %s",
-            TypeUtils::FormatToSerialString(y_format).c_str());
-    map<string, string> err_map;
-    err_map["param"] = "y";
-    err_map["op_name"] = op_name.GetString();
-    err_map["expected_format_list"] = "NCHW or NHWC";
-    err_map["format"] = TypeUtils::FormatToSerialString(y_format);
-    std::string report_error_code = "E50002";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
-  auto x_dtype = x_tensor->GetDataType();
-  if (x_dtype == ge::DT_INT8) {
-    y_tensor->SetDataType(ge::DT_INT32);
-  } else if (x_dtype == ge::DT_INT4) {
-    y_tensor->SetDataType(ge::DT_INT32);
-  } else {
-    y_tensor->SetDataType(x_dtype);
-  }
 
-  // fuzz_build switch
-  bool fuzz_build = false;
-  ge::AttrUtils::GetBool(op_desc, ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
+    // set data_format
+    SetDataFormatConv2d(opDesc, xFormat);
 
-  // set Range
-  if (is_dynamic) {
-    OP_LOGD(op_name.GetString(), "start accurate build.");
-    vector<int32_t> attr_params = {strh, strw, dilh, dilw,
-                                   padt + padb, padl + padr,
-                                   kn, kh, kw};
-    if (!SetConv2dOutShapeRange(op_name, op_desc, attr_params, y_shape, x_tensor, y_tensor)) {
-      return GRAPH_FAILED;
+    // check and update group params
+    if (ProcessGroupParamConv2d(opName, inputShapes, opDesc) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
     }
-  }
-  // fuzz build allow shape dim -1 with range
-  if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(op_name.GetString(), "start fuzz build.");
-    // change pad to -1 when padding is SAME
-    std::string pad_str;
-    ge::AttrUtils::GetStr(op_desc, "padding", pad_str);
-    if (pad_str == "SAME") {
-      ge::AttrUtils::SetListInt(op_desc, "pads", {-1, -1, -1, -1});
-      OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
+
+    PROFILING_PROTO_AFTER_GET_SHAPE_REG()
+
+    // get attrs: stride, dilation
+    OpStrideInfo strideInfo = {0};
+    OpDilationInfo dilationInfo = {0};
+    if (GetAttrsInfoConv2d(opName, opDesc, xFormat, strideInfo, dilationInfo) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
     }
-  }
-  OP_LOGD(op_name.GetString(), "Leave Conv2DInfer.");
-  PROFILING_PROTO_END()
-  return GRAPH_SUCCESS;
+
+    // get pads
+    OpPadsInfo padsInfo = {0};
+    if (!GetPadConv2dNew(opName, inputShapes, strideInfo, dilationInfo, opDesc, padsInfo)) {
+        return GRAPH_FAILED;
+    }
+
+    PROFILING_PROTO_AFTER_INFER_SHAPE_REG()
+
+    // calculate ho, wo
+    ShapeValInfo yShapeValue;
+    yShapeValue.n_value = inputShapes.xShape.n_value;
+    yShapeValue.c_value = inputShapes.wShape.n_value;
+    if (CalcOutputShapeConv2d(opName, strideInfo, dilationInfo, inputShapes, padsInfo, yShapeValue) !=
+        GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
+    }
+
+    // get y shape
+    auto &yShape = yTensor->MutableShape();
+    if (SetShapeConv2d(yFormat, yShapeValue, yShape)) {
+        return GRAPH_FAILED;
+    }
+
+    // set y dtype
+    SetOutputDtypeConv2d(xTensor, yTensor);
+
+    // set dynamic range
+    if (SetDynamicOutputShapeRangeConv2d(opName, inputShapes, strideInfo, dilationInfo, padsInfo, opDesc) !=
+        GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
+    }
+
+    // process for fuzzy build
+    if (ProcessFuzzyBuildConv2d(opName, opDesc, xShape) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
+    }
+
+    OP_LOGD(opName.GetString(), "Leave Conv2DInfer.");
+    PROFILING_PROTO_END()
+
+    return GRAPH_SUCCESS;
 }
 
 /*!
