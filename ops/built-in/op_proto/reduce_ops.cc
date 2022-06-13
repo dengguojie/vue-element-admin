@@ -96,8 +96,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     return false;
   }
 
-  ge::TensorDesc axis_desc;
-  axis_desc = op.GetInputDescByName(axis_name.c_str());
+  ge::TensorDesc axis_desc = op.GetInputDescByName(axis_name.c_str());
   auto axis_shape = axis_desc.GetShape();
   auto axis_type = axis_desc.GetDataType();
   std::vector<int64_t> axis_shapeVector = axis_shape.GetDims();
@@ -464,8 +463,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
       OP_LOGE(TbeGetName(op).c_str(), "axis_type is illegal");
       return false;
     }
-    // Convert "-1" -> "length-1";
-    if (!ConvertAxis(axis, (int64_t)input_length)) {
+    if (!ConvertAxis(axis, static_cast<int64_t>(input_length))) {
       OP_LOGE(TbeGetName(op).c_str(), "axis_value is illegal");
       return false;
     }
@@ -576,8 +574,7 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
 
   bool noop_with_empty_axes = false;
   op.GetAttr("noop_with_empty_axes", noop_with_empty_axes);
-  // Convert "-1" -> "length-1";
-  if (!ConvertAxis(axis, (int64_t)input_length, noop_with_empty_axes)) {
+  if (!ConvertAxis(axis, static_cast<int64_t>(input_length), noop_with_empty_axes)) {
     OP_LOGE(TbeGetName(op).c_str(), "axis_value is illegal");
     return false;
   }

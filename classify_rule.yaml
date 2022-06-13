@@ -1022,6 +1022,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
       - ops/built-in/framework/tf_plugin/cast_plugin.cc
+      - ops/built-in/framework/tf_plugin/layer_norm_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/CMakeLists.txt
       - ops/built-in/framework/tf_plugin/decode_csv_plugin.cc
       - ops/built-in/framework/tf_plugin/dilation2d_backprop_filter_plugin.cc
@@ -3482,7 +3483,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/cos_plugin.cc
       - ops/built-in/framework/tf_plugin/bn_training_update_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool_with_argmax_plugin.cc
-      - ops/built-in/framework/tf_plugin/layer_norm_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/select_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bicubic_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_plugin.cc

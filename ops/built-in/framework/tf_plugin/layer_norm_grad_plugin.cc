@@ -24,7 +24,8 @@
 #include "op_log.h"
 
 namespace domi {
-Status LayerNormGradParserParams(const std::vector<const google::protobuf::Message*> inside_nodes, ge::Operator& op) {
+Status LayerNormGradParserParams(const std::vector<const google::protobuf::Message*> inside_nodes,
+                                 const ge::Operator& op) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter layer grad norm fusion parser.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
