@@ -116,6 +116,17 @@ case9 = {"params": [
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case10 = {"params": [
+    {"shape": (-2,), "dtype": "float32", "format": "NHWC", "ori_shape": (-2,),
+     "ori_format": "NHWC", "range": [(1, 100), (2, 2), (4, 4), (4, 4)]},
+    {"shape": (-2,), "dtype": "float32", "format": "NHWC", "ori_shape": (-2,),
+     "ori_format": "NHWC", "range": [(1, 1), (1, 10), (1, 10)]},
+    {"shape": (-2,), "dtype": "float32", "format": "NHWC", "ori_shape": (-2,),
+     "ori_format": "NHWC", "range": [(1, 100), (2, 2), (4, 4), (4, 4)]}],
+          "case_name": "prelu_dynamic_10",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
 
 
 def test_op_select_format(test_arg):
@@ -167,6 +178,7 @@ ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
+ut_case.add_case(["Ascend910A"], case10)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def side_effects(*args):

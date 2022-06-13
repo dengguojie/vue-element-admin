@@ -26,6 +26,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_platform
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_compute import check_support_fusion
@@ -287,18 +288,23 @@ def prelu(input_x, input_a, output_y, kernel_name="prelu"):
     if weight_dtype != input_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal('prelu', 'input_dtype', 'weight_dtype',
                                                               str(weight_dtype), str(input_dtype))
+    is_unknown_rank = False
+    if is_unknown_rank_input([input_x, input_a]):
+        input_x, input_a = [input_x, input_x] if is_unknown_rank_input([input_x]) else [input_a, input_a]
+        is_unknown_rank = True
+    else:
+        shape_x, weight_shape = broadcast_inputs_shape(input_x, input_a)
+        input_x["shape"] = shape_x
+        input_a["shape"] = weight_shape
 
-    shape_x, weight_shape = broadcast_inputs_shape(input_x, input_a)
-    input_x["shape"] = shape_x
-    input_a["shape"] = weight_shape
+        tbe_context.get_context().add_compile_info("broadcast_weight_shape", weight_shape)
 
-    tbe_context.get_context().add_compile_info("broadcast_weight_shape", weight_shape)
-
-    weight_range = []
-    for i, _range in enumerate(input_x["range"]):
-        _range = (weight_shape[i], weight_shape[i]) if weight_shape[i] != -1 else _range
-        weight_range.append(_range)
-    input_a["range"] = tuple(weight_range)
+        weight_range = []
+        for i, _range in enumerate(input_x["range"]):
+            _range = (weight_shape[i], weight_shape[i]) if weight_shape[i] != -1 else _range
+            weight_range.append(_range)
+        input_a["range"] = tuple(weight_range)
+    tbe_context.get_context().add_compile_info("is_unknown_rank", is_unknown_rank)
 
     ins = classify([input_x, input_a], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

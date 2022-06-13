@@ -504,7 +504,8 @@ VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
 // --------------------------ProdEnvMatACalcRij Begin---------------------
 IMPLEMT_VERIFIER(ProdEnvMatACalcRij, ProdEnvMatACalcRijVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdEnvMatACalcRij", "Failed to get op name of ProdEnvMatACalcRij"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE("ProdEnvMatACalcRij", "Failed to get op name of ProdEnvMatACalcRij"),
         return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);

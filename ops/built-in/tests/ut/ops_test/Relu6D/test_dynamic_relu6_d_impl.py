@@ -13,10 +13,18 @@ case1 = {"params": [{"shape": (1, -1), "dtype": "float16", "format": "ND", "ori_
                     {"shape": (1, -1), "dtype": "float16", "format": "ND", "ori_shape": (1, 8),
                      "ori_format": "ND", "range": [(1, 1), (1, None)]},
                     1.0],
-         "case_name": "relu6_d_float16",
+         "case_name": "relu6_d_float16_1",
+         "expect": "success"}
+case2 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,),
+                     "ori_format": "ND", "range": [(1, 1), (1, None)]},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,),
+                     "ori_format": "ND", "range": [(1, 1), (1, None)]},
+                    1.0],
+         "case_name": "relu6_d_float16_2",
          "expect": "success"}
 
 ut_case.add_case("all", case1)
+ut_case.add_case(["Ascend910A"], case2)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

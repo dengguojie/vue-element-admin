@@ -26,6 +26,7 @@ namespace optiling {
 struct PReluCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   std::vector<int64_t> broadcast_weight_shape;
+  bool is_unknown_rank;
 };
 
 bool PReluTiling(const std::string& op_type, const ge::Operator& op_paras, const PReluCompileInfo& parsed_info,
@@ -39,24 +40,32 @@ bool PReluTiling(const std::string& op_type, const ge::Operator& op_paras, const
   auto input_desc = operator_info->MutableInputDesc(0);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
                   return false);
+  auto input_desc_w = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc_w == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc_w failed."),
+                  return false);
 
   const std::vector<int64_t> input_shape_x = input_desc->MutableShape().GetDims();
   ge::DataType dtype = input_desc->GetDataType();
-  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  vector<vector<int64_t>> input_shapes;
+  if (parsed_info.is_unknown_rank) {
+    const std::vector<int64_t> input_shape_weight = input_desc_w->MutableShape().GetDims();
+    input_shapes = {input_shape_x, input_shape_weight};
+  } else {
+    PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  std::vector<int64_t> broadcast_weight_shape = parsed_info.broadcast_weight_shape;
+    std::vector<int64_t> broadcast_weight_shape = parsed_info.broadcast_weight_shape;
 
-  if (broadcast_weight_shape.size() > input_shape_x.size()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape of weight is lager than shape of x.");
-    return false;
+    if (broadcast_weight_shape.size() > input_shape_x.size()) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape of weight is lager than shape of x.");
+      return false;
+    }
+
+    for (size_t i = 0; i < broadcast_weight_shape.size(); i++) {
+      broadcast_weight_shape[i] = broadcast_weight_shape[i] == -1 ? input_shape_x[i] : broadcast_weight_shape[i];
+    }
+    PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+    input_shapes = {input_shape_x, broadcast_weight_shape};
   }
-
-  for (size_t i = 0; i < broadcast_weight_shape.size(); i++) {
-    broadcast_weight_shape[i] = broadcast_weight_shape[i] == -1 ? input_shape_x[i] : broadcast_weight_shape[i];
-  }
-  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
-
-  vector<vector<int64_t>> input_shapes = {input_shape_x, broadcast_weight_shape};
   OpInfo eletwise_info(input_shapes, dtype);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
@@ -71,9 +80,14 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
-  OP_TILING_CHECK(!GetCompileValue(compile_info, "broadcast_weight_shape", parsed_info.broadcast_weight_shape),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get broadcast_weight_shape error"),
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "is_unknown_rank", parsed_info.is_unknown_rank),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get is_unknown_rank error"),
                   return false);
+  if (parsed_info.is_unknown_rank == false) {
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "broadcast_weight_shape", parsed_info.broadcast_weight_shape),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get broadcast_weight_shape error"),
+                    return false);
+  }
   return true;
 }
 

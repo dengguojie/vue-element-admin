@@ -67,7 +67,7 @@ TEST_F(PReluTiling, PReluTiling_test_1) {
   TENSOR_INPUT_WITH_SHAPE(opParas, weight, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
 
-  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_ub_factor_align": 128, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
+  std::string compileInfo = R"({"is_unknown_rank": false, "broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_ub_factor_align": 128, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -94,10 +94,37 @@ TEST_F(PReluTiling, PReluTiling_test_2) {
   TENSOR_INPUT_WITH_SHAPE(opParas, weight, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
 
-  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_ub_factor_align": 128, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
+  std::string compileInfo = R"({"is_unknown_rank": false, "broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_ub_factor_align": 128, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 1 32 ");
+}
+
+TEST_F(PReluTiling, PReluTiling_test_3) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("PRelu");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  auto opParas = op::PRelu("PRelu");
+
+  vector<vector<int64_t>> input_shapes = {
+      {32},
+      {1},
+  };
+
+  vector<ge::DataType> dtypes = {
+    ge::DT_FLOAT16,
+    ge::DT_FLOAT16,
+  };
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, weight, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+
+  std::string compileInfo = R"({"is_unknown_rank": true, "broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_ub_factor_align": 128, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }

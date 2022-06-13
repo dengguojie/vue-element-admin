@@ -17,6 +17,8 @@ relu6_d
 `f(x) = min(max(0,x), 6*scale)`
 """
 
+from impl.util.util_attr_common import Relu6DAttrInfo
+from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -49,7 +51,8 @@ def relu6_d_compute(input_x, output_y, scale, kernel_name="relu6_d"):
     compute result of relu6
     """
     tmp_res = tbe.vmaxs(input_x, tvm.const(0, input_x.dtype))
-    final_res = tbe.vmins(tmp_res, tvm.const(6 * scale, input_x.dtype))
+    scale = get_attr_by_cls(scale, Relu6DAttrInfo.ATTR_SCALE, input_x.dtype)
+    final_res = tbe.vmins(tmp_res, 6 * scale)
 
     return final_res
 

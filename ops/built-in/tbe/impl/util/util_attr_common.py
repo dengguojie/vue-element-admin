@@ -77,3 +77,10 @@ class ShrinkAttrInfo:
     """
     ATTR_LAMBD = OpAttr(0, "lambd", "Float", 0.5)
     ATTR_BIAS = OpAttr(1, "bias", "Float", 0.0)
+
+
+class Relu6DAttrInfo:
+    """
+    define Relu6D attr info
+    """
+    ATTR_SCALE = OpAttr(0, "scale", "Float", 1.0)

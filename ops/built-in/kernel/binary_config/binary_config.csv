@@ -136,3 +136,5 @@ InvGrad,inv_grad.json
 Invert,invert.json
 Bias,bias.json
 ClipByNormNoDivSum,clip_by_norm_no_div_sum.json
+Relu6D,relu6d.json
+PRelu,p_relu.json
