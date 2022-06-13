@@ -62,6 +62,8 @@ Sigmoid,sigmoid.json
 SigmoidGrad,sigmoid_grad.json
 Slice,slice.json
 SoftmaxV2,softmax_v2.json
+LogSoftmaxV2,log_softmax_v2.json
+LogSoftmaxGrad,log_softmax_grad.json
 Sqrt,sqrt.json
 Square,square.json
 SquaredDifference,squared_difference.json

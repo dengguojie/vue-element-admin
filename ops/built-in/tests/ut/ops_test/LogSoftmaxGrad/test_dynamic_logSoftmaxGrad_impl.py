@@ -4,7 +4,7 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("LogSoftmaxGrad", "impl.dynamic.log_softmax_grad", "log_softmax_grad")
 
-def gen_logsoftmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype,
+def gen_logsoftmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype, axis,
                     case_name_val, expect, input_format="ND"):
     inputs = (
         {"shape": dynamic_input_shapes,
@@ -25,7 +25,8 @@ def gen_logsoftmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype,
 
     return {"params": [inputs[0],
                        inputs[0],
-                       outputs[0]],
+                       outputs[0],
+                       axis],
             "case_name": case_name_val,
             "expect": expect,
             "support_expect": True}
@@ -33,13 +34,17 @@ def gen_logsoftmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype,
 ut_case.add_case(["Ascend910A"],
                  gen_logsoftmaxgrad_case((-1, -1, -1),
                                          (16, 16, 16),
-                                         "float16", "dynamic_logsoftmax_grad_1", "success"))
+                                         "float16", -1, "dynamic_logsoftmax_grad_1", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_logsoftmaxgrad_case((-1, -1, -1),
                                          (16, 16, 16),
-                                         "float32", "dynamic_logsoftmax_grad_2", "success"))
+                                         "float32", -1, "dynamic_logsoftmax_grad_2", "success"))
 
+ut_case.add_case(["Ascend910A"],
+                 gen_logsoftmaxgrad_case((-1, -1, -1),
+                                         (16, 16, 16),
+                                         "float32", None, "dynamic_logsoftmax_grad_3", "success"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

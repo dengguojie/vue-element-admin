@@ -38,7 +38,12 @@ ut_case.add_case(["Ascend910A"],
 ut_case.add_case(["Ascend910A"],
                  gen_logsoftmaxv2_case((-1, -1, -1),
                                        (16, 16, 16),
-                                       "float32", -1, "dynamic_logsoftmax_v2_3", "success"))
+                                       "float32", -1, "dynamic_logsoftmax_v2_2", "success"))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_logsoftmaxv2_case((-1, -1, -1),
+                                       (16, 16, 16),
+                                       "float32", None, "dynamic_logsoftmax_v2_3", "success"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

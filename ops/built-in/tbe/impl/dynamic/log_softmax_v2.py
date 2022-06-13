@@ -22,6 +22,9 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.norm_pattern_adapter import NormPattern
 
 
 # 'pylint: disable=locally-disabled,unused-argument
@@ -109,17 +112,25 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", imp
 
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
-    if not isinstance(axis, int):
-        axis = list(axis)
-
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
-    if isinstance(axis, int):
-        axis = [axis]
+
+    extra_params = dict()
+    if axis is None:
+        # when axis is None, it is binary case, go unknown axis schedule
+        list_axis = NormPattern.REDUCE_UNKNOWN_MODE
+        extra_params.update(NormPattern.REDUCE_SINGLE_TYPE)
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_IDX, 0)
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_NAME, "axes")
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_DTYPE, "ListInt")
+    elif not isinstance(axis, int):
+        list_axis = list(axis)
+    else:
+        list_axis = [axis]
 
     schedules = []
     tensors = []
-    ins = classify([input_x, axis], "norm")
+    ins = classify([input_x, list_axis], OpPatternMode.NORM, extra_params)
 
     for (x, reduce_axis) in ins:
         with tbe.compute():
