@@ -52,6 +52,7 @@ from tbe.dsl.static_schedule.gemm_integrated_schedule_util import GemmScheduleSt
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import GemmTilingWork
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import BufferChecker
 from tbe.dsl.static_schedule.gemm_integrated_schedule_util import UbBufferReuser
+from tbe.dsl.static_schedule.gemm_integrated_schedule_util import CceSimplification
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 from tbe.dsl.static_schedule.util import CalculateMultiUB
@@ -241,8 +242,6 @@ class GemmSchedule:
     ALLOCATE_HALF = 1
     ALLOCATE_FULL = 2
     KBL1_LARGER_FLAG = 2
-    MAX_ORI_SHAPE_TEMP = 1048560
-    MAX_UB_SHAPE = 4096
     BLOCKS_PER_REPEAT = 8
 
     # index of tiling
@@ -323,6 +322,7 @@ class GemmSchedule:
         self.status_controller = GemmScheduleStatusController()
         self.tiling_work = GemmTilingWork()
         self.buffer_checker = BufferChecker()
+        self.cce_simplification_obj = CceSimplification()
         self.tensor_b_reshape = 0
 
     @staticmethod
@@ -1838,6 +1838,7 @@ class GemmSchedule:
             get_context().get_current_compute().get_current_schedule().add("_build_config",
                                                                            {"predicate_realize_bound": True})
         self._get_cache_tiling()
+        self._update_tiling_for_simplification(tiling)
         self.dyn_shape_in[self.m1_name] = self._get_optional_te_var(self.m1_name)
         self.dyn_shape_in[self.k1_name] = self._get_optional_te_var(self.k1_name)
         self.dyn_shape_in[self.n1_name] = self._get_optional_te_var(self.n1_name)
@@ -1883,6 +1884,7 @@ class GemmSchedule:
             if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
                 self.cache_tiling["k_al0"] = kal1_factor * kal0_factor * k_l0
                 self.cache_tiling["k_bl0"] = self.cache_tiling.get("k_al0")
+                self.cce_simplification_obj.set_kaub_simplification_l1_fullload(kal1_factor * kal0_factor * k_l0)
 
         self.cache_tiling["kal1_16"] = kal0_factor * k_l0
         self.cache_tiling["kbl1_16"] = kal0_factor * k_l0
@@ -1902,6 +1904,8 @@ class GemmSchedule:
             self.cache_tiling["k_bl0"] = kbl0_factor * k_l0
         if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
             self.k_expr = self.cache_tiling.get("kbl1_factor") * kbl0_factor * k_l0 * k_dim
+            self.cce_simplification_obj.set_kaub_simplification_l1_fullload(
+                self.cache_tiling.get("kbl1_factor") * kbl0_factor * k_l0)
         else:
             self.cache_tiling["kal1_16"] = kl1_times * kbl0_factor * k_l0
             self.k_expr = self.cache_tiling.get("kal1_factor") * kl1_times * kbl0_factor * k_l0 * k_dim
@@ -2147,6 +2151,17 @@ class GemmSchedule:
         self.tiling_work.tiling = tiling
         self.status_controller.attach_at_flag = tiling.get("attach_at_flag")
         debug(self.DEBUG_PARAM, tiling, "auto tiling result")
+
+    def _update_tiling_for_simplification(self, tiling):
+        self.cce_simplification_obj.tiling = tiling
+        self.cce_simplification_obj.sch = self.sch
+        self.cce_simplification_obj.format_info = self.format_info
+        self.cce_simplification_obj.cache_tiling = self.cache_tiling
+        self.cce_simplification_obj.tensor_map = self.container.tensor_map
+        self.cce_simplification_obj.status_controller = self.status_controller
+        self.cce_simplification_obj.block_in = self.block_in
+        self.cce_simplification_obj.block_out = self.block_out
+        self.cce_simplification_obj.block_reduce = self.block_reduce
 
     def _update_flag_after_tiling(self):
         """
@@ -3913,7 +3928,9 @@ class GemmSchedule:
         if self.is_dynamic:
             # only in |batch_matmul/ matmul|nd|
             if self.status_controller.a_use_aligned_pattern:
-                self._emit_insn_func(self.container.tensor_map.get("a_ub_aligned"), 0, "dma_copy", mode=1)
+                align_insn_dict = {"map_policy" : "2d"}
+                self._emit_insn_func(self.container.tensor_map.get("a_ub_aligned"), 0, "dma_copy",
+                                     insn_dict=align_insn_dict, mode=1)
                 self._emit_insn_func(self.container.tensor_map.get("a_ub_general"), 0, "phony_insn", mode=1)
             else:
                 self._emit_insn_func(self.container.tensor_map.get("a_ub_aligned"), 0, "phony_insn", mode=1)
@@ -3977,7 +3994,9 @@ class GemmSchedule:
         if self.is_dynamic:
             # only in |batch_matmul/matmul|nd|
             if self.status_controller.b_use_aligned_pattern:
-                self._emit_insn_func(self.container.tensor_map.get("b_ub_aligned"), 0, "dma_copy", mode=1)
+                align_insn_dict = {"map_policy" : "2d"}
+                self._emit_insn_func(self.container.tensor_map.get("b_ub_aligned"), 0, "dma_copy",
+                                     insn_dict=align_insn_dict, mode=1)
                 self._emit_insn_func(self.container.tensor_map.get("b_ub_general"), 0, "phony_insn", mode=1)
             else:
                 self._emit_insn_func(self.container.tensor_map.get("b_ub_aligned"), 0, "phony_insn", mode=1)
@@ -4615,12 +4634,14 @@ class GemmSchedule:
             cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_n_split", n_l0_shape)
             emit_insn_cmd = "dma_copy_matmul_transpose"
 
-        out_insn_dict = None
+        out_insn_dict = {}
         if (self.schedule_mode == self.GENERAL_MODE and
             ((not self.status_controller.align_a) or (not self.status_controller.align_b))):
-            out_insn_dict = {"no_overlap": 1}
+            out_insn_dict["no_overlap"] = 1
         elif self.schedule_mode == self.DYN_ALIGNED_MODE:
-            out_insn_dict = {"no_overlap": 0}
+            out_insn_dict["no_overlap"] = 0
+            out_insn_dict["gm_no_sync"] = 1
+            out_insn_dict["map_policy"] = "2d"
         offset_res = 1 if self.status_controller.split_k_axis_by_tiling else 0
         if self.cache_tiling:
             res_axis = -2 if self.format_info.get("out") == "ND" else -4
@@ -5146,19 +5167,22 @@ class GemmSchedule:
                 self.sch_agent[self.container.tensor_map.get("b_l1")].buffer_tile(*bl1_buffer_tile_list)
 
         if self.format_info.get("a") == "ND":
-            self._emit_insn_simplyfy_c_gm()
+            self.cce_simplification_obj.emit_insn_simplyfy_c_gm()
+            self.cce_simplification_obj.emit_insn_simplify_aub()
+            self.cce_simplification_obj.emit_insn_simplify_bub()
             self._fuse_l1_axis()
-            self._emit_insn_simplify_al1()
-            self._emit_insn_simplify_bl1()
+            self.cce_simplification_obj.emit_insn_simplify_al1()
+            self.cce_simplification_obj.emit_insn_simplify_bl1()
 
     def _set_continuous_axis(self):
         """ add pragma for pass to check whether or not the address is continus and combine cce orders
         """
-        if self.cache_tiling:
+        if self.cache_tiling and self.format_info.get("a") != "FRACTAL_NZ":
             a_l0a = self.container.tensor_map.get("a_l0a")
-            b_l0b = self.container.tensor_map.get("b_l0b")
             axis_list = [self.sch[a_l0a].leaf_iter_vars[-3], self.sch[a_l0a].leaf_iter_vars[-4]]
             self._combine_cce_pragma(a_l0a, axis_list)
+        if self.cache_tiling:
+            b_l0b = self.container.tensor_map.get("b_l0b")
             axis_list = [self.sch[b_l0b].leaf_iter_vars[-3], self.sch[b_l0b].leaf_iter_vars[-4]]
             self._combine_cce_pragma(b_l0b, axis_list)
         if self.format_info.get("out") == "ND" and self.is_dynamic:
@@ -5196,98 +5220,6 @@ class GemmSchedule:
                 self.sch.set_var_range(self.dyn_shape_in.get("batch"), *batch_range)
         else:
             self._set_var_range_for_cache_tiling()
-
-    def _emit_insn_simplyfy_c_gm(self):
-        """
-        add pragma for ND_in_ND_out cachetiling
-        """
-        c_gm = self.container.tensor_map.get("c_gm")
-        n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
-        m_l0 = self.cache_tiling.get("m_l0")
-        cub_n1 = self.cache_tiling.get("cub_n1")
-
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint", n_ori - cub_n1 >= 0)
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint",
-            tvm.truncmod(((m_l0 * self.block_in) * (cub_n1 * self.block_out)), self.MAX_ORI_SHAPE_TEMP) > 0)
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint",
-            ((m_l0 * self.block_in) * (cub_n1 * self.block_out)) < self.MAX_ORI_SHAPE_TEMP)
-
-    def _emit_insn_simplify_al1(self):
-        """
-        add pragma for ND_in_ND_out cachetiling
-        """
-        a_l1 = self.container.tensor_map.get("a_l1")
-        c_gm = self.container.tensor_map.get("c_gm")
-        m_ori = get_te_var(GEMMComputeParam.m_var_name).get_tvm_var()
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
-        n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
-        m_l0 = self.cache_tiling.get("m_l0")
-        cub_n1 = self.cache_tiling.get("cub_n1")
-        a_align_value = self.cache_tiling.get("a_align_value")
-        a_ori = [k_ori, m_ori]
-        aub_var = [self.cache_tiling.get("k_aub"), self.cache_tiling.get("m_aub")]
-        multi_aub_var = [self.cache_tiling.get("multi_k_aub_l1"), self.cache_tiling.get("multi_m_ub_l1")]
-        host_var_a = [aub_var[1] * self.block_in, aub_var[0] * self.block_reduce]
-        trans_a = int(self.status_controller.transpose_a)
-
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint", n_ori - cub_n1 >= 0)
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint",
-            tvm.truncmod(((m_l0 * self.block_in) * (cub_n1 * self.block_out)), self.MAX_ORI_SHAPE_TEMP) > 0)
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint",
-            ((m_l0 * self.block_in) * (cub_n1 * self.block_out)) < self.MAX_ORI_SHAPE_TEMP)
-
-        cons1 = aub_var[trans_a] * self.block_in + tvm.floormod(a_align_value -
-            tvm.floormod(aub_var[trans_a] * self.block_in, a_align_value), a_align_value)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-            tvm.div(cons1, self.block_in) - aub_var[trans_a] >= 0)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint", a_ori[trans_a] - aub_var[trans_a] >= 0)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-            tvm.truncmod((host_var_a[trans_a] * host_var_a[1 - trans_a]), self.MAX_ORI_SHAPE_TEMP) > 0)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-            (host_var_a[trans_a] * host_var_a[1 - trans_a]) < self.MAX_ORI_SHAPE_TEMP)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-            multi_aub_var[0] * aub_var[0] < self.MAX_UB_SHAPE)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-            multi_aub_var[0] * aub_var[0] - aub_var[0] >= 0)
-        self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-            tvm.truncmod(aub_var[1] * aub_var[0] * self.block_in * self.block_reduce, self.MAX_ORI_SHAPE_TEMP) > 0)
-        if (self.status_controller.al1_attach_status == "c_l0c" and
-            not self.status_controller.attach_at_flag.get("min_kl1_cmp_kl0") and self.format_info.get("a") == "ND"):
-            self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
-                                  (self.cache_tiling.get("k_l0") - self.cache_tiling.get("k_aub") >= 0))
-
-    def _emit_insn_simplify_bl1(self):
-        """
-        add pragma for ND_in_ND_out cachetiling
-        """
-        b_l1 = self.container.tensor_map.get("b_l1")
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
-        n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
-        b_align_value = self.cache_tiling.get("b_align_value")
-        b_ori = [n_ori, k_ori]
-        bub_var = [self.cache_tiling.get("n_bub"), self.cache_tiling.get("k_bub")]
-        multi_bub_var = [self.cache_tiling.get("multi_n_ub_l1"), self.cache_tiling.get("multi_k_bub_l1")]
-        host_var_b = [bub_var[1] * self.block_reduce, bub_var[0] * self.block_out]
-        trans_b = int(self.status_controller.transpose_b)
-
-        cons2 = bub_var[trans_b] * self.block_out + tvm.floormod(b_align_value -
-            tvm.floormod(bub_var[trans_b] * self.block_out, b_align_value), b_align_value)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            tvm.div(cons2, self.block_out) - bub_var[trans_b] >= 0)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            b_ori[trans_b] < self.MAX_ORI_SHAPE_TEMP)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            tvm.div(b_ori[trans_b], self.block_out) - bub_var[trans_b] >= 0)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            tvm.truncmod((host_var_b[trans_b] * host_var_b[1 - trans_b]), self.MAX_ORI_SHAPE_TEMP) > 0)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            (host_var_b[trans_b] * host_var_b[1 - trans_b]) < self.MAX_ORI_SHAPE_TEMP)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            multi_bub_var[0] * bub_var[0] < self.MAX_UB_SHAPE)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint",
-            multi_bub_var[0] * bub_var[0] - bub_var[0] >= 0)
-        self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint", tvm.truncmod(
-            bub_var[1] * bub_var[0] * self.block_out * self.block_reduce, self.MAX_ORI_SHAPE_TEMP) > 0)
 
     def _auto_tiling(self, aub_num, bub_num, cub_num):
         # a_ub_byte b_ub_byte ub_res_byte l1a_byte l1b_byte l0a_byte l0b_byte l0c_byte

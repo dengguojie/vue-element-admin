@@ -90,7 +90,6 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     """
     gen the error case for ut test
     """
-
     if format == "NZ":
         format = "FRACTAL_NZ"
     block_range = [] if format == "ND" else [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]

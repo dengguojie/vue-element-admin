@@ -566,7 +566,6 @@ def test_op_fusion_func(case):
     return test_op_fusion
 
 for fusion_case in case_dequant_requant_sum:
-
     ut_case.add_cust_test_func(["Ascend310"], test_func=test_op_fusion_func(fusion_case))
 
 case_batchmatmul_dequant_mul_add_fusion = [

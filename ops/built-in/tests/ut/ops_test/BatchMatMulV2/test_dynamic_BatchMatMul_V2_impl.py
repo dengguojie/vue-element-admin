@@ -23,6 +23,7 @@ vals = {("CORE_NUM", ): 48,
         ("AICORE_TYPE",):"AiCore",
         ("Intrinsic_fix_pipe_l0c2out",):True,
         }
+
 def side_effects(*args):
     return vals[args]
 
