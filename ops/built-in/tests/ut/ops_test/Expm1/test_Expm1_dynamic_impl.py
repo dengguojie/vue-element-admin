@@ -16,5 +16,16 @@ case1 = {
 
 ut_case.add_case(["Ascend910A", "Ascend310P3", "Ascend610"], case1)
 
+def reload_check_support(test_arg):
+    """
+    reload_check_support to improve cov
+    """
+    import importlib
+    import sys
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
+
+ut_case.add_cust_test_func(test_func=reload_check_support)
+
 if __name__=='__main__':
     ut_case.run("Ascend910A")

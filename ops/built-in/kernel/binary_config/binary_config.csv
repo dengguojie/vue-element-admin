@@ -10,6 +10,8 @@ BesselI0e,bessel_i0e.json
 BesselI1e,bessel_i1e.json
 Erfc,erfc.json
 Expint,expint.json
+Expm1,expm1.json
+FusedMulAdd,fused_mul_add.json
 ApplyAdamD,apply_adam_d.json
 ApplyMomentumD,apply_momentum_d.json
 ApplyRMSPropD,apply_rms_prop_d.json
