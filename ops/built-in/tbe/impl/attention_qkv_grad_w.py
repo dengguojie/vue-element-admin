@@ -44,6 +44,7 @@ class AttentionQKVGradW:
         self.k1_shape = self.ln_input_shape[1]
         self.n1_shape = self.kernel_shape[0]
         self.kernel_name = params.get("kernel_name")
+        self.kernel_num = params.get("kernel_num")
         self.tik_instance = tik.Tik()
         self.core_num = Constant.BLOCK_NUM_32
         self._init_gm_tensor(self.tik_instance)
@@ -59,15 +60,23 @@ class AttentionQKVGradW:
         with tik_instance.for_range(0, self.block_m * self.block_n, block_num=self.block_m * self.block_n) as blk_idx:
             blk_m_idx = blk_idx % self.block_m
             blk_n_idx = blk_idx // self.block_m
+            # aub process
+            aub_shape = (Constant.DOUBLE_BUFFER, self.matmul_k_al1, Constant.C0, Constant.M0)
+            a_ub = tik_instance.Tensor(self.dtype, aub_shape, name="a_ub", scope=tik.scope_ubuf)
+            tik_instance.vector_dup(Constant.MASK_FP16, a_ub, 1, Constant.DOUBLE_BUFFER * self.matmul_k_al1 * \
+                Constant.FRAC_SIZE // Constant.FP16_REPEAT_SIZE, 1, Constant.BLOCK_PER_REPEAT)
+            al1_ones = tik_instance.Tensor(self.dtype, aub_shape, name="al1_ones", scope=tik.scope_cbuf)
+            tik_instance.data_move(al1_ones, a_ub, 0, 1, Constant.DOUBLE_BUFFER * self.matmul_k_al1 * Constant.C0,
+                0, 0)
             with tik_instance.for_range(0, m_single_core) as m_single_core_idx:
                 matmul_m_idx = (blk_m_idx * m_single_core + m_single_core_idx) * self.matmul_m_l1
-                cl0_shape = (Constant.KERNEL_NUM * self.matmul_n_l0, self.matmul_m_l0, Constant.M0, Constant.N0)
-                cl0_bias_shape = (Constant.KERNEL_NUM * self.matmul_n_l0, 1, Constant.M0, Constant.N0)
+                cl0_shape = (self.kernel_num * self.matmul_n_l0, self.matmul_m_l0, Constant.M0, Constant.N0)
+                cl0_bias_shape = (self.kernel_num * self.matmul_n_l0, 1, Constant.M0, Constant.N0)
                 l0c = tik_instance.Tensor(Constant.FP32_DTYPE, cl0_shape, name="l0c", scope=tik.scope_cbuf_out)
                 l0c_bias = tik_instance.Tensor(Constant.FP32_DTYPE, cl0_bias_shape, name="l0c_bias",
                     scope=tik.scope_cbuf_out)
                 tensor_list = [self.inputs[0], self.inputs[1:], self.outputs[:Constant.KERNEL_NUM],
-                                  self.outputs[Constant.KERNEL_NUM:], l0c, l0c_bias]
+                                  self.outputs[Constant.KERNEL_NUM:], l0c, l0c_bias, al1_ones]
                 self._matmul_compute(tik_instance, blk_n_idx, matmul_m_idx, tensor_list)
         tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=self.inputs, outputs=self.outputs)
 
@@ -79,7 +88,10 @@ class AttentionQKVGradW:
         self.matmul_m_l0 = Constant.CANDIDATE_TILING_N
         self.matmul_m_l1 = self.matmul_m_l0
 
-        self.matmul_n_l0 = Constant.CANDIDATE_TILING_K
+        if self.kernel_num == Constant.KERNEL_NUM:
+            self.matmul_n_l0 = Constant.CANDIDATE_TILING_K
+        else:
+            self.matmul_n_l0 = Constant.CANDIDATE_TILING_M2
         self.matmul_n_l1 = self.matmul_n_l0
         self.matmul_k_l0 = Constant.CANDIDATE_TILING_K
         self.matmul_k_al1 = self.matmul_k_l0
@@ -97,11 +109,13 @@ class AttentionQKVGradW:
             scope=tik.scope_gm)
         self.query_dx_gm = tik_instance.Tensor(self.dtype, self.kernel_shape, name="query_dx_gm",
             scope=tik.scope_gm)
-        self.key_dw_gm = tik_instance.Tensor(self.dtype, self.kernel_shape, name="key_dw_gm",
-            scope=tik.scope_gm)
-        self.value_dw_gm = tik_instance.Tensor(self.dtype, self.kernel_shape, name="value_dw_gm",
-            scope=tik.scope_gm)
-        self.inputs = [self.ln_input_gm, self.query_dx_gm, self.key_dw_gm, self.value_dw_gm]
+        self.inputs = [self.ln_input_gm, self.query_dx_gm]
+        if self.kernel_num == Constant.KERNEL_NUM:
+            self.key_dw_gm = tik_instance.Tensor(self.dtype, self.kernel_shape, name="key_dw_gm",
+                scope=tik.scope_gm)
+            self.value_dw_gm = tik_instance.Tensor(self.dtype, self.kernel_shape, name="value_dw_gm",
+                scope=tik.scope_gm)
+            self.inputs += [self.key_dw_gm, self.value_dw_gm]
 
         self.dw_query_gm = tik_instance.Tensor(self.dtype, self.dw_out_shape, name="dw_query_gm",
             scope=tik.scope_gm)
@@ -123,16 +137,10 @@ class AttentionQKVGradW:
         '''
         matmul_dw_qkv compute
         '''
-        x_gm, kernel_gms, out_gms, bias_out_gms, l0c, l0c_bias = tensor_list
+        x_gm, kernel_gms, out_gms, bias_out_gms, l0c, l0c_bias, _ = tensor_list
         n_single_core = self.n1_shape // self.block_n // self.matmul_n_l1
         with tik_instance.for_range(0, n_single_core) as n_single_core_idx:
             matmul_n_idx = (blk_n_idx * n_single_core + n_single_core_idx) * self.matmul_n_l1
-            # aub process
-            aub_shape = (Constant.DOUBLE_BUFFER, self.matmul_k_al1, Constant.C0, Constant.M0)
-            a_ub = tik_instance.Tensor(self.dtype, aub_shape, name="a_ub", scope=tik.scope_ubuf)
-            tensor_list.append(a_ub)
-            tik_instance.vector_dup(Constant.MASK_FP16, a_ub, 1, Constant.DOUBLE_BUFFER * self.matmul_k_al1 * \
-                Constant.FRAC_SIZE // Constant.FP16_REPEAT_SIZE, 1, Constant.BLOCK_PER_REPEAT)
             with tik_instance.for_range(0, self.k1_shape // self.matmul_k_al1 // \
                 Constant.DOUBLE_BUFFER) as kl1_factor_idx:
                 idx_list = [matmul_m_idx, matmul_n_idx, kl1_factor_idx]
@@ -140,22 +148,22 @@ class AttentionQKVGradW:
                 for i in range(Constant.DOUBLE_BUFFER):
                     self._matmul_l0c_compute(tik_instance, tensor_list, idx_list, ping_pong=i)
             # dw_out process
-            cub_shape = (Constant.KERNEL_NUM * self.matmul_n_l0, self.matmul_m_l0, Constant.M0, Constant.N0)
+            cub_shape = (self.kernel_num * self.matmul_n_l0, self.matmul_m_l0, Constant.M0, Constant.N0)
             c_ub = tik_instance.Tensor(self.dtype, cub_shape, name="c_ub", scope=tik.scope_ubuf)
-            tik_instance.tensor_mov(c_ub, l0c, 'm', 1, Constant.KERNEL_NUM * self.matmul_n_l0 * self.matmul_m_l0, 0, 0)
+            tik_instance.tensor_mov(c_ub, l0c, 'm', 1, self.kernel_num * self.matmul_n_l0 * self.matmul_m_l0, 0, 0)
             cub_burst_len = self.matmul_m_l0 * Constant.M0
             dst_stride = (self.m1_shape - self.matmul_m_l0) * Constant.M0
             out_offset = matmul_m_idx * Constant.FRAC_SIZE + matmul_n_idx * self.m1_shape * Constant.FRAC_SIZE
-            for i in range(Constant.KERNEL_NUM):
+            for i in range(self.kernel_num):
                 c_ub_offset = i * self.matmul_n_l0 * self.matmul_m_l0 * Constant.FRAC_SIZE
                 tik_instance.data_move(out_gms[i][out_offset:], c_ub[c_ub_offset:], 0, self.matmul_n_l0, cub_burst_len,
                     0, dst_stride)
             # bias_out process
-            cub_bias_shape = (Constant.KERNEL_NUM * self.matmul_n_l0, 1, Constant.M0, Constant.N0)
+            cub_bias_shape = (self.kernel_num * self.matmul_n_l0, 1, Constant.M0, Constant.N0)
             c_ub_bias = tik_instance.Tensor(self.dtype, cub_bias_shape, name="c_ub_bias", scope=tik.scope_ubuf)
-            tik_instance.tensor_mov(c_ub_bias, l0c_bias, 'm', 1, Constant.KERNEL_NUM * self.matmul_n_l0, 0, 0)
+            tik_instance.tensor_mov(c_ub_bias, l0c_bias, 'm', 1, self.kernel_num * self.matmul_n_l0, 0, 0)
             out_offset = matmul_n_idx * Constant.N0
-            for i in range(Constant.KERNEL_NUM):
+            for i in range(self.kernel_num):
                 c_ub_offset = i * self.matmul_n_l0 * Constant.FRAC_SIZE
                 tik_instance.data_move(bias_out_gms[i][out_offset:], c_ub_bias[c_ub_offset:], 0, self.matmul_n_l0, 1,
                     Constant.C0 - 1, 0)
@@ -166,11 +174,11 @@ class AttentionQKVGradW:
         matmul_l0c_compute
         '''
         al1_shape = (self.matmul_m_l1, self.matmul_k_al1, Constant.C0, Constant.M0)
-        bl1_shape = (Constant.KERNEL_NUM * self.matmul_n_l1, self.matmul_k_bl1, Constant.C0, Constant.N0)
+        bl1_shape = (self.kernel_num * self.matmul_n_l1, self.matmul_k_bl1, Constant.C0, Constant.N0)
         al0_shape = (self.matmul_m_l0, self.matmul_k_l0, Constant.M0, Constant.C0)
-        bl0_shape = (self.matmul_k_l0, Constant.KERNEL_NUM * self.matmul_n_l0, Constant.N0, Constant.C0)
+        bl0_shape = (self.matmul_k_l0, self.kernel_num * self.matmul_n_l0, Constant.N0, Constant.C0)
         matmul_m_idx, matmul_n_idx, kl1_factor_idx = idx_list
-        x_gm, kernel_gms, _, _, l0c, l0c_bias, a_ub = tensor_list
+        x_gm, kernel_gms, _, _, l0c, l0c_bias, al1_ones = tensor_list
         ping_pong_suffix = "ping" if ping_pong == 0 else "pong"
         # al1_process
         al1 = tik_instance.Tensor(self.dtype, al1_shape, name="al1_" + ping_pong_suffix, scope=tik.scope_cbuf)
@@ -183,7 +191,7 @@ class AttentionQKVGradW:
             Constant.FRAC_SIZE + matmul_n_idx * self.k1_shape * Constant.FRAC_SIZE
         bl1 = tik_instance.Tensor(self.dtype, bl1_shape, name="bl1_" + ping_pong_suffix, scope=tik.scope_cbuf)
         # concat three kernels
-        for i in range(Constant.KERNEL_NUM):
+        for i in range(self.kernel_num):
             bl1_offset = i * self.matmul_n_l1 * self.matmul_k_bl1 * Constant.FRAC_SIZE
             tik_instance.data_move(bl1[bl1_offset], kernel_gms[i][b_src_offset:], 0, self.matmul_n_l0,
                 self.matmul_k_bl1 * Constant.C0, (self.k1_shape - self.matmul_k_bl1) * Constant.C0, 0)
@@ -195,18 +203,17 @@ class AttentionQKVGradW:
             bl0 = tik_instance.Tensor(self.dtype, bl0_shape, name="bl0_" + ping_pong_suffix, scope=tik.scope_cb)
             cond_params = [ping_pong, kl1_factor_idx, False]
             mad_tensors = [al0, bl0, l0c]
-            mad_size = [self.matmul_m_l0, self.matmul_k_l0, Constant.KERNEL_NUM * self.matmul_n_l0]
+            mad_size = [self.matmul_m_l0, self.matmul_k_l0, self.kernel_num * self.matmul_n_l0]
             with tik_instance.for_range(0, self.matmul_n_l1 // self.matmul_n_l0):
                 with tik_instance.for_range(0, self.matmul_k_l0) as kl0_idx:
                     bl1_offset = kl0_idx * Constant.C0 * Constant.N0
-                    bl0_offset = Constant.KERNEL_NUM * kl0_idx * self.matmul_n_l0 * Constant.N0 * Constant.C0
-                    tik_instance.load2dv1(bl0[bl0_offset:], bl1[bl1_offset:], 0, Constant.KERNEL_NUM * \
+                    bl0_offset = self.kernel_num * kl0_idx * self.matmul_n_l0 * Constant.N0 * Constant.C0
+                    tik_instance.load2dv1(bl0[bl0_offset:], bl1[bl1_offset:], 0, self.kernel_num * \
                         self.matmul_n_l0, self.matmul_k_l0, 0, True)
                 # l0c process
                 matmul_l0c_process(tik_instance, cond_params, mad_tensors, mad_size)
-            tik_instance.data_move(al1, a_ub[ping_pong * self.matmul_k_al1 * Constant.FRAC_SIZE:], 0, 1,
-                self.matmul_k_al1 * Constant.C0, 0, 0)
-            tik_instance.load2dv1(al0, al1, 0, self.matmul_k_al1, 1, 0, False)
+            tik_instance.load2dv1(al0, al1_ones[ping_pong * self.matmul_k_al1 * Constant.FRAC_SIZE:],
+                0, self.matmul_k_al1, 1, 0, False)
             # l0c_bias process
             mad_tensors[-1] = l0c_bias
             mad_size[0] = 1
@@ -214,8 +221,8 @@ class AttentionQKVGradW:
 
 
 @register_operator("AttentionQKVGradW")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
@@ -255,28 +262,32 @@ def attention_qkv_grad_w(x, query_dx, key_dw, value_dw, dw_query, dw_key, dw_val
     -------
     None
     """
+    single_mode = key_dw and value_dw and dw_key and dw_value and dbias_key and dbias_value
     ln_input_shape = shape_util.shape_to_list(x.get("shape"))
     query_dx_shape = shape_util.shape_to_list(query_dx.get("shape"))
-    key_dw_shape = shape_util.shape_to_list(key_dw.get("shape"))
-    value_dw_shape = shape_util.shape_to_list(value_dw.get("shape"))
     dw_query_shape = shape_util.shape_to_list(dw_query.get("shape"))
-    dw_key_shape = shape_util.shape_to_list(dw_key.get("shape"))
-    dw_value_shape = shape_util.shape_to_list(dw_value.get("shape"))
     dbias_query_shape = shape_util.shape_to_list(dbias_query.get("shape"))
-    dbias_key_shape = shape_util.shape_to_list(dbias_key.get("shape"))
-    dbias_value_shape = shape_util.shape_to_list(dbias_value.get("shape"))
+    if single_mode:
+        key_dw_shape = shape_util.shape_to_list(key_dw.get("shape"))
+        value_dw_shape = shape_util.shape_to_list(value_dw.get("shape"))
+        dw_key_shape = shape_util.shape_to_list(dw_key.get("shape"))
+        dw_value_shape = shape_util.shape_to_list(dw_value.get("shape"))
+        dbias_key_shape = shape_util.shape_to_list(dbias_key.get("shape"))
+        dbias_value_shape = shape_util.shape_to_list(dbias_value.get("shape"))
+        check_equal_shape("attention_qkv_grad_w", [query_dx_shape, key_dw_shape, value_dw_shape],
+                        "kernel_shape in matmul_dw_qkv should be equal.")
+        check_equal_shape("attention_qkv_grad_w", [dw_query_shape, dw_key_shape, dw_value_shape],
+                        "matmul_dw_qkv out_shape should be equal.")
+        check_equal_shape("attention_qkv_grad_w", [dbias_query_shape, dbias_key_shape, dbias_value_shape],
+                        "matmul_dw_qkv bias_out_shape should be equal.")
     data_type = x.get("dtype")
     check_dtype("attention_qkv_grad_w", data_type)
     input_x_format = x.get("format").upper()
     kernel_format = query_dx.get("format").upper()
     check_format("attention_qkv_grad_w", input_x_format, kernel_format)
-    check_equal_shape("attention_qkv_grad_w", [query_dx_shape, key_dw_shape, value_dw_shape],
-                      "kernel_shape in matmul_dw_qkv should be equal.")
-    check_equal_shape("attention_qkv_grad_w", [dw_query_shape, dw_key_shape, dw_value_shape],
-                      "matmul_dw_qkv out_shape should be equal.")
-    check_equal_shape("attention_qkv_grad_w", [dbias_query_shape, dbias_key_shape, dbias_value_shape],
-                      "matmul_dw_qkv bias_out_shape should be equal.")
     check_trans_flag("attention_qkv_grad_w", not trans_a, trans_b)
+    # if gradw_mod is True, num of matmuls and reduce_sum_ds should be 3, otherwise the num is 1
+    kernel_num = 3 if single_mode else 1
     params = {
         "dtype": x.get("dtype"),
         "ln_input_shape": ln_input_shape,
@@ -285,6 +296,7 @@ def attention_qkv_grad_w(x, query_dx, key_dw, value_dw, dw_query, dw_key, dw_val
         "bias_out_shape": dbias_query_shape,
         "trans_a": trans_a,
         "trans_b": trans_b,
+        "kernel_num": kernel_num,
         "kernel_name": kernel_name
     }
     obj = AttentionQKVGradW(params)

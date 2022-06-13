@@ -33,10 +33,12 @@ class AttentionQKVGradWFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  bool IsMatch(const ge::NodePtr &conf_trans_node, std::vector<ge::NodePtr> &conf_trans_list,
+  bool single_mode = false;
+  bool IsMatch(const ge::NodePtr &conf_trans_node, const ge::NodePtr &sum_node,
                std::vector<ge::NodePtr> &matmul_list, std::vector<ge::NodePtr> &reduce_sum_list) const;
+  bool CheckOpInfo(const ge::NodePtr &matmul_node,
+                   const ge::NodePtr &reduce_sum_node) const;
   Status ReplaceAttentionQKVGradW(ge::ComputeGraph &graph,
-                                  const std::vector<ge::NodePtr> &conf_trans_list,
                                   const std::vector<ge::NodePtr> &matmul_list,
                                   const std::vector<ge::NodePtr> &reduce_sum_list,
                                   ge::NodePtr &new_node);

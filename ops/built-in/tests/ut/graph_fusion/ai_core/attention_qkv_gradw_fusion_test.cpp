@@ -11,6 +11,7 @@
 #include "nonlinear_fuc_ops.h"
 #include "array_ops.h"
 #include "reduce_ops.h"
+#include "nonlinear_fuc_ops.h"
 #include "fusion_pass_test_utils.h"
 #include "graph/operator_reg.h"
 #include "fc_transdata_merge_fusion_pass_test.h"
@@ -160,6 +161,9 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_1) {
     reduce_sum_query.set_input_x(conf_trans_dw_query);
     reduce_sum_query.set_attr_axes(axes_value);
     reduce_sum_query.set_attr_keep_dims(false);
+    TensorDesc output_desc_sum(ge::Shape({64, 16}), FORMAT_ND, DT_FLOAT16);
+    output_desc_sum.SetOriginShape(ge::Shape({1024}));
+    reduce_sum_query.update_output_desc_y(output_desc_sum);
 
     auto reduce_sum_key = op::ReduceSumD("reduce_sum_key");
     reduce_sum_key.set_input_x(conf_trans_dw_key);
@@ -1477,7 +1481,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_10) {
     conf_trans_dw_query.set_attr_perm({0, 2, 1, 3});
     conf_trans_dw_query.set_attr_shape({12288, 1024});
     conf_trans_dw_query.set_attr_transpose_first(1);
-    TensorDesc output_desc_query(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT);
+    TensorDesc output_desc_query(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
     output_desc_query.SetOriginShape(ge::Shape({12288, 1024}));
     conf_trans_dw_query.update_output_desc_y(output_desc_query);
 
@@ -1546,7 +1550,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_10) {
     matmul_dw_query.set_input_x2(conf_trans_dw_query);
     matmul_dw_query.set_attr_transpose_x1(true);
     matmul_dw_query.set_attr_transpose_x2(false);
-    TensorDesc output_desc_dw_query(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    TensorDesc output_desc_dw_query(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT);
     matmul_dw_query.update_output_desc_y(output_desc_dw_query);
 
     auto matmul_dw_key = op::MatMulV2("matmul_dw_key");
@@ -1571,6 +1575,9 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_10) {
     reduce_sum_query.set_input_x(conf_trans_dw_query);
     reduce_sum_query.set_attr_axes(axes_value);
     reduce_sum_query.set_attr_keep_dims(false);
+    TensorDesc output_desc_sum(ge::Shape({64, 16}), FORMAT_ND, DT_FLOAT16);
+    output_desc_sum.SetOriginShape(ge::Shape({1024}));
+    reduce_sum_query.update_output_desc_y(output_desc_sum);
 
     auto reduce_sum_key = op::ReduceSumD("reduce_sum_key");
     reduce_sum_key.set_input_x(conf_trans_dw_key);
@@ -1710,7 +1717,7 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_11) {
     matmul_dw_query.set_input_x2(conf_trans_dw_query);
     matmul_dw_query.set_attr_transpose_x1(true);
     matmul_dw_query.set_attr_transpose_x2(false);
-    TensorDesc output_desc_dw_query(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    TensorDesc output_desc_dw_query(ge::Shape({64, 64, 16, 16}), FORMAT_NHWC, DT_FLOAT16);
     matmul_dw_query.update_output_desc_y(output_desc_dw_query);
 
     auto matmul_dw_key = op::MatMulV2("matmul_dw_key");
@@ -1735,6 +1742,9 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_11) {
     reduce_sum_query.set_input_x(conf_trans_dw_query);
     reduce_sum_query.set_attr_axes(axes_value);
     reduce_sum_query.set_attr_keep_dims(false);
+    TensorDesc output_desc_sum(ge::Shape({64, 16}), FORMAT_ND, DT_FLOAT16);
+    output_desc_sum.SetOriginShape(ge::Shape({1024}));
+    reduce_sum_query.update_output_desc_y(output_desc_sum);
 
     auto reduce_sum_key = op::ReduceSumD("reduce_sum_key");
     reduce_sum_key.set_input_x(conf_trans_dw_key);
@@ -1748,6 +1758,264 @@ TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_11) {
 
     std::vector<Operator> inputs{bmm_x_data, kernel_bmm_data};
     std::vector<Operator> outputs{matmul_dw_query, matmul_dw_key, matmul_dw_value, reduce_sum_query, reduce_sum_key, reduce_sum_value};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::RunGraphFusionPass("ZAttentionQKVGradWFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findOp = false;
+    bool shapeMatch = false;
+    vector<int64_t> expectShape{64, 64, 16, 16};
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AttentionQKVGradW") {
+            findOp = true;
+            auto outputDesc = node->GetOpDesc()->GetOutputDesc(0);
+            std::vector<int64_t> dims = outputDesc.GetShape().GetDims();
+            if (dims == expectShape) {
+                shapeMatch = true;
+            }
+        }
+    }
+    EXPECT_EQ(findOp, false);
+    EXPECT_EQ(shapeMatch, false);
+}
+
+TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_12) {
+    // single_matmul_reduce_sum case, success testcase
+    ge::Graph graph("attention_qkv_gradw_fusion_test12");
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 32;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    auto matmul_input_data = op::Data("matmul_input_data");
+    TensorDesc matmul_input_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    matmul_input_desc.SetOriginShape(ge::Shape({12288, 1024}));
+    matmul_input_data.update_input_desc_x(matmul_input_desc);
+    matmul_input_data.update_output_desc_y(matmul_input_desc);
+
+    auto dy_data = op::Data("dy_data");
+    TensorDesc dy_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    dy_data.update_input_desc_x(dy_desc);
+    dy_data.update_output_desc_y(dy_desc);
+
+    auto x_data = op::Data("x_data");
+    TensorDesc x_desc(ge::Shape({64, 256, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    x_data.update_input_desc_x(x_desc);
+    x_data.update_output_desc_y(x_desc);
+
+    auto fastgelugrad = op::FastGeluGrad("fastgelugrad");
+    fastgelugrad.set_input_dy(dy_data);
+    fastgelugrad.set_input_x(x_data);
+    TensorDesc fastgelugrad_out_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    fastgelugrad_out_desc.SetOriginShape(ge::Shape({12288, 1024}));
+    fastgelugrad.update_output_desc_z(fastgelugrad_out_desc);
+
+    // matmul_dx
+    TensorDesc kernel_query_desc(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    Tensor kernel_query_tensor(kernel_query_desc);
+    auto kernel_query = op::Const("kernel_query").set_attr_value(kernel_query_tensor);
+    auto matmul_dx_query = op::MatMulV2("matmul_dx_query");
+    matmul_dx_query.set_input_x1(kernel_query);
+    matmul_dx_query.set_input_x2(fastgelugrad);
+
+    // matmul_dw
+    auto matmul_dw_query = op::MatMulV2("matmul_dw_query");
+    matmul_dw_query.set_input_x1(matmul_input_data);
+    matmul_dw_query.set_input_x2(fastgelugrad);
+    matmul_dw_query.set_attr_transpose_x1(true);
+    matmul_dw_query.set_attr_transpose_x2(false);
+    TensorDesc output_desc_dw_query(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    matmul_dw_query.update_output_desc_y(output_desc_dw_query);
+
+    // reduce_sum
+    std::vector<int64_t> axes_value{1, 2};
+    auto reduce_sum_query = op::ReduceSumD("reduce_sum_query");
+    reduce_sum_query.set_input_x(fastgelugrad);
+    reduce_sum_query.set_attr_axes(axes_value);
+    reduce_sum_query.set_attr_keep_dims(false);
+    TensorDesc output_desc_dbias_query(ge::Shape({64, 16}), FORMAT_ND, DT_FLOAT16);
+    output_desc_dbias_query.SetOriginShape(ge::Shape({1024}));
+    reduce_sum_query.update_output_desc_y(output_desc_dbias_query);
+
+    std::vector<Operator> inputs{matmul_input_data, dy_data, x_data};
+    std::vector<Operator> outputs{matmul_dw_query, reduce_sum_query};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::RunGraphFusionPass("ZAttentionQKVGradWFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findOp = false;
+    bool shapeMatch = false;
+    vector<int64_t> expectShape{64, 64, 16, 16};
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AttentionQKVGradW") {
+            findOp = true;
+            auto outputDesc = node->GetOpDesc()->GetOutputDesc(0);
+            std::vector<int64_t> dims = outputDesc.GetShape().GetDims();
+            if (dims == expectShape) {
+                shapeMatch = true;
+            }
+        }
+    }
+    EXPECT_EQ(findOp, true);
+    EXPECT_EQ(shapeMatch, true);
+}
+
+TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_13) {
+    // single_matmul_reduce_sum case, success testcase
+    ge::Graph graph("attention_qkv_gradw_fusion_test13");
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 32;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    auto matmul_input_data = op::Data("matmul_input_data");
+    TensorDesc matmul_input_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    matmul_input_desc.SetOriginShape(ge::Shape({12288, 1024}));
+    matmul_input_data.update_input_desc_x(matmul_input_desc);
+    matmul_input_data.update_output_desc_y(matmul_input_desc);
+
+    auto x_data = op::Data("x_data");
+    TensorDesc x_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    x_data.update_input_desc_x(x_desc);
+    x_data.update_output_desc_y(x_desc);
+
+    auto mask_data = op::Data("mask_data");
+    TensorDesc mask_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    mask_data.update_input_desc_x(mask_desc);
+    mask_data.update_output_desc_y(mask_desc);
+
+    auto dropout = op::DropOutDoMaskV3D("dropout");
+    dropout.set_input_x(x_data);
+    dropout.set_input_mask(mask_data);
+    TensorDesc dropout_out_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    dropout_out_desc.SetOriginShape(ge::Shape({12288, 1024}));
+    dropout.update_output_desc_y(dropout_out_desc);
+
+    // matmul_dx
+    TensorDesc kernel_query_desc(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    Tensor kernel_query_tensor(kernel_query_desc);
+    auto kernel_query = op::Const("kernel_query").set_attr_value(kernel_query_tensor);
+    auto matmul_dx_query = op::MatMulV2("matmul_dx_query");
+    matmul_dx_query.set_input_x1(kernel_query);
+    matmul_dx_query.set_input_x2(dropout);
+
+    // matmul_dw
+    auto matmul_dw_query = op::MatMulV2("matmul_dw_query");
+    matmul_dw_query.set_input_x1(matmul_input_data);
+    matmul_dw_query.set_input_x2(dropout);
+    matmul_dw_query.set_attr_transpose_x1(true);
+    matmul_dw_query.set_attr_transpose_x2(false);
+    TensorDesc output_desc_dw_query(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    matmul_dw_query.update_output_desc_y(output_desc_dw_query);
+
+    // reduce_sum
+    std::vector<int64_t> axes_value{1, 2};
+    auto reduce_sum_query = op::ReduceSumD("reduce_sum_query");
+    reduce_sum_query.set_input_x(dropout);
+    reduce_sum_query.set_attr_axes(axes_value);
+    reduce_sum_query.set_attr_keep_dims(false);
+    TensorDesc output_desc_dbias_query(ge::Shape({64, 16}), FORMAT_ND, DT_FLOAT16);
+    output_desc_dbias_query.SetOriginShape(ge::Shape({1024}));
+    reduce_sum_query.update_output_desc_y(output_desc_dbias_query);
+
+    std::vector<Operator> inputs{matmul_input_data, x_data, mask_data};
+    std::vector<Operator> outputs{matmul_dw_query, reduce_sum_query};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::RunGraphFusionPass("ZAttentionQKVGradWFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findOp = false;
+    bool shapeMatch = false;
+    vector<int64_t> expectShape{64, 64, 16, 16};
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AttentionQKVGradW") {
+            findOp = true;
+            auto outputDesc = node->GetOpDesc()->GetOutputDesc(0);
+            std::vector<int64_t> dims = outputDesc.GetShape().GetDims();
+            if (dims == expectShape) {
+                shapeMatch = true;
+            }
+        }
+    }
+    EXPECT_EQ(findOp, true);
+    EXPECT_EQ(shapeMatch, true);
+}
+
+TEST_F(attention_qkv_gradw_fusion_test, attention_qkv_gradw_fusion_test_14) {
+    // reduce_sum out_shape invalid
+    ge::Graph graph("attention_qkv_gradw_fusion_test14");
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 32;
+    opti_compilation_info.soc_version = "soc_version";
+    platform_info.ai_core_intrinsic_dtype_map["Intrinsic_scatter_vconv"] = {"deq", "f162s32a"};
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    auto matmul_input_data = op::Data("matmul_input_data");
+    TensorDesc matmul_input_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    matmul_input_desc.SetOriginShape(ge::Shape({12288, 1024}));
+    matmul_input_data.update_input_desc_x(matmul_input_desc);
+    matmul_input_data.update_output_desc_y(matmul_input_desc);
+
+    auto dy_data = op::Data("dy_data");
+    TensorDesc dy_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    dy_data.update_input_desc_x(dy_desc);
+    dy_data.update_output_desc_y(dy_desc);
+
+    auto x_data = op::Data("x_data");
+    TensorDesc x_desc(ge::Shape({64, 256, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    x_data.update_input_desc_x(x_desc);
+    x_data.update_output_desc_y(x_desc);
+
+    auto fastgelugrad = op::FastGeluGrad("fastgelugrad");
+    fastgelugrad.set_input_dy(dy_data);
+    fastgelugrad.set_input_x(x_data);
+    TensorDesc fastgelugrad_out_desc(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    fastgelugrad_out_desc.SetOriginShape(ge::Shape({12288, 1024}));
+    fastgelugrad.update_output_desc_z(fastgelugrad_out_desc);
+
+    // matmul_dx
+    TensorDesc kernel_query_desc(ge::Shape({64, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    Tensor kernel_query_tensor(kernel_query_desc);
+    auto kernel_query = op::Const("kernel_query").set_attr_value(kernel_query_tensor);
+    auto matmul_dx_query = op::MatMulV2("matmul_dx_query");
+    matmul_dx_query.set_input_x1(kernel_query);
+    matmul_dx_query.set_input_x2(fastgelugrad);
+
+    // matmul_dw
+    auto matmul_dw_query = op::MatMulV2("matmul_dw_query");
+    matmul_dw_query.set_input_x1(matmul_input_data);
+    matmul_dw_query.set_input_x2(fastgelugrad);
+    matmul_dw_query.set_attr_transpose_x1(true);
+    matmul_dw_query.set_attr_transpose_x2(false);
+    TensorDesc output_desc_dw_query(ge::Shape({64, 768, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    matmul_dw_query.update_output_desc_y(output_desc_dw_query);
+
+    // reduce_sum
+    std::vector<int64_t> axes_value{0,3};
+    auto reduce_sum_query = op::ReduceSumD("reduce_sum_query");
+    reduce_sum_query.set_input_x(fastgelugrad);
+    reduce_sum_query.set_attr_axes(axes_value);
+    reduce_sum_query.set_attr_keep_dims(false);
+    TensorDesc output_desc_dbias_query(ge::Shape({768, 16}), FORMAT_ND, DT_FLOAT16);
+    output_desc_dbias_query.SetOriginShape(ge::Shape({12288}));
+    reduce_sum_query.update_output_desc_y(output_desc_dbias_query);
+
+    std::vector<Operator> inputs{matmul_input_data, dy_data, x_data};
+    std::vector<Operator> outputs{matmul_dw_query, reduce_sum_query};
     graph.SetInputs(inputs).SetOutputs(outputs);
 
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);

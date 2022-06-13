@@ -34,6 +34,10 @@ attention_qkv_gradx_testcases = [
     ((64, 768, 16, 16), (64, 768, 16, 16), (64, 768, 16, 16), (64, 768, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16),
      (64, 64, 16, 16), (512,), (1024,), (1024,), "float16", "FRACTAL_NZ", "FRACTAL_NZ", RuntimeError,
      "bert_large_attention_qkv_gradw_1024_12288_1024_float16_NZ_NZ_dbias_out_inconsistant"),
+    # single matmul+reduce_sum_d
+    ((64, 768, 16, 16), (64, 768, 16, 16), (), (), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16),
+     (1024,), (1024,), (1024,), "float16", "FRACTAL_NZ", "FRACTAL_NZ", "success",
+     "bert_large_attention_qkv_gradw_single_matmul_reducesum"),
 ]
 
 
@@ -44,22 +48,25 @@ def _gen_case(params):
     x = {"shape": x_shape, "dtype": dtype, "format": x_format, "ori_shape": x_ori_shape, "ori_format": "ND"}
     query_dx_ori_shape = (query_dx_shape[1] * query_dx_shape[2], query_dx_shape[0] * query_dx_shape[3])
     query_dx = {"shape": query_dx_shape, "dtype": dtype, "format": x_format, "ori_shape": query_dx_ori_shape, "ori_format": "ND"}
-    key_dw_ori_shape = (key_dw_shape[1] * key_dw_shape[2], key_dw_shape[0] * key_dw_shape[3])
-    key_dw = {"shape": key_dw_shape, "dtype": dtype, "format": x_format, "ori_shape": key_dw_ori_shape, "ori_format": "ND"}
-    value_dw_ori_shape = (value_dw_shape[1] * value_dw_shape[2], value_dw_shape[0] * value_dw_shape[3])
-    value_dw = {"shape": value_dw_shape, "dtype": dtype, "format": x_format, "ori_shape": value_dw_ori_shape, "ori_format": "ND"}
     dw_q_ori_shape = (dw_q_shape[1] * dw_q_shape[2], dw_q_shape[0] * dw_q_shape[3])
     dw_query = {"shape": dw_q_shape, "dtype": dtype, "format": kernel_format,
                     "ori_shape": dw_q_ori_shape, "ori_format": "ND"}
+    dbias_query = {"shape": dbias_q_shape, "dtype": dtype, "format": "ND",
+                        "ori_shape": dbias_q_shape, "ori_format": "ND"}
+    if len(key_dw_shape) == 0:
+        key_dw = value_dw = None
+    else:
+        key_dw_ori_shape = (key_dw_shape[1] * key_dw_shape[2], key_dw_shape[0] * key_dw_shape[3])
+        key_dw = {"shape": key_dw_shape, "dtype": dtype, "format": x_format, "ori_shape": key_dw_ori_shape, "ori_format": "ND"}
+        value_dw_ori_shape = (value_dw_shape[1] * value_dw_shape[2], value_dw_shape[0] * value_dw_shape[3])
+        value_dw = {"shape": value_dw_shape, "dtype": dtype, "format": x_format, "ori_shape": value_dw_ori_shape, "ori_format": "ND"}
     dw_k_ori_shape = (dw_k_shape[1] * dw_k_shape[2], dw_k_shape[0] * dw_k_shape[3])
     dw_key = {"shape": dw_k_shape, "dtype": dtype, "format": kernel_format,
-                  "ori_shape": dw_k_ori_shape, "ori_format": "ND"}
+                "ori_shape": dw_k_ori_shape, "ori_format": "ND"}
     dw_v_ori_shape = (dw_v_shape[1] * dw_v_shape[2], dw_v_shape[0] * dw_v_shape[3])
     dw_value = {"shape": dw_v_shape, "dtype": dtype, "format": kernel_format,
                     "ori_shape": dw_v_ori_shape, "ori_format": "ND"}
-    
-    dbias_query = {"shape": dbias_q_shape, "dtype": dtype, "format": "ND",
-                    "ori_shape": dbias_q_shape, "ori_format": "ND"}
+
     dbias_key = {"shape": dbias_k_shape, "dtype": dtype, "format": "ND",
                     "ori_shape": dbias_k_shape, "ori_format": "ND"}
     dbias_value = {"shape": dbias_v_shape, "dtype": dtype, "format": "ND",
