@@ -4135,6 +4135,8 @@ pytorch:
       - ops/built-in/op_tiling/runtime/dyn_seq_outer.cc
       - ops/built-in/op_tiling/runtime/dyn_seq_outer.h
       - ops/built-in/op_proto/runtime/expand.cc
+      - ops/built-in/op_tiling/runtime/expand.cc
+      - ops/built-in/op_tiling/runtime/expand.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
       - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc
       - ops/built-in/op_tiling/sign_bits_unpack.cc
