@@ -126,7 +126,7 @@ def approximate_equal(input_x, input_y, output_z, tolerance=1e-5,
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_x", \
                                                                "input_y", error_detail)
 
-    if tolerance < 0:
+    if tolerance is not None and tolerance < 0:
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "tolerance", \
                                                            ">= 0", tolerance)
 

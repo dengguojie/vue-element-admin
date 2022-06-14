@@ -44,31 +44,6 @@ static string to_string(const std::stringstream& tiling_data) {
     .OUTPUT(y, TensorType::BasicType())
 */
 
-TEST_F(BatchToSpaceNDTiling, batchtospacend_tiling_0) {
-  std::string op_name = "BatchToSpaceND";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 2}}";
-
-  std::vector<int64_t> input{16, 2, 2, 32};
-  std::vector<int64_t> input_crops{2, 2};
-  std::vector<int32_t> crops_value{1, 1, 1, 1};
-  std::vector<int64_t> output{4, 2, 2, 2, 16};
-
-  auto opParas = op::BatchToSpace(op_name);
-  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
-  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
-  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
-  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, crops, input_crops, DT_INT32, FORMAT_ND, crops_value);
-
-  optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 8 1 1 16 0 2 2 0 0 1 1 1 1 0 2 2 2 16 4 0 2 2 ");
-  for (int64_t i = 0; i < 10; i++) {
-    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  }
-}
-
 TEST_F(BatchToSpaceNDTiling, batchtospacend_tiling_1) {
   std::string op_name = "BatchToSpaceND";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);

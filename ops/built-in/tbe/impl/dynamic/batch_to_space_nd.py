@@ -881,7 +881,6 @@ class BatchToSpaceND:
         tbe_context.get_context().add_compile_info("vars", {
             "ub_ele": self.ub_ele,
             "core_num": self.core_num,
-            "block_size": self.block_size,
         })
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.input_gm, self.block_gm, self.crops_gm],

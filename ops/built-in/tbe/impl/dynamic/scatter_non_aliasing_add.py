@@ -119,7 +119,7 @@ class ScatterNonAliasingAdd():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32",)
+        indices_support_dtype_list = ("int32", "int64")
         var_support_dtype_list = ("float32", "float16", "int32")
         para_check.check_dtype(self.indice_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")

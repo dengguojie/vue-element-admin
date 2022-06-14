@@ -44,7 +44,7 @@ def get_op_support_info(x, crops, y, block_size, kernel_name="batch_to_space"):
 # 'pylint: disable=invalid-name,unused-argument
 @register_operator("BatchToSpace")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def batch_to_space(x, crops, y, block_size, kernel_name="batch_to_space"):
     """BatchToSpace for tensor.
 
@@ -84,7 +84,6 @@ def batch_to_space(x, crops, y, block_size, kernel_name="batch_to_space"):
     tbe_context.get_context().add_compile_info("vars", {
         "ub_ele": obj.ub_ele,
         "core_num": obj.core_num,
-        "block_size": obj.block_size,
     })
     obj.tik_instance.BuildCCE(kernel_name=obj.kernel_name,
                               inputs=[obj.input_gm, obj.crops_gm],

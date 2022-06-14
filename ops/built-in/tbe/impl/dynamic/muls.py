@@ -36,7 +36,7 @@ class MulsAttrInfo:
 
 # 'pylint: disable=too-many-locals,unused-argument
 @register_operator_compute("Muls", op_mode="dynamic", support_fusion=True)
-def muls_compute(input_x, value, kernel_name="muls"):
+def muls_compute(input_x, output_y, value, kernel_name="muls"):
     """
     calculating data
 
@@ -93,7 +93,7 @@ def muls(input_x, output_y, value, kernel_name="muls"):
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
             data_input = tvm.placeholder(x_shape[0], name="data_input", dtype=input_dtype)
-            res = muls_compute(data_input, value)
+            res = muls_compute(data_input, output_y, value)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

@@ -61,6 +61,8 @@ class Flatten:
         self.tik_instance = tik.Tik()
         self.src_dtype = src.get("dtype").lower()
         self.dst_dtype = dst.get("dtype").lower()
+        self.src_dtype = "int8" if self.src_dtype == "bool" else self.src_dtype
+        self.dst_dtype = "int8" if self.dst_dtype == "bool" else self.dst_dtype
         # check dtype
         para_check.check_dtype(
             self.src_dtype,

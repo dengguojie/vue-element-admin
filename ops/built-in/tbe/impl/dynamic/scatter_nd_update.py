@@ -68,11 +68,12 @@ class ScatterNdUpdate():
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.kernel_name = kernel_name
         self.var_dtype = var.get("dtype").lower()
+        self.var_dtype = "int8" if self.var_dtype == "bool" else self.var_dtype
         self.indices_dtype = indices.get("dtype").lower()
         self.updates_dtype = updates.get("dtype").lower()
+        self.updates_dtype = "int8" if self.updates_dtype == "bool" else self.updates_dtype
         self.out_dtype = var_out.get("dtype").lower()
-        if self.out_dtype == "bool":
-            self.out_dtype = "int8"
+        self.out_dtype = "int8" if self.out_dtype == "bool" else self.out_dtype
         self.check_input_params()
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)

@@ -312,7 +312,7 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
         param.tiling_mode = TILING_MODE_8;  // do_not_last
       } else if (param.axis_size <= MAX_AXIS_SIZE) {
         param.tiling_mode = TILING_MODE_9;  // do_not_last_fp16_default
-      } else{
+      } else {
         param.tiling_mode = TILING_MODE_11;  // do_not_last
       }
     }

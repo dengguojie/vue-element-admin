@@ -1110,7 +1110,7 @@ class Argmax():
 
 @register_operator("ArgMaxWithValue")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def arg_max_with_value(x, index, value, dimension, kernel_name="arg_max_with_value"):
     """
     Generate arg_max_with_value operator use arg_max_with_value

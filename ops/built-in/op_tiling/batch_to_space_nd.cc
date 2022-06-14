@@ -34,7 +34,9 @@ using namespace ge;
 using namespace std;
 
 // define the compile key of json.vars
-static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_ele", "core_num", "block_size"};
+static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_ele", "core_num"};
+// BatchToSpace attr index
+const struct ops::AttrBase BLOCK_SIZE_DIMS_INFO(0, "block_size");
 const int64_t INDEX_0 = 0;
 const int64_t INDEX_1 = 1;
 const int64_t INDEX_2 = 2;
@@ -266,7 +268,12 @@ bool BatchToSpaceNDTiling(const string& op_type, const ge::Operator& op_paras, c
 
   int32_t ub_ele = static_cast<int32_t>(op_info[INDEX_0]);
   int32_t core_num = static_cast<int32_t>(op_info[INDEX_1]);
-  int32_t block_size = static_cast<int32_t>(op_info[INDEX_2]);
+  int32_t block_size = 0;
+  if (op_type == "BatchToSpace") {
+    OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BLOCK_SIZE_DIMS_INFO, block_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get block_size values failed."),
+                    return false);
+  }
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   std::vector<int64_t> block_vec{block_size, block_size};

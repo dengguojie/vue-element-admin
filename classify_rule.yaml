@@ -1345,6 +1345,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/as_strided.py
       - ops/built-in/tbe/impl/dynamic/avg_pool_1d.py
       - ops/built-in/tbe/impl/dynamic/axpy.py
+      - ops/built-in/tbe/impl/dynamic/batch_to_space.py
+      - ops/built-in/tbe/impl/dynamic/batch_to_space_nd.py
       - ops/built-in/tbe/impl/dynamic/bessel_i0e.py
       - ops/built-in/tbe/impl/dynamic/bessel_i1e.py
       - ops/built-in/tbe/impl/dynamic/bias_add.py
@@ -1355,6 +1357,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bias.py
       - ops/built-in/tbe/impl/dynamic/bn_training_reduce_grad.py
       - ops/built-in/tbe/impl/dynamic/fill.py
+      - ops/built-in/tbe/impl/dynamic/flatten.py
       - ops/built-in/tbe/impl/dynamic/extract_image_patches.py
       - ops/built-in/tbe/impl/dynamic/kl_div.py
       - ops/built-in/tbe/impl/dynamic/select.py
@@ -3138,13 +3141,11 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/wts_arq.py
       - ops/built-in/tbe/impl/dynamic/segment_sum.py
       - ops/built-in/tbe/impl/dynamic/space_to_batch.py
-      - ops/built-in/tbe/impl/dynamic/flatten.py
       - ops/built-in/tbe/impl/dynamic/atanh.py
       - ops/built-in/tbe/impl/dynamic/apply_gradient_descent.py
       - ops/built-in/tbe/impl/dynamic/batch_multi_class_nms_topk.py
       - ops/built-in/tbe/impl/dynamic/depth_to_space.py
       - ops/built-in/tbe/impl/dynamic/abs_grad.py
-      - ops/built-in/tbe/impl/dynamic/batch_to_space_nd.py
       - ops/built-in/tbe/impl/dynamic/relu6_grad.py
       - ops/built-in/tbe/impl/dynamic/ascend_anti_quant.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss_grad.py
@@ -3198,7 +3199,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/pad_common.py
       - ops/built-in/tbe/impl/dynamic/max_pool.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_v1.py
-      - ops/built-in/tbe/impl/dynamic/batch_to_space.py
       - ops/built-in/tbe/impl/dynamic/moving_sum_with_sigmoid.py
       - ops/built-in/tbe/impl/dynamic/dyn_seq_outer.py
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmax_v2_resnet50.py
