@@ -1344,8 +1344,10 @@ class ReverseExt2:
                                                                name="inner_dividends_ub_int", scope=tik.scope_ubuf)
             inner_shape_ub_int = self.tik_instance.Tensor("int32", (self.block_num * self.block_num,),
                                                           name="inner_shape_ub_int", scope=tik.scope_ubuf)
-            inner_axis_ub_int = self.tik_instance.Tensor("int32", (self.block_num * self.block_num,),
-                                                         name="inner_axis_ub_int", scope=tik.scope_ubuf)
+
+            # init inner_dividends_ub_int to value 0
+            util_tik_comm_func.tik_func_vector(self.tik_instance, inner_dividends_ub_int, 0,
+                                               self.block_num * self.block_num)
 
             with self.tik_instance.for_range(0, self.inner_real_dims) as real_idx:
                 gen_assist_scalar_32 = self.tik_instance.Scalar("int32", name="gen_assist_scalar_32")
@@ -1355,10 +1357,6 @@ class ReverseExt2:
                 gen_assist_scalar_32.set_as(self.inner_dividends[real_idx])
                 util_tik_comm_func.tik_func_vector(self.tik_instance,
                                                    inner_dividends_ub_int[real_idx * self.block_num],
-                                                   gen_assist_scalar_32, self.block_num)
-                gen_assist_scalar_32.set_as(self.inner_axis[real_idx])
-                util_tik_comm_func.tik_func_vector(self.tik_instance,
-                                                   inner_axis_ub_int[real_idx * self.block_num],
                                                    gen_assist_scalar_32, self.block_num)
 
             util_tik_comm_func.tik_func_vconv(self.tik_instance, inner_dividends_ub_fp16, inner_dividends_ub_int,
