@@ -25,6 +25,7 @@ aicpu:
     release:
       - ops/built-in/aicpu/
       - ops/built-in/op_proto/ocr_ops.cc
+      - ops/built-in/op_proto/inc/ocr_ops.h
       - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/data_preprocess.cc
       - ops/built-in/op_proto/data_preprocess.h
@@ -2596,7 +2597,6 @@ unkown:
       - ops/built-in/op_proto/inc/hcom_ops.h
       - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/inc/internal_ops.h
-      - ops/built-in/op_proto/inc/ocr_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
       - ops/built-in/op_proto/inc/list_ops.h
       - ops/built-in/op_proto/inc/avg_pool_1d_ops.h
