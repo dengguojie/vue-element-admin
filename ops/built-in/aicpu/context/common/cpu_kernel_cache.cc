@@ -362,7 +362,7 @@ uint32_t CpuKernelCache::ParseExtUnknownShapeIndex(
  * parse extend information.
  */
 uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
-                                     ExtInfoMsg &ext_info_msg) {
+                                     ExtInfoMsg &ext_info_msg) const {
   KERNEL_LOG_INFO("Parse extend info and update shape begin.");
   uint32_t offset = 0;
   ext_info_msg.async_flag = false;

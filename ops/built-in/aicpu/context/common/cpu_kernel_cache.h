@@ -170,7 +170,8 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param ext_info_msg: extend info msg
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t ParseExtMsg(AicpuParamHead *param_head, ExtInfoMsg &ext_info_msg);
+  uint32_t ParseExtMsg(AicpuParamHead *param_head,
+                       ExtInfoMsg &ext_info_msg) const;
 
   /*
    * parse io address.
