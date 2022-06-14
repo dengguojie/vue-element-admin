@@ -82,3 +82,33 @@ TEST_F(mul_add_fusion_test, mul_add_fusion_test_2) {
     }
     EXPECT_EQ(passMatch, false);
 }
+
+TEST_F(mul_add_fusion_test, mul_add_fusion_test_3) {
+    ge::Graph graph("mul_add_fusion_test_1");
+    auto input_data_1 = op::Data("input_data_1");
+    std::vector<int64_t> dims{-1, 128};
+    ge::Shape shape(dims);
+    ge::TensorDesc tensorDesc(shape, ge::FORMAT_NHWC, ge::DT_FLOAT);
+    input_data_1.update_input_desc_x(tensorDesc);
+    input_data_1.update_output_desc_y(tensorDesc);
+    auto mul_op = op::Mul("bert/mul")
+                      .set_input_x1(input_data_1)
+                      .set_input_x2(input_data_1);
+    auto add_op = op::Add("bert/add")
+                      .set_input_x1(mul_op)
+                      .set_input_x2(input_data_1);
+    auto end_op = op::Square("end_op_0");
+    end_op.set_input_x(add_op);
+    std::vector<Operator> inputs{input_data_1};
+    std::vector<Operator> outputs{end_op};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::RunGraphFusionPass("MulAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    bool passMatch = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "FusedMulAdd") {
+            passMatch = true;
+        }
+    }
+    EXPECT_EQ(passMatch, false);
+}
