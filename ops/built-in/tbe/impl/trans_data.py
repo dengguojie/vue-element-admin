@@ -35,6 +35,41 @@ from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+
+
+# 'pylint: disable = unused-argument,too-many-arguments
+def get_op_support_info(src, dst, src_format, dst_format, groups=1, kernel_name='trans_data'):
+    """
+    get_op_support_info
+    """
+    src_shape = src.get("shape")
+    src_format = src_format.upper()
+    dst_format = dst_format.upper()
+    axis_reduce_list = []
+    axis_split_matrix = []
+    split_0 = []
+    nd_format = ("NHWC", "NCHW", "ND")
+    if (src_format in nd_format and dst_format == "NC1HWC0") or \
+        (src_format == "NC1HWC0" and dst_format in nd_format):
+        split_0 = [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]
+        axis_split_matrix.append(split_0)
+    elif src_format in nd_format and dst_format == "FRACTAL_NZ":
+        if len(src_shape) == 2:
+            split_0 = [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [1]])]
+        else:
+            split_0 = [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]
+        axis_split_matrix.append(split_0)
+    elif src_format == "FRACTAL_NZ" and dst_format in nd_format:
+        if len(src_shape) == 4:
+            split_0 = [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [0]])]
+        else:
+            split_0 = [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]
+        axis_split_matrix.append(split_0)
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-statements

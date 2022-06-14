@@ -1291,6 +1291,133 @@ IMPLEMT_COMMON_INFERFUNC(TransDataInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(TransData, TransDataInferShape);
+
+
+static graphStatus GetTransDataSliceInfo(const Operator& op,
+                                         GeTensorDescPtr& input_desc,
+                                         std::vector<int64_t>& output_shape,
+                                         std::vector<std::vector<int64_t>>& output_data_slice,
+                                         std::vector<std::vector<int64_t>>& input_data_slice) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  OP_LOGE_IF(!op_info, GRAPH_FAILED, TbeGetName(op), "GetOpDescFromOperator failed.");
+  auto output_desc = op_info->MutableOutputDesc(0);
+  OP_LOGE_IF(!output_desc, GRAPH_FAILED, TbeGetName(op), "Get output desc failed.");
+  output_shape = output_desc->MutableShape().GetDims();
+  OP_LOGE_IF(!AttrUtils::GetListListInt(output_desc, ge::ATTR_NAME_DATA_SLICE, output_data_slice), GRAPH_FAILED,
+             TbeGetName(op), "Output no data slice, not need infer input.");
+  input_desc = op_info->MutableInputDesc(0);
+  auto input_shape = input_desc->MutableShape().GetDims();
+  for (size_t i = 0; i < input_shape.size(); i++) {
+    input_data_slice.push_back({0, input_shape[i] - 1});
+  }
+  return GRAPH_SUCCESS;
+}
+
+static bool CheckSliceRange(const std::vector<int64_t>& slice_range, const int64_t dim_value) {
+  if (slice_range.size() == DIM_SIZE2 && slice_range[0] >= 0 && \
+      slice_range[0] <= slice_range[1] && slice_range[1] < dim_value && \
+      not (slice_range[0] == 0 && slice_range[1] == dim_value - 1)) {
+    return true;
+  }
+  return false;
+}
+
+static bool CheckRangeC0Align(const std::vector<int64_t>& slice_range, const int64_t dim_value, const int64_t c0) {
+  if (slice_range[0] % c0 == 0 && ((slice_range[1] + 1) % c0 == 0 || slice_range[1] == dim_value - 1)) {
+    return true;
+  }
+  return false;
+}
+
+static graphStatus TransDataNDToNZInferDataSlice(const Operator& op) {
+  GeTensorDescPtr input_desc;
+  std::vector<int64_t> output_shape;
+  std::vector<std::vector<int64_t>> output_data_slice;
+  std::vector<std::vector<int64_t>> input_data_slice;
+  graphStatus ret = GetTransDataSliceInfo(op, input_desc, output_shape, output_data_slice, input_data_slice);
+  OP_LOGE_IF(ret != GRAPH_SUCCESS, GRAPH_FAILED, TbeGetName(op), "GetTransDataSliceInfo failed.");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  int64_t c0 = output_shape[output_shape.size() - 1];
+  if (output_shape.size() == DIM_SIZE4 && CheckSliceRange(output_data_slice[1], output_shape[1])) {
+    input_data_slice[0][0] = output_data_slice[1][0] * c0;
+    input_data_slice[0][1] = std::min((output_data_slice[1][1] + 1) * c0 - 1, input_shape[0] - 1);
+  } else if (output_shape.size() > DIM_SIZE4 && CheckSliceRange(output_data_slice[0], output_shape[0])) {
+    input_data_slice[0] = {output_data_slice[0][0], output_data_slice[0][1]};
+  } else {
+    return NOT_SUPPORT_SLICE;
+  }
+  OP_LOGE_IF(!AttrUtils::SetListListInt(input_desc, ge::ATTR_NAME_DATA_SLICE, input_data_slice), GRAPH_FAILED,
+             TbeGetName(op), "Set input(%s) data slice failed.", input_desc->GetName().c_str());
+  return GRAPH_SUCCESS;
+}
+
+static graphStatus TransDataNZToNDInferDataSlice(const Operator& op) {
+  GeTensorDescPtr input_desc;
+  std::vector<int64_t> output_shape;
+  std::vector<std::vector<int64_t>> output_data_slice;
+  std::vector<std::vector<int64_t>> input_data_slice;
+  graphStatus ret = GetTransDataSliceInfo(op, input_desc, output_shape, output_data_slice, input_data_slice);
+  OP_LOGE_IF(ret != GRAPH_SUCCESS, GRAPH_FAILED, TbeGetName(op), "GetTransDataSliceInfo failed.");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  int64_t c0 = input_shape[input_shape.size() - 1];
+  if (c0 == 0) {
+    return NOT_SUPPORT_SLICE;
+  }
+  if (input_shape.size() == DIM_SIZE4 && CheckSliceRange(output_data_slice[0], output_shape[0]) && \
+      CheckRangeC0Align(output_data_slice[0], output_shape[0], c0)) {
+    input_data_slice[1] = {output_data_slice[0][0] / c0, output_data_slice[0][1] / c0};
+  } else if (input_shape.size() > DIM_SIZE4 && CheckSliceRange(output_data_slice[0], output_shape[0])) {
+    input_data_slice[0] = {output_data_slice[0][0], output_data_slice[0][1]};
+  } else {
+    return NOT_SUPPORT_SLICE;
+  }
+  OP_LOGE_IF(!AttrUtils::SetListListInt(input_desc, ge::ATTR_NAME_DATA_SLICE, input_data_slice), GRAPH_FAILED,
+             TbeGetName(op), "Set input(%s) data slice failed.", input_desc->GetName().c_str());
+  return GRAPH_SUCCESS;
+}
+
+static graphStatus TransDataNDToNC1HWC0InferDataSlice(const Operator& op) {
+  GeTensorDescPtr input_desc;
+  std::vector<int64_t> output_shape;
+  std::vector<std::vector<int64_t>> output_data_slice;
+  std::vector<std::vector<int64_t>> input_data_slice;
+  graphStatus ret = GetTransDataSliceInfo(op, input_desc, output_shape, output_data_slice, input_data_slice);
+  OP_LOGE_IF(ret != GRAPH_SUCCESS, GRAPH_FAILED, TbeGetName(op), "GetTransDataSliceInfo failed.");
+  if (CheckSliceRange(output_data_slice[0], output_shape[0])) {
+    input_data_slice[0] = {output_data_slice[0][0], output_data_slice[0][1]};
+    OP_LOGE_IF(!AttrUtils::SetListListInt(input_desc, ge::ATTR_NAME_DATA_SLICE, input_data_slice), GRAPH_FAILED,
+               TbeGetName(op), "Set input(%s) data slice failed.", input_desc->GetName().c_str());
+    return GRAPH_SUCCESS;
+  }
+  return NOT_SUPPORT_SLICE;
+}
+
+IMPLEMT_INFER_DATA_SLICE(TransData, TransDataInferDataSlice) {
+  std::string src_format;
+  OP_LOGE_IF(GRAPH_SUCCESS != op.GetAttr("src_format", src_format), GRAPH_FAILED,
+             TbeGetName(op), "Get attr src_format failed.");
+  std::string dst_format;
+  OP_LOGE_IF(GRAPH_SUCCESS != op.GetAttr("dst_format", dst_format), GRAPH_FAILED,
+             TbeGetName(op), "Get attr dst_format failed.");
+
+  graphStatus ret = NOT_SUPPORT_SLICE;
+  const std::vector<std::string> nd_5hd_format = {"NHWC", "NCHW", "ND", "NC1HWC0"};
+  const std::vector<std::string> nd_format = {"NHWC", "NCHW", "ND"};
+  if (std::find(nd_5hd_format.begin(), nd_5hd_format.end(), src_format) != nd_5hd_format.end() && \
+        std::find(nd_5hd_format.begin(), nd_5hd_format.end(), dst_format) != nd_5hd_format.end()) {
+    ret = TransDataNDToNC1HWC0InferDataSlice(op);
+  }
+  else if (std::find(nd_format.begin(), nd_format.end(), src_format) != nd_format.end() && dst_format == "FRACTAL_NZ") {
+    ret = TransDataNDToNZInferDataSlice(op);
+  }
+  else if (src_format == "FRACTAL_NZ" && std::find(nd_format.begin(), nd_format.end(), dst_format) != nd_format.end()) {
+    ret = TransDataNZToNDInferDataSlice(op);
+  }
+  return ret;
+}
+
+INFER_DATA_SLICE_FUNC_REG(TransData, TransDataInferDataSlice);
+
 // ----------------TranData Op End------------------------
 
 // ----------------Permute Op Begin-------------------
@@ -2788,6 +2915,550 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeDInferShape) {
 
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(ConfusionTransposeD, ConfusionTransposeDInferShape);
+
+/*
+* {32, 64, 16, 48}, {2, 1, 0, 3} --> {16, 64, 32, 48}
+*/
+static std::vector<int64_t> ShapeAfterTranspose(const Operator& op, const std::vector<int64_t>& input_shape,
+                                                const std::vector<int64_t>& trans_perm) {
+  std::vector<int64_t> output_shape;
+  if (input_shape.size() != trans_perm.size()) {
+    OP_LOGE(TbeGetName(op), "The size of input_shape is %zu, the size of trans_perm is %zu.",
+            input_shape.size(), trans_perm.size());
+  }
+  for (size_t i = 0; i < input_shape.size(); ++i) {
+    output_shape.emplace_back(input_shape[trans_perm[i]]);
+  }
+  return output_shape;
+}
+
+/*
+* {{2, 3}, {4, 5}, {0}, {1, 6}}, {2, 1, 0, 3} --> {{0}, {4, 5}, {2, 3}, {1, 6}}
+*/
+static std::vector<std::vector<int64_t>> PermAfterTranspose(const Operator& op,
+                                                            const std::vector<std::vector<int64_t>>& input_perm,
+                                                            const std::vector<int64_t>& trans_perm) {
+  std::vector<std::vector<int64_t>> output_perm;
+  if (input_perm.size() != trans_perm.size()) {
+    OP_LOGE(TbeGetName(op), "The size of input_perm is %zu, the size of trans_perm is %zu.",
+            input_perm.size(), trans_perm.size());
+  }
+  for (size_t i = 0; i < input_perm.size(); ++i) {
+    output_perm.emplace_back(input_perm[trans_perm[i]]);
+  }
+  return output_perm;
+}
+
+/*
+* {16, 64, 32, 48} --> {{16}, {64}, {32}, {48}}
+*/
+static std::vector<std::vector<int64_t>> MergeShape(const std::vector<int64_t>& input_shape) {
+  std::vector<std::vector<int64_t>> output_shape;
+  for (size_t i = 0; i < input_shape.size(); ++i) {
+    output_shape.push_back({input_shape[i]});
+  }
+  return output_shape;
+}
+
+/*
+* {{16}, {64}, {32}, {48}}, {-1, -2} --> {{16}, {64}, {2, 16}, {3, 16}}
+*/
+static std::vector<std::vector<int64_t>> SplitShapeIn(const std::vector<std::vector<int64_t>>& input_shape,
+                                                      const std::vector<int64_t>& axis_list,
+                                                      const int64_t c0) {
+  std::vector<std::vector<int64_t>> output_shape;
+  output_shape = input_shape;
+  size_t shape_size = input_shape.size();
+  for (auto iter = axis_list.begin(); iter != axis_list.end(); ++iter) {
+    size_t dim_size = input_shape[*iter + shape_size].size();
+    if (dim_size == 1) {
+      output_shape[*iter + shape_size] = {input_shape[*iter + shape_size][0] / c0, c0};
+    } else if (input_shape[*iter + shape_size][dim_size - 1] > c0) {
+      output_shape[*iter + shape_size ][dim_size - 1] = input_shape[*iter + shape_size][dim_size - 1] / c0;
+      output_shape[*iter + shape_size].emplace_back(c0);
+    }
+  }
+  return output_shape;
+}
+
+/*
+* {{16}, {64}, {2, 16}, {3, 16}}, {2, 1, 0, 3} --> {{2, 16}, {64}, {16}, {3, 16}}
+*/
+static std::vector<std::vector<int64_t>> ShapeBeforeTranspose(const std::vector<std::vector<int64_t>>& input_shape,
+                                                              const std::vector<int64_t>& trans_perm) {
+  std::vector<std::vector<int64_t>> output_shape = input_shape;
+  for (size_t i = 0; i < input_shape.size(); ++i) {
+    output_shape[trans_perm[i]] = input_shape[i];
+  }
+  return output_shape;
+}
+
+/*
+* {{2, 16}, {64}, {16}, {3, 16}} --> {2, 16, 64, 16, 3, 16}
+*/
+static std::vector<int64_t> FlatPerm(const std::vector<std::vector<int64_t>>& merged_perm) {
+  std::vector<int64_t> flat_perm;
+  for (size_t i = 0; i < merged_perm.size(); ++i) {
+    for (size_t j = 0; j < merged_perm[i].size(); ++j) {
+      flat_perm.emplace_back(merged_perm[i][j]);
+    }
+  }
+  return flat_perm;
+}
+
+static int64_t CalShapeMul(const std::vector<int64_t>& shape) {
+  int64_t res = 1;
+  for (size_t i = 0; i < shape.size(); ++i) {
+    res *= shape[i];
+  }
+  return res;
+}
+
+/*
+* {6, 120, 7, 72}, {2, 12, 5, 6, 56, 9} --> {2, 3, 4, 5, 6, 7, 8, 9}
+*/
+static std::vector<int64_t> ReshapeFrac(const Operator& op, const std::vector<int64_t>& in_shape,
+                                        const std::vector<int64_t>& out_shape) {
+  std::vector<int64_t> frac_shape;
+  if (CalShapeMul(in_shape) != CalShapeMul(out_shape)) {
+    OP_LOGE(TbeGetName(op), "Prod(in_shape) is not equal to prod(out_shape).");
+  }
+  size_t idx_in = 0;
+  size_t idx_out = 0;
+  int64_t res_in = in_shape[idx_in];
+  int64_t res_out = out_shape[idx_out];
+  while (idx_in < in_shape.size() || idx_out < out_shape.size()) {
+    int64_t frac_elmt = res_in;
+    if (res_out < frac_elmt) {
+      frac_elmt = res_out;
+    }
+    frac_shape.emplace_back(frac_elmt);
+    if (frac_elmt == 0 || res_in % frac_elmt != 0 || res_out % frac_elmt != 0) {
+      OP_LOGE(TbeGetName(op), "%ld or %ld cannot be divided by %ld.", res_in, res_out, frac_elmt);
+    }
+    res_in = res_in / frac_elmt;
+    res_out = res_out / frac_elmt;
+    if (res_in <= 1) {
+      idx_in += 1;
+      if (idx_in < in_shape.size()) {
+        res_in = in_shape[idx_in];
+      }
+    }
+    if (res_out <= 1) {
+      idx_out += 1;
+      if (idx_out < out_shape.size()) {
+        res_out = out_shape[idx_out];
+      }
+    }
+  }
+  return frac_shape;
+}
+
+/*
+* {2048, 1, 768}, {2, 16, 1, 64, 1, 1, 1, 16, 3, 1, 1, 16} --> {{2, 16, 1, 64, 1}, {1}, {1, 16, 3, 1, 1, 16}}
+* {2048, 1, 768}, {1, 2, 16, 64, 1, 16, 3, 16} --> {{1, 2, 16, 64}, {1}, {16, 3, 16}}
+*/
+static std::vector<std::vector<int64_t>> MergeFrac2(const std::vector<int64_t>& reshape_shape,
+                                                    const std::vector<int64_t>& frac_shape) {
+  std::vector<std::vector<int64_t>> merge_shape;
+  int64_t resahpe_idx = reshape_shape.size() - 1;
+  int64_t frac_idx = frac_shape.size() - 1;
+  while (resahpe_idx >= 0) {
+    int64_t out_elmt = reshape_shape[resahpe_idx];
+    std::vector<int64_t> shape_list;
+    shape_list.emplace_back(frac_shape[frac_idx]);
+    int64_t list_product = frac_shape[frac_idx];
+    while (list_product < out_elmt || (frac_idx > 0 && frac_shape[frac_idx - 1] == 1)) {
+      if (frac_shape[frac_idx] == 1 && reshape_shape[resahpe_idx] == 1) {
+        break;
+      }
+      if ((std::count(frac_shape.begin(), frac_shape.begin() + frac_idx, 1) == \
+           std::count(reshape_shape.begin(), reshape_shape.begin() + resahpe_idx, 1)) && \
+          list_product == out_elmt) {
+        break;
+      }
+      int64_t dim_size = 2;
+      if (reshape_shape[resahpe_idx - 1] == 1 && frac_shape[frac_idx - 1] == 1 && list_product == out_elmt && \
+          frac_idx - dim_size >= 0 && frac_shape[frac_idx - dim_size] == 1) {
+        frac_idx = frac_idx - 1;
+        shape_list.insert(std::begin(shape_list), frac_shape[frac_idx]);
+        list_product = list_product * frac_shape[frac_idx];
+      }
+      if (reshape_shape[resahpe_idx - 1] == 1 && frac_shape[frac_idx - 1] == 1 && list_product == out_elmt) {
+        break;
+      }
+      frac_idx = frac_idx - 1;
+      shape_list.insert(std::begin(shape_list), frac_shape[frac_idx]);
+      list_product = list_product * frac_shape[frac_idx];
+    }
+    merge_shape.insert(std::begin(merge_shape),shape_list);
+    resahpe_idx = resahpe_idx - 1;
+    frac_idx = frac_idx -1;
+  }
+  return merge_shape;
+}
+
+/*
+* {2048, 768}, {2, 16, 64, 1, 16, 3, 16} --> {{2, 16, 64}, {1, 16, 3, 16}}
+*/
+static std::vector<std::vector<int64_t>> MergeFrac1(const std::vector<int64_t>& reshape_shape,
+                                                    const std::vector<int64_t>& frac_shape) {
+  std::vector<std::vector<int64_t>> merge_shape;
+  int64_t resahpe_idx = reshape_shape.size() - 1;
+  int64_t frac_idx = frac_shape.size() - 1;
+  while (resahpe_idx >= 0) {
+    int64_t out_elmt = reshape_shape[resahpe_idx];
+    std::vector<int64_t> shape_list;
+    shape_list.emplace_back(frac_shape[frac_idx]);
+    int64_t list_product = frac_shape[frac_idx];
+    while (list_product < out_elmt || (frac_idx > 0 && frac_shape[frac_idx - 1] == 1)) {
+      frac_idx = frac_idx - 1;
+      shape_list.insert(std::begin(shape_list), frac_shape[frac_idx]);
+      list_product = list_product * frac_shape[frac_idx];
+    }
+    merge_shape.insert(std::begin(merge_shape),shape_list);
+    resahpe_idx = resahpe_idx - 1;
+    frac_idx = frac_idx -1;
+  }
+  return merge_shape;
+}
+
+/*
+* {2048, 768}, {2, 16, 64, 16, 3, 16} --> {{2, 16, 64}, {16, 3, 16}}
+*/
+static std::vector<std::vector<int64_t>> MergeFrac(const Operator& op, const std::vector<int64_t>& reshape_shape,
+                                                   const std::vector<int64_t>& frac_shape) {
+  std::vector<std::vector<int64_t>> merge_shape;
+  if (CalShapeMul(reshape_shape) != CalShapeMul(frac_shape)) {
+    OP_LOGE(TbeGetName(op), "Prod(reshape_shape) is not equal to prod(frac_shape).");
+  }
+  if (reshape_shape.size() == frac_shape.size()) {
+    for (size_t i = 0; i < frac_shape.size(); ++i) {
+      merge_shape.push_back({frac_shape[i]});
+    }
+  } else {
+    if (std::find(reshape_shape.begin(), reshape_shape.end(), 1) != reshape_shape.end()) {
+      merge_shape = MergeFrac2(reshape_shape, frac_shape);
+    } else {
+      merge_shape = MergeFrac1(reshape_shape, frac_shape);
+    }
+  }
+  return merge_shape;
+}
+
+/*
+* {{2, 16, 4, 16}, {16, 3, 16}}, -1 --> {2, 3, 4, 5, 0, 1, 6}, {16, 3, 2, 16, 4, 16, 16}
+*/
+static std::vector<int64_t> PermNZToND(const std::vector<std::vector<int64_t>>& merged_nd_shape,
+                                       const int64_t split_idx) {
+  std::vector<int64_t> nz_nd_perm;
+  size_t cnt = 0;
+  size_t shape_length = merged_nd_shape.size();
+  for (size_t i = 0; i < shape_length - DIM_SIZE2; ++i) {
+    std::vector<int64_t> frac = merged_nd_shape[i];
+    for (auto iter = frac.begin(); iter != frac.end(); ++iter) {
+      nz_nd_perm.emplace_back(cnt);
+      cnt = cnt + 1;
+    }
+  }
+
+  // perm for H in W1HW0
+  size_t cnt_start = cnt;
+  for (size_t i = 0; i < merged_nd_shape[shape_length - DIM_SIZE2].size(); ++i) {
+    nz_nd_perm.emplace_back(cnt + merged_nd_shape[shape_length - 1].size() + split_idx);
+    cnt = cnt + 1;
+  }
+
+  // perm for W1 in W1HW0
+  std::vector<int64_t> frac = merged_nd_shape[shape_length - 1];
+  for (size_t i = 0; i < merged_nd_shape[shape_length - 1].size() + split_idx; ++i) {
+    nz_nd_perm.emplace_back(cnt_start);
+    cnt_start = cnt_start + 1;
+    cnt = cnt + 1;
+  }
+
+  for (size_t i = merged_nd_shape[shape_length - 1].size() + split_idx;
+       i < merged_nd_shape[shape_length - 1].size(); ++i) {
+    nz_nd_perm.emplace_back(cnt);
+    cnt = cnt + 1;
+  }
+  return nz_nd_perm;
+}
+
+/*
+* {2, 3, 4, 5, 0, 1, 6}, {{2, 16}, {4, 16}, {16}, {3, 16}} --> {{2, 3}, {4, 5}, {0}, {1, 6}}
+*/
+static std::vector<std::vector<int64_t>> MergePerm(const std::vector<int64_t>& perm,
+                                                   const std::vector<std::vector<int64_t>>& split_shape) {
+  std::vector<std::vector<int64_t>> merge_shape;
+  size_t cnt = 0;
+  for (size_t i = 0; i < split_shape.size(); ++i) {
+    std::vector<int64_t> tmp_perm;
+    for (size_t j = 0; j < split_shape[i].size(); ++j) {
+      tmp_perm.emplace_back(perm[cnt + j]);
+    }
+    cnt = cnt + split_shape[i].size();
+    merge_shape.emplace_back(tmp_perm);
+  }
+  return merge_shape;
+}
+
+/*
+* {{0}, {4, 5}, {2, 3}, {1, 6}}, -1 --> {0, 4, 5, 1, 2, 3, 6}
+*/
+static std::vector<int64_t> PermNDToNZ(const std::vector<std::vector<int64_t>>& merge_nd_perm,
+                                       const int64_t split_idx) {
+  std::vector<int64_t> nz_perm;
+  size_t shape_length = merge_nd_perm.size();
+  for (size_t i = 0; i < shape_length - DIM_SIZE2; ++i) {
+    for (size_t j = 0; j < merge_nd_perm[i].size(); ++j) {
+      nz_perm.emplace_back(merge_nd_perm[i][j]);
+    }
+  }
+  for (size_t i = 0; i < merge_nd_perm[shape_length -1].size() + split_idx; ++i) {
+    nz_perm.emplace_back(merge_nd_perm[shape_length -1][i]);
+  }
+  for (size_t i = 0; i < merge_nd_perm[shape_length -DIM_SIZE2].size(); ++i) {
+    nz_perm.emplace_back(merge_nd_perm[shape_length -DIM_SIZE2][i]);
+  }
+  for (size_t i = merge_nd_perm[shape_length -1].size() + split_idx; i < merge_nd_perm[shape_length -1].size(); ++i) {
+    nz_perm.emplace_back(merge_nd_perm[shape_length -1][i]);
+  }
+  return nz_perm;
+}
+
+static std::vector<int64_t> GetFinalPerm(const Operator& op,
+                                         const std::vector<std::vector<int64_t>>& merged_frac_in_split,
+                                         const bool transpose_first,
+                                         const std::vector<int64_t>& perm,
+                                         const std::vector<int64_t>& reshape_out) {
+  std::vector<int64_t> final_perm;
+  std::vector<int64_t> nz_nd_perm;
+  if (transpose_first) {
+    nz_nd_perm = PermNZToND(merged_frac_in_split, -1);
+    std::vector<std::vector<int64_t>> perm_trans_in = MergePerm(nz_nd_perm, merged_frac_in_split);
+    std::vector<std::vector<int64_t>> perm_transpose = PermAfterTranspose(op, perm_trans_in, perm);
+    std::vector<int64_t> perm_transpose_flat = FlatPerm(perm_transpose);
+    std::vector<std::vector<int64_t>> merged_frac_in = PermAfterTranspose(op, merged_frac_in_split, perm);
+    std::vector<int64_t> merged_frac_flat = FlatPerm(merged_frac_in);
+    std::vector<std::vector<int64_t>> merged_frac_out_split = MergeFrac(op, reshape_out, merged_frac_flat);
+    std::vector<std::vector<int64_t>> perm_merged = MergePerm(perm_transpose_flat, merged_frac_out_split);
+    final_perm = PermNDToNZ(perm_merged, -1);
+  } else {
+    std::vector<int64_t> merged_frac_in_split_flat = FlatPerm(merged_frac_in_split);
+    std::vector<std::vector<int64_t>> merged_frac_split = MergeFrac(op, reshape_out, merged_frac_in_split_flat);
+    nz_nd_perm = PermNZToND(merged_frac_in_split, -1);
+    std::vector<std::vector<int64_t>> perm_merged = MergePerm(nz_nd_perm, merged_frac_split);
+    std::vector<std::vector<int64_t>> trans_perm = PermAfterTranspose(op, perm_merged, perm);
+    final_perm = PermNDToNZ(trans_perm, -1);
+  }
+  return final_perm;
+}
+
+static std::vector<std::vector<int64_t>> GetMergedFracOutSplit(const Operator& op,
+    const std::vector<std::vector<int64_t>>& merged_frac_in_split,
+    const bool transpose_first,
+    const std::vector<int64_t>& perm,
+    const std::vector<int64_t>& reshape_out) {
+  std::vector<std::vector<int64_t>> merged_frac_out_split;
+  if (transpose_first) {
+    std::vector<std::vector<int64_t>> merged_frac_in = PermAfterTranspose(op, merged_frac_in_split, perm);
+    std::vector<int64_t> merged_frac_flat = FlatPerm(merged_frac_in);
+    merged_frac_out_split = MergeFrac(op, reshape_out, merged_frac_flat);
+  } else {
+    std::vector<int64_t> merged_frac_in_split_flat = FlatPerm(merged_frac_in_split);
+    std::vector<std::vector<int64_t>> merged_frac_split = MergeFrac(op, reshape_out, merged_frac_in_split_flat);
+    merged_frac_out_split = PermAfterTranspose(op, merged_frac_split, perm);
+  }
+  return merged_frac_out_split;
+}
+
+static std::vector<std::vector<int64_t>> GetMergedFracInSplit(const Operator& op, const bool transpose_first,
+                                                              const std::vector<int64_t>& input_shape,
+                                                              const std::vector<int64_t>& perm,
+                                                              const std::vector<int64_t>& reshape_out) {
+  std::vector<std::vector<int64_t>> merged_frac_in_split;
+  std::vector<int64_t> nd_shape;
+  for (size_t i = 0; i < input_shape.size() - DIM_SIZE4; ++i) {
+    nd_shape.emplace_back(input_shape[i]);
+  }
+  nd_shape.emplace_back(input_shape[input_shape.size() - DIM_SIZE3] * input_shape[input_shape.size() - DIM_SIZE2]);
+  nd_shape.emplace_back(input_shape[input_shape.size() - 1] * input_shape[input_shape.size() - DIM_SIZE4]);
+
+  int64_t c0 = input_shape[input_shape.size() - 1];
+  if (c0 == 0) {
+    OP_LOGE(TbeGetName(op), "C0 is equal 0.");
+  }
+  if (transpose_first) {
+    std::vector<int64_t> reshape_in = ShapeAfterTranspose(op, nd_shape, perm);
+    std::vector<int64_t> frac_res = ReshapeFrac(op, reshape_out, reshape_in);
+    std::vector<std::vector<int64_t>> merged_frac_out = MergeFrac(op, reshape_out, frac_res);
+    std::vector<std::vector<int64_t>> merged_frac_out_1 = SplitShapeIn(merged_frac_out, {-1, -2}, c0);
+    std::vector<int64_t> merged_frac_out_2 = FlatPerm(merged_frac_out_1);
+    std::vector<std::vector<int64_t>> merged_frac_in = MergeFrac(op, reshape_in, merged_frac_out_2);
+    std::vector<std::vector<int64_t>> frac_merged = ShapeBeforeTranspose(merged_frac_in, perm);
+    merged_frac_in_split = SplitShapeIn(frac_merged, {-1, -2}, c0);
+  } else {
+    std::vector<int64_t> trans_out = ShapeAfterTranspose(op, reshape_out, perm);
+    std::vector<std::vector<int64_t>> trans_out_merge = MergeShape(trans_out);
+    std::vector<std::vector<int64_t>> trans_out_split = SplitShapeIn(trans_out_merge, {-1, -2}, c0);
+    std::vector<std::vector<int64_t>> merged_frac = ShapeBeforeTranspose(trans_out_split, perm);
+    std::vector<int64_t> merged_frac_flat = FlatPerm(merged_frac);
+    std::vector<int64_t> frac_res = ReshapeFrac(op, merged_frac_flat, nd_shape);
+    std::vector<std::vector<int64_t>> merged_frac_in = MergeFrac(op, nd_shape, frac_res);
+    merged_frac_in_split = SplitShapeIn(merged_frac_in, {-1, -2}, c0);
+  }
+  return merged_frac_in_split;
+}
+
+/*
+* {{2, 16}, {9, 4, 16}, {3, 16}} --> {{2, 16}, {3}, {9, 4}, {16}, {16}}
+*/
+static std::vector<std::vector<int64_t>> MergedNDToNZ(const std::vector<std::vector<int64_t>>& shape_nd) {
+  std::vector<std::vector<int64_t>> shape_nz;
+  size_t shape_len = shape_nd.size();
+  for (size_t i = 0; i < shape_len - DIM_SIZE2; ++i) {
+    shape_nz.emplace_back(shape_nd[i]);
+  }
+  std::vector<int64_t> tmp_vector;
+  tmp_vector.assign(shape_nd[shape_len - 1].begin(), shape_nd[shape_len - 1].end() - 1);
+  shape_nz.push_back(tmp_vector);
+  tmp_vector.assign(shape_nd[shape_len - DIM_SIZE2].begin(), shape_nd[shape_len - DIM_SIZE2].end() - 1);
+  shape_nz.push_back(tmp_vector);
+  shape_nz.push_back({shape_nd[shape_len - DIM_SIZE2][shape_nd[shape_len - DIM_SIZE2].size() - 1]});
+  shape_nz.push_back({shape_nd[shape_len - 1][shape_nd[shape_len - 1].size() - 1]});
+  return shape_nz;
+}
+
+static void GetDstSplitInfo(const std::vector<std::vector<int64_t>>& merged_frac_out_split_nd,
+                            const std::vector<std::vector<int64_t>>& output_data_slice,
+                            bool& slice_res, size_t& merge_nz_slice_dim, std::vector<int64_t>& slice_dim_out_range) {
+  std::vector<std::vector<int64_t>> shape_nz = MergedNDToNZ(merged_frac_out_split_nd);
+  
+  for (size_t i = 0; i < output_data_slice.size() - DIM_SIZE2; ++i) {
+    if (CheckSliceRange(output_data_slice[i], CalShapeMul(shape_nz[i]))) {
+      if (shape_nz[i].size() == 1) {
+        slice_dim_out_range = {output_data_slice[i][0], output_data_slice[i][1]};
+        slice_res = true;
+        break;
+      }
+      std::vector<int64_t> tmp_shape(shape_nz[i].begin() + 1, shape_nz[i].end());
+      int64_t tmp_prod = CalShapeMul(tmp_shape);
+      if (tmp_prod > 0 && output_data_slice[i][0] % tmp_prod == 0 && (output_data_slice[i][1] + 1) % tmp_prod == 0) {
+        slice_dim_out_range = {output_data_slice[i][0] / tmp_prod, output_data_slice[i][1] / tmp_prod};
+        slice_res = true;
+      }
+      break;
+    }
+    merge_nz_slice_dim = merge_nz_slice_dim + shape_nz[i].size();
+  }
+}
+
+static void GetInputSliceRange(const std::vector<std::vector<int64_t>>& merged_frac_in_split_nd,
+                               const size_t slice_dim_val,
+                               const std::vector<int64_t>& slice_dim_out_range,
+                               std::vector<std::vector<int64_t>>& input_data_slice,
+                               bool& get_range_res) {
+  std::vector<std::vector<int64_t>> shape_nz = MergedNDToNZ(merged_frac_in_split_nd);
+  size_t cnt = 0;
+  for (size_t i = 0; i < input_data_slice.size() - DIM_SIZE2; ++i) {
+    if (slice_dim_val == cnt) {
+      int64_t tmp_left = slice_dim_out_range[0];
+      int64_t tmp_right = slice_dim_out_range[1];
+      if (shape_nz[i].size() > 1) {
+        std::vector<int64_t> tmp_shape(shape_nz[i].begin() + 1, shape_nz[i].end());
+        int64_t tmp_prod = CalShapeMul(tmp_shape);
+        tmp_left = slice_dim_out_range[0] * tmp_prod;
+        tmp_right = (slice_dim_out_range[1] + 1) * tmp_prod - 1;
+      }
+      input_data_slice[i] = {tmp_left, tmp_right};
+      get_range_res = true;
+      break;
+    }
+    cnt = cnt + shape_nz[i].size();
+  }
+}
+
+static graphStatus ConfusionTransposeDOfNZInferDataSlice(const Operator& op, const GeTensorDescPtr& input_desc,
+                                                         const std::vector<int64_t>& input_shape,
+                                                         const std::vector<std::vector<int64_t>>& output_data_slice,
+                                                         std::vector<std::vector<int64_t>>& input_data_slice) {
+  std::vector<int64_t> perm_list;
+  OP_LOGE_IF(GRAPH_SUCCESS != op.GetAttr("perm", perm_list), GRAPH_FAILED, TbeGetName(op), "Get attr perm failed.");
+  bool transpose_first;
+  OP_LOGE_IF(GRAPH_SUCCESS != op.GetAttr("transpose_first", transpose_first), GRAPH_FAILED,
+             TbeGetName(op), "Get attr transpose_first failed.");
+  std::vector<int64_t> shape_list;
+  OP_LOGE_IF(GRAPH_SUCCESS != op.GetAttr("shape", shape_list), GRAPH_FAILED, TbeGetName(op), "Get attr shape failed.");
+
+  std::vector<std::vector<int64_t>> merged_frac_in_split = GetMergedFracInSplit(op, transpose_first, input_shape,
+                                                                                perm_list, shape_list);
+  std::vector<std::vector<int64_t>> merged_frac_out_split = GetMergedFracOutSplit(op, merged_frac_in_split,
+                                                                                  transpose_first, perm_list,
+                                                                                  shape_list);
+  std::vector<int64_t> final_perm = GetFinalPerm(op, merged_frac_in_split, transpose_first, perm_list, shape_list);
+
+  bool slice_res = false;
+  size_t merge_nz_slice_dim = 0;
+  std::vector<int64_t> slice_dim_out_range = {0, 0};
+  if (output_data_slice.size() <= DIM_SIZE2 || input_data_slice.size() <= DIM_SIZE2) {
+    return NOT_SUPPORT_SLICE;
+  }
+  GetDstSplitInfo(merged_frac_out_split, output_data_slice, slice_res, merge_nz_slice_dim, slice_dim_out_range);
+  if (slice_res) {
+    bool get_range_res = false;
+    GetInputSliceRange(merged_frac_in_split, final_perm[merge_nz_slice_dim],
+                       slice_dim_out_range, input_data_slice, get_range_res);
+    if (get_range_res) {
+      OP_LOGE_IF(!AttrUtils::SetListListInt(input_desc, ge::ATTR_NAME_DATA_SLICE, input_data_slice), GRAPH_FAILED,
+                 TbeGetName(op), "Set input(%s) data slice failed.", input_desc->GetName().c_str());
+      return GRAPH_SUCCESS;
+    }
+  }
+  return NOT_SUPPORT_SLICE;
+}
+
+IMPLEMT_INFER_DATA_SLICE(ConfusionTransposeD, ConfusionTransposeDInferDataSlice) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  OP_LOGE_IF(!op_info, GRAPH_FAILED, TbeGetName(op), "GetOpDescFromOperator failed.");
+  auto output_desc = op_info->MutableOutputDesc(0);
+  OP_LOGE_IF(!output_desc, GRAPH_FAILED, TbeGetName(op), "Get output desc failed.");
+  auto output_shape = output_desc->MutableShape().GetDims();
+  std::vector<std::vector<int64_t>> output_data_slice;
+  OP_LOGE_IF(!AttrUtils::GetListListInt(output_desc, ge::ATTR_NAME_DATA_SLICE, output_data_slice), GRAPH_FAILED,
+             TbeGetName(op), "Output no data slice, not need infer input.");
+
+  auto input_desc = op_info->MutableInputDesc(0);
+  auto input_shape = input_desc->MutableShape().GetDims();
+  auto x_dim_num = input_desc->MutableShape().GetDimNum();
+  std::vector<std::vector<int64_t>> input_data_slice(x_dim_num);
+  for (size_t i = 0; i < input_data_slice.size(); i++) {
+    input_data_slice[i] = {0, input_shape[i] - 1};
+  }
+
+  auto format = output_desc->GetFormat();
+  if (format != FORMAT_FRACTAL_NZ) {
+    for (size_t i = 0; i < output_data_slice.size(); i++) {
+      if (CheckSliceRange(output_data_slice[i], output_shape[i])) {
+        if (output_shape[i] != 0 && input_shape[0] % output_shape[i] == 0) {
+          input_data_slice[0] = {output_data_slice[i][0] * (input_shape[0] / output_shape[i]),
+                                 (output_data_slice[i][1] + 1) * (input_shape[0] / output_shape[i]) - 1};
+          OP_LOGE_IF(!AttrUtils::SetListListInt(input_desc, ge::ATTR_NAME_DATA_SLICE, input_data_slice), GRAPH_FAILED,
+                     TbeGetName(op), "Set input(%s) data slice failed.", input_desc->GetName().c_str());
+          return GRAPH_SUCCESS;
+        }
+        break;
+      }
+    }
+    return NOT_SUPPORT_SLICE;
+  } else {
+    graphStatus ret = ConfusionTransposeDOfNZInferDataSlice(op, input_desc, input_shape,
+                                                            output_data_slice, input_data_slice);
+    return ret;
+  }
+}
+
+INFER_DATA_SLICE_FUNC_REG(ConfusionTransposeD, ConfusionTransposeDInferDataSlice);
 
 // -----------------FlattenV2 Op-------------------------
 static void GetAndConvertAxis(const Operator &op, int64_t &axis, int64_t &end_axis) {

@@ -16,6 +16,7 @@
 confusion_transpose_d
 """
 from collections import defaultdict
+from copy import deepcopy
 import te.platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from te.utils import para_check
@@ -25,6 +26,9 @@ from impl.transpose_d import transpose_d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # 'pylint: disable=too-many-locals,too-many-arguments,invalid-name,unused-argument
@@ -390,22 +394,24 @@ def _reshape_transpose(transpose_perm, reshape_in, reshape_out):
     trans_out_merge = [[trans_out[i]] for _, i in enumerate(range(idx))]
     trans_out_split, _ = _split_shape_in(trans_out_merge, [-1, -2])
 
-    merged_frac_out = _shape_before_transpose(trans_out_split, transpose_perm)
-    merged_frac_out_flat = _flat_perm(merged_frac_out)
-    frac_res = _reshape_frac(merged_frac_out_flat, reshape_in)
+    merged_frac = _shape_before_transpose(trans_out_split, transpose_perm)
+    merged_frac_flat = _flat_perm(merged_frac)
+    frac_res = _reshape_frac(merged_frac_flat, reshape_in)
     merged_frac_in = _merge_frac(reshape_in, frac_res)
     merged_frac_in_split, _ = _split_shape_in(merged_frac_in, [-1, -2])
     merged_frac_in_split_flat = _flat_perm(merged_frac_in_split)
 
-    merged_frac_out_split = _merge_frac(reshape_out, merged_frac_in_split_flat)
+    merged_frac_split = _merge_frac(reshape_out, merged_frac_in_split_flat)
 
     nz_nd_perm, frac_nz_in = _perm_nz_to_orig(merged_frac_in_split, -1)
 
-    perm_merged = _merge_perm(nz_nd_perm, merged_frac_out_split)
+    perm_merged = _merge_perm(deepcopy(nz_nd_perm), merged_frac_split)
     trans_perm = _shape_after_transpose(perm_merged, transpose_perm)
     final_perm = _perm_orig_to_nz(trans_perm, -1)
+    merged_frac_out_split = _shape_after_transpose(merged_frac_split, transpose_perm)
 
-    return frac_nz_in, final_perm
+    res = [frac_nz_in, final_perm, merged_frac_out_split, nz_nd_perm, merged_frac_in_split]
+    return res
 
 
 def _transpose_reshape(transpose_perm, reshape_in, reshape_out):
@@ -433,18 +439,18 @@ def _transpose_reshape(transpose_perm, reshape_in, reshape_out):
     merged_frac_out_splt = _merge_frac(reshape_out, merged_frac_in_split)
 
     perm, frac_nz_in = _perm_nz_to_orig(trans_in, -1)
-    perm_trans_in = _merge_perm(perm, trans_in)
+    perm_trans_in = _merge_perm(deepcopy(perm), trans_in)
     perm_transpose = _shape_after_transpose(perm_trans_in, transpose_perm)
     perm_transpose = _flat_perm(perm_transpose)
 
     perm_merged = _merge_perm(perm_transpose, merged_frac_out_splt)
     perm_final = _perm_orig_to_nz(perm_merged, -1)
 
-    return frac_nz_in, perm_final
+    res = [frac_nz_in, perm_final, merged_frac_out_splt, perm, trans_in]
+    return res
 
 
 def _division_sixteen(shape):
-
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = "value of shape is illegal, shape[-1] == 0"
@@ -502,6 +508,175 @@ def _condition(x, perm, shape, transpose_first):
         return check_reshape(shape_reshapein, shape)
 
     return False
+
+
+def _get_nz_split_shape_and_perm(x, perm, shape, transpose_first):
+    """
+    Get NZ split shape and perm.
+    For example:
+    Input:
+    `x = {"shape": (32, 4, 48, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 768, 64),`
+         `"ori_format": "NHWC"}`
+    `perm = [2, 0, 1, 3]`
+    shape = [32, 48, 16, 64]`
+    `transpose_first = False`
+    `y = {"shape": (16, 32, 4, 3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 32, 48, 64),`
+         `"ori_format": "NHWC"}`
+
+
+    Output:
+    `frac_nz_in = [32, 4, 3, 16, 16, 16]`
+    reshape the dim of 48 to 3 and 16 in shape(NZ) of x.
+
+    `merged_frac_in_split = [[32], [3, 16, 16], [4, 16]]`
+    reshape the dim of 768 into [3, 16, 16], and 64 to [4, 16], in ori_shape(ND) of x.
+
+    `nz_nd_perm = [0, 2, 3, 4, 1, 5]`
+    transpose the NZ shape of input: [32, 4, 3, 16, 16, 16] to ND shape: [32, 3, 16, 16, 4, 16]
+
+    `merged_frac_out_split = [[16], [32], [3, 16], [4, 16]]`
+    reshape the dim of 48 into [3, 16], and 64 to [4, 16], in ori_shape(ND) of y.
+
+    `final_perm = [4, 0, 1, 2, 3, 5]`
+    transpose the NZ shape of input: [32, 4, 3, 16, 16, 16] to the NZ shape of output: [16, 32, 4, 3, 16, 16].
+    """
+    input_shape = x.get("shape")
+    nd_shape = []
+    nd_shape += \
+        [input_shape[i] for _, i in enumerate(range(len(input_shape)-4))]
+    nd_shape += [input_shape[-3] * input_shape[-2]]
+    nd_shape += [input_shape[-1] * input_shape[-4]]
+    if transpose_first:
+        transpose_in = nd_shape
+        reshape_in = _shape_after_transpose(transpose_in, perm)
+        frac_nz_in, final_perm, merged_frac_out_split, nz_nd_perm, \
+            merged_frac_in_split = _transpose_reshape(perm, reshape_in, shape)
+    else:
+        reshape_in = nd_shape
+        frac_nz_in, final_perm, merged_frac_out_split, nz_nd_perm, \
+            merged_frac_in_split = _reshape_transpose(perm, reshape_in, shape)
+    res = [frac_nz_in, final_perm, merged_frac_out_split, nz_nd_perm, merged_frac_in_split]
+    return res
+
+
+def _get_dim_index(perm, dim_val):
+    """
+    Get the index of dim in perm which value is equal dim_val.
+    """
+    for idx, val in enumerate(perm):
+        if val == dim_val:
+            return idx
+
+    return 0
+
+
+def _get_output_slice_dim_of_nd(reshape_in, reshape_out, input_slice_dim):
+    """
+    Get slice dim of ND shape.
+    For example:
+    `reshape_in = [B, E, A, D, C]`
+    `reshape_out = [B1, F1, E1, 1, A1, A2, D1, C1, W1]`
+    `input_slice_dim = 2; means slice A dim in reshape_in.`
+    `If B*E = B1*F1*E1*1 and A % A1 = 0, the slice_dim of A1 in reshape_out is 4; else -1.`
+    """
+    slice_dim = 0
+    if input_slice_dim > 0:
+        prod_shape_before_slice_dim = _prod(reshape_in[0:input_slice_dim])
+        prod_reshape_out = 1
+        for idx, val in enumerate(reshape_out):
+            prod_reshape_out = prod_reshape_out * val
+            if prod_reshape_out > prod_shape_before_slice_dim:
+                if _prod(reshape_out[0:idx]) == prod_shape_before_slice_dim:
+                    slice_dim = idx
+                    break
+                return -1
+
+    if reshape_out[slice_dim] != 0 and reshape_in[input_slice_dim] % reshape_out[slice_dim] == 0:
+        return slice_dim
+
+    return -1
+
+
+def _merge_nd_2_nz(nd_shape):
+    """
+    Change ND shape to NZ shape.
+    For example:
+    `nd_shape = [[B1, F1, E1], [A1, A2], [D1, C1, W1]]`
+    `nz_shape = [[B1, F1, E1], [D1, C1], A1, A2, W1]`
+    """
+    nz_shape = []
+    for _, i in enumerate(range(len(nd_shape) - 2)):
+        nz_shape.append(nd_shape[i])
+
+    nz_shape.append(nd_shape[-1][0:-1])
+    nz_shape.append(nd_shape[-2][0:-1])
+    nz_shape.append(nd_shape[-2][-1])
+    nz_shape.append(nd_shape[-1][-1])
+
+    return nz_shape
+
+
+def _get_slice_dim_of_nz(nd_shape, perm_idx):
+    """
+    Get slice dim of NZ shape.
+    For example:
+    `nd_shape = [[B1, F1, E1], [A1, A2], [D1, C1, W1]]`
+    Change nd_shape to nz_shape:
+    `nz_shape = [[B1, F1, E1], [D1, C1], A1, A2, W1]`
+
+    `perm_idx = 5, means slice the dim of A1 in nz_shape.The perm_idx of B1 in nz_shape is 0, F1 is 1, etc.`
+
+    Then slice_dim of A1 in nz_shape is 2.The first dim of nz_shape is [B1, F1, E1], etc.
+    """
+    slice_dim = -1
+    nz_shape = _merge_nd_2_nz(nd_shape)
+    dim_num = 0
+    for _, val in enumerate(range(len(nz_shape) - 2)):
+        if perm_idx == dim_num:
+            slice_dim = val
+            break
+        else:
+            dim_num += len(nz_shape[val])
+
+    return slice_dim
+
+
+# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
+def get_op_support_info(x, y, perm, shape, transpose_first, kernel_name="confusion_transpose_d"):
+    """
+    get_op_support_info
+    """
+    input_format = x.get("format").upper()
+    input_shape = x.get("shape")
+
+    axis_reduce_list = []
+    axis_split_matrix = []
+
+    if input_format == "FRACTAL_NZ":
+        _, final_perm, merged_frac_out_split, nz_nd_perm, merged_frac_in_split = \
+            _get_nz_split_shape_and_perm(x, perm, shape, transpose_first)
+        input_slice_dim = _get_slice_dim_of_nz(merged_frac_in_split, nz_nd_perm[0])
+        output_slice_dim = _get_slice_dim_of_nz(merged_frac_out_split, _get_dim_index(final_perm, nz_nd_perm[0]))
+        if input_slice_dim != -1 and output_slice_dim != -1:
+            split_0 = [SplitInput([0, [input_slice_dim], [-1], [-1]]), SplitOutput([0, [output_slice_dim]])]
+            axis_split_matrix.append(split_0)
+    else:
+        perm_index = _get_dim_index(perm, 0)
+        output_slice_dim = 0
+        reshape_slice_dim = -1
+        if transpose_first:
+            reshape_in = _shape_after_transpose(input_shape, perm)
+            reshape_slice_dim = _get_output_slice_dim_of_nd(reshape_in, shape, perm_index)
+            output_slice_dim = reshape_slice_dim
+        else:
+            reshape_slice_dim = _get_output_slice_dim_of_nd(input_shape, shape, 0)
+            output_slice_dim = perm_index
+        if reshape_slice_dim != -1:
+            split_0 = [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [output_slice_dim]])]
+            axis_split_matrix.append(split_0)
+
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def op_select_format(x, y, perm, shape, transpose_first,
@@ -678,22 +853,7 @@ def confusion_transpose_d(x, y, perm, shape, transpose_first,
     para_check.check_dtype(input_dtype, check_list, param_name="x")
 
     if input_format == "FRACTAL_NZ":
-        nd_shape = []
-        nd_shape += \
-            [input_shape[i] for _, i in enumerate(range(len(input_shape)-4))]
-        nd_shape += [input_shape[-3] * input_shape[-2]]
-        nd_shape += [input_shape[-1] * input_shape[-4]]
-        # transpose_reshape
-        if transpose_first:
-            transpose_in = nd_shape
-            reshape_in = _shape_after_transpose(transpose_in, perm)
-            final_shape, final_perm = _transpose_reshape(perm, reshape_in,
-                                                         shape)
-        # reshape_transpose
-        else:
-            reshape_in = nd_shape
-            final_shape, final_perm = _reshape_transpose(perm, reshape_in,
-                                                         shape)
+        final_shape, final_perm, _, _, _ = _get_nz_split_shape_and_perm(x, perm, shape, transpose_first)
         x["shape"] = final_shape
         perm = final_perm
     else:
