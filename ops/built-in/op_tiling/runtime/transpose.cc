@@ -5484,26 +5484,21 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
         res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_0);
         OP_LOGD(opType.c_str(), "%s", PrintScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
-        PrintScenario0(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_1:
         res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_1);
         OP_LOGD(opType.c_str(), "%s", PrintScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
-        PrintScenario1(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_2:
         res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_2);
         OP_LOGD(opType.c_str(), "%s", PrintScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
-        PrintScenario2(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_3:
         res = TilingDataScenario3(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_3);
         OP_LOGD(opType.c_str(), "%s", PrintScenario3(compilerInfo, shapeInfo, runtimeInfo).c_str());
-        PrintScenario3(compilerInfo, shapeInfo, runtimeInfo);
-        std::cout << PrintScenario3(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_4:
         res = TilingDataScenario4(compilerInfo, shapeInfo, runtimeInfo);
@@ -5513,7 +5508,6 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
         } else {
           OP_LOGD(opType.c_str(), "%s", PrintScenario4(compilerInfo, shapeInfo, runtimeInfo).c_str());
         }
-        PrintScenario4(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_5:
         res = TilingDataScenario5(compilerInfo, shapeInfo, runtimeInfo);
@@ -5523,13 +5517,11 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
         } else {
           OP_LOGI(opType.c_str(), "%s", PrintScenario5(compilerInfo, shapeInfo, runtimeInfo).c_str());
         }
-        PrintScenario5(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_6:
         res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_6);
         OP_LOGD(opType.c_str(), "%s", PrintScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
-        PrintScenario6(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_7:
         res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
@@ -5539,7 +5531,6 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
         } else {
           OP_LOGD(opType.c_str(), "%s", PrintScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
         }
-        PrintScenario7(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_8:
         res = TilingDataScenario8();
@@ -5549,7 +5540,6 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
         res = TilingDataScenario9(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_9);
         OP_LOGD(opType.c_str(), "%s", PrintScenario9(compilerInfo, shapeInfo, runtimeInfo).c_str());
-        PrintScenario9(compilerInfo, shapeInfo, runtimeInfo);
         break;
       case SCENARIO_10:
         res = TilingDataScenario10(compilerInfo, shapeInfo, runtimeInfo);
@@ -5559,7 +5549,6 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
       case SCENARIO_11:
         res = TilingDataScenario11(compilerInfo, shapeInfo, runtimeInfo);
         UpdateScenarios(runtimeInfo, SCENARIO_11);
-        PrintScenario11(compilerInfo, shapeInfo, runtimeInfo);
         OP_LOGD(opType.c_str(), "%s", PrintScenario11(compilerInfo, shapeInfo, runtimeInfo).c_str());
         break;
       default:
