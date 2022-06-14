@@ -55,6 +55,7 @@ set(_op_proto_srcs
   runtime/layer_norm.cc
   runtime/layer_norm_x_backprop_v2.cc
   runtime/dynamic_rnn_v3.cc
+  runtime/shape_op_impl.cc
   runtime/squeeze_op_impl.cc
   runtime/unsqueeze_op_impl.cc
   runtime/dyn_seq_outer.cc

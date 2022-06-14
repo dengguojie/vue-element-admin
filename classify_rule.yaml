@@ -1658,6 +1658,7 @@ vector_B:
       - ops/built-in/op_proto/runtime/runtime_util.h
       - ops/built-in/op_proto/runtime/runtime_util.cc
       - ops/built-in/op_proto/runtime/reshape_op_impl.cc
+      - ops/built-in/op_proto/runtime/shape_op_impl.cc
       - ops/built-in/op_proto/runtime/squeeze_op_impl.cc
       - ops/built-in/op_proto/runtime/unsqueeze_op_impl.cc
       - ops/built-in/op_tiling/runtime/dynamic_atomic_addr_clean.cc
