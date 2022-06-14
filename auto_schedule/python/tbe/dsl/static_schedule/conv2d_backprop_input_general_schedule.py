@@ -161,16 +161,6 @@ def _lcm(param1, param2):
     return temp // param2
 
 
-def _parse_preload_para(preload):
-    if preload is None:
-        preload_c_col = 0
-        preload_a_l1 = 0
-    else:
-        preload_c_col = preload & 1
-        preload_a_l1 = (preload >> 1) & 1
-    return {'c_col': preload_c_col, 'a_l1': preload_a_l1}
-
-
 def _do_preload(sch, tensors, tiling, preload):
     al1_pbuffer = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
     l0c_pbuffer = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
@@ -1207,9 +1197,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         tiling['B_overhead_opt_flag'] = 0
 
     tbe_compile_param = tiling.get("tbe_compile_para")
-    # when tbe_compile_param is None, sch.tbe_compile_para and preload is None
-    sch.tbe_compile_para, preload = parse_tbe_compile_para(tbe_compile_param)
-    preload_dict = _parse_preload_para(preload)
+    # when tbe_compile_param is None, sch.tbe_compile_para is None
+    sch.tbe_compile_para, tbe_sch_control_para = parse_tbe_compile_para(tbe_compile_param)
+    preload_dict = {'c_col': tbe_sch_control_para.get("preload"), 'a_l1': tbe_sch_control_para.get("preload_l1")}
     if sch.tbe_compile_para is not None:
         out_of_order = sch.tbe_compile_para.get("out_of_order")
 

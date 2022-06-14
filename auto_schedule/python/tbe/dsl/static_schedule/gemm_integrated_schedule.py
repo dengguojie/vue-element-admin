@@ -5273,8 +5273,9 @@ class GemmSchedule:
     def _handle_tbe_compile_para(self):
         tbe_compile_para = self.tiling_work.tiling.get("tbe_compile_para")
         if tbe_compile_para:
-            _, preload = parse_tbe_compile_para(tbe_compile_para)
-            if preload and (self.tiling_work.tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2):
+            _, tbe_sch_control_para = parse_tbe_compile_para(tbe_compile_para)
+            preload_flag = tbe_sch_control_para.get("preload")
+            if preload_flag and (self.tiling_work.tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2):
                 for tensor in self.container.tensors_in_l0c:
                     self.sch[tensor].preload()
 

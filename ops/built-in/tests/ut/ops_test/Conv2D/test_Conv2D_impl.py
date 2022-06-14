@@ -396,6 +396,7 @@ def test_invalid_data_rm_2(test_arg):
 print("adding conv2d test_invalid_data_rm_2 testcase")
 ut_case.add_cust_test_func(test_func=test_invalid_data_rm_2)
 
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310P3", "Ascend310"])
     dsl_cpu_test_int8()

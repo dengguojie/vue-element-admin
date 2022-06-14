@@ -4443,7 +4443,8 @@ class CceConvOp:
             parser the tbe compile parameter into dict and preload.
             """
             sch.tbe_compile_para = {}
-            sch.tbe_compile_para, self._preload = util.parse_tbe_compile_para(compile_para)
+            sch.tbe_compile_para, tbe_sch_control_para = util.parse_tbe_compile_para(compile_para)
+            self._preload = tbe_sch_control_para.get("preload")
             if double_buffer_flag["CL0_pbuffer"] == 2 and self._preload and not self._dynamic_flag:
                 sch[c_col].preload()
 

@@ -1168,15 +1168,14 @@ class CceConv2dBackpropFilterOp:
 
         def _handle_tbe_compile_para():
             tbe_compile_para = tiling.get("tbe_compile_para")
-            sch.tbe_compile_para, preload = parse_tbe_compile_para(tbe_compile_para)
-            if preload:
-                if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2:
+            sch.tbe_compile_para, tbe_sch_control_para = parse_tbe_compile_para(tbe_compile_para)
+            preload_flag = tbe_sch_control_para.get("preload")
+            reverse_load_flag = tbe_sch_control_para.get("reverse_load")
+            if preload_flag and (tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2):
                     sch[dw_cc].preload()
-            if tbe_compile_para is not None:
-                # the number 5 means use tbe_compile_para's bit 5 as the reverse_load flag
-                # reverse is conflit with nbuffer
-                self.reverse_params["reverse_load"] = ((tbe_compile_para >> 5) & 1) and (
-                    not tiling.get("A_overhead_opt_flag")) and (not tiling.get("B_overhead_opt_flag"))
+            # reverse is conflit with nbuffer
+            self.reverse_params["reverse_load"] = reverse_load_flag and (
+                not tiling.get("A_overhead_opt_flag")) and (not tiling.get("B_overhead_opt_flag"))
 
         def _get_attach_flag():
             dynamic_l0a_attach = None

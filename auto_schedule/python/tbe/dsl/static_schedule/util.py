@@ -131,19 +131,22 @@ def parse_tbe_compile_para(compile_para):
     :return:
     """
     tbe_compile_para = {}
-    pipeline_opt = 0
-    read_write_bank_conflict = 0
-    out_of_order = 0
-    preload = 0
+    tbe_sch_control_para = {}
+    # Current usage of compile_para:
+    # preload_l1/reverse_load|preload|out_of_order|read_write_bank_conflict|pipeline_opt
     if compile_para is None:
         tbe_compile_para = None
-        preload = None
+        tbe_sch_control_para["preload"] = 0
+        tbe_sch_control_para["preload_l1"] = 0
+        tbe_sch_control_para["reverse_load"] = 0
     else:
         tbe_compile_para["pipeline_opt"] = (compile_para >> 0) & 1
         tbe_compile_para["read_write_bank_conflict"] = (compile_para >> 1) & 1
         tbe_compile_para["out_of_order"] = (compile_para >> 2) & 1
-        preload = (compile_para >> 3) & 3
-    return tbe_compile_para, preload
+        tbe_sch_control_para["preload"] = (compile_para >> 3) & 1
+        tbe_sch_control_para["preload_l1"] = (compile_para >> 4) & 1
+        tbe_sch_control_para["reverse_load"] = (compile_para >> 4) & 1
+    return tbe_compile_para, tbe_sch_control_para
 
 
 def get_split_axis(shape, max_ub_count):

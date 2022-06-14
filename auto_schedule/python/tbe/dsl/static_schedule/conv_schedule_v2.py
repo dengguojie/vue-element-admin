@@ -1320,10 +1320,10 @@ class Conv2dSchedule:
         def check_sparse_4to2_tiling():
             if not self._sparse_4to2_flag:
                 return
-            
+
             if self._tiling["BL1_shape"] is None:
                 err_man.raise_err_message_cube("BL1_matrix cannot be None in sparse 4to2 scene.")
-            
+
             ka = self._tiling["AL0_matrix"][1]
             n, c1, kh, kw, c0 = self._conv_param.dim_map["weight_tiling_b_shape"]
             kb_full = c1 * kh * kw
@@ -2853,8 +2853,8 @@ class Conv2dSchedule:
         sch = self._sch
 
         # parse the tbe compile parameter
-        sch.tbe_compile_para, preload_flag = util.parse_tbe_compile_para(self._tiling.get("compile_para"))
-        if pingpong_buffer["CL0_pbuffer"] == 2 and preload_flag:
+        sch.tbe_compile_para, tbe_sch_control_para = util.parse_tbe_compile_para(self._tiling.get("compile_para"))
+        if pingpong_buffer["CL0_pbuffer"] == 2 and tbe_sch_control_para.get("preload"):
             sch[cl0].preload()
 
         #=================================CL0 buffer align======================================

@@ -458,6 +458,7 @@ def test_reverse(test_args):
 
 ut_case.add_cust_test_func("Ascend910A", test_func=test_reverse)
 
+
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
     sys.exit(0)
