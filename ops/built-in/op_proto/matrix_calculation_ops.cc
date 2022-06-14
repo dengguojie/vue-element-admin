@@ -2546,6 +2546,37 @@ IMPLEMT_COMMON_INFERFUNC(AttentionScoreInferShape) {
 }
 COMMON_INFER_FUNC_REG(AttentionScore, AttentionScoreInferShape);
 // ----------------AttentionScore End------------
+// ----------------AttentionScoreGrad------------
+IMPLEMT_COMMON_INFERFUNC(AttentionScoreGradInferShape) {
+  auto value_dw_output = op.GetOutputDescByName("value_dw");
+  auto query_dx_output = op.GetOutputDescByName("query_dx");
+  auto key_dw_output = op.GetOutputDescByName("key_dw");
+
+  vector<int64_t> attention_score_dims = op.GetInputDescByName("attention_score").GetShape().GetDims();
+  vector<int64_t> dx_dims = op.GetInputDescByName("dx").GetShape().GetDims();
+  if (attention_score_dims.size() != 4 || dx_dims.size() != 4) {
+    OP_LOGE(TbeGetName(op).c_str(),
+            "The input query and padding_mask only support 4D.");
+    return GRAPH_FAILED;
+  }
+  vector<int64_t> value_dw_dims = {dx_dims[0] * dx_dims[2], dx_dims[3] * dx_dims[1]};
+
+  value_dw_output.SetShape(ge::Shape(value_dw_dims));
+  value_dw_output.SetDataType(ge::DT_FLOAT16);
+  (void)op.UpdateOutputDesc("value_dw", value_dw_output);
+
+  query_dx_output.SetShape(ge::Shape(value_dw_dims));
+  query_dx_output.SetDataType(ge::DT_FLOAT16);
+  (void)op.UpdateOutputDesc("query_dx", query_dx_output);
+
+  key_dw_output.SetShape(ge::Shape(value_dw_dims));
+  key_dw_output.SetDataType(ge::DT_FLOAT16);
+  (void)op.UpdateOutputDesc("key_dw", key_dw_output);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(AttentionScoreGrad, AttentionScoreGradInferShape);
+// ----------------AttentionScoreGrad End------------
 // ----------------MatrixDiagPart--------------------
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartInferShape) {
   Shape shape = op.GetInputDescByName("x").GetShape();

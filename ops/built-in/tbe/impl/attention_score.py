@@ -99,7 +99,7 @@ class MatMulSoftmax:
                                                name="mul_gm", scope=self.tik.scope_gm)
         self.add_gm = self.tik_instance.Tensor(self.matmul_dtype, self.ele_shape,
                                                name="add_gm", scope=self.tik.scope_gm)
-        self.drop_mask_gm = self.tik_instance.Tensor(self.matmul_dtype, self.drop_shape,
+        self.drop_mask_gm = self.tik_instance.Tensor("uint8", self.drop_shape,
                                                      name="drop_mask_gm", scope=self.tik.scope_gm)
         self.x3_gm = self.tik_instance.Tensor(self.matmul_dtype, self.x3_shape,
                                               name="x3_gm", scope=self.tik.scope_gm)
@@ -123,15 +123,19 @@ class MatMulSoftmax:
                                     sid=0, nburst=tensor_a_repeat_times, burst=tesnor_a_data_size,
                                     src_stride=tensor_a_src_stride, dst_stride=tensor_a_dst_stride)
 
-        mask_offset = block_idx * self.batch_outer_num * self.first_m_dim * self.first_n_dim * \
-                      self.block_num * self.block_num + \
+        mask_offset = block_idx * self.batch_outer_num * self.first_m_dim * \
+                      self.first_n_dim * self.block_num * self.block_num + \
                       cur_b_idx * self.first_m_dim * self.first_n_dim * self.block_num * self.block_num + \
-                      cur_om_idx * om_size * self.first_n_dim * self.block_num * self.block_num + \
-                      cur_m_idx * single_m_size * self.first_n_dim * self.block_num * self.block_num
-        mask_length = single_m_size * self.first_n_dim * self.block_num
+                      cur_om_idx * om_size * self.block_num * self.block_num + \
+                      cur_m_idx * cur_m_size * self.block_num * self.block_num
+        mask_repeat_times = self.first_n_dim
+        mask_length = single_m_size * self.block_num // 2
+        mask_src_stride = (self.first_m_dim - single_m_size) * self.block_num // 2
+        mask_dst_stride = 0
         if self.model_type == Constant.TRAINGING:
             self.tik_instance.data_move(ub_mask[0], self.drop_mask_gm[mask_offset],
-                                        0, 1, mask_length, 0, 0)
+                                        0, mask_repeat_times, mask_length,
+                                        mask_src_stride, mask_dst_stride)
 
     def get_second_single_time_mkn(self, m, k, n):
         """
@@ -434,8 +438,8 @@ class MatMulSoftmax:
         fp32_repeat_once_nums = 64
         max_repeat_times = 255
         repeat_times = cur_m * cur_n * self.block_num * self.block_num // fp32_repeat_once_nums
-        repeat_times = min(repeat_times, max_repeat_times)
         insn_tail = max(repeat_times // 255, 0) * (repeat_times % 255)
+        repeat_times = min(repeat_times, max_repeat_times)
 
         self.tik_instance.vconv(fp32_repeat_once_nums, "",
                                 ub_cast[0], tensor_c_ub[0], repeat_times, 1, 1, 8, 4)
@@ -655,19 +659,15 @@ class MatMulSoftmax:
 
     def tiling_batch_m_axis(self, batch, m_size):
         batch_range_value = self.x1_shape[0] * self.x1_shape[1] // self.cur_op_core_num
-        if m_size >= 32:
-            outer_m_range_value = 2
-            inner_m_range_value = self.x1_shape[3] // 4
+        outer_m_range_value = 1
+        if m_size % 4 != 0:
+            inner_m_range_value = self.x1_shape[3]
+        elif m_size > 16:
+            inner_m_range_value = self.x1_shape[3] // 2
+        elif m_size >= 12:
+            inner_m_range_value = 4
         else:
-            outer_m_range_value = 1
-            if m_size % 4 != 0:
-                inner_m_range_value = self.x1_shape[3]
-            elif m_size > 16:
-                inner_m_range_value = self.x1_shape[3] // 2
-            elif m_size >= 12:
-                inner_m_range_value = 4
-            else:
-                inner_m_range_value = 2
+            inner_m_range_value = 2
 
         return batch_range_value, outer_m_range_value, inner_m_range_value
 

@@ -602,6 +602,60 @@ REG_OP(AttentionScore)
     .OP_END_FACTORY_REG(AttentionScore)
 
 /**
+* @brief Function AttentionScoreGrad. \n
+
+* @par Inputs:
+* seven inputs, including:
+* @li attention_score: A matrix Tensor. The type only support float16.
+* @li dx: A matrix Tensor. The type only support float16.
+* @li query: A matrix Tensor. The type only support float16.
+* @li key: A matrix Tensor. The type only support float16.
+* @li value: A matrix Tensor. The type only support float16.
+* @li scale: A scalar. The type only support float16.
+* @li drop_mask: A matrix Tensor. The type only support uint8. \n
+
+* @par Attributes:
+* @li keep_prob: A mutable Tensor. Must met all of the following rules:
+ shape of "keep_prob" should be (1,) or [1,].
+* @li query_transpose: A bool. If True, changes the shape of "query" from [K, M] to
+ [M, K].
+* @li key_transpose: A bool. If True, changes the shape of "key" from [N, K] to
+ [K, N].
+* @li value_transpose: A bool. If True, changes the shape of "mid_data" from [K, M] to
+ [M, K].
+* @li dx_transpose: A bool. If True, changes the shape of "value" from [N, K] to
+ [K, N].
+* @li softmax_axes: A int. The dimension softmax would be performed on. Defaults
+ to "-1" . \n
+
+* @par Outputs:
+* value_dw: The result matrix Tensor. The type only support float16.
+* query_dx: The result matrix Tensor. The type only support float16.
+* key_dw: The result matrix Tensor. The type only support float16.
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(AttentionScoreGrad)
+    .INPUT(attention_score, TensorType({DT_FLOAT16}))
+    .INPUT(dx, TensorType({DT_FLOAT16}))
+    .INPUT(query, TensorType({DT_FLOAT16}))
+    .INPUT(key, TensorType({DT_FLOAT16}))
+    .INPUT(value, TensorType({DT_FLOAT16}))
+    .INPUT(scale, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(drop_mask, TensorType({DT_INT8}))
+    .OUTPUT(value_dw, TensorType({DT_FLOAT16}))
+    .OUTPUT(query_dx, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_dw, TensorType({DT_FLOAT16}))
+    .ATTR(keep_prob, Float, 1.0)
+    .ATTR(query_transpose, Bool, false)
+    .ATTR(key_transpose, Bool, false)
+    .ATTR(value_transpose, Bool, false)
+    .ATTR(dx_transpose, Bool, false)
+    .ATTR(softmax_axes, Int, -1)
+    .OP_END_FACTORY_REG(AttentionScoreGrad)
+
+/**
 *@brief Applies sparse "updates" to individual values or slices in a Variable . \n
 
 *@par Inputs:

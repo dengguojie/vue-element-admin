@@ -15,34 +15,46 @@
  */
 
 /*!
- * \file attention_score_fusion_pass.h
+ * \file attention_score_grad_fusion_pass.h
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_SOCRE_FUSION_PASS_H
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_SOCRE_FUSION_PASS_H
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_SOCRE_GRAD_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_SOCRE_GRAD_FUSION_PASS_H
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class ZAttentionScoreFusionPass : public PatternFusionBasePass {
+class ZAttentionScoreGradFusionPass : public PatternFusionBasePass {
 protected:
   vector<FusionPattern *> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
-  Status CheckPlatformInfo();
-  bool IsTargetPlateform(const std::string plateform);
 
 private:
   ge::NodePtr batch_matmul_node1 = nullptr;
   ge::NodePtr batch_matmul_node2 = nullptr;
   ge::NodePtr batch_matmul_node3 = nullptr;
-  ge::NodePtr softmax_node = nullptr;
+  ge::NodePtr batch_matmul_node4 = nullptr;
+
   ge::NodePtr confusion_transpose_node = nullptr;
-  ge::NodePtr fused_mul_add_node = nullptr;
-  bool traning = true;
-  Status SetAttrForBsbDesc(std::shared_ptr<ge::OpDesc> bsb_desc);
-  Status DeleteFusionNode(ge::ComputeGraph &graph);
+  ge::NodePtr confusion_transpose_node1 = nullptr;
+  ge::NodePtr confusion_transpose_node2 = nullptr;
+  ge::NodePtr softmax_grad_ext_node = nullptr;
+  ge::NodePtr drop_out_do_mask_v3_node = nullptr;
+  std::shared_ptr<ge::OpDesc> bsb_desc = nullptr;
+  bool CheckNodeShapeSupported();
+  bool CheckSpcBatchMatMulShapeSupported(const ge::NodePtr bmm_node);
+  bool CheckBatchMatMulShapeSupported(const ge::NodePtr bmm_node);
+  bool CheckSoftmaxGradShapeSupported();
+
+  Status AddInputDescForBsb(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status AddOutputDescForBsb(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status DeleteOldNode(ge::ComputeGraph &graph);
   Status AddControlEdgesForBsbNode(ge::NodePtr bsb_node);
+  Status AddEdgesForBsbNode(ge::NodePtr bsb_node);
+  Status SetAttrsForBsb(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status CreateAttentionDesc();
+  Status GetFusionNode(Mapping &mapping, ge::NodePtr input_confusion_transpose);
   Status AddOutputEdgeForNode(ge::NodePtr ori_node, ge::NodePtr new_node, int unlinkIndex, int new_node_index) const;
 };
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_SOCRE_FUSION_PASS_H
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_ATTENTION_SOCRE_GRAD_FUSION_PASS_H

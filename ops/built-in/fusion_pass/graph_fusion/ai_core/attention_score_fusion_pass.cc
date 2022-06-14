@@ -67,7 +67,9 @@ static const int NUM_THREE = 3;
 static const int NUM_FOUR = 4;
 static const int NUM_FIVE = 5;
 static const int NUM_SIX = 6;
-static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310P"};
+static bool is_inference_plateform = false;
+static bool is_traning_plateform = false;
+static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310P", "Ascend910"};
 static const char kNameFusionPass[] = "ZAttentionScoreFusionPass";
 }  // namespace
 
@@ -118,20 +120,40 @@ Status ZAttentionScoreFusionPass::CheckPlatformInfo() {
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
       OP_LOGD(kNameFusionPass, "Failed to get platform info"), return NOT_CHANGED);
 
-  OP_LOGD(kNameFusionPass, "Get soc version: %s", optionalInfo.soc_version.c_str());
+  std::string socVersion = optionalInfo.soc_version;
+  OP_LOGD(kNameFusionPass, "Get soc version: %s", socVersion.c_str());
 
   bool isSupport = false;
-  for (string pattern : SUPPORT_PLATFORM_PATTERN) {
-    if (platformInfo.str_info.short_soc_version == pattern) {
-      isSupport = true;
-      break;
-    }
+  is_inference_plateform = IsTargetPlateform(SUPPORT_PLATFORM_PATTERN[0]);
+  is_traning_plateform = IsTargetPlateform(SUPPORT_PLATFORM_PATTERN[1]);
+  if (is_inference_plateform || is_traning_plateform) {
+    isSupport = true;
   }
-  FUSION_PASS_CHECK(!isSupport, OP_LOGD(kNameFusionPass, "Only support Ascend310P series platform"),
+  FUSION_PASS_CHECK(!isSupport, OP_LOGD(kNameFusionPass, "Only support 310p, 910 series platform"),
                     return NOT_CHANGED);
 
   OP_LOGD(kNameFusionPass, "CheckPlatformInfo end");
   return SUCCESS;
+}
+
+bool ZAttentionScoreFusionPass::IsTargetPlateform(const std::string plateform) {
+  OP_LOGD(kNameFusionPass, "IsTargetPlateform begin");
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
+      OP_LOGD(kNameFusionPass, "Failed to get platform info"), return NOT_CHANGED);
+
+  std::string socVersion = optionalInfo.soc_version;
+  OP_LOGD(kNameFusionPass, "Get soc version: %s", socVersion.c_str());
+
+  bool is_target = false;
+  if (socVersion == plateform || socVersion.find(plateform) != string::npos) {
+    is_target = true;
+  }
+
+  OP_LOGD(kNameFusionPass, "IsTargetPlateform end");
+  return is_target;
 }
 
 Status ZAttentionScoreFusionPass::SetAttrForBsbDesc(std::shared_ptr<ge::OpDesc> bsb_desc) {
@@ -239,6 +261,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
 
   FUSION_PASS_CHECK(CheckPlatformInfo() != SUCCESS, OP_LOGD(kNameFusionPass, "Failed to check platform info"),
                     return NOT_CHANGED);
+
   batch_matmul_node1 = GetNodeFromMapping(PATTERN_BATCHMATMUL, mapping);
   FUSION_PASS_CHECK(batch_matmul_node1 == nullptr,
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get batch_matmul_node1 not success."),
@@ -280,6 +303,7 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   if (batch_matmul_node1_dims != batch_matmul_node1_input2_dims || batch_matmul_node1_dims != batch_matmul_node2_dims) {
     return NOT_CHANGED;
   }
+
   OP_LOGD(kNameFusionPass, "Check BatchMatMul node input dims.");
   softmax_node = GetNodeFromMapping(PATTERN_SOFTMAXV2WITHDROPOUT, mapping);
   if (softmax_node == nullptr) {
@@ -289,8 +313,10 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
     FUSION_PASS_CHECK(softmax_node == nullptr,
                       CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get softmax_node not success."),
                       return PARAM_INVALID);
-  } else {
-    OP_LOGI(kNameFusionPass, "Not Support traing, graph not change.");
+  }
+
+  if (!traning && is_traning_plateform) {
+    OP_LOGD(kNameFusionPass, "Not supported 910 inference.");
     return NOT_CHANGED;
   }
 
@@ -322,6 +348,12 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   FUSION_PASS_CHECK(softmax_shape_dims.empty(),
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get softmax_dims not success."),
                     return PARAM_INVALID);
+
+  if (softmax_node->GetOpDesc()->MutableOutputDesc(0)->GetDataType() != ge::DT_FLOAT16) {
+    OP_LOGI(kNameFusionPass, "DataType not match, graph not change.");
+    return NOT_CHANGED;
+  }
+
   auto dim_size = softmax_shape_dims.size();
   if (dim_size != NUM_FOUR && dim_size != NUM_SIX) {
     OP_LOGI(kNameFusionPass, "Shape not match, graph not change.");
@@ -339,6 +371,16 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
     batch_matmul_node1_dims[dim_three] != batch_dim3_target) {
     shape_not_matched = true;
   }
+  vector<int64_t> fused_mul_add_node_dims = fused_mul_add_node->GetOpDesc()->MutableInputDesc(NUM_TWO)
+                                               ->GetShape().GetDims();
+  vector<int64_t> add_target_dims = {batch_dim0, 1, batch_dim2, batch_dim3};
+  if (dim_size == NUM_SIX) {
+    add_target_dims = {batch_dim0, 1, batch_dim2 * ALIGN_UNIT, batch_dim3 * ALIGN_UNIT};
+  }
+  if (fused_mul_add_node_dims != add_target_dims) {
+    shape_not_matched = true;
+  }
+
   int64_t seq_value_factor = 32;
   int64_t max_seq_value = 512;
   int64_t mini_batch_value = 8;
