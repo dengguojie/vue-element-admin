@@ -317,6 +317,48 @@ Status SameInputConv2dPass::GetAllPatternNodes(Mapping& mapping, ge::NodePtr inp
     return SUCCESS;
 }
 
+bool SameInputConv2dPass::IsTensorDynamic(const ge::GeTensorDesc &tensor) const
+{
+    auto shape = tensor.GetShape().GetDims();
+    for (auto item : shape) {
+        if (item < 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool SameInputConv2dPass::CheckDynamic(const ge::NodePtr convNode) const
+{
+    // fm dynamic
+    auto convFmDesc = convNode->GetOpDesc()->GetInputDesc(0);
+    if (IsTensorDynamic(convFmDesc)) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "conv2d node's fm is dynamic, node name :[%s]", convNode->GetName().c_str());
+        return true;
+    }
+
+    // filter dynamic
+    auto convFilterDesc = convNode->GetOpDesc()->GetInputDesc(FILTER_POS);
+    if (IsTensorDynamic(convFilterDesc)) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "conv2d node's filter is dynamic, node name :[%s]", convNode->GetName().c_str());
+        return true;
+    }
+
+    // bias dynamic
+    auto convBiasDesc = convNode->GetOpDesc()->GetInputDesc(BIAS_POS);
+    if (convBiasDesc.IsValid() != GRAPH_SUCCESS) {
+        return false;
+    }
+    if (IsTensorDynamic(convBiasDesc)) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "conv2d node's bias is dynamic, node name :[%s]", convNode->GetName().c_str());
+        return true;
+    }
+
+    return false;
+}
+
+
 Status SameInputConv2dPass::CheckConvNode(ge::NodePtr convNode, ge::NodePtr inputNode) const
 {
     FUSION_PASS_CHECK(convNode == nullptr,
@@ -337,13 +379,11 @@ Status SameInputConv2dPass::CheckConvNode(ge::NodePtr convNode, ge::NodePtr inpu
         && filterType != FILTER_HOST_TYPE && filterType != WEIGHT_QUANT && filterType != FILTER_WEIGHT_TYPE,
         OP_LOGI(FUSED_OP_TYPE.c_str(), "conv filter: %s, no fusion.", filterType.c_str()), return NOT_CHANGED);
 
+    FUSION_PASS_CHECK(CheckDynamic(convNode),
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "conv dynamic shape, no fusion."), return NOT_CHANGED);
+
     auto convDesc = convNode->GetOpDesc()->GetOutputDesc(0);
     auto convDim = convDesc.GetShape().GetDims();
-    for (auto& dimValue : convDim) {
-        FUSION_PASS_CHECK(dimValue < 0,
-            OP_LOGI(FUSED_OP_TYPE.c_str(), "conv dynamic shape, no fusion."), return NOT_CHANGED);
-    }
-
     std::string format = TypeUtils::FormatToSerialString(convDesc.GetFormat());
     size_t axis = format.find('C');
     FUSION_PASS_CHECK(axis >= convDim.size(),

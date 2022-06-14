@@ -116,23 +116,43 @@ protected:
    *
    * *******************************************
    */
-  void BuildGraphForDynamicShape(ge::ComputeGraphPtr &sub_graph) {
-    ge::GeShape bias_shape({64});
+  void BuildGraphForDynamicShape(ge::ComputeGraphPtr &sub_graph,
+                                 bool fmDynamic,
+                                 bool filterDynamic,
+                                 bool biasDynamic,
+                                 bool unknownRank) {
+    int64_t dynamicDimValue = -1;
+    if (unknownRank) {
+        dynamicDimValue = -2;
+    }
+    std::vector<int64_t> bias_shape_vec = {64};
+    if (biasDynamic) {
+        bias_shape_vec = {dynamicDimValue};
+    }
+    ge::GeShape bias_shape(bias_shape_vec);
     ge::GeTensorDesc bias_desc(bias_shape, ge::FORMAT_ND, ge::DT_FLOAT);
     bias_desc.SetOriginFormat(ge::FORMAT_ND);
     bias_desc.SetOriginDataType(ge::DT_FLOAT);
     bias_desc.SetOriginShape(bias_shape);
-    ge::GeShape input_shape({-1, 16, 32, 32});
+    std::vector<int64_t> fm_shape_vec = {1, 16, 32, 32};
+    if (fmDynamic) {
+        fm_shape_vec = {dynamicDimValue, 16, 32, 32};
+    }
+    ge::GeShape input_shape(fm_shape_vec);
     ge::GeTensorDesc x_desc(input_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
     x_desc.SetOriginFormat(ge::FORMAT_NCHW);
     x_desc.SetOriginDataType(ge::DT_FLOAT);
     x_desc.SetOriginShape(input_shape);
-    ge::GeShape output_shape({-1, 64, 1, 1});
+    ge::GeShape output_shape({dynamicDimValue, 64, 1, 1});
     ge::GeTensorDesc y_desc(output_shape, ge::FORMAT_NCHW, ge::DT_FLOAT);
     y_desc.SetOriginFormat(ge::FORMAT_NCHW);
     y_desc.SetOriginDataType(ge::DT_FLOAT);
     y_desc.SetOriginShape(output_shape);
-    ge::GeShape filter_shape({32, 32, 16, 64});
+    std::vector<int64_t> filter_shape_vec = {32, 32, 16, 64};
+    if (filterDynamic) {
+        filter_shape_vec = {32, 32, 16, dynamicDimValue};
+    }
+    ge::GeShape filter_shape(filter_shape_vec);
     ge::GeTensorDesc filter_desc(filter_shape, ge::FORMAT_HWCN, ge::DT_FLOAT);
     filter_desc.SetOriginFormat(ge::FORMAT_HWCN);
     filter_desc.SetOriginDataType(ge::DT_FLOAT);
@@ -390,9 +410,51 @@ TEST_F(conv2d_to_fullyconnection_fusion_pass_test, input_bias_parent_graph_test)
   EXPECT_EQ(find_fullyconnection_flag, true);
 }
 
-TEST_F(conv2d_to_fullyconnection_fusion_pass_test, dynamic_shape_not_supported_test) {
+TEST_F(conv2d_to_fullyconnection_fusion_pass_test, dynamic_shape_not_supported_test_01) {
   ge::ComputeGraphPtr compute_graph;
-  BuildGraphForDynamicShape(compute_graph);
+  BuildGraphForDynamicShape(compute_graph, true, false, false, false);
+  FusionPassTestUtils::RunGraphFusionPass("ConvToFullyConnectionFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
+  bool find_fullyconnection_flag = false;
+  for (auto node: compute_graph->GetAllNodes()) {
+    if (node->GetType() == "FullyConnection") {
+      find_fullyconnection_flag = true;
+      break;
+    }
+  }
+  EXPECT_EQ(find_fullyconnection_flag, false);
+}
+
+TEST_F(conv2d_to_fullyconnection_fusion_pass_test, dynamic_shape_not_supported_test_02) {
+  ge::ComputeGraphPtr compute_graph;
+  BuildGraphForDynamicShape(compute_graph, false, true, false, false);
+  FusionPassTestUtils::RunGraphFusionPass("ConvToFullyConnectionFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
+  bool find_fullyconnection_flag = false;
+  for (auto node: compute_graph->GetAllNodes()) {
+    if (node->GetType() == "FullyConnection") {
+      find_fullyconnection_flag = true;
+      break;
+    }
+  }
+  EXPECT_EQ(find_fullyconnection_flag, false);
+}
+
+TEST_F(conv2d_to_fullyconnection_fusion_pass_test, dynamic_shape_not_supported_test_03) {
+  ge::ComputeGraphPtr compute_graph;
+  BuildGraphForDynamicShape(compute_graph, true, false, false, true);
+  FusionPassTestUtils::RunGraphFusionPass("ConvToFullyConnectionFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
+  bool find_fullyconnection_flag = false;
+  for (auto node: compute_graph->GetAllNodes()) {
+    if (node->GetType() == "FullyConnection") {
+      find_fullyconnection_flag = true;
+      break;
+    }
+  }
+  EXPECT_EQ(find_fullyconnection_flag, false);
+}
+
+TEST_F(conv2d_to_fullyconnection_fusion_pass_test, dynamic_shape_not_supported_test_04) {
+  ge::ComputeGraphPtr compute_graph;
+  BuildGraphForDynamicShape(compute_graph, false, true, false, true);
   FusionPassTestUtils::RunGraphFusionPass("ConvToFullyConnectionFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
   bool find_fullyconnection_flag = false;
   for (auto node: compute_graph->GetAllNodes()) {

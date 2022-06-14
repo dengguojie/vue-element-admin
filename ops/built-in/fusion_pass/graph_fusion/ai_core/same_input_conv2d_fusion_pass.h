@@ -77,6 +77,8 @@ private:
     bool CheckLastNextNode(ge::NodePtr lastNode) const;
     void GetPatternNodes(ge::NodePtr patternConv);
     Status GetAllPatternNodes(Mapping& mapping, ge::NodePtr inputNode);
+    bool IsTensorDynamic(const ge::GeTensorDesc &tensor) const;
+    bool CheckDynamic(const ge::NodePtr convNode) const;
     Status CheckConvNode(ge::NodePtr convNode, ge::NodePtr inputNode) const;
     Status CheckAllConvNodes(ge::NodePtr inputNode);
     Status CheckDequantNodes();

@@ -46,6 +46,8 @@ static const char ATTR_GROUPS[] = "groups";
 static const char ATTR_PADS[] = "pads";
 static const char ATTR_NUM_OUTPUT[] = "num_output";
 static const char ATTR_AXIS[] = "axis";
+static const int64_t UNKNOWN_RANK_DIM_VALUE = -2;
+
 static const std::map<ge::Format, std::map<std::string, int32_t>> FE_AXIS_INDEX_OF_FORMAT = {
     {ge::FORMAT_NCHW, {{"N", NCHW_DIM_N}, {"C", NCHW_DIM_C}, {"H", NCHW_DIM_H}, {"W", NCHW_DIM_W}}},
     {ge::FORMAT_HWCN, {{"N", HWCN_DIM_N}, {"C", HWCN_DIM_C}, {"H", HWCN_DIM_H}, {"W", HWCN_DIM_W}}},
@@ -208,17 +210,24 @@ Status ConvToFullyConnectionFusionPass::CheckHWCEqual(const ge::GeTensorDesc& xT
 
 Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
     string convNodeName = convNode->GetName();
-
     ge::GeTensorDesc xInputDesc = convNode->GetOpDesc()->GetInputDesc(0);
     ge::GeTensorDesc filterInputDesc = convNode->GetOpDesc()->GetInputDesc(1);
-
     auto shape_x = xInputDesc.GetShape().GetDims();
+    auto shape_w = filterInputDesc.GetShape().GetDims();
     bool is_dynamic = std::find(shape_x.begin(), shape_x.end(), -1) != shape_x.end() ||
-                      std::find(shape_x.begin(), shape_x.end(), -2) != shape_x.end();
-    FUSION_PASS_CHECK(is_dynamic,
-                      OP_LOGD(FUSED_OP_TYPE.c_str(), "FC do not support dynamic shape."),
-    return FAILED);
-
+                      std::find(shape_x.begin(), shape_x.end(), UNKNOWN_RANK_DIM_VALUE) != shape_x.end() ||
+                      std::find(shape_w.begin(), shape_w.end(), -1) != shape_w.end() ||
+                      std::find(shape_w.begin(), shape_w.end(), UNKNOWN_RANK_DIM_VALUE) != shape_w.end();
+    if (!is_dynamic) {
+        // 2: bias index
+        ge::GeTensorDesc biasInputDesc = convNode->GetOpDesc()->GetInputDesc(2);
+        if (biasInputDesc.IsValid() == GRAPH_SUCCESS) {
+            auto bias_shape = biasInputDesc.GetShape().GetDims();
+            is_dynamic = std::find(bias_shape.begin(), bias_shape.end(), -1) != bias_shape.end() ||
+                         std::find(bias_shape.begin(), bias_shape.end(), UNKNOWN_RANK_DIM_VALUE) != bias_shape.end();
+        }
+    }
+    FUSION_PASS_CHECK(is_dynamic, OP_LOGD(FUSED_OP_TYPE.c_str(), "FC do not support dynamic shape."), return FAILED);
     FUSION_PASS_CHECK(convNode->GetOutAllNodes().size() != 1,
                       OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv out node num should be one."),
     return FAILED);

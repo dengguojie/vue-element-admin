@@ -725,6 +725,8 @@ cube-tiling:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/spacetobatch_conv2d_batchtospace_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/same_input_conv2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/same_input_conv2d_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_to_fullyconnection_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_to_fullyconnection_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_add_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_add_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_conv2d_fusion_pass.cc

@@ -217,11 +217,20 @@ protected:
         computeGraph = ge::GraphUtils::GetComputeGraph(graph);
     }
 
-    void BuildGraphWithNoBias(ComputeGraphPtr &computeGraph)
+    void BuildGraphWithNoBias(ComputeGraphPtr &computeGraph, bool fmDynamic=false, bool filterDynamic=false)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
+        std::vector<int64_t> fmShape = {1, 32, 32, 32};
+        if (fmDynamic) {
+            fmShape[0] = -1;
+        }
 
-        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        std::vector<int64_t> filerShape = {32, 1, 1, 1};
+        if (filterDynamic) {
+            filerShape[0] = -1;
+        }
+
+        auto inputOp = BuildInputOp("input", fmShape, FORMAT_NHWC, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), filerShape, FORMAT_NHWC, DT_FLOAT);
         auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
@@ -248,18 +257,23 @@ protected:
         computeGraph = ge::GraphUtils::GetComputeGraph(graph);
     }
 
-    void BuildGraphWithOneBias(ComputeGraphPtr &computeGraph)
+    void BuildGraphWithOneBias(ComputeGraphPtr &computeGraph, bool biasDynamic=false)
     {
+        std::vector<int64_t> biasShape = {32};
+        if (biasDynamic) {
+            biasShape[0] = -1;
+        }
+        std::vector<int64_t> filterShape = {32, 1, 1, 1};
         auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), filterShape, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
-        auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), biasShape, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
         auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
         auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
-        auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
         auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
@@ -271,7 +285,7 @@ protected:
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
-        std::vector<Operator> inputs {inputOp, filterOp0, filterOp1, filterOp2, filterOp3, biasOp1};
+        std::vector<Operator> inputs {inputOp, filterOp0, filterOp1, filterOp2, filterOp3, biasOp0};
         std::vector<Operator> outputs {conv2dOp2, conv2dOp3};
 
         ge::Graph graph("test");
@@ -897,7 +911,8 @@ TEST_F(same_input_conv2d_test, same_input_conv2d_with_no_bias_test_02)
     ge::ComputeGraphPtr computeGraph;
     BuildGraphWithNoBias(computeGraph);
     FusionPassTestUtils::InferShapeAndType(computeGraph);
-    FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    Status ret = FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    EXPECT_EQ(ret, SUCCESS);
 
     uint32_t conv2dNodeExpect = 3;
     uint32_t splitNodeExpect = 1;
@@ -1173,6 +1188,57 @@ TEST_F(same_input_conv2d_test, same_input_conv2d_test_sd3403)
     uint32_t reluNodeExpect = 2;
     uint32_t concatNodeExpect = 0;
     CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
+}
+
+TEST_F(same_input_conv2d_test, same_input_conv2d_with_no_bias_dynamic_test_01)
+{
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphWithNoBias(computeGraph, true);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    Status ret = FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    EXPECT_EQ(ret, NOT_CHANGED);
+}
+
+TEST_F(same_input_conv2d_test, same_input_conv2d_with_no_bias_dynamic_test_02)
+{
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphWithNoBias(computeGraph, false, true);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    Status ret = FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    EXPECT_EQ(ret, NOT_CHANGED);
+}
+
+TEST_F(same_input_conv2d_test, same_input_conv2d_with_no_bias_dynamic_test_03)
+{
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphWithOneBias(computeGraph, true);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    Status ret = FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    EXPECT_EQ(ret, NOT_CHANGED);
 }
 
 } // namespace fe
