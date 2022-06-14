@@ -33,7 +33,6 @@ static const char kPatternOutput1[] = "OUTPUT1";
 static const char kPatternOutput2[] = "OUTPUT2";
 static const char kPatternOutput3[] = "OUTPUT3";
 static const string kFusedOpType = "FusedOp";
-static const string OP_PATTERN_TUPLEREDUCE = "tuple_reduce";
 }
 
 /*
@@ -85,7 +84,8 @@ vector<BufferFusionPattern *> ConvBnreduceFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
   // define pattern rules
-  pattern2->AddOpDesc(kPatternBnreduce, {OP_PATTERN_TUPLEREDUCE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+  pattern2->AddOpDesc(kPatternBnreduce, {OP_PATTERN_BNTUPLEREDUCE}, TBE_PATTERN_NUM_DEFAULT,
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternOutput1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternOutput2, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
@@ -101,7 +101,8 @@ vector<BufferFusionPattern *> ConvBnreduceFusionPass::DefinePatterns() {
   BufferFusionPattern *pattern3 = new (std::nothrow) BufferFusionPattern(pass_name3);
   FUSION_PASS_CHECK(pattern3 == nullptr, OP_LOGE(kFusedOpType.c_str(), "new an object failed."), return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name3.c_str());
-  pattern3->AddOpDesc(kPatternBnreduce, {OP_PATTERN_TUPLEREDUCE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+  pattern3->AddOpDesc(kPatternBnreduce, {OP_PATTERN_BNTUPLEREDUCE}, TBE_PATTERN_NUM_DEFAULT,
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternOutput1, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternOutput2, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
@@ -135,7 +136,7 @@ Status ConvBnreduceFusionPass::GetFusionNodes(const BufferFusionMapping &mapping
   }
   for (auto &item : mapping) {
     const BufferFusionOpDesc *op_desc = item.first;
-    if (op_desc != nullptr && op_desc->types[0] == OP_PATTERN_TUPLEREDUCE) {
+    if (op_desc != nullptr && op_desc->types[0] == OP_PATTERN_BNTUPLEREDUCE) {
       ge::NodePtr node = item.second[0];
       if (node == nullptr) {
         return FAILED;

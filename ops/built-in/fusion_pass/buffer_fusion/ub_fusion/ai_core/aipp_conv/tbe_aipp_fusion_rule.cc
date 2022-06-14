@@ -353,46 +353,4 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
   OP_LOGD(fused_op_type.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
 
-bool BroadcastPatternRule::CheckTensorData(const ge::GeTensorDesc tensor_0, const ge::GeTensorDesc tensor_1)
-{
-    if (tensor_1.GetFormat() == ge::FORMAT_NC1HWC0 &&
-        tensor_0.GetShape().GetDimNum() == 5) {
-        int64_t tensor1_c1_shape = tensor_1.GetShape().GetDim(1);
-        int64_t tensor1_c0_shape = tensor_1.GetShape().GetDim(4);
-        if (tensor_0.GetShape().GetDim(1) == tensor1_c1_shape &&
-            tensor_0.GetShape().GetDim(4) == tensor1_c0_shape &&
-            tensor_0.GetShape().GetShapeSize() == tensor1_c1_shape * tensor1_c0_shape) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool BroadcastPatternRule::CheckBroadcastFusionScenario(const BufferFusionMapping &mapping,
-                                                        vector<ge::NodePtr> &fusion_nodes)
-{
-    for (auto &item : mapping) {
-        const BufferFusionOpDesc *op_desc = item.first;
-        if (op_desc != nullptr && op_desc->types[0] == OP_PATTERN_BROAD_CAST &&
-            op_desc->inputs.size() == 2) {
-            ge::NodePtr node = item.second[0];
-            if (node == nullptr) {
-                return false;
-            }
-            const ge::GeTensorDesc input_tensor_0 = node->GetOpDesc()->GetInputDesc(0);
-            const ge::GeTensorDesc input_tensor_1 = node->GetOpDesc()->GetInputDesc(1);
-            if (input_tensor_0.GetShape().GetDimNum() == 1 ||
-                input_tensor_1.GetShape().GetDimNum() == 1) {
-                continue;
-            }
-            if (CheckTensorData(input_tensor_0, input_tensor_1) || CheckTensorData(input_tensor_1, input_tensor_0)) {
-                continue;
-            }
-            fusion_nodes.clear();
-            return false;
-        }
-    }
-    return true;
-}
-
 }  // namespace fe

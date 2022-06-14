@@ -21,7 +21,7 @@ protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 set(_common_fusion_pass_inc
   ${OPS_DIR}/built-in/fusion_pass/common
-  ${OPS_DIR}/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv
+  ${OPS_DIR}/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv
   ${OPS_DIR}/built-in/op_proto/util
   ${OPS_INCLUDE}
   ${FWKACLLIB_INCLUDE}
@@ -96,6 +96,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_bnreduce_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv_ub_fusion_base.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_requant_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_clipByValue_fusion_pass.cc

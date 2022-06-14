@@ -28,7 +28,7 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "conv2d_slice_info_cal_base.h"
 #include "common/util/platform_info.h"
-#include "tbe_aipp_fusion_rule.h"
+#include "conv_ub_fusion_base.h"
 
 using namespace ge;
 

@@ -20,7 +20,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
-#include "tbe_aipp_fusion_rule.h"
+#include "conv_ub_fusion_base.h"
 
 namespace fe {
 using std::vector;

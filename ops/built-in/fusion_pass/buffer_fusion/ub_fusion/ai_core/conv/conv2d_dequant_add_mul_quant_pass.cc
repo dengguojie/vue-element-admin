@@ -26,7 +26,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
-#include "tbe_aipp_fusion_rule.h"
+#include "conv_ub_fusion_base.h"
 
 namespace fe {
 
