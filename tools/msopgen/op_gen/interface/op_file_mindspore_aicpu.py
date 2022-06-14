@@ -9,10 +9,10 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 import os
 import shutil
 
-from .op_file_aicpu import OpFileAiCpu
-from .op_tmpl import OPTmpl
-from . import utils
-from .const_manager import ConstManager
+from op_gen.interface.op_file_aicpu import OpFileAiCpu
+from op_gen.interface.op_tmpl import OPTmpl
+from op_gen.interface import utils
+from op_gen.interface.const_manager import ConstManager
 
 
 class OpFileMindSporeAICPU(OpFileAiCpu):

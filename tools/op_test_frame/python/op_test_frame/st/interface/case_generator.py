@@ -35,18 +35,24 @@ class CaseGenerator:
         self.op_type = ""
         self.args = args
 
-    def check_argument_valid(self):
+    @staticmethod
+    def check_required_key(op_info, op_info_key, missing_keys):
         """
-        check input argument valid
+        Function:check required key
+        op_info: operator information
+        op_info_key: key in operator st json
+        missing_keys: keys missed in operator st json
+        return: None
         """
-        if os.path.splitext(self.input_file_path)[-1] \
-                not in ConstManager.INPUT_SUFFIX_LIST:
+        for required_key in ConstManager.REQUIRED_OP_INFO_KEYS:
+            if required_key not in op_info:
+                missing_keys.append(required_key)
+        if len(missing_keys) > 0:
             utils.print_error_log(
-                'The file "%s" is invalid, only supports .ini or .py file. '
-                'Please modify it.' % self.input_file_path)
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
-        utils.check_path_valid(self.input_file_path)
-        utils.check_path_valid(self.output_path, True)
+                'The "%s" is missing: %s. Please modify it.' % (
+                    op_info_key, missing_keys))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     @staticmethod
     def _parse_bool_value(value):
@@ -75,6 +81,145 @@ class CaseGenerator:
     def _get_ms_ops_info(module_name, class_name):
         params = importlib.import_module(module_name)
         return getattr(params, class_name)
+
+    @staticmethod
+    def _get_mindspore_op_dtype(mindspore_ops_info, count_input):
+        dtype = []
+        for value in mindspore_ops_info.get('dtype_format'):
+            if not value[count_input]:
+                utils.print_error_log(
+                    'The dtype_format of this opeartor is null, '
+                    'please modify it')
+                raise utils.OpTestGenException(
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+            dtype.append(value[count_input][0])
+        dtype_str = ','.join(dtype)
+        return dtype_str
+
+    @staticmethod
+    def _check_op_info_list_valid(value_list, support_list, op_info_key):
+        if len(value_list) == 0:
+            utils.print_error_log(
+                'The value of "%s" is empty. Please modify it.' % op_info_key)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+        for value in value_list:
+            if value == '':
+                utils.print_error_log(
+                    'The value of "%s" is empty. Only supports %s. Please '
+                    'modify it.' % (op_info_key, support_list))
+                raise utils.OpTestGenException(
+                    ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+            if value not in support_list:
+                utils.print_warn_log(
+                    'The value(%s) of "%s" is invalid. '
+                    'Only supports %s. Please modify it.' % (
+                        value, op_info_key, support_list))
+
+    @staticmethod
+    def _delete_comments(content):
+        no_comments_content = re.sub(r'//.*|/\*(\s|.)*?\*/', '', content)
+        return no_comments_content.strip()
+
+    @staticmethod
+    def _check_op_proto_path_valid(path):
+        if not os.path.exists(path):
+            utils.print_warn_log(
+                'The path {} does not exist. Please check whether '
+                'the path exists.'.format(path))
+            return False
+        if not os.access(path, os.R_OK):
+            utils.print_warn_log('The path {} does not have permission to '
+                                 'read. Please check the path permission.'
+                                 .format(path))
+            return False
+        return True
+
+    @staticmethod
+    def _split_type_attrs(type_attrs):
+        attr_tensor_type = type_attrs.split(',', 1)[0]
+        default_value_str = type_attrs.split(',', 1)[1]
+        return attr_tensor_type, default_value_str
+
+    @staticmethod
+    def _check_shape_valid(shape, layer_name):
+        for dim in shape:
+            if not isinstance(dim, int):
+                utils.print_error_log(
+                    'The input shape(%s) of layer(%s) is invalid. Please '
+                    'check the model or try to change the "placeholder" '
+                    'shape to fix the problem.' % (shape, layer_name))
+                raise utils.OpTestGenException(
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+            if dim <= 0:
+                utils.print_error_log(
+                    'The input shape(%s) of layer(%s) must be greater than 0. '
+                    'Please check the model or try to change the "placeholder"'
+                    ' shape to fix the problem.' % (shape, layer_name))
+                raise utils.OpTestGenException(
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+    @staticmethod
+    def _update_format_from_model(format_value, new_base_case):
+        for input_format in new_base_case.get('input_desc'):
+            if 'format' in input_format:
+                input_format['format'] = [format_value]
+        for output_format in new_base_case.get('output_desc'):
+            if 'format' in output_format:
+                output_format['format'] = [format_value]
+
+    def generate(self):
+        """
+        generate case.json from .ini or .py file
+        """
+        # check path valid
+        self.check_argument_valid()
+        if self.input_file_path.endswith(".ini"):
+            # parse ini to json
+            self._parse_ini_to_json()
+        elif self.input_file_path.endswith(".py"):
+            # parse .py to json
+            self._parse_py_to_json()
+
+        if self._is_aicpu_op():
+            # generate aicpu base case of case.json
+            base_case = self._generate_aicpu_base_case()
+        else:
+            # check json valid
+            self._check_op_info()
+            base_case = self._generate_aicore_base_case()
+        file_name = '%s_case_%s.json' \
+                    % (self.op_type.replace('/', '_'),
+                       time.strftime("%Y%m%d%H%M%S",
+                                     time.localtime(time.time())))
+        json_path = os.path.join(self.output_path, file_name)
+
+        try:
+            with os.fdopen(os.open(json_path, ConstManager.WRITE_FLAGS,
+                                   ConstManager.WRITE_MODES), 'w+') as file_object:
+                file_object.write(
+                    json.dumps(base_case, sort_keys=False, indent=4))
+        except IOError as io_error:
+            utils.print_error_log(
+                'Failed to generate file %s. %s' % (json_path, str(io_error)))
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from io_error
+        finally:
+            pass
+        utils.print_info_log(
+            "Generate test case file %s successfully." % json_path)
+
+    def check_argument_valid(self):
+        """
+        check input argument valid
+        """
+        if os.path.splitext(self.input_file_path)[-1] \
+                not in ConstManager.INPUT_SUFFIX_LIST:
+            utils.print_error_log(
+                'The file "%s" is invalid, only supports .ini or .py file. '
+                'Please modify it.' % self.input_file_path)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+        utils.check_path_valid(self.input_file_path)
+        utils.check_path_valid(self.output_path, True)
 
     def _get_attr_type_list_value(self, attr_type, default_value_str):
         default_value = None
@@ -109,6 +254,8 @@ class CaseGenerator:
             default_value = default_value_str
         elif attr_type.startswith('list'):
             default_value = self._get_attr_type_list_value(attr_type, default_value_str)
+        else:
+            default_value = ''
         return default_value
 
     def _get_default_attr_value(self, attr_type, default_value_str, attr_name):
@@ -207,20 +354,6 @@ class CaseGenerator:
                     attr_name = 'attr_' + attr_info.get('name')
                     self.op_info[attr_name] = attr_info
 
-    @staticmethod
-    def _get_mindspore_op_dtype(mindspore_ops_info, count_input):
-        dtype = []
-        for value in mindspore_ops_info.get('dtype_format'):
-            if not value[count_input]:
-                utils.print_error_log(
-                    'The dtype_format of this opeartor is null, '
-                    'please modify it')
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-            dtype.append(value[count_input][0])
-        dtype_str = ','.join(dtype)
-        return dtype_str
-
     def _get_basic_op_info_mindspore(self, mindspore_ops_info):
         """
         get basic operator information, i/o represent input/output.
@@ -248,26 +381,6 @@ class CaseGenerator:
                 self.op_info[op_key]['dtype'] = self._get_mindspore_op_dtype(
                     mindspore_ops_info, count_input)
                 count_input += 1
-
-    @staticmethod
-    def _check_op_info_list_valid(value_list, support_list, op_info_key):
-        if len(value_list) == 0:
-            utils.print_error_log(
-                'The value of "%s" is empty. Please modify it.' % op_info_key)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-        for value in value_list:
-            if value == '':
-                utils.print_error_log(
-                    'The value of "%s" is empty. Only supports %s. Please '
-                    'modify it.' % (op_info_key, support_list))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-            if value not in support_list:
-                utils.print_warn_log(
-                    'The value(%s) of "%s" is invalid. '
-                    'Only supports %s. Please modify it.' % (
-                        value, op_info_key, support_list))
 
     def _check_basic_filed_vaild(self, dtype_count, op_info, op_info_key):
         # check paramType valid
@@ -319,25 +432,6 @@ class CaseGenerator:
         else:
             op_info["format"] = ''
 
-    @staticmethod
-    def check_required_key(op_info, op_info_key, missing_keys):
-        """
-        Function:check required key
-        op_info: operator information
-        op_info_key: key in operator st json
-        missing_keys: keys missed in operator st json
-        return: None
-        """
-        for required_key in ConstManager.REQUIRED_OP_INFO_KEYS:
-            if required_key not in op_info:
-                missing_keys.append(required_key)
-        if len(missing_keys) > 0:
-            utils.print_error_log(
-                'The "%s" is missing: %s. Please modify it.' % (
-                    op_info_key, missing_keys))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-
     def _check_op_info(self):
         utils.print_info_log('Start to check valid for op info.')
         dtype_count = 0
@@ -382,31 +476,6 @@ class CaseGenerator:
                 % (key[:-5], self.input_file_path))
             raise utils.OpTestGenException(
                 ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-
-    @staticmethod
-    def _delete_comments(content):
-        no_comments_content = re.sub(r'//.*|/\*(\s|.)*?\*/', '', content)
-        return no_comments_content.strip()
-
-    @staticmethod
-    def _check_op_proto_path_valid(path):
-        if not os.path.exists(path):
-            utils.print_warn_log(
-                'The path {} does not exist. Please check whether '
-                'the path exists.'.format(path))
-            return False
-        if not os.access(path, os.R_OK):
-            utils.print_warn_log('The path {} does not have permission to '
-                                 'read. Please check the path permission.'
-                                 .format(path))
-            return False
-        return True
-
-    @staticmethod
-    def _split_type_attrs(type_attrs):
-        attr_tensor_type = type_attrs.split(',', 1)[0]
-        default_value_str = type_attrs.split(',', 1)[1]
-        return attr_tensor_type, default_value_str
 
     def _parse_name_from_op_proto_file(self, op_key, start_str):
         # regular match to get input/output/attr name.
@@ -814,24 +883,6 @@ class CaseGenerator:
             pass
         return new_base_case
 
-    @staticmethod
-    def _check_shape_valid(shape, layer_name):
-        for dim in shape:
-            if not isinstance(dim, int):
-                utils.print_error_log(
-                    'The input shape(%s) of layer(%s) is invalid. Please '
-                    'check the model or try to change the "placeholder" '
-                    'shape to fix the problem.' % (shape, layer_name))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-            if dim <= 0:
-                utils.print_error_log(
-                    'The input shape(%s) of layer(%s) must be greater than 0. '
-                    'Please check the model or try to change the "placeholder"'
-                    ' shape to fix the problem.' % (shape, layer_name))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-
     def _update_aicpu_attr_from_model(self, node, new_base_case):
         # The node won't be None and must has the key 'attr'.
         # IF the node is empty, node:{'attr':[]}
@@ -873,15 +924,6 @@ class CaseGenerator:
                         item, attr, new_attr_list, new_base_case)
             if len(new_attr_list) > 0:
                 new_base_case['attr'] = new_attr_list
-
-    @staticmethod
-    def _update_format_from_model(format_value, new_base_case):
-        for input_format in new_base_case.get('input_desc'):
-            if 'format' in input_format:
-                input_format['format'] = [format_value]
-        for output_format in new_base_case.get('output_desc'):
-            if 'format' in output_format:
-                output_format['format'] = [format_value]
 
     def _generate_base_case_from_model(self, base_case, is_aicpu=False):
         nodes = get_model_nodes(self.args, self.op_type)
@@ -926,43 +968,3 @@ class CaseGenerator:
             if self.op_info.get('opInfo').get('kernelSo'):
                 return True
         return False
-
-    def generate(self):
-        """
-        generate case.json from .ini or .py file
-        """
-        # check path valid
-        self.check_argument_valid()
-        if self.input_file_path.endswith(".ini"):
-            # parse ini to json
-            self._parse_ini_to_json()
-        elif self.input_file_path.endswith(".py"):
-            # parse .py to json
-            self._parse_py_to_json()
-
-        if self._is_aicpu_op():
-            # generate aicpu base case of case.json
-            base_case = self._generate_aicpu_base_case()
-        else:
-            # check json valid
-            self._check_op_info()
-            base_case = self._generate_aicore_base_case()
-        file_name = '%s_case_%s.json' \
-                    % (self.op_type.replace('/', '_'),
-                       time.strftime("%Y%m%d%H%M%S",
-                                     time.localtime(time.time())))
-        json_path = os.path.join(self.output_path, file_name)
-
-        try:
-            with os.fdopen(os.open(json_path, ConstManager.WRITE_FLAGS,
-                                   ConstManager.WRITE_MODES), 'w+') as file_object:
-                file_object.write(
-                    json.dumps(base_case, sort_keys=False, indent=4))
-        except IOError as io_error:
-            utils.print_error_log(
-                'Failed to generate file %s. %s' % (json_path, str(io_error)))
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from io_error
-        finally:
-            pass
-        utils.print_info_log(
-            "Generate test case file %s successfully." % json_path)

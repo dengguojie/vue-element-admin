@@ -74,6 +74,82 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                                                  total_case_list, report)
         self.multi = False
 
+    @staticmethod
+    def _get_count(input_case_list, output_case_list):
+        # for support no inputs
+        if len(input_case_list) > 1:
+            return len(input_case_list[0])
+        return len(output_case_list[0])
+
+    @staticmethod
+    def _append_input_desc_to_case(json_obj, index, input_case_list, case):
+        # check input_case_list for support no input scene
+        if len(input_case_list) < 1:
+            return
+        for input_index, input_case in enumerate(input_case_list):
+            if json_obj[ConstManager.INPUT_DESC][input_index].get('name'):
+                input_name = \
+                    json_obj[ConstManager.INPUT_DESC][input_index].get('name')
+                input_case[index].update({'name': input_name})
+
+            case[ConstManager.INPUT_DESC].append(input_case[index])
+
+    def check_number_match(self, key, count, desc_list):
+        """
+        check number match
+        :param key: the key of json object
+        :param count: correct count
+        :param desc_list: desc list
+        :return: none
+        """
+        for item in desc_list:
+            if count != len(item[key]):
+                utils.print_error_log(
+                    'The number of "%s" of the inputs must be consistent with '
+                    'the number of "%s" of the outputs in %s. Please modify.'
+                    % (key, key, self.current_json_path))
+                raise utils.OpTestGenException(
+                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+    def subcase_generate(self):
+        """
+        generate subcase by cross
+        :return: the test case list
+        """
+        if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
+            input_desc_list = self._make_input_desc_list_ms(self.json_obj)
+            output_desc_list = self._make_output_desc_list_ms(self.json_obj)
+            attr_list = self._check_attr_valid(self.json_obj)
+            self._check_value_number_valid_ms(input_desc_list,
+                                              output_desc_list)
+            input_case_list = self._cross_tensor(
+                input_desc_list, ConstManager.MS_INPUT_CROSS_LIST)
+            output_case_list = self._cross_tensor(
+                output_desc_list, ConstManager.MS_OUTPUT_CROSS_LIST)
+        else:
+            input_desc_list = self._make_input_desc_list(self.json_obj)
+            output_desc_list = self._make_output_desc_list(self.json_obj)
+            attr_list = self._check_attr_valid(self.json_obj)
+            self._check_value_number_valid(
+                input_desc_list, output_desc_list)
+            input_case_list = self._cross_tensor(
+                input_desc_list, ConstManager.INPUT_CROSS_LIST)
+            output_case_list = self._cross_tensor(
+                output_desc_list, ConstManager.OUTPUT_CROSS_LIST)
+        count = self._get_count(input_case_list, output_case_list)
+        prefix = '{}{}'.format(self.json_obj.get(ConstManager.CASE_NAME).replace('/', '_'), '_')
+        if self.multi:
+            if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
+                prefix += 'sub_'
+            else:
+                prefix += 'sub_case_'
+        else:
+            prefix += 'case_'
+        case_dict = {'input': input_case_list,
+                     'output': output_case_list}
+        self._get_sub_test_cases(case_dict, count, prefix, attr_list)
+        return self.total_case_list
+
     def _get_data_distribute_list(self, input_desc):
         if 'data_distribute' in input_desc and ConstManager.VALUE not in input_desc:
             data_distribute_list = self._check_list_str_valid(
@@ -145,23 +221,6 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                 if len(item) > 1:
                     self.multi = True
         return output_desc_list
-
-    def check_number_match(self, key, count, desc_list):
-        """
-        check number match
-        :param key: the key of json object
-        :param count: correct count
-        :param desc_list: desc list
-        :return: none
-        """
-        for item in desc_list:
-            if count != len(item[key]):
-                utils.print_error_log(
-                    'The number of "%s" of the inputs must be consistent with '
-                    'the number of "%s" of the outputs in %s. Please modify.'
-                    % (key, key, self.current_json_path))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def _check_value_number_valid_ms(self, input_desc_list, output_desc_list):
         key = 'type'
@@ -310,26 +369,6 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                     self.multi = True
         return output_desc_list
 
-    @staticmethod
-    def _get_count(input_case_list, output_case_list):
-        # for support no inputs
-        if len(input_case_list) > 1:
-            return len(input_case_list[0])
-        return len(output_case_list[0])
-
-    @staticmethod
-    def _append_input_desc_to_case(json_obj, index, input_case_list, case):
-        # check input_case_list for support no input scene
-        if len(input_case_list) < 1:
-            return
-        for input_index, input_case in enumerate(input_case_list):
-            if json_obj[ConstManager.INPUT_DESC][input_index].get('name'):
-                input_name = \
-                    json_obj[ConstManager.INPUT_DESC][input_index].get('name')
-                input_case[index].update({'name': input_name})
-
-            case[ConstManager.INPUT_DESC].append(input_case[index])
-
     def _get_sub_test_cases(
             self, case_dict, count, prefix, attr_list):
         pyfile, function = self._check_expect_output_param(self.json_obj)
@@ -368,42 +407,3 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                 case, self.case_idx, [pyfile, function], self.total_case_list)
         utils.print_info_log('Create %d sub test cases for %s.'
                              % (count, self.json_obj[ConstManager.CASE_NAME]))
-
-    def subcase_generate(self):
-        """
-        generate subcase by cross
-        :return: the test case list
-        """
-        if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
-            input_desc_list = self._make_input_desc_list_ms(self.json_obj)
-            output_desc_list = self._make_output_desc_list_ms(self.json_obj)
-            attr_list = self._check_attr_valid(self.json_obj)
-            self._check_value_number_valid_ms(input_desc_list,
-                                              output_desc_list)
-            input_case_list = self._cross_tensor(
-                input_desc_list, ConstManager.MS_INPUT_CROSS_LIST)
-            output_case_list = self._cross_tensor(
-                output_desc_list, ConstManager.MS_OUTPUT_CROSS_LIST)
-        else:
-            input_desc_list = self._make_input_desc_list(self.json_obj)
-            output_desc_list = self._make_output_desc_list(self.json_obj)
-            attr_list = self._check_attr_valid(self.json_obj)
-            self._check_value_number_valid(
-                input_desc_list, output_desc_list)
-            input_case_list = self._cross_tensor(
-                input_desc_list, ConstManager.INPUT_CROSS_LIST)
-            output_case_list = self._cross_tensor(
-                output_desc_list, ConstManager.OUTPUT_CROSS_LIST)
-        count = self._get_count(input_case_list, output_case_list)
-        prefix = '{}{}'.format(self.json_obj.get(ConstManager.CASE_NAME).replace('/', '_'), '_')
-        if self.multi:
-            if self.json_obj.get(ConstManager.ST_MODE) == "ms_python_train":
-                prefix += 'sub_'
-            else:
-                prefix += 'sub_case_'
-        else:
-            prefix += 'case_'
-        case_dict = {'input': input_case_list,
-                     'output': output_case_list}
-        self._get_sub_test_cases(case_dict, count, prefix, attr_list)
-        return self.total_case_list

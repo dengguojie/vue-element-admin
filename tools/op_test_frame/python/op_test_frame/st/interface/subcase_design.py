@@ -34,6 +34,76 @@ class SubCaseDesign:
         self.total_case_list = total_case_list
         self.report = report
 
+    @staticmethod
+    def _check_bin_valid(bin_path, dir_path):
+        real_bin_path = os.path.join(dir_path, bin_path)
+        if os.path.splitext(real_bin_path)[-1] != ConstManager.BIN_FILE:
+            utils.print_error_log(
+                'The file "%s" is invalid, only supports .bin file. '
+                'Please modify it.' % bin_path)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+        utils.check_path_valid(real_bin_path)
+        return real_bin_path
+
+    @staticmethod
+    def _parse_expect_output_param(case, pyfile, function):
+        if not pyfile or not function:
+            return
+        if not pyfile and function:
+            case.update({"calc_expect_func": function})
+        if pyfile and function:
+            case.update({"calc_expect_func_file": pyfile})
+            case.update({"calc_expect_func_file_func": function})
+        return
+
+    @staticmethod
+    def _check_cur_params_undefined(cur_params):
+        if cur_params.get('format') in ConstManager.OPTIONAL_TYPE_LIST:
+            cur_params['type'] = ConstManager.TYPE_UNDEFINED
+        if cur_params.get('type') == ConstManager.TYPE_UNDEFINED:
+            cur_params['format'] = ConstManager.TYPE_UNDEFINED
+
+    @staticmethod
+    def _check_ori_format_list_str_valid(dic_desc):
+        ori_format_list = []
+        if isinstance(dic_desc.get('ori_format'), str):
+            ori_format_list = [dic_desc.get('ori_format')]
+        if isinstance(dic_desc.get('ori_format'), list):
+            ori_format_list = dic_desc.get('ori_format')
+        return ori_format_list
+
+    @staticmethod
+    def _check_ori_filed_length_valid(ori_list, comapre_list, ori_filed,
+                                      compare_filed):
+        if len(ori_list) != len(comapre_list):
+            utils.print_error_log('please checkout, teh length of %s and %s '
+                                  'must be the same.' % (compare_filed,
+                                                         ori_filed))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+    @staticmethod
+    def _check_fuzz_in_json(json_obj, key):
+        if json_obj.get(key) == "fuzz":
+            utils.print_error_log('The value ("fuzz") of %s is invalid. '
+                                  'Configure "fuzz_impl" filed correctly.'
+                                  % key)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+    def get_current_json_path(self):
+        """
+        get current json path
+        """
+        return self.current_json_path
+
+    def get_json_obj(self):
+        """
+        get json obj
+        """
+        return self.json_obj
+
     def _check_expect_output_param(self, json_obj):
         expect_str = json_obj.get("calc_expect_func_file")
         real_expect_file_path = None
@@ -111,18 +181,6 @@ class SubCaseDesign:
                 'Please modify it in file %s.' % (
                     range_value, self.current_json_path))
             raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-
-    @staticmethod
-    def _check_bin_valid(bin_path, dir_path):
-        real_bin_path = os.path.join(dir_path, bin_path)
-        if os.path.splitext(real_bin_path)[-1] != ConstManager.BIN_FILE:
-            utils.print_error_log(
-                'The file "%s" is invalid, only supports .bin file. '
-                'Please modify it.' % bin_path)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
-        utils.check_path_valid(real_bin_path)
-        return real_bin_path
 
     def _check_value_valid(self, one_input_desc, json_obj, tensor, for_fuzz):
         # if have value, case generate by no cross
@@ -274,17 +332,6 @@ class SubCaseDesign:
             attr_list.append(attr)
         return attr_list
 
-    @staticmethod
-    def _parse_expect_output_param(case, pyfile, function):
-        if not pyfile or not function:
-            return
-        if not pyfile and function:
-            case.update({"calc_expect_func": function})
-        if pyfile and function:
-            case.update({"calc_expect_func_file": pyfile})
-            case.update({"calc_expect_func_file_func": function})
-        return
-
     def _add_case_to_total_case(self, case, case_idx, py_file_and_function,
                                 case_list):
         py_file = py_file_and_function[0]
@@ -346,32 +393,6 @@ class SubCaseDesign:
                     ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         return value_list
 
-    @staticmethod
-    def _check_cur_params_undefined(cur_params):
-        if cur_params.get('format') in ConstManager.OPTIONAL_TYPE_LIST:
-            cur_params['type'] = ConstManager.TYPE_UNDEFINED
-        if cur_params.get('type') == ConstManager.TYPE_UNDEFINED:
-            cur_params['format'] = ConstManager.TYPE_UNDEFINED
-
-    @staticmethod
-    def _check_ori_format_list_str_valid(dic_desc):
-        ori_format_list = []
-        if isinstance(dic_desc.get('ori_format'), str):
-            ori_format_list = [dic_desc.get('ori_format')]
-        if isinstance(dic_desc.get('ori_format'), list):
-            ori_format_list = dic_desc.get('ori_format')
-        return ori_format_list
-
-    @staticmethod
-    def _check_ori_filed_length_valid(ori_list, comapre_list, ori_filed,
-                                      compare_filed):
-        if len(ori_list) != len(comapre_list):
-            utils.print_error_log('please checkout, teh length of %s and %s '
-                                  'must be the same.' % (compare_filed,
-                                                         ori_filed))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-
     def _get_ori_filed_data(self, input_or_out_desc, key_desc, format_list, shape_list):
         ori_filed_list = []
         if input_or_out_desc.get('ori_format') is not None:
@@ -410,24 +431,3 @@ class SubCaseDesign:
                 self._check_range_value_valid(item, for_shape_range=True)
             one_op_dict.update({
                 ConstManager.SHAPE_RANGE: shape_range_list_list})
-
-    @staticmethod
-    def _check_fuzz_in_json(json_obj, key):
-        if json_obj.get(key) == "fuzz":
-            utils.print_error_log('The value ("fuzz") of %s is invalid. '
-                                  'Configure "fuzz_impl" filed correctly.'
-                                  % key)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-
-    def get_current_json_path(self):
-        """
-        get current json path
-        """
-        return self.current_json_path
-
-    def get_json_obj(self):
-        """
-        get json obj
-        """
-        return self.json_obj

@@ -28,10 +28,6 @@ class AtcTransformOm:
         self.report = arguments[1]
         self._check_output_path(output_path, testcase_list)
 
-    def _check_output_path(self, output_path, testcase_list):
-        self.output_path = utils.check_output_path(
-            output_path, testcase_list, self.machine_type)
-
     @staticmethod
     def _get_trans_data_info(desc_dic):
         if desc_dic.get('format') in ConstManager.OPTIONAL_TYPE_LIST or \
@@ -44,6 +40,124 @@ class AtcTransformOm:
             data_type = desc_dic.get('type')
             data_format = desc_dic.get('format')
         return data_shape, data_type, data_format
+
+    @staticmethod
+    def _write_content_to_file(content, file_path):
+        try:
+            with os.fdopen(os.open(file_path, ConstManager.WRITE_FLAGS,
+                                   ConstManager.WRITE_MODES),
+                           'w+') as file_object:
+                file_object.write(content)
+        except OSError as err:
+            utils.print_error_log("Unable to write file(%s): %s." % (file_path,
+                                                                     str(err)))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from err
+        finally:
+            pass
+        utils.print_info_log("File %s generated successfully." % file_path)
+
+    @staticmethod
+    def _set_log_level_env(advance_args):
+        """
+        set log level
+        """
+        if advance_args is not None:
+            utils.print_info_log('Set env for ATC & ACL.')
+            get_log_level, get_slog_flag = advance_args.get_env_value()
+            _set_log_level_env = ['export', 'ASCEND_GLOBAL_LOG_LEVEL='
+                                  + get_log_level]
+            set_slog_print_env = ['export', 'ASCEND_SLOG_PRINT_TO_STDOUT='
+                                  + get_slog_flag]
+            utils.print_info_log("Set env command line: %s && %s " % (
+                " ".join(_set_log_level_env), " ".join(set_slog_print_env)))
+            os.environ['ASCEND_GLOBAL_LOG_LEVEL'] = get_log_level
+            os.environ['ASCEND_SLOG_PRINT_TO_STDOUT'] = get_slog_flag
+            utils.print_info_log('Finish to set env for ATC & ACL.')
+
+    @staticmethod
+    def _get_atc_cmd(soc_version, advance_args):
+        atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
+                   '--soc_version=' + soc_version, '--output=op_models']
+        if advance_args is not None:
+            atc_advance_cmd = advance_args.get_atc_advance_cmd()
+            atc_cmd.extend(atc_advance_cmd)
+        return atc_cmd
+
+    def create_acl_op_json_content(self, testcase_list, output_path, compile_flag):
+        """
+        Prepare acl json content and write file
+        """
+        content = []
+        if compile_flag is not None:
+            compile_dic = {'compile_flag': compile_flag}
+            content.append(compile_dic)
+        for testcase_struct in testcase_list:
+            tmp_dic = self._get_testcase_dict(testcase_struct, output_path)
+            # only append non-repetitive json struct
+            if tmp_dic not in content:
+                content.append(tmp_dic)
+        try:
+            return str(json.dumps(content, sort_keys=True, indent=2))
+        except TypeError:
+            utils.print_error_log("")
+        finally:
+            pass
+        return ""
+
+    def add_op_st_stage_result(self, status=op_status.FAILED,
+                               stage_name=None, result=None, cmd=None):
+        """
+        add op st stage_result
+        """
+        stage_result = op_st_case_info.OpSTStageResult(
+            status, stage_name, result, cmd)
+        for case_report in self.report.report_list:
+            case_report.trace_detail.add_stage_result(stage_result)
+
+    def create_acl_op(self):
+        """
+        Create acl_op.json
+        """
+        acl_json_content = self.create_acl_op_json_content(
+            self.testcase_list, self.output_path, self.compile_flag)
+        output_test_data_config_path = os.path.join(self.output_path + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH)
+        if not os.path.exists(output_test_data_config_path):
+            os.makedirs(output_test_data_config_path)
+        utils.print_step_log("[%s] Generate acl_op.json for atc tools." % (os.path.basename(__file__)))
+        self._write_content_to_file(acl_json_content, os.path.join(output_test_data_config_path, 'acl_op.json'))
+
+    def transform_acl_json_to_om(self, soc_version, advance_args):
+        """
+        Transform acl_op.json to om models.
+        """
+        # generate acl_op.json for atc tools.
+        self.create_acl_op()
+        # set log level env.
+        self._set_log_level_env(advance_args)
+        # do atc single op model conversion
+        utils.print_step_log("[%s] Start to convert single op to om model." % (os.path.basename(__file__)))
+        origin_path = os.path.realpath(os.getcwd())
+        run_out_path = os.path.join(self.output_path, ConstManager.RUN_OUT)
+        op_models_path = os.path.join(run_out_path, 'op_models')
+        os.chdir(run_out_path)
+        atc_cmd = self._get_atc_cmd(soc_version, advance_args)
+        cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
+        utils.print_info_log("ATC command line: %s" % cmd_str)
+        try:
+            self._execute_atc_cmd(atc_cmd, cmd_str)
+        except utils.OpTestGenException:
+            self.add_op_st_stage_result(op_status.FAILED,
+                                        "atc_single_op_convert",
+                                        None, cmd_str)
+        finally:
+            pass
+        utils.print_info_log('Finish to convert single op.')
+        os.chdir(origin_path)
+
+    def _check_output_path(self, output_path, testcase_list):
+        self.output_path = utils.check_output_path(
+            output_path, testcase_list, self.machine_type)
 
     def _get_desc_dic(self, tmp_dic, key_desc, testcase_struct, output_path):
         tmp_dic[key_desc] = []
@@ -103,120 +217,6 @@ class AtcTransformOm:
                         attr_dic.get('value'))
                 tmp_dic.get('attr').append(attr_dic)
         return tmp_dic
-
-    def create_acl_op_json_content(self, testcase_list, output_path, compile_flag):
-        """
-        Prepare acl json content and write file
-        """
-        content = []
-        if compile_flag is not None:
-            compile_dic = {'compile_flag': compile_flag}
-            content.append(compile_dic)
-        for testcase_struct in testcase_list:
-            tmp_dic = self._get_testcase_dict(testcase_struct, output_path)
-            # only append non-repetitive json struct
-            if tmp_dic not in content:
-                content.append(tmp_dic)
-        try:
-            return str(json.dumps(content, sort_keys=True, indent=2))
-        except TypeError:
-            utils.print_error_log("")
-        finally:
-            pass
-        return ""
-
-    @staticmethod
-    def _write_content_to_file(content, file_path):
-        try:
-            with os.fdopen(os.open(file_path, ConstManager.WRITE_FLAGS,
-                                   ConstManager.WRITE_MODES), 'w+') as file_object:
-                file_object.write(content)
-        except OSError as err:
-            utils.print_error_log("Unable to write file(%s): %s." % (file_path,
-                                                                     str(err)))
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from err
-        finally:
-            pass
-        utils.print_info_log("File %s generated successfully." % file_path)
-
-    @staticmethod
-    def _set_log_level_env(advance_args):
-        """
-        set log level
-        """
-        if advance_args is not None:
-            utils.print_info_log('Set env for ATC & ACL.')
-            get_log_level, get_slog_flag = advance_args.get_env_value()
-            _set_log_level_env = ['export', 'ASCEND_GLOBAL_LOG_LEVEL='
-                                 + get_log_level]
-            set_slog_print_env = ['export', 'ASCEND_SLOG_PRINT_TO_STDOUT='
-                                  + get_slog_flag]
-            utils.print_info_log("Set env command line: %s && %s " % (
-                " ".join(_set_log_level_env), " ".join(set_slog_print_env)))
-            os.environ['ASCEND_GLOBAL_LOG_LEVEL'] = get_log_level
-            os.environ['ASCEND_SLOG_PRINT_TO_STDOUT'] = get_slog_flag
-            utils.print_info_log('Finish to set env for ATC & ACL.')
-
-    @staticmethod
-    def _get_atc_cmd(soc_version, advance_args):
-        atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
-                   '--soc_version=' + soc_version, '--output=op_models']
-        if advance_args is not None:
-            atc_advance_cmd = advance_args.get_atc_advance_cmd()
-            atc_cmd.extend(atc_advance_cmd)
-        return atc_cmd
-
-    def add_op_st_stage_result(self, status=op_status.FAILED,
-                               stage_name=None, result=None, cmd=None):
-        """
-        add op st stage_result
-        """
-        stage_result = op_st_case_info.OpSTStageResult(
-            status, stage_name, result, cmd)
-        for case_report in self.report.report_list:
-            case_report.trace_detail.add_stage_result(stage_result)
-
-    def create_acl_op(self):
-        """
-        Create acl_op.json
-        """
-        acl_json_content = self.create_acl_op_json_content(
-            self.testcase_list, self.output_path, self.compile_flag)
-        output_test_data_config_path = os.path.join(self.output_path + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH)
-        if not os.path.exists(output_test_data_config_path):
-            os.makedirs(output_test_data_config_path)
-        utils.print_step_log("[%s] Generate acl_op.json for atc tools." % (os.path.basename(__file__)))
-        self._write_content_to_file(acl_json_content, os.path.join(output_test_data_config_path, 'acl_op.json'))
-
-
-    def transform_acl_json_to_om(self, soc_version, advance_args):
-        """
-        Transform acl_op.json to om models.
-        """
-        # generate acl_op.json for atc tools.
-        self.create_acl_op()
-        # set log level env.
-        self._set_log_level_env(advance_args)
-        # do atc single op model conversion
-        utils.print_step_log("[%s] Start to convert single op to om model." % (os.path.basename(__file__)))
-        origin_path = os.path.realpath(os.getcwd())
-        run_out_path = os.path.join(self.output_path, ConstManager.RUN_OUT)
-        op_models_path = os.path.join(run_out_path, 'op_models')
-        os.chdir(run_out_path)
-        atc_cmd = self._get_atc_cmd(soc_version, advance_args)
-        cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
-        utils.print_info_log("ATC command line: %s" % cmd_str)
-        try:
-            self._execute_atc_cmd(atc_cmd, cmd_str)
-        except utils.OpTestGenException:
-            self.add_op_st_stage_result(op_status.FAILED,
-                                        "atc_single_op_convert",
-                                        None, cmd_str)
-        finally:
-            pass
-        utils.print_info_log('Finish to convert single op.')
-        os.chdir(origin_path)
-
 
     def _execute_atc_cmd(self, atc_cmd, cmd_str):
         atc_start_time = time.time()

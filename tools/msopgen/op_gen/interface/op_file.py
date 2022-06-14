@@ -28,6 +28,42 @@ class OPFile(metaclass=ABCMeta):
         self.compute_unit = argument.compute_unit
         self.op_info = OpInfoParser(argument).op_info
 
+    @staticmethod
+    def _generate_caffe_plugin_cmake_list(plugin_dir: str) -> None:
+        # create and write
+        cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
+        if os.path.exists(cmake_list_path):
+            return
+        utils.make_dirs(plugin_dir)
+        utils.write_files(cmake_list_path, OPTmpl.CAFFE_PLUGIN_CMAKLIST)
+
+    @staticmethod
+    def _generate_tf_plugin_cmake_list(plugin_dir: str) -> None:
+        # create and write
+        cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
+        if os.path.exists(cmake_list_path):
+            return
+        utils.make_dirs(plugin_dir)
+        utils.write_files(cmake_list_path, OPTmpl.PLUGIN_CMAKLIST)
+
+    @abstractmethod
+    def generate_impl(self: any) -> None:
+        """
+        Function Description:
+        generate operator implementation.
+        Parameter:
+        Return Value:
+        """
+
+    @abstractmethod
+    def generate_info_cfg(self: any) -> None:
+        """
+        Function Description:
+        generate operator info config file
+        Parameter:
+        Return Value:
+        """
+
     def generate(self: any) -> None:
         """
         Function Description:
@@ -82,24 +118,6 @@ class OPFile(metaclass=ABCMeta):
             self._generate_onnx_plugin_cmake_list(plugin_dir)
         elif self.fmk_type == "pytorch":
             return
-
-    @staticmethod
-    def _generate_caffe_plugin_cmake_list(plugin_dir: str) -> None:
-        # create and write
-        cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
-        if os.path.exists(cmake_list_path):
-            return
-        utils.make_dirs(plugin_dir)
-        utils.write_files(cmake_list_path, OPTmpl.CAFFE_PLUGIN_CMAKLIST)
-
-    @staticmethod
-    def _generate_tf_plugin_cmake_list(plugin_dir: str) -> None:
-        # create and write
-        cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
-        if os.path.exists(cmake_list_path):
-            return
-        utils.make_dirs(plugin_dir)
-        utils.write_files(cmake_list_path, OPTmpl.PLUGIN_CMAKLIST)
 
     def _generate_onnx_plugin_cmake_list(self: any, plugin_dir: str) -> None:
         # create and write
@@ -218,24 +236,6 @@ class OPFile(metaclass=ABCMeta):
                                    ".cc")
         utils.make_dirs(ir_cpp_dir)
         utils.write_files(ir_cpp_path, cpp_str)
-
-    @abstractmethod
-    def generate_impl(self: any) -> None:
-        """
-        Function Description:
-        generate operator implementation.
-        Parameter:
-        Return Value:
-        """
-
-    @abstractmethod
-    def generate_info_cfg(self: any) -> None:
-        """
-        Function Description:
-        generate operator info config file
-        Parameter:
-        Return Value:
-        """
 
     def _failed_add_op_in_ms_proj(self: any) -> bool:
         if os.path.isdir(

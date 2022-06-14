@@ -33,6 +33,40 @@ class AclOpRunner:
         utils.execute_command(cmake_cmd)
         utils.execute_command(['make'])
 
+    @staticmethod
+    def _prof_get_op_case_info_from_csv_file(csv_file, op_name_list):
+        op_case_info = []
+        if not csv_file:
+            utils.print_error_log("The CSV file is empty. Please check.")
+            return op_case_info
+        if not op_name_list:
+            utils.print_error_log("The op name list is empty. Please check.")
+            return op_case_info
+        op_case_info = get_op_case_info_from_csv_file(
+            csv_file, op_name_list)
+        return op_case_info
+
+    @staticmethod
+    def _get_job_path(prof_base_path):
+        scan = utils.ScanFile(prof_base_path, first_prefix="PROF",
+                              second_prefix="device")
+        scan_dirs = scan.scan_subdirs()
+        if not scan_dirs:
+            utils.print_error_log("Profiling job directory"
+                                  " is not found, skip according analysis")
+            return ''
+        if len(scan_dirs) > 1:
+            utils.print_error_log(
+                "Multiple profiling job directories are found, "
+                "please clear the prof directory"
+                " and retry: %s" % ','.join(scan_dirs))
+            return ''
+        job_path = scan_dirs[0]
+        os.chdir(job_path)
+        utils.print_info_log(
+            "Start to analyze profiling data in %s" % job_path)
+        return job_path
+
     def acl_compile(self):
         """
         Compile acl op
@@ -140,18 +174,18 @@ class AclOpRunner:
         utils.print_info_log('Finish to run main with msprof.')
         self.prof_analyze(os.path.join(out_path, ConstManager.PROF))
 
-    @staticmethod
-    def _prof_get_op_case_info_from_csv_file(csv_file, op_name_list):
-        op_case_info = []
-        if not csv_file:
-            utils.print_error_log("The CSV file is empty. Please check.")
-            return op_case_info
-        if not op_name_list:
-            utils.print_error_log("The op name list is empty. Please check.")
-            return op_case_info
-        op_case_info = get_op_case_info_from_csv_file(
-            csv_file, op_name_list)
-        return op_case_info
+    def prof_analyze(self, prof_base_path):
+        """
+        do profiling analysis.
+        :param prof_base_path: base path of profiling data: run/out/prof
+        :return:
+        """
+        try:
+            self._profiling_analysis(prof_base_path)
+        except IOError:
+            utils.print_error_log("Operate directory of profiling data failed")
+        finally:
+            pass
 
     def _prof_get_op_name_from_report(self, run_result_list):
         op_name_list = []
@@ -233,39 +267,6 @@ class AclOpRunner:
 
         # start to get op time from csv summary files and save in report
         self._get_op_case_result_and_show_data(csv_file, op_name_list)
-
-    @staticmethod
-    def _get_job_path(prof_base_path):
-        scan = utils.ScanFile(prof_base_path, first_prefix="PROF", second_prefix="device")
-        scan_dirs = scan.scan_subdirs()
-        if not scan_dirs:
-            utils.print_error_log("Profiling job directory"
-                                  " is not found, skip according analysis")
-            return ''
-        if len(scan_dirs) > 1:
-            utils.print_error_log(
-                "Multiple profiling job directories are found, "
-                "please clear the prof directory"
-                " and retry: %s" % ','.join(scan_dirs))
-            return ''
-        job_path = scan_dirs[0]
-        os.chdir(job_path)
-        utils.print_info_log(
-            "Start to analyze profiling data in %s" % job_path)
-        return job_path
-
-    def prof_analyze(self, prof_base_path):
-        """
-        do profiling analysis.
-        :param prof_base_path: base path of profiling data: run/out/prof
-        :return:
-        """
-        try:
-            self._profiling_analysis(prof_base_path)
-        except IOError:
-            utils.print_error_log("Operate directory of profiling data failed")
-        finally:
-            pass
 
     def _profiling_analysis(self, prof_base_path):
         job_path = self._get_job_path(prof_base_path)

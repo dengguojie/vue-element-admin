@@ -315,42 +315,6 @@ class PyTorchModelParse:
         if hasattr(args, 'quiet'):
             self.quiet_flag = args.quiet
 
-    def _check_change_shape_argument_valid(self):
-        if not self.input_file.endswith(".json"):
-            utils.print_error_log(
-                'The file "%s" is invalid, only supports .json file. '
-                'Please modify it.' % self.input_file)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
-        utils.check_path_valid(self.input_file)
-        utils.check_path_valid(self.model_path)
-        utils.check_path_valid(self.output_path, True)
-
-    def _get_model_inputs(self):
-        graph = _load_model(self.model_path).graph
-        all_tensors = _parse_tensor_info(graph.input, {})
-        params = generator_to_list((init.name for init in graph.initializer))
-        input_shape_map = {}
-        for tensor_name, tensor_info in all_tensors.items():
-            if tensor_name in params:
-                continue
-            input_shape_map.update({
-                tensor_name: {'ori_shape': tensor_info.get('shape'),
-                              'new_shape': []
-                              }
-            })
-        return input_shape_map
-
-    def get_input_shape(self):
-        """
-        get input shape
-        """
-        utils.check_path_valid(self.model_path)
-        utils.check_path_valid(self.output_path, True)
-        input_shape_map = self._get_model_inputs()
-        json_path = os.path.join(self.output_path, PytorchConstVaraible.TMP_SHAPE_FILE)
-        utils.write_json_file(json_path, input_shape_map)
-
     @staticmethod
     def get_infer_model(onnx_model):
         onnx.checker.check_model(onnx_model)
@@ -386,30 +350,15 @@ class PyTorchModelParse:
                 graph.input.insert(0, new_input_tensor)
         return op_info
 
-    def _change_shape_fn(self, new_shape_map):
-        real_path = os.path.realpath(self.model_path)
-        onnx_model = _load_model(real_path)
-        onnx.checker.check_model(onnx_model)
-        op_info = self._insert_new_shape(onnx_model, new_shape_map)
-
-        try:
-            infer_model = self.get_infer_model(onnx_model)
-        except RuntimeError as err:
-            utils.print_error_log("{} model input shape cannot be changed into {}"
-                                  .format(self.model_path,
-                                          list(map(int, op_info.get("new_shape")))))
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from err
-        finally:
-            pass
-
-        utils.print_info_log("The {} input shape has been changed.".format(self.model_path))
-        _, tmp_filename = os.path.split(real_path)
-        prefix, suffix = os.path.splitext(tmp_filename)
-        first_new_shape = '_'.join(str(i) for i in list(new_shape_map.values())[0].get('new_shape'))
-        new_model_name = (prefix + '{}' + suffix).format(first_new_shape)
-        new_model_path = os.path.realpath(os.path.join(self.output_path, new_model_name))
-        onnx.save(infer_model, new_model_path)
-        return new_model_path
+    def get_input_shape(self):
+        """
+        get input shape
+        """
+        utils.check_path_valid(self.model_path)
+        utils.check_path_valid(self.output_path, True)
+        input_shape_map = self._get_model_inputs()
+        json_path = os.path.join(self.output_path, PytorchConstVaraible.TMP_SHAPE_FILE)
+        utils.write_json_file(json_path, input_shape_map)
 
     def change_shape(self):
         """
@@ -439,6 +388,57 @@ class PyTorchModelParse:
         else:
             nodes_list = _get_node_list(self.model_path, ini_op_type, input_nums=len(input_shape_map))
         return nodes_list
+
+    def _check_change_shape_argument_valid(self):
+        if not self.input_file.endswith(".json"):
+            utils.print_error_log(
+                'The file "%s" is invalid, only supports .json file. '
+                'Please modify it.' % self.input_file)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+        utils.check_path_valid(self.input_file)
+        utils.check_path_valid(self.model_path)
+        utils.check_path_valid(self.output_path, True)
+
+    def _get_model_inputs(self):
+        graph = _load_model(self.model_path).graph
+        all_tensors = _parse_tensor_info(graph.input, {})
+        params = generator_to_list((init.name for init in graph.initializer))
+        input_shape_map = {}
+        for tensor_name, tensor_info in all_tensors.items():
+            if tensor_name in params:
+                continue
+            input_shape_map.update({
+                tensor_name: {'ori_shape': tensor_info.get('shape'),
+                              'new_shape': []
+                              }
+            })
+        return input_shape_map
+
+    def _change_shape_fn(self, new_shape_map):
+        real_path = os.path.realpath(self.model_path)
+        onnx_model = _load_model(real_path)
+        onnx.checker.check_model(onnx_model)
+        op_info = self._insert_new_shape(onnx_model, new_shape_map)
+
+        try:
+            infer_model = self.get_infer_model(onnx_model)
+        except RuntimeError as err:
+            utils.print_error_log("{} model input shape cannot be changed into {}"
+                                  .format(self.model_path,
+                                          list(map(int, op_info.get("new_shape")))))
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from err
+        finally:
+            pass
+
+        utils.print_info_log("The {} input shape has been changed.".format(self.model_path))
+        _, tmp_filename = os.path.split(real_path)
+        prefix, suffix = os.path.splitext(tmp_filename)
+        first_new_shape = '_'.join(str(i) for i in list(new_shape_map.values())[0].get('new_shape'))
+        new_model_name = (prefix + '{}' + suffix).format(first_new_shape)
+        new_model_path = os.path.realpath(os.path.join(self.output_path, new_model_name))
+        onnx.save(infer_model, new_model_path)
+        return new_model_path
 
 
 def get_shape(args, op_type):

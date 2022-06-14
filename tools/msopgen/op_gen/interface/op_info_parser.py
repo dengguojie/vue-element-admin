@@ -29,6 +29,13 @@ class OpInfoParser:
         self.op_info.parse()
 
     @staticmethod
+    def get_gen_flag() -> str:
+        """
+        get gen flag
+        """
+        return ""
+
+    @staticmethod
     def _create_op_info(argument: ArgParser) -> any:
         if argument.input_path.endswith(ConstManager.INPUT_FILE_EXCEL):
             utils.print_warn_log("Excel cannot be used as inputs in future "
@@ -50,10 +57,3 @@ class OpInfoParser:
         get op info
         """
         return self.op_info
-
-    @staticmethod
-    def get_gen_flag() -> str:
-        """
-        get gen flag
-        """
-        return ""

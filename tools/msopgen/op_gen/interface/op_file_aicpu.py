@@ -30,6 +30,22 @@ class OpFileAiCpu(OPFile):
         self._generate_impl_cc(op_info)
         self._generate_impl_h(op_info)
 
+    def generate_info_cfg(self: any) -> None:
+        """
+        Function Description:
+        generate operator info config file
+        Parameter:
+        Return Value:
+        """
+        op_info = self.op_info
+        new_str = OPTmpl.AICPU_INI_STRING.format(op_type=op_info.op_type)
+        # create dir and write ini file
+        info_dir = os.path.join(self.output_path, 'cpukernel',
+                                'op_info_cfg', 'aicpu_kernel')
+        info_path = os.path.join(info_dir, self.op_info.fix_op_type + ".ini")
+        utils.make_dirs(info_dir)
+        utils.write_files(info_path, new_str)
+
     def _generate_cmake_lists(self: any) -> None:
         impl_dir = os.path.join(self.output_path, 'cpukernel')
         if os.path.exists(impl_dir):
@@ -64,19 +80,3 @@ class OpFileAiCpu(OPFile):
         # create dir and write impl file
         utils.make_dirs(impl_dir)
         utils.write_files(h_path, h_str)
-
-    def generate_info_cfg(self: any) -> None:
-        """
-        Function Description:
-        generate operator info config file
-        Parameter:
-        Return Value:
-        """
-        op_info = self.op_info
-        new_str = OPTmpl.AICPU_INI_STRING.format(op_type=op_info.op_type)
-        # create dir and write ini file
-        info_dir = os.path.join(self.output_path, 'cpukernel',
-                                'op_info_cfg', 'aicpu_kernel')
-        info_path = os.path.join(info_dir, self.op_info.fix_op_type + ".ini")
-        utils.make_dirs(info_dir)
-        utils.write_files(info_path, new_str)

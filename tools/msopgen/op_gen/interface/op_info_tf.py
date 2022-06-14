@@ -39,6 +39,66 @@ class TFOpInfo(OpInfo):
             return '', ''
         return line.split(":", 1)
 
+    @staticmethod
+    def _check_info_str(info_str: str, op_name: str) -> (bool, str):
+        if info_str is None or len(info_str) == 0:
+            return True, op_name
+        if "REGISTER_OP" in info_str:
+            match_list = utils.get_content_from_double_quotes(info_str)
+            if match_list:
+                utils.print_info_log(
+                    "The op type is %s." % str(match_list[0]))
+                op_name = match_list[0]
+            else:
+                op_name = ""
+            return True, op_name
+        return False, op_name
+
+    @staticmethod
+    def _parse_info_lines(info_str: str, operator_info: any) -> any:
+        if info_str.startswith("Input") or info_str.startswith("Output") \
+                or info_str.startswith("Attr"):
+            match_list = utils.get_content_from_double_quotes(info_str)
+            if not match_list:
+                utils.print_warn_log(
+                    "An error occurs during parsing by (\"key:value\"), "
+                    "continue.")
+                return True, operator_info
+            if info_str.startswith("Input"):
+                operator_info.input_info_lines.append(match_list[0])
+            elif info_str.startswith("Output"):
+                operator_info.output_info_lines.append(match_list[0])
+            elif info_str.startswith("Attr"):
+                operator_info.attr_info_lines.append(match_list[0])
+            else:
+                return True, operator_info
+        return False, operator_info
+
+    @staticmethod
+    def _get_dynamic_input_output_type(value: str) -> str:
+        if "N*" in value:
+            return value.replace("N*", "")
+        return ""
+
+    @staticmethod
+    def _check_dynamic_io_attr_info(name: str, value: str) -> bool:
+        return bool(name == 'N' and ('>' or '<' in value))
+
+    @staticmethod
+    def _mapping_attr_type(tf_type: str) -> str:
+        return utils.CheckFromConfig().trans_tf_attr_type(tf_type)
+
+    @staticmethod
+    def _mapping_input_output_type(tf_type: str, name: str) -> str:
+        # mapping from tf type to D enum
+        return utils.CheckFromConfig().trans_tf_io_dtype(tf_type, name)
+
+    def get_op_path(self: any) -> str:
+        """
+        get op path
+        """
+        return self.op_path
+
     def parse(self: any) -> None:
         """
         Function Description:
@@ -73,40 +133,6 @@ class TFOpInfo(OpInfo):
                 continue
         self._init_op_info(op_name, operator_info.input_info_lines, operator_info.output_info_lines,
                            operator_info.attr_info_lines)
-
-    @staticmethod
-    def _check_info_str(info_str: str, op_name: str) -> (bool, str):
-        if info_str is None or len(info_str) == 0:
-            return True, op_name
-        if "REGISTER_OP" in info_str:
-            match_list = utils.get_content_from_double_quotes(info_str)
-            if match_list:
-                utils.print_info_log(
-                    "The op type is %s." % str(match_list[0]))
-                op_name = match_list[0]
-            else:
-                op_name = ""
-            return True, op_name
-        return False, op_name
-
-    @staticmethod
-    def _parse_info_lines(info_str: str, operator_info: any) -> any:
-        if info_str.startswith("Input") or info_str.startswith("Output") \
-                or info_str.startswith("Attr"):
-            match_list = utils.get_content_from_double_quotes(info_str)
-            if not match_list:
-                utils.print_warn_log("An error occurs during parsing by (\"key:value\"), "
-                                     "continue.")
-                return True, operator_info
-            if info_str.startswith("Input"):
-                operator_info.input_info_lines.append(match_list[0])
-            elif info_str.startswith("Output"):
-                operator_info.output_info_lines.append(match_list[0])
-            elif info_str.startswith("Attr"):
-                operator_info.attr_info_lines.append(match_list[0])
-            else:
-                return True, operator_info
-        return False, operator_info
 
     def _init_op_info(self: any, op_name: str, input_info_lines: list, output_info_lines: list,
                       attr_info_lines: list) -> None:
@@ -188,12 +214,6 @@ class TFOpInfo(OpInfo):
             return ",".join(attr_info.get("types"))
         return self._mapping_input_output_type(types.strip(), name)
 
-    @staticmethod
-    def _get_dynamic_input_output_type(value: str) -> str:
-        if "N*" in value:
-            return value.replace("N*", "")
-        return ""
-
     def _get_ir_type_and_param_type(self: any, name: str, value: str) -> any:
         # parse dynamic input/output
         dynamic_type = self._get_dynamic_input_output_type(value)
@@ -245,22 +265,3 @@ class TFOpInfo(OpInfo):
             else:
                 attr_type = self._mapping_attr_type(value.strip())
                 self.parsed_attr_info.append([attr_name, attr_type])
-
-    @staticmethod
-    def _check_dynamic_io_attr_info(name: str, value: str) -> bool:
-        return bool(name == 'N' and ('>' or '<' in value))
-
-    @staticmethod
-    def _mapping_attr_type(tf_type: str) -> str:
-        return utils.CheckFromConfig().trans_tf_attr_type(tf_type)
-
-    @staticmethod
-    def _mapping_input_output_type(tf_type: str, name: str) -> str:
-        # mapping from tf type to D enum
-        return utils.CheckFromConfig().trans_tf_io_dtype(tf_type, name)
-
-    def get_op_path(self: any) -> str:
-        """
-        get op path
-        """
-        return self.op_path

@@ -42,38 +42,22 @@ class OpFileAiCore(OPFile):
         "dynamic": "DYNAMIC"
     }
 
-    def _generate_cmake_lists(self: any) -> None:
-        tbe_dir = os.path.join(self.output_path, 'tbe')
-        if os.path.exists(tbe_dir):
-            return
-        utils.make_dirs(tbe_dir)
-        template_path = os.path.join(
-            os.path.split(os.path.realpath(__file__))[0],
-            ConstManager.OP_TEMPLATE_TBE_PATH)
-        utils.copy_template(template_path, tbe_dir, True)
+    @staticmethod
+    def _mapping_attr_type_for_ini(attr_type: str) -> str:
+        attr_type = attr_type.strip()
+        return utils.CheckFromConfig().trans_ini_attr_type(attr_type)
 
-    def _generate_op_params_for_check(self: any) -> str:
-        op_params_for_check = ""
-        for op_input in self.op_info.parsed_input_info.values():
-            input_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_input.get("param_type"))
-            input_for_check = "para_check.%s_INPUT, " % input_type
-            op_params_for_check = "{}{}".format(op_params_for_check, input_for_check)
-        for op_output in self.op_info.parsed_output_info.values():
-            output_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_output.get("param_type"))
-            output_for_check = "para_check.%s_OUTPUT, " % output_type
-            op_params_for_check = "{}{}".format(op_params_for_check, output_for_check)
-        for op_attr in self.op_info.parsed_attr_info:
-            attr_type = op_attr[1].strip()
-            check_from_config = utils.CheckFromConfig()
-            attr_type = check_from_config.trans_check_attr_type(attr_type)
-            if ConstManager.PARAM_TYPE_OPTIONAL in op_attr:
-                opt_attr_for_check = "para_check.OPTION_ATTR_%s, " % attr_type
-                op_params_for_check = "{}{}".format(op_params_for_check, opt_attr_for_check)
-            else:
-                required_attr_for_check = "para_check.REQUIRED_ATTR_%s, " % attr_type
-                op_params_for_check = "{}{}".format(op_params_for_check, required_attr_for_check)
-        op_params_for_check += "para_check.KERNEL_NAME"
-        return op_params_for_check
+    @staticmethod
+    def _mapping_info_cfg_type(op_type: str) -> str:
+        op_type = op_type.strip()
+        if op_type in OpFileAiCore.CFG_INFO_TYPE_MAP:
+            return OpFileAiCore.CFG_INFO_TYPE_MAP.get(op_type)
+        utils.print_warn_log("The input/output type '%s' "
+                             "is not supported by the .ini file. "
+                             "Please check. If "
+                             "you do not have this problem, ignore "
+                             "the warning." % op_type)
+        return ""
 
     def generate_impl(self: any) -> None:
         """
@@ -122,6 +106,69 @@ class OpFileAiCore(OPFile):
         utils.make_dirs(py_dir)
         utils.write_files(py_path, head_str)
 
+    def generate_info_cfg(self: any) -> None:
+        """
+        Function Description:
+        generate operator info config file
+        Parameter:
+        Return Value:
+        """
+        if not self.op_info.fix_op_type:
+            utils.print_warn_log("The op type is empty. Failed to generate "
+                                 "the info config file. Please check.")
+            return
+        # 1.make [OpType], eg:[Add]
+        new_str = OPTmpl.INI_OP.format(op_type=self.op_info.op_type)
+        # 2.make input string
+        new_str += self._generate_input_output_info_cfg(
+            self.op_info.parsed_input_info, OPTmpl.INI_INPUT)
+        # 3.make output string
+        new_str += self._generate_input_output_info_cfg(
+            self.op_info.parsed_output_info, OPTmpl.INI_OUTPUT)
+        # 4.make attr string
+        if len(self.op_info.parsed_attr_info) > 0:
+            attr_info = ", ".join(x[0] for x in self.op_info.parsed_attr_info)
+            new_str += OPTmpl.INI_ATTR_LIST.format(attr_info=attr_info)
+            for attr in self.op_info.parsed_attr_info:
+                new_str = self._generate_attr_aicore(attr, new_str)
+
+        # 5.make bin file string
+        new_str += OPTmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
+        self._make_info_cfg_file(new_str)
+
+    def _generate_cmake_lists(self: any) -> None:
+        tbe_dir = os.path.join(self.output_path, 'tbe')
+        if os.path.exists(tbe_dir):
+            return
+        utils.make_dirs(tbe_dir)
+        template_path = os.path.join(
+            os.path.split(os.path.realpath(__file__))[0],
+            ConstManager.OP_TEMPLATE_TBE_PATH)
+        utils.copy_template(template_path, tbe_dir, True)
+
+    def _generate_op_params_for_check(self: any) -> str:
+        op_params_for_check = ""
+        for op_input in self.op_info.parsed_input_info.values():
+            input_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_input.get("param_type"))
+            input_for_check = "para_check.%s_INPUT, " % input_type
+            op_params_for_check = "{}{}".format(op_params_for_check, input_for_check)
+        for op_output in self.op_info.parsed_output_info.values():
+            output_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_output.get("param_type"))
+            output_for_check = "para_check.%s_OUTPUT, " % output_type
+            op_params_for_check = "{}{}".format(op_params_for_check, output_for_check)
+        for op_attr in self.op_info.parsed_attr_info:
+            attr_type = op_attr[1].strip()
+            check_from_config = utils.CheckFromConfig()
+            attr_type = check_from_config.trans_check_attr_type(attr_type)
+            if ConstManager.PARAM_TYPE_OPTIONAL in op_attr:
+                opt_attr_for_check = "para_check.OPTION_ATTR_%s, " % attr_type
+                op_params_for_check = "{}{}".format(op_params_for_check, opt_attr_for_check)
+            else:
+                required_attr_for_check = "para_check.REQUIRED_ATTR_%s, " % attr_type
+                op_params_for_check = "{}{}".format(op_params_for_check, required_attr_for_check)
+        op_params_for_check += "para_check.KERNEL_NAME"
+        return op_params_for_check
+
     def _generate_impl_compute(self: any, head_str: str, op_input: str, op_output: str) -> str:
         if len(self.op_info.parsed_attr_info) == 0:
             head_str += OPTmpl.PY_COMPUTE_WITHOUT_ATTR.format(
@@ -157,36 +204,6 @@ class OpFileAiCore(OPFile):
         for name in self.op_info.parsed_input_info:
             head_str += OPTmpl.PY_PLACEHOLDER.format(name=name)
         return head_str
-
-    def generate_info_cfg(self: any) -> None:
-        """
-        Function Description:
-        generate operator info config file
-        Parameter:
-        Return Value:
-        """
-        if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty. Failed to generate "
-                                 "the info config file. Please check.")
-            return
-        # 1.make [OpType], eg:[Add]
-        new_str = OPTmpl.INI_OP.format(op_type=self.op_info.op_type)
-        # 2.make input string
-        new_str += self._generate_input_output_info_cfg(
-            self.op_info.parsed_input_info, OPTmpl.INI_INPUT)
-        # 3.make output string
-        new_str += self._generate_input_output_info_cfg(
-            self.op_info.parsed_output_info, OPTmpl.INI_OUTPUT)
-        # 4.make attr string
-        if len(self.op_info.parsed_attr_info) > 0:
-            attr_info = ", ".join(x[0] for x in self.op_info.parsed_attr_info)
-            new_str += OPTmpl.INI_ATTR_LIST.format(attr_info=attr_info)
-            for attr in self.op_info.parsed_attr_info:
-                new_str = self._generate_attr_aicore(attr, new_str)
-
-        # 5.make bin file string
-        new_str += OPTmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
-        self._make_info_cfg_file(new_str)
 
     def _generate_attr_aicore(self: any, attr: list, new_str: str) -> str:
         attr_type = self._mapping_attr_type_for_ini(attr[1])
@@ -257,20 +274,3 @@ class OpFileAiCore(OPFile):
             info_path = os.path.join(soc_dir, self.op_info.fix_op_type +
                                      ".ini")
             utils.write_files(info_path, new_str)
-
-    @staticmethod
-    def _mapping_attr_type_for_ini(attr_type: str) -> str:
-        attr_type = attr_type.strip()
-        return utils.CheckFromConfig().trans_ini_attr_type(attr_type)
-
-    @staticmethod
-    def _mapping_info_cfg_type(op_type: str) -> str:
-        op_type = op_type.strip()
-        if op_type in OpFileAiCore.CFG_INFO_TYPE_MAP:
-            return OpFileAiCore.CFG_INFO_TYPE_MAP.get(op_type)
-        utils.print_warn_log("The input/output type '%s' "
-                             "is not supported by the .ini file. "
-                             "Please check. If "
-                             "you do not have this problem, ignore "
-                             "the warning." % op_type)
-        return ""

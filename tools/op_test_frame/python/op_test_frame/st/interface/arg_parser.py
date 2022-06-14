@@ -68,6 +68,186 @@ class MsopstArgParser:
         time_dir = time.strftime("%Y%m%d%H%M%S", time.localtime())
         return os.path.realpath(os.path.join(out_path, time_dir))
 
+    @staticmethod
+    def _create_parser(create_parser):
+        """
+        parse create cmd
+        :param create_parser:
+        """
+        create_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, .ini or .py file", required=True)
+        create_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        create_parser.add_argument(
+            "-m", "--model", dest="model_path", default="",
+            help="<Optional> the model path", required=False)
+        create_parser.add_argument(
+            '-q', "--quiet", dest="quiet", action="store_true", default=False,
+            help="<Optional> quiet mode, skip human-computer interactions",
+            required=False)
+
+    @staticmethod
+    def _run_parser(run_parser):
+        """
+        parse run cmd
+        :param run_parser:
+        """
+        run_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, .json file, ", required=True)
+        run_parser.add_argument(
+            '-soc', "--soc_version", dest="soc_version",
+            help="<Required> the soc version to run", required=True)
+        run_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        run_parser.add_argument(
+            '-c', "--case_name", dest="case_name", default='all',
+            help="<Optional> the case name to run or gen, splits with ',', "
+                 "like 'case0,case1'.", required=False)
+        run_parser.add_argument(
+            '-d', "--device_id", dest="device_id", default="0",
+            help="<Optional> input device id, default is 0.",
+            required=False)
+        run_parser.add_argument(
+            '-conf', "--config_file", dest="config_file", default="",
+            help="<Optional> config_file, msopst advance config file.",
+            required=False)
+        run_parser.add_argument(
+            '-err_thr', "--error_threshold", dest="error_threshold",
+            default="[0.01, 0.05]",
+            help="<Optional> error_threshold, Error threshold of result"
+                 "comparison, like [0.001, 0.001].",
+            required=False)
+        run_parser.add_argument(
+            '-err_report', "--error_report", dest="error_report",
+            default="false", choices=['false', 'true'],
+            help="<Optional> Generate error reports (.csv) for failed ST cases. "
+                 "This option is available when the script for expected result verification is specified.",
+            required=False)
+
+    @staticmethod
+    def _mi_gen_parser(gen_json_parser, gen_testcase_parser):
+        # gen acl_op.json
+        gen_json_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, .json file, ", required=True)
+        gen_json_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        gen_json_parser.add_argument(
+            '-c', "--case_name", dest="case_name", default='all',
+            help="<Optional> the case name to run or gen, splits with ',', like "
+                 "'case0,case1'.", required=False)
+        # gen_testcase_parser
+        gen_testcase_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, st_report.json file, ", required=True)
+        gen_testcase_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        gen_testcase_parser.add_argument(
+            '-d', "--device_id", dest="device_id", default="0",
+            help="<Optional> input device id, default is 0.", required=False)
+
+    @staticmethod
+    def _mi_compare_parser(compare_parser, compare_by_path_parser):
+        compare_parser.add_argument(
+            "-i", "--report path", dest="report_path", default="",
+            help="<Required> the st report file path",
+            required=False)
+        compare_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+        compare_parser.add_argument(
+            '-err_thr', "--error_threshold", dest="error_threshold",
+            default="[0.01, 0.05]",
+            help="<Optional> error_threshold, Error threshold of result"
+                 "comparison, like [0.001, 0.001].",
+            required=False)
+        compare_parser.add_argument(
+            '-err_report', "--error_report", dest="error_report",
+            default="false", choices=['false', 'true'],
+            help="<Optional> Generate error reports (.csv) for failed ST cases. "
+                 "This option is available when the script for expected result verification is specified.",
+            required=False)
+
+        # compare_by_path parse
+        compare_by_path_parser.add_argument(
+            "-result", "--result path", dest="result_path", default="",
+            help="<Required> the result file path, ", required=True)
+        compare_by_path_parser.add_argument(
+            "-expect", "--expect path", dest="expect_path", default="",
+            help="<Required> the expect result file path",
+            required=True)
+        compare_by_path_parser.add_argument(
+            '-err_report', "--error_report", dest="error_report",
+            default="false", choices=['false', 'true'],
+            help="<Optional> Generate error reports (.csv) for failed ST cases. "
+                 "This option is available when the script for expected result verification is specified.",
+            required=False)
+
+    def get_input_file(self):
+        """
+        get input file
+        :return: input file
+        """
+        return self.input_file
+
+    def get_output_path(self):
+        """
+        get output path
+        :return: output path
+        """
+        return self.output_path
+
+    def _mi_parser(self, mi_parser):
+        """
+        parse mi cmd
+        :param mi_parser:
+        """
+        subparsers = mi_parser.add_subparsers(help='commands')
+        get_shape_parser = subparsers.add_parser(
+            'get_shape', help='Get shape.')
+        change_shape_parser = subparsers.add_parser(
+            'change_shape', help='Change shape.')
+        gen_json_parser = subparsers.add_parser(
+            'gen', help='Generate acl_op.json for the ascend operator.')
+        gen_testcase_parser = subparsers.add_parser(
+            'gen_testcase', help='Generate testcase resource and data.')
+        compare_parser = subparsers.add_parser(
+            'compare', help='Compare result data with expect output.')
+        compare_by_path_parser = subparsers.add_parser(
+            'compare_by_path', help='Compare result data with expect output by st '
+                                    'report.')
+
+        # get shape parser
+        get_shape_parser.add_argument(
+            "-m", "--model", dest="model_path", default="",
+            help="<Required> the model path", required=True)
+        get_shape_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+
+        # change shape parser
+        change_shape_parser.add_argument(
+            "-m", "--model", dest="model_path", default="",
+            help="<Required> the model path", required=True)
+        change_shape_parser.add_argument(
+            "-i", "--input", dest="input_file", default="",
+            help="<Required> the input file, .json file", required=True)
+        change_shape_parser.add_argument(
+            "-out", "--output", dest="output_path", default="",
+            help="<Optional> the output path", required=False)
+
+        # gen parser
+        self._mi_gen_parser(gen_json_parser, gen_testcase_parser)
+
+        # compare parse
+        self._mi_compare_parser(compare_parser, compare_by_path_parser)
+
     def _check_mi_args(self, args):
         if sys.argv[2] == 'get_shape':
             self.model_path = args.model_path
@@ -145,182 +325,3 @@ class MsopstArgParser:
         raise utils.OpTestGenException(
             ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
 
-    @staticmethod
-    def _create_parser(create_parser):
-        """
-        parse create cmd
-        :param create_parser:
-        """
-        create_parser.add_argument(
-            "-i", "--input", dest="input_file", default="",
-            help="<Required> the input file, .ini or .py file", required=True)
-        create_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-        create_parser.add_argument(
-            "-m", "--model", dest="model_path", default="",
-            help="<Optional> the model path", required=False)
-        create_parser.add_argument(
-            '-q', "--quiet", dest="quiet", action="store_true", default=False,
-            help="<Optional> quiet mode, skip human-computer interactions",
-            required=False)
-
-    @staticmethod
-    def _run_parser(run_parser):
-        """
-        parse run cmd
-        :param run_parser:
-        """
-        run_parser.add_argument(
-            "-i", "--input", dest="input_file", default="",
-            help="<Required> the input file, .json file, ", required=True)
-        run_parser.add_argument(
-            '-soc', "--soc_version", dest="soc_version",
-            help="<Required> the soc version to run", required=True)
-        run_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-        run_parser.add_argument(
-            '-c', "--case_name", dest="case_name", default='all',
-            help="<Optional> the case name to run or gen, splits with ',', "
-                 "like 'case0,case1'.", required=False)
-        run_parser.add_argument(
-            '-d', "--device_id", dest="device_id", default="0",
-            help="<Optional> input device id, default is 0.",
-            required=False)
-        run_parser.add_argument(
-            '-conf', "--config_file", dest="config_file", default="",
-            help="<Optional> config_file, msopst advance config file.",
-            required=False)
-        run_parser.add_argument(
-            '-err_thr', "--error_threshold", dest="error_threshold",
-            default="[0.01, 0.05]",
-            help="<Optional> error_threshold, Error threshold of result"
-                 "comparison, like [0.001, 0.001].",
-            required=False)
-        run_parser.add_argument(
-            '-err_report', "--error_report", dest="error_report",
-            default="false", choices=['false', 'true'],
-            help="<Optional> Generate error reports (.csv) for failed ST cases. "
-                 "This option is available when the script for expected result verification is specified.",
-            required=False)
-
-    def _mi_parser(self, mi_parser):
-        """
-        parse mi cmd
-        :param mi_parser:
-        """
-        subparsers = mi_parser.add_subparsers(help='commands')
-        get_shape_parser = subparsers.add_parser(
-            'get_shape', help='Get shape.')
-        change_shape_parser = subparsers.add_parser(
-            'change_shape', help='Change shape.')
-        gen_json_parser = subparsers.add_parser(
-            'gen', help='Generate acl_op.json for the ascend operator.')
-        gen_testcase_parser = subparsers.add_parser(
-            'gen_testcase', help='Generate testcase resource and data.')
-        compare_parser = subparsers.add_parser(
-            'compare', help='Compare result data with expect output.')
-        compare_by_path_parser = subparsers.add_parser(
-            'compare_by_path', help='Compare result data with expect output by st '
-                                    'report.')
-
-        # get shape parser
-        get_shape_parser.add_argument(
-            "-m", "--model", dest="model_path", default="",
-            help="<Required> the model path", required=True)
-        get_shape_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-
-        # change shape parser
-        change_shape_parser.add_argument(
-            "-m", "--model", dest="model_path", default="",
-            help="<Required> the model path", required=True)
-        change_shape_parser.add_argument(
-            "-i", "--input", dest="input_file", default="",
-            help="<Required> the input file, .json file", required=True)
-        change_shape_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-
-        # gen parser
-        self._mi_gen_parser(gen_json_parser, gen_testcase_parser)
-
-        # compare parse
-        self._mi_compare_parser(compare_parser, compare_by_path_parser)
-
-    @staticmethod
-    def _mi_gen_parser(gen_json_parser, gen_testcase_parser):
-        # gen acl_op.json
-        gen_json_parser.add_argument(
-            "-i", "--input", dest="input_file", default="",
-            help="<Required> the input file, .json file, ", required=True)
-        gen_json_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-        gen_json_parser.add_argument(
-            '-c', "--case_name", dest="case_name", default='all',
-            help="<Optional> the case name to run or gen, splits with ',', like "
-                 "'case0,case1'.", required=False)
-        # gen_testcase_parser
-        gen_testcase_parser.add_argument(
-            "-i", "--input", dest="input_file", default="",
-            help="<Required> the input file, st_report.json file, ", required=True)
-        gen_testcase_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-        gen_testcase_parser.add_argument(
-            '-d', "--device_id", dest="device_id", default="0",
-            help="<Optional> input device id, default is 0.", required=False)
-
-    @staticmethod
-    def _mi_compare_parser(compare_parser, compare_by_path_parser):
-        compare_parser.add_argument(
-            "-i", "--report path", dest="report_path", default="",
-            help="<Required> the st report file path",
-            required=False)
-        compare_parser.add_argument(
-            "-out", "--output", dest="output_path", default="",
-            help="<Optional> the output path", required=False)
-        compare_parser.add_argument(
-            '-err_thr', "--error_threshold", dest="error_threshold",
-            default="[0.01, 0.05]",
-            help="<Optional> error_threshold, Error threshold of result"
-                 "comparison, like [0.001, 0.001].",
-            required=False)
-        compare_parser.add_argument(
-            '-err_report', "--error_report", dest="error_report",
-            default="false", choices=['false', 'true'],
-            help="<Optional> Generate error reports (.csv) for failed ST cases. "
-                 "This option is available when the script for expected result verification is specified.",
-            required=False)
-
-        # compare_by_path parse
-        compare_by_path_parser.add_argument(
-            "-result", "--result path", dest="result_path", default="",
-            help="<Required> the result file path, ", required=True)
-        compare_by_path_parser.add_argument(
-            "-expect", "--expect path", dest="expect_path", default="",
-            help="<Required> the expect result file path",
-            required=True)
-        compare_by_path_parser.add_argument(
-            '-err_report', "--error_report", dest="error_report",
-            default="false", choices=['false', 'true'],
-            help="<Optional> Generate error reports (.csv) for failed ST cases. "
-                 "This option is available when the script for expected result verification is specified.",
-            required=False)
-
-    def get_input_file(self):
-        """
-        get input file
-        :return: input file
-        """
-        return self.input_file
-
-    def get_output_path(self):
-        """
-        get output path
-        :return: output path
-        """
-        return self.output_path

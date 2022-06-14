@@ -83,6 +83,151 @@ class IROpInfo(OpInfo):
         else:
             self.mi_cmd = argument.mi_cmd
 
+    @staticmethod
+    def _get_sheets(ir_file: str) -> any:
+        try:
+            import xlrd
+        except ImportError as import_error:
+            utils.print_error_log(
+                "Unable to import module: %s." % str(import_error))
+            raise utils.MsOpGenException(
+                ConstManager.MS_OP_GEN_IMPORT_MODULE_ERROR) from import_error
+        finally:
+            pass
+
+        try:
+            ir_template = xlrd.open_workbook(ir_file)
+        except OSError as err:
+            utils.print_error_log(
+                "Failed to load the excel, %s " % str(err.args[0]))
+            raise utils.MsOpGenException(
+                ConstManager.MS_OP_GEN_READ_FILE_ERROR) from err
+        finally:
+            pass
+        sheet_names = ir_template.sheet_names()
+        return ir_template, sheet_names
+
+    @staticmethod
+    def _check_sheet_data(sheet_data: any) -> bool:
+        # The second row is header, a valid sheet has at least 2 rows
+        if sheet_data.nrows < IrRow.IR_TEMPLATE_FIRST_ROW:
+            utils.print_warn_log(
+                "Data in the sheet '%s' is invalid. At least %s rows are "
+                "required." % (sheet_data.name, IrRow.IR_TEMPLATE_FIRST_ROW))
+            return False
+        if sheet_data.nrows == IrRow.IR_TEMPLATE_FIRST_ROW:
+            utils.print_warn_log(
+                "There is no content in the sheet '%s'." % sheet_data.name)
+            return False
+        headers = sheet_data.row_values(1)
+        if len(headers) < IrRow.IR_TEMPLATE_VALID_NCLOS:
+            utils.print_warn_log("The '%s' number of headers is invalid: '%s'."
+                                 % (sheet_data.name, str(len(headers))))
+            return False
+        for i in range(0, IrRow.IR_TEMPLATE_VALID_NCLOS):
+            header = str(headers[i]).strip()
+            if header != IrRow.IR_TEMPLATE_HEADER[i]:
+                utils.print_warn_log(
+                    "The header of the sheet '%s' is invalid: %s."
+                    "It should be like %s." % (
+                        sheet_data.name, header, IrRow.IR_TEMPLATE_HEADER))
+                return False
+        return True
+
+    @staticmethod
+    def _del_with_row_col(item: list, col_span: any) -> None:
+        for row in range(item[0], item[1]):
+            for col in range(item[2], item[3]):
+                # only the first block has value, file the value of
+                # first block in other blocks
+                if (row, col) != (item[0], item[2]):
+                    col_span.update({(row, col): (item[0], item[2])})
+
+    @staticmethod
+    def _deal_with_ir_map(row: list, ir_map: dict) -> dict:
+        if row and len(row[0]) > 0:
+            ir_row = IrRow(row)
+            if row[0] in ir_map:
+                ir_map[row[0]].append(ir_row)
+            else:
+                ir_row_list = [ir_row]
+                ir_map[row[0]] = ir_row_list
+        return ir_map
+
+    @staticmethod
+    def _deal_with_row(col_span: dict, sheet_data: any, row_item: any,
+                       row: list) -> list:
+        for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
+            # if the block is merged block, fetch value from col span
+            if col_span.get((row_item, j)):
+                op_value = str(
+                    sheet_data.cell_value(
+                        *col_span.get((row_item, j)))).strip()
+            else:
+                op_value = str(sheet_data.cell_value(row_item, j)).strip()
+            if j == 0:
+                # if the op name is invalid , skip the row
+                if utils.check_name_valid(
+                        op_value) == ConstManager.MS_OP_GEN_NONE_ERROR:
+                    row.append(op_value)
+                else:
+                    break
+            else:
+                row.append(op_value)
+        return row
+
+    @staticmethod
+    def _parse_bool_value(value: str) -> str:
+        new_value = value.strip().lower()
+        if new_value == 'true':
+            return 'true'
+        if new_value == 'false':
+            return "false"
+        return value
+
+    @staticmethod
+    def _mapping_ini_param_type(param_type: str) -> str:
+        if param_type in ConstManager.PARAM_TYPE_MAP_INI:
+            # the return wont't be none
+            return ConstManager.PARAM_TYPE_MAP_INI.get(param_type)
+        utils.print_error_log("The '%s' config in the IR Excel is "
+                              "invalid." % param_type)
+        raise utils.MsOpGenException(
+            ConstManager.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
+
+    @staticmethod
+    def _mapping_input_output_type(ir_type: any, ir_name: str) -> any:
+        file_type = ConstManager.INPUT_FILE_XLSX
+        return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
+                                                      file_type)
+
+    @staticmethod
+    def _mapping_attr_type(attr_type: any) -> any:
+        file_type = ConstManager.INPUT_FILE_XLSX
+        return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
+
+    @staticmethod
+    def _choose_op_name(op_names: list) -> str:
+        utils.print_info_log("There is more than one operator in the sheet:")
+        count = 1
+        for op_name in op_names:
+            print(count, op_name)
+            count += 1
+        while True:
+            op_number = input('Input the number of the ops:')
+            if op_number.isdigit():
+                op_number = int(op_number)
+                if op_number < 1 or op_number > len(op_names):
+                    utils.print_warn_log(
+                        "The input is out of range. Please retype one.")
+                else:
+                    op_name = op_names[op_number - 1]
+                    utils.print_info_log("You have chosen: " + op_name)
+                    return op_name
+            else:
+                utils.print_warn_log(
+                    "The input is not a number. Please retype!")
+
     def parse(self: any) -> None:
         """
         Parse the IR excel, store the parse result in OpInfo attribute
@@ -93,6 +238,12 @@ class IROpInfo(OpInfo):
         else:
             if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
                 self._parse_xls_to_json()
+
+    def get_op_path(self: any) -> str:
+        """
+        get op path
+        """
+        return self.op_path
 
     def _parse_xls_to_info(self: any) -> None:
         utils.print_info_log("Start to parse the ir template:%s." %
@@ -178,67 +329,11 @@ class IROpInfo(OpInfo):
         sheet_data = ir_template.sheet_by_name(IrRow.IR_DEFAULT_SHEET_NAME)
         return sheet_data
 
-    @staticmethod
-    def _get_sheets(ir_file: str) -> any:
-        try:
-            import xlrd
-        except ImportError as import_error:
-            utils.print_error_log("Unable to import module: %s." % str(import_error))
-            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_IMPORT_MODULE_ERROR) from import_error
-        finally:
-            pass
-
-        try:
-            ir_template = xlrd.open_workbook(ir_file)
-        except OSError as err:
-            utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
-            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR) from err
-        finally:
-            pass
-        sheet_names = ir_template.sheet_names()
-        return ir_template, sheet_names
-
-    @staticmethod
-    def _check_sheet_data(sheet_data: any) -> bool:
-        # The second row is header, a valid sheet has at least 2 rows
-        if sheet_data.nrows < IrRow.IR_TEMPLATE_FIRST_ROW:
-            utils.print_warn_log(
-                "Data in the sheet '%s' is invalid. At least %s rows are "
-                "required." % (sheet_data.name, IrRow.IR_TEMPLATE_FIRST_ROW))
-            return False
-        if sheet_data.nrows == IrRow.IR_TEMPLATE_FIRST_ROW:
-            utils.print_warn_log(
-                "There is no content in the sheet '%s'." % sheet_data.name)
-            return False
-        headers = sheet_data.row_values(1)
-        if len(headers) < IrRow.IR_TEMPLATE_VALID_NCLOS:
-            utils.print_warn_log("The '%s' number of headers is invalid: '%s'."
-                                 % (sheet_data.name, str(len(headers))))
-            return False
-        for i in range(0, IrRow.IR_TEMPLATE_VALID_NCLOS):
-            header = str(headers[i]).strip()
-            if header != IrRow.IR_TEMPLATE_HEADER[i]:
-                utils.print_warn_log(
-                    "The header of the sheet '%s' is invalid: %s."
-                    "It should be like %s." % (
-                        sheet_data.name, header, IrRow.IR_TEMPLATE_HEADER))
-                return False
-        return True
-
     def _del_with_merged_cell(self: any, sheet_data: any, col_span: any) -> None:
         if sheet_data.merged_cells:
             for item in sheet_data.merged_cells:
                 # item contain the scope of the merged cell, e.g. [0, 3, 0, 3]
                 self._del_with_row_col(item, col_span)
-
-    @staticmethod
-    def _del_with_row_col(item: list, col_span: any) -> None:
-        for row in range(item[0], item[1]):
-            for col in range(item[2], item[3]):
-                # only the first block has value, file the value of
-                # first block in other blocks
-                if (row, col) != (item[0], item[2]):
-                    col_span.update({(row, col): (item[0], item[2])})
 
     def _read_sheet_data(self: any, sheet_data: any) -> dict:
         rows = sheet_data.nrows
@@ -251,37 +346,6 @@ class IROpInfo(OpInfo):
             row = self._deal_with_row(col_span, sheet_data, i, row)
             ir_map = self._deal_with_ir_map(row, ir_map)
         return ir_map
-
-    @staticmethod
-    def _deal_with_ir_map(row: list, ir_map: dict) -> dict:
-        if row and len(row[0]) > 0:
-            ir_row = IrRow(row)
-            if row[0] in ir_map:
-                ir_map[row[0]].append(ir_row)
-            else:
-                ir_row_list = [ir_row]
-                ir_map[row[0]] = ir_row_list
-        return ir_map
-
-    @staticmethod
-    def _deal_with_row(col_span: dict, sheet_data: any, row_item: any, row: list) -> list:
-        for j in range(IrRow.IR_TEMPLATE_VALID_NCLOS):
-            # if the block is merged block, fetch value from col span
-            if col_span.get((row_item, j)):
-                op_value = str(
-                    sheet_data.cell_value(*col_span.get((row_item, j)))).strip()
-            else:
-                op_value = str(sheet_data.cell_value(row_item, j)).strip()
-            if j == 0:
-                # if the op name is invalid , skip the row
-                if utils.check_name_valid(
-                        op_value) == ConstManager.MS_OP_GEN_NONE_ERROR:
-                    row.append(op_value)
-                else:
-                    break
-            else:
-                row.append(op_value)
-        return row
 
     def _choose_op(self: any, op_names: list) -> str:
         if self.choose_op != "":
@@ -301,28 +365,6 @@ class IROpInfo(OpInfo):
             return ""
         utils.print_info_log("Start to parse the op: " + op_names[0])
         return op_names[0]
-
-    @staticmethod
-    def _choose_op_name(op_names: list) -> str:
-        utils.print_info_log("There is more than one operator in the sheet:")
-        count = 1
-        for op_name in op_names:
-            print(count, op_name)
-            count += 1
-        while True:
-            op_number = input('Input the number of the ops:')
-            if op_number.isdigit():
-                op_number = int(op_number)
-                if op_number < 1 or op_number > len(op_names):
-                    utils.print_warn_log(
-                        "The input is out of range. Please retype one.")
-                else:
-                    op_name = op_names[op_number - 1]
-                    utils.print_info_log("You have chosen: " + op_name)
-                    return op_name
-            else:
-                utils.print_warn_log(
-                    "The input is not a number. Please retype!")
 
     def _add_input_output(self: any, prefix: str, ir_row: any, param_type: any) -> any:
         ir_name = ir_row.name.strip()
@@ -402,38 +444,3 @@ class IROpInfo(OpInfo):
         self.parsed_attr_info.append([name, attr_type, self._parse_bool_value(
             default_value)])
         utils.print_info_log("One attr has been handled: " + name)
-
-    @staticmethod
-    def _parse_bool_value(value: str) -> str:
-        new_value = value.strip().lower()
-        if new_value == 'true':
-            return 'true'
-        if new_value == 'false':
-            return "false"
-        return value
-
-    @staticmethod
-    def _mapping_ini_param_type(param_type: str) -> str:
-        if param_type in ConstManager.PARAM_TYPE_MAP_INI:
-            # the return wont't be none
-            return ConstManager.PARAM_TYPE_MAP_INI.get(param_type)
-        utils.print_error_log("The '%s' config in the IR Excel is "
-                              "invalid." % param_type)
-        raise utils.MsOpGenException(ConstManager.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
-
-    @staticmethod
-    def _mapping_input_output_type(ir_type: any, ir_name: str) -> any:
-        file_type = ConstManager.INPUT_FILE_XLSX
-        return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
-                                                      file_type)
-
-    @staticmethod
-    def _mapping_attr_type(attr_type: any) -> any:
-        file_type = ConstManager.INPUT_FILE_XLSX
-        return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
-
-    def get_op_path(self: any) -> str:
-        """
-        get op path
-        """
-        return self.op_path

@@ -38,37 +38,6 @@ class DataGenerator:
                                             'out', 'test_data', 'data')
 
     @staticmethod
-    def _check_data_size(data, value, input_shape):
-        input_size = functools.reduce(lambda x, y: x * y, input_shape)
-        data_size = functools.reduce(lambda x, y: x * y, data.shape)
-        if input_size != data_size:
-            utils.print_error_log(
-                "The size of data from %s not equal to input shape size." % value)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-
-    def gen_data_with_value(self, input_shape, value, dtype):
-        """
-        generate data with value
-        :param input_shape: the data shape
-        :param value: input value
-        :param dtype: the data type
-        :return: the numpy data
-        """
-        dtype = utils.map_type_to_expect_type(dtype)
-        if isinstance(value, str):
-            data = np.fromfile(value, dtype)
-            self._check_data_size(data, value, input_shape)
-            data.shape = input_shape
-            return data
-        data = np.array(value, dtype=dtype)
-        if list(data.shape) == input_shape or len(input_shape) == 0:
-            return data
-        utils.print_error_log("The value shape is not equal to the input shape.")
-        raise utils.OpTestGenException(
-            ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-
-    @staticmethod
     def gen_data(data_shape, min_value, max_value, dtype,
                  distribution='uniform'):
         """
@@ -159,9 +128,101 @@ class DataGenerator:
         return data
 
     @staticmethod
+    def _check_data_size(data, value, input_shape):
+        input_size = functools.reduce(lambda x, y: x * y, input_shape)
+        data_size = functools.reduce(lambda x, y: x * y, data.shape)
+        if input_size != data_size:
+            utils.print_error_log(
+                "The size of data from %s not equal to input shape size." % value)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+
+    @staticmethod
     def _save_data(data, file_path):
         data.tofile(file_path)
         os.chmod(file_path, ConstManager.WRITE_MODES)
+
+    @staticmethod
+    def _get_expect_result_tensors(module, expect_func, calc_func_params_tmp):
+        func = getattr(module, expect_func)
+        return func(**calc_func_params_tmp)
+
+    def gen_data_with_value(self, input_shape, value, dtype):
+        """
+        generate data with value
+        :param input_shape: the data shape
+        :param value: input value
+        :param dtype: the data type
+        :return: the numpy data
+        """
+        dtype = utils.map_type_to_expect_type(dtype)
+        if isinstance(value, str):
+            data = np.fromfile(value, dtype)
+            self._check_data_size(data, value, input_shape)
+            data.shape = input_shape
+            return data
+        data = np.array(value, dtype=dtype)
+        if list(data.shape) == input_shape or len(input_shape) == 0:
+            return data
+        utils.print_error_log("The value shape is not equal to the input shape.")
+        raise utils.OpTestGenException(
+            ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+
+    def generate(self):
+        """
+        generate data by case list
+        """
+        utils.check_path_valid(self.output_path, True)
+        gen_data_start = time.time()
+        utils.print_step_log("[%s] Generate data for testcase." % (os.path.basename(__file__)))
+        for case in self.case_list:
+            # support no input scene
+            if len(case.get('input_desc')) < 1:
+                utils.print_info_log("There are no inputs. Skip generating input data.")
+                return
+            case_name = case.get('case_name')
+            utils.print_info_log(
+                'Start to generate the input data for %s.' % case_name)
+            param_info = ""
+            # get intput  and output param
+            param_info_list, calc_func_params_tmp = \
+                self._generate_params_desc(case, case_name)
+            # get attr param
+            if case.get('attr'):
+                for _, attr in enumerate(case.get('attr')):
+                    attr_name = attr.get('name')
+                    param_info_list.append("{attr_name}".format(
+                        attr_name=attr_name))
+                    calc_func_params_tmp.update(
+                        {attr_name: attr.get('value')})
+            if case.get("calc_expect_func_file") \
+                    and case.get("calc_expect_func_file_func"):
+                param_info += ', '.join(param_info_list)
+                utils.print_info_log(
+                    '-------------------------------->>>>>> Expect function information <<<<<<-----------------------')
+                utils.print_info_log(
+                    "The parameter information passed by user's cases is: %s(%s)."
+                    % (case.get("calc_expect_func_file_func"), param_info))
+                utils.print_info_log("Please ensure that the above parameters "
+                                     "in the expected function are consistent.")
+                utils.print_info_log(
+                    '------------------------------------------------------------------------------------------------')
+            expect_data_paths = self._generate_expect_data(
+                case, calc_func_params_tmp)
+            # deal with report
+            case_report = self.report.get_case_report(case_name)
+            case_report.trace_detail.st_case_info.input_data_paths = \
+                self.output_path
+            if expect_data_paths:
+                case_report.trace_detail.st_case_info.expect_data_paths = \
+                    expect_data_paths
+                utils.print_info_log(
+                    'Finish to generator the expect output data for '
+                    '%s.' % case_name)
+        gen_data_end = time.time()
+        utils.print_info_log('Generate data execute time: %f s.'
+                             % (gen_data_end - gen_data_start))
+        utils.print_info_log("Generate data for testcase in %s." % self.output_path)
 
     def _gen_op_iput_data(self, input_shape, input_desc):
         range_min, range_max = input_desc.get('value_range')
@@ -281,67 +342,6 @@ class DataGenerator:
                 param_info_list.append("{output_name}".format(
                     output_name=output_name))
         return param_info_list, calc_func_params_tmp
-
-    def generate(self):
-        """
-        generate data by case list
-        """
-        utils.check_path_valid(self.output_path, True)
-        gen_data_start = time.time()
-        utils.print_step_log("[%s] Generate data for testcase." % (os.path.basename(__file__)))
-        for case in self.case_list:
-            # support no input scene
-            if len(case.get('input_desc')) < 1:
-                utils.print_info_log("There are no inputs. Skip generating input data.")
-                return
-            case_name = case.get('case_name')
-            utils.print_info_log(
-                'Start to generate the input data for %s.' % case_name)
-            param_info = ""
-            # get intput  and output param
-            param_info_list, calc_func_params_tmp = \
-                self._generate_params_desc(case, case_name)
-            # get attr param
-            if case.get('attr'):
-                for _, attr in enumerate(case.get('attr')):
-                    attr_name = attr.get('name')
-                    param_info_list.append("{attr_name}".format(
-                        attr_name=attr_name))
-                    calc_func_params_tmp.update(
-                        {attr_name: attr.get('value')})
-            if case.get("calc_expect_func_file") \
-                    and case.get("calc_expect_func_file_func"):
-                param_info += ', '.join(param_info_list)
-                utils.print_info_log(
-                    '-------------------------------->>>>>> Expect function information <<<<<<-----------------------')
-                utils.print_info_log(
-                    "The parameter information passed by user's cases is: %s(%s)."
-                    % (case.get("calc_expect_func_file_func"), param_info))
-                utils.print_info_log("Please ensure that the above parameters "
-                                     "in the expected function are consistent.")
-                utils.print_info_log(
-                    '------------------------------------------------------------------------------------------------')
-            expect_data_paths = self._generate_expect_data(
-                case, calc_func_params_tmp)
-            # deal with report
-            case_report = self.report.get_case_report(case_name)
-            case_report.trace_detail.st_case_info.input_data_paths = \
-                self.output_path
-            if expect_data_paths:
-                case_report.trace_detail.st_case_info.expect_data_paths = \
-                    expect_data_paths
-                utils.print_info_log(
-                    'Finish to generator the expect output data for '
-                    '%s.' % case_name)
-        gen_data_end = time.time()
-        utils.print_info_log('Generate data execute time: %f s.'
-                             % (gen_data_end - gen_data_start))
-        utils.print_info_log("Generate data for testcase in %s." % self.output_path)
-
-    @staticmethod
-    def _get_expect_result_tensors(module, expect_func, calc_func_params_tmp):
-        func = getattr(module, expect_func)
-        return func(**calc_func_params_tmp)
 
     def _get_tensors_and_func(self, case, calc_func_params_tmp):
         expect_func_file = case.get("calc_expect_func_file")

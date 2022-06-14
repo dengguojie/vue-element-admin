@@ -266,6 +266,25 @@ class AclOpGenerator:
         self.report = report
         self.device_id = user_setting[1]
 
+    def generate(self):
+        """
+        Function Description:
+        generate acl op c++ files containing info of testcases
+        :return:
+        """
+        self._copy_entire_template_dir()
+        self._rewrite_files_for_output_dir()
+        utils.print_info_log("acl op test code files for specified "
+                             "test cases have been successfully generated.")
+
+    def get_device_id(self):
+        """
+        Function Description:
+        get device_id
+        :return: device_id
+        """
+        return self.device_id
+
     def _check_output_path(self, output_path, testcase_list):
         self.output_path = utils.check_output_path(
             output_path, testcase_list, self.machine_type)
@@ -305,22 +324,3 @@ class AclOpGenerator:
             output_testcase_cpp_path)
         for case_report in self.report.report_list:
             case_report.trace_detail.add_stage_result(gen_acl_result)
-
-    def generate(self):
-        """
-        Function Description:
-        generate acl op c++ files containing info of testcases
-        :return:
-        """
-        self._copy_entire_template_dir()
-        self._rewrite_files_for_output_dir()
-        utils.print_info_log("acl op test code files for specified "
-                             "test cases have been successfully generated.")
-
-    def get_device_id(self):
-        """
-        Function Description:
-        get device_id
-        :return: device_id
-        """
-        return self.device_id

@@ -58,6 +58,18 @@ class OpSTCaseReport:
         self.trace_detail = case_run_trace
         self.expect = ConstManager.EXPECT_SUCCESS
 
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        parse json to OpSTCaseReport, call by OpSTReport
+        :param json_obj: the json content
+        :return: OpSTCaseReport object
+        """
+        if not json_obj:
+            return ""
+        return OpSTCaseReport(OpSTCaseTrace.parser_json_obj(
+            json_obj.get("trace_detail")))
+
     def update_case_status(self):
         """
         update case status
@@ -96,18 +108,6 @@ class OpSTCaseReport:
             "trace_detail": None if not self.trace_detail else self.trace_detail.to_json_obj()
         }
 
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        parse json to OpSTCaseReport, call by OpSTReport
-        :param json_obj: the json content
-        :return: OpSTCaseReport object
-        """
-        if not json_obj:
-            return ""
-        return OpSTCaseReport(OpSTCaseTrace.parser_json_obj(
-            json_obj.get("trace_detail")))
-
 
 class OpSTReport:
     """
@@ -120,6 +120,18 @@ class OpSTReport:
         self.success_cnt = 0
         self.report_list = []
         self.expect_dict = {}
+
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        parse json to the OpSTReport
+        :param json_obj: the json content
+        :return: the OpSTReport object
+        """
+        rpt = OpSTReport(json_obj.get("run_cmd"))
+        for case_rpt in (OpSTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj.get("report_list")):
+            rpt.add_case_report(case_rpt)
+        return rpt
 
     @staticmethod
     def _save_json_file(report_data_path, json_str):
@@ -185,40 +197,6 @@ class OpSTReport:
             return ""
         return case_reports[0]
 
-    def _to_json_obj(self):
-        report_tuple = (case_rpt.to_json_obj() for case_rpt in self.report_list)
-        return {
-            "run_cmd": self.run_cmd,
-            "report_list": list(report_tuple),
-            "summary": self._summary_to_json()
-        }
-
-    def _summary_to_json(self):
-        return {
-            "test case count": self.total_cnt,
-            "success count": self.success_cnt,
-            "failed count": self.failed_cnt
-        }
-
-    def _summary_txt(self):
-        if not self.report_list:
-            return ""
-        for case in self.report_list:
-            case.update_case_status()
-            case.update_case_expect(self.expect_dict)
-            self.update_cnt(case)
-
-        total_txt = """========================================================================
-run command: %s
-------------------------------------------------------------------------
-- test case count: %d
-- success count: %d
-- failed count: %d
-------------------------------------------------------------------------
-""" % (self.run_cmd, self.total_cnt, self.success_cnt, self.failed_cnt)
-        total_txt += "========================================================================\n"
-        return total_txt
-
     def console_print(self):
         """
         print summary info to console
@@ -261,14 +239,36 @@ run command: %s
         finally:
             pass
 
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        parse json to the OpSTReport
-        :param json_obj: the json content
-        :return: the OpSTReport object
-        """
-        rpt = OpSTReport(json_obj.get("run_cmd"))
-        for case_rpt in (OpSTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj.get("report_list")):
-            rpt.add_case_report(case_rpt)
-        return rpt
+    def _to_json_obj(self):
+        report_tuple = (case_rpt.to_json_obj() for case_rpt in self.report_list)
+        return {
+            "run_cmd": self.run_cmd,
+            "report_list": list(report_tuple),
+            "summary": self._summary_to_json()
+        }
+
+    def _summary_to_json(self):
+        return {
+            "test case count": self.total_cnt,
+            "success count": self.success_cnt,
+            "failed count": self.failed_cnt
+        }
+
+    def _summary_txt(self):
+        if not self.report_list:
+            return ""
+        for case in self.report_list:
+            case.update_case_status()
+            case.update_case_expect(self.expect_dict)
+            self.update_cnt(case)
+
+        total_txt = """========================================================================
+run command: %s
+------------------------------------------------------------------------
+- test case count: %d
+- success count: %d
+- failed count: %d
+------------------------------------------------------------------------
+""" % (self.run_cmd, self.total_cnt, self.success_cnt, self.failed_cnt)
+        total_txt += "========================================================================\n"
+        return total_txt

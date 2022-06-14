@@ -103,6 +103,51 @@ class MsOpGenerator:
             attr_value = "\"{}\"".format(attr_value)
         return "{}={}".format(attr_name, attr_value)
 
+    @staticmethod
+    def _get_dynamic_input_info(ms_param_type_list,
+                                count_input, input_name_list):
+        param_type_list_length = len(ms_param_type_list)
+        # input param type has only dynamic input.
+        if param_type_list_length == 1:
+            return ConstManager.DYNAMIC_INPUT_ARGS, ConstManager.DYNAMIC_INPUT_NAME
+        # input param type have dynamic input
+        # and other input(optional or required).
+        dynamic_input_count = count_input - param_type_list_length
+        input_index = 0
+        input_name_tensor_list = []
+        for input_param_type in ms_param_type_list:
+            if input_param_type == ConstManager.DYNAMIC_INPUT:
+                dynamic_input_name_str = ','.join(
+                    input_name_list[input_index:
+                                    input_index + dynamic_input_count])
+                input_name_tuple = "({})".format(dynamic_input_name_str)
+                input_name_tensor_list.append(input_name_tuple)
+                input_index = input_index + dynamic_input_count + 1
+            else:
+                input_name_tensor_list.append(input_name_list[input_index])
+                input_index += 1
+        input_args = ','.join(input_name_list)
+        input_name = ','.join(input_name_tensor_list)
+        return input_args, input_name
+
+    def generate(self):
+        """
+        Function Description:
+        generate mindspore op python files containing info of testcases
+        :return:
+        """
+        self._mkdir_output_dir()
+        self._rewrite_files_for_output_dir()
+        utils.print_info_log("MindSpore operator test code files for specified"
+                             " test cases generated successfully.")
+
+    def get_device_id(self):
+        """
+        Function Description: get device id
+        :return:
+        """
+        return self.device_id
+
     def _mkdir_output_dir(self):
         ####### [step 1]
         ####### create output_path dir
@@ -131,33 +176,6 @@ class MsOpGenerator:
         for input_list in ms_ops_input_list:
             ms_input_param_type_list.append(input_list.get('param_type'))
         return ms_input_param_type_list, imply_type
-
-    @staticmethod
-    def _get_dynamic_input_info(ms_param_type_list,
-                                count_input, input_name_list):
-        param_type_list_length = len(ms_param_type_list)
-        # input param type has only dynamic input.
-        if param_type_list_length == 1:
-            return ConstManager.DYNAMIC_INPUT_ARGS, ConstManager.DYNAMIC_INPUT_NAME
-        # input param type have dynamic input
-        # and other input(optional or required).
-        dynamic_input_count = count_input - param_type_list_length
-        input_index = 0
-        input_name_tensor_list = []
-        for input_param_type in ms_param_type_list:
-            if input_param_type == ConstManager.DYNAMIC_INPUT:
-                dynamic_input_name_str = ','.join(
-                    input_name_list[input_index:
-                                    input_index + dynamic_input_count])
-                input_name_tuple = "({})".format(dynamic_input_name_str)
-                input_name_tensor_list.append(input_name_tuple)
-                input_index = input_index + dynamic_input_count + 1
-            else:
-                input_name_tensor_list.append(input_name_list[input_index])
-                input_index += 1
-        input_args = ','.join(input_name_list)
-        input_name = ','.join(input_name_tensor_list)
-        return input_args, input_name
 
     def _get_no_attr_input_args(self, ms_param_type_list,
                                 count_input, input_name_list):
@@ -338,21 +356,3 @@ class MsOpGenerator:
             output_testcase_py_path)
         for case_report in self.report.report_list:
             case_report.trace_detail.add_stage_result(gen_ms_result)
-
-    def generate(self):
-        """
-        Function Description:
-        generate mindspore op python files containing info of testcases
-        :return:
-        """
-        self._mkdir_output_dir()
-        self._rewrite_files_for_output_dir()
-        utils.print_info_log("MindSpore operator test code files for specified"
-                             " test cases generated successfully.")
-
-    def get_device_id(self):
-        """
-        Function Description: get device id
-        :return:
-        """
-        return self.device_id

@@ -62,6 +62,69 @@ class AdvanceIniParser:
             ConstManager.PERFORMACE_MODE: self._init_performance_mode_flag
         }
 
+    def get_advance_args_option(self):
+        """
+        get advance config option.
+        """
+        try:
+            self._read_config_file()
+        except utils.OpTestGenException as err:
+            utils.print_error_log('Failed to add section to config file')
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_AND_RUN_ERROR) from err
+        finally:
+            pass
+        advance_ini_option_list = self.config.options(ConstManager.ADVANCE_SECTION)
+        if len(advance_ini_option_list) == 0:
+            utils.print_error_log(
+                'The %s is empty, please check the file.' % self.config_file)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_AND_RUN_ERROR)
+        for option in advance_ini_option_list:
+            if self.advance_args_dic.get(option):
+                self.advance_args_dic.get(option)()
+            else:
+                utils.print_warn_log(
+                    'The %s can not be recognized.' % option)
+
+    def get_mode_flag(self):
+        """
+        get acl mode flag.
+        """
+        only_gen = self.advance_ini_args.only_gen_without_run
+        only_run = self.advance_ini_args.only_run_without_gen
+        performance_mode = self.advance_ini_args.performance_mode
+        if only_gen == 'True':
+            return ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ
+        if only_run == 'True':
+            if performance_mode == 'True':
+                return ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE
+            return ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ
+        if performance_mode == 'True':
+            return ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE
+        return ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ
+
+    def get_env_value(self):
+        """
+        get env.
+        """
+        return self.advance_ini_args.ascend_global_log_level, \
+               self.advance_ini_args.ascend_slog_print_to_stdout
+
+    def get_atc_advance_cmd(self):
+        """
+        get atc advance cmd.
+        """
+        return self.advance_ini_args.atc_singleop_advance_option
+
+    def get_performance_mode_flag(self):
+        """
+        get performance mode flag.
+        """
+        if self.advance_ini_args.performance_mode not in ConstManager.TRUE_OR_FALSE_LIST or \
+                self.advance_ini_args.performance_mode == ConstManager.TRUE_OR_FALSE_LIST[1]:
+            return False
+        return True
+
     def _init_gen_flag(self):
         """
         get value of only_gen_without_run.
@@ -154,69 +217,6 @@ class AdvanceIniParser:
             utils.print_warn_log(
                 'The performance_mode option should be True or False, '
                 'please modify it in %s file.' % self.config_file)
-
-    def get_advance_args_option(self):
-        """
-        get advance config option.
-        """
-        try:
-            self._read_config_file()
-        except utils.OpTestGenException as err:
-            utils.print_error_log('Failed to add section to config file')
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_AND_RUN_ERROR) from err
-        finally:
-            pass
-        advance_ini_option_list = self.config.options(ConstManager.ADVANCE_SECTION)
-        if len(advance_ini_option_list) == 0:
-            utils.print_error_log(
-                'The %s is empty, please check the file.' % self.config_file)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_AND_RUN_ERROR)
-        for option in advance_ini_option_list:
-            if self.advance_args_dic.get(option):
-                self.advance_args_dic.get(option)()
-            else:
-                utils.print_warn_log(
-                    'The %s can not be recognized.' % option)
-
-    def get_mode_flag(self):
-        """
-        get acl mode flag.
-        """
-        only_gen = self.advance_ini_args.only_gen_without_run
-        only_run = self.advance_ini_args.only_run_without_gen
-        performance_mode = self.advance_ini_args.performance_mode
-        if only_gen == 'True':
-            return ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ
-        if only_run == 'True':
-            if performance_mode == 'True':
-                return ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE
-            return ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ
-        if performance_mode == 'True':
-            return ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE
-        return ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ
-
-    def get_env_value(self):
-        """
-        get env.
-        """
-        return self.advance_ini_args.ascend_global_log_level, \
-               self.advance_ini_args.ascend_slog_print_to_stdout
-
-    def get_atc_advance_cmd(self):
-        """
-        get atc advance cmd.
-        """
-        return self.advance_ini_args.atc_singleop_advance_option
-
-    def get_performance_mode_flag(self):
-        """
-        get performance mode flag.
-        """
-        if self.advance_ini_args.performance_mode not in ConstManager.TRUE_OR_FALSE_LIST or \
-                self.advance_ini_args.performance_mode == ConstManager.TRUE_OR_FALSE_LIST[1]:
-            return False
-        return True
 
     def _read_config_file(self):
         with open(self.config_file) as msopst_conf_file:

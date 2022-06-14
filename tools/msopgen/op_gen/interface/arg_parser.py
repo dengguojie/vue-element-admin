@@ -58,6 +58,13 @@ class ArgParser:
             self._check_mi_cmd_param(args)
 
     @staticmethod
+    def get_gen_result() -> str:
+        """
+        get gen result
+        """
+        return ""
+
+    @staticmethod
     def _mi_parse_add_arguments(mi_parser: any) -> None:
         mi_subparsers = mi_parser.add_subparsers(help='commands')
         query_parser = mi_subparsers.add_parser(
@@ -116,6 +123,21 @@ class ArgParser:
                                 default="",
                                 help="<Optional> op type in IR excel.",
                                 required=False)
+
+    @staticmethod
+    def _print_compute_unit_invalid_log() -> None:
+        utils.print_error_log("Invalid compute unit format. "
+                              "Please check whether the format of the input "
+                              "compute unit is ${core_type}-${"
+                              "unit_type}, like ai_core-ascend310 or aicpu.")
+        raise utils.MsOpGenException(
+            ConstManager.MS_OP_GEN_CONFIG_INVALID_COMPUTE_UNIT_ERROR)
+
+    def get_gen_flag(self: any) -> bool:
+        """
+        get gen flag
+        """
+        return self.gen_flag
 
     def _check_mi_cmd_param(self: any, args: any) -> None:
         if self.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
@@ -204,15 +226,6 @@ class ArgParser:
         self.compute_unit = compute_unit_valid
         return ConstManager.MS_OP_GEN_NONE_ERROR
 
-    @staticmethod
-    def _print_compute_unit_invalid_log() -> None:
-        utils.print_error_log("Invalid compute unit format. "
-                              "Please check whether the format of the input "
-                              "compute unit is ${core_type}-${"
-                              "unit_type}, like ai_core-ascend310 or aicpu.")
-        raise utils.MsOpGenException(
-            ConstManager.MS_OP_GEN_CONFIG_INVALID_COMPUTE_UNIT_ERROR)
-
     def _check_mode_valid(self: any, mode: any) -> int:
         if str(mode) not in ConstManager.GEN_MODE_LIST:
             utils.print_error_log('Unsupported mode: %s. Only %s is supported. '
@@ -222,16 +235,3 @@ class ArgParser:
                 ConstManager.MS_OP_GEN_CONFIG_UNSUPPORTED_MODE_ERROR)
         self.mode = mode
         return ConstManager.MS_OP_GEN_NONE_ERROR
-
-    def get_gen_flag(self: any) -> bool:
-        """
-        get gen flag
-        """
-        return self.gen_flag
-
-    @staticmethod
-    def get_gen_result() -> str:
-        """
-        get gen result
-        """
-        return ""

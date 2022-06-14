@@ -222,35 +222,6 @@ class TFModelParse:
         if hasattr(args, 'quiet'):
             self.quiet_flag = args.quiet
 
-    def _change_shape_fn(self, file_path, new_shape_map):
-        real_path = os.path.realpath(file_path)
-        graph_def = _tf_utils_load_graph_def(real_path)
-        node_shape = ""
-        for node in graph_def.node:
-            if node.op == "Placeholder" and node.name in new_shape_map \
-                    and 'new_shape' in new_shape_map[node.name] \
-                    and new_shape_map[node.name]['new_shape']:
-                new_shape = []
-                for dim in new_shape_map[node.name]['new_shape']:
-                    new_shape.append(
-                        tensor_shape_pb2.TensorShapeProto.Dim(size=int(dim)))
-                node.attr['shape'].shape.CopyFrom(
-                    tensor_shape_pb2.TensorShapeProto(dim=new_shape))
-                node_shape = _get_node_attr(node, 'shape')
-                utils.print_info_log("The %s shape has been changed "
-                                     "to %s " % (node.name, node_shape))
-        if not node_shape:
-            utils.print_error_log("Failed to change the shape. Maybe there is no "
-                                  "matched layer. Please check the input shape.")
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
-        dir_name, tmp_filename = os.path.split(real_path)
-        prefix, _ = os.path.splitext(tmp_filename)
-        first_new_shape = '_'.join(str(i) for i in list(new_shape_map.values())[0]['new_shape'])
-        new_graph_path = os.path.realpath(os.path.join(self.output_path, prefix + "_%s.pb" % first_new_shape))
-        _tf_utils_write_graph(graph_def, dir_name, new_graph_path)
-        return node_shape, new_graph_path
-
     @staticmethod
     def _check_ori_shape_and_notice(shape, layer_name):
         if isinstance(shape, list):
@@ -271,52 +242,6 @@ class TFModelParse:
             utils.print_warn_log(
                 'The input shape(%s) format error.Please retype.' % shape)
         return
-
-    def _get_placeholder_shape_from_user(self, shape_map):
-        result = False
-        for (layer_name, value) in shape_map.items():
-            node_shape = value["ori_shape"]
-            self._check_ori_shape_and_notice(node_shape, layer_name)
-            utils.print_info_log('"%s" layer is a "placeholder" '
-                                 'operator , the original input shape : %s'
-                                 % (layer_name, node_shape))
-            while True:
-                new_placeholder_shape = input(
-                    'Would you like to change the "placeholder" shape ? '
-                    'If yes, please enter a new shape like 8,224,224,3.'
-                    'if not, enter "n" skip:')
-                if new_placeholder_shape.lower() == 'n':
-                    utils.print_info_log("Skip change shape.")
-                    value["new_shape"] = node_shape
-                    break
-                if self._check_new_shape_and_notice(new_placeholder_shape):
-                    value["new_shape"] = new_placeholder_shape.split(',')
-                    result = True
-                    break
-                utils.print_warn_log(
-                    "The input shape above is invalid, please retype!")
-        return result
-
-    def get_tf_model_nodes(self, op_type):
-        """
-        get layers information from tf model
-        :param op_type: op_type from ini file, eg:"Add"
-        :return: list store the layer information
-        """
-        self._check_get_nodes_argument_valid(op_type)
-        if not self.quiet_flag:
-            shape_map = self._get_shape_fn(self.model_path)
-            if self._get_placeholder_shape_from_user(shape_map):
-                _, file_path = self._change_shape_fn(self.model_path,
-                                                     shape_map)
-            else:
-                file_path = self.model_path
-            utils.print_info_log("Begin to get the \"%s\" operator in the "
-                                 "model %s." % (op_type, file_path))
-            nodes_list = _get_nodes_list(file_path, op_type)
-        else:
-            nodes_list = _get_nodes_list(self.model_path, op_type)
-        return nodes_list
 
     @staticmethod
     def _get_shape_fn(file_path):
@@ -361,6 +286,27 @@ class TFModelParse:
             'The input shape(%s) format error.Please retype.' % shape)
         return False
 
+    def get_tf_model_nodes(self, op_type):
+        """
+        get layers information from tf model
+        :param op_type: op_type from ini file, eg:"Add"
+        :return: list store the layer information
+        """
+        self._check_get_nodes_argument_valid(op_type)
+        if not self.quiet_flag:
+            shape_map = self._get_shape_fn(self.model_path)
+            if self._get_placeholder_shape_from_user(shape_map):
+                _, file_path = self._change_shape_fn(self.model_path,
+                                                     shape_map)
+            else:
+                file_path = self.model_path
+            utils.print_info_log("Begin to get the \"%s\" operator in the "
+                                 "model %s." % (op_type, file_path))
+            nodes_list = _get_nodes_list(file_path, op_type)
+        else:
+            nodes_list = _get_nodes_list(self.model_path, op_type)
+        return nodes_list
+
     def get_shape(self):
         """
         interface for IDE , get "Placeholder" shape from tf model
@@ -370,6 +316,73 @@ class TFModelParse:
         shape_map = self._get_shape_fn(self.model_path)
         json_path = os.path.join(self.output_path, self.TMP_SHAPE_FILE)
         utils.write_json_file(json_path, shape_map)
+
+    def change_shape(self):
+        """
+        interface for IDE , change "Placeholder" shape from tf model
+        generate the json file with the new model path store in
+        """
+        self._check_change_shape_argument_valid()
+        new_shape_map = utils.load_json_file(self.input_file)
+        _, new_model_path = self._change_shape_fn(self.model_path,
+                                                  new_shape_map)
+        json_path = os.path.realpath(os.path.join(self.output_path,
+                                                  self.TMP_GA_PATH_FILE))
+        utils.write_json_file(json_path, {'new_model_path': new_model_path})
+
+    def _change_shape_fn(self, file_path, new_shape_map):
+        real_path = os.path.realpath(file_path)
+        graph_def = _tf_utils_load_graph_def(real_path)
+        node_shape = ""
+        for node in graph_def.node:
+            if node.op == "Placeholder" and node.name in new_shape_map \
+                    and 'new_shape' in new_shape_map[node.name] \
+                    and new_shape_map[node.name]['new_shape']:
+                new_shape = []
+                for dim in new_shape_map[node.name]['new_shape']:
+                    new_shape.append(
+                        tensor_shape_pb2.TensorShapeProto.Dim(size=int(dim)))
+                node.attr['shape'].shape.CopyFrom(
+                    tensor_shape_pb2.TensorShapeProto(dim=new_shape))
+                node_shape = _get_node_attr(node, 'shape')
+                utils.print_info_log("The %s shape has been changed "
+                                     "to %s " % (node.name, node_shape))
+        if not node_shape:
+            utils.print_error_log("Failed to change the shape. Maybe there is no "
+                                  "matched layer. Please check the input shape.")
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
+        dir_name, tmp_filename = os.path.split(real_path)
+        prefix, _ = os.path.splitext(tmp_filename)
+        first_new_shape = '_'.join(str(i) for i in list(new_shape_map.values())[0]['new_shape'])
+        new_graph_path = os.path.realpath(os.path.join(self.output_path, prefix + "_%s.pb" % first_new_shape))
+        _tf_utils_write_graph(graph_def, dir_name, new_graph_path)
+        return node_shape, new_graph_path
+
+    def _get_placeholder_shape_from_user(self, shape_map):
+        result = False
+        for (layer_name, value) in shape_map.items():
+            node_shape = value["ori_shape"]
+            self._check_ori_shape_and_notice(node_shape, layer_name)
+            utils.print_info_log('"%s" layer is a "placeholder" '
+                                 'operator , the original input shape : %s'
+                                 % (layer_name, node_shape))
+            while True:
+                new_placeholder_shape = input(
+                    'Would you like to change the "placeholder" shape ? '
+                    'If yes, please enter a new shape like 8,224,224,3.'
+                    'if not, enter "n" skip:')
+                if new_placeholder_shape.lower() == 'n':
+                    utils.print_info_log("Skip change shape.")
+                    value["new_shape"] = node_shape
+                    break
+                if self._check_new_shape_and_notice(new_placeholder_shape):
+                    value["new_shape"] = new_placeholder_shape.split(',')
+                    result = True
+                    break
+                utils.print_warn_log(
+                    "The input shape above is invalid, please retype!")
+        return result
 
     def _check_get_nodes_argument_valid(self, op_type):
         utils.check_name_valid(op_type)
@@ -390,19 +403,6 @@ class TFModelParse:
         utils.check_path_valid(self.input_file)
         utils.check_path_valid(self.model_path)
         utils.check_path_valid(os.path.realpath(self.output_path), True)
-
-    def change_shape(self):
-        """
-        interface for IDE , change "Placeholder" shape from tf model
-        generate the json file with the new model path store in
-        """
-        self._check_change_shape_argument_valid()
-        new_shape_map = utils.load_json_file(self.input_file)
-        _, new_model_path = self._change_shape_fn(self.model_path,
-                                                  new_shape_map)
-        json_path = os.path.realpath(os.path.join(self.output_path,
-                                                  self.TMP_GA_PATH_FILE))
-        utils.write_json_file(json_path, {'new_model_path': new_model_path})
 
 
 def get_model_nodes(args, op_type):
