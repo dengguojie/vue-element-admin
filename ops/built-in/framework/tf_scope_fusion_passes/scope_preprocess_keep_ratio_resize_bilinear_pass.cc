@@ -143,6 +143,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
       }
       std::string nodeName = nodeDef->GetName().c_str();
       if ((minConstNode == "") && (nodeName.find(minDivNodeName) != std::string::npos) &&
+          (nodeName.substr(nodeName.size() - minDivNodeName.size()) == minDivNodeName) &&
           (nodeName.find(maxDivNodeName) == std::string::npos)) {
         minConstNode = nodeName;
         Tensor data;

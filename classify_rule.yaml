@@ -1048,6 +1048,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.cc
       - ops/built-in/framework/tf_plugin/top_k_plugin.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_fastrcnn_predictions_pass.cc
       - ops/built-in/fusion_pass/common/fusion_precheck_func.cc
@@ -3321,7 +3322,6 @@ unkown:
       - ops/built-in/framework/caffe_plugin/slice_plugin.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_newbatchmulticlass_nms_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_normalize_bbox_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_roi_align_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_to_absolute_bbox_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.cc
@@ -3341,7 +3341,6 @@ unkown:
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.h
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_rpn_proposals_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_lstm_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_newbatchmulticlass_nms_pass.h
