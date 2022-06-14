@@ -49,17 +49,17 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     -------
     res
     """
+    src_dtype = data.dtype.lower()
     shape = shape_util.shape_to_list(data.shape)
     out_shape = []
     for shape_i, multiples_i in zip(shape, multiples):
         out_shape_i = shape_i * multiples_i
         out_shape.append(out_shape_i)
-    if data.dtype == "int8" or data.dtype == "uint8":
+    if src_dtype == "int8" or src_dtype == "uint8":
         data = tbe.cast_to(data, "float16")
-        res_tmp = tbe.broadcast(data, out_shape)
-        res = tbe.cast_to(res_tmp, data.dtype)
-    else:
-        res = tbe.broadcast(data, out_shape)
+    res = tbe.broadcast(data, out_shape)
+    if src_dtype == "int8" or src_dtype == "uint8":
+        res = tbe.cast_to(res, src_dtype)
 
     return res
 
