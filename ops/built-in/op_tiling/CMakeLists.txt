@@ -22,6 +22,7 @@ set(_optiling_files
   runtime/concat_d.cc
   runtime/tile_d.cc
   runtime/flatten.cc
+  runtime/transpose.cc
   runtime/max_pool_v3.cc
   runtime/gatherv2.cc
   runtime/dynamic_rnn_v3.cc

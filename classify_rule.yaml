@@ -1648,6 +1648,8 @@ vector_B:
       - ops/built-in/op_proto/runtime/drop_out_do_mask.cc
       - ops/built-in/op_tiling/runtime/trans_data.cc
       - ops/built-in/op_tiling/runtime/trans_data.h
+      - ops/built-in/op_tiling/runtime/transpose.cc
+      - ops/built-in/op_tiling/runtime/transpose.h
       - ops/built-in/op_tiling/runtime/trans_data_negative_target_ntc.cc
       - ops/built-in/op_tiling/runtime/trans_data_negative_target_tc_201.cc
       - ops/built-in/op_tiling/runtime/trans_data_positive_source_ntc_100.cc
