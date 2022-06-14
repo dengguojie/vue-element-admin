@@ -292,12 +292,13 @@ def _conv_remove_pad(x, res_f16, align_shape, remove_padded_column_flag, invalid
                           name='invalid_dequant_rmpad',
                           tag="invalid_dequant_rmpad")
     else:
-        if "int4_ori_wout" in x.op.attrs:
+        if "int4_ori_wout" in x.op.attrs and "int4_wout" in x.op.attrs:
+            int4_ori_wout = x.op.attrs["int4_ori_wout"]
+            int4_wout = x.op.attrs["int4_wout"]
             res = tvm.compute(res_shape_nchw_after_removepad,
                               lambda batch, cout1, howo, cout0:
                               res_f16(batch, cout1,
-                                      howo // x.op.attrs["int4_ori_wout"],
-                                      howo % x.op.attrs["int4_ori_wout"], cout0),
+                                      howo // int4_ori_wout * int4_wout + howo % int4_ori_wout, cout0),
                               name='dequant_remove_pad',
                               tag="dequant_remove_pad")
         else:
@@ -379,19 +380,9 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
         remove_padded_column_flag = not util.is_support_a100() and x.op.attrs[
             "remove_padded_column_in_next_op"].value == 1
 
-        if "int4_wout" in x.op.attrs and "int4_hout" in x.op.attrs:
-            align_shape_5d = [align_shape[0],
-                              align_shape[1],
-                              x.op.attrs["int4_hout"],
-                              x.op.attrs["int4_wout"],
-                              align_shape[3]]
-            res_f16 = tvm.compute(align_shape_5d,
-                                  _conv_dequant_v200_int4(x, deq_scale, relu_flag, True, "vdeq_cast"),
-                                  name="dequant", tag="dequant_vector")
-        else:
-            res_f16 = tvm.compute(align_shape,
-                                  _conv_dequant_v200(x, deq_scale, relu_flag, True, "vdeq_cast"),
-                                  name="dequant", tag="dequant_vector")
+        res_f16 = tvm.compute(align_shape,
+                              _conv_dequant_v200(x, deq_scale, relu_flag, True, "vdeq_cast"),
+                              name="dequant", tag="dequant_vector")
 
         res, _ = _conv_remove_pad(x, res_f16, align_shape, remove_padded_column_flag, invalid_data_rm_flag)
     else:
@@ -412,19 +403,9 @@ def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
         invalid_data_rm_flag = int(x.op.attrs["invalid_data_rm_flag"])
         remove_padded_column_flag = x.op.attrs["remove_padded_column_in_next_op"].value == 1
 
-        if "int4_wout" in x.op.attrs and "int4_hout" in x.op.attrs:
-            align_shape_5d = [align_shape[0],
-                              align_shape[1],
-                              x.op.attrs["int4_hout"],
-                              x.op.attrs["int4_wout"],
-                              align_shape[3]]
-            res_f16 = tvm.compute(align_shape_5d,
-                                  _conv_dequant_v200_int4(x, deq_scale, False, False, "deq_cast"),
-                                  name="dequant", tag="dequant_scale")
-        else:
-            res_f16 = tvm.compute(align_shape,
-                                  _conv_dequant_v200(x, deq_scale, False, False, "deq_cast"),
-                                  name="dequant", tag="dequant_scale")
+        res_f16 = tvm.compute(align_shape,
+                              _conv_dequant_v200(x, deq_scale, False, False, "deq_cast"),
+                              name="dequant", tag="dequant_scale")
 
         res, _ = _conv_remove_pad(x, res_f16, align_shape, remove_padded_column_flag, invalid_data_rm_flag)
     else:

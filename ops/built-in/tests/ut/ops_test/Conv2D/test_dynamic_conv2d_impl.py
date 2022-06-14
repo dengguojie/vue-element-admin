@@ -150,4 +150,3 @@ print("adding Conv2D dyanmic pad -1 end")
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic_cdim()  
     ut_case.run("Ascend910A")
-

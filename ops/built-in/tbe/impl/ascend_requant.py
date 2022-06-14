@@ -131,10 +131,20 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
                                             res_ub_reform(batch, cout1, howo*2, cout0),
                                         name='requant_remove_padded_column',
                                         tag='requant_remove_padded_column')
-        res = tvm.compute(res_shape,
-                          lambda batch, cout1, howo, cout0:
-                              res_ub_reform(batch, cout1, howo, cout0),
-                          name="requant_remove_pad", tag="requant_remove_pad")
+
+        if "int4_ori_wout" in x.op.attrs and "int4_wout" in x.op.attrs:
+            int4_ori_wout = x.op.attrs["int4_ori_wout"]
+            int4_wout = x.op.attrs["int4_wout"]
+            res = tvm.compute(res_shape,
+                              lambda batch, cout1, howo, cout0:
+                                  res_ub_reform(batch, cout1,
+                                                howo // int4_ori_wout * int4_wout + howo % int4_ori_wout, cout0),
+                              name="requant_remove_pad", tag="requant_remove_pad")
+        else:
+            res = tvm.compute(res_shape,
+                              lambda batch, cout1, howo, cout0:
+                                  res_ub_reform(batch, cout1, howo, cout0),
+                              name="requant_remove_pad", tag="requant_remove_pad")
     else:
         res = tvm.compute(res_shape, lambda *indice: res_ub_reform(*indice),
                           name="requant_remove_pad", tag="requant_remove_pad")

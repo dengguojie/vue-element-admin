@@ -35,6 +35,7 @@ def test_conv2d_int4(test_arg):
     from tbe.common.context import op_context
     from tbe.common.context import get_context
     from tbe.tvm.buffer_manager import get_buffer_manager
+    from impl.ascend_requant import ascend_requant_compute
 
     def conv_rmpad_case(version, dataflow, l1fusion_dict,
                         shape_in, shape_w, pads, strides, offset_d,
@@ -100,12 +101,12 @@ def test_conv2d_int4(test_arg):
             L1_valid_size = reduce((lambda x, y: x*y), fm_valid_shape)
         else:
             L1_valid_size = reduce((lambda x, y: x*y), shape_in_5HD)
-        if dataflow in (5, 7, 8, 13, 14):
+        if dataflow in (5, 6, 7, 8, 13, 14):
             L1_valid_size = int(L1_valid_size*0.5)
         outputs = {"addr_type": out_addr_type}
 
-        in_dtype_map = {5: "int4"}
-        bias_dtype_map = {5: "int32"}
+        in_dtype_map = {5: "int4", 6: "int4"}
+        bias_dtype_map = {5: "int32", 6: "int32"}
         dequant_scale_dtype_map = {"v100": "float16", "v200": "uint64"}
 
         strided_read_flag = False
@@ -166,6 +167,34 @@ def test_conv2d_int4(test_arg):
                     else:
                         tensor_list = [fm, filter_w, vdeq, out]
 
+                if dataflow == 6:
+                    # conv + requant
+                    vreq_reg = tvm.placeholder((1, Co1, 1, 1, 16), name='vreq_reg', dtype='uint64',
+                                               attrs={'ori_shape': [Co1*16]})
+                    requant = ascend_requant_compute(conv_res, vreq_reg, None, relu_flag=relu_flag)
+                    # out = relu6_compute(dequant, None)
+                    out = requant
+                    # out = leaky_relu_compute(dequant, None)
+                    if ws_fp16_valid_shape:
+                        out = write_select_compute(out, {"valid_shape": ws_fp16_valid_shape})
+
+                    if l1fusion_stride_swrite:
+                        y = {"shape": tuple(i.value for i in out.shape)}
+                        out = strided_write_compute(out, y, 1, l1fusion_stride_swrite, "strided_write")
+
+                    if stride_swrite: # for stridedwrite in no L1fusion
+                        y = {"shape": tuple(i.value for i in out.shape)}
+                        out = strided_write_compute(out, y, 1, stride_swrite, "strided_write")
+
+                    out.op.attrs["addr_type"] = out_addr_type
+                    if out_addr_type:
+                        store_to_gm({"shape": ws_fp16_valid_shape if ws_fp16_valid_shape else out.shape, "dtype": "float16"},
+                                    None, kernel_name=kernel_name + "_out_gm")
+                    if bias_flag:
+                        tensor_list = [fm, filter_w, bias_tensor, vreq_reg, out]
+                    else:
+                        tensor_list = [fm, filter_w, vreq_reg, out]
+
                 sch = generic.auto_schedule(out)
 
         config = {
@@ -181,14 +210,14 @@ def test_conv2d_int4(test_arg):
             aaa = aaa + 1
             print(f"*************{aaa}****************")
             print("case {}".format(i))
-            if i[0] in (1, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14):
+            if i[0] in (1, 3, 4, 7, 8, 9, 11, 12, 13, 14):
                 dataflow, shape_in, shape_w, pads, strides, offset_d, bias_flag, relu_flag, quant_scale, quant_offset, stride_swrite, l1fusion_dict = i
             else:
                 dataflow, shape_in, shape_w, pads, strides, offset_d, bias_flag, relu_flag, dequant_flag, stride_swrite, l1fusion_dict = i
 
             kernel_name = "df{}_x_{}_w_{}_p_{}_s_{}_b_{}_r_{}_ss_{}".format(dataflow, shape_in, shape_w, pads, strides, bias_flag, relu_flag, stride_swrite)
 
-            if i[0] in (1, 3, 4, 6, 7, 8, 11, 12, 13, 14):
+            if i[0] in (1, 3, 4, 7, 8, 11, 12, 13, 14):
                 kernel_name += "_sc_" + str(quant_scale) + "_of_" + str(quant_offset)
 
             kernel_name += "_dic"
@@ -207,7 +236,7 @@ def test_conv2d_int4(test_arg):
             kernel_name = kernel_name.replace("-", "_")
 
             print("[generate .o and json]", kernel_name)
-            if i[0] in (1, 3, 4, 6, 7, 8, 11, 12, 13, 14):
+            if i[0] in (1, 3, 4, 7, 8, 11, 12, 13, 14):
                 conv_rmpad_case(version, dataflow, l1fusion_dict,
                                 shape_in, shape_w, pads, strides, offset_d,
                                 bias_flag, relu_flag, True, stride_swrite,

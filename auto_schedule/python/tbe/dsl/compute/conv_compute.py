@@ -669,28 +669,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         cout1_opt = ConvParam.para_dict["cout1_opt"]
 
-        if ConvParam.int4_width_out_align_flag:
-            final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
-                                DIM_MAP["out_img_shape"][1], height_out, width_out, config['mac'][2])
-            c_ub = tvm.compute(final_c_ub_shape,
-                               lambda batch, cout1, hout, wout, cout0:
-                               c_col(0 if group == 1 else cout1 // cout1_opt,
-                                     batch,
-                                     cout1 if group == 1 else cout1 % cout1_opt,
-                                     hout*width_out+wout, cout0).astype(res_dtype),
-                               name=get_name_with_suffix_num('C_UB'),
-                               tag=OP_TAG + "C_UB")
-        else:
-            final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
-                                DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
-            c_ub = tvm.compute(final_c_ub_shape,
-                               lambda batch, cout1, howo, cout0:
-                               c_col(0 if group == 1 else cout1 // cout1_opt,
-                                     batch,
-                                     cout1 if group == 1 else cout1 % cout1_opt,
-                                     howo, cout0).astype(res_dtype),
-                               name=get_name_with_suffix_num('C_UB'),
-                               tag=OP_TAG + "C_UB")
+        final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
+                            DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
+        c_ub = tvm.compute(final_c_ub_shape,
+                           lambda batch, cout1, howo, cout0:
+                           c_col(0 if group == 1 else cout1 // cout1_opt,
+                                 batch,
+                                 cout1 if group == 1 else cout1 % cout1_opt,
+                                 howo, cout0).astype(res_dtype),
+                           name=get_name_with_suffix_num('C_UB'),
+                           tag=OP_TAG + "C_UB")
         TENSOR_MAP["c_ub"] = c_ub
         return c_ub
 
@@ -941,7 +929,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             else:
                 in_channel_c1 = ConvParam.para_dict["c1_opt"]
                 howo_mad = (height_out * width_out + block_size_m - 1) // block_size_m * block_size_m
-                fmap_im2col_fractal_shape = (ConvParam.para_dict["group_opt"],
+                fmap_im2col_fractal_shape = (ConvParam.para_dict.get("group_opt"),
                                              ConvParam.para_dict["a_shape"][0],
                                              howo_mad // block_size_m,
                                              in_channel_c1 * filter_h * filter_w,
@@ -1349,7 +1337,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                            mac_dim[0],
                            mac_dim[1])
 
-        filter_valid_dim = (ConvParam.para_dict["c1_opt"]*filter_shape[-3]*filter_shape[-2]
+        filter_valid_dim = (ConvParam.para_dict.get("c1_opt")*filter_shape[-3]*filter_shape[-2]
                             * img_shape[-1], filter_shape[-4]*filter_shape[-1])
 
         filter_matrix_dim = ((filter_valid_dim[-2] + mac_dim[1] - 1) // mac_dim[1],
@@ -1821,14 +1809,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         -------
         res_remove_pad tensor
         """
-        if ConvParam.int4_width_out_align_flag:
-            with tvm.tag_scope('conv_vector_remove_pad'):
-                res_tensor = tvm.compute(conv_shape,
-                                         lambda batch, cout1, howo, cout0:
-                                         res(batch, cout1, howo//ConvParam.para_dict["int4_ori_wout"], \
-                                             howo%ConvParam.para_dict["int4_ori_wout"], cout0),
-                                         name=get_name_with_suffix_num('remove_pad_cc'))
-        elif invalid_data_rm_flag:
+        if invalid_data_rm_flag:
             with tvm.tag_scope('conv_vector_remove_pad'):
                 res_tensor = tvm.compute(res.shape,
                                          lambda batch, cout1, howo, cout0:
@@ -2255,7 +2236,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             wout_align_val = ceil(w_out, 16) - w_out
             if wout_align_val:
                 para_dict["pad_w"][1] += para_dict["stride_w"] * wout_align_val
-                if para_dict["pad_w"][1] > 0xf11111111:
+                if para_dict["pad_w"][1] > PAD_MAX:
                     err_man.raise_err_specific_input_shape("conv2d", \
                         "int4 wout align, pad align val({}) cannot be greater than 255".format(para_dict["pad_w"][1]))
                 para_dict.update({"int4_ori_wout": w_out})
