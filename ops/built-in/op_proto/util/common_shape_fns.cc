@@ -866,7 +866,9 @@ graphStatus MakeShapeFromShapeTensor(const Tensor& tensor, Shape& out, const cha
 
 graphStatus MakeShapeFromShapeTensor(Operator& op, const string& dst_name, GeShape& out, const char* op_name) {
   std::vector<int64_t> shape_data;
-  GetShapeDataFromShapeTensor(op, dst_name, 1, shape_data, op_name);
+  if (GetShapeDataFromShapeTensor(op, dst_name, 1, shape_data, op_name) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
   out = GeShape(shape_data);
   return GRAPH_SUCCESS;
 }

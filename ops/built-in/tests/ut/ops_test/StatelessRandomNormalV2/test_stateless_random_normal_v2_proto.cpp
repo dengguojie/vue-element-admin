@@ -57,18 +57,14 @@ TEST_F(statelessRandomNormalV2,
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 
   op.SetAttr("dtype", ge::DT_FLOAT16);
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT64);
-  constDesc.SetSize(3 * sizeof(int64_t));
-  constTensor.SetTensorDesc(constDesc);
-  int64_t constData[3] = {3, 4, 5};
-  constTensor.SetData((uint8_t*)constData, 3 * sizeof(int64_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
+  ge::TensorDesc tensor_desc_shape(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_shape.SetOriginShape(ge::Shape({3}));
+  op.UpdateInputDesc("shape", tensor_desc_shape);
+
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-  std::vector<int64_t> expected_output_shape = {3, 4, 5};
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1};
   EXPECT_EQ(op.GetOutputDescByName("y").GetShape().GetDims(),
             expected_output_shape);
 }

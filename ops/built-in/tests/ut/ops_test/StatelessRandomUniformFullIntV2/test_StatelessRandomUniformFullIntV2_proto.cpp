@@ -33,24 +33,13 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   tensor_desc_counter.SetOriginShape(ge::Shape({1}));
   op.UpdateInputDesc("counter", tensor_desc_counter);
 
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {2};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
+  ge::TensorDesc tensor_desc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_alg.SetOriginShape(ge::Shape());
+  op.UpdateInputDesc("alg", tensor_desc_alg);
 
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
+  ge::TensorDesc tensor_desc_shape(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_shape.SetOriginShape(ge::Shape({1}));
+  op.UpdateInputDesc("shape", tensor_desc_shape);
 
   op.SetAttr("dtype", DT_INT32);
 
@@ -58,7 +47,7 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto y_desc = op.GetOutputDescByName("y");
-  std::vector<int64_t> expected_y_shape = {3};
+  std::vector<int64_t> expected_y_shape = {-1};
   EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }
@@ -71,28 +60,17 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   tensor_desc_key.SetOriginShape(ge::Shape({1}));
   op.UpdateInputDesc("key", tensor_desc_key);
 
-  ge::TensorDesc tensor_desc_counter(ge::Shape({1}), ge::FORMAT_ND, ge::DT_UINT64);
-  tensor_desc_counter.SetOriginShape(ge::Shape({1}));
+  ge::TensorDesc tensor_desc_counter(ge::Shape({1, 2}), ge::FORMAT_ND, ge::DT_UINT64);
+  tensor_desc_counter.SetOriginShape(ge::Shape({1, 2}));
   op.UpdateInputDesc("counter", tensor_desc_counter);
 
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {1};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
+  ge::TensorDesc tensor_desc_alg(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_alg.SetOriginShape(ge::Shape({1}));
+  op.UpdateInputDesc("alg", tensor_desc_alg);
 
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
+  ge::TensorDesc tensor_desc_shape(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_shape.SetOriginShape(ge::Shape({1}));
+  op.UpdateInputDesc("shape", tensor_desc_shape);
 
   op.SetAttr("dtype", DT_INT32);
 
@@ -103,80 +81,6 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
 TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_3) {
   // new op
   ge::op::StatelessRandomUniformFullIntV2 op;
-
-  ge::TensorDesc tensor_desc_key(ge::Shape({1}), ge::FORMAT_ND, ge::DT_UINT64);
-  tensor_desc_key.SetOriginShape(ge::Shape({1}));
-  op.UpdateInputDesc("key", tensor_desc_key);
-
-  ge::TensorDesc tensor_desc_counter(ge::Shape({2}), ge::FORMAT_ND, ge::DT_UINT64);
-  tensor_desc_counter.SetOriginShape(ge::Shape({2}));
-  op.UpdateInputDesc("counter", tensor_desc_counter);
-
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {2};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
-
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
-
-  op.SetAttr("dtype", DT_INT32);
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
-TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_4) {
-  // new op
-  ge::op::StatelessRandomUniformFullIntV2 op;
-
-  ge::TensorDesc tensor_desc_key(ge::Shape({1}), ge::FORMAT_ND, ge::DT_UINT64);
-  tensor_desc_key.SetOriginShape(ge::Shape({1}));
-  op.UpdateInputDesc("key", tensor_desc_key);
-
-  ge::TensorDesc tensor_desc_counter(ge::Shape({1, 2}), ge::FORMAT_ND, ge::DT_UINT64);
-  tensor_desc_counter.SetOriginShape(ge::Shape({1, 2}));
-  op.UpdateInputDesc("counter", tensor_desc_counter);
-
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {1};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
-
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
-
-  op.SetAttr("dtype", DT_INT32);
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
-TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_5) {
-  // new op
-  ge::op::StatelessRandomUniformFullIntV2 op;
   // set input info
   ge::TensorDesc tensor_desc_key(ge::Shape({1}), ge::FORMAT_ND, ge::DT_UINT64);
   tensor_desc_key.SetOriginShape(ge::Shape({1}));
@@ -185,14 +89,9 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   tensor_desc_counter.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("counter", tensor_desc_counter);
 
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {1};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
+  ge::TensorDesc tensor_desc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_alg.SetOriginShape(ge::Shape());
+  op.UpdateInputDesc("alg", tensor_desc_alg);
 
   ge::TensorDesc tensor_desc_shape(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
   op.UpdateInputDesc("shape", tensor_desc_shape);
@@ -200,7 +99,7 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_6) {
+TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_4) {
   // new op
   ge::op::StatelessRandomUniformFullIntV2 op;
 
@@ -212,24 +111,13 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   tensor_desc_counter.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("counter", tensor_desc_counter);
 
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {1};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
+  ge::TensorDesc tensor_desc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_alg.SetOriginShape(ge::Shape());
+  op.UpdateInputDesc("alg", tensor_desc_alg);
 
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
+  ge::TensorDesc tensor_desc_shape(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_shape.SetOriginShape(ge::Shape({1}));
+  op.UpdateInputDesc("shape", tensor_desc_shape);
 
   op.SetAttr("dtype", DT_INT32);
 
@@ -237,7 +125,7 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_7) {
+TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_5) {
   // new op
   ge::op::StatelessRandomUniformFullIntV2 op;
 
@@ -249,24 +137,13 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   tensor_desc_counter.SetOriginShape(ge::Shape({2}));
   op.UpdateInputDesc("counter", tensor_desc_counter);
 
-  ge::Tensor constTensor_alg;
-  ge::TensorDesc constDesc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc_alg.SetSize(1 * sizeof(int32_t));
-  constTensor_alg.SetTensorDesc(constDesc_alg);
-  int32_t constData_alg[1] = {1};
-  constTensor_alg.SetData((uint8_t*)constData_alg, 1 * sizeof(int32_t));
-  auto const0_alg = ge::op::Constant().set_attr_value(constTensor_alg);
-  op.set_input_alg(const0_alg);
+  ge::TensorDesc tensor_desc_alg(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_alg.SetOriginShape(ge::Shape());
+  op.UpdateInputDesc("alg", tensor_desc_alg);
 
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
+  ge::TensorDesc tensor_desc_shape(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_shape.SetOriginShape(ge::Shape({1}));
+  op.UpdateInputDesc("shape", tensor_desc_shape);
 
   op.SetAttr("dtype", DT_INT32);
 
@@ -274,7 +151,7 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_8) {
+TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform_full_int_v2_infer_test_6) {
   // new op
   ge::op::StatelessRandomUniformFullIntV2 op;
 
@@ -290,15 +167,9 @@ TEST_F(stateless_random_uniform_full_int_v2_infer_test, stateless_random_uniform
   tensor_desc_alg.SetOriginShape(ge::Shape({1}));
   op.UpdateInputDesc("alg", tensor_desc_alg);
 
-  ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
-  constDesc.SetOriginShape(ge::Shape({1}));
-  constDesc.SetSize(1 * sizeof(int32_t));
-  constTensor.SetTensorDesc(constDesc);
-  int32_t constData[1] = {3};
-  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
-  auto const0 = ge::op::Constant().set_attr_value(constTensor);
-  op.set_input_shape(const0);
+  ge::TensorDesc tensor_desc_shape(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  tensor_desc_shape.SetOriginShape(ge::Shape({1}));
+  op.UpdateInputDesc("shape", tensor_desc_shape);
 
   op.SetAttr("dtype", DT_INT32);
   auto ret = op.InferShapeAndType();
