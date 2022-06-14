@@ -58,6 +58,7 @@ class MaxpoolGradBase():
         self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
         self.is_support_load3dv1 = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
+        self.data_vsel_ub_size = 128
         self.input_gard_shape = grad.get("shape")
         self.argmax_shape = argmax.get("shape")
         self.y_shape = input_x.get("shape")
@@ -236,7 +237,7 @@ class MaxpoolGradBase():
                 block_base.set_as(block_index + block_id * block_cycle)
             with self.tik_instance.for_range(0, real_cycle) as cycle_id:
                 block_num.set_as(block_base + cycle_id)
-                data_vsel_ub_zero = self.tik_instance.Tensor(dtype, (128,),
+                data_vsel_ub_zero = self.tik_instance.Tensor(dtype, (self.data_vsel_ub_size,),
                                                              name="data_vsel_ub_zero",
                                                              scope=tik.scope_ubuf)
                 self.tik_instance.data_move(data_vsel_ub_zero[0],
@@ -597,7 +598,7 @@ class MaxpoolGradBase():
                 block_base.set_as(block_index + block_id * block_cycle)
             with self.tik_instance.for_range(0, real_cycle) as cycle_id:
                 block_num.set_as(block_base + cycle_id)
-                data_vsel_ub_zero = self.tik_instance.Tensor(dtype, (128,),
+                data_vsel_ub_zero = self.tik_instance.Tensor(dtype, (self.data_vsel_ub_size,),
                                                              name="data_vsel_ub_zero",
                                                              scope=tik.scope_ubuf)
                 self.tik_instance.data_move(data_vsel_ub_zero[0],
@@ -1151,6 +1152,8 @@ class MaxpoolGradBase():
                                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
 
     def _calc_ub_limit(self, ub_size, stridehw, is_support_load3dv1):
+        # in order not to make full use of ub_size, minus part of ub_size
+        ub_size = ub_size - self.dtype_size * self.data_vsel_ub_size
         if is_support_load3dv1:
             if stridehw == 1:
                 self.ub_limit = ub_size / 8
