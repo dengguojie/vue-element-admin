@@ -313,9 +313,6 @@ def bn_training_update_grad(grads,
     para_check.check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
     para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
-    shape_util.compare_tensor_dict_key(grads, x, "shape")
-    shape_util.compare_tensor_dict_key(batch_mean, batch_variance, "shape")
-
     data_format = grads.get("format")
     ori_format = grads.get("ori_format")
     _check_format(data_format, ori_format)
