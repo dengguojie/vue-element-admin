@@ -300,7 +300,7 @@ def check_empty_tensor(filters, out_backprop, y, strides, pads, dilations=(1, 1,
                             "range": [(1, 1), (1, 1), (1, 1)]})
 
         if list(out_backprop.get("ori_shape")) != [-2]:
-            correct_range(y, fmap_range_nchw, w_shape_nchw, stride_nchw, dilation_nchw, pads, 'NCHW')
+            correct_range(y, fmap_range_nchw, w_shape_nchw, stride_nchw, dilation_nchw, pads, 'NCHW', True)
 
 
 def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides, pads,

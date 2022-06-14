@@ -811,46 +811,59 @@ def is_empty_tensor_scene(tensor_list):
     return False
 
 
-def correct_range(fmap, fmap_range, w_ori_shape, strides, dilations, pads, data_format):
+def correct_range(fmap, fmap_range, w_ori_shape, strides, dilations, pads, data_format, is_dx=False):
     def _get_output(x_in, k_size, pads, stride, dilations):
         return (x_in + pads[0] + pads[1] - dilations * (k_size - 1) - 1) // stride + 1
 
-    dim_h, dim_w = data_format.find('H'), data_format.find('W')
-    dim_d = None
+    def _update_range(dim_c, dim_idx, pad_idx, lower=None):
+        if lower is None:
+            lower = w_ori_shape[dim_idx] - pads[pad_idx] - pads[pad_idx + 1]
+        upper = fmap_range[dim_idx][1]
+        if upper:
+            upper = max(upper, lower)
+        set_shape_and_range(fmap, dim_c, -1, (lower, upper))
+
+    def _is_special_case():
+        if is_dx:
+            dedx_w_lower = fmap_range[dim_w][0]
+            dedx_h_upper = fmap_range[dim_h][1]
+            flag = dedx_w_lower <= 1 and dedx_h_upper != 1
+        else:
+            dedy_w_lower = _get_output(fmap_range[dim_w][0], w_ori_shape[dim_w], (pads[pad_w], pads[pad_w + 1]),
+                                       strides[dim_w], dilations[dim_w])
+            dedy_h_upper = None
+            if fmap_range[dim_h][1]:
+                dedy_h_upper = _get_output(fmap_range[dim_h][1], w_ori_shape[dim_h], (pads[pad_h], pads[pad_h + 1]),
+                                           strides[dim_h], dilations[dim_h])
+            flag = dedy_w_lower <= 1 and dedy_h_upper != 1
+        return flag
+
+    dim_d, dim_h, dim_w = None, data_format.find('H'), data_format.find('W')
     pad_h, pad_w = 0, 2
     if 'D' in data_format:
         dim_d = data_format.find('D')
         pad_d, pad_h, pad_w = 0, 2, 4
 
     if -1 in pads:
-        if util_common.ceil(fmap_range[dim_w][0], strides[dim_w]) < 2:
-            lower = strides[dim_w] + 1
-            upper = fmap_range[dim_w][1]
-            if fmap_range[dim_w][1]:
-                upper = max(fmap_range[dim_w][1], lower)
-            set_shape_and_range(fmap, 'W', -1, (lower, upper))
+        if _is_special_case():
+            lower = 2 if is_dx else strides[dim_w] + 1
+            _update_range('W', dim_w, pad_w, lower=lower)
     else:
-        if _get_output(fmap_range[dim_w][0], w_ori_shape[dim_w], (pads[pad_w], pads[pad_w + 1]),
-                       strides[dim_w], dilations[dim_w]) < 2:
+        if _is_special_case():
             lower = strides[dim_w] + w_ori_shape[dim_w] - pads[pad_w] - pads[pad_w + 1]
-            upper = fmap_range[dim_w][1]
-            if fmap_range[dim_w][1]:
-                upper = max(fmap_range[dim_w][1], lower)
-            set_shape_and_range(fmap, 'W', -1, (lower, upper))
+            if is_dx:
+                lower = max(2, w_ori_shape[dim_w] - pads[pad_w] - pads[pad_w + 1])
+            _update_range('W', dim_w, pad_w, lower=lower)
+        else:
+            if _get_output(fmap_range[dim_w][0], w_ori_shape[dim_w], (pads[pad_w], pads[pad_w + 1]),
+                           strides[dim_w], dilations[dim_w]) <= 0:
+                _update_range('W', dim_w, pad_w)
         if _get_output(fmap_range[dim_h][0], w_ori_shape[dim_h], (pads[pad_h], pads[pad_h + 1]),
                        strides[dim_h], dilations[dim_h]) <= 0:
-            lower = w_ori_shape[dim_h] - pads[pad_h] - pads[pad_h + 1]
-            upper = fmap_range[dim_h][1]
-            if fmap_range[dim_h][1]:
-                upper = max(fmap_range[dim_h][1], lower)
-            set_shape_and_range(fmap, 'H', -1, (lower, upper))
+            _update_range('H', dim_h, pad_h)
         if dim_d and _get_output(fmap_range[dim_d][0], w_ori_shape[dim_d], (pads[pad_d], pads[pad_d + 1]),
-                             strides[dim_d], dilations[dim_d]) <= 0:
-            lower = w_ori_shape[dim_d] - pads[pad_d] - pads[pad_d + 1]
-            upper = fmap_range[dim_d][1]
-            if fmap_range[dim_d][1]:
-                upper = max(fmap_range[dim_d][1], lower)
-            set_shape_and_range(fmap, 'D', -1, (lower, upper))
+                                 strides[dim_d], dilations[dim_d]) <= 0:
+            _update_range('D', dim_d, pad_d)
 
 
 class CubeParaProcess:

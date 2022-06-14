@@ -673,7 +673,7 @@ def check_empty_tensor(out_backprop, weight, y, strides, pads, dilations=(1, 1, 
         check_tensor_shape({"tensor": [out_backprop, weight, y],
                             "value": [-1, 1, -1],
                             "range": [(1, 1), (1, 1), (1, 1)]})
-        correct_range(y, fmap_range, shape_filters, shape_strides, shape_dilations, pads, "NDHWC")
+        correct_range(y, fmap_range, shape_filters, shape_strides, shape_dilations, pads, "NDHWC", True)
 
 
 def check_and_config_para(weight, out_backprop, y, input_size, strides, pads,

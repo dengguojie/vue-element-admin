@@ -754,27 +754,27 @@ def _test_transdata_dx_transdata_shape_util(test_arg):
     inputs = [
         {"ori_shape": [4], "shape": [4], "data_type": "int32",
          "ori_range": [[4, 4]], "range": [[4, 4]],
-         "format": "NCHW", "ori_format": "NCHW", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+         "format": "NCHW", "ori_format": "NCHW", "input_pattern": "cube"},
         {"ori_shape": [3, 3, 16, 16], "shape": [9, 1, 16, 16], "data_type": "float16",
          "ori_range": [[3, 3], [3, 3], [16, 16], [16, 16]], "range": [[9, 9], [1, 1], [16, 16], [16, 16]],
-         "format": "FRACTAL_Z", "ori_format": "HWCN", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+         "format": "FRACTAL_Z", "ori_format": "HWCN", "input_pattern": "cube"},
     ]
-    shape_util.variable_shape(inputs, op_mode="cube")
+    shape_util.variable_shape(inputs, op_mode="conv2d_backprop_input")
 
 
 def _test_dx_transdata_shape_util(test_arg):
     inputs = [
         {"ori_shape": [4], "shape": [4], "data_type": "int32",
          "ori_range": [[4, 4]], "range": [[4, 4]],
-         "format": "NCHW", "ori_format": "NCHW", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+         "format": "NCHW", "ori_format": "NCHW", "input_pattern": "cube"},
         {"ori_shape": [3, 3, 32, 64], "shape": [18, 4, 16, 16], "data_type": "float16",
          "ori_range": [[3, 3], [3, 3], [32, 32], [64, 64]], "range": [[18, 18], [4, 4], [16, 16], [16, 16]],
-         "format": "FRACTAL_Z", "ori_format": "HWCN", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+         "format": "FRACTAL_Z", "ori_format": "HWCN", "input_pattern": "cube"},
         {"ori_shape": [-1, -1, -1, -1], "shape": [-1, -1, -1, -1, 16], "data_type": "float16",
          "ori_range": [[1, -1], [1, -1], [1, -1], [1, -1]], "range": [[1, None], [1, None], [1, None], [1, None], [16, 16]],
-         "format": "NC1HWC0", "ori_format": "NCHW", "input_pattern": "cube", "input_op_type": "Conv2DBackpropInput"},
+         "format": "NC1HWC0", "ori_format": "NCHW", "input_pattern": "cube"},
     ]
-    shape_util.variable_shape(inputs, op_mode="cube")
+    shape_util.variable_shape(inputs, op_mode="conv2d_backprop_input")
 
 
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_fusion_op)
