@@ -44,7 +44,7 @@ TEST_F(UnsortedSegmentSumTiling, segmentsum_tiling_0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{2,3132864};
   std::vector<int64_t> inputB{2};
@@ -66,7 +66,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{2,3132864};
   std::vector<int64_t> inputB{2};
@@ -90,7 +90,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,80};
   std::vector<int64_t> inputB{1024};
@@ -114,7 +114,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,80};
   std::vector<int64_t> inputB{1024};
@@ -138,7 +138,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_3) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{2,3132864};
   std::vector<int64_t> inputB{2};
@@ -162,7 +162,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_4) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{46,44};
   std::vector<int64_t> inputB{46};
@@ -186,7 +186,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_5) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{0,44};
   std::vector<int64_t> inputB{0};
@@ -210,7 +210,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_6) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,15};
   std::vector<int64_t> inputB{1024};
@@ -234,7 +234,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_7) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{2,3132864};
   std::vector<int64_t> inputB{2};
@@ -258,7 +258,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_8) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,15};
   std::vector<int64_t> inputB{1024};
@@ -282,7 +282,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_9) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,1};
   std::vector<int64_t> inputB{1024};
@@ -306,7 +306,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_10) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,20000};
   std::vector<int64_t> inputB{1024};
@@ -330,7 +330,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_11) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":0}}";
 
   std::vector<int64_t> inputA{1024,19994};
   std::vector<int64_t> inputB{1024};
@@ -347,4 +347,52 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_11) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "6 32 639808 32 0 0 10920 9074 0 0 32 0 0 10920 9074 0 0 639808 32 0 0 10920 9074 0 0 32 0 0 10920 9074 0 0 19994 2 1365 10920 1134 9074 1024 32 1 4 4 32 32 32 1 4 4 32 32 0 0 0 0 0 0 0 0 9072 9080 2 1135 0 0 0 0 0 0 0 0 ");
+}
+TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_12) {
+  using namespace optiling;
+  std::string op_name = "UnsortedSegmentSum";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":1}}";
+
+  std::vector<int64_t> inputA{1136640,16};
+  std::vector<int64_t> inputB{1136640};
+  std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments_value{81358,};
+  std::vector<int64_t> output{81358,16};
+
+  auto opParas = op::UnsortedSegmentSum("UnsortedSegmentSum");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, segment_ids, inputB, ge::DT_INT64, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, num_segments, inputC, ge::DT_INT32, FORMAT_ND, num_segments_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "18 32 568320 9 2046 16 16368 128 1023 8 3 2046 1412 16368 11296 1023 706 568320 9 2046 16 16368 128 1023 8 3 2046 1412 16368 11296 1023 706 16 1 2 16 2 16 1136640 35520 5 2048 688 8192 2752 35520 5 2048 688 8192 2752 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+}
+TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_13) {
+  using namespace optiling;
+  std::string op_name = "UnsortedSegmentSum";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2, \"impl_mode\":1}}";
+
+  std::vector<int64_t> inputA{1136640,17};
+  std::vector<int64_t> inputB{1136640};
+  std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments_value{81358,};
+  std::vector<int64_t> output{81358,17};
+
+  auto opParas = op::UnsortedSegmentSum("UnsortedSegmentSum");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, inputA, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, segment_ids, inputB, ge::DT_INT64, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, num_segments, inputC, ge::DT_INT32, FORMAT_ND, num_segments_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "19 32 603840 13 2043 60 11577 340 681 20 5 2043 84 11577 476 681 28 603840 13 2043 60 11577 340 681 20 5 2043 84 11577 476 681 28 17 1 2 16 1 1 1136640 35520 5 2048 688 8192 2752 35520 5 2048 688 8192 2752 86 1 86 1 86 1 86 1 16 24 1 0 3 1 4 1 3 1 4 1 ");
 }

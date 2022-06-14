@@ -659,7 +659,8 @@ class UnsortedSegmentSumNoAtomoic():
                 "ub_size": self.ub_size,
                 "core_num": self.core_num,
                 "dtype": self.obj_gm_tensor.input_gm.dtype,
-                "ub_tensor_num": self.ub_tensor_num
+                "ub_tensor_num": self.ub_tensor_num,
+                "impl_mode": 0
             })
         opt_config = {
             "enable_const_fold": True

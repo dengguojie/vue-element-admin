@@ -64,6 +64,8 @@ const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E = 6;
 const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MODIFY = 7;
 const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI = 8;
 const int32_t SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE = 17;
+const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E_HP = 18;
+const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E_HP = 19;
 
 // int32 select key
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9;
@@ -74,9 +76,31 @@ const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_SMALLBLOCK = 13;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_SMALLBLOCK = 14;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE = 15;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN = 16;
-enum EleByte { FP16_BYTE = 2, FP32_BYTE = 4, INT32_BYTE = 4, INT8_BYTE = 1, UINT8_BYTE = 1 };
+enum EleByte { FP16_BYTE = 2, FP32_BYTE = 4, INT32_BYTE = 4, INT64_BYTE = 8, INT8_BYTE = 1, UINT8_BYTE = 1 };
 
-static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "ub_tensor_num"};
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "ub_tensor_num", "impl_mode"};
+const int32_t PARA_CORE_NUM_0 = 0;
+const int32_t PARA_UB_SIZE_1 = 1;
+const int32_t PARA_UB_TENSOR_NUM_2 = 2;
+const int32_t PARA_IMPL_MODE_3 = 3;
+const int32_t UB_TENSOR_NUM_2 = 2;
+
+const int32_t UB_TENSOR_MAX_X_NUM = 16000;
+
+struct CompileParas {
+  int32_t core_num;
+  int32_t ub_size;
+  int32_t ub_tensor_num;
+  int32_t impl_mode;
+};
+
+struct CommParas {
+  int32_t e_num;
+  int32_t x_e_num;
+  int32_t num_segments;
+  int32_t ub_size;
+  int32_t impl_mode;
+};
 
 struct TilingParamsFp32 {
   // common params
@@ -252,44 +276,69 @@ int32_t UssCeilDivNoAtomic(const int32_t& num, const int32_t& factor, const int3
 }
 
 bool GetUssCompileParams(const std::string& op_type, const std::vector<int64_t>& opCompileInfo,
-                         int32_t& core_num, int32_t& ub_size, int32_t& ub_tensor_num) {
+                         CompileParas& compileParas) {
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != opCompileInfo.size(),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse opCompileInfo failed."),
-                  return false);
-  core_num = opCompileInfo[0];
-  ub_size = opCompileInfo[1];
-  ub_tensor_num = opCompileInfo[2];
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse opCompileInfo failed."), return false);
+  compileParas.core_num = opCompileInfo[PARA_CORE_NUM_0];
+  compileParas.ub_size = opCompileInfo[PARA_UB_SIZE_1];
+  compileParas.ub_tensor_num = opCompileInfo[PARA_UB_TENSOR_NUM_2];
+  compileParas.impl_mode = opCompileInfo[PARA_IMPL_MODE_3];
   return true;
 }
 
-bool GetTilingMode(const GeShape& input_shape, const int32_t& e_size, const ge::DataType& input_dtype,
-                   const int32_t& ub_tensor_ele_num, int32_t& select_key, const int32_t& num_segments) {
-  int input_dim = GetTensorSize(input_shape);
-  if (num_segments > 1) {
-    if (input_dim == 1) {
-      select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
-    } else if (input_dim > 1) {
-      if (e_size == 1) {
-        select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
-      } else if (e_size % FP32_ELE_NUM_ALIGN_32B == 0) {
-        if (e_size < ub_tensor_ele_num) {
-          select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E;
-        } else {
-          select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E;
-        }
-      } else {
-        if (e_size < ub_tensor_ele_num) {
-          select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E;
-        } else {
-          select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E;
-        }
-      }
-    }
-    return true;
-  } else {
-    select_key = SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE;
+static bool CheckHighPerf(const int32_t& ub_size, const int32_t& e_size, const int32_t& impl_mode) {
+  int32_t e_size_align8 = UssCeil(e_size, FP32_ELE_NUM_ALIGN_32B);
+  int32_t x_ub_size = ub_size / UB_TENSOR_NUM_2 / BYTE_BLOCK * BYTE_BLOCK;
+  if ((impl_mode == 1) &&
+      (((e_size_align8 * UB_TENSOR_NUM_2 + FP32_ELE_NUM_ALIGN_32B) * FP32_BYTE) < x_ub_size)) {
     return true;
   }
+  return false;
+}
+
+bool GetTilingMode(const CommParas& commParas, const int32_t& x_ub_size, int32_t& selectKey) {
+  int32_t e_num = commParas.e_num;
+  int32_t x_e_num = commParas.x_e_num;
+  int32_t num_segments = commParas.num_segments;
+  int32_t ub_size = commParas.ub_size;
+  int32_t x_ub_ele_num = x_ub_size / FP32_BYTE;
+  int32_t impl_mode = commParas.impl_mode;
+
+  bool isHighPerf = CheckHighPerf(ub_size, e_num, impl_mode);
+
+  if (num_segments == 1) {
+    selectKey = SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE;
+    return true;
+  }
+
+  if (num_segments > 1 && x_e_num == 1) {
+    selectKey = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
+    return true;
+  }
+
+  if (num_segments > 1 && x_e_num > 1) {
+    if (e_num == 1) {
+      selectKey = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
+      return true;
+    }
+    if (e_num % FP32_ELE_NUM_ALIGN_32B == 0) {
+      if (e_num < x_ub_ele_num) {
+        selectKey = isHighPerf ? SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E_HP
+                                : SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E;
+        return true;
+      }
+      selectKey = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E;
+      return true;
+    }
+    if (e_num < x_ub_ele_num) {
+      selectKey = isHighPerf ? SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E_HP
+                              : SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E;
+      return true;
+    }
+    selectKey = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E;
+    return true;
+  }
+
   return false;
 }
 
@@ -350,6 +399,9 @@ bool GetEleDtype(const ge::DataType& dtype, EleByte& elebyte) {
     return true;
   } else if (dtype == ge::DT_INT32) {
     elebyte = INT32_BYTE;
+    return true;
+  } else if (dtype == ge::DT_INT64) {
+    elebyte = INT64_BYTE;
     return true;
   } else if (dtype == ge::DT_INT8) {
     elebyte = INT8_BYTE;
@@ -459,7 +511,7 @@ void ComputeUbTensorSizeNoAtomic(
     ub_tensor_size_id = (ub_size - ub_tensor_size_input) / ub_tensor_num;
     ub_tensor_size_output = ub_tensor_size_id;
   } else {
-    ub_tensor_size_input = 16000 * input_ele_byte;
+    ub_tensor_size_input = UB_TENSOR_MAX_X_NUM * input_ele_byte;
     ub_tensor_size_output = ub_tensor_size_input;
     ub_tensor_size_id = ub_size - 2 * ub_tensor_size_input;
   }
@@ -507,29 +559,47 @@ void NumSegmentOne(
     repeat_times_last_part = repeat_times;
   }
 }
-void ComputeUbTensorSize(const int32_t& ub_size, const GeShape& input_shape,
-                         const ge::DataType& input_dtype, const int32_t& e_size,
-                         int32_t& ub_tensor_size, const int32_t& num_segments) {
-  if (num_segments > 1) {
-    if (e_size == 1) {
-      // input is one dim or last axis is one
-      int32_t one_row_size = FP32_BYTE + INT32_BYTE + FP32_BYTE * FP32_ELE_NUM_ALIGN_32B;
-      ub_tensor_size = UssCeil(ub_size / one_row_size, BYTE_BLOCK);
-    } else if (e_size > 1) {
-      int32_t ub_tensor_num = 0;
-      if (e_size % FP32_ELE_NUM_ALIGN_32B == 0) {
-        // align
-        ub_tensor_num = UB_TENSOR_NUM_FP32_INPUT_LAST_AXIS_ALIGN;
-        ub_tensor_size = ((ub_size / ub_tensor_num) / BYTE_BLOCK) * BYTE_BLOCK;
-      } else if (e_size % FP32_ELE_NUM_ALIGN_32B > 0) {
-        // not align
-        ub_tensor_num = UB_TENSOR_NUM_FP32_INPUT_LAST_AXIS_NOT_ALIGN;
-        ub_tensor_size = ((ub_size / ub_tensor_num) / BYTE_BLOCK) * BYTE_BLOCK;
-      }
-    }
-  } else {
-    ub_tensor_size = ub_size / BYTE_BLOCK * BYTE_BLOCK;
+
+void ComputeUbTensorSize(const CommParas& commParas, int32_t& x_ub_size, int32_t& ids_ub_size) {
+  int32_t e_num = commParas.e_num;
+  int32_t num_segments = commParas.num_segments;
+  int32_t ub_size = commParas.ub_size;
+  int32_t impl_mode = commParas.impl_mode;
+
+  bool isHighPerf = CheckHighPerf(ub_size, e_num, impl_mode);
+  if (num_segments == 1) {
+    ids_ub_size = ub_size / BYTE_BLOCK * BYTE_BLOCK;
+    x_ub_size = ids_ub_size;
+    return;
   }
+
+  if (e_num == 1) {
+    // input is one dim or last axis is one
+    int32_t one_row_size = FP32_BYTE + INT32_BYTE + FP32_BYTE * FP32_ELE_NUM_ALIGN_32B;
+    ids_ub_size = UssCeil(ub_size / one_row_size, BYTE_BLOCK);
+    x_ub_size = ids_ub_size;
+    return;
+  }
+
+  int32_t ub_tensor_num = 0;
+  // align
+  if (e_num % FP32_ELE_NUM_ALIGN_32B == 0) {
+    ub_tensor_num = UB_TENSOR_NUM_FP32_INPUT_LAST_AXIS_ALIGN;
+    ids_ub_size = ((ub_size / ub_tensor_num) / BYTE_BLOCK) * BYTE_BLOCK;
+    x_ub_size = isHighPerf ? (ids_ub_size - e_num * FP32_BYTE) : ids_ub_size;
+    return;
+  }
+  // not align
+  int32_t e_size_align8 = UssCeil(e_num, FP32_ELE_NUM_ALIGN_32B);
+  ub_tensor_num = UB_TENSOR_NUM_FP32_INPUT_LAST_AXIS_NOT_ALIGN;
+  ids_ub_size = ((ub_size / ub_tensor_num) / BYTE_BLOCK) * BYTE_BLOCK;
+  x_ub_size = ids_ub_size;
+  if (isHighPerf) {
+    ids_ub_size = ((ub_size / UB_TENSOR_NUM_2) / BYTE_BLOCK) * BYTE_BLOCK;
+    x_ub_size = ids_ub_size - (e_size_align8 + FP32_ELE_NUM_ALIGN_32B) * FP32_BYTE;
+  }
+
+  return;
 }
 
 /******************MODE_FP32_INPUT_LAST_AXIS_ALIGN******************/
@@ -1443,56 +1513,63 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
     return false;
   }
   // get compile info
-  int32_t core_num = 1;
-  int32_t ub_size = 256 * 1024;
-  int32_t ub_tensor_num = 0;
-  flag = GetUssCompileParams(op_type, opCompileInfo, core_num, ub_size, ub_tensor_num);
+  CompileParas compileParas = {1, 256 * 1024, 0, 0};
+  flag = GetUssCompileParams(op_type, opCompileInfo, compileParas);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed.");
     return false;
   }
   if (input_dtype == ge::DT_FLOAT) {
-    int32_t ub_tensor_size = 0;
-    ComputeUbTensorSize(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, num_segments);
+    int32_t ids_ub_size = 0;
+    int32_t x_ub_size = 0;
+    CommParas commParas = { 0 };
+    commParas.e_num = e_size;
+    commParas.x_e_num = GetTensorSize(input_shape);
+    commParas.num_segments = num_segments;
+    commParas.ub_size = compileParas.ub_size;
+    commParas.impl_mode = compileParas.impl_mode;
+    ComputeUbTensorSize(commParas, x_ub_size, ids_ub_size);
     if (e_size == 1) {
-      ub_tensor_size = ub_tensor_size / BYTE_FULL_MASK * BYTE_FULL_MASK;
+      x_ub_size = x_ub_size / BYTE_FULL_MASK * BYTE_FULL_MASK;
     }
-    OP_LOGD(op_type, " : ub_tensor_size=%d", ub_tensor_size);
-    int32_t ub_tensor_ele_num = ub_tensor_size / input_ele_byte;
+    OP_LOGD(op_type, " : ub_tensor_size=%d,%d", ids_ub_size, x_ub_size);
+    int32_t ub_tensor_ele_num = x_ub_size / input_ele_byte;
     // fp32 tiling params
     TilingParamsFp32 params;
     InitTilingParams(params, num_segments);
     // select key
-    flag = GetTilingMode(input_shape, e_size, input_dtype, ub_tensor_ele_num, params.select_key_input_scalar,
-                         num_segments);
+    flag = GetTilingMode(commParas, x_ub_size, params.select_key_input_scalar);
     if (!flag) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetTilingMode failed.");
       return false;
     }
+    OP_LOGD(op_type, " : ub_tensor_size=%d,%d", ids_ub_size, x_ub_size);
+
     params.e_num_input_scalar = e_size;
     // ids params compute is common
     params.ids_size_input_scalar = ids_size;
     int32_t ids_min_ele_num = BYTE_BLOCK / ids_ele_byte;
     // is using all core
-    flag = IsUsingAllCore(ids_size, core_num, params.need_core_num_input_scalar, e_size, num_segments);
+    flag = IsUsingAllCore(ids_size, compileParas.core_num, params.need_core_num_input_scalar, e_size, num_segments);
     ComputeEleNumOneCore(ids_min_ele_num, ids_size, params.need_core_num_input_scalar, e_size,
                          params.ids_ele_num_front_core_input_scalar, params.ids_ele_num_last_core_input_scalar,
                          params.input_ele_num_front_core_input_scalar, params.input_ele_num_last_core_input_scalar,
                          num_segments);
     // ids params front core
     ComputeIdsParamsMovGm2ub(
-      params.ids_ele_num_front_core_input_scalar, ub_tensor_size, ids_ele_byte,
-      params.ids_mov_times_gm2ub_front_core_input_scalar, params.ids_front_burst_len_front_core_input_scalar,
-      params.ids_last_burst_len_front_core_input_scalar, params.ids_ele_num_ub_front_part_front_core_input_scalar,
-      params.ids_ele_num_ub_last_part_front_core_input_scalar);
+        params.ids_ele_num_front_core_input_scalar, ids_ub_size, ids_ele_byte,
+        params.ids_mov_times_gm2ub_front_core_input_scalar, params.ids_front_burst_len_front_core_input_scalar,
+        params.ids_last_burst_len_front_core_input_scalar, params.ids_ele_num_ub_front_part_front_core_input_scalar,
+        params.ids_ele_num_ub_last_part_front_core_input_scalar);
     // ids params last core
     ComputeIdsParamsMovGm2ub(
-      params.ids_ele_num_last_core_input_scalar, ub_tensor_size, ids_ele_byte,
-      params.ids_mov_times_gm2ub_last_core_input_scalar, params.ids_front_burst_len_last_core_input_scalar,
-      params.ids_last_burst_len_last_core_input_scalar, params.ids_ele_num_ub_front_part_last_core_input_scalar,
-      params.ids_ele_num_ub_last_part_last_core_input_scalar);
+        params.ids_ele_num_last_core_input_scalar, ids_ub_size, ids_ele_byte,
+        params.ids_mov_times_gm2ub_last_core_input_scalar, params.ids_front_burst_len_last_core_input_scalar,
+        params.ids_last_burst_len_last_core_input_scalar, params.ids_ele_num_ub_front_part_last_core_input_scalar,
+        params.ids_ele_num_ub_last_part_last_core_input_scalar);
 
-    if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E) {
+    if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E ||
+        params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_SMALL_E_HP) {
       // aign small e
 
       // e num params
@@ -1504,8 +1581,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
 
       // input data params
       // front part front core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_front_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_front_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_front_part_front_core_input_scalar,
                                  params.input_mov_times_gm2ub_front_part_front_core_input_scalar,
                                  params.input_front_burst_len_front_part_front_core_input_scalar,
@@ -1515,8 +1592,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                  params.input_front_rows_front_part_front_core_input_scalar,
                                  params.input_last_rows_front_part_front_core_input_scalar);
       // last part front core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_front_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_front_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_last_part_front_core_input_scalar,
                                  params.input_mov_times_gm2ub_last_part_front_core_input_scalar,
                                  params.input_front_burst_len_last_part_front_core_input_scalar,
@@ -1526,8 +1603,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                  params.input_front_rows_last_part_front_core_input_scalar,
                                  params.input_last_rows_last_part_front_core_input_scalar);
       // front part last core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_last_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_last_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_front_part_last_core_input_scalar,
                                  params.input_mov_times_gm2ub_front_part_last_core_input_scalar,
                                  params.input_front_burst_len_front_part_last_core_input_scalar,
@@ -1537,8 +1614,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                  params.input_front_rows_front_part_last_core_input_scalar,
                                  params.input_last_rows_front_part_last_core_input_scalar);
       // last part last core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_last_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_last_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_last_part_last_core_input_scalar,
                                  params.input_mov_times_gm2ub_last_part_last_core_input_scalar,
                                  params.input_front_burst_len_last_part_last_core_input_scalar,
@@ -1601,7 +1678,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
       ComputeInitOutputUbParams(params.ids_ele_num_ub_last_part_last_core_input_scalar, output_ub_ele_num_one_row,
                                 params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar,
                                 params.output_ub_init_times_last_part_last_core_input_scalar);
-    } else if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E) {
+    } else if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E ||
+        params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_SMALL_E_HP) {
       // not align small e
       // e num params
       params.e_mov_times_gm2ub_input_scalar = 1;
@@ -1612,8 +1690,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
 
       // input data params
       // front part front core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_front_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_front_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_front_part_front_core_input_scalar,
                                  params.input_mov_times_gm2ub_front_part_front_core_input_scalar,
                                  params.input_front_burst_len_front_part_front_core_input_scalar,
@@ -1623,8 +1701,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                  params.input_front_rows_front_part_front_core_input_scalar,
                                  params.input_last_rows_front_part_front_core_input_scalar);
       // last part front core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_front_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_front_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_last_part_front_core_input_scalar,
                                  params.input_mov_times_gm2ub_last_part_front_core_input_scalar,
                                  params.input_front_burst_len_last_part_front_core_input_scalar,
@@ -1634,8 +1712,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                  params.input_front_rows_last_part_front_core_input_scalar,
                                  params.input_last_rows_last_part_front_core_input_scalar);
       // front part last core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_last_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_last_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_front_part_last_core_input_scalar,
                                  params.input_mov_times_gm2ub_front_part_last_core_input_scalar,
                                  params.input_front_burst_len_front_part_last_core_input_scalar,
@@ -1645,8 +1723,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                  params.input_front_rows_front_part_last_core_input_scalar,
                                  params.input_last_rows_front_part_last_core_input_scalar);
       // last part last core
-      ComputeInputParamsMovGm2ub(ub_tensor_size, input_ele_byte, params.input_ele_num_last_core_input_scalar, e_size,
-                                 params.e_mov_times_gm2ub_input_scalar,
+      ComputeInputParamsMovGm2ub(x_ub_size, input_ele_byte, params.input_ele_num_last_core_input_scalar,
+                                 e_size, params.e_mov_times_gm2ub_input_scalar,
                                  params.ids_ele_num_ub_last_part_last_core_input_scalar,
                                  params.input_mov_times_gm2ub_last_part_last_core_input_scalar,
                                  params.input_front_burst_len_last_part_last_core_input_scalar,
@@ -1690,7 +1768,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                 params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar,
                                 params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
       params.input_last_axis_align_front_part_ele_num_input_scalar =
-        e_size / FP32_ELE_NUM_ALIGN_32B * FP32_ELE_NUM_ALIGN_32B;
+          e_size / FP32_ELE_NUM_ALIGN_32B * FP32_ELE_NUM_ALIGN_32B;
       params.input_last_axis_align_floor_ele_num_input_scalar = UssCeil(e_size, FP32_ELE_NUM_ALIGN_32B);
       params.last_part_vadd_mask_input_scalar = e_size - params.input_last_axis_align_front_part_ele_num_input_scalar;
     } else if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E) {
@@ -1700,20 +1778,20 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                            num_segments);
       // ids params front core
       ComputeIdsParamsMovGm2ub(
-        params.ids_ele_num_front_core_input_scalar, ub_tensor_size, ids_ele_byte,
-        params.ids_mov_times_gm2ub_front_core_input_scalar, params.ids_front_burst_len_front_core_input_scalar,
-        params.ids_last_burst_len_front_core_input_scalar, params.ids_ele_num_ub_front_part_front_core_input_scalar,
-        params.ids_ele_num_ub_last_part_front_core_input_scalar);
+          params.ids_ele_num_front_core_input_scalar, ids_ub_size, ids_ele_byte,
+          params.ids_mov_times_gm2ub_front_core_input_scalar, params.ids_front_burst_len_front_core_input_scalar,
+          params.ids_last_burst_len_front_core_input_scalar, params.ids_ele_num_ub_front_part_front_core_input_scalar,
+          params.ids_ele_num_ub_last_part_front_core_input_scalar);
       // ids params last core
       ComputeIdsParamsMovGm2ub(
-        params.ids_ele_num_last_core_input_scalar, ub_tensor_size, ids_ele_byte,
-        params.ids_mov_times_gm2ub_last_core_input_scalar, params.ids_front_burst_len_last_core_input_scalar,
-        params.ids_last_burst_len_last_core_input_scalar, params.ids_ele_num_ub_front_part_last_core_input_scalar,
-        params.ids_ele_num_ub_last_part_last_core_input_scalar);
+          params.ids_ele_num_last_core_input_scalar, ids_ub_size, ids_ele_byte,
+          params.ids_mov_times_gm2ub_last_core_input_scalar, params.ids_front_burst_len_last_core_input_scalar,
+          params.ids_last_burst_len_last_core_input_scalar, params.ids_ele_num_ub_front_part_last_core_input_scalar,
+          params.ids_ele_num_ub_last_part_last_core_input_scalar);
       // align big e
       // e num params
       params.e_mov_times_gm2ub_input_scalar = UssCeilDiv(e_size, ub_tensor_ele_num);
-      params.e_ub2gm_front_burst_len_input_scalar = ub_tensor_size / BYTE_BLOCK;
+      params.e_ub2gm_front_burst_len_input_scalar = x_ub_size / BYTE_BLOCK;
       params.e_num_front_part_input_scalar = ub_tensor_ele_num;
       params.e_num_last_part_input_scalar =
         ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar,
@@ -1745,7 +1823,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
       // not align big e
       // e num params
       params.e_mov_times_gm2ub_input_scalar = UssCeilDiv(e_size, ub_tensor_ele_num);
-      params.e_ub2gm_front_burst_len_input_scalar = ub_tensor_size / BYTE_BLOCK;
+      params.e_ub2gm_front_burst_len_input_scalar = x_ub_size / BYTE_BLOCK;
       params.e_num_front_part_input_scalar = ub_tensor_ele_num;
       params.e_num_last_part_input_scalar =
         ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar, params.e_mov_times_gm2ub_input_scalar - 1);
@@ -1901,7 +1979,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
         params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar * MASK_FP32;
     } else if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE) {
       params.e_mov_times_gm2ub_input_scalar = UssCeilDiv(e_size, ub_tensor_ele_num);
-      params.e_ub2gm_front_burst_len_input_scalar = ub_tensor_size / BYTE_BLOCK;
+      params.e_ub2gm_front_burst_len_input_scalar = x_ub_size / BYTE_BLOCK;
       params.e_num_front_part_input_scalar = ub_tensor_ele_num;
       params.e_num_last_part_input_scalar =
         ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar, params.e_mov_times_gm2ub_input_scalar - 1);
@@ -1929,13 +2007,13 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
       mask = MASK_FP16;
     }
 
-    IsUsingAllCoreByNumSegments(num_segments, core_num, params.need_core_num_input_scalar,
-                                e_size, output_ub_ele_num_one_row);
+    IsUsingAllCoreByNumSegments(num_segments, compileParas.core_num, params.need_core_num_input_scalar, e_size,
+                                output_ub_ele_num_one_row);
     int32_t ub_tensor_size = 0;
     int32_t ub_tensor_size_input = 0;
     int32_t ub_tensor_size_output = 0;
-    ComputeUbTensorSizeNoAtomic(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, ub_tensor_size_input,
-                                ub_tensor_size_output, output_ub_ele_num_one_row,
+    ComputeUbTensorSizeNoAtomic(compileParas.ub_size, input_shape, input_dtype, e_size, ub_tensor_size,
+                                ub_tensor_size_input, ub_tensor_size_output, output_ub_ele_num_one_row,
                                 params.need_core_num_input_scalar, mask, num_segments);
     OP_LOGD(op_type, " : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
             ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
