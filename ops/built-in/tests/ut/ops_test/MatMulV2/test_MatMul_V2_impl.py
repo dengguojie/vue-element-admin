@@ -952,6 +952,7 @@ def test_requant_full_load(test_arg):
     print('ori sov_version:', ori_soc_version)
     # for DTS2022050714940
     te_set_version("Ascend310P3")
+    is_fail = False
     try:
         tiling_type = "auto_tiling"
         tiling_params = {
@@ -1007,10 +1008,13 @@ def test_requant_full_load(test_arg):
             }
             cce_build_code(sch, config)
     except RuntimeError as e:
+        is_fail = True
         print(e)
     finally:
         TILING_INSTANCE.instance_refresh(tiling_type, tiling_params, {})
         te_set_version(ori_soc_version)
+        if is_fail:
+            raise RuntimeError('matmul_requant_full_load compile fail')
 
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)

@@ -1217,6 +1217,8 @@ def conv3d(x, filter, filter_size, para_dict):
     _TENSOR_MAP["is_double_w"] = 1
     if 'offset_x' not in para_dict:
         para_dict["offset_x"] = 0
+    elif para_dict["offset_x"] != 0:
+        cube_err.raise_err_message_cube("offset_x should be 0, %d is not supported" % para_dict["offset_x"])
 
     conv_res = _cube_3d_compute(x,
                                 filter,
