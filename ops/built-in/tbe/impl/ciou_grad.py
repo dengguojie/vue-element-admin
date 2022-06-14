@@ -163,6 +163,7 @@ class CIoUGrad(DIoUGrad):
         # func: compute for dv * 8 * atan_sub / math.pi ** 2 /(1.0 + (w1 / h1) ** 2)
         self.tik_instance.h_mul(self.tmp_a, self.dy_ub, self.alpha_ub)
         self.tik_instance.h_sub(self.dv_ub, self.tmp_zero, self.tmp_a)
+        self.tik_instance.h_add(self.atan_sub_ub, self.atan_sub_ub, 1e-9)
         self.tik_instance.h_div(self.tmp_a, self.v_ub, self.atan_sub_ub)
         self.tik_instance.h_mul(self.tmp_b, self.tmp_a, 2.0)
         self.tik_instance.h_mul(self.tmp_c, self.tmp_b, self.dv_ub)
@@ -171,6 +172,8 @@ class CIoUGrad(DIoUGrad):
 
     def v_part(self, task_idx):
         """v_part"""
+        self.tik_instance.h_add(self.b_box.h, self.b_box.h, 1e-9)
+        self.tik_instance.h_add(self.g_box.h, self.g_box.h, 1e-9)
         # for b1
         self.tik_instance.h_div(self.delta_b1, self.delta_b1, self.b_box.h)
 
