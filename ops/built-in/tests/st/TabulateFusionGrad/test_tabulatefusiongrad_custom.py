@@ -20,7 +20,7 @@ from impl.dynamic.tabulate_fusion_grad import tabulate_fusion_grad
 from tbe.common.platform.platform_info import set_current_compile_soc_info
 
 
-def tabulate_fusion_grad_ut_test(nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0, soc="710"):
+def tabulate_fusion_grad_ut_test(nloc, nnei, last_layer_size, table_dim0, split_count=1, split_index=0, soc="310P3"):
     if soc == "910":
         set_current_compile_soc_info("Ascend910")
     else:

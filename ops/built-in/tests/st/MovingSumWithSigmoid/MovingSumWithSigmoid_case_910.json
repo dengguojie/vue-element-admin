@@ -1,9 +1,7 @@
 [
     {
         "case_name":"Test_MovingSumWithSigmoid_000",
-        "calc_expect_func_file":"test_msws.py:calc_expect_func", 
         "op":"MovingSumWithSigmoid",
-        "calc_expect_func_file":"",
         "gui_calc_expect_func_file":"",
         "fuzz_impl":"",
         "user_fuzz_impl":"",
@@ -129,7 +127,7 @@
                     ]
                 ],
                 "typical_shape":[
-                    5120
+                    10, 10
                 ]
             }
         ],
