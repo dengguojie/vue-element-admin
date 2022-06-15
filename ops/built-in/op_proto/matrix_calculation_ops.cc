@@ -4782,5 +4782,42 @@ IMPLEMT_COMMON_INFERFUNC(TensorScatterMinInferShape) {
 COMMON_INFER_FUNC_REG(TensorScatterMin, TensorScatterMinInferShape);
 VERIFY_FUNC_REG(TensorScatterMin, TensorScatterMinVerify);
 // ------------------TensorScatterMin END------------------
+// ----------------------SwinTransformerLnQKV----------------------
+IMPLEMT_COMMON_INFERFUNC(SwinTransformerLnQKVInferShape) {
+  TensorDesc tensordesc_input_x = op.GetInputDescByName("x");
+  int64_t batch_num = tensordesc_input_x.GetShape().GetDim(0);
+  int64_t m_num = tensordesc_input_x.GetShape().GetDim(1);
 
+  int64_t head_num;
+  int64_t head_dim;
+  int64_t seq_length;
+  op.GetAttr("head_num", head_num);
+  op.GetAttr("head_dim", head_dim);
+  op.GetAttr("seq_length", seq_length);
+
+  vector<int64_t> output_shape;
+  output_shape.push_back(batch_num * m_num / seq_length);
+  output_shape.push_back(head_num);
+  output_shape.push_back(seq_length);
+  output_shape.push_back(head_dim);
+
+  TensorDesc tensordesc_query_output = op.GetOutputDescByName("query_output");
+  tensordesc_query_output.SetShape(Shape(output_shape));
+  tensordesc_query_output.SetDataType(tensordesc_input_x.GetDataType());
+  (void)op.UpdateOutputDesc("query_output", tensordesc_query_output);
+
+  TensorDesc tensordesc_key_output = op.GetOutputDescByName("key_output");
+  tensordesc_key_output.SetShape(Shape(output_shape));
+  tensordesc_key_output.SetDataType(tensordesc_input_x.GetDataType());
+  (void)op.UpdateOutputDesc("key_output", tensordesc_key_output);
+
+  TensorDesc tensordesc_value_output = op.GetOutputDescByName("value_output");
+  tensordesc_value_output.SetShape(Shape(output_shape));
+  tensordesc_value_output.SetDataType(tensordesc_input_x.GetDataType());
+  (void)op.UpdateOutputDesc("value_output", tensordesc_value_output);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SwinTransformerLnQKV, SwinTransformerLnQKVInferShape);
+// -----------------------SwinTransformerLnQKV END---------------------
 }  // namespace ge

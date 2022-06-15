@@ -1,0 +1,110 @@
+[
+  {
+    "op": "SwinTransformerLnQKV",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          9216,
+          128
+        ],
+        "format": "ND",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          128
+        ],
+        "format": "ND",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          128
+        ],
+        "format": "ND",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          128,
+          384
+        ],
+        "format": "ND",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          384
+        ],
+        "format": "ND",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          512,
+          4,
+          144,
+          32
+        ],
+        "format": "ND",
+        "type": "float16"
+      },
+	  {
+        "shape": [
+          512,
+          4,
+          144,
+          32
+        ],
+        "format": "ND",
+        "type": "float16"
+      },
+	  {
+        "shape": [
+          512,
+          4,
+          144,
+          32
+        ],
+        "format": "ND",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "head_num",
+        "value": 4,
+        "type": "int"
+      },
+      {
+        "name": "head_dim",
+        "value": 32,
+        "type": "int"
+      },
+      {
+        "name": "seq_length",
+        "value": 144,
+        "type": "int"
+      },
+      {
+        "name": "shifts",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "epsilon",
+        "value": 0.0000001,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_SwinTransformerLnQKV_000"
+  }
+]

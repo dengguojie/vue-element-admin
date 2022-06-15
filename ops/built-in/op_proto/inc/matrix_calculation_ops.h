@@ -156,6 +156,49 @@ REG_OP(AttentionLnQKV)
     .OP_END_FACTORY_REG(AttentionLnQKV)
 
 /**
+* @brief
+   swin_transformer model specific structure.Operator only supports swin_transformer. \n
+* @par Inputs:
+* Five inputs, including:
+* @li x: A Tensor. Must be one of the following types: float16.
+* @li gamma: A Tensor. Must be one of the following types: float16.
+* @li beta: A Tensor. Must be one of the following types: float16.
+* @li weight: A Tensor. Must be one of the following types: float16.
+* @li bias: A Tensor. Must be one of the following types: float16. \n
+
+* @par Attributes:
+* @li head_num: A optional attribute, the type is int.
+* @li head_dim: A optional attribute, the type is int.
+* @li seq_length: A optional attribute, the type is int.
+* @li shifts: A optional attribute, the type is list int. Defaults to ().
+* @li epsilon: A optional attribute, the type is float. Defaults to 1e-7. \n
+
+* @par Outputs:
+* Three outputs, including:
+* @li query_output: A Tensor. Must be one of the following types: float16.
+* @li key_output: A Tensor. Must be one of the following types: float16.
+* @li value_output: A Tensor. Must be one of the following types: float16. \n
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use. \n
+*/
+REG_OP(SwinTransformerLnQKV)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(gamma, TensorType({DT_FLOAT16}))
+    .INPUT(beta, TensorType({DT_FLOAT16}))
+    .INPUT(weight, TensorType({DT_FLOAT16}))
+    .INPUT(bias, TensorType({DT_FLOAT16}))
+    .OUTPUT(query_output, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_output, TensorType({DT_FLOAT16}))
+    .OUTPUT(value_output, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(head_num, Int)
+    .REQUIRED_ATTR(head_dim, Int)
+    .REQUIRED_ATTR(seq_length, Int)
+    .ATTR(shifts, ListInt, {})
+    .ATTR(epsilon, Float, 0.0000001)
+    .OP_END_FACTORY_REG(SwinTransformerLnQKV)
+
+/**
 *@brief Multiplies matrix "a" by matrix "b", producing "a * b" . \n
 
 *@par Inputs:
