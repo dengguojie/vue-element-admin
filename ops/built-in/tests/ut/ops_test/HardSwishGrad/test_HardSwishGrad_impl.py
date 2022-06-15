@@ -28,11 +28,11 @@ def calc_expect_func(input_grad, input_x, output_y):
         sdtype = np.float32
     else:
         raise RuntimeError("unsupported dtype:%s " % dtype)
-    cpu_res = input_x["value"]
+    cpu_res = input_x["value"].astype("float32")
     cpu_res = cpu_res / 3 + 0.5
     cpu_res[input_x["value"] < -3] = 0
     cpu_res[input_x["value"] > 3] = 1
-    cpu_res = input_grad["value"] * cpu_res
+    cpu_res = input_grad["value"].astype("float32") * cpu_res
     return cpu_res.astype(sdtype)
 
 

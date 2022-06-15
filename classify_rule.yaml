@@ -4254,6 +4254,7 @@ pytorch:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/group_norm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_onnx_fusion_pass.h
+      - ops/built-in/tbe/impl/dynamic/hard_swish_grad.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

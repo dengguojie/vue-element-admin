@@ -86,15 +86,9 @@ def hard_swish_grad(input_grad, input_x, output_y, kernel_name="hard_swish_grad"
     ------
     None
     """
-    # check input shape
-    shape_grad = input_grad.get("shape")
-    shape_x = input_x.get("shape")
+    # check input shape range
     para_check.check_elewise_shape_range(
         [input_x, input_grad], support_broadcast=False)
-    if list(shape_x) != list(shape_grad):
-        error_detail = "The shape of two input parameters are not match for dynamic hard_swish_grad."
-        error_manager_vector.raise_err_two_input_shape_invalid(
-            kernel_name, "input_x", "input_grad", error_detail)
 
     # check input tensor data_type and kernel_name
     check_list = ("float16", "float32")
