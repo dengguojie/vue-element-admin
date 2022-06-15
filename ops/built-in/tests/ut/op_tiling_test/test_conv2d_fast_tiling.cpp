@@ -109,6 +109,61 @@ TEST_F(Conv2DFastTilingTest, test_get_l1_large_weight) {
     ASSERT_TRUE(ret);
 }
 
+TEST_F(Conv2DFastTilingTest, test_get_l1_split_weight_k) {
+    // large weight to tile
+    inputParams.hi = 128;
+    inputParams.wi = 128;
+    inputParams.kh = 48;
+    inputParams.kw = 48;
+    inputParams.ho = 80;
+    inputParams.wo = 80;
+    inputParams.n = 128; //cout
+    inputParams.wci = 512; //weight cin
+    hardwareInfo.l1Size = 524288 * 2;
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    Tiling generalTiling;
+    bool ret = fastTilingPtr->GetL1Tiling(generalTiling);
+    ASSERT_TRUE(ret);
+}
+
+TEST_F(Conv2DFastTilingTest, test_get_l0_split_weight_k_001) {
+    // large weight to tile
+   inputParams.hi = 128;
+    inputParams.wi = 128;
+    inputParams.kh = 48;
+    inputParams.kw = 48;
+    inputParams.ho = 80;
+    inputParams.wo = 80;
+    inputParams.n = 128; //cout
+    inputParams.wci = 512; //weight cin
+    hardwareInfo.l1Size = 524288 * 2;
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    Tiling generalTiling;
+    generalTiling.kAL1 = FULL_LOAD;
+    bool ret = fastTilingPtr->GetL1Tiling(generalTiling);
+    ASSERT_TRUE(ret);
+}
+
+TEST_F(Conv2DFastTilingTest, test_get_l0_split_weight_k_002) {
+    // large weight to tile
+    inputParams.hi = 128;
+    inputParams.wi = 128;
+    inputParams.kh = 48;
+    inputParams.kw = 48;
+    inputParams.ho = 80;
+    inputParams.wo = 80;
+    inputParams.n = 128; //cout
+    inputParams.wci = 512; //weight cin
+    hardwareInfo.l1Size = 524288 * 2;
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    Tiling generalTiling;
+    bool ret = fastTilingPtr->GetL1Tiling(generalTiling);
+    ASSERT_TRUE(ret);
+}
+
 TEST_F(Conv2DFastTilingTest, test_get_blockDim_tiling) {
     unique_ptr<FastTiling> blockTilingPtr(new FastTiling());
     inputParams.batch = 32;
@@ -398,9 +453,10 @@ TEST_F(Conv2DFastTilingTest, test_update_ub_data)
     fastTilingPtr->opInfo_.preFusionUbUtilize = 5;
     fastTilingPtr->opInfo_.postFusionUbUtilize = 6;
 
-    uint32_t tmpPre = 1 * 2 * 16 * 2 * fastTilingPtr->reduceKAxisAL1_KhDilKwDilCi0_;
+    uint32_t aUbHixWi = (((2 * 16 + 30 - 1) / 30) * 1 + ((3 - 1) * 1 + 1)) * 32;
+    uint32_t tmpPre = 1 * aUbHixWi * 16 * 2;
     uint32_t preUbCurrent = 5 * tmpPre;
-    uint32_t tmpPost = 3 * 4 * 256;
+    uint32_t tmpPost = 3 * 4 * 256 * 2; //float16
     uint32_t postUbCurrent = 6 * tmpPost;
 
     fastTilingPtr->UpdateUBData();

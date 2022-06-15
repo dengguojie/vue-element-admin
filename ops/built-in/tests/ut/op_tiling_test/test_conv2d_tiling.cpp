@@ -635,8 +635,8 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case0) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
-  EXPECT_EQ(runInfo.GetTilingKey(), 89);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 40 2 1 2 18 40 1 18 1 1 18 ");
+  EXPECT_EQ(runInfo.GetTilingKey(), 88);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 2147483647 2 1 2 18 0 1 1 1 18 18 ");
 }
 
 TEST_F(Conv2DTiling, Conv2d_tiling_binary_case1) {
@@ -892,6 +892,6 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_dilation_2) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
-  EXPECT_EQ(runInfo.GetTilingKey(), 65);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 32 56 56 64 3 3 2 2 1 1 52 52 0 0 0 0 0 0 1 1 2 1 800 32 2 1 2 18 32 2 50 1 1 18 ");
+  EXPECT_EQ(runInfo.GetTilingKey(), 89);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 32 56 56 64 3 3 2 2 1 1 52 52 0 0 0 0 0 0 1 1 2 1 800 32 2 1 2 18 32 1 50 1 1 18 ");
 }

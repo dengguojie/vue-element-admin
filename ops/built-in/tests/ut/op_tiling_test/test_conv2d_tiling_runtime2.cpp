@@ -328,7 +328,7 @@ static Conv2DTilingTestParam general_cases_params[] = {
         {1, 16, 16, 64}, ge::Format::FORMAT_NHWC,
         {1, 4, 16, 16, 16}, ge::Format::FORMAT_NC1HWC0,
         {1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}, 1, "NCHW",
-        2, 89, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 40 2 1 2 18 40 1 18 1 1 18 "
+        2, 88, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 2147483647 2 1 2 18 0 1 1 1 18 18 "
     },
     {
         "Conv2d_tiling_binary_case1", "Conv2D",
@@ -401,7 +401,7 @@ static Conv2DTilingTestParam general_cases_params[] = {
         {1, 64, 52, 52}, ge::Format::FORMAT_NCHW,
         {1, 4, 52, 52, 16}, ge::Format::FORMAT_NC1HWC0,
         {1, 1, 1, 1}, {0, 0, 0, 0}, {1, 1, 2, 2}, 1, "NCHW",
-        2, 65, "1 32 56 56 64 3 3 2 2 1 1 52 52 0 0 0 0 0 0 1 1 2 1 800 32 2 1 2 18 32 2 50 1 1 18 "
+        2, 89, "1 32 56 56 64 3 3 2 2 1 1 52 52 0 0 0 0 0 0 1 1 2 1 800 32 2 1 2 18 32 1 50 1 1 18 "
     }
 };
 
@@ -462,9 +462,9 @@ TEST_F(Conv2DTilingRuntime2, paddingSAME) {
     uint64_t* tilingKey = tilingContext->GetOutputPointer<uint64_t>(0);
     uint32_t* blockDim = tilingContext->GetOutputPointer<uint32_t>(1);
     std::string outputTilingData = TilingData2Str(tilingContext->GetRawTilingData());
-    ASSERT_EQ(*tilingKey, 89);
+    ASSERT_EQ(*tilingKey, 88);
     ASSERT_EQ(*blockDim, 2);
-    ASSERT_EQ(outputTilingData, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 40 2 1 2 18 40 1 18 1 1 18 ");
+    ASSERT_EQ(outputTilingData, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 2147483647 2 1 2 18 0 1 1 1 18 18 ");
 }
 
 TEST_F(Conv2DTilingRuntime2, autoPadSAME_LOWER) {
@@ -523,7 +523,7 @@ TEST_F(Conv2DTilingRuntime2, autoPadSAME_LOWER) {
     uint64_t* tilingKey = tilingContext->GetOutputPointer<uint64_t>(0);
     uint32_t* blockDim = tilingContext->GetOutputPointer<uint32_t>(1);
     std::string outputTilingData = TilingData2Str(tilingContext->GetRawTilingData());
-    ASSERT_EQ(*tilingKey, 89);
     ASSERT_EQ(*blockDim, 2);
-    ASSERT_EQ(outputTilingData, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 40 2 1 2 18 40 1 18 1 1 18 ");
+    ASSERT_EQ(*tilingKey, 88);
+    ASSERT_EQ(outputTilingData, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 2147483647 2 1 2 18 0 1 1 1 18 18 ");
 }

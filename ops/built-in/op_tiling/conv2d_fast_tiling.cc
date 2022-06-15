@@ -97,9 +97,9 @@ bool FastTiling::SetInputParams(const Conv2dParams& inputParams, const HardwareI
     CHECK_OP_FUNC(!CheckHardwareInfo(hardwareInfo), return false, "CheckHardwareInfo failed!");
 
     this->opInfo_ = inputParams;
+    this->hardware_ = hardwareInfo;
     GetConv2dCaseStatus();
     this->Convert4DTo5D(); // set 5d shape
-    this->hardware_ = hardwareInfo;
     this->hardware_.cubeBandwidth = CUBE_UNIT_16 * CUBE_UNIT_16 * CUBE_UNIT_16 *
                                     byteForDtype_.at(ge::DataType::DT_FLOAT16);
     uint32_t vectorProcessNum = static_cast<uint32_t>(FastTilingValue::FAST_TILING_VALUE_128);
@@ -313,9 +313,17 @@ void FastTiling::GetConv2dCaseStatus()
                     (opInfo_.kh == 1 && opInfo_.kw == 1) &&
                     (opInfo_.padl == 0 && opInfo_.padr == 0 && opInfo_.padu == 0 && opInfo_.padd == 0) &&
                     (opInfo_.stride_h == 1 && opInfo_.stride_w == 1) && opInfo_.hi != 1);
-
-    isFmReadWithStrideFlag = (opInfo_.kh == 1) && (opInfo_.stride_h == 1) && (opInfo_.padl == 0)
-                      && (opInfo_.padr == 0) && (opInfo_.padu == 0) && (opInfo_.padd == 0);
+    // Dma load: 1).im2col least cut largger than L1; 2).dilation > 255; 3).kernel > 255;
+    //           4).stride > 63; 5).pad > 255
+    isDmaFlag = static_cast<uint64_t>(opInfo_.kh * opInfo_.kw * getCi0()) > hardware_.l1Size ||
+                (opInfo_.dilations_h > MAX_DILATION_SIZE || opInfo_.dilations_w > MAX_DILATION_SIZE) ||
+                (opInfo_.kh > MAX_FILTER_SIZE || opInfo_.kw > MAX_FILTER_SIZE) ||
+                (opInfo_.stride_h > MAX_STRIDE_SIZE || opInfo_.stride_w > MAX_STRIDE_SIZE) ||
+                (opInfo_.padu > MAX_PADDING_SIZE || opInfo_.padd > MAX_PADDING_SIZE ||
+                opInfo_.padl > MAX_PADDING_SIZE || opInfo_.padr > MAX_PADDING_SIZE);
+    isDmaAubFlag = isDmaFlag && (opInfo_.padu != 0 || opInfo_.padd != 0 || opInfo_.padl != 0 || opInfo_.padr != 0);
+    isFmReadWithStrideFlag = isDmaFlag ? false : ((opInfo_.kh == 1) && (opInfo_.stride_h == 1) && (opInfo_.padl == 0)
+                      && (opInfo_.padr == 0) && (opInfo_.padu == 0) && (opInfo_.padd == 0));
     isSplitWAxis_ = (!isLoad2dFlag) && (opInfo_.hi == 1)
                     && (opInfo_.kh == 1) && (opInfo_.padu == 0) && (opInfo_.padd == 0);
     khDilated_ = (opInfo_.kh - 1) * opInfo_.dilations_h + 1;
@@ -347,7 +355,7 @@ void FastTiling::GetL1TilingRange(Tiling &tiling)
 
     // mAL1 range
     vector<uint32_t> mAL1Vector;
-    uint32_t mSize  =  (shapeInfo_.oShape5D[2] * shapeInfo_.oShape5D[3] + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
+    uint32_t mSize  =  (shapeInfo_.oShape5D.at(2) * shapeInfo_.oShape5D.at(3) + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
     uint32_t mSizePerCore = (mSize + tiling.mDim -1) / tiling.mDim;
     CalcCommFactor(MSIZE_PER_CORE, mSizePerCore, mAL1Vector);
     tilingRangeL1_.mAL1.assign(mAL1Vector.begin(), mAL1Vector.end());
@@ -356,16 +364,8 @@ void FastTiling::GetL1TilingRange(Tiling &tiling)
     vector<uint32_t> kAL1Vector;
     uint32_t kAL1Size = shapeInfo_.iShape5D.at(1); // 5hd[N,ci,Hi,Wi,c0]
     CalcCommFactor(kAL1Size, kAL1Size, kAL1Vector);
-    // for reusing fmap, KAL1 * ReduceA > KBL1 * ReduceB
-    vector<uint32_t>::iterator beginIter = kAL1Vector.end() - 1;
-    uint32_t kAL1Min = kAL1Size * reduceKAxisBL1_KhKwCi0_ / reduceKAxisAL1_KhDilKwDilCi0_;
-    for (auto iter = kAL1Vector.end() - 1; iter != kAL1Vector.begin(); iter--) {
-        if (*iter >= kAL1Min) {
-            beginIter = iter;
-        }
-    }
-    // c1 > kAL1 > kAL1Min
-    tilingRangeL1_.kAL1.assign(beginIter, kAL1Vector.end());
+    // release of constraints of reusing temporarily
+    tilingRangeL1_.kAL1.assign(kAL1Vector.begin(), kAL1Vector.end());
 
     // group range
     vector<uint32_t> groupVector;
@@ -381,20 +381,25 @@ void FastTiling::UpdateL1Data()
     uint32_t kBL1 = tilingRangeL1_.kAL1.at(l1Data_.kBL1_index);
     uint32_t mAL1 = tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
     uint32_t nBL1 = tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
-    if (isSplitWAxis_) {
-        uint32_t aL1Wo = (mAL1 * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(3) -1) / shapeInfo_.oShape5D.at(3);
-        uint32_t aL1Wi = aL1Wo * opInfo_.stride_w + kwDilated_;
-        al1HixWi =  opInfo_.hi * aL1Wi;
+    if (isDmaFlag) {
+        uint32_t mSize = mAL1 * CUBE_UNIT_16;
+        l1Data_.fmCurrent = kAL1 * reduceKAxisAL1_KhDilKwDilCi0_ * mSize * byteForDtype_.at(opInfo_.aType);
     } else {
-        uint32_t aL1Ho = (mAL1 * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(3) -1) / shapeInfo_.oShape5D.at(3);
-        uint32_t aL1Hi = aL1Ho * opInfo_.stride_h +  khDilated_;
-        if (aL1Hi > opInfo_.hi) {
-            aL1Hi = opInfo_.hi;
+        if (isSplitWAxis_) {
+            uint32_t aL1Wo = (mAL1 * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(2) -1) / shapeInfo_.oShape5D.at(2);
+            uint32_t aL1Wi = aL1Wo * opInfo_.stride_w + kwDilated_;
+            al1HixWi =  opInfo_.hi * aL1Wi;
+        } else {
+            uint32_t aL1Ho = (mAL1 * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(3) -1) / shapeInfo_.oShape5D.at(3);
+            uint32_t aL1Hi = aL1Ho * opInfo_.stride_h +  khDilated_;
+            if (aL1Hi > opInfo_.hi) {
+                aL1Hi = opInfo_.hi;
+            }
+            al1HixWi = (isFmReadWithStrideFlag ?
+                ((aL1Hi + opInfo_.stride_h -1) / opInfo_.stride_h) : aL1Hi) * opInfo_.wi;
         }
-        al1HixWi = (isFmReadWithStrideFlag ?
-            ((aL1Hi + opInfo_.stride_h -1) / opInfo_.stride_h) : aL1Hi) * opInfo_.wi;
+        l1Data_.fmCurrent = kAL1 * getCi0() * al1HixWi * byteForDtype_.at(opInfo_.aType);
     }
-    l1Data_.fmCurrent = kAL1 * CUBE_UNIT_16 * al1HixWi * byteForDtype_.at(opInfo_.aType);
     l1Data_.filter_current = kBL1 * getCi0() * opInfo_.kh * opInfo_.kw * nBL1 * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.bType);
     l1Data_.l1_current = l1Data_.fmCurrent + l1Data_.filter_current;
 }
@@ -481,10 +486,68 @@ void FastTiling::AddL1Data(const float nBL1number, const float mAL1number, const
     }
 }
 
+bool FastTiling::GetL1WithoutFilter(Tiling &tiling)
+{
+    /*
+     * when weight split K to L0B directly, kBL1 and nBL1 =0
+     * the decision FM in L1: increase KAL1 and then mAL1
+     */
+    uint32_t curKAL1Index = tilingRangeL1_.kAL1.size() - 1;
+    uint32_t curMAL1Index = tilingRangeL1_.mAL1.size() - 1;
+    l1Data_.kAL1_index = curKAL1Index;
+    l1Data_.mAL1_index = curMAL1Index;
+    UpdateL1Data();
+    bool trunFlag = true;
+    while (l1Data_.fmCurrent > hardware_.l1Size / TWO) {
+        if (l1Data_.kAL1_index == 0 && l1Data_.mAL1_index == 0) {
+            break;
+        }
+        if (trunFlag) {
+            if (l1Data_.kAL1_index != 0) {
+                l1Data_.kAL1_index--;
+            }
+            trunFlag = false;
+        } else {
+            if (l1Data_.mAL1_index != 0) {
+                l1Data_.mAL1_index--;
+            }
+            trunFlag = true;
+        }
+        UpdateL1Data();
+    }
+    // Assignment
+    // weight cannot load in L1 when weight k split
+    tiling.nBL1 = 0;
+    tiling.kBL1 = 0;
+    // judge if FM is full load in L1
+    if (tilingRangeL1_.kAL1.at(l1Data_.kAL1_index) == shapeInfo_.iShape5D.at(1) &&
+        tilingRangeL1_.mAL1.at(l1Data_.mAL1_index) == (shapeInfo_.oShape5D.at(SHAPE_INDEX_2) *
+        shapeInfo_.oShape5D.at(SHAPE_INDEX_3) + CUBE_UNIT_16 - 1) / CUBE_UNIT_16) {
+        tiling.mAL1Value = FULL_LOAD;
+        tiling.kAL1ci = tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
+        tiling.kAL1 = FULL_LOAD;
+    } else {
+        tiling.mAL1Value = tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
+        tiling.kAL1ci = tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
+        tiling.kAL1 = tiling.kAL1ci * reduceKAxisAL1_KhDilKwDilCi0_;
+    }
+    return true;
+}
+
 bool FastTiling::GetL1Tiling(Tiling &tiling)
 {
     // initialize
     GetL1TilingRange(tiling);
+
+    // when Weight K cannot full load in L1, weight will split to L0B directly
+    if (shapeInfo_.wShape5D.at(SHAPE_INDEX_2) >= THREE && shapeInfo_.wShape5D.at(SHAPE_INDEX_2) >= THREE) {
+        isSplitWeightKFlag = true;
+    }
+
+    if (isSplitWeightKFlag) {
+        CHECK_OP_FUNC(!GetL1WithoutFilter(tiling), return false, "Get L1Tiling Without Filter failed");
+        return true;
+    }
 
     float nBL1scale = static_cast<float>(hardware_.l0cToUbRate) / static_cast<float>(hardware_.l2Rate);
     float mAL1scale = static_cast<float>(hardware_.l0cToUbRate) / static_cast<float>(hardware_.l2Rate);
@@ -537,10 +600,17 @@ void FastTiling::AssignmentL1(Tiling& tiling) {
         tiling.kBL1ci = tilingRangeL1_.kAL1.at(l1Data_.kBL1_index);
         tiling.kBL1 = tiling.kBL1ci * reduceKAxisBL1_KhKwCi0_;
     }
-
-    tiling.mAL1Value = tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
-    tiling.kAL1ci = tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
-    tiling.kAL1 = tiling.kAL1ci * reduceKAxisAL1_KhDilKwDilCi0_;
+    if (tilingRangeL1_.kAL1.at(l1Data_.kAL1_index) == shapeInfo_.iShape5D.at(1) &&
+        tilingRangeL1_.mAL1.at(l1Data_.mAL1_index) == (shapeInfo_.oShape5D.at(SHAPE_INDEX_2) *
+        shapeInfo_.oShape5D.at(SHAPE_INDEX_3) + CUBE_UNIT_16 - 1) / CUBE_UNIT_16 && tiling.nBL1 != FULL_LOAD) {
+        tiling.mAL1Value = FULL_LOAD;
+        tiling.kAL1ci = tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
+        tiling.kAL1 = FULL_LOAD;
+    } else {
+        tiling.mAL1Value = tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
+        tiling.kAL1ci = tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
+        tiling.kAL1 = tiling.kAL1ci * reduceKAxisAL1_KhDilKwDilCi0_;
+    }
 }
 
 /**
@@ -601,9 +671,20 @@ void FastTiling::GetL0TilingRange(const Tiling& tiling)
     CalcCommFactor(tiling.groupAL1, tiling.groupAL1, groupVectorL0);
     tilingRangeL0_.groupL0.assign(groupVectorL0.begin(), groupVectorL0.end());
 
-    // get l0 m range
+    // get l0 m range and kA range
     vector<uint32_t> mVectorL0;
-    CalcCommFactor(tiling.mAL1Value, tiling.mAL1Value, mVectorL0);
+    vector<uint32_t> kAVectorL0;
+    uint32_t mMaxAvail = (shapeInfo_.oShape5D.at(2) * shapeInfo_.oShape5D.at(3) + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
+    uint32_t kAMaxAvail = shapeInfo_.iShape5D[1];
+    if (tiling.kAL1 == FULL_LOAD){
+        CalcCommFactor(mMaxAvail, mMaxAvail, mVectorL0);
+        CalcCommFactor(kAMaxAvail, kAMaxAvail, kAVectorL0);
+        tilingRangeL0_.kAL0.assign(kAVectorL0.begin(), kAVectorL0.end());
+    } else {
+        CalcCommFactor(tiling.mAL1Value, tiling.mAL1Value, mVectorL0);
+        CalcCommFactor(tiling.kAL1ci, tiling.kAL1ci, kAVectorL0);
+        tilingRangeL0_.kAL0.assign(kAVectorL0.begin(), kAVectorL0.end());
+    }
     // no Load2dFlag case, mL0 can noly be even or 1
     // to do: only support range Power of 2 to reduce the range space
     if (!isLoad2dFlag) {
@@ -619,8 +700,8 @@ void FastTiling::GetL0TilingRange(const Tiling& tiling)
         tilingRangeL0_.mL0.assign(mVectorL0.begin(), mVectorL0.end());
     }
 
+    // get l0 n range and kB range
     vector<uint32_t> nVectorL0;
-    vector<uint32_t> kAVectorL0;
     vector<uint32_t> kBVectorL0;
     uint32_t nMaxAvail = (shapeInfo_.oShape5D[1] + tiling.nDim -1) / tiling.nDim;
     uint32_t kBMaxAvail = shapeInfo_.iShape5D[1];
@@ -630,36 +711,58 @@ void FastTiling::GetL0TilingRange(const Tiling& tiling)
         CalcCommFactor(nMaxAvail, nMaxAvail, nVectorL0);
         tilingRangeL0_.nL0.assign(nVectorL0.begin(), nVectorL0.end());
 
-        CalcCommFactor(tiling.kAL1ci, tiling.kAL1ci, kAVectorL0);
         CalcCommFactor(kBMaxAvail, kBMaxAvail, kBVectorL0);
-        tilingRangeL0_.kAL0.assign(kAVectorL0.begin(), kAVectorL0.end());
         tilingRangeL0_.kBL0.assign(kBVectorL0.begin(), kBVectorL0.end());
     } else if (tiling.nBL1 == 0) {
-        // weight can load from ddr to l1 once, and can load from l1 to l0 once -->
-        // weight load from ddr to l0, directly.
-        // when weight is FULL_LOAD DDR -> L0B, n,k range equal to maxAvail
-        tilingRangeL0_.nL0.push_back(nMaxAvail);
+        if (isSplitWeightKFlag) {
+            GetRangeL0BWeightSplit(tiling, nVectorL0, kBVectorL0, nMaxAvail, kBMaxAvail);
+        } else {
+            // weight can load from ddr to l1 once, and can load from l1 to l0 once -->
+            // weight load from ddr to l0, directly.
+            // when weight is FULL_LOAD DDR -> L0B, n,k range equal to maxAvail
+            tilingRangeL0_.nL0.push_back(nMaxAvail);
 
-        CalcCommFactor(tiling.kAL1ci, tiling.kAL1ci, kAVectorL0);
-        tilingRangeL0_.kAL0.assign(kAVectorL0.begin(), kAVectorL0.end());
-        tilingRangeL0_.kBL0.push_back(kBMaxAvail);
+            tilingRangeL0_.kBL0.push_back(kBMaxAvail);
+        }
     } else {
         CalcCommFactor(tiling.nBL1Value, tiling.nBL1Value, nVectorL0);
         tilingRangeL0_.nL0.assign(nVectorL0.begin(), nVectorL0.end());
 
-        CalcCommFactor(tiling.kAL1ci, tiling.kAL1ci, kAVectorL0);
         CalcCommFactor(tiling.kBL1ci, tiling.kBL1ci, kBVectorL0);
-        tilingRangeL0_.kAL0.assign(kAVectorL0.begin(), kAVectorL0.end());
         tilingRangeL0_.kBL0.assign(kBVectorL0.begin(), kBVectorL0.end());
     }
 
-    if (tiling.nBL1 == 0) {
+    if (tiling.nBL1 == 0 && !isSplitWeightKFlag) {
         tilingRangeL0_.kL0.assign(tilingRangeL0_.kAL0.begin(), tilingRangeL0_.kAL0.end());
     } else {
         for (vector<uint32_t>::const_iterator kIterator = tilingRangeL0_.kAL0.begin();
              kIterator != tilingRangeL0_.kAL0.end(); ++kIterator) {
             if (find(tilingRangeL0_.kBL0.begin(), tilingRangeL0_.kBL0.end(), *kIterator) != tilingRangeL0_.kBL0.end()) {
                 tilingRangeL0_.kL0.push_back(*kIterator);
+            }
+        }
+    }
+}
+
+void FastTiling::GetRangeL0BWeightSplit(const Tiling& tiling, vector<uint32_t>& nVectorL0,
+                                        vector<uint32_t>& kBVectorL0, const uint32_t nMaxAvail,
+                                        const uint32_t kBMaxAvail) {
+    if (tiling.kAL1 == FULL_LOAD) {
+        // FM full_load, weight split k to L0B directly, no reuse relation
+        CalcCommFactor(nMaxAvail, nMaxAvail, nVectorL0);
+        tilingRangeL0_.nL0.assign(nVectorL0.begin(), nVectorL0.end());
+
+        CalcCommFactor(kBMaxAvail, kBMaxAvail, kBVectorL0);
+        tilingRangeL0_.kBL0.assign(kBVectorL0.begin(), kBVectorL0.end());
+    } else {
+        // weight split k to L0B directly, FM not full_load, it only support reuse FM now
+        CalcCommFactor(nMaxAvail, nMaxAvail, nVectorL0);
+        tilingRangeL0_.nL0.assign(nVectorL0.begin(), nVectorL0.end());
+
+        CalcCommFactor(kBMaxAvail, kBMaxAvail, kBVectorL0);
+        for (auto it : kBVectorL0) {
+            if (shapeInfo_.iShape5D[1] / it >= shapeInfo_.iShape5D[1] / tiling.kAL1ci) {
+                tilingRangeL0_.kBL0.push_back(it);
             }
         }
     }
@@ -698,7 +801,7 @@ bool FastTiling::GetL0Tiling(Tiling& tiling)
     GetL0TilingRange(tiling);
     UpdateL0Data();
 
-    if (tiling.nBL1 == 0) {
+    if (tiling.nBL1 == 0 && !isSplitWeightKFlag) {
         WeightFullLoad();
     } else {
         WeightL1ToL0();
@@ -768,6 +871,9 @@ void FastTiling::WeightL1ToL0()
                 AddkL0();
             }
         }
+        mTmp = tilingRangeL0_.mL0.at(l0Data_.mL0Index);
+        nTmp = tilingRangeL0_.nL0.at(l0Data_.nL0Index);
+        kTmp = tilingRangeL0_.kL0.at(l0Data_.kL0Index);
     }
 }
 
@@ -782,20 +888,27 @@ void FastTiling::WeightL1ToL0Reset(Tiling &tiling)
         // tiling.kBL1 is tiling.kBL1ci * reduceKAxisAL1_KhDilKwDilCi0_
         tiling.kBL1 = 0;
         // weight extra ->(/k) m ->(/)
-        uint32_t mAExtraSpace = l0Data_.l0BCurrent / reduceKAxisAL1_KhDilKwDilCi0_ /
-                                tiling.kAL1ci / tilingRangeL0_.mL0.at(l0Data_.mL0Index);
-        tiling.mAL1Value += mAExtraSpace * tilingRangeL0_.mL0.at(l0Data_.mL0Index);
+        if (tiling.kAL1 != FULL_LOAD) {
+            uint32_t mAExtraSpace = l0Data_.l0BCurrent / reduceKAxisAL1_KhDilKwDilCi0_ /
+                tiling.kAL1ci / tilingRangeL0_.mL0.at(l0Data_.mL0Index);
+            tiling.mAL1Value += mAExtraSpace * tilingRangeL0_.mL0.at(l0Data_.mL0Index);
+            uint32_t mAL1AvailMax = (shapeInfo_.oShape5D.at(SHAPE_INDEX_2) *
+                shapeInfo_.oShape5D.at(SHAPE_INDEX_3) + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
+            if (tiling.mAL1Value > mAL1AvailMax) {
+                tiling.mAL1Value = mAL1AvailMax;
+            }
+        }
     }
 }
 
 void FastTiling::AssignmentL0(Tiling &tiling)
 {
     // set tiling L0
-    uint32_t reduceKAxisL0_KhKwCi0_ = getCi0() * opInfo_.kh * opInfo_.kw;
-    tiling.kA = tilingRangeL0_.kL0.at(l0Data_.kL0Index) * reduceKAxisL0_KhKwCi0_ / getCi0();
+    uint32_t reduceKAxisL0_khkwCi0_ = getCi0() * opInfo_.kh * opInfo_.kw;
+    tiling.kA = tilingRangeL0_.kL0.at(l0Data_.kL0Index) * reduceKAxisL0_khkwCi0_ / getCi0();
     tiling.mA = tilingRangeL0_.mL0.at(l0Data_.mL0Index);
-    tiling.kB = tiling.nBL1 == 0 ? FULL_LOAD : tiling.kA;
-    tiling.nB = tiling.nBL1 == 0 ? FULL_LOAD : tilingRangeL0_.nL0.at(l0Data_.nL0Index);
+    tiling.kB = (tiling.nBL1 == 0 && !isSplitWeightKFlag) ? FULL_LOAD : tiling.kA;
+    tiling.nB = (tiling.nBL1 == 0 && !isSplitWeightKFlag) ? FULL_LOAD : tilingRangeL0_.nL0.at(l0Data_.nL0Index);
     tiling.mC = tiling.mA;
     if (tiling.nB != FULL_LOAD) {
         tiling.nC = tiling.nB;
@@ -804,7 +917,11 @@ void FastTiling::AssignmentL0(Tiling &tiling)
         tiling.nC = tilingRangeL0_.nL0.at(l0Data_.nL0Index);
     }
     // special case, set L1.
-    tiling.mAL1 = tiling.mAL1Value / tiling.mA;
+    if (tiling.kAL1 == FULL_LOAD) {
+        tiling.mAL1 = FULL_LOAD;
+    } else {
+        tiling.mAL1 = tiling.mAL1Value / tiling.mA;
+    }
     // nBL1 is FULL_LOAD, pass it to schedule.
     if (tiling.nBL1 != FULL_LOAD) {
         tiling.nBL1 = tiling.nBL1Value == 0 ? 0 : tiling.nBL1Value / tiling.nB;
@@ -863,14 +980,26 @@ void FastTiling::AddmL0()
 
 void FastTiling::UpdateUBData()
 {
+    uint32_t aUbHixWi;
     uint32_t kAub = tilingRangeUB_.kAub.at(ubData_.kAubIndex);
     uint32_t mAub = tilingRangeUB_.mAub.at(ubData_.mAubIndex);
     uint32_t ncFactor = tilingRangeUB_.ncFactor.at(ubData_.ncFactorIndex);
     uint32_t mcFactor = tilingRangeUB_.mcFactor.at(ubData_.mcFactorIndex);
-
-    uint32_t tmpPreUbCurrent = kAub * reduceKAxisAL1_KhDilKwDilCi0_ * mAub
-                               * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.aType);
-    uint32_t tmpPostUbCurrent = ncFactor * mcFactor * 256;
+    if (isSplitWAxis_) {
+        uint32_t aUbWo = (mAub * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(2) -1) / shapeInfo_.oShape5D.at(2);
+        uint32_t aUbWi = aUbWo * opInfo_.stride_w + kwDilated_;
+        aUbHixWi =  opInfo_.hi * aUbWi;
+    } else {
+        uint32_t aUbHo = (mAub * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(3) -1) / shapeInfo_.oShape5D.at(3);
+        uint32_t aUbHi = aUbHo * opInfo_.stride_h +  khDilated_;
+        if (aUbHi > opInfo_.hi) {
+            aUbHi = opInfo_.hi;
+        }
+        aUbHixWi = (isFmReadWithStrideFlag ?
+            ((aUbHi + opInfo_.stride_h -1) / opInfo_.stride_h) : aUbHi) * opInfo_.wi;
+    }
+    uint32_t tmpPreUbCurrent = kAub * getCi0() * aUbHixWi * byteForDtype_.at(opInfo_.aType);
+    uint32_t tmpPostUbCurrent = ncFactor * mcFactor * 256 * byteForDtype_.at(opInfo_.cType);
 
     ubData_.preUbCurrent = static_cast<uint32_t>(ceil(opInfo_.preFusionUbUtilize * tmpPreUbCurrent));
     ubData_.postUbCurrent = static_cast<uint32_t>(ceil(opInfo_.postFusionUbUtilize * tmpPostUbCurrent));
@@ -910,6 +1039,12 @@ bool FastTiling::GetUBTiling(Tiling& tiling)
 {
     // initialize
     GetUBTilingRange(tiling);
+    // If bias
+    // todo: v220/v300, cal bias in L1
+    if (opInfo_.biasFlag) {
+        uint32_t biasSize = shapeInfo_.iShape5D.at(1) * getCi0() * byteForDtype_.at(opInfo_.biasType);
+        hardware_.ubSize = hardware_.ubSize - biasSize;
+    }
     UpdateUBData();
     // get tiling front fusion
     while (ubData_.preUbCurrent <= hardware_.ubSize) {

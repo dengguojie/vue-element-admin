@@ -123,9 +123,25 @@ class CheckTiling {
                     return INVALID;
                 } else if (IsWeightReused()) {
                     // weight reused
-                    printf("Tiling strategy is currently not supported "
-                            "when weight is reused!\n");
+                    if (!IsWeightDirectIntoL0B() && IsKBOneTimeskBL1() && !IsKAOneTimeskAL1()) {
+                        return VALID;
+                    }
+                    printf("Tiling strategy is currently not supported; "
+                            "when weight is reused, only support FM KAL1 split and weight KBL1 load OneTime\n");
                     return NOTSUPPORTNOW;
+                }
+            } else if (!IsWeightFullLoad() && IsFMFullLoad())
+            {
+                if (IsWeightDirectIntoL0B()) {
+                    return VALID;
+                } else {
+                    if (IsKBOneTimeskBL1()) {
+                        return VALID;
+                    } else {
+                        printf("Tiling strategy is currently not supported "
+                            "when FM FULL_LOAD, Wight not FULL_LOAD, weight to L1 KBOneTime then L0!\n");
+                        return INVALID;
+                    }
                 }
             } else {
                 printf("Tiling strategy is currently not supported!\n");

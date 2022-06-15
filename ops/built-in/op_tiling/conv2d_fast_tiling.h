@@ -62,6 +62,11 @@ const uint32_t FULL_LOAD = UINT32_MAX;
 const uint32_t FOUR = 4;
 const uint32_t THREE = 3;
 const uint32_t TWO = 2;
+const uint32_t SHAPE_INDEX_2 = 2;
+const uint32_t SHAPE_INDEX_3 = 3;
+const uint32_t SPLIT_THRESHOLD = 4;
+const uint32_t FM_REUSE = 1;
+const uint32_t WEIGHT_REUSE = 2;
 const float HALF = 0.5;
 const uint32_t MSIZE_PER_CORE = 4096;
 const int64_t MAX_WIDTH_SIZE = 4096;
@@ -70,6 +75,7 @@ const int64_t MAX_HEIGHT_SIZE = 100000;
 const int64_t MIN_HEIGHT_SIZE = 1;
 const int64_t MAX_PADDING_SIZE = 255;
 const int64_t MAX_DILATION_SIZE = 255;
+const int64_t MAX_FILTER_SIZE = 255;
 const int64_t MAX_STRIDE_SIZE = 63;
 
 struct TilingRangeL1
@@ -341,11 +347,15 @@ private:
                        BlockDimSize& dataPerCore);
     void GetL1TilingRange(Tiling &tiling);
     bool GetL1Tiling(Tiling &tiling);
+    bool GetL1WithoutFilter(Tiling &tiling);
     void AssignmentL1(Tiling &tiling);
     void AddL1Data(const float nBL1number, const float mAL1number, const float kAL1number);
     // get L0 dim range
     void WeightFullLoad();
     void GetL0TilingRange(const Tiling& tiling);
+    void GetRangeL0BWeightSplit(const Tiling& tiling, vector<uint32_t>& nVectorL0,
+                                vector<uint32_t>& kBVectorL0, const uint32_t nMaxAvail,
+                                const uint32_t kBMaxAvail);
     // infer L0 Tiling
     bool GetL0Tiling(Tiling& tiling);
     void WeightL1ToL0Reset(Tiling &tiling);
@@ -395,8 +405,12 @@ private:
     // conv2d case status
     bool isMultiGroupL0cFlag = false;
     bool isLoad2dFlag = false;
+    bool isDmaFlag = false;
+    bool isDmaAubFlag = false;
     bool isFmReadWithStrideFlag = false;
     bool isQuantScene_ = false; // flag for quant scene
+    bool isSplitWeightKFlag = false; // flag for weight K can not full load in L1
+    uint32_t ReusingType = FM_REUSE;
 
     const std::unordered_map<ge::DataType, uint32_t> byteForDtype_ = {
         {ge::DataType::DT_FLOAT, static_cast<uint32_t>(FastTilingValue::FAST_TILING_VALUE_4)},
