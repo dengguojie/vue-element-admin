@@ -29,6 +29,7 @@ from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import get_context
 from tbe.common.utils import log
 from tbe.common.utils.op_util import op_util_conv2d
+from tbe.common.utils.op_util.op_util_conv2d import BinaryInfoKey
 
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_te_var
@@ -755,11 +756,21 @@ class Conv2dTiling(CubeTilingOp):
         """
         get cache tiling
         """
+        def get_load_mode():
+            loadmode_map = {BinaryInfoKey.LOAD3D_FLAG: op_util_conv2d.LoadModeValue.MODE_3D,
+                            BinaryInfoKey.LOAD2D_FLAG: op_util_conv2d.LoadModeValue.MODE_2D,
+                            BinaryInfoKey.DMA_FLAG: op_util_conv2d.LoadModeValue.MODE_DMA}
+            loadmode = int(0)
+            for key, mode in loadmode_map.items():
+                if ConvParam.option_dict.get(key, 0):
+                    loadmode = mode
+
+            return loadmode
+
         def calc_tiling_key(attach_map):
             attach_map = copy.deepcopy(attach_map)
             binary_info = op_util_conv2d.get_binary_infos()
-            fmap_loadtol0a_mode = 1 if \
-                binary_info.get(op_util_conv2d.BinaryInfoKey.LOAD2D_FLAG) else 0
+            fmap_load_mode = get_load_mode()
             tiling_key = int(0)
             tiling_key |= attach_map[op_util_conv2d.BinaryTilingKey.AL1_ATTACH_FLAG] << \
                           op_util_conv2d.KernelIdKeyOffset.OFFSET_AL1
@@ -767,7 +778,7 @@ class Conv2dTiling(CubeTilingOp):
                           op_util_conv2d.KernelIdKeyOffset.OFFSET_BL1
             tiling_key |= attach_map[op_util_conv2d.BinaryTilingKey.BL0_ATTACH_FLAG] << \
                           op_util_conv2d.KernelIdKeyOffset.OFFSET_BL0
-            tiling_key |= fmap_loadtol0a_mode << op_util_conv2d.KernelIdKeyOffset.OFFSET_LOAD2D
+            tiling_key |= fmap_load_mode << op_util_conv2d.KernelIdKeyOffset.OFFSET_LOAD2D
             return tiling_key
 
         cache_tiling_all = {}

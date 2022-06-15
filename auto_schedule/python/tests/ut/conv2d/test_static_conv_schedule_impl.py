@@ -427,7 +427,7 @@ def test_static_conv_schedule_blo_buffer_tile(test_arg):
 
 print("adding static_conv_schedule_blo_buffer_tile")
 ut_case.add_cust_test_func("Ascend310P3",test_func=test_static_conv_schedule_blo_buffer_tile)
-ut_case.add_cust_test_func(test_func=test_static_conv_schedule_quant_fusion)
+# ut_case.add_cust_test_func(test_func=test_static_conv_schedule_quant_fusion)
 ut_case.add_cust_test_func(test_func=run_v300_aipp_fusion_cases)
 
 if __name__ == '__main__':

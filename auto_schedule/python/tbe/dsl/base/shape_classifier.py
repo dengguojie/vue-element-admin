@@ -34,6 +34,8 @@ from tbe.dsl.base.classifier import classify_concat
 from tbe.dsl.base.classifier import classify_split
 from tbe.dsl.base.classifier import classify_transdata
 from tbe.dsl.base.classifier import classify_tuple_reduce
+from tbe.dsl.base.classifier import classify_conv2d
+from tbe.common.register import operation_func_mgr
 from .expr_compare import is_true
 
 
@@ -50,6 +52,7 @@ CONCAT = "concat"
 TRANSDATA = "transdata"
 SPLIT = "split"
 TUPLE_REDUCE = "tuple_reduce"
+CONV2D = "Convolution"
 
 
 CLASSIFY_SAME_PATTERN_MAP = {
@@ -60,6 +63,7 @@ CLASSIFY_SAME_PATTERN_MAP = {
 }
 
 
+@operation_func_mgr.register_classify_processor("Convolution", support_type="all")
 def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify
@@ -99,5 +103,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_transdata(ins)
     if mode == TUPLE_REDUCE:
         return classify_tuple_reduce(ins, extra_params)
+    if mode == CONV2D:
+        return classify_conv2d(ins, extra_params)
 
     return [ins]

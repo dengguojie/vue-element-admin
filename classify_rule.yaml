@@ -2474,6 +2474,7 @@ cube-conv2d-python:
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_conv2d.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_factory.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
+      - auto_schedule/python/tbe/dsl/base/classifier/conv2d_classifier.py
     unrelease:
   llt:
     ut_check: true

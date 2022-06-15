@@ -439,6 +439,7 @@ class DynamicShape:
         self.w_dynamic = "fmap_w" in self.var_map
         self.hw_dynamic = self.h_dynamic or self.w_dynamic
         self.n_dynamic = "batch_n" in self.var_map
+        self.conv_param = conv_param
 
     def init_cache_tiling(self, tiling_case):
         if not self.binary_mode or not tiling_case:
@@ -506,12 +507,18 @@ class DynamicShape:
         for var_name, var_range in op_util_conv2d.TILINGDATA_KEY_RANGE_MAP.items():
             sch.set_var_range(get_te_var(var_name).get_tvm_var(), *var_range)
 
+    def handle_var_value_binary(self, sch):
+        for key, value in self.conv_param.src_shape_attr.items():
+            sch.set_var_value(self.cache_tiling.get(key), value)
+
     def handle_var_range(self, sch):
         """
         Set var range for hi, ho, wi, wo, batch.
         """
         if self.binary_mode:
-            return self.handle_var_range_binary(sch)
+            self.handle_var_range_binary(sch)
+            self.handle_var_value_binary(sch)
+            return
 
         var_range = self.var_range
         var_map = self.var_map

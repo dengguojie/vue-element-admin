@@ -29,3 +29,4 @@ from .split_classifier import classify as classify_split
 from .transdata.transdata_classifier import classify as classify_transdata
 from .slice_classifier import classify_slice
 from .tuple_reduce_classifier import classify as classify_tuple_reduce
+from .conv2d_classifier import classify as classify_conv2d

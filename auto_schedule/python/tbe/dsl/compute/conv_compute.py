@@ -487,6 +487,8 @@ class ConvParam:
         cls.sparse_4to2_flag = False
         cls.impl_mode = ""
         cls.cache_tiling_flag = False
+        cls.option_dict = {}
+        cls.src_shape_attr = {}
         cls.fusion_para = {"input_memory_type": [],
                            "output_memory_type": [],
                            "slice_offset": (0, 0, 0, 0, 0),
@@ -542,6 +544,8 @@ class ConvParam:
     impl_mode = ""
     cache_tiling_flag = False
     multi_conv2d_fusion_flag = False
+    option_dict = {}
+    src_shape_attr = {}
 
 
 def shape_to_list(shape):
@@ -2568,6 +2572,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     ConvParam.fusion_para["fmap_l1_addr_flag"] = para_dict["fusion_para"].get("fmap_l1_addr_flag", "nothing")
     ConvParam.fusion_para["fmap_l1_valid_size"] = para_dict["fusion_para"].get("fmap_l1_valid_size", -1)
     ConvParam.fusion_para["lxfusion_enable_flag"] = lxfusion_enable_flag
+    ConvParam.option_dict = optim_dict
 
     slice_offset = para_dict["fusion_para"]["slice_offset"]
     ConvParam.fusion_para["slice_offset"] = slice_offset if slice_offset else (0, 0, 0, 0, 0)

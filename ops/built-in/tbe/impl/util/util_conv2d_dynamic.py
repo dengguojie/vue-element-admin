@@ -41,6 +41,8 @@ W_DIM = 3
 DYNAMIC_FLAG = -1
 SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
+LOAD2D_H_VALUE = 1
+LOAD2D_W_VALUE = 1
 
 
 def get_format_attr(w_shape, w_format):
@@ -359,6 +361,7 @@ class Conv2dParaProcess(CubeParaProcess):
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
         self.cache_tiling_flag = False
+        self.ori_shape_attr = {}
         self.valid_paras = {
             "n_min": 0,
             "hw_min": 1,
@@ -581,9 +584,9 @@ class Conv2dParaProcess(CubeParaProcess):
         return {"in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
                 "w_shape": w_shape_nchw, "group_para": group_para,
                 "correct_range_flag": correct_range_flag,
-                "new_in_range": new_in_range_nchw}
+                "new_in_range": new_in_range_nchw, "ori_shape_attr": self.ori_shape_attr}
 
-    def cache_tiling_paras_process(self):
+    def cache_tiling_paras_process(self, options):
         """
         config paras for cachetiling
         """
@@ -591,8 +594,13 @@ class Conv2dParaProcess(CubeParaProcess):
             for i in range(op_util_conv2d.TilingDataIdx.TILINGDATA_IDX_END):
                 if not operation.get_te_var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i)):
                     operation.var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i))
+        def generate_ori_shape_attr():
+            if options.get("kernel"):
+                self.ori_shape_attr[op_util_conv2d.TilingDataKey.K_H] = LOAD2D_H_VALUE
+                self.ori_shape_attr[op_util_conv2d.TilingDataKey.K_W] = LOAD2D_W_VALUE
 
         generate_op_var()
+        generate_ori_shape_attr()
         dilation_h_var = get_te_var(op_util_conv2d.TilingDataKey.DILATION_H).get_tvm_var()
         dilation_w_var = get_te_var(op_util_conv2d.TilingDataKey.DILATION_W).get_tvm_var()
         stride_h_var = get_te_var(op_util_conv2d.TilingDataKey.STRIDE_H).get_tvm_var()
@@ -626,7 +634,8 @@ class Conv2dParaProcess(CubeParaProcess):
         return {"in_shape_nc1hwc0": input_shape_5hd, "w_shape_frac_z": w_shape_fracz,
                 "w_shape": w_shape, "group_para": group_para,
                 "correct_range_flag": False,
-                "new_in_range": [(1, None), (1, None), (1, None), (1, None)]}
+                "new_in_range": [(1, None), (1, None), (1, None), (1, None)],
+                "ori_shape_attr": self.ori_shape_attr}
 
 
     def config_paras(self, options=None):
@@ -635,7 +644,7 @@ class Conv2dParaProcess(CubeParaProcess):
         """
         self.check_dynamic_mode()
         if self.cache_tiling_flag:
-            param = self.cache_tiling_paras_process()
+            param = self.cache_tiling_paras_process(options)
         else:
             param = self.check_paras()
         if self.is_tensor is False:
@@ -659,4 +668,5 @@ class Conv2dParaProcess(CubeParaProcess):
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
                 "correct_range_flag": param.get("correct_range_flag", False), "new_in_range": param.get("new_in_range"),
-                "optim_dict": optim_dict, "cache_tiling_flag": self.cache_tiling_flag}
+                "optim_dict": optim_dict, "cache_tiling_flag": self.cache_tiling_flag,
+                "ori_shape_attr": param.get("ori_shape_attr")}

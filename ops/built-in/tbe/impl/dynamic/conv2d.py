@@ -207,8 +207,8 @@ def set_default_para():
 
 @register_op_compute("Conv2D", op_mode="dynamic", support_fusion=True)
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (tvm.tensor.Tensor, NONETYPE),
-                             (tvm.tensor.Tensor, NONETYPE), dict, (tuple, list), (tuple, list), (tuple, list),
-                             int, str, int, str, str, dict)
+                             (tvm.tensor.Tensor, NONETYPE), dict, (tuple, list, NONETYPE), (tuple, list, NONETYPE),
+                             (tuple, list, NONETYPE), (int, NONETYPE), str, (int, NONETYPE), str, str, dict)
 def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
                           dsl_flag=True, options=None):
@@ -321,7 +321,8 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                    "correct_range_flag": paras.get("correct_range_flag", False),
                    "new_in_range": paras.get("new_in_range"),
                    "ori_tensors": _collect_org_tensors(ori_paras),
-                   "cache_tiling_flag": paras.get("cache_tiling_flag")},
+                   "cache_tiling_flag": paras.get("cache_tiling_flag"),
+                   "ori_shape_attr": paras.get("ori_shape_attr")},
                   optim_dict=paras.get("optim_dict"),
                   dsl_flag=dsl_flag)
 
@@ -377,11 +378,11 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     -------
     None
     """
-
+    option_dict = set_default_para().get("optim_dict")
     with tbe_base.compute():
         res = _conv2d_compute(
             inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-            groups, data_format, offset_x, kernel_name, dsl_flag=False)
+            groups, data_format, offset_x, kernel_name, False, option_dict)
 
     with tvm.target.cce():
         sch = auto_schedule(res.get("op_res"))

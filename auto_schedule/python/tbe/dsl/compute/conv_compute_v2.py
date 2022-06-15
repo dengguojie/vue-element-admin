@@ -68,9 +68,16 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
             _input_nd_mode = fmap.op.tag.split("_")[0]
         return _input_nd_flag, _input_nd_mode
 
+    def get_fmpload_mode(mode):
+        load_mode = [BinaryInfoKey.LOAD2D_FLAG, BinaryInfoKey.LOAD3D_FLAG, BinaryInfoKey.DMA_FLAG]
+        load_mode_vale = [value for key, value in optim_dict.items() if key in load_mode]
+        if load_mode_vale != [] and sum(load_mode_vale) != 1:
+            err_main.raise_err_message_cube("only support one load mode!")
+        return optim_dict.get(mode, False)
+
     def get_load2d_flag():
         if conv_param.binary_mode:
-            return get_binary_infos()[BinaryInfoKey.LOAD2D_FLAG]
+            return get_fmpload_mode(BinaryInfoKey.LOAD2D_FLAG)
 
         if lxfusion_para["l1_fusion_type"] in (0, 1) or lxfusion_para["input_memory_type"][0] == 1:
             return False
@@ -641,6 +648,14 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         return res
 
+
+    def update_src_shape_attr():
+        """
+        get ori shape and attr for binary mode
+        """
+        if conv_param.binary_mode:
+            conv_param.src_shape_attr = para_dict.get("ori_shape_attr")
+
     #=================parse_parameters===========================
     # common parameters
     fmap_dtype, weight_dtype = fmap.dtype, weight.dtype
@@ -661,6 +676,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     out_height = conv_param.h_out
     out_width = conv_param.w_out
+
+    update_src_shape_attr()
 
     # group conv parameters
     group = para_dict["group"]

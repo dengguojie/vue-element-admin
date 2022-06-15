@@ -267,6 +267,14 @@ class KernelIdKeyOffset(object):
     OFFSET_LOAD2D = 15 # 15-16
 
 
+class LoadModeValue(object):
+    """
+    loadmode
+    """
+    MODE_3D = 0
+    MODE_2D = 1
+    MODE_DMA = 2
+
 # tiling template support list
 TILING_ATTACH_SUPPORT_LIST = [
     {BinaryTilingKey.AL1_ATTACH_FLAG: AttachMode.ATTACH_FULL_LOAD,
@@ -304,6 +312,8 @@ class BinaryInfoKey(object):
     binary compile feature flag.
     """
     LOAD2D_FLAG = "load2d_flag"
+    LOAD3D_FLAG = "load3d_flag"
+    DMA_FLAG = "dma_flag"
 
 
 def get_binary_infos():
