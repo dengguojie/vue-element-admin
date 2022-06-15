@@ -41,6 +41,7 @@ softmax_cross_logits_nd = [2105352]
 # softmax_logits_2d_csize includes shapes that auto tiling can not support
 softmax_logits_2d_csize = [11760, 14320, 13768]
 
+
 def get_mask_fp16_skip_one(length):
     """
     calculate MASK in cce for skip one half
@@ -282,9 +283,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
                 ib_expr.emit(tvm.call_extern(
                     tmp_buf.dtype, intrin_cmd,
                     tmp_buf.access_ptr("rw", offset=sub_repeat_time * factor),
-                    tmp_buf.access_ptr("r",
-                                       offset=sub_repeat_time
-                                       * vector_inst_one_repeat_size),
+                    tmp_buf.access_ptr("r", offset=sub_repeat_time * vector_inst_one_repeat_size),
                     1, *repeat_stride))
             if sub_repeat_time > 1 or (sub_repeat_time == 1 and sub_remain_size > 0):
                 if sub_remain_size > 0:
@@ -625,13 +624,19 @@ def logits_2d_schedule(res, input_tensors):
     if broadcast_a_to_b_flag and csize_not_align_shape_flag:
         return None, []
 
+    impl_mode = input_tensors[0].op.attrs["impl_mode"] if input_tensors[0].op.attrs else "high_performance"
+    is_high_performance = (impl_mode == "high_performance")
+
+    # not is_high_performance case need align shape
+    new_shape = shape.copy()
+    if not is_high_performance:
+        new_shape[-1] = (new_shape[-1] + min_num_size_one_core - 1) // min_num_size_one_core * min_num_size_one_core
+
     split_factor, npart_factor = get_ub_tiling_2d(
-        shape, npart_factor, block_split_inner_size,
+        new_shape, npart_factor, block_split_inner_size,
         min_num_size_one_core, max_ub_count)
 
-    is_need_workspace = (npart_factor > 1 and
-                         split_factor < min_num_size_one_core) or\
-        c_size > max_ub_count
+    is_need_workspace = (npart_factor > 1 and split_factor < min_num_size_one_core) or c_size > max_ub_count
     if is_need_workspace:
         return logits_2d_schedule_large_axis_workspace(res, input_tensors)
 
@@ -652,16 +657,16 @@ def logits_2d_schedule(res, input_tensors):
     compute_at_axis = res_outer
 
     for tensor in input_tensor_dst_tensor_map:
-        tensor_ub = input_tensor_buffer_tensor_map[tensor]
+        tensor_ub = input_tensor_buffer_tensor_map.get(tensor)
         sch[tensor_ub].compute_at(sch[out], compute_at_axis)
 
     for tensor in mid_out_tensor_list:
-        tensor_ub = mid_out_buffer_tensor_list[tensor]
+        tensor_ub = mid_out_buffer_tensor_list.get(tensor)
         sch[tensor].compute_at(sch[out], compute_at_axis)
         sch[tensor_ub].compute_at(sch[out], compute_at_axis)
 
     for tensor in mid_tensor_dst_tensor_map:
-        tensor_ub = mid_tensor_buffer_tensor_map[tensor]
+        tensor_ub = mid_tensor_buffer_tensor_map.get(tensor)
         sch[tensor_ub].compute_at(sch[out], compute_at_axis)
 
     sch[out_ub].compute_at(sch[out], compute_at_axis)
@@ -669,7 +674,7 @@ def logits_2d_schedule(res, input_tensors):
     phony_tensor_list = [reduce_ext]
 
     for i in input_tensor_buffer_tensor_map:
-        buffer_tensor = input_tensor_buffer_tensor_map[i]
+        buffer_tensor = input_tensor_buffer_tensor_map.get(i)
         sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], "dma_copy")
 
     cce_emitinsn_params.cceEmitParamsIns.insert_param(
@@ -681,7 +686,7 @@ def logits_2d_schedule(res, input_tensors):
             sch[mid_tensor].emit_insn(mid_tensor.op.axis[0], "phony_insn")
         else:
             if i.op.tag == "reduce_sum":
-                if is_vector_reduce(c_size, split_factor):
+                if is_vector_reduce(c_size, split_factor) or not is_high_performance:
                     insn = "vector_reduce_sum"
                 else:
                     insn = "reduce_last_axis_reduce_sum_2"
@@ -691,13 +696,19 @@ def logits_2d_schedule(res, input_tensors):
                     insn = "vector_reduce_max"
                 elif impl_mode == "high_precision":
                     for k, v in input_tensor_buffer_tensor_map.items():
-                        if len(k.shape) == 2 and k.shape[-1] != 1:
+                        condition1 = (len(k.shape) == 2) and isinstance(k.shape[-1], tvm.expr.IntImm) \
+                            and (int(k.shape[-1]) != 1)
+                        if condition1:
                             sch[v].storage_align(v.op.axis[0], 8, 0)
                     for k, v in mid_tensor_buffer_tensor_map.items():
-                        if len(k.shape) == 2 and k.shape[-1] != 1:
+                        condition1 = (len(k.shape) == 2) and isinstance(k.shape[-1], tvm.expr.IntImm) \
+                            and (int(k.shape[-1]) != 1)
+                        if condition1:
                             sch[v].storage_align(v.op.axis[0], 8, 0)
                     for k, v in mid_out_buffer_tensor_list.items():
-                        if len(k.shape) == 2 and k.shape[-1] != 1:
+                        condition1 = (len(k.shape) == 2) and isinstance(k.shape[-1], tvm.expr.IntImm) \
+                            and (int(k.shape[-1]) != 1)
+                        if condition1:
                             sch[v].storage_align(v.op.axis[0], 8, 0)
                     insn = "vector_reduce_max"
                 else:
@@ -712,7 +723,10 @@ def logits_2d_schedule(res, input_tensors):
             sch[mid_tensor].emit_insn(mid_tensor.op.axis[emit_insn_axis], insn)
 
     for i in mid_out_tensor_list:
-        sch[i].emit_insn(i.op.axis[0], "dma_copy")
+        if is_high_performance:
+            sch[i].emit_insn(i.op.axis[0], "dma_copy")
+        else:
+            sch[i].emit_insn(i.op.axis[0], "dma_copy", {"no_overlap": "default"})
         if i in mid_out_buffer_tensor_list.keys():
             phony_read_buffer = mid_out_buffer_tensor_list[i]
             sch[phony_read_buffer].emit_insn(phony_read_buffer.op.axis[0],

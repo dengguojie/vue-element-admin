@@ -449,9 +449,9 @@ def softmax_cross_entropy_with_logits(
         if input_dtype != "float32":
             error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits", "Not supported dtype!")
         data_features = tvm.placeholder(shape_features, dtype=input_dtype,
-                                        name="data_features")
+                                        name="data_features", attrs={"impl_mode": impl_mode})
         data_labels = tvm.placeholder(shape_labels, dtype=input_dtype,
-                                      name="data_labels")
+                                      name="data_labels", attrs={"impl_mode": impl_mode})
         res = softmax_cross_entropy_with_logits_nchw_compute(data_features,
                                                              data_labels,
                                                              output_loss,
@@ -471,9 +471,9 @@ def softmax_cross_entropy_with_logits(
                                             param_name_input2="input_labels")
 
         data_features = tvm.placeholder(shape_features, dtype=input_dtype,
-                                        name="data_features")
+                                        name="data_features", attrs={"impl_mode": impl_mode})
         data_labels = tvm.placeholder(shape_labels, dtype=input_dtype,
-                                      name="data_labels")
+                                      name="data_labels", attrs={"impl_mode": impl_mode})
         res = softmax_cross_entropy_with_logits_compute(data_features,
                                                         data_labels,
                                                         output_loss,

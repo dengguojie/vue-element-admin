@@ -2,7 +2,8 @@
 # -*- coding: UTF-8 -*-
 from sch_test_frame.ut import OpUT
 
-ut_case = OpUT("SoftmaxCrossEntropyWithLogits", None, None)
+ut_case = OpUT("SoftmaxCrossEntropyWithLogits", "impl.softmax_cross_entropy_with_logits",
+               "softmax_cross_entropy_with_logits")
 
 case1 = {"params": [{"shape": (5, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 2),"ori_format": "NCHW"},
                     {"shape": (5, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 2),"ori_format": "NCHW"},
@@ -210,7 +211,7 @@ case25 = {"params": [{"shape": (4096, 17191), "dtype": "float16", "format": "NHW
           "format_expect": [],
           "support_expect": True}
 
-compile_case_list_not_l1 = [
+compile_case_list_common = [
     case1,
     case2,
     case3,
@@ -230,21 +231,20 @@ compile_case_list_not_l1 = [
     case18,
     case19,
     case20,
-    case21,
     case22,
     case23,
     case24,
     case25
 ]
 
-compile_case_list_l1 = [
-    case16
+compile_case_list_910A = [
+    case16,
+    case21
 ]
 
-for item in compile_case_list_not_l1:
+for item in compile_case_list_common:
     ut_case.add_case(["Ascend910B2", "Ascend910A"], case=item)
-
-for item in compile_case_list_l1:
+for item in compile_case_list_910A:
     ut_case.add_case(["Ascend910A"], case=item)
 
 
