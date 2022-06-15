@@ -1446,70 +1446,73 @@ Status EinsumPass::HandleDynamicABCDxABE2ECD(ComputeGraph &graph, NodePtr &node)
   static vector<bool> is_input_const = {false, false};
   reshape_4_desc->SetIsInputConst(is_input_const);
   NodePtr reshape_4_node = graph.AddNode(reshape_4_desc);
-  FUSION_PASS_CHECK(reshape_4_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_4_node is null"), return FAILED);
+  FUSION_PASS_CHECK(reshape_4_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "fail to add reshape_4_node."),
+                    return FAILED);
   FUSION_PASS_CHECK(reshape_4_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "reshape infershape failed."), return FAILED);
+                    OP_LOGE(kFusedOpType.c_str(), "%s infershape failed.", reshape_4_node->GetName().c_str()),
+                    return FAILED);
   FUSION_PASS_CHECK(reshape_4_desc->UpdateOutputDesc("y", *(op_desc->MutableOutputDesc(0))) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to update reshape output."), return FAILED);
+                    OP_LOGE(kFusedOpType.c_str(), "fail to update %s's output.", reshape_4_node->GetName().c_str()),
+                    return FAILED);
 
   // unlink
   UnlinkAllDataAnchors(node);
 
   // add edge
   FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, gatherShapes_node->GetInDataAnchor(0)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                           x0_anchor_peer_node->GetName().c_str(), gatherShapes_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, gatherShapes_node->GetInDataAnchor(1)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                           x1_anchor_peer_node->GetName().c_str(), gatherShapes_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, reshape_1_node->GetInDataAnchor(0)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                           x0_anchor_peer_node->GetName().c_str(), reshape_1_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, reshape_2_node->GetInDataAnchor(0)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                           x1_anchor_peer_node->GetName().c_str(), reshape_2_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(
       SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                             reshape_2_node->GetName().c_str(), matmul_node->GetName().c_str()),
       return FAILED);
   if (x0_is_unknown_shape) {
     FUSION_PASS_CHECK(
         SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), reshape_3_node->GetInDataAnchor(0)),
-        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                               reshape_1_node->GetName().c_str(), reshape_3_node->GetName().c_str()),
         return FAILED);
     FUSION_PASS_CHECK(
         SUCCESS != GraphUtils::AddEdge(reshape_3_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
-        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                               reshape_3_node->GetName().c_str(), matmul_node->GetName().c_str()),
         return FAILED);
   } else {
     FUSION_PASS_CHECK(
         SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
-        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                               reshape_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
         return FAILED);
   }
   FUSION_PASS_CHECK(
       SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), reshape_4_node->GetInDataAnchor(0)),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                             matmul_node->GetName().c_str(), reshape_4_node->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(
       SUCCESS != GraphUtils::AddEdge(gatherShapes_node->GetOutDataAnchor(0), reshape_4_node->GetInDataAnchor(1)),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                             gatherShapes_node->GetName().c_str(), reshape_4_node->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(LinkEinsumOutputNode(out_anchor_peer_anchors, reshape_4_node) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "link einsum node failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to link einsum node"), return FAILED);
   // remove node
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "remove einsum node failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to remove einsum node"), return FAILED);
 
   return SUCCESS;
 }
@@ -1543,7 +1546,7 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
   std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose2");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
-                    OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
+                    OP_LOGW(kFusedOpType.c_str(), "input dims size must be 4 x 4."), return NOT_CHANGED);
 
   // set op attr
   AttrUtils::SetBool(batchmatmul_desc, "adj_x1", true);
@@ -1560,7 +1563,7 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
   SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_2_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
+                    OP_LOGE(kFusedOpType.c_str(), "transpose node infershape failed."), return FAILED);
 
   batchmatmul_desc->AddInputDesc("x2", *(transpose_2_desc->MutableOutputDesc(0)));
   tmp_dims.assign({x0_dims[0], x0_dims[1], x0_dims[3], x1_dims[3]});
@@ -1570,7 +1573,7 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
   NodePtr batchmatmul_node = graph.AddNode(batchmatmul_desc);
   FUSION_PASS_CHECK((x0_is_unknown_shape || transpose_2_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape()) &&
                         batchmatmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "batchmatmul infershape failed."), return FAILED);
+                    OP_LOGE(kFusedOpType.c_str(), "batchmatmul node infershape failed."), return FAILED);
 
   bool is_unknown_shape = batchmatmul_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape();
   std::shared_ptr<ge::OpDesc> transpose_3_desc = CreateTransposeOpDesc(is_unknown_shape, node, "/Transpose3");
@@ -1584,28 +1587,30 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
 
   // add edge
   FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, batchmatmul_node->GetInDataAnchor(0)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                           x0_anchor_peer_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, transpose_2_node->GetInDataAnchor(0)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                           x1_anchor_peer_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(
       SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(1)),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                             transpose_2_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(
       SUCCESS != GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), transpose_3_node->GetInDataAnchor(0)),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                             batchmatmul_node->GetName().c_str(), transpose_3_node->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(LinkEinsumOutputNode(out_anchor_peer_anchors, transpose_3_node) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "link einsum node failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to link einsum output node"), return FAILED);
   // remove node
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "remove einsum node failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                          "failed to remove einsum node[%s]", node->GetName().c_str()),
+                    return FAILED);
   return SUCCESS;
 }
 
@@ -1627,17 +1632,17 @@ Status EinsumPass::CheckProduct(const std::vector<int64_t> &shape) const {
 Status EinsumPass::CheckInputArgs(const Mapping &mapping, bool &is_dynamic_shape) const {
   // get node
   NodePtr node = GetNodeFromMapping(kPatternFusedNode, mapping);
-  FUSION_PASS_CHECK(node == nullptr, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum node is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(node == nullptr, OP_LOGW(kFusedOpType.c_str(), "einsum node is null, fusion failed."),
+                    return NOT_CHANGED);
   // get op desc
   OpDescPtr op_desc = node->GetOpDesc();
   FUSION_PASS_CHECK(op_desc == nullptr,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum desc is null, fusion failed."),
-                    return PARAM_INVALID);
+                    OP_LOGW(kFusedOpType.c_str(), "einsum desc is null, fusion failed."),
+                    return NOT_CHANGED);
 
   // check input link relation
   FUSION_PASS_CHECK(node->GetInDataNodes().size() > 2,
-                    OP_LOGI(kFusedOpType.c_str(), "Input node of einsum node size is [%lu], which not less than 2.",
+                    OP_LOGW(kFusedOpType.c_str(), "Input node of einsum node size is [%zu], which not less than 2.",
                             node->GetInDataNodes().size()),
                     return NOT_CHANGED);
 
@@ -1645,39 +1650,39 @@ Status EinsumPass::CheckInputArgs(const Mapping &mapping, bool &is_dynamic_shape
     // get input
     auto x_desc = op_desc->MutableInputDesc(idx);
     FUSION_PASS_CHECK(x_desc == nullptr,
-                      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum input desc is null, fusion failed."),
-                      return PARAM_INVALID);
+                      OP_LOGW(kFusedOpType.c_str(), "einsum input desc is null, fusion failed."),
+                      return NOT_CHANGED);
 
     // check whether the tensor size overflows
     if (CheckProduct(x_desc->MutableShape().GetDims()) != SUCCESS) {
-      return PARAM_INVALID;
+      return NOT_CHANGED;
     }
 
     is_dynamic_shape = is_dynamic_shape || x_desc->MutableShape().IsUnknownShape();
     auto x_anchor = node->GetInDataAnchor(idx);
     FUSION_PASS_CHECK(x_anchor == nullptr,
-                      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum x%zu_anchor is null, fusion failed.", idx),
-                      return PARAM_INVALID);
+                      OP_LOGW(kFusedOpType.c_str(), "einsum x%zu_anchor is null, fusion failed.", idx),
+                      return NOT_CHANGED);
     auto x_anchor_peer_anchor = node->GetInDataAnchor(idx)->GetPeerOutAnchor();
     FUSION_PASS_CHECK(
         x_anchor_peer_anchor == nullptr,
-        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum x%zu_anchor_peer_anchor is null, fusion failed.", idx),
-        return PARAM_INVALID);
+        OP_LOGW(kFusedOpType.c_str(), "einsum x%zu_anchor_peer_anchor is null, fusion failed.", idx),
+        return NOT_CHANGED);
     auto x_anchor_peer_node = x_anchor_peer_anchor->GetOwnerNode();
     FUSION_PASS_CHECK(
         x_anchor_peer_node == nullptr,
-        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum x%zu_anchor_peer_node is null, fusion failed.", idx),
-        return PARAM_INVALID);
+        OP_LOGW(kFusedOpType.c_str(), "einsum x%zu_anchor_peer_node is null, fusion failed.", idx),
+        return NOT_CHANGED);
   }
 
   auto out_anchor = node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(out_anchor == nullptr,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "einsum out_anchor is null, fusion failed."),
-                    return PARAM_INVALID);
+                    OP_LOGW(kFusedOpType.c_str(), "einsum out_anchor is null, fusion failed."),
+                    return NOT_CHANGED);
 
   FUSION_PASS_CHECK(is_dynamic_shape && node->GetInDataNodes().size() == 1,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "not support einsum dynamic shape with single input"),
-                    return PARAM_INVALID);
+                    OP_LOGW(kFusedOpType.c_str(), "not support einsum dynamic shape with single input"),
+                    return NOT_CHANGED);
 
   return SUCCESS;
 }
@@ -1697,7 +1702,7 @@ Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr>
   NodePtr node = GetNodeFromMapping(kPatternFusedNode, mapping);
   OpDescPtr op_desc = node->GetOpDesc();
   FUSION_PASS_CHECK(AttrUtils::GetStr(op_desc, "equation", equation) == false,
-                    OP_LOGI(kFusedOpType.c_str(), "Get attr equation failed."), return NOT_CHANGED);
+                    OP_LOGW(kFusedOpType.c_str(), "Get attr equation failed."), return NOT_CHANGED);
 
   if (is_dynamic_shape) {
     EquationNormalization(equation);
@@ -1711,7 +1716,7 @@ Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr>
 
       return ret;
     } else {
-      OP_LOGI(kFusedOpType.c_str(), "equation[%s] is not match.", equation.c_str());
+      OP_LOGW(kFusedOpType.c_str(), "equation[%s] is not match.", equation.c_str());
       return NOT_CHANGED;
     }
   } else if (SplitOpInFuzzScene(equation, graph, node) == SUCCESS) {
@@ -1805,14 +1810,15 @@ Status EinsumPass::ParseEquation(const std::string &equation, std::vector<std::s
   std::vector<std::string> inputs_and_output;
   SplitStr2Vector(equation, "->", inputs_and_output);
   if (inputs_and_output.size() != 2) {  // 2 means input and output
-    OP_LOGE(kFusedOpType.c_str(), "equation[%s] is not support.", equation.c_str());
+    OP_LOGE(kFusedOpType.c_str(),
+            "equation[%s] is not support, which should include inputs and output separated by ->.", equation.c_str());
     return FAILED;
   }
 
   out_equation = inputs_and_output[1];
   SplitStr2Vector(inputs_and_output[0], ",", in_equations);
   if (in_equations.size() != 1 && in_equations.size() != 2) {  // only support 2 inputs now
-    OP_LOGE(kFusedOpType.c_str(), "equation[%s] is not support.", equation.c_str());
+    OP_LOGE(kFusedOpType.c_str(), "equation[%s] only supports 2 inputs now.", equation.c_str());
     return FAILED;
   }
 
@@ -2058,25 +2064,25 @@ Status EinsumPass::TransposeInput(const std::vector<std::string> &in_equations, 
       input_free_contract_orders[idx] = input_free_contract_order;
       auto transpose_desc = CreateTransposeOpDesc(x_desc->MutableShape().IsUnknownShape(), node,
                                                   "/Transpose" + std::to_string(transpose_seq++));
-      FUSION_PASS_CHECK(transpose_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "tranpose_desc is null"),
+      FUSION_PASS_CHECK(transpose_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "tranpose_desc is null."),
                         return FAILED);
       transpose_desc->AddInputDesc("x", *x_desc);
       transpose_desc->AddOutputDesc("y", *x_desc);
       auto transpose_node = graph.AddNode(transpose_desc);
-      FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "transpose_node is null"),
+      FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "transpose_node is null."),
                         return FAILED);
       SetTransposePerm(x_desc->MutableShape().IsUnknownShape(), perm_list, graph, transpose_desc, transpose_node);
       FUSION_PASS_CHECK(
           transpose_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-          OP_LOGE(kFusedOpType.c_str(), "einsum[%s] transpose infershape failed", node->GetName().c_str()),
+          OP_LOGE(kFusedOpType.c_str(), "einsum[%s] transpose infershape failed.", node->GetName().c_str()),
           return FAILED);
       bmm_input_nodes[idx].emplace_back(transpose_node);
-      OP_LOGD(kFusedOpType.c_str(), "einsum[%s] input%zu transpose output[%s], equation[%s], free contract order[%s]",
+      OP_LOGD(kFusedOpType.c_str(), "einsum[%s] input%zu transpose output[%s], equation[%s], free contract order[%s].",
               node->GetName().c_str(), idx, transpose_desc->MutableOutputDesc(0)->MutableShape().ToString().c_str(),
               dst_equation.c_str(), input_free_contract_order ? "true" : "false");
     } else {
       input_free_contract_orders[idx] = input_free_contract_order;
-      OP_LOGD(kFusedOpType.c_str(), "no need to transpose input%zu for equation[%s], free contract order[%s]", idx,
+      OP_LOGD(kFusedOpType.c_str(), "no need to transpose input%zu for equation[%s], free contract order[%s].", idx,
               in_equations[idx].c_str(), input_free_contract_order ? "true" : "false");
     }
   }
@@ -2126,17 +2132,17 @@ Status EinsumPass::TransposeOutput(const std::string &out_equation, const NodePt
 
   auto transpose_desc = CreateTransposeOpDesc(x_desc->MutableShape().IsUnknownShape(), node,
                                               "/Transpose" + std::to_string(transpose_seq++));
-  FUSION_PASS_CHECK(transpose_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "tranpose_desc is null"), return FAILED);
+  FUSION_PASS_CHECK(transpose_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "tranpose_desc is null."), return FAILED);
   transpose_desc->AddInputDesc("x", *x_desc);
   transpose_desc->AddOutputDesc("y", *x_desc);
   auto transpose_node = graph.AddNode(transpose_desc);
-  FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "transpose_node is null"), return FAILED);
+  FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "transpose_node is null."), return FAILED);
   SetTransposePerm(x_desc->MutableShape().IsUnknownShape(), perm_list, graph, transpose_desc, transpose_node);
   FUSION_PASS_CHECK(transpose_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "einsum[%s] transpose infershape failed", node->GetName().c_str()),
+                    OP_LOGE(kFusedOpType.c_str(), "einsum[%s] transpose infershape failed.", node->GetName().c_str()),
                     return FAILED);
   bmm_output_nodes.emplace_back(transpose_node);
-  OP_LOGD(kFusedOpType.c_str(), "einsum[%s] transpose output shape: [%s]", node->GetName().c_str(),
+  OP_LOGD(kFusedOpType.c_str(), "einsum[%s] transpose output shape: [%s].", node->GetName().c_str(),
           transpose_desc->MutableOutputDesc(0)->MutableShape().ToString().c_str());
   return SUCCESS;
 }
@@ -2152,7 +2158,7 @@ Status EinsumPass::StrideInput(const std::vector<std::string> &in_equations) con
       }
 
       if (in_equation.find(label, pos + 1) != std::string::npos) {
-        OP_LOGE(kFusedOpType.c_str(), "not support stride input now, equation: %s", in_equation.c_str());
+        OP_LOGE(kFusedOpType.c_str(), "not support stride input now, equation: %s.", in_equation.c_str());
         return FAILED;
       }
     }
@@ -2170,7 +2176,7 @@ Status EinsumPass::InflatedOutput(const std::string &out_equation) const {
   // temporarily not support inflated
   std::set<char> out_label_set(out_equation_bak.begin(), out_equation_bak.end());
   if (out_equation_bak.size() != out_label_set.size()) {
-    OP_LOGE(kFusedOpType.c_str(), "not support inflated now, equation: %s", out_equation.c_str());
+    OP_LOGE(kFusedOpType.c_str(), "not support inflated now, equation: %s.", out_equation.c_str());
     return FAILED;
   }
   return SUCCESS;
@@ -2189,7 +2195,7 @@ Status EinsumPass::ReduceInput(const std::vector<std::string> &in_equations, con
       size_t dim_num = x_desc->MutableShape().GetDimNum();
       FUSION_PASS_CHECK(
           dim_num < indices.size(),
-          OP_LOGE(kFusedOpType.c_str(), "einsum[%s] prev output dim number[%zu] less than than reduce dim num[%zu]",
+          OP_LOGE(kFusedOpType.c_str(), "einsum[%s] prev output dim number[%zu] less than than reduce dim num[%zu].",
                   node->GetName().c_str(), dim_num, indices.size()),
           return FAILED);
 
@@ -2202,13 +2208,13 @@ Status EinsumPass::ReduceInput(const std::vector<std::string> &in_equations, con
       reduce_desc->AddInputDesc("x", *x_desc);
       reduce_desc->AddOutputDesc("y", *x_desc);
       auto reduce_node = graph.AddNode(reduce_desc);
-      FUSION_PASS_CHECK(reduce_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reduce_node is null"), return FAILED);
+      FUSION_PASS_CHECK(reduce_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reduce_node is null."), return FAILED);
       FUSION_PASS_CHECK(
           !(AttrUtils::SetListInt(reduce_desc, "axes", axes) && AttrUtils::SetBool(reduce_desc, "keep_dims", false)),
           OP_LOGE(kFusedOpType.c_str(), "failed to set attr for reduce."), return FAILED);
       FUSION_PASS_CHECK(
           reduce_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
-          OP_LOGE(kFusedOpType.c_str(), "einsum[%s] reducesum infershape failed.", node->GetName().c_str()),
+          OP_LOGE(kFusedOpType.c_str(), "failed to do infershape of einsum[%s] reducesum.", node->GetName().c_str()),
           return FAILED);
       bmm_input_nodes[idx].emplace_back(reduce_node);
       OP_LOGD(kFusedOpType.c_str(), "einsum[%s] input%zu reduce output shape: [%s]", node->GetName().c_str(), idx,
@@ -2294,13 +2300,13 @@ Status EinsumPass::ReshapeInput(const std::vector<std::string> &in_equations, co
     }
 
     auto reshape_desc = CreateReshapeOpDesc(x_desc->MutableShape().IsUnknownShape(), node, reshape_seq++);
-    FUSION_PASS_CHECK(reshape_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_desc is null"), return FAILED);
+    FUSION_PASS_CHECK(reshape_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_desc is null."), return FAILED);
     reshape_desc->AddInputDesc("x", *x_desc);
     reshape_desc->AddOutputDesc("y", *x_desc);
     reshape_desc->MutableOutputDesc(0)->SetShape(GeShape(new_dims));
     reshape_desc->MutableOutputDesc(0)->SetOriginShape(GeShape(new_dims));
     auto reshape_node = CreateReshapeNode(new_dims, graph, reshape_desc);
-    FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_node is null"), return FAILED);
+    FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_node is null."), return FAILED);
     bmm_input_nodes[idx].emplace_back(reshape_node);
     OP_LOGD(kFusedOpType.c_str(), "input%zu reshape output shape: [%s]", idx,
             reshape_desc->MutableOutputDesc(0)->MutableShape().ToString().c_str());
@@ -2392,7 +2398,7 @@ Status EinsumPass::ReshapeOutput(const std::string &ori_out_equation, const Node
 
   // insert reshape node
   auto reshape_desc = CreateReshapeOpDesc(bmm_desc->MutableShape().IsUnknownShape(), node, reshape_seq++);
-  FUSION_PASS_CHECK(reshape_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_desc is null"), return FAILED);
+  FUSION_PASS_CHECK(reshape_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "reshape_desc is null."), return FAILED);
 
   reshape_desc->AddInputDesc("x", *bmm_desc);
   reshape_desc->AddOutputDesc("y", *bmm_desc);
@@ -2467,15 +2473,15 @@ Status EinsumPass::DoBatchMatmul(const std::vector<std::string> &in_equations, c
   if (use_matmul) {
     FUSION_PASS_CHECK(!(AttrUtils::SetBool(batchmatmul_desc, "transpose_x1", adj_x1) &&
                         AttrUtils::SetBool(batchmatmul_desc, "transpose_x2", adj_x2)),
-                      OP_LOGE(kFusedOpType.c_str(), "failed to set attr for reduce."), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "failed to set transpose attr for reduce."), return FAILED);
   } else {
     FUSION_PASS_CHECK(!(AttrUtils::SetBool(batchmatmul_desc, "adj_x1", adj_x1) &&
                         AttrUtils::SetBool(batchmatmul_desc, "adj_x2", adj_x2)),
-                      OP_LOGE(kFusedOpType.c_str(), "failed to set attr for reduce."), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "failed to set adj attr for reduce."), return FAILED);
   }
 
   batchmatmul_node = graph.AddNode(batchmatmul_desc);
-  FUSION_PASS_CHECK(batchmatmul_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "batchmatmul_node is null"),
+  FUSION_PASS_CHECK(batchmatmul_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "batchmatmul_node is null."),
                     return FAILED);
   FUSION_PASS_CHECK(batchmatmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "batchmatmul infershape failed."), return FAILED);
@@ -2493,7 +2499,7 @@ Status EinsumPass::LinkEinsumInputNode(const NodePtr &node, const NodePtr &first
 
   FUSION_PASS_CHECK(
       SUCCESS != GraphUtils::AddEdge(x_anchor_peer_anchor, first_node->GetInDataAnchor(first_node_anchor_idx)),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                             x_anchor_peer_node->GetName().c_str(), first_node->GetName().c_str()),
       return FAILED);
   return SUCCESS;
@@ -2505,7 +2511,8 @@ Status EinsumPass::LinkContinuousNodes(const std::vector<ge::NodePtr> &nodes) co
     const NodePtr &curr_node = nodes[seq];
     const NodePtr &next_node = nodes[seq + 1];
     FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(curr_node->GetOutDataAnchor(0), next_node->GetInDataAnchor(0)),
-                      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                            "failed to add edge from src node[%s] to dst node[%s].",
                                             curr_node->GetName().c_str(), next_node->GetName().c_str()),
                       return FAILED);
   }
@@ -2534,7 +2541,8 @@ Status EinsumPass::ReLinkCtrlEdges(const NodePtr &node, const NodePtr &last_node
       for (auto &peer_anchor : node->GetInControlAnchor()->GetPeerOutControlAnchors()) {
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(peer_anchor, first_node->GetInControlAnchor()),
-            OP_LOGE(kFusedOpType.c_str(), "Fail to add input control edge for node:%s.", first_node->GetName().c_str()),
+            OP_LOGE(kFusedOpType.c_str(),
+                    "failed to add input control edge for node:%s.", first_node->GetName().c_str()),
             return FAILED);
       }
     }
@@ -2549,7 +2557,8 @@ Status EinsumPass::ReLinkCtrlEdges(const NodePtr &node, const NodePtr &last_node
       for (auto &peer_anchor : node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(last_node->GetOutControlAnchor(), peer_anchor),
-            OP_LOGE(kFusedOpType.c_str(), "Fail to add output control edge for node:%s.", last_node->GetName().c_str()),
+            OP_LOGE(kFusedOpType.c_str(),
+                    "failed to add output control edge for node:%s.", last_node->GetName().c_str()),
             return FAILED);
       }
     }
@@ -2568,21 +2577,21 @@ Status EinsumPass::ReLinkNodes(const NodePtr &node) {
     }
 
     FUSION_PASS_CHECK(LinkEinsumInputNode(node, bmm_input_nodes[idx][0], static_cast<int>(idx), 0) != SUCCESS,
-                      OP_LOGE(kFusedOpType.c_str(), "failed to link einsum input to bmm_input_nodes"), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "failed to link einsum input to bmm_input_nodes."), return FAILED);
     FUSION_PASS_CHECK(LinkContinuousNodes(bmm_input_nodes[idx]) != SUCCESS,
-                      OP_LOGE(kFusedOpType.c_str(), "failed to link bmm_input_nodes"), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "failed to link bmm_input_nodes."), return FAILED);
   }
 
   if (batchmatmul_node != nullptr) {
     int32_t in_anchor = swap_bmm_inputs ? 1 : 0;
     if (bmm_input_nodes[0].empty()) {
       FUSION_PASS_CHECK(LinkEinsumInputNode(node, batchmatmul_node, 0, in_anchor) != SUCCESS,
-                        OP_LOGE(kFusedOpType.c_str(), "failed to link einsum input to batchmatmul"), return FAILED);
+                        OP_LOGE(kFusedOpType.c_str(), "failed to link einsum input to batchmatmul."), return FAILED);
     } else {
       NodePtr &x1_node = bmm_input_nodes[0].back();
       FUSION_PASS_CHECK(
           SUCCESS != GraphUtils::AddEdge(x1_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(in_anchor)),
-          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                 x1_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
           return FAILED);
     }
@@ -2590,12 +2599,12 @@ Status EinsumPass::ReLinkNodes(const NodePtr &node) {
     in_anchor = swap_bmm_inputs ? 0 : 1;
     if (bmm_input_nodes[1].empty()) {
       FUSION_PASS_CHECK(LinkEinsumInputNode(node, batchmatmul_node, 1, in_anchor) != SUCCESS,
-                        OP_LOGE(kFusedOpType.c_str(), "failed to link einsum input to batchmatmul"), return FAILED);
+                        OP_LOGE(kFusedOpType.c_str(), "failed to link einsum input to batchmatmul."), return FAILED);
     } else {
       NodePtr &x2_node = bmm_input_nodes[1].back();
       FUSION_PASS_CHECK(
           SUCCESS != GraphUtils::AddEdge(x2_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(in_anchor)),
-          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to add edge from src node[%s] to dst node[%s].",
                                 x2_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
           return FAILED);
     }
@@ -2606,14 +2615,14 @@ Status EinsumPass::ReLinkNodes(const NodePtr &node) {
                           : (bmm_input_nodes[0].empty() ? orig_x0_node : bmm_input_nodes[0].back());
   bmm_output_nodes.insert(bmm_output_nodes.begin(), prev_node);
   FUSION_PASS_CHECK(LinkContinuousNodes(bmm_output_nodes) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to link bmm_output_nodes"), return FAILED);
+                    OP_LOGE(kFusedOpType.c_str(), "failed to link bmm_output_nodes."), return FAILED);
 
   auto out_anchor_peer_anchors = node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
   node->GetOutDataAnchor(0)->UnlinkAll();
   NodePtr last_node = !bmm_output_nodes.empty() ? bmm_output_nodes.back()
                                                 : (batchmatmul_node != nullptr ? batchmatmul_node : orig_x0_node);
   FUSION_PASS_CHECK(LinkEinsumOutputNode(out_anchor_peer_anchors, last_node) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "link einsum node output failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "failed to link einsum node output."), return FAILED);
   return ReLinkCtrlEdges(node, last_node);
 }
 
@@ -2639,7 +2648,7 @@ Status EinsumPass::SplitOpInFuzzScene(const std::string &equation, ComputeGraph 
   std::vector<std::string> in_equations;
   std::string out_equation;
   FUSION_PASS_CHECK(ParseEquation(equation, in_equations, out_equation) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to parse equation"), return FAILED);
+                    OP_LOGE(kFusedOpType.c_str(), "failed to parse equation."), return FAILED);
   std::string cur_out_equation(out_equation);
   auto op_desc = node->GetOpDesc();
   auto y_desc = op_desc->MutableOutputDesc(0);

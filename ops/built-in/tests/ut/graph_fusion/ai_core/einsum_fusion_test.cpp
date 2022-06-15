@@ -593,3 +593,17 @@ TEST_F(einsum_fusion_test, einsum_fusion_fuzz_stride) {
 
   EXPECT_EQ(ret, fe::NOT_CHANGED);
 }
+
+
+TEST_F(einsum_fusion_test, einsum_fusion_parse_equation) {
+  fe::EinsumPass pass;
+  std::string equation = "abc,cde,abe->abcd->adce->";
+  std::vector<std::string> in_equations;
+  std::string out_equation;
+  auto ret = pass.ParseEquation(equation, in_equations, out_equation);
+  EXPECT_EQ(ret, fe::FAILED);
+  equation = "abc,cde,abe->abcd";
+  in_equations.clear();
+  ret = pass.ParseEquation(equation, in_equations, out_equation);
+  EXPECT_EQ(ret, fe::FAILED);
+}
