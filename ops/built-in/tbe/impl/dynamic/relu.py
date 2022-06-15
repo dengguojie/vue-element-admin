@@ -54,6 +54,10 @@ def relu_compute(x, y, kernel_name="relu"):
             'tbe.dsl.cast_to', 's82f16'):
         x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
+    if tbe_platform.api_check_support("tik.vgatherb") and x.op.name in (
+        "res_conv2d", "dequant_remove_pad"):
+        res = tbe.vlrelu(x, 0)
+        return res
     if tbe_platform.api_check_support('tbe.dsl.vrelu',
                                       compatible_dtype):
         data_res = tbe.vrelu(x)
