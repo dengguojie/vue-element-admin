@@ -101,6 +101,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_clipByValue_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_elemwise_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/matmul_generalized_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.cc
