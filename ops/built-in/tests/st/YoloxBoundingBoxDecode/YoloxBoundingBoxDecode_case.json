@@ -1,0 +1,116 @@
+[
+    {
+      "op": "YoloxBoundingBoxDecode",
+      "input_desc": [
+        {
+          "shape": [
+            -1,
+            4
+          ],
+          "format": "ND",
+          "typical_shape": [
+            8400,
+            4
+          ],
+          "shape_range": [[8400, 8400]],
+          "param_type": "input",
+          "name": "priors",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            -1,
+            -1,
+            4
+          ],
+          "format": "ND",
+          "typical_shape": [
+            1,
+            8400,
+            4
+          ],
+          "shape_range": [[1,10], [8400, 8400]],
+          "param_type": "input",
+          "name": "bboxes",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            -1,
+            -1,
+            4
+          ],
+          "format": "ND",
+          "typical_shape": [
+            1,
+            8400,
+            4
+          ],
+          "shape_range": [[1,10], [8400, 8400]],
+          "param_type": "output",
+          "name": "decoded_bboxes",
+          "type": "float16"
+        }
+      ],
+      "case_name": "test_YoloxBoundingBoxDecode_000"
+    },
+    {
+      "op": "YoloxBoundingBoxDecode",
+      "input_desc": [
+        {
+          "shape": [
+            -1,
+            4
+          ],
+          "format": "ND",
+          "typical_shape": [
+            8400,
+            4
+          ],
+          "shape_range": [[8400, 8400]],
+          "param_type": "input",
+          "name": "priors",
+          "type": "float32"
+        },
+        {
+          "shape": [
+            -1,
+            -1,
+            4
+          ],
+          "format": "ND",
+          "typical_shape": [
+            1,
+            8400,
+            4
+          ],
+          "shape_range": [[1, 10],[8400, 8400]],
+          "param_type": "input",
+          "name": "bboxes",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            -1,
+            -1,
+            4
+          ],
+          "format": "ND",
+          "typical_shape": [
+            1,
+            8400,
+            4
+          ],
+          "shape_range": [[1, 10],[8400, 8400]],
+          "param_type": "output",
+          "name": "decoded_bboxes",
+          "type": "float32"
+        }
+      ],
+      "case_name": "test_YoloxBoundingBoxDecode_001"
+    }
+]

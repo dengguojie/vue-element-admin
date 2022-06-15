@@ -388,4 +388,5 @@ IMPLEMT_VERIFIER(PriorBoxDV2, PriorBoxDV2Verify) {
 INFER_FUNC_REG(PriorBoxDV2, PriorBoxDV2Infer);
 VERIFY_FUNC_REG(PriorBoxDV2, PriorBoxDV2Verify);
 // ---------------PriorBoxDV2 Op End------------------
+
 }  // namespace ge

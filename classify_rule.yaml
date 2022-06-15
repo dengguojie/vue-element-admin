@@ -4257,6 +4257,8 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/hard_swish_grad.py
       - ops/built-in/tbe/impl/iou_3d.py
       - ops/built-in/tbe/impl/swin_transformer_ln_qkv.py
+      - ops/built-in/op_tiling/yolox_bounding_box_decode.cc
+      - ops/built-in/tbe/impl/dynamic/yolox_bounding_box_decode.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

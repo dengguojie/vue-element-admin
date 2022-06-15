@@ -238,6 +238,7 @@ set(_optiling_files
   resize.cc
   runtime/strided_slice_v3.cc
   group_norm.cc
+  yolox_bounding_box_decode.cc
 )
 
 set(_op_tiling_include

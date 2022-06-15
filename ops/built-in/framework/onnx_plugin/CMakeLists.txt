@@ -140,6 +140,7 @@ set(_onnx_plugins
   reduce_log_sum_exp_plugin.cc
   trilu_plugin.cc
   maxunpool_plugin.cc
+  yolox_bounding_box_decode_plugin.cc
   custom/col2im_plugin.cc
   custom/psroi_poolingV2_plugin.cc
   custom/group_normal_relu_plugin.cc

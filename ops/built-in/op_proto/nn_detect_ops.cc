@@ -2330,4 +2330,46 @@ IMPLEMT_COMMON_INFERFUNC(Iou3DInferShape) {
 
 COMMON_INFER_FUNC_REG(Iou3D, Iou3DInferShape);
 // ----------------Iou3D Finished-------------------
+
+// ----------------YoloxBoundingBoxDecode-------------------
+IMPLEMT_COMMON_INFERFUNC(YoloxBoundingBoxDecodeInferShape) {
+  bool is_dynamic = true;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "priors", "bboxes", "decoded_bboxes", is_dynamic)) {
+    return GRAPH_SUCCESS;
+  }
+
+  OP_LOGE(TbeGetName(op).c_str(), "the YoloxBoundingBoxDecode InferShape Failed.");
+  return GRAPH_FAILED;
+}
+
+IMPLEMT_VERIFIER(YoloxBoundingBoxDecode, YoloxBoundingBoxDecodeVerify) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<int64_t> priors_shape = op_desc->MutableInputDesc("priors")->MutableShape().GetDims();
+  std::vector<int64_t> bboxes_shape = op_desc->MutableInputDesc("bboxes")->MutableShape().GetDims();
+  size_t priors_size = priors_shape.size();
+  size_t bboxes_size = bboxes_shape.size();
+
+  // inputs sizes must fit
+  if ((priors_size != 2) || (bboxes_size != 3)) {
+    OP_LOGE(TbeGetName(op).c_str(),
+    "the YoloxBoundingBoxDecode verify Failed.input sizes are not fit (priors:%ld, bboxes:%ld) ", 
+    priors_size, bboxes_size);
+    return GRAPH_FAILED;
+  }
+
+  // inputs last dim value must be 4(x1,y1,x2,y2)
+  if (priors_shape[1] != 4 || priors_shape[0] != bboxes_shape[1] || bboxes_shape[2] != 4) {
+    OP_LOGE(TbeGetName(op).c_str(), 
+    "the YoloxBoundingBoxDecode verify Failed.input shapes don't match, priors:(%ld, %ld), bboxes:(%ld, %ld, %ld) ", 
+    priors_shape[0], priors_shape[1], bboxes_shape[0], bboxes_shape[1], bboxes_shape[2]);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+VERIFY_FUNC_REG(YoloxBoundingBoxDecode, YoloxBoundingBoxDecodeVerify);
+COMMON_INFER_FUNC_REG(YoloxBoundingBoxDecode, YoloxBoundingBoxDecodeInferShape);
+// ----------------YoloxBoundingBoxDecode END-------------------
+
 }  // namespace ge
