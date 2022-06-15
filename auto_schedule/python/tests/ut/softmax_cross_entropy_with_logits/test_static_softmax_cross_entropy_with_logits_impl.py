@@ -210,7 +210,7 @@ case25 = {"params": [{"shape": (4096, 17191), "dtype": "float16", "format": "NHW
           "format_expect": [],
           "support_expect": True}
 
-compile_case_list = [
+compile_case_list_not_l1 = [
     case1,
     case2,
     case3,
@@ -226,7 +226,6 @@ compile_case_list = [
     case13,
     case14,
     case15,
-    case16,
     case17,
     case18,
     case19,
@@ -238,8 +237,16 @@ compile_case_list = [
     case25
 ]
 
-for item in compile_case_list:
+compile_case_list_l1 = [
+    case16
+]
+
+for item in compile_case_list_not_l1:
     ut_case.add_case(["Ascend910B2", "Ascend910A"], case=item)
+
+for item in compile_case_list_l1:
+    ut_case.add_case(["Ascend910A"], case=item)
+
 
 if __name__ == '__main__':
     import os

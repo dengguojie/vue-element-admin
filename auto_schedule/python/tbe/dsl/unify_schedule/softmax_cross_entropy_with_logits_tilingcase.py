@@ -81,10 +81,10 @@ def calc(outs, option=None):
 
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
 
-    return _calc_general(outs, base_key)
+    return _calc_general(outs, base_key, mode)
 
 
-def _calc_general(outs, base_key):
+def _calc_general(outs, base_key, mode):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     if len(outs) > 1:
         out = outs[1]
@@ -109,20 +109,28 @@ def _calc_general(outs, base_key):
     for i in range(dim_len):
         for j in range(i, dim_len):
             if i < 1 and j < 1:
-                cases.append({
-                    "key": base + i * 10 + j,
-                    "block_tiling_axis": i,
-                    "ub_tiling_axis": j,
-                    "is_align": True,
-                    "tiling_strategy": TilingStrategy.ONE_CUT,
-                })
-                
-                cases.append({
-                    "key": base + i * 10 + j + align_base_key,
-                    "block_tiling_axis": i,
-                    "ub_tiling_axis": j,
-                    "is_align": False,
-                    "tiling_strategy": TilingStrategy.ONE_CUT,
-                })
+                if not "cut" in mode:
+                    cases.append({
+                        "key": base + i * 10 + j,
+                        "block_tiling_axis": i,
+                        "ub_tiling_axis": j,
+                        "is_align": True,
+                        "tiling_strategy": TilingStrategy.ONE_CUT,
+                    })
+                    cases.append({
+                        "key": base + i * 10 + j + align_base_key,
+                        "block_tiling_axis": i,
+                        "ub_tiling_axis": j,
+                        "is_align": False,
+                        "tiling_strategy": TilingStrategy.ONE_CUT,
+                    })
+                else:
+                    cases.append({
+                        "key": base + i * 10 + j,
+                        "block_tiling_axis": i,
+                        "ub_tiling_axis": j,
+                        "is_align": False,
+                        "tiling_strategy": TilingStrategy.ONE_CUT,
+                    })
 
     return cases

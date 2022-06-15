@@ -38,7 +38,7 @@ static const size_t MAX_COEXIST_NUM = 10;
 static const size_t ND_SHAPE_LEN = 2;
 static const size_t MAX_DTYPE_SIZE = 4;
 static const size_t FP16_BLOCK_SIZE = 16;
-static const size_t MAX_WORKSPACE_NUMS = 5;
+static const size_t MAX_WORKSPACE_NUMS = 3;
 
 // tiling info
 struct TilingInfo {
@@ -58,7 +58,6 @@ struct ScewlOpInfo {
   int32_t core_num;
   int32_t align_base_key;
   bool is_const;
-  bool is_template = false;
   // norm vars
   std::unordered_map<int32_t, std::vector<string>> normal_vars;
   std::vector<int32_t> dimension_align_ward;
@@ -71,255 +70,57 @@ struct ScewlOpInfo {
 bool SoftmaxCrossEntropyWithLogitsParseFunc(const std::string& op_type, const nlohmann::json& compile_info,
                                             ScewlOpInfo& op_info) {
   using namespace nlohmann;
-  GetCompileValue(compile_info, "_is_template", op_info.is_template);
-  if (op_info.is_template) {
-    if (compile_info.count("reduce_mean_cof_dtype") > 0) {
-      GetCompileValue(compile_info, "reduce_mean_cof_dtype", op_info.reduce_mean_cof_dtype);
-      op_info.reduce_mean_cof_ge_dtype = GetGeTypeFromStr(op_info.reduce_mean_cof_dtype);
-      OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_reduce_axis", op_info.ori_reduce_axis),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc get _ori_reduce_axis error"),
-                      return false);
-    }
-    const auto& local_normal_vars = compile_info.at("_vars").get<std::unordered_map<string, std::vector<string>>>();
-    for (const auto& single_item : local_normal_vars) {
-      op_info.normal_vars[std::stoi(single_item.first)] = single_item.second;
-    }
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "_dimension_align_ward", op_info.dimension_align_ward),
-                    VECTOR_INNER_ERR_REPORT_TILIING(
-                        op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get dimension_align_ward error"),
+
+  if (compile_info.count("reduce_mean_cof_dtype") > 0) {
+    GetCompileValue(compile_info, "reduce_mean_cof_dtype", op_info.reduce_mean_cof_dtype);
+    op_info.reduce_mean_cof_ge_dtype = GetGeTypeFromStr(op_info.reduce_mean_cof_dtype);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_reduce_axis", op_info.ori_reduce_axis),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc get _ori_reduce_axis error"),
                     return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_max_type", op_info.max_type),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _max_type error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_min_type", op_info.min_type),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _min_type error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_core_num", op_info.core_num),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _core_num error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_available_size", op_info.temp_ub_size),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _available_size error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_align_base_key", op_info.align_base_key),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _align_base_key error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_is_const", op_info.is_const),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _is_const error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(compile_info, "_max_dim_len", op_info.max_dim_len),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _max_dim_len error"),
-        return false);
   }
-  if (op_type == "SoftmaxCrossEntropyWithLogits") {
-    auto common_info_iter = compile_info.find("common_info");
-    OP_TILING_CHECK(
-        common_info_iter == compile_info.end(),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get common_info error"),
-        return false);
-    const auto& sub_common_info = compile_info["common_info"];
-    OP_TILING_CHECK(
-        !GetCompileValue(sub_common_info, "core_num", op_info.core_num),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get core_num error"),
-        return false);
-    OP_TILING_CHECK(
-        !GetCompileValue(sub_common_info, "ub_size", op_info.ub_size),
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get ub_size error"),
-        return false);
+  const auto& local_normal_vars = compile_info.at("_normal_vars").get<std::unordered_map<string,
+                                                                                         std::vector<string>>>();
+  for (const auto& single_item : local_normal_vars) {
+    op_info.normal_vars[std::stoi(single_item.first)] = single_item.second;
   }
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "_dimension_align_ward", op_info.dimension_align_ward),
+                  VECTOR_INNER_ERR_REPORT_TILIING(
+                      op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get dimension_align_ward error"),
+                  return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_max_type", op_info.max_type),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _max_type error"),
+      return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_min_type", op_info.min_type),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _min_type error"),
+      return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_core_num", op_info.core_num),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _core_num error"),
+      return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_available_size", op_info.temp_ub_size),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _available_size error"),
+      return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_align_base_key", op_info.align_base_key),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _align_base_key error"),
+      return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_is_const", op_info.is_const),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _is_const error"),
+      return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "_max_dim_len", op_info.max_dim_len),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get _max_dim_len error"),
+      return false);
   OP_LOGI(op_type.c_str(), "GetCompileParams success.");
   return true;
 }
 
-bool WriteTilingData(const std::string& op_type, const ScewlOpInfo& op_info, TilingInfo& tiling_info,
-                     utils::OpRunInfo& run_info, ge::DataType& out_type,
-                     std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
-                     const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
-  GELOGD("op [%s] tiling ub_size:%lld", op_type.c_str(), op_info.ub_size);
-  GELOGD("op [%s] tiling core_num:%lld", op_type.c_str(), op_info.core_num);
-
-  GELOGD("op [%s] tiling key:%lld", op_type.c_str(), tiling_info.key);
-
-  GELOGD("op [%s] tiling input_shapes:[%lld, %lld], [%lld, %lld]", op_type.c_str(), input_shapes[0][0],
-         input_shapes[0][1], input_shapes[1][0], input_shapes[1][1]);
-
-  GELOGD("op [%s] tiling block_nparts:%lld", op_type.c_str(), tiling_info.block_nparts);
-  GELOGD("op [%s] tiling ub_factor:%lld", op_type.c_str(), tiling_info.ub_factor);
-
-  GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), tiling_info.block_axis);
-  GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
-
-  int32_t dtype_size = kDtypeSizeMap.at(out_type);
-  int64_t workspace_size = output_shape[0] * output_shape[1] * dtype_size;
-
-  std::array<int64_t, MAX_WORKSPACE_NUMS> workspaces{workspace_size, workspace_size, workspace_size, workspace_size,
-                                                     workspace_size};
-  for (int64_t ws : workspaces) {
-    run_info.AddWorkspace(ws);
-  }
-
-  run_info.SetBlockDim(tiling_info.block_nparts);
-
-  int32_t tiling_key = static_cast<int32_t>(tiling_info.key);
-  run_info.SetTilingKey(tiling_key);
-
-  run_info.AddTilingData(static_cast<int32_t>(input_shapes[0][0]));
-  run_info.AddTilingData(static_cast<int32_t>(input_shapes[1][0]));
-  run_info.AddTilingData(static_cast<int32_t>(input_shapes[0][1]));
-  run_info.AddTilingData(static_cast<int32_t>(input_shapes[1][1]));
-
-  run_info.AddTilingData(static_cast<int32_t>(tiling_info.block_nparts));
-  run_info.AddTilingData(static_cast<int32_t>(tiling_info.ub_factor));
-
-  return true;
-}
-
-bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
-                     std::array<int64_t, MAX_DIM_LEN>& output_shape, const size_t& dim_len, const std::string& op_type,
-                     const ge::Operator& op_paras) {
-  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
-  for (size_t i = 0; i < INPUT_NUM; i++) {
-    OP_TILING_CHECK(operator_info->MutableInputDesc(i)->MutableShape().GetDims().empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input tensor cannot be empty"), return false);
-    // init all dim to 1
-    input_shapes[i].fill(1ll);
-  }
-  output_shape.fill(1ll);
-  for (size_t i = 0; i < INPUT_NUM; i++) {
-    size_t cur_dim_len = operator_info->MutableInputDesc(i)->MutableShape().GetDimNum();
-    size_t start_index = dim_len - cur_dim_len;
-    for (size_t j = 0; j < cur_dim_len; j++) {
-      input_shapes[i][start_index] = operator_info->MutableInputDesc(i)->MutableShape().GetDim(j);
-      start_index++;
-    }
-  }
-  for (size_t i = 0; i < dim_len; i++) {
-    int64_t max_output = input_shapes[0][i];
-    output_shape[i] = input_shapes[0][i];
-    for (size_t j = 1; j < INPUT_NUM; j++) {
-      bool verify_broadcast = input_shapes[j][i] != 1 && (input_shapes[j][i] != max_output && max_output != 1);
-      if (input_shapes[j][i] > max_output) {
-        max_output = input_shapes[j][i];
-        output_shape[i] = input_shapes[j][i];
-      }
-      OP_TILING_CHECK(verify_broadcast,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shapes [%s] cannot broadcast to shape [%s]",
-                                                      std::to_string(input_shapes[j][i]).c_str(),
-                                                      std::to_string(max_output).c_str()),
-                      return false);
-    }
-  }
-  GELOGI("op [%s] features' shape = [%lld, %lld], labels' shape = [%lld, %lld]", op_type.c_str(), input_shapes[0][0],
-         input_shapes[0][1], input_shapes[1][0], input_shapes[1][1]);
-  return true;
-}
-
-void CalNdKey(const std::string& op_type, TilingInfo& tiling_info,
-              const std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes, int32_t bound_size) {
-  constexpr int key_10 = 10;
-  constexpr int key_1 = 1;
-  constexpr int key_4 = 4;
-  constexpr int key_2 = 2;
-  constexpr int key_8 = 8;
-  constexpr int key_9 = 9;
-  constexpr int key_6 = 6;
-  int64_t reduce_mode = 100;
-  int64_t key = 0;
-  std::array<int64_t, MAX_DIM_LEN> features_shape = input_shapes[0];
-  std::array<int64_t, MAX_DIM_LEN> labels_shape = input_shapes[1];
-  int64_t dim00 = features_shape[0];
-  int64_t dim01 = features_shape[1];
-  int64_t dim10 = labels_shape[0];
-  int64_t dim11 = labels_shape[1];
-  bool broadcast_dim00_to_dim10 = (dim00 == 1 && dim10 > 1);
-  bool broadcast_dim10_to_dim00 = (dim10 == 1 && dim00 > 1);
-  bool broadcast_dim01_to_dim11 = (dim01 == 1 && dim11 > 1);
-  bool broadcast_dim11_to_dim01 = (dim11 == 1 && dim01 > 1);
-  if (dim00 == dim10 && dim01 == dim11) {
-    // copy: [a, b] [a, b] choose no_stride=0, but [a, 1] [a, 1] choose no_stride=1
-    key = key_10;
-  } else if (broadcast_dim00_to_dim10 && dim01 == dim11) {
-    // 1 common, large common
-    key = key_1;
-  } else if (broadcast_dim10_to_dim00 && dim01 == dim11) {
-    // large common, 1 common
-    key = key_4;
-  } else if (broadcast_dim01_to_dim11 && dim00 == dim10) {
-    // common 1, common large
-    key = key_2;
-  } else if (broadcast_dim11_to_dim01 && dim00 == dim10) {
-    // common large, common 1
-    key = key_8;
-  } else if (broadcast_dim00_to_dim10 && broadcast_dim11_to_dim01) {
-    // 1 large, large, 1
-    key = key_9;
-  } else if (broadcast_dim01_to_dim11 && broadcast_dim10_to_dim00) {
-    // large 1, 1, large
-    key = key_6;
-  }
-  if (max(dim11, dim01) > bound_size) {
-    key += reduce_mode;
-  }
-  tiling_info.key = key;
-  GELOGD("op [%s] key[%d].", op_type.c_str(), key);
-}
-
-bool DoNdTiling(const std::string& op_type, const ScewlOpInfo& op_info, TilingInfo& tiling_info, ge::DataType& out_type,
-                std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
-                const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
-  GELOGI("op [%s]: DoNdTiling func running", op_type.c_str());
-  int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
-  int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
-  int32_t ub_axis = 0;
-  int32_t ub_factor = output_shape[0];
-  int32_t block_axis = 0;
-  int32_t block_nparts = 1;
-  int32_t dtype_size = kDtypeSizeMap.at(out_type);
-  GELOGD("op [%s] dtype_size = %d.", op_type.c_str(), dtype_size);
-  OP_TILING_CHECK(dtype_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_size cannot be zero"), return false);
-  int32_t bound_size = op_info.ub_size / MAX_DTYPE_SIZE / MAX_COEXIST_NUM / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
-  int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
-  int32_t c_size_align = (c_size + FP16_BLOCK_SIZE - 1) / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
-  GELOGD("op [%s] bound_size = %d.", op_type.c_str(), bound_size);
-  if (c_size_align > bound_size) {
-    block_nparts = (n_h_w * dtype_size) >= (op_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
-                       ? op_info.core_num
-                       : max(n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK), 1);
-    ub_factor = (c_size - bound_size) >= num_per_block ? bound_size : bound_size - num_per_block;
-  } else if ((c_size_align * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
-    // for open multi-core
-    block_nparts = (n_h_w * dtype_size) >= (op_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
-                       ? op_info.core_num
-                       : n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK);
-    int32_t block_tiling_inner_loop = n_h_w / block_nparts;
-    ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
-  } else {
-    // for cannot open multi-core scene
-    block_nparts = 1;
-    ub_factor = min(bound_size / c_size_align, n_h_w);
-  }
-  block_nparts = max(block_nparts, 1);
-  GELOGD("op [%s] block_nparts = %d.", op_type.c_str(), block_nparts);
-  GELOGD("op [%s] ub_factor = %d.", op_type.c_str(), ub_factor);
-
-  tiling_info.block_nparts = block_nparts;
-  tiling_info.block_axis = block_axis;
-  tiling_info.ub_factor = ub_factor;
-  tiling_info.ub_axis = ub_axis;
-
-  CalNdKey(op_type, tiling_info, input_shapes, bound_size);
-
-  return true;
-}
-
 void CalNdKeyTemplate(const std::string& op_type, TilingInfo& tiling_info,
-                      const std::vector<std::vector<int64_t>>& input_shapes, int32_t bound_size) {
+                      const std::vector<std::vector<int64_t>>& input_shapes, int32_t bound_size, bool is_workspace) {
   constexpr int key_10 = 10;
   constexpr int key_1 = 1;
   constexpr int key_4 = 4;
@@ -361,11 +162,61 @@ void CalNdKeyTemplate(const std::string& op_type, TilingInfo& tiling_info,
     // large 1, 1, large
     key = key_6;
   }
-  if (max(dim11, dim01) > bound_size) {
+  if (max(dim11, dim01) > bound_size || is_workspace) {
     key += reduce_mode;
   }
   tiling_info.key = key;
   GELOGD("op [%s] key[%d].", op_type.c_str(), key);
+}
+
+
+bool DoNdTilingWorkspace(const std::string& op_type, const ScewlOpInfo& op_info,
+                         TilingInfo& tiling_info, const ge::DataType& out_type,
+                         const std::vector<std::vector<int64_t>>& input_shapes,
+                         const std::vector<int64_t>& output_shape) {
+  GELOGI("op [%s]: DoNdTilingWorkspace func running", op_type.c_str());
+  int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
+  int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
+  int32_t ub_axis = 0;
+  int32_t ub_factor = output_shape[0];
+  int32_t block_axis = 0;
+  int32_t block_nparts = 1;
+  int32_t dtype_size = kDtypeSizeMap.at(out_type);
+  GELOGD("op [%s] dtype_size = %d.", op_type.c_str(), dtype_size);
+  OP_TILING_CHECK(dtype_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_size cannot be zero"), return false);
+  int32_t bound_size = op_info.temp_ub_size;
+  int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
+  int32_t c_size_align = (c_size + FP16_BLOCK_SIZE - 1) / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
+  GELOGD("op [%s] bound_size = %d.", op_type.c_str(), bound_size);
+  if (c_size_align > bound_size) {
+    block_nparts = (n_h_w * dtype_size) >= (op_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
+                       ? op_info.core_num
+                       : max(n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK), 1);
+    ub_factor = (c_size - bound_size) >= num_per_block ? bound_size : bound_size - num_per_block;
+  } else {
+    // for open multi-core
+    block_nparts = (n_h_w * dtype_size) >= (op_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
+                       ? op_info.core_num
+                       : max(n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK), 1);
+    ub_factor = c_size;
+  }
+  int32_t block_inner = (n_h_w + block_nparts - 1) / block_nparts;
+  if (block_inner < num_per_block) {
+    block_nparts = 1;
+  }
+
+  block_nparts = max(block_nparts, 1);
+  GELOGD("op [%s] block_nparts = %d.", op_type.c_str(), block_nparts);
+  GELOGD("op [%s] ub_factor = %d.", op_type.c_str(), ub_factor);
+
+  tiling_info.block_nparts = block_nparts;
+  tiling_info.block_axis = block_axis;
+  tiling_info.ub_factor = ub_factor;
+  tiling_info.ub_axis = ub_axis;
+  bool is_workspace = true;
+  CalNdKeyTemplate(op_type, tiling_info, input_shapes, bound_size, is_workspace);
+
+  return true;
 }
 
 bool GetInput(std::vector<std::vector<int64_t>>& input_shapes, std::vector<int64_t>& max_input_shape,
@@ -404,13 +255,12 @@ bool WriteTilingDataTemplate(const std::string& op_type, const ScewlOpInfo& op_i
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), tiling_info.block_axis);
   GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
 
-  int32_t dtype_size = kDtypeSizeMap.at(out_type);
+  int32_t dtype_size = 4;  // workspace dtype is float32
   int64_t workspace_size = dtype_size;
   for (const auto& dim_value : max_input_shape) {
     workspace_size *= dim_value;
   }
-  std::array<int64_t, MAX_WORKSPACE_NUMS> workspaces{workspace_size, workspace_size, workspace_size, workspace_size,
-                                                     workspace_size};
+  std::array<int64_t, MAX_WORKSPACE_NUMS> workspaces{workspace_size, workspace_size, workspace_size};
   for (int64_t ws : workspaces) {
     run_info.AddWorkspace(ws);
   }
@@ -423,15 +273,15 @@ bool WriteTilingDataTemplate(const std::string& op_type, const ScewlOpInfo& op_i
   std::unordered_map<int32_t, std::vector<string>> normal_vars = op_info.normal_vars;
   std::vector<string> var_list = normal_vars.at(tiling_key);
   std::vector<int32_t> var_value;
-  string dim_prefix = "dim_";
+  string dim_prefix = "_dim_";
   for (const auto& var : var_list) {
     if (var == "_ub_factor") {
       var_value.push_back(static_cast<int32_t>(tiling_info.ub_factor));
     } else if (var == "_block_nparts") {
       var_value.push_back(static_cast<int32_t>(tiling_info.block_nparts));
     } else if (var.rfind(dim_prefix, 0) == 0) {
-      int32_t row = var[4] - '0';
-      int32_t col = var[6] - '0';
+      int32_t row = var[5] - '0';
+      int32_t col = var[7] - '0';
       var_value.push_back(static_cast<int32_t>(input_shapes[row][col]));
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var value error. Error message: %s", var.c_str());
@@ -486,7 +336,16 @@ bool TemplateTiling(const std::string& op_type, const ge::Operator& op_paras, co
   // workspace case use old strategy
   if (aligned_d_dim > ub_size) {
     OP_LOGI(op_type.c_str(), "template tiling strategy failed, back old tiling strategy, return false");
-    return false;
+    TilingInfo tiling_info_workspace;
+    bool ret = DoNdTilingWorkspace(op_type, op_info, tiling_info_workspace, out_type, input_shapes, max_input_shape);
+    OP_TILING_CHECK(!ret, OP_LOGI(op_type.c_str(), "DoNdTilingWorkspace func failed, return false"),
+                    return false);
+    ret = ret && WriteTilingDataTemplate(op_type, op_info, tiling_info_workspace, run_info, input_shapes, op_paras,
+                                         max_input_shape, out_type);
+    OP_TILING_CHECK(!ret, OP_LOGI(op_type.c_str(), "WriteTilingDataTemplate func failed, return false"),
+                    return false);
+    OP_LOGI(op_type.c_str(), "template tiling strategy success !!!!");
+    return ret;
   }
 
   ub_factor = ub_size / aligned_d_dim;
@@ -517,15 +376,39 @@ bool TemplateTiling(const std::string& op_type, const ge::Operator& op_paras, co
   }
 
   TilingInfo tiling_info;
-  CalNdKeyTemplate(op_type, tiling_info, input_shapes, ub_size);
+  bool is_workspace = false;
+  CalNdKeyTemplate(op_type, tiling_info, input_shapes, ub_size, is_workspace);
   int32_t key = is_align_case ? tiling_info.key : tiling_info.key + op_info.align_base_key;
   tiling_info.key = key;
   tiling_info.block_nparts = block_nparts;
   tiling_info.block_axis = block_axis;
   tiling_info.ub_factor = ub_factor;
   tiling_info.ub_axis = ub_axis;
+  TilingInfo tiling_info_workspace;
+  tiling_info_workspace.block_nparts = 1;
+  // 160 for cut reduce can bind at least 10 thread, while not cut can only bind 1 thread
+  if (block_nparts == 1 && n_dim > 160) {
+    bool ret = DoNdTilingWorkspace(op_type, op_info, tiling_info_workspace, out_type, input_shapes, max_input_shape);
+    OP_TILING_CHECK(!ret, OP_LOGI(op_type.c_str(), "DoNdTilingWorkspace func failed, return false"),
+                    return false);
+  }
+  TilingInfo tiling_info_final;
+  // if cut reduce workspace strategy can bind less than 10 thread, choose not cut strategy
+  if (tiling_info_workspace.block_nparts < 10) {
+    tiling_info_final.key = tiling_info.key;
+    tiling_info_final.block_nparts = tiling_info.block_nparts;
+    tiling_info_final.block_axis = tiling_info.block_axis;
+    tiling_info_final.ub_factor = tiling_info.ub_factor;
+    tiling_info_final.ub_axis = tiling_info.ub_axis;
+  } else {
+    tiling_info_final.key = tiling_info_workspace.key;
+    tiling_info_final.block_nparts = tiling_info_workspace.block_nparts;
+    tiling_info_final.block_axis = tiling_info_workspace.block_axis;
+    tiling_info_final.ub_factor = tiling_info_workspace.ub_factor;
+    tiling_info_final.ub_axis = tiling_info_workspace.ub_axis;
+  }
 
-  bool writeRet = WriteTilingDataTemplate(op_type, op_info, tiling_info, run_info, input_shapes, op_paras,
+  bool writeRet = WriteTilingDataTemplate(op_type, op_info, tiling_info_final, run_info, input_shapes, op_paras,
                                           max_input_shape, out_type);
   OP_TILING_CHECK(!writeRet, OP_LOGI(op_type.c_str(), "WriteTilingDataTemplate func failed, return false"),
                   return false);
@@ -536,41 +419,7 @@ bool TemplateTiling(const std::string& op_type, const ge::Operator& op_paras, co
 bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::Operator& op_paras,
                                          const ScewlOpInfo& op_info, utils::OpRunInfo& run_info) {
   GELOGI("op [%s]: tiling running", op_type.c_str());
-  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
-  auto input_features = operator_info->MutableInputDesc(0)->MutableShape();
-  auto input_labels = operator_info->MutableInputDesc(1)->MutableShape();
-  std::vector<int64_t> input_features_shape = input_features.GetDims();
-  std::vector<int64_t> input_labels_shape = input_labels.GetDims();
-  const ge::DataType input0_type = op_paras.GetInputDesc(0).GetDataType();
-  ge::DataType out_type = op_paras.GetOutputDesc(0).GetDataType();
-
-  if (op_info.is_template) {
-    OP_LOGI(op_type.c_str(), "template tiling strategy enterance !!!!");
-    bool ret = TemplateTiling(op_type, op_paras, op_info, run_info);
-    if (ret) {
-      return ret;
-    }
-  }
-
-  size_t dim_len =
-      input_features_shape.size() > input_labels_shape.size() ? input_features_shape.size() : input_labels_shape.size();
-  std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM> input_shapes{};
-
-  GELOGD("op [%s] dim_len[%d].", op_type.c_str(), dim_len);
-
-  if (kDtypeSizeMap.count(input0_type) == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "Invalid input dtype");
-    return false;
-  }
-  std::array<int64_t, MAX_DIM_LEN> output_shape;
-  bool ret = CompletedShapes(input_shapes, output_shape, dim_len, op_type, op_paras);
-  // not use pure template
-  TilingInfo tiling_info;
-
-  if (dim_len == ND_SHAPE_LEN) {
-    ret = ret && DoNdTiling(op_type, op_info, tiling_info, out_type, input_shapes, output_shape);
-  }
-  ret = ret && WriteTilingData(op_type, op_info, tiling_info, run_info, out_type, input_shapes, output_shape);
+  bool ret = TemplateTiling(op_type, op_paras, op_info, run_info);
   return ret;
 }
 REGISTER_OP_TILING_V3_CUSTOM(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsTiling,

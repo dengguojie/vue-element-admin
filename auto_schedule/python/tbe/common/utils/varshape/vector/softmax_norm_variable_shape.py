@@ -81,16 +81,16 @@ def variable_shape(inputs: list):
         _suffix = 0
         for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
             if shape[i] == -1 and _range[i][0] == _range[i][1]:
-                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, Constant.MAX_INT32_VALUE))
+                operation.var_inner("_dim_%d_%d" % (_suffix, i), (1, Constant.MAX_INT32_VALUE))
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
+                    _var = operation.var_inner("_dim_%d_%d" % (_suffix, i), _range[i])
                 else:
-                    operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
+                    operation.var_inner("_dim_%d_%d" % (_suffix, i), _range[i])
                 d_shape.append(_var)
             else:
-                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, Constant.MAX_INT32_VALUE))
+                operation.var_inner("_dim_%d_%d" % (_suffix, i), (1, Constant.MAX_INT32_VALUE))
                 d_shape.append(shape[i])
             _suffix += 1
 
