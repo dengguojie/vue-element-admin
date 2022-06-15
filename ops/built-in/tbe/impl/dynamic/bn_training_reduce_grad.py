@@ -400,16 +400,28 @@ def bn_training_reduce_grad(grads,
 
     if is_unknown_rank_input((grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance)) or epsilon is None:
         if data_format == "NC1HWC0":
-            dynamic_shape = [-1, -1, -1, -1, -1]
-            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+            grads["shape"] = [-1, -1, -1, -1, 16]
+            grads["range"] = [(1, None), (1, None), (1, None), (1, None), (16, 16)]
+            x["shape"] = [-1, -1, -1, -1, 16]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None), (16, 16)]
+            dynamic_shape = [1, -1, 1, 1, 16]
+            dynamic_range = [(1, 1), (1, None), (1, 1), (1, 1), (16, 16)]
         elif data_format == "NCHW":
             dynamic_shape = [-1, -1, -1, -1]
             dynamic_range = [(1, None), (1, None), (1, None), (1, None)]
+            grads["shape"] = dynamic_shape
+            grads["range"] = dynamic_range
+            x["shape"] = dynamic_shape
+            x["range"] = dynamic_range
         else:
-            dynamic_shape = [-1, -1, -1, -1, -1, -1]
-            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None)]
+            grads["shape"] = [-1, -1, -1, -1, -1, 16]
+            grads["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None), (16, 16)]
+            x["shape"] = [-1, -1, -1, -1, -1, 16]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None), (16, 16)]
+            dynamic_shape = [1, 1, -1, 1, 1, 16]
+            dynamic_range = [(1, 1), (1, 1), (1, None), (1, 1), (1, 1), (16, 16)]
 
-        for input_dict in (grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance):
+        for input_dict in (diff_scale, diff_offset, scale, batch_mean, batch_variance):
             input_dict["shape"] = dynamic_shape
             input_dict["range"] = dynamic_range
 

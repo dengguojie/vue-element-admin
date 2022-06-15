@@ -35,6 +35,7 @@ from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.util_attr_common import OpAttr
+from impl.util.util_common import is_unknown_rank_input
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -261,7 +262,7 @@ def bn_training_update_grad_compute(grads,
 @register_operator("BNTrainingUpdateGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update_grad(grads,
                             x,
                             batch_mean,
@@ -325,6 +326,22 @@ def bn_training_update_grad(grads,
         batch_mean["range"] = range_list
         batch_variance["shape"] = shape_list
         batch_variance["range"] = range_list
+
+    if is_unknown_rank_input(
+        (grads, x, batch_mean, batch_variance)) or epsilon is None:
+        shape_list1 = [-1, -1, -1, -1, 16]
+        shape_list2 = [1, -1, 1, 1, 16]
+        grads["shape"] = shape_list1
+        x["shape"] = shape_list1
+        batch_mean["shape"] = shape_list2
+        batch_variance["shape"] = shape_list2
+
+        range_list1 = [(1, None), (1, None), (1, None), (1, None), (16, 16)]
+        range_list2 = [(1, 1), (1, None), (1, 1), (1, 1), (16, 16)]
+        grads["range"] = range_list1
+        x["range"] = range_list1
+        batch_mean["range"] = range_list2
+        batch_variance["range"] = range_list2
 
     if data_format in ("NC1HWC0", "NCHW"):
         list_axis = [0, 2, 3]

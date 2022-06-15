@@ -323,12 +323,16 @@ def bn_training_update(x,
 
     if is_unknown_rank_input((x, sum, square_sum, scale, offset, mean, variance)) or factor is None or epsilon is None:
         if data_format == "NC1HWC0":
-            dynamic_shape = [-1, -1, -1, -1, -1]
-            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+            x["shape"] = [-1, -1, -1, -1, 16]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None), (16, 16)]
+            dynamic_shape = [1, -1, 1, 1, 16]
+            dynamic_range = [(1, 1), (1, None), (1, 1), (1, 1), (16, 16)]
         else:
-            dynamic_shape = [-1, -1, -1, -1, -1, -1]
-            dynamic_range = [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None)]
-        for input_dict in (x, sum, square_sum, scale, offset, mean, variance):
+            x["shape"] = [-1, -1, -1, -1, -1, 16]
+            x["range"] = [(1, None), (1, None), (1, None), (1, None), (1, None), (16, 16)]
+            dynamic_shape = [1, 1, -1, 1, 1, 16]
+            dynamic_range = [(1, 1), (1, 1), (1, None), (1, 1), (1, 1), (16, 16)]
+        for input_dict in (sum, square_sum, scale, offset, mean, variance):
             input_dict["shape"] = dynamic_shape
             input_dict["range"] = dynamic_range
 

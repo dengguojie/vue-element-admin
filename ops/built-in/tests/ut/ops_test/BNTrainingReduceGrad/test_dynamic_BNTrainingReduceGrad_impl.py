@@ -108,12 +108,24 @@ case6 = gen_bn_training_reduce_grad_case((-2,), (-2,), (-2,), (-2,),
                                          ((1, None), (1, None), (1, None), (1, None)), "float16", "float32", "NCHW",
                                          "bn_training_reduce_grad_dynamic_006", "dynamic")
 
+case7 = gen_bn_training_reduce_grad_case((-2,), (-2,), (-2,), (-2,),
+                                         (-2,), (-2,), ((1, None), (1, None), (1, None), (1, None)),
+                                         ((1, None), (1, None), (1, None), (1, None)), "float16", "float32", "NC1HWC0",
+                                         "bn_training_reduce_grad_dynamic_007", "dynamic")
+
+case8 = gen_bn_training_reduce_grad_case((-2,), (-2,), (-2,), (-2,),
+                                         (-2,), (-2,), ((1, None), (1, None), (1, None), (1, None)),
+                                         ((1, None), (1, None), (1, None), (1, None)), "float16", "float32", "NDC1HWC0",
+                                         "bn_training_reduce_grad_dynamic_008", "dynamic")
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
+ut_case.add_case(["Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case8)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
