@@ -94,11 +94,9 @@ tar_results () {
   fi
 
   if [[ -d ~/ascend/log/plog ]]; then
-    files=${files}" ~/ascend/log/plog"
-  fi
-
-  if [[ -n "$files" ]]; then
-    tar czvf result_st_plus.tar.gz $files
+    tar czf result_st_plus.tar.gz $files ~/ascend/log/plog
+  elif [[ -n "$files" ]]; then
+    tar czf result_st_plus.tar.gz $files
   fi
 }
 

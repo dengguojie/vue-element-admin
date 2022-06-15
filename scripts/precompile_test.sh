@@ -152,8 +152,9 @@ install_st_plus_script() {
   echo "[INFO] install tbe_toolkits / run_ops_st_plus.sh / params"
   cp -f "${CUR_PATH}/util/run_ops_st_plus.sh" "${TEST_BIN_PATH}"
   cp -rf "${CANN_ROOT}/tools/tbe_toolkits" "${TEST_BIN_PATH}"
+  rm -f "${TEST_BIN_PATH}/params"
   if [[ ! -z "$@" ]]; then
-    echo "$@" > "${TEST_BIN_PATH}/params"
+    echo ${@//:/ } > "${TEST_BIN_PATH}/params"
   fi
 }
 
@@ -192,13 +193,13 @@ main() {
         install_stest "${pr_file}"
         install_script
       elif [[ "${task_type}" == "st_plus" ]]; then
-        if [[ $# -gt 2 ]] && [[ -n "$3" ]]; then
+        if [[ $# -gt 2 ]] && [[ "x$3" != "xnone" ]]; then
           generate_related_ops_by_specified_op "$3"
         else
           generate_related_ops_by_pr_file "${pr_file}"
         fi
         install_st_plus_test
-        install_st_plus_script ${@:4}
+        install_st_plus_script $4
       fi
     else
       install_sch_stest "${task_type}" "${pr_file}"
