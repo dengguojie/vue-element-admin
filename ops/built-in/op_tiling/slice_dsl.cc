@@ -171,7 +171,6 @@ bool SliceDslCompileInfo::Parse(const char* op_type, const nlohmann::json &org_c
 
 template <typename T>
 bool SliceDsl<T>::Init() {
-  op_type = context->GetOpType();
   const OpShape& org_x_ge_shape = context->GetInputShape(X_INPUT_DIX);
   size_t cur_x_dim_len = org_x_ge_shape.GetDimNum();
   if (cur_x_dim_len == 0) {
@@ -673,6 +672,7 @@ bool SliceDsl<T>::WriteTilingData() {
 
 template <typename T>
 bool SliceDsl<T>::DoTiling() {
+  op_type = context->GetOpType();
   OP_LOGD(op_type, "slice dsl DoTiling");
   slice_compile_info = dynamic_cast<const SliceDslCompileInfo *>(context->GetCompileInfo());
   if (slice_compile_info->is_const) {

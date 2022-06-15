@@ -179,7 +179,6 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
 
   template <typename T>
   bool GatherDsl<T>::Init() {
-    op_type = context->GetOpType();
     gather_compile_info = dynamic_cast<const GatherDslCompileInfo *>(context->GetCompileInfo());
     const OpShape& org_params_ge_shape = context->GetInputShape(0);
     cur_params_dim_len = org_params_ge_shape.GetDimNum();
@@ -884,6 +883,7 @@ template <typename T>
 
 template <typename T>
   bool GatherDsl<T>::DoTiling() {
+    op_type = context->GetOpType();
     OP_LOGD(op_type, "GatherDsl tiling running");
     bool init_ret = Init();
     if (!init_ret) {
