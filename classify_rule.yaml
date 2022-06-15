@@ -115,6 +115,7 @@ aicpu:
       - ops/built-in/framework/tf_plugin/crop_and_resize_grad_boxes_plugin.cc
       - ops/built-in/op_proto/internal_ops.cc
       - ops/built-in/op_proto/lookup_ops.cc
+      - ops/built-in/op_proto/runtime/range_infer.cc
     unrelease:
   llt:
     ut_check: true

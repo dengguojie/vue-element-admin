@@ -65,6 +65,7 @@ set(_op_proto_srcs
   runtime/strided_slice_v3.cc
   runtime/tile.cc
   runtime/conv2d_infer_fns.cc
+  runtime/range_infer.cc
   acts_ulq.cc
   acts_ulq_input_grad.cc
   act_ulq_clamp_max_grad.cc
