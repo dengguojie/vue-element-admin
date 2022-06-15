@@ -29,6 +29,7 @@ from .segment_max_d import segment_max_d
 from .sign import sign
 from .squared_difference import squared_difference
 from .ldpc import ldpc
+from .iou_3d import iou_3d
 
 # tbe it1
 from .selu import selu

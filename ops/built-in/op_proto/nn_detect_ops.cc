@@ -2300,4 +2300,34 @@ IMPLEMT_VERIFIER(DIoU, DIoUVerify) {
 COMMON_INFER_FUNC_REG(DIoU, DIoUInferShape);
 VERIFY_FUNC_REG(DIoU, DIoUVerify);
 // ----------------DIoU-------------------
+
+// ----------------Iou3D Started-------------------
+IMPLEMT_COMMON_INFERFUNC(Iou3DInferShape) {
+  OP_LOGD(TbeGetName(op).c_str(), "Iou3DInferShape begin.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto boxes_desc = op_desc->GetInputDescPtr(0);
+  auto query_boxes_desc = op_desc->GetInputDescPtr(1);
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
+  auto shape_boxes = boxes_desc->GetShape();
+  auto shape_query_boxes = query_boxes_desc->GetShape();
+
+  if (shape_boxes.GetDim(0) != shape_query_boxes.GetDim(0)) {
+    OP_LOGE(TbeGetName(op).c_str(), "shape_boxes[0] shoule equal to shape_query_boxes[0].");
+    return GRAPH_FAILED;
+  }
+  GeShape &output_shape = output_y_desc->MutableShape();
+  output_shape.SetDimNum(3);
+  output_shape.SetDim(0, shape_boxes.GetDim(0));
+  output_shape.SetDim(1, shape_boxes.GetDim(2));
+  output_shape.SetDim(2, shape_query_boxes.GetDim(2));
+
+  auto input_dtype = boxes_desc->GetDataType();
+  output_y_desc->SetDataType(input_dtype);
+  OP_LOGD(TbeGetName(op).c_str(), "Iou3DInferShape end.");
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Iou3D, Iou3DInferShape);
+// ----------------Iou3D Finished-------------------
 }  // namespace ge

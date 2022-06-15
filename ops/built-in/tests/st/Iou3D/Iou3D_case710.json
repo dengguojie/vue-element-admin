@@ -1,0 +1,424 @@
+[
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          7,
+          10
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float",
+        "value_range":[[5,10]],
+        "data_distribute": "uniform"
+      },
+      {
+        "shape": [
+          8,
+          7,
+          6
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float",
+        "value_range":[[5,10]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          10,
+          6
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_8_7_10_8_7_6"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          7,
+          65472
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          8,
+          7,
+          60
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          65472,
+          60
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      }
+    ],
+    "case_name": "test_Iou3D_with_shape_8_7_65472_8_7_60"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          6542
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          7,
+          20
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          6542,
+          20
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_1_7_6542_1_7_20"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          65488
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          7,
+          600
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          65488,
+          600
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_1_7_65488_1_7_600"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          12,
+          7,
+          6547
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          12,
+          7,
+          30
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          12,
+          6547,
+          30
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_12_7_6547_12_7_30"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          7,
+          52640
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          7,
+          7
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          52640,
+          7
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_1_7_52640_1_7_7"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          7,
+          221
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          8,
+          7,
+          60
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          221,
+          60
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_8_7_221_8_7_60"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          28,
+          7,
+          35472
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          28,
+          7,
+          6
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          28,
+          35472,
+          6
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_28_7_35472_28_7_6"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+          7,
+          11111
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          5,
+          7,
+          11
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+          11111,
+          11
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_5_7_11111_5_7_11"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          11,
+          7,
+          1111
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          11,
+          7,
+          1111
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          11,
+          1111,
+          1111
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_11_1111_1111_11_1111_1111"
+  },
+  {
+    "op": "Iou3D",
+    "input_desc": [
+      {
+        "shape": [
+          188,
+          7,
+          6547
+        ],
+        "format": "ND",
+        "name": "bboxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          188,
+          7,
+          20
+        ],
+        "format": "ND",
+        "name": "gtboxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          188,
+          6547,
+          20
+        ],
+        "format": "ND",
+        "name": "iou",
+        "type": "float"
+      } 
+    ],
+    "case_name": "test_Iou3D_with_shape_188_7_6547_188_7_20"
+  }
+]
