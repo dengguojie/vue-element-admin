@@ -83,6 +83,7 @@ static const char kFormatFractalNz[] = "FRACTAL_NZ";
 
 static const char kNameFusionPass[] = "AAMatMulNzToNdFusionPass";
 static const char kSplitKdimNameFusionPass[] = "AAMatMulNzToNdSplitKFusionPass";
+static const char kNZSplitKdimNameFusionPass[] = "AAMatMulNzSplitKFusionPass";
 static const char kSplitKdimNameFP16FusionPass[] = "AAMatMulNzToNdSplitKFP16FusionPass";
 
 static const int kNumDataNodes = 2;
@@ -93,6 +94,31 @@ static const int kRIdxLastSecond = -2;
 
 static const vector<string> whitelist_op_type = {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul,
                                                  kOpTypeBatchMatMulV2};
+
+void CreateNzSplitKPattern(FusionPattern *nz_split_k_pattern) {
+/*!
+ * support dtype: float16
+ * unsupported scene: cube_vector_split; one of m,k,n is not divisible by 16(float16)
+ * Data(ND)         Data(FRACTAL_NZ)                               Data(ND)     Data(FRACTAL_NZ)
+ *   \                 /                                            \                  /
+ *    \               /                                              \                /
+ *   TransData       /                                            TransData          /
+ *       \          /                                                  \            /
+ * MatMul/MatMulV2/BatchMatMul/BatchMatMulV2(FRACTAL_NZ)  ->   MatMul/MatMulV2/BatchMatMul/BatchMatMulV2(FRACTAL_NZ)
+ *             |                                                             |
+ *            CAST                                                           |
+ *             |                                                             |
+ *         NetOutput(FRACTAL_NZ)                                         NetOutput(FRACTAL_NZ)
+ */
+  OP_LOGD(kNZSplitKdimNameFusionPass, "Start to define pattern.");
+  nz_split_k_pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
+      .AddOpDesc(kDescTransdata0, {kOpTypeTransData})
+      .AddOpDesc(kOpTypeCast, {kOpTypeCast})
+      .SetInputs(kDescMatMul, {kDescTransdata0})
+      .SetInputs(kDescCast, {kDescMatMul})
+      .SetOutput(kDescCast);
+  OP_LOGD(kNZSplitKdimNameFusionPass, "End to define pattern.");
+}
 
 vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -110,27 +136,33 @@ vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
       .SetOutput(kDescTransdataOut);
   OP_LOGD(kNameFusionPass, "End to define pattern.");
 
-  FusionPattern* split_k_pattern = new (std::nothrow) FusionPattern(kSplitKdimNameFusionPass);
-  FUSION_PASS_CHECK(split_k_pattern == nullptr,
+  FusionPattern* nd_fp32_split_k_pattern = new (std::nothrow) FusionPattern(kSplitKdimNameFusionPass);
+  FUSION_PASS_CHECK(nd_fp32_split_k_pattern == nullptr,
                     OP_LOGW(kSplitKdimNameFusionPass, "pattern is nullptr, Create pattern not success!"),
                     return patterns);
 
   OP_LOGD(kSplitKdimNameFusionPass, "Start to define pattern.");
-
-  split_k_pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
+  nd_fp32_split_k_pattern
+      ->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
       .AddOpDesc(kDescTransdata0, {kOpTypeTransData})
       .AddOpDesc(kDescTransdata1, {kOpTypeTransData})
       .SetInputs(kDescMatMul, {kDescTransdata0, kDescTransdata1})
       .SetOutput(kDescMatMul);
   OP_LOGD(kSplitKdimNameFusionPass, "End to define pattern.");
 
-  FusionPattern* force_fp16_split_k_pattern = new (std::nothrow) FusionPattern(kSplitKdimNameFP16FusionPass);
-  FUSION_PASS_CHECK(force_fp16_split_k_pattern == nullptr,
+  FusionPattern* nz_split_k_pattern = new (std::nothrow) FusionPattern(kNZSplitKdimNameFusionPass);
+  FUSION_PASS_CHECK(nz_split_k_pattern == nullptr,
+                    OP_LOGW(kNZSplitKdimNameFusionPass, "pattern is nullptr, Create pattern not success!"),
+                    return patterns);
+  CreateNzSplitKPattern(nz_split_k_pattern);
+
+  FusionPattern* nd_fp16_split_k_pattern = new (std::nothrow) FusionPattern(kSplitKdimNameFP16FusionPass);
+  FUSION_PASS_CHECK(nd_fp16_split_k_pattern == nullptr,
                     OP_LOGW(kSplitKdimNameFP16FusionPass, "pattern is nullptr, Create pattern not success!"),
                     return patterns);
   // The following Case is another split kdim pattern.
   OP_LOGD(kSplitKdimNameFP16FusionPass, "Start to define pattern.");
-  force_fp16_split_k_pattern
+  nd_fp16_split_k_pattern
       ->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
       .AddOpDesc(kDescTransdata0, {kOpTypeTransData})
       .AddOpDesc(kDescTransdata1, {kOpTypeTransData})
@@ -140,14 +172,15 @@ vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
       .SetOutput(kDescCast);
   // The mapping order strictly follow the belowing:
   patterns.push_back(pattern);
-  patterns.push_back(force_fp16_split_k_pattern);
-  patterns.push_back(split_k_pattern);
+  patterns.push_back(nd_fp16_split_k_pattern);
+  patterns.push_back(nz_split_k_pattern);
+  patterns.push_back(nd_fp32_split_k_pattern);
   OP_LOGD(kSplitKdimNameFP16FusionPass, "End to define pattern.");
   return patterns;
 }
 
 bool AAMatMulNzToNdFusionPass::CheckFormatOfTransData(const NodePtr node_ptr_transdata, const string& expect_src_format,
-                                                      const string& expect_dst_format) {
+                                                      const string& expect_dst_format) const {
   string src_format;
   string dst_format;
   FUSION_PASS_CHECK(!AttrUtils::GetStr(node_ptr_transdata->GetOpDesc(), "src_format", src_format),
@@ -178,20 +211,26 @@ bool AAMatMulNzToNdFusionPass::IsNumOfNodesOutCorrect() {
                     "Data (index: 0) before matmul node should only have 1 output, actual %zu.",
                     out_nodes_data_0), return false);
 
-  auto out_nodes_data_1 = node_ptr_data_1->GetOutDataNodes().size();
-  FUSION_PASS_CHECK(out_nodes_data_1 != 1, OP_LOGI(node_ptr_matmul,
-                    "Data(index: 1) before matmul node should only have 1 output, actual %zu.",
-                    out_nodes_data_1), return false);
-
   auto out_nodes_transdata_0 = node_ptr_transdata_0->GetOutDataNodes().size();
   FUSION_PASS_CHECK(out_nodes_transdata_0 != 1, OP_LOGI(node_ptr_matmul,
                     "Transdata(index: 0) before matmul node should only have 1 output, actual %zu.",
                     out_nodes_transdata_0), return false);
 
-  auto out_nodes_transdata_1 = node_ptr_transdata_1->GetOutDataNodes().size();
-  FUSION_PASS_CHECK(out_nodes_transdata_1 != 1, OP_LOGI(node_ptr_matmul,
-                    "Transdata(index: 1) before matmul node should only have 1 output, actual %zu.",
-                    out_nodes_transdata_1), return false);
+  if (!nz_split_k_mode) {
+    auto out_nodes_data_1 = node_ptr_data_1->GetOutDataNodes().size();
+    FUSION_PASS_CHECK(
+        out_nodes_data_1 != 1,
+        OP_LOGI(node_ptr_matmul, "Data(index: 1) before matmul node should only have 1 output, actual %zu.",
+                out_nodes_data_1),
+        return false);
+
+    auto out_nodes_transdata_1 = node_ptr_transdata_1->GetOutDataNodes().size();
+    FUSION_PASS_CHECK(
+        out_nodes_transdata_1 != 1,
+        OP_LOGI(node_ptr_matmul, "Transdata(index: 1) before matmul node should only have 1 output, actual %zu.",
+                out_nodes_transdata_1),
+        return false);
+  }
 
   auto out_nodes_matmul = node_ptr_matmul->GetOutDataNodes().size();
   FUSION_PASS_CHECK(out_nodes_matmul != 1,
@@ -240,10 +279,20 @@ bool AAMatMulNzToNdFusionPass::GetNodePtr(const Mapping& mapping) {
   FUSION_PASS_CHECK(node_ptr_transdata_0 == nullptr,
                     OP_LOGW(kNameFusionPass, "Get node transdata(idx: 0) before matmul failed"), return false);
   node_ptr_transdata_1 = GetNodeFromMapping(kDescTransdata1, mapping);
-  FUSION_PASS_CHECK(node_ptr_transdata_1 == nullptr,
-                    OP_LOGW(kNameFusionPass, "Get node transdata(idx: 1) before matmul failed"), return false);
   node_ptr_transdata_out = GetNodeFromMapping(kDescTransdataOut, mapping);
   node_ptr_cast = GetNodeFromMapping(kDescCast, mapping);
+  return true;
+}
+
+bool AAMatMulNzToNdFusionPass::CheckCommonRules() const {
+  FUSION_PASS_CHECK(node_ptr_data_0->GetType() != kOpTypeData,
+                    OP_LOGI(node_ptr_data_0, "Data(idx:0) before Matmul node does not match."), return false);
+  FUSION_PASS_CHECK(node_ptr_data_1->GetType() != kOpTypeData,
+                    OP_LOGI(node_ptr_data_1, "Data(idx:1) before Matmul node does not match."), return false);
+  FUSION_PASS_CHECK(node_ptr_netoutput->GetType() != kOpTypeNetOutput,
+                    OP_LOGI(node_ptr_netoutput, "The NetOutput operator does not match."), return false);
+  FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz),
+                    OP_LOGI(node_ptr_transdata_0, "TransData(idx:0) before MatMul node does not match."), return false);
   return true;
 }
 
@@ -264,17 +313,16 @@ bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect(const Mapping& mapping)
                               "Matmul/MatMulV2/BatchMatMul node[%s]'s format does not match.",
                               node_ptr_matmul->GetName().c_str()),
                       return false);
-
     split_k_mode = true;
     split_k_force_fp16_mode = node_ptr_cast != nullptr;
     if (split_k_force_fp16_mode) {
       out_nodes_pattern_out = node_ptr_cast->GetOutDataNodes();
+      nz_split_k_mode = node_ptr_transdata_0 != nullptr && node_ptr_transdata_1 == nullptr;
       OP_LOGD(kSplitKdimNameFusionPass, "The current scenario is K_dim split and force fp16");
     } else {
       OP_LOGD(kSplitKdimNameFusionPass, "The current scenario is K_dim split and not force fp16");
     }
   }
-
   FUSION_PASS_CHECK(out_nodes_pattern_out.size() != 1, OP_LOGI(node_ptr_transdata_out,
                     "[Transdata after matmul]/[MatMul] node should only have 1 output, actual %zu.",
                     out_nodes_pattern_out.size()), return false);
@@ -284,28 +332,21 @@ bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect(const Mapping& mapping)
                     "Transdata(idx: 0) before matmul node should only have 1 input, actual %zu.",
                     in_nodes_transdata0_in.size()), return false);
   node_ptr_data_0 = in_nodes_transdata0_in.at(0);
-
-  auto in_nodes_transdata1_in = node_ptr_transdata_1->GetInDataNodes();
-  FUSION_PASS_CHECK(in_nodes_transdata1_in.size() != 1, OP_LOGI(node_ptr_transdata_1,
-                    "Transdata(idx: 1) before matmul node should only have 1 input, actual %zu.",
-                    in_nodes_transdata1_in.size()), return false);
-  node_ptr_data_1 = in_nodes_transdata1_in.at(0);
-
-  FUSION_PASS_CHECK(node_ptr_netoutput->GetType() != kOpTypeNetOutput,
-                    OP_LOGI(node_ptr_netoutput, "The NetOutput operator does not match."), return false);
-  FUSION_PASS_CHECK(node_ptr_data_0->GetType() != kOpTypeData,
-                    OP_LOGI(node_ptr_data_0, "Data(idx:0) before Matmul node does not match."), return false);
-  FUSION_PASS_CHECK(node_ptr_data_1->GetType() != kOpTypeData,
-                    OP_LOGI(node_ptr_data_1, "Data(idx:1) before Matmul node does not match."), return false);
-
-  FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_0, kFormatNd, kFormatFractalNz),
-                    OP_LOGI(node_ptr_transdata_0, "TransData(idx:0) before MatMul node does not match."), return false);
-
-  FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz),
-                    OP_LOGI(kNameFusionPass, "TransData(idx:1) before Matmul node does not match."),
-                    return false);
-
-  return true;
+  if (!nz_split_k_mode) {
+    auto in_nodes_transdata1_in = node_ptr_transdata_1->GetInDataNodes();
+    FUSION_PASS_CHECK(
+        in_nodes_transdata1_in.size() != 1,
+        OP_LOGI(node_ptr_transdata_1, "Transdata(idx: 1) before matmul node should only have 1 input, actual %zu.",
+                in_nodes_transdata1_in.size()),
+        return false);
+    node_ptr_data_1 = in_nodes_transdata1_in.at(0);
+    FUSION_PASS_CHECK(!CheckFormatOfTransData(node_ptr_transdata_1, kFormatNd, kFormatFractalNz),
+                      OP_LOGI(kNameFusionPass, "TransData(idx:1) before Matmul node does not match."), return false);
+  } else {
+    OP_LOGD(kNZSplitKdimNameFusionPass, "The current scenario is K_dim split and in NZ split Mode");
+    node_ptr_data_1 = node_ptr_matmul->GetInDataNodes().at(1);
+  }
+  return CheckCommonRules();
 }
 
 bool AAMatMulNzToNdFusionPass::IsDtypeCorrect() const {
@@ -402,26 +443,27 @@ bool AAMatMulNzToNdFusionPass::GetOriginalValue() {
 
 Status AAMatMulNzToNdFusionPass::UpdateNodesInfo() {
   // step1: update shape, range, format
-  vector<pair<int64_t, int64_t>> range_data_0;
-  auto out_desc_data_0 = node_ptr_data_0->GetOpDesc()->MutableOutputDesc(0);
-  node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShape(out_desc_data_0->GetShape());
-  FUSION_PASS_CHECK(out_desc_data_0->GetShapeRange(range_data_0) == ge::GRAPH_FAILED,
-                    OP_LOGW(node_ptr_data_0, "Failed to get shape range of data0."), return RestoreOriginalValues());
-  FUSION_PASS_CHECK(node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShapeRange(range_data_0) == ge::GRAPH_FAILED,
-                    OP_LOGW(node_ptr_matmul, "Failed to set first shape range of MatMul."),
-                    return RestoreOriginalValues());
+  if (!nz_split_k_mode) {
+    vector<pair<int64_t, int64_t>> range_data_0;
+    auto out_desc_data_0 = node_ptr_data_0->GetOpDesc()->MutableOutputDesc(0);
+    node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShape(out_desc_data_0->GetShape());
+    FUSION_PASS_CHECK(out_desc_data_0->GetShapeRange(range_data_0) == ge::GRAPH_FAILED,
+                      OP_LOGW(node_ptr_data_0, "Failed to get shape range of data0."), return RestoreOriginalValues());
+    FUSION_PASS_CHECK(
+        node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetShapeRange(range_data_0) == ge::GRAPH_FAILED,
+        OP_LOGW(node_ptr_matmul, "Failed to set first shape range of MatMul."), return RestoreOriginalValues());
+    node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetFormat(FORMAT_ND);
 
-  vector<pair<int64_t, int64_t>> range_data_1;
-  auto out_desc_data_1 = node_ptr_data_1->GetOpDesc()->MutableOutputDesc(0);
-  node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShape(out_desc_data_1->GetShape());
-  FUSION_PASS_CHECK(out_desc_data_1->GetShapeRange(range_data_1) == ge::GRAPH_FAILED,
-                    OP_LOGW(node_ptr_data_1, "Failed to get shape range of data1."), return RestoreOriginalValues());
-  FUSION_PASS_CHECK(node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShapeRange(range_data_1) == ge::GRAPH_FAILED,
-                    OP_LOGW(node_ptr_matmul, "Failed to set second shape range of MatMul."),
-                    return RestoreOriginalValues());
-
-  node_ptr_matmul->GetOpDesc()->MutableInputDesc(0)->SetFormat(FORMAT_ND);
-  node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetFormat(FORMAT_ND);
+    vector<pair<int64_t, int64_t>> range_data_1;
+    auto out_desc_data_1 = node_ptr_data_1->GetOpDesc()->MutableOutputDesc(0);
+    node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShape(out_desc_data_1->GetShape());
+    FUSION_PASS_CHECK(out_desc_data_1->GetShapeRange(range_data_1) == ge::GRAPH_FAILED,
+                      OP_LOGW(node_ptr_data_1, "Failed to get shape range of data1."), return RestoreOriginalValues());
+    FUSION_PASS_CHECK(
+        node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetShapeRange(range_data_1) == ge::GRAPH_FAILED,
+        OP_LOGW(node_ptr_matmul, "Failed to set second shape range of MatMul."), return RestoreOriginalValues());
+    node_ptr_matmul->GetOpDesc()->MutableInputDesc(1)->SetFormat(FORMAT_ND);
+  }
 
   // step2: update output shape, range, format, dtype
   if (!split_k_mode) {
@@ -443,37 +485,39 @@ Status AAMatMulNzToNdFusionPass::UpdateNodesInfo() {
 }
 
 bool AAMatMulNzToNdFusionPass::RelinkNodesBeforeMatMul() {
-  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_data_0->GetOutDataAnchor(0),
-                                               node_ptr_transdata_0->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_data_0, "Failed to remove edge between data0 and transdata0."),
-                    (void)RestoreOriginalValues();
-                    return false);
-  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_0->GetOutDataAnchor(0),
-                                               node_ptr_matmul->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_transdata_0, "Failed to remove edge between transdata0 and matmul."),
-                    (void)RestoreOriginalValues();
-                    return false);
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_data_0->GetOutDataAnchor(0),
-                                            node_ptr_matmul->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_data_0, "Failed to add edge between data0 and matmul."),
-                    (void)RestoreOriginalValues();
-                    return false);
+  if (!nz_split_k_mode) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_data_0->GetOutDataAnchor(0),
+                                                 node_ptr_transdata_0->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_data_0, "Failed to remove edge between data0 and transdata0."),
+                      (void)RestoreOriginalValues();
+                      return false);
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_0->GetOutDataAnchor(0),
+                                                 node_ptr_matmul->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_transdata_0, "Failed to remove edge between transdata0 and matmul."),
+                      (void)RestoreOriginalValues();
+                      return false);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_data_0->GetOutDataAnchor(0),
+                                              node_ptr_matmul->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_data_0, "Failed to add edge between data0 and matmul."),
+                      (void)RestoreOriginalValues();
+                      return false);
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_data_1->GetOutDataAnchor(0),
+                                                 node_ptr_transdata_1->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_data_1, "Failed to remove edge between data1 and transdata1."),
+                      (void)RestoreOriginalValues();
+                      return false);
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_1->GetOutDataAnchor(0),
+                                                 node_ptr_matmul->GetInDataAnchor(1)) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_transdata_1, "Failed to remove edge between transdata1 and matmul."),
+                      (void)RestoreOriginalValues();
+                      return false);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_data_1->GetOutDataAnchor(0),
+                                              node_ptr_matmul->GetInDataAnchor(1)) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_data_1, "Failed to add edge between data1 and matmul."),
+                      (void)RestoreOriginalValues();
+                      return false);
+  }
 
-  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_data_1->GetOutDataAnchor(0),
-                                               node_ptr_transdata_1->GetInDataAnchor(0)) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_data_1, "Failed to remove edge between data1 and transdata1."),
-                    (void)RestoreOriginalValues();
-                    return false);
-  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(node_ptr_transdata_1->GetOutDataAnchor(0),
-                                               node_ptr_matmul->GetInDataAnchor(1)) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_transdata_1, "Failed to remove edge between transdata1 and matmul."),
-                    (void)RestoreOriginalValues();
-                    return false);
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(node_ptr_data_1->GetOutDataAnchor(0),
-                                            node_ptr_matmul->GetInDataAnchor(1)) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_data_1, "Failed to add edge between data1 and matmul."),
-                    (void)RestoreOriginalValues();
-                    return false);
   return true;
 }
 
@@ -517,12 +561,14 @@ bool AAMatMulNzToNdFusionPass::RelinkNodesAfterMatMul() {
 }
 
 bool AAMatMulNzToNdFusionPass::RemoveRedanduntNodes(ge::ComputeGraph* graph) {
-  FUSION_PASS_CHECK(graph->RemoveNode(node_ptr_transdata_0) == ge::GRAPH_FAILED,
+  if (!nz_split_k_mode) {
+    FUSION_PASS_CHECK(graph->RemoveNode(node_ptr_transdata_0) == ge::GRAPH_FAILED,
                     OP_LOGE(node_ptr_transdata_0, "Failed to remove transdata0."), (void)RestoreOriginalValues();
                     return false);
-  FUSION_PASS_CHECK(graph->RemoveNode(node_ptr_transdata_1) == ge::GRAPH_FAILED,
-                    OP_LOGE(node_ptr_transdata_1, "Failed to remove transdata1."), (void)RestoreOriginalValues();
-                    return false);
+    FUSION_PASS_CHECK(graph->RemoveNode(node_ptr_transdata_1) == ge::GRAPH_FAILED,
+                      OP_LOGE(node_ptr_transdata_1, "Failed to remove transdata1."), (void)RestoreOriginalValues();
+                      return false);
+  }
   if (!split_k_mode) {
     FUSION_PASS_CHECK(graph->RemoveNode(node_ptr_transdata_out) == ge::GRAPH_FAILED,
                       OP_LOGE(node_ptr_transdata_out, "Failed to remove transdata_out."), (void)RestoreOriginalValues();

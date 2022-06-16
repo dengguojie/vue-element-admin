@@ -30,10 +30,11 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   Status DoFusion(ge::ComputeGraph* graph);
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
   bool CheckFormatOfTransData(const ge::NodePtr node_ptr_transdata, const string& expect_src_format,
-                              const string& expect_dst_format);
+                              const string& expect_dst_format) const;
   bool CheckOutputFormatOfMatMul(const ge::NodePtr cur_node_ptr, const ge::Format& expect_dst_format) const;
   bool IsAligned();
   bool GetNodePtr(const Mapping& mapping);
+  bool CheckCommonRules() const;
   bool IsLinkRelationshipCorrect(const Mapping& mapping);
   bool IsNumOfNodesOutCorrect();
   bool IsDtypeCorrect() const;
@@ -66,6 +67,7 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   std::vector<std::pair<int64_t, int64_t>> out_range_matmul_0;
   bool split_k_mode = false;
   bool split_k_force_fp16_mode = false;
+  bool nz_split_k_mode = false;
 };
 }  // namespace fe
 
