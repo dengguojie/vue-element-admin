@@ -26,7 +26,7 @@ class Constant:
     The class for constant
     """
     SCALAR_MIN_FP16 = -(2**16 - 1)
-    SCALAR_MIN_FP32 = -3402823424.0
+    SCALAR_MIN_FP32 = -3.4e+38
     SCALAR_MIN_INT32 = -(2**31 - 1)
     MAX_MASK_INT64 = 2**64 - 1
     MAX_SEGMENT_LEN = 2048 * 7

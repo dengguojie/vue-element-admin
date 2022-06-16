@@ -122,7 +122,7 @@ MINI = "mini"
 CLOUD = "cloud"
 
 # `define a scalar, value = -(2**32 - 1)`
-SCALAR_MIN_FP32 = -3402823424.0
+SCALAR_MIN_FP32 = -3.4e+38
 # `define a scalar, value = -(2**16 - 1)`
 SCALAR_MIN_FP16 = -(2**16 - 1)
 # `define a scalar, value = (2**30 + 2**29)`
