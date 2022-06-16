@@ -214,7 +214,8 @@ bool AutoTilingOp::GetConstInput(const char* name, size_t index, int64_t& value)
 }
 
 bool AutoTilingOp::GetConstInput(const char* name, size_t index, std::vector<int64_t>& values) {
-  if (name != nullptr) {
+  constexpr size_t max_integer = 2147483647;
+  if (name != nullptr && index == max_integer) {
     index = ge::OpDescUtils::GetOpDescFromOperator(*op_paras)->GetInputIndexByName("axes");
   }
   if (!ops::GetConstIntData(*op_paras, index, values)) {
