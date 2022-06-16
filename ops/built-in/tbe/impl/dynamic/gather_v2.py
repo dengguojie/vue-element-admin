@@ -2857,7 +2857,7 @@ class GatherV2():
                                                   name="ddr_arg", scope=tik.scope_gm)
         self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
                                           name="y", scope=tik.scope_gm)
-        impl_mode_value = "" if self.impl_mode is None else self.impl_mode
+        impl_mode_value = 1 if self.impl_mode == "high_performance" else 0
 
         self.gather_v2_compute_tiling()
         # add compile info
@@ -2915,7 +2915,7 @@ class GatherV2():
         self.cached_types["cached_types_indices"] = cached_types_indices
 
 
-def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
+def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode="high_precision"):
     """
     gather_v2 interface for tik
     """
@@ -2925,7 +2925,7 @@ def gather_v2_tik(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", imp
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-arguments
-def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
+def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode="high_precision"):
     """
     get_op_support_info
     """
@@ -2946,7 +2946,7 @@ def get_op_support_info(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2
     return op_cal_info_in_json
 
 
-def check_supported(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
+def check_supported(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode="high_precision"):
     """
     Judge whether the current input specification supports
     """
@@ -3037,7 +3037,7 @@ def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME,
                             para_check.OPTION_ATTR_STR)
-def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode=None):
+def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2", impl_mode="high_precision"):
     """
     gather_v2 interface
 

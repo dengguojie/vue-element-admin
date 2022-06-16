@@ -33,30 +33,30 @@ static const std::pair<int64_t, std::string> BIAS_ATTR_INFO_AXIS{0, "axis"};
 static const std::pair<int64_t, std::string> BIAS_ATTR_INFO_NUM_AXES{1, "num_axes"};
 static const std::pair<int64_t, std::string> BIAS_ATTR_INFO_BIAS_FROM_BLOB{2, "bias_from_blob"};
 
-bool GetBiasShape(const std::string& opType, const ge::Operator& op_paras, const std::vector<int64_t>& xShape,
+bool GetBiasShape(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& xShape,
                   const std::vector<int64_t>& biasShape, std::vector<int64_t>& broadcastBiasShape) {
   OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) begin");
 
   int32_t axis;
-  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BIAS_ATTR_INFO_AXIS, axis, 1),
+  OP_TILING_CHECK(!ops::GetAttrValue(opParas, BIAS_ATTR_INFO_AXIS, axis, 1),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetBiasShape, get axis error"),
                   return false);
   int32_t numAxes;
-  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BIAS_ATTR_INFO_NUM_AXES, numAxes, 1),
+  OP_TILING_CHECK(!ops::GetAttrValue(opParas, BIAS_ATTR_INFO_NUM_AXES, numAxes, 1),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetBiasShape, get num_axes error"),
                   return false);
   OP_TILING_CHECK(numAxes < -1,
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "num_axes should be greater than -1"),
                   return false);
   bool biasFromBlob;
-  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BIAS_ATTR_INFO_BIAS_FROM_BLOB, biasFromBlob, true),
+  OP_TILING_CHECK(!ops::GetAttrValue(opParas, BIAS_ATTR_INFO_BIAS_FROM_BLOB, biasFromBlob, true),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetBiasShape, get bias_from_blob error"),
                   return false);
 
   int32_t xDimNum = xShape.size();
   int32_t biasDimNum = biasShape.size();
-  OP_TILING_CHECK(axis >= xDimNum or axis < -xDimNum,
-                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "axis should not be greater than the length of shape_x."),
+  OP_TILING_CHECK(axis >= xDimNum or axis < -1 * xDimNum,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "axis should not be greater than the length of shape_x"),
                   return false);
   if (axis < 0) {
     axis += xDimNum;
@@ -75,44 +75,41 @@ bool GetBiasShape(const std::string& opType, const ge::Operator& op_paras, const
     OP_TILING_CHECK(numAxes > 0 and biasDimNum != numAxes,
                     VECTOR_INNER_ERR_REPORT_TILIING(opType, "length_bias and num_axes must be equal."),
                     return false);
+
     if (numAxes == -1) {
-      for (int i = 0; i < axis; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
+      broadcastBiasShape.insert(broadcastBiasShape.end(), axis, 1);
       broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
-    } else if (numAxes == 0) {
-      for (int i = 0; i < xDimNum; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
-    } else {
-      for (int i = 0; i < axis; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
-      broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
-      for (int i = 0; i < xDimNum - numAxes - axis; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
+      OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end for biasFromBlob is true and numAxes is -1");
+      return true;
     }
-  } else {
-    OP_TILING_CHECK(biasDimNum != 1 and axis + biasDimNum > xDimNum,
-                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "bias shape extends x shape when applied."),
-                    return false);
-    if (biasDimNum == 1 and biasShape.at(0) == 1) {
-      for (int i = 0; i < xDimNum; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
-    } else {
-      for (int i = 0; i < axis; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
-      broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
-      for (int i = 0; i < xDimNum - biasDimNum - axis; ++i) {
-        broadcastBiasShape.push_back(1);
-      }
+
+    if (numAxes == 0) {
+      broadcastBiasShape.insert(broadcastBiasShape.end(), xDimNum, 1);
+      OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end for biasFromBlob is true and numAxes is 0");
+      return true;
     }
+
+    broadcastBiasShape.insert(broadcastBiasShape.end(), axis, 1);
+    broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
+    broadcastBiasShape.insert(broadcastBiasShape.end(), xDimNum - numAxes - axis, 1);
+    OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end for biasFromBlob is true and numAxes not in {-1, 0}");
+    return true;
   }
 
-  OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end");
+  // for not biasFromBlob
+  OP_TILING_CHECK(biasDimNum != 1 and axis + biasDimNum > xDimNum,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "bias shape extends x shape when applied."),
+                  return false);
+  if (biasDimNum == 1 and biasShape.at(0) == 1) {
+    broadcastBiasShape.insert(broadcastBiasShape.end(), xDimNum, 1);
+    OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end for biasFromBlob is false and biasShape.at(0) is 1");
+    return true;
+  }
+
+  broadcastBiasShape.insert(broadcastBiasShape.end(), axis, 1);
+  broadcastBiasShape.insert(broadcastBiasShape.end(), biasShape.begin(), biasShape.end());
+  broadcastBiasShape.insert(broadcastBiasShape.end(), xDimNum - biasDimNum - axis, 1);
+  OP_LOGD(opType.c_str(), "GetBiasShape (unknown rank) end for biasFromBlob is false and biasShape.at(0) is not 1");
   return true;
 }
 

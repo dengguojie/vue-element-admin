@@ -309,7 +309,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_14) {
   {
     std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":8, "
-      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":\"high_performance\"}, \"is_tik\": true, "
+      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":1}, \"is_tik\": true, "
       "\"is_gather_v2\": true}";
     std::vector<int64_t> inputA{822891, 16};
     std::vector<int64_t> inputB{5120, 820};
@@ -329,7 +329,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_14) {
   {
     std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":8, "
-      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":\"high_performance\"}, \"is_tik\": true, "
+      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":1}, \"is_tik\": true, "
       "\"is_gather_v2\": true}";
     std::vector<int64_t> inputA{822891, 11};
     std::vector<int64_t> inputB{5120, 820};
@@ -349,7 +349,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_14) {
   {
     std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":8, "
-      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":\"high_performance\"}, \"is_tik\": true, "
+      "\"params_dsize\":4, \"batch_dims\":0, \"impl_mode\":1}, \"is_tik\": true, "
       "\"is_gather_v2\": true}";
     std::vector<int64_t> inputA{822891, 5};
     std::vector<int64_t> inputB{5120, 820};

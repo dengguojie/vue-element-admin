@@ -131,8 +131,8 @@ const struct ops::AttrBase GATHER_BATCH_DIMS_INFO(1, "batch_dims");
 static const int64_t BATCH_DIMS_DEFAULT_VALUE = 0;
 
 // define impl_mode of gather_v2 attr
-static const string IMPL_MODE_DEFAULT_VALUE = "";
-static const string IMPL_MODE_HIGH_PERFORMANCE_VALUE = "high_performance";
+static const int64_t IMPL_MODE_DEFAULT_VALUE = 0;
+static const int64_t IMPL_MODE_HIGH_PERFORMANCE_VALUE = 1;
 
 struct GatherCompileInfo  {
   std::shared_ptr<AutoTilingHandler> outer_compile_info;
@@ -143,7 +143,7 @@ struct GatherCompileInfo  {
   int64_t indices_d_size{1};
   bool is_tik{false};
   bool is_gather_v2{false};
-  string impl_mode{IMPL_MODE_DEFAULT_VALUE};
+  int64_t impl_mode{IMPL_MODE_DEFAULT_VALUE};
 };
 
 struct GatherCompileParams {
@@ -153,7 +153,7 @@ struct GatherCompileParams {
   int64_t params_d_size;
   int64_t indices_d_size;
   int64_t batch_dims;
-  string impl_mode;
+  int64_t impl_mode;
 };
 
 struct GatherShapeInfo {
@@ -422,7 +422,7 @@ bool DoImplModeTiling(const std::string& op_type, GatherV2TilingParams& run_para
       return false);
   OP_TILING_CHECK(
       run_params.indices_num < compile_params.core_num * BLOCK_SIZE / compile_params.params_d_size,
-      OP_LOGD(op_type.c_str(), "[DoImplModeTiling] no need cache params row0 for the num of indices is small"),
+      OP_LOGD(op_type.c_str(), "[DoImplModeTiling] no need cache params row 0 for the num of indices is small"),
       return false);
 
   run_params.need_core_num = compile_params.core_num;
@@ -1262,7 +1262,7 @@ bool GatherParseFunc(const std::string &op_type, const nlohmann::json &compile_i
     OP_TILING_CHECK(!GetCompileValue(all_vars, "indices_dsize", op_info.indices_d_size),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get indices_d_size error"),
                     return false);
-    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", op_info.impl_mode, ""),
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", op_info.impl_mode, 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get impl_mode error"),
                     return false);
   } else {

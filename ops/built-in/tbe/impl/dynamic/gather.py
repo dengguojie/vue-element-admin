@@ -33,7 +33,8 @@ from impl.dynamic.gather_v2 import GatherV2
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-arguments
-def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather", impl_mode=None):
+def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather",
+                        impl_mode="high_precision"):
     """
     get_op_support_info
     """
@@ -54,7 +55,7 @@ def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kern
     return op_cal_info_in_json
 
 
-def gather_tik(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather", impl_mode=None):
+def gather_tik(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather", impl_mode="high_precision"):
     """
     gather interface for tik
     """
@@ -125,7 +126,7 @@ def gather_dsl(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME,
                             para_check.OPTION_ATTR_STR)
-def gather(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="gather", impl_mode=None):
+def gather(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="gather", impl_mode="high_precision"):
     """
     gather interface
 

@@ -120,7 +120,7 @@ const int64_t TILING_MODE_40 = 40;
 const int64_t TILING_MODE_41 = 41;
 
 // define impl_mode of gather_v2 attr
-static const string IMPL_MODE_HIGH_PERFORMANCE_VALUE = "high_performance";
+static const int64_t IMPL_MODE_HIGH_PERFORMANCE_VALUE = 1;
 
 bool CheckAndUpdateAxisAndBatchdims(int64_t& axis, gert::Shape& x_shape, gert::Shape& indies_shape, int64_t& batch_dims,
                                     int64_t params_dims, int64_t indices_dims) {
@@ -1092,7 +1092,7 @@ ge::graphStatus TilingPrepareForGatherV2(gert::TilingParseContext* context) {
         !GetCompileValue(all_vars, "indices_dsize", compile_info->indices_dsize),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get indices_dsize error"),
         return ge::GRAPH_FAILED);
-    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", compile_info->impl_mode, ""),
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", compile_info->impl_mode, 0),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "GatherParseFunc, get impl_mode error"),
         return false);
     OP_TILING_CHECK(

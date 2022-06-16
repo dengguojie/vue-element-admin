@@ -163,7 +163,7 @@ def _div(val, block):
 
 
 def op_select_format(x, segment_ids, num_segments, y,
-                     kernel_name="unsorted_segment_sum", impl_mode=None):
+                     kernel_name="unsorted_segment_sum", impl_mode="high_precision"):
     """
     select format dynamically
     """
@@ -275,7 +275,7 @@ def op_select_format(x, segment_ids, num_segments, y,
 
 # 'pylint: disable=too-many-return-statements,too-many-branches
 def check_supported(x, segment_ids, num_segments, y,
-                    kernel_name="unsorted_segment_sum", impl_mode=None):
+                    kernel_name="unsorted_segment_sum", impl_mode="high_precision"):
     """
     dynamic -2 not support
     dynamic -1 support
@@ -364,7 +364,7 @@ class UnsortedSegmentSum():
     """
 
     def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name, opname="unsort_segment_sum",
-                 impl_mode=None):
+                 impl_mode="high_precision"):
         """
         constructor of class UnsortedSegmentSum
 
@@ -5438,7 +5438,7 @@ def _tik_atomic_add_last_axis_not_align_small_e_hp(block_index, tik_inst, obj_gm
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def unsorted_segment_sum(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name="UnsortedSegmentSum",
-                         impl_mode=None):
+                         impl_mode="high_precision"):
     """
     unsorted_segment_sum entry interface
 
