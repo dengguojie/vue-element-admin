@@ -828,7 +828,8 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
     OP_LOGI(TbeGetName(op).c_str(), "attr of axis is null. Default axis is 1");
   }
   if (axis < -x_dim || axis > x_dim) {
-    OP_LOGE(TbeGetName(op).c_str(), "axis %ld is out of range[-%d, %d]. Please check.", axis, x_dim, x_dim);
+    OP_LOGE(TbeGetName(op).c_str(), "axis %ld is out of range[-%d, %d]. Please check.",
+            axis, x_dim, x_dim);
     return GRAPH_FAILED;
   }
   axis = (axis >= 0) ? axis : (x_dim + axis);
@@ -907,8 +908,7 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
     int64_t perm_value = perm_list[i] < 0 ? perm_list[i] + input_shape_len : perm_list[i];
     if (perm_value >= input_shape_len) {
       std::string err_msg = GetAttrValueErrMsg("perm", ConcatString(perm_value),
-                                               ConcatString("less than input shape size[",
-                                               input_shape_len, "]"));
+                                               ConcatString("less than input shape size[", input_shape_len, "]"));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -1227,8 +1227,9 @@ IMPLEMT_INFERFORMAT_FUNC(TransposeD, TransposeDInferFormat) {
     }
   }
 
-  OP_LOGD(TbeGetName(op).c_str(), "[TransposeD Inferformat] Finaly input format is %d, output format is %d", input_format,
-          output_format);
+  OP_LOGD(TbeGetName(op).c_str(),
+	  "[TransposeD Inferformat] Finaly input format is %d, output format is %d", 
+          input_format, output_format);
 
   TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetOriginFormat(output_format);
@@ -1886,6 +1887,7 @@ IMPLEMT_VERIFIER(SpaceToBatch, SpaceToBatchVerify) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
+
   if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
     string error_msg = ConcatString(
         "the rank of input[x] must be greater than or equal to 4, but get ",
@@ -2057,8 +2059,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
 
   // if crops are const node, verfify const sizes
   if (crops_done && crops.size() != 4) {
-    std::string err_msg = ConcatString(
-        "input[crops] data size[", crops.size(),"] not equal 4");
+    std::string err_msg = ConcatString("input[crops] data size[", crops.size(), "] not equal 4");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -2157,7 +2158,9 @@ IMPLEMT_VERIFIER(BatchToSpace, BatchToSpaceVerify) {
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
   if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
-    OP_LOGE(TbeGetName(op).c_str(), "Input shape size must be greater than or equal to 4, but got %ld.", input_dims.size());
+    OP_LOGE(TbeGetName(op).c_str(),
+	    "Input shape size must be greater than or equal to 4, but got %ld.", 
+            input_dims.size());
     return GRAPH_FAILED;
   }
   // check block size
@@ -2167,7 +2170,8 @@ IMPLEMT_VERIFIER(BatchToSpace, BatchToSpaceVerify) {
     return GRAPH_FAILED;
   }
   if (block_size < 2) {
-    OP_LOGE(TbeGetName(op).c_str(), "The block_size must be greater than or equal to 2, but got %ld.", block_size);
+    OP_LOGE(TbeGetName(op).c_str(),
+	    "The block_size must be greater than or equal to 2, but got %ld.", block_size);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2308,7 +2312,8 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
   }
   output_ptrs.resize(num);
   if (num != op_info->GetAllOutputsDescSize()) {
-    std::string err_msg = GetAttrValueErrMsg("num", ConcatString(num), ConcatString(op_info->GetAllOutputsDescSize()));
+    std::string err_msg = GetAttrValueErrMsg("num", ConcatString(num),
+		                             ConcatString(op_info->GetAllOutputsDescSize()));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -2373,10 +2378,12 @@ static std::vector<int64_t> GetAttrValue(const Operator& op, const std::string& 
   return list;
 }
 
-static bool CheckListEmptyAndValue(const std::string& op_name, const std::vector<int64_t>& list,
+static bool CheckListEmptyAndValue(const std::string& op_name,
+                                   const std::vector<int64_t>& list,
                                    const std::string& attr_name) {
   if (list.size() < 1) {
-    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%lu)!", attr_name.c_str(), list.size());
+    OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%lu)!",
+            attr_name.c_str(), list.size());
     return false;
   }
   return true;
@@ -2415,7 +2422,8 @@ IMPLEMT_VERIFIER(ExtractImagePatches, ExtractImagePatchesVerify) {
   return GRAPH_SUCCESS;
 }
 
-static void InferHWDynamic(const int64_t &in_hw, const string &padding, const int64_t &effective_filter,
+static void InferHWDynamic(const int64_t &in_hw, const string &padding,
+                           const int64_t &effective_filter,
                            const int64_t &stride, int64_t &out_hw) {
   if (in_hw == -1) {
     out_hw = -1;
@@ -2603,7 +2611,8 @@ static std::vector<int64_t> GetAttrValueVolume(const Operator& op, const std::st
   return list;
 }
 
-static bool CheckListEmptyAndValueVolume(const std::string& op_name, const std::vector<int64_t>& list,
+static bool CheckListEmptyAndValueVolume(const std::string& op_name,
+                                         const std::vector<int64_t>& list,
                                          const std::string& attr_name) {
   if (list.size() < 5) {
     OP_LOGE(op_name.c_str(), "The %s dose not have enough elements(%lu)!", attr_name.c_str(), list.size());
@@ -3868,7 +3877,7 @@ IMPLEMT_COMMON_INFERFUNC(Im2colInferShape) {
       pad_h_bottom = pad[1];
       pad_w_before = pad[2];
       pad_w_after = pad[3];
-    } else{
+    } else {
       OP_LOGE(TbeGetName(op).c_str(), "The size of pads must be 1 or 4 when x_format only support NHWC, NCHW.");
       return GRAPH_FAILED;
     }
@@ -4102,16 +4111,15 @@ static bool CheckAttrNgramCounts(int64_t input_pool_size, std::vector<int64_t> &
     int64_t start_index = ngram_counts[i];
     int64_t end_index = ((i + 1) < ngram_counts.size()) ? ngram_counts[i+1] : input_pool_size;
     if (!(end_index > start_index && end_index <= input_pool_size)) {
-      OP_LOGE("TfIdfVectorizer","ngram_counts out of bounds of inputPool.");
+      OP_LOGE("TfIdfVectorizer", "ngram_counts out of bounds of inputPool.");
       return false;
     }
     auto items = end_index - start_index;
     if (items > 0) {
       if (items % ngram_size != 0) {
-        OP_LOGE("TfIdfVectorizer","ngram_counts and inputPool do not match.");
+        OP_LOGE("TfIdfVectorizer", "ngram_counts and inputPool do not match.");
         return false;
       }
-
     }
     ++ngram_size;
   }
@@ -4125,7 +4133,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
   TensorDesc input_desc = op.GetInputDescByName("input");
   auto input_type = input_desc.GetDataType();
   // verify input type
-  if (input_type != DT_INT32 && input_type != DT_INT64 && input_type != DT_STRING )
+  if (input_type != DT_INT32 && input_type != DT_INT64 && input_type != DT_STRING)
   {
     OP_LOGE(op_name, "input must be string,int32 or int64!");
     return GRAPH_FAILED;
@@ -4149,7 +4157,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
     OP_LOGE(op_name, "get attr::max_gram_length faild!");
     return GRAPH_FAILED;
   }
-  if (max_gram_length <= 0 ) {
+  if (max_gram_length <= 0) {
     OP_LOGE(op_name, "attr::max_gram_length is Invalid, must >= 1");
     return GRAPH_FAILED;
   }
@@ -4159,7 +4167,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
     OP_LOGE(op_name, "get attr::max_skip_count faild!");
     return GRAPH_FAILED;
   }
-  if (max_skip_count < 0 ) {
+  if (max_skip_count < 0) {
     OP_LOGE(op_name, "attr::max_skip_count is Invalid, must >= 0");
     return GRAPH_FAILED;
   }
@@ -4169,12 +4177,12 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
     OP_LOGE(op_name, "get attr::min_gram_length faild!");
     return GRAPH_FAILED;
   }
-  if (min_gram_length < 0 ) {
+  if (min_gram_length < 0) {
     OP_LOGE(op_name, "attr::min_gram_length is Invalid, must >= 1");
     return GRAPH_FAILED;
   }
 
-  if (max_gram_length < min_gram_length ) {
+  if (max_gram_length < min_gram_length) {
     OP_LOGE(op_name, "attr::max_gram_length is Invalid, must >= attr::min_gram_length");
     return GRAPH_FAILED;
   }

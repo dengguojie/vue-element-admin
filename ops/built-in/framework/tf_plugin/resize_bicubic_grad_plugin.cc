@@ -25,7 +25,9 @@
 
 namespace domi {
 Status ParseResizeBicubicGrad(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    return FAILED;
+  }
 
   ge::TensorDesc input_tensor = op.GetInputDesc("grads");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);

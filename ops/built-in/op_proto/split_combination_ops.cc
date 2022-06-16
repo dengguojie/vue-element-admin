@@ -93,7 +93,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
       }
     }
     if (num_split > 1) {
-      for(size_t i = 0; i < x_shape.GetDimNum(); ++i) {
+      for (size_t i = 0; i < x_shape.GetDimNum(); ++i) {
         x_shape.SetDim(i, -1);
       }
     }
@@ -122,10 +122,10 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
     split_dim += x_shape.GetDimNum();
   }
 
- for(size_t i = 0; i < x_shape_range.size(); ++i) {
+ for (size_t i = 0; i < x_shape_range.size(); ++i) {
     if (split_dim == static_cast<int>(i)) {
       int64_t range_left = -1;
-      if(x_shape_range[i].first == 1) {
+      if (x_shape_range[i].first == 1) {
         range_left = x_shape_range[i].first;
       } else {
         range_left = floor((float)x_shape_range[i].first / (float)num_split);
@@ -223,10 +223,10 @@ IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
     split_dim += x_shape.GetDimNum();
   }
 
-  for(size_t i = 0; i < x_shape_range.size(); ++i) {
-    if(split_dim == static_cast<int>(i)) {
+  for (size_t i = 0; i < x_shape_range.size(); ++i) {
+    if (split_dim == static_cast<int>(i)) {
       int64_t range_left = -1;
-      if(x_shape_range[i].first == 1) {
+      if (x_shape_range[i].first == 1) {
         range_left = x_shape_range[i].first;
       } else {
         range_left = floor((float)x_shape_range[i].first / (float)num_split);
@@ -655,7 +655,6 @@ bool ConcatInferShapeCommonStatic(Operator& op, const int64_t dynamic_input_star
     output_shape.SetDim(0, 1);
   }
   size_t output_dim = output_shape.GetDimNum();
-
   if ((axis < -static_cast<int64_t>(output_dim)) || (axis >= static_cast<int64_t>(output_dim))) {
     // axes is valid
     return false;
@@ -926,7 +925,6 @@ static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, 
              TbeGetName(op), "Output no data slice, not need infer input");
 
   size_t dim_num = output_desc->GetOriginShape().GetDimNum();
-
   if ((axis < -static_cast<int64_t>(dim_num)) || (axis >= static_cast<int64_t>(dim_num))) {
     OP_LOGE(TbeGetName(op).c_str(), "Axis[%ld] value out of range[%ld, %ld).", axis, -dim_num, dim_num);
     return GRAPH_FAILED;
@@ -1328,7 +1326,7 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
   for (int64_t input_idx = 0; input_idx < pack_num; input_idx++) {
     auto input_shape_dims = op_info->MutableInputDesc(input_idx)->MutableShape().GetDims();
     if (!JoinShapes(output_shape_dims, input_shape_dims)) {
-      std::string err_msg = OtherErrMsg( "the input shape dims should be equal");
+      std::string err_msg = OtherErrMsg("the input shape dims should be equal");
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -1488,8 +1486,10 @@ COMMON_INFER_FUNC_REG(ConcatOffsetD, ConcatOffsetDInferShape);
 // --------------------Combinations Op Begin------------------------
 static int64_t combi(int64_t input_num, int32_t r) {
   int ans = 1;
-  for(int i = input_num; i > input_num - r; i--) ans *= i;
-  for(int i = r; i > 1; i--) {
+  for (int i = input_num; i > input_num - r; i--) {
+    ans *= i;
+  }
+  for (int i = r; i > 1; i--) {
     ans /= i;
   }
   return ans;

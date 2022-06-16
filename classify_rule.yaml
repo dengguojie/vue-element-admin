@@ -1172,6 +1172,11 @@ vector_B:
       - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
       - ops/built-in/op_proto/outfeed_ops.cc
+      - ops/built-in/framework/tf_plugin/multinomial_plugin.cc
+      - ops/built-in/framework/tf_plugin/resize_area_plugin.cc
+      - ops/built-in/framework/tf_plugin/resize_bicubic_grad_plugin.cc
+      - ops/built-in/op_proto/set_ops.cc
+      - ops/built-in/op_proto/inc/set_ops.h
       - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/ragged_math_ops.cc
@@ -2582,7 +2587,6 @@ unkown:
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
       - ops/built-in/op_proto/pad_ops.cc
-      - ops/built-in/op_proto/set_ops.cc
       - ops/built-in/op_proto/hcom_ops.cc
       - ops/built-in/op_proto/control_flow_ops.cc
       - ops/built-in/op_proto/state_ops.cc
@@ -2597,7 +2601,6 @@ unkown:
       - ops/built-in/op_proto/inc/rpn_ops.h
       - ops/built-in/op_proto/inc/nn_training_ops.h
       - ops/built-in/op_proto/inc/reduce_ops.h
-      - ops/built-in/op_proto/inc/set_ops.h
       - ops/built-in/op_proto/inc/aipp.h
       - ops/built-in/op_proto/inc/candidate_sampling_ops.h
       - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
@@ -3387,7 +3390,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/mul_plugin.cc
       - ops/built-in/framework/tf_plugin/scatter_max_plugin.cc
       - ops/built-in/framework/tf_plugin/fill_plugin.cc
-      - ops/built-in/framework/tf_plugin/resize_area_plugin.cc
       - ops/built-in/framework/tf_plugin/log1p_plugin.cc
       - ops/built-in/framework/tf_plugin/random_gamma_plugin.cc
       - ops/built-in/framework/tf_plugin/one_hot_plugin.cc
@@ -3601,7 +3603,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/elu_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/reverse_sequence_plugin.cc
       - ops/built-in/framework/tf_plugin/diag_part_plugin.cc
-      - ops/built-in/framework/tf_plugin/resize_bicubic_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/gelu_plugin.cc
       - ops/built-in/framework/tf_plugin/crop_and_resize_grad_image_plugin.cc
       - ops/built-in/framework/tf_plugin/bitwise_or_plugin.cc
@@ -3662,7 +3663,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/dynamic_gruv2_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/fused_layer_norm_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/segment_max_plugin.cc
-      - ops/built-in/framework/tf_plugin/multinomial_plugin.cc
       - ops/built-in/framework/tf_plugin/atan_plugin.cc
       - ops/built-in/framework/tf_plugin/lin_space_plugin.cc
       - ops/built-in/framework/tf_plugin/reduce_any_plugin.cc

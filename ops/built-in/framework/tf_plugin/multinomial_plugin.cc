@@ -34,7 +34,7 @@ Status AutoMappingFnMultinomial(const Message* op_src, ge::Operator& op) {
     OP_LOGE("Multinomial", "GetAttr DstT failed");
     return FAILED;
   }
-  op.SetAttr("dtype", dataType);
+  (void)op.SetAttr("dtype", dataType);
   OP_LOGI("Multinomial", "op[Multinomial] tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }
