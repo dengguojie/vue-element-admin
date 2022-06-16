@@ -33,14 +33,13 @@ ST_PLUS_CHANGE_LOG="${ST_PLUS_INSTALL_PATH}/get_change.log"
 CANN_OUTPUT="${CANN_ROOT}/output"
 TEST_TARGET="${CANN_OUTPUT}/${OPS_TESTCASE_DIR}.tar"
 
-test ! -d "${CANN_OUTPUT}" && mkdir -p "${CANN_OUTPUT}"
-
 CHANGE_LOG=""
 TEST_INSTALL_PATH=""
 OPS_SOURCE_DIR=""
 
 generate_related_ops_by_specified_op() {
   local ops="$1"
+  echo "[INFO] ops is specified as: ${ops}"
   echo "related_ops_dirs=${ops//,/ }" > "${CHANGE_LOG}"
 }
 
@@ -154,6 +153,7 @@ install_st_plus_script() {
   cp -rf "${CANN_ROOT}/tools/tbe_toolkits" "${TEST_BIN_PATH}"
   rm -f "${TEST_BIN_PATH}/params"
   if [[ ! -z "$@" ]]; then
+    echo "parameter is specified as: ${@}"
     echo ${@//:/ } > "${TEST_BIN_PATH}/params"
   fi
 }
@@ -228,6 +228,8 @@ else
   exit $STATUS_FAILED
 fi
 
+test ! -d "${CANN_OUTPUT}" && mkdir -p "${CANN_OUTPUT}"
 test ! -d "${TEST_BIN_PATH}" && mkdir -p "${TEST_BIN_PATH}"
+test ! -d "`dirname ${CHANGE_LOG}`" && mkdir -p "`dirname ${CHANGE_LOG}`"
 
 main $@
