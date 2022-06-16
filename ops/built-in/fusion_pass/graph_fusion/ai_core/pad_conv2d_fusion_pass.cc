@@ -49,7 +49,8 @@ static const char INPUT_SIZE[] = "input_size";
 static const char CONV2DBACKPROPFILTERD[] = "Conv2DBackpropFilterD";
 static const char FUSEBATCHNORMGRADD[] = "BNTrainingReduceGrad";
 static const char CONV2DBACKPROPINPUTD[] = "Conv2DBackpropInputD";
-static const char SLICE[] = "SliceD";
+static const char kSlice[] = "Slice";
+static const char kSliceD[] = "SliceD";
 static const int DIM_NUM4 = 4;
 static const int DIRECTION_COUNT = 2;
 vector<FusionPattern*> PadConv2dFusionPass::DefinePatterns() {
@@ -278,22 +279,18 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       if (conv2d_backpropinput_node != nullptr) {
         // Get slice_node and check the graph
         ge::NodePtr slice_node = nullptr;
-        int flag_slice = 0;
 
         auto out_data_anchor_dx = conv2d_backpropinput_node->GetOutDataAnchor(0);
         FUSION_PASS_CHECK(out_data_anchor_dx == nullptr,
                           ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
                                                   "OutdataAnchor 0 of conv2d_backpropinput is null, fusion failed."),
                           return PARAM_INVALID);
-        for (auto in_data_anchor : out_data_anchor_dx->GetPeerInDataAnchors()) {
-          if (in_data_anchor->GetOwnerNode()->GetType() == SLICE) {
-            slice_node = in_data_anchor->GetOwnerNode();
-          }
-          if (in_data_anchor->GetOwnerNode()->GetType() != SLICE) {
-            flag_slice = 1;
-          }
+        auto in_data_anchors = out_data_anchor_dx->GetPeerInDataAnchors();
+        if (in_data_anchors.size() == 1) {
+          auto anchor_node = in_data_anchors.at(0)->GetOwnerNode();
+          slice_node = (anchor_node->GetType() == kSlice || anchor_node->GetType() == kSliceD) ? anchor_node : nullptr;
         }
-        if (slice_node != nullptr && flag_slice == 0) {
+        if (slice_node != nullptr) {
           FUSION_PASS_CHECK(conv2d_backpropinput_node->GetOpDesc()->UpdateOutputDesc(
                                 0, slice_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
                             ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Update output failed."), return FAILED);
@@ -370,7 +367,7 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                                               node_ptr->GetInDataAnchor(0)) != SUCCESS,
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()),
                       return FAILED);
-    description.str(""); 
+    description.str("");
     description << "Set paddings to " << node_name.c_str() << " failed.";
     FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, conv_pads_all),
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
@@ -389,8 +386,8 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                         ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."), return FAILED);
     }
   }
-  FUSION_PASS_CHECK(graph.RemoveNode(padd_node) != SUCCESS, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove PadD node failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(padd_node) != SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Remove PadD node failed."), return FAILED);
   fusion_nodes.push_back(conv2d_node);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define PadConv2dFusionPass fusion end");
