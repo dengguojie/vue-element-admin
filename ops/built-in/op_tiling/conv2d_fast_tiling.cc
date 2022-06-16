@@ -1057,16 +1057,14 @@ bool FastTiling::GetUBTiling(Tiling& tiling)
     }
 
     // get tiling post fusion
-    for (uint32_t ncFactorIndex = 0; ncFactorIndex < tilingRangeUB_.ncFactor.size() - 1; ncFactorIndex++) {
-        uint32_t postUBCurrent = tilingRangeUB_.ncFactor.at(ncFactorIndex + 1) *
-                                 tilingRangeUB_.mcFactor.at(ubData_.mcFactorIndex) * 256 *
-                                 opInfo_.postFusionUbUtilize;
-        if (postUBCurrent <= hardware_.ubSize) {
-            ubData_.ncFactorIndex = ncFactorIndex + 1;
-        } else {
+    while (ubData_.postUbCurrent <= hardware_.ubSize) {
+        ubData_.ncFactorIndex++;
+        if (ubData_.ncFactorIndex > (tilingRangeUB_.ncFactor.size() -1)) {
             break;
         }
+        UpdateUBData();
     }
+    ubData_.ncFactorIndex--;
     // set Ub tiling decision
     // kAub means actual size, which multiply the hk, wk, c0 [=> reduceK].
     tiling.kAub = tilingRangeUB_.kAub.at(ubData_.kAubIndex) * reduceKAxisAL1_KhDilKwDilCi0_;

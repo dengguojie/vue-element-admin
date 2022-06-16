@@ -700,7 +700,7 @@ std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tili
   RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 32793);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 32 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 32 1 2 2 64 1 1 1 2 1 1 2 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 32 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 32 1 1 4 64 1 1 1 2 1 1 2 ");
 }
 
 TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_cin_lessthan_16) {
@@ -764,7 +764,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_cin_lessthan_16) {
   RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 32793);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 16 1 4 1 64 1 1 1 1 1 1 1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 16 1 2 2 64 1 1 1 1 1 1 1 ");
 }
 
 

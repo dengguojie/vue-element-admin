@@ -347,7 +347,7 @@ static Conv2DTilingTestParam general_cases_params[] = {
         {1, 64, 56, 56}, ge::Format::FORMAT_NCHW,
         {1, 4, 56, 56, 16}, ge::Format::FORMAT_NC1HWC0,
         {1, 1, 1, 1}, {0, 0, 0, 0}, {1, 1, 1, 1}, 1, "NCHW",
-        2, 32793, "1 32 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 32 1 2 2 64 1 1 1 2 1 1 2 "
+        2, 32793, "1 32 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 32 1 1 4 64 1 1 1 2 1 1 2 "
     },
     {
         "Conv2d_tiling_binary_case_cin_lessthan_16", "Conv2D",
@@ -365,7 +365,7 @@ static Conv2DTilingTestParam general_cases_params[] = {
         {1, 64, 56, 56}, ge::Format::FORMAT_NCHW,
         {1, 4, 56, 56, 16}, ge::Format::FORMAT_NC1HWC0,
         {1, 1, 1, 1}, {0, 0, 0, 0}, {1, 1, 1, 1}, 1, "NCHW",
-        2, 32793, "1 16 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 16 1 4 1 64 1 1 1 1 1 1 1 "
+        2, 32793, "1 16 56 56 64 1 1 1 1 1 1 56 56 0 0 0 0 0 0 1 1 2 1 16 1 2 2 64 1 1 1 1 1 1 1 "
     },
     {
         "Conv2d_tiling_binary_case_stride_2", "Conv2D",
