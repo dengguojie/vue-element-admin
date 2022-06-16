@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from itertools import filterfalse
 from sys import flags
 from math import ceil
 
@@ -47,16 +48,12 @@ def gen_batch_matmul_dynamic_none_range(
     gen the error case for ut test
     """
 
-    block_range = [] if format == "ND" else [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
-
-
-    x_range_case1 = None
-    x1_range_case2 = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+    x1_range_case2 = [
+        (1, None), (1, None), (1, None)] if format == "ND" else [
+        (1, None), (1, None), (1, None), (1, None), (1, None)]
     x2_range_case2 = x1_range_case2[1:] if batch_b is False else x1_range_case2
     y_range = x1_range_case2
 
-    x1_shape_len = 3 if format == "ND" else 5
-    x2_shape_len = x1_shape_len if batch_b else x1_shape_len - 1
     x1_ori_shape = (-1,) * 3
     x2_ori_shape = x1_ori_shape if batch_b else (-1,) * 2
     x1_shape = x1_ori_shape if format == "ND" else x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK)
@@ -81,7 +78,7 @@ def gen_batch_matmul_dynamic_none_range(
 
     return {
         "params": [x1, x2, bias, y, trans_a, trans_b],
-        "case_name": "none_range_" + str(bias_flag) + "_" + str(batch_b),
+        "case_name": "none_range_" + format + "_" + str(bias_flag) + "_" + str(batch_b),
         "expect": "success"
     }
 

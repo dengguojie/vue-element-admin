@@ -49,6 +49,7 @@ matmul_case_error = [
     ((5, 1), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase10", "range_error"),
 ]
 
+
 def gen_matmul_dynamic_succecase_nzz(m_range, k_range, n_range, src_dtype, dst_dtype,
                                      format_a, format_b, trans_a, trans_b, bias_flag, case_name):
     """

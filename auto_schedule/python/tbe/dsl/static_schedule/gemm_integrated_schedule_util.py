@@ -20,11 +20,10 @@ Sub-function of gemm_integrated_schedule
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.buildcfg import build_config
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam
-from tbe.dsl.compute.util import int_ceil_div
-from tbe.dsl.compute.util import get_value
+from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.compute.util import get_value
+from tbe.dsl.compute.util import int_ceil_div
 
 
 def get_all_tags(res):
@@ -84,6 +83,10 @@ def debug(debug_param_flag, info, tag=""):
     if debug_param_flag:
         print("----")
         print(tag, info)
+
+
+def get_optional_te_var(var_name):
+    return None if not get_te_var(var_name) else get_te_var(var_name).get_tvm_var()
 
 
 class GemmScheduleContainer:
@@ -165,11 +168,9 @@ class GemmScheduleStatusController:
         self.attach_at_flag = None
         self.split_k_axis_by_tiling = False
         self.split_k = False
-        self.non_factor_k_flag = False
         self.over_head_flag = False
         self.batch_broadcast_flag = False
         self.batch_broadcast_change_attach = False
-        self.flag_l0c_preload = False
 
 
 class BufferChecker:
@@ -554,25 +555,34 @@ class UbBufferReuser:
 class GemmTilingWork:
     """ There are tiling parameters in matmul
     """
+    block_reduce = tbe_platform.BLOCK_REDUCE
+    block_size = tbe_platform.BLOCK_IN
+    default_l0_ub_tiling = (1, 1, 1, block_size, block_size)
+    l1_attach_at_cl0_flag = 2
+    l1_attach_at_ddr_flag = 1
+    l1_full_load_flag = 0
+    kal1_eq_kbl1_flag = 0
+    kal1_gt_kbl1_flag = 1
+    kal1_lt_kbl1_flag = 2
+
     def __init__(self):
         self.tiling = None
-        self.block_reduce = tbe_platform.BLOCK_REDUCE
         (self.al0_tiling_batch, self.al0_tiling_ma,
-         self.al0_tiling_ka, self.al0_tiling_m0, self.al0_tiling_k0) = 1, 1, 1, 16, 16
+         self.al0_tiling_ka, self.al0_tiling_m0, self.al0_tiling_k0) = self.default_l0_ub_tiling
         (self.bl0_tiling_batch, self.bl0_tiling_nb,
-         self.bl0_tiling_kb, self.bl0_tiling_n0, self.bl0_tiling_k0) = 1, 1, 1, 16, 16
+         self.bl0_tiling_kb, self.bl0_tiling_n0, self.bl0_tiling_k0) = self.default_l0_ub_tiling
+        (self.cl0_tiling_batch, self.cl0_tiling_nc,
+         self.cl0_tiling_mc, self.cl0_tiling_n0, self.cl0_tiling_m0) = self.default_l0_ub_tiling
+        (self.aub_tiling_batch, self.aub_tiling_m,
+         self.aub_tiling_k, self.aub_tiling_m0, self.aub_tiling_k0) = self.default_l0_ub_tiling
+        (self.bub_tiling_batch, self.bub_tiling_n,
+         self.bub_tiling_k, self.bub_tiling_n0, self.bub_tiling_k0) = self.default_l0_ub_tiling
         self.al1_tiling_batch, self.al1_tiling_m, self.al1_tiling_k = 1, 1, 1
         self.bl1_tiling_batch, self.bl1_tiling_n, self.bl1_tiling_k = 1, 1, 1
-        (self.aub_tiling_batch, self.aub_tiling_m,
-         self.aub_tiling_k, self.aub_tiling_m0, self.aub_tiling_k0) = 1, 1, 1, 16, 16
-        (self.bub_tiling_batch, self.bub_tiling_n,
-         self.bub_tiling_k, self.bub_tiling_n0, self.bub_tiling_k0) = 1, 1, 1, 16, 16
-        (self.cl0_tiling_batch, self.cl0_tiling_nc,
-         self.cl0_tiling_mc, self.cl0_tiling_n0, self.cl0_tiling_m0) = 1, 1, 1, 16, 16
         self.factor_shape = {"aub": [], "bub": [], "cub": [], "al0": [], "bl0": [], "cl0": [], "al1": [], "bl1": []}
 
     @staticmethod
-    def get_split_param(cache_tiling, non_factor_k_flag):
+    def get_split_param(cache_tiling_manager):
         """
         get param for attach at, ceildiv by default, use floordiv to aid simplification in binary scene
         -----------------------
@@ -582,32 +592,42 @@ class GemmTilingWork:
         factor_ceil_mode = True
         split_ceil_mode = True
         tail_strategy = "guard_with_if"
-        if cache_tiling and not non_factor_k_flag:
+        if cache_tiling_manager.cache_tiling and not cache_tiling_manager.non_factor_k_flag:
             factor_ceil_mode = False
             split_ceil_mode = False
             tail_strategy = "round_up"
         return {"split_ceil_mode": split_ceil_mode, "factor_ceil_mode": factor_ceil_mode,
                 "tail_strategy": tail_strategy, "active_scope": "outer"}
 
-    def _set_factor_shape_nz_out(self, cache_tiling, cub_tiling):
+    def config_tiling(self, tiling, cache_tiling, compute_param):
         """
-        define the tiling factor for attach at when output format is NZ.
+        config tiling variable for cache tiling
         """
-        cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, _, _ = cub_tiling
-        self.factor_shape["cub"] = [cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0]
-        self.factor_shape["cl0"] = [cache_tiling.get("n_ub_l0_time"), 1, 1, 1]
-        if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
-            self.factor_shape["al12ddr"] = [cache_tiling.get("n_bl1"), cache_tiling.get("m_al1"), 1, None]
-        elif self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 1:
-            self.factor_shape["al12ddr"] = [1, 1, 1, None]
-        else:
-            self.factor_shape["al12ddr"] = [1, cache_tiling.get("m_al1"), 1, None]
+        tiling['block_dim'] = [cache_tiling.get('batch_dim'),
+                               cache_tiling.get("n_dim"),
+                               cache_tiling.get("m_dim"),
+                               cache_tiling.get('k_dim')]
+        tiling.get('AL1_shape')[0] = cache_tiling.get("kal1_16") * self.block_reduce
+        if tiling.get('AL1_shape')[1] == -1:
+            tiling.get('AL1_shape')[1] = cache_tiling.get("m_al1")
+        tiling.get('BL1_shape')[0] = cache_tiling.get("kbl1_16") * self.block_reduce
+        if tiling.get('BL1_shape')[1] == -1:
+            tiling.get('BL1_shape')[1] = cache_tiling.get("n_bl1")
+        tiling.get('AL0_matrix')[0] = cache_tiling.get("m_l0")
+        tiling.get('CL0_matrix')[1] = cache_tiling.get("m_l0")
+        tiling.get('CUB_matrix')[1] = cache_tiling.get("m_l0")
+        tiling.get('CUB_matrix')[0] = cache_tiling.get("cub_n1")
+        tiling.get('AL0_matrix')[1] = cache_tiling.get("k_al0")
+        tiling.get('BL0_matrix')[0] = cache_tiling.get("k_bl0")
+        tiling.get('BL0_matrix')[1] = cache_tiling.get("n_ub_l0_time") * cache_tiling.get("cub_n1")
+        tiling.get('CL0_matrix')[0] = tiling.get('BL0_matrix')[1]
+        if compute_param.format_a == "ND":
+            tiling.get('AUB_shape')[0] = cache_tiling.get('k_aub') * self.block_reduce
+            tiling.get('AUB_shape')[1] = cache_tiling.get('m_aub')
+            tiling.get('BUB_shape')[0] = cache_tiling.get('k_bub') * self.block_reduce
+            tiling.get('BUB_shape')[1] = cache_tiling.get('n_bub')
 
-        if self.tiling.get("attach_at_flag").get("al1_attach_flag") == 1:
-            self.factor_shape["bl12ddr"] = [cache_tiling.get("n_bl1"), cache_tiling.get("m_al1"), None, 1]
-        else:
-            self.factor_shape["bl12ddr"] = [cache_tiling.get("n_bl1"),
-                                            cache_tiling.get("m_single_core") * cache_tiling.get("m_al1"), None, 1]
+        return tiling
 
     def set_factor_shape(self, cache_tiling, format_info, status_controller):
         """
@@ -618,38 +638,20 @@ class GemmTilingWork:
         """
         attach_at_flag = self.tiling.get("attach_at_flag")
         cub_tiling = self.tiling.get("CUB_matrix")
-        cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, cub_tiling_batch, _ = cub_tiling
+
         ub_ka = int_ceil_div(self.aub_tiling_k, self.aub_tiling_k0)
         ub_kb = int_ceil_div(self.bub_tiling_k, self.bub_tiling_k0)
 
-        # parent of cub/cl0 is cddr by default, parent of al0/bl0 is cl0 by default.
-        # parent of al1/bl1 is cl0 when attach_flag is equals to 2, otherwise parent of al1/bl1 is cddr.
-        # cddr has 2 iter_vars(m, n) when output format is ND.
-        # cddr has 4 iter_vars(n1, m1, m0, n0) when output format is NZ.
-        # cl0 has 6 iter_vars(n1, m1, m0, n0, k1, k0).
-        self.factor_shape["al0"] = [
-            None, self.al0_tiling_ma, None, self.al0_tiling_m0, self.al0_tiling_ka, self.al0_tiling_k0
-        ]
-        self.factor_shape["bl0"] = [self.bl0_tiling_nb, None, None, 1, 1, 1]
         if format_info.get("a") == "ND":
             self.factor_shape["aub"] = [self.aub_tiling_m, ub_ka, self.aub_tiling_m0, self.aub_tiling_k0]
         if format_info.get("b") == "ND":
             self.factor_shape["bub"] = [ub_kb, self.bub_tiling_n, self.bub_tiling_n0, self.bub_tiling_k0]
-        # only split by kl0_factor when k_al1/k_bl1 larger than kl0
-        if attach_at_flag.get("min_kl1_cmp_kl0"):
-            if attach_at_flag.get("abkl1_attach_flag") in (0, 1):
-                self.factor_shape["al12cl0"] = [None, 1, None, 1, cache_tiling.get("kl1_times"), 1]
-                self.factor_shape["bl12cl0"] = [1, None, None, 1, cache_tiling.get("kbl0_factor"), 1]
-            else:
-                self.factor_shape["al12cl0"] = [None, 1, None, 1, cache_tiling.get("kal0_factor"), 1]
-                self.factor_shape["bl12cl0"] = [1, None, None, 1, cache_tiling.get("kl1_times"), 1]
+
+        self._set_factor_shape_to_l0c(cache_tiling, attach_at_flag)
         if format_info.get("out") == "ND":
-            self.factor_shape["cub"] = [cub_tiling_mc_factor * cub_tiling_m0, cub_tiling_nc_factor * cub_tiling_n0]
-            self.factor_shape["cl0"] = [1, cache_tiling.get("n_ub_l0_time")]
-            self.factor_shape["al12ddr"] = [cache_tiling.get("m_al1"), cache_tiling.get("n_single_core")]
-            self.factor_shape["bl12ddr"] = [1, cache_tiling.get("n_bl1")]
+            self._set_factor_shape_to_out_nd(cache_tiling, cub_tiling)
         else:
-            self._set_factor_shape_nz_out(cache_tiling, cub_tiling)
+            self._set_factor_shape_to_out_nz(cache_tiling, cub_tiling)
 
         if status_controller.split_k_axis_by_tiling:
             self.factor_shape.get("cub").insert(0, 1)
@@ -658,11 +660,11 @@ class GemmTilingWork:
             self.factor_shape.get("bl0").insert(0, 1)
             self.factor_shape.get("al12ddr").insert(0, 1)
             self.factor_shape.get("bl12ddr").insert(0, 1)
-            if attach_at_flag.get("min_kl1_cmp_kl0"):
-                self.factor_shape.get("al12cl0").insert(0, 1)
-                self.factor_shape.get("bl12cl0").insert(0, 1)
+            self.factor_shape.get("al12cl0").insert(0, 1)
+            self.factor_shape.get("bl12cl0").insert(0, 1)
 
         if status_controller.have_batch:
+            cub_tiling_batch = cub_tiling[-2]
             self.factor_shape.get("cub").insert(0, cub_tiling_batch)
             self.factor_shape.get("cl0").insert(0, self.cl0_tiling_batch)
             self.factor_shape.get("aub").insert(0, self.aub_tiling_batch)
@@ -671,9 +673,8 @@ class GemmTilingWork:
             self.factor_shape.get("bub").insert(0, self.bub_tiling_batch)
             self.factor_shape.get("bl0").insert(0, self.bl0_tiling_batch)
             self.factor_shape.get("bl12ddr").insert(0, self.bl1_tiling_batch)
-            if attach_at_flag.get("min_kl1_cmp_kl0"):
-                self.factor_shape.get("al12cl0").insert(0, 1)
-                self.factor_shape.get("bl12cl0").insert(0, 1)
+            self.factor_shape.get("al12cl0").insert(0, 1)
+            self.factor_shape.get("bl12cl0").insert(0, 1)
 
     def get_a_max_k_bound(self, a_l0a):
         """
@@ -702,6 +703,81 @@ class GemmTilingWork:
         else:
             return int_ceil_div(b_matrix_dim[-4], self.tiling.get("block_dim")[-1]) * self.block_reduce
 
+    def _set_factor_shape_to_l0c(self, cache_tiling, attach_at_flag):
+        """
+        define the tiling factor for tensor attach at cl0
+        parent of al0/bl0 is cl0 by default, parent of al1/bl1 is cl0 in this func
+        factor corresponding to [n1, m1, m0, n0, k1, k0]
+        """
+        self.factor_shape["al0"] = [
+            None, self.al0_tiling_ma, None, self.al0_tiling_m0, self.al0_tiling_ka, self.al0_tiling_k0
+        ]
+        self.factor_shape["bl0"] = [self.bl0_tiling_nb, None, None, 1, 1, 1]
+        self.factor_shape["al12cl0"] = [None, 1, None, None, 1, None]
+        self.factor_shape["bl12cl0"] = [1, None, None, None, 1, None]
+        # only split by kl0_factor when k_al1/k_bl1 larger than kl0
+        if attach_at_flag.get("min_kl1_cmp_kl0"):
+            if attach_at_flag.get("abkl1_attach_flag") in (self.kal1_eq_kbl1_flag, self.kal1_gt_kbl1_flag):
+                self.factor_shape.get("bl12cl0")[-2] = cache_tiling.get("kbl0_factor")
+            else:
+                self.factor_shape.get("al12cl0")[-2] = cache_tiling.get("kal0_factor")
+
+        # only split by kl1_times when al1/bl1 both attach at cl0
+        if (attach_at_flag.get("al1_attach_flag") == self.l1_attach_at_cl0_flag and
+            attach_at_flag.get("bl1_attach_flag") == self.l1_attach_at_cl0_flag):
+            if attach_at_flag.get("abkl1_attach_flag") == self.kal1_gt_kbl1_flag:
+                self.factor_shape.get('al12cl0')[-2] = cache_tiling.get("kl1_times")
+            elif attach_at_flag.get("abkl1_attach_flag") == self.kal1_lt_kbl1_flag:
+                self.factor_shape.get('bl12cl0')[-2] = cache_tiling.get("kl1_times")
+
+    def _set_factor_shape_to_out_nd(self, cache_tiling, cub_tiling):
+        """
+        define the tiling factor for tensor attach at ddr when output format is ND.
+        parent of cub/cl0 is cddr by default, parent of al1/bl1 is cddr in this function.
+        factor corresponding to [m, n]
+        """
+        cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, _, _ = cub_tiling
+        self.factor_shape["cub"] = [cub_tiling_mc_factor * cub_tiling_m0, cub_tiling_nc_factor * cub_tiling_n0]
+        self.factor_shape["cl0"] = [1, cache_tiling.get("n_ub_l0_time")]
+        # al1 attach at ddr, bl1 not full load
+        self.factor_shape["al12ddr"] = [cache_tiling.get("m_al1"), cache_tiling.get("n_single_core")]
+        # al1 attach at ddr, bl1 full load
+        if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == self.l1_full_load_flag:
+            self.factor_shape.get("al12ddr")[1] = cache_tiling.get("n_single_core") * cache_tiling.get("n_bl1")
+
+        # al1/bl1 both attach at ddr
+        self.factor_shape["bl12ddr"] = [1, cache_tiling.get("n_bl1")]
+        # bl1 attach at ddr, al1 full load
+        if self.tiling.get("attach_at_flag").get("al1_attach_flag") == self.l1_full_load_flag:
+            self.factor_shape.get("bl12ddr")[0] = cache_tiling.get("m_single_core") * cache_tiling.get("m_al1")
+        elif self.tiling.get("attach_at_flag").get("al1_attach_flag") == self.l1_attach_at_cl0_flag:
+            self.factor_shape.get("bl12ddr")[0] = cache_tiling.get("m_single_core")
+
+    def _set_factor_shape_to_out_nz(self, cache_tiling, cub_tiling):
+        """
+        define the tiling factor for tensor attach at ddr when output format is NZ.
+        parent of cub/cl0 is cddr by default, parent of al1/bl1 is cddr in this function.
+        factor corresponding to [n1, m1, m0, n0]
+        """
+        cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, _, _ = cub_tiling
+        self.factor_shape["cub"] = [cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0]
+        self.factor_shape["cl0"] = [cache_tiling.get("n_ub_l0_time"), 1, 1, 1]
+
+        # al1/bl1 both attach at ddr
+        self.factor_shape["al12ddr"] = [1, 1, 1, None]
+        # al1 attach at ddr, bl1 full load
+        if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == self.l1_full_load_flag:
+            self.factor_shape.get("al12ddr")[:2] = [cache_tiling.get("n_bl1"), cache_tiling.get("m_al1")]
+        # al1 attach at ddr, bl1 attach at cl0
+        elif self.tiling.get("attach_at_flag").get("bl1_attach_flag") == self.l1_attach_at_cl0_flag:
+            self.factor_shape.get("al12ddr")[1] = cache_tiling.get("m_al1")
+
+        # al1/bl1 both attach at ddr
+        self.factor_shape["bl12ddr"] = [cache_tiling.get("n_bl1"), cache_tiling.get("m_al1"), None, 1]
+        # bl1 attach at ddr, al1 not attach at ddr
+        if self.tiling.get("attach_at_flag").get("al1_attach_flag") != self.l1_attach_at_ddr_flag:
+            self.factor_shape.get("bl12ddr")[1] = cache_tiling.get("m_single_core") * cache_tiling.get("m_al1")
+
 
 class CceSimplification:
     """
@@ -710,22 +786,23 @@ class CceSimplification:
     MAX_ORI_SHAPE_TEMP = 1048560
     MAX_UB_SHAPE = 4096
 
-    def __init__(self):
-        self.tiling = None
-        self.sch = None
-        self.format_info = None
+    def __init__(self, sch, dynamic_para):
+        self.tiling = dynamic_para.get("tiling_strategy")
+        self.sch = sch
         self.cache_tiling = None
         self.tensor_map = None
         self.status_controller = None
+        self.is_align_mode = True if (self.tiling and self.tiling.get("schedule_pattern") == "Aligned") else False
+        self.var_manager = VarManage(sch, dynamic_para.get("var_range"))
         self.block_in = tbe_platform.BLOCK_IN
         self.block_out = tbe_platform.BLOCK_OUT
         self.block_reduce = tbe_platform.BLOCK_REDUCE
 
-    def set_kaub_simplification_l1_fullload(self, single_core_k):
+    def set_kaub_simplification_l1_fullload(self, single_core_k, compute_param):
         """
         config kaub when al1 and aub are full load.
         """
-        if self.format_info.get("a") != "ND":
+        if compute_param.format_a != "ND":
             return
         aub_full_load = self.tiling.get("attach_at_flag").get("aub_multi_flag") == 1
         k_aub = self.cache_tiling.get('k_aub')
@@ -736,31 +813,54 @@ class CceSimplification:
         elif self.tiling["attach_at_flag"].get("min_kl1_cmp_kl0") == 0:
             self.sch.set_constraint((multi_k_aub_k1 * k_aub == single_core_k).asnode())
 
-    def emit_insn_simplyfy_c_gm(self):
+    def cce_simplify(self, compute_param, sch_agent, cache_tiling_manager, sch_container):
         """
-        add pragma for ND_in_ND_out cachetiling
+        handles cce simplification for binary, include set_var_range, pragma, skip_bound_check, etc.
+        """
+        self.tensor_map = sch_container.tensor_map
+        sch_container.vector_muls_attr = {'axis_dynamic_shift': 1}
+        self.var_manager.set_var_range_for_dynamic_scene(compute_param, cache_tiling_manager)
+        if cache_tiling_manager.cache_tiling:
+            self._enable_skip_bound_check(cache_tiling_manager, sch_container)
+            self._buffer_tile_for_simplify(compute_param, sch_agent)
+            self._emit_insn_simplyfy_c_gm(compute_param)
+            if compute_param.format_a == "ND":
+                self._emit_insn_simplify_aub()
+                self._emit_insn_simplify_bub()
+                self._fuse_l1_axis()
+                self._emit_insn_simplify_al1(compute_param)
+                self._emit_insn_simplify_bl1()
+        elif self.is_align_mode:
+            self.sch.set_constraint((self.var_manager.m_var % tbe_platform.BLOCK_IN == 0).asnode())
+            self.sch.set_constraint((self.var_manager.k_var % tbe_platform.BLOCK_REDUCE == 0).asnode())
+            self.sch.set_constraint((self.var_manager.n_var % tbe_platform.BLOCK_OUT == 0).asnode())
+
+    def _emit_insn_simplyfy_c_gm(self, compute_param):
+        """
+        add pragma on c_gm for cachetiling
         """
         # This template does not support overlarge imput dimension
-        m_ori = get_te_var(GEMMComputeParam.m_var_name).get_tvm_var()
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
-        n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
-        self.sch.set_constraint(m_ori * self.block_in < self.MAX_ORI_SHAPE_TEMP)
-        self.sch.set_constraint(k_ori < self.MAX_ORI_SHAPE_TEMP)
-        self.sch.set_constraint(n_ori * self.block_out < self.MAX_ORI_SHAPE_TEMP)
+        self.sch.set_constraint(self.var_manager.m_var * self.block_in < self.MAX_ORI_SHAPE_TEMP)
+        if compute_param.format_a == "ND":
+            self.sch.set_constraint(self.var_manager.k_var < self.MAX_ORI_SHAPE_TEMP)
+        else:
+            self.sch.set_constraint(self.var_manager.k_var * self.block_in < self.MAX_ORI_SHAPE_TEMP)
+        self.sch.set_constraint(self.var_manager.n_var * self.block_out < self.MAX_ORI_SHAPE_TEMP)
         c_gm = self.tensor_map.get("c_gm")
         m_l0 = self.cache_tiling.get("m_l0")
         cub_n1 = self.cache_tiling.get("cub_n1")
 
-        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint", n_ori - cub_n1 >= 0)
+        self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint", self.var_manager.n_var - cub_n1 >= 0)
         self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint",
             tvm.truncmod(((m_l0 * self.block_in) * (cub_n1 * self.block_out)), self.MAX_ORI_SHAPE_TEMP) > 0)
         self.sch[c_gm].pragma(self.sch[c_gm].leaf_iter_vars[0], "constraint",
             ((m_l0 * self.block_in) * (cub_n1 * self.block_out)) < self.MAX_ORI_SHAPE_TEMP)
 
-    def emit_insn_simplify_aub(self):
+    def _emit_insn_simplify_aub(self):
+        """
+        add pragma on aub for ND_in_ND_out cachetiling
+        """
         # Set constraints for aub
-        m_1 = get_te_var(GEMMComputeParam.m_var_name).get_tvm_var()
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
         multi_k_aub_l1 = self.cache_tiling.get("multi_k_aub_l1")
         multi_m_ub_l1 = self.cache_tiling.get("multi_m_ub_l1")
         k_aub = self.cache_tiling.get("k_aub")
@@ -773,8 +873,8 @@ class CceSimplification:
 
         # Constraint in k dimension: k_ori is not smaller than k_single_core and
         # k_single_core is not smaller than multi_k_aub_l1 * k_aub * self.block_reduce
-        self.sch.set_constraint(m_1 - multi_m_ub_l1 * m_aub >= 0)
-        self.sch.set_constraint(k_ori - multi_k_aub_l1 * k_aub * self.block_reduce >= 0)
+        self.sch.set_constraint(self.var_manager.m_var - multi_m_ub_l1 * m_aub >= 0)
+        self.sch.set_constraint(self.var_manager.k_var - multi_k_aub_l1 * k_aub * self.block_reduce >= 0)
         # aligned condition
         constraint_aub = aub_var[trans_a] * self.block_in + tvm.floormod(a_align_value -
             tvm.floormod(aub_var[trans_a] * self.block_in, a_align_value), a_align_value)
@@ -783,10 +883,11 @@ class CceSimplification:
         self.sch.set_constraint((constraint_aub_multi % self.block_in == 0).asnode())
         self.sch.set_constraint((constraint_aub_multi % (self.block_in * self.block_reduce) == 0).asnode())
 
-    def emit_insn_simplify_bub(self):
+    def _emit_insn_simplify_bub(self):
+        """
+        add pragma on bub for ND_in_ND_out cachetiling
+        """
         # Set constraints for bub
-        n_1 = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
         multi_k_bub_l1 = self.cache_tiling.get("multi_k_bub_l1")
         multi_n_ub_l1 = self.cache_tiling.get("multi_n_ub_l1")
         k_bub = self.cache_tiling.get("k_bub")
@@ -799,8 +900,8 @@ class CceSimplification:
 
         # Constraint: k_ori is not smaller than k_single_core and
         # k_single_core is not smaller than multi_k_bub_l1 * k_bub * self.block_reduce
-        self.sch.set_constraint(n_1 - multi_n_ub_l1 * n_bub >= 0)
-        self.sch.set_constraint(k_ori - multi_k_bub_l1 * k_bub * self.block_reduce >= 0)
+        self.sch.set_constraint(self.var_manager.n_var - multi_n_ub_l1 * n_bub >= 0)
+        self.sch.set_constraint(self.var_manager.k_var - multi_k_bub_l1 * k_bub * self.block_reduce >= 0)
         # aligned condition
         constraint_bub = bub_var[trans_b] * self.block_out + tvm.floormod(
             b_align_value - tvm.floormod(bub_var[trans_b] * self.block_out, b_align_value), b_align_value)
@@ -810,18 +911,15 @@ class CceSimplification:
         self.sch.set_constraint((constraint_bub_multi % self.block_out == 0).asnode())
         self.sch.set_constraint((constraint_bub_multi % (self.block_out * self.block_reduce) == 0).asnode())
 
-    def emit_insn_simplify_al1(self):
+    def _emit_insn_simplify_al1(self, compute_param):
         """
-        add pragma for ND_in_ND_out cachetiling
+        add pragma on al1 for ND_in_ND_out cachetiling
         """
         a_l1 = self.tensor_map.get("a_l1")
-        m_ori = get_te_var(GEMMComputeParam.m_var_name).get_tvm_var()
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
-        n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
         m_l0 = self.cache_tiling.get("m_l0")
         cub_n1 = self.cache_tiling.get("cub_n1")
         a_align_value = self.cache_tiling.get("a_align_value")
-        a_ori = [k_ori, m_ori]
+        a_ori = [self.var_manager.k_var, self.var_manager.m_var]
         aub_var = [self.cache_tiling.get("k_aub"), self.cache_tiling.get("m_aub")]
         multi_aub_var = [self.cache_tiling.get("multi_k_aub_l1"), self.cache_tiling.get("multi_m_ub_l1")]
         host_var_a = [aub_var[1] * self.block_in, aub_var[0] * self.block_reduce]
@@ -843,19 +941,17 @@ class CceSimplification:
         self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
             tvm.truncmod(aub_var[1] * aub_var[0] * self.block_in * self.block_reduce, self.MAX_ORI_SHAPE_TEMP) > 0)
         if (self.status_controller.al1_attach_status == "c_l0c" and
-            not self.status_controller.attach_at_flag.get("min_kl1_cmp_kl0") and self.format_info.get("a") == "ND"):
+            not self.status_controller.attach_at_flag.get("min_kl1_cmp_kl0") and compute_param.format_a == "ND"):
             self.sch[a_l1].pragma(self.sch[a_l1].leaf_iter_vars[0], "constraint",
                                   (self.cache_tiling.get("k_l0") - self.cache_tiling.get("k_aub") >= 0))
 
-    def emit_insn_simplify_bl1(self):
+    def _emit_insn_simplify_bl1(self):
         """
-        add pragma for ND_in_ND_out cachetiling
+        add pragma on bl1 for ND_in_ND_out cachetiling
         """
         b_l1 = self.tensor_map.get("b_l1")
-        k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
-        n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
         b_align_value = self.cache_tiling.get("b_align_value")
-        b_ori = [n_ori, k_ori]
+        b_ori = [self.var_manager.n_var, self.var_manager.k_var]
         bub_var = [self.cache_tiling.get("n_bub"), self.cache_tiling.get("k_bub")]
         multi_bub_var = [self.cache_tiling.get("multi_n_ub_l1"), self.cache_tiling.get("multi_k_bub_l1")]
         host_var_b = [bub_var[1] * self.block_reduce, bub_var[0] * self.block_out]
@@ -879,3 +975,307 @@ class CceSimplification:
             multi_bub_var[0] * bub_var[0] - bub_var[0] >= 0)
         self.sch[b_l1].pragma(self.sch[b_l1].leaf_iter_vars[0], "constraint", tvm.truncmod(
             bub_var[1] * bub_var[0] * self.block_out * self.block_reduce, self.MAX_ORI_SHAPE_TEMP) > 0)
+
+    def _enable_skip_bound_check(self, cache_tiling_manager, sch_container):
+        """
+        use skip_bound_check to ignore iflikely restraint when k is splited by factor
+        """
+        if not cache_tiling_manager.non_factor_k_flag:
+            skip_bound_check_list = [self.tensor_map.get("a_l1"), self.tensor_map.get("b_l1"),
+                self.tensor_map.get("a_l0a"), self.tensor_map.get("b_l0b"),
+                self.tensor_map.get("c_l0c")]
+            skip_bound_check_list += sch_container.tensors_in_aub
+            skip_bound_check_list += sch_container.tensors_in_bub
+            skip_bound_check_list += sch_container.tensors_in_cub
+            for tensor in skip_bound_check_list:
+                self.sch[tensor].skip_bound_check()
+        else:
+            get_context().get_current_compute().get_current_schedule().add(
+                "_build_config", {"predicate_realize_bound": True})
+
+    def _buffer_tile_for_simplify(self, compute_param, sch_agent):
+        """
+        align m/k/n axis for tensor in ub and l1
+        """
+        if compute_param.format_a == "ND":
+            al1_k_ext = self.cache_tiling.get("multi_k_aub_l1") * self.cache_tiling.get("k_aub")
+            al1_m_ext = self.cache_tiling.get("multi_m_ub_l1") * self.cache_tiling.get("m_aub")
+            al1_buffer_tile_list = [(None, al1_m_ext), (None, al1_k_ext), (None, None), (None, None)]
+            if compute_param.batch_a:
+                al1_buffer_tile_list.insert(0, (None, None))
+            sch_agent[self.tensor_map.get("a_l1")].buffer_tile(*al1_buffer_tile_list)
+        if compute_param.format_b == "ND":
+            bl1_k_ext = self.cache_tiling.get("multi_k_bub_l1") * self.cache_tiling.get("k_bub")
+            bl1_n_ext = self.cache_tiling.get("multi_n_ub_l1") * self.cache_tiling.get("n_bub")
+            bl1_buffer_tile_list = [(None, bl1_k_ext), (None, bl1_n_ext), (None, None), (None, None)]
+            if compute_param.batch_b:
+                bl1_buffer_tile_list.insert(0, (None, None))
+            sch_agent[self.tensor_map.get("b_l1")].buffer_tile(*bl1_buffer_tile_list)
+
+    def _fuse_l1_axis(self):
+        """
+        fuse axis for tensor in l1
+        """
+        if self.status_controller.have_batch:
+            self.sch[self.tensor_map.get("a_l1")].fuse(
+                self.sch[self.tensor_map.get("a_l1")].leaf_iter_vars[1],
+                self.sch[self.tensor_map.get("a_l1")].leaf_iter_vars[2])
+            self.sch[self.tensor_map.get("b_l1")].fuse(
+                self.sch[self.tensor_map.get("b_l1")].leaf_iter_vars[1],
+                self.sch[self.tensor_map.get("b_l1")].leaf_iter_vars[2])
+        else:
+            self.sch[self.tensor_map.get("a_l1")].fuse(
+                self.sch[self.tensor_map.get("a_l1")].leaf_iter_vars[0],
+                self.sch[self.tensor_map.get("a_l1")].leaf_iter_vars[1])
+            self.sch[self.tensor_map.get("b_l1")].fuse(
+                self.sch[self.tensor_map.get("b_l1")].leaf_iter_vars[0],
+                self.sch[self.tensor_map.get("b_l1")].leaf_iter_vars[1])
+
+
+class CacheTilingManager:
+    """
+    manager tiling vars and cache tiling flags in bianry mode
+    """
+
+    def __init__(self):
+        self.sch = None
+        self.cache_tiling = None
+        self.tiling = None
+        self.non_factor_k_flag = False
+        self.k_expr = None
+        self.flag_l0c_preload = False
+
+    def config_cache_tiling(self, tiling, cce_simplification_obj, compute_param):
+        """
+        config cache tiling variables in binary mode
+        """
+
+        self._get_cache_tiling(compute_param.split_k_flag)
+        cce_simplification_obj.cache_tiling = self.cache_tiling
+        self.non_factor_k_flag = tiling.get("non_factor_k_flag")
+        aub_multi_flag = tiling.get("attach_at_flag").get("aub_multi_flag")
+        bub_multi_flag = tiling.get("attach_at_flag").get("bub_multi_flag")
+        if aub_multi_flag == 1:
+            self.sch.set_var_value(self.cache_tiling.get("multi_k_aub_l1"), 1)
+            self.sch.set_var_value(self.cache_tiling.get("multi_m_ub_l1"), 1)
+        if bub_multi_flag == 1:
+            self.sch.set_var_value(self.cache_tiling.get("multi_n_ub_l1"), 1)
+            self.sch.set_var_value(self.cache_tiling.get("multi_k_bub_l1"), 1)
+        abkl1_attach_flag = tiling.get("attach_at_flag").get("abkl1_attach_flag")
+        if abkl1_attach_flag == 0:
+            self.sch.set_var_value(self.cache_tiling.get("kl1_times"), 1)
+            self._norange_kal1_kbl1_equal(tiling, cce_simplification_obj, compute_param)
+        elif abkl1_attach_flag == 1:
+            self._norange_kal1(tiling, cce_simplification_obj, compute_param)
+        else:
+            self._norange_kbl1(tiling)
+        self._set_l0c_preload_flag(tiling)
+
+    def cache_tiling_full_load(self, container, status_controller):
+        """
+        handles the full load scene for binary mode
+        """
+        if self.cache_tiling:
+            c_gm = container.tensor_map.get("c_gm")
+            if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
+                self.sch.set_var_value(self.cache_tiling.get("n_single_core"), 1)
+                bl1 = container.tensor_map.get("b_l1")
+                iter_axis = 1 if len(bl1.shape) == 4 else 3
+                # split k_axis by k_dim will create one axis to bind multi core and one axis equal to 1
+                if status_controller.split_k_axis_by_tiling:
+                    iter_axis += 2
+                self.sch[bl1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
+            if self.tiling.get("attach_at_flag").get("al1_attach_flag") == 0:
+                self.sch.set_var_value(self.cache_tiling.get("m_single_core"), 1)
+                al1 = container.tensor_map.get("a_l1")
+                iter_axis = 1 if len(al1.shape) == 4 else 3
+                # split k_axis by k_dim will create one axis to bind multi core and one axis equal to 1
+                if status_controller.split_k_axis_by_tiling:
+                    iter_axis += 2
+                self.sch[al1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
+
+    def _get_cache_tiling(self, split_k_flag):
+        """
+        get basic tiling variables in binary mode
+        """
+        self.cache_tiling = {
+            "batch_dim": get_te_var("batch_dim").get_tvm_var(),
+            "batch_single_core": get_te_var("batch_single_core").get_tvm_var(),
+            "n_single_core": get_te_var("n_single_core").get_tvm_var(),
+            "n_dim": get_te_var("n_dim").get_tvm_var(),
+            "n_bl1": get_te_var("n_bl1").get_tvm_var(),
+            "n_ub_l0_time": get_te_var("n_ub_l0_time").get_tvm_var(),
+            "cub_n1": get_te_var("cub_n1").get_tvm_var(),
+            "m_dim": get_te_var("m_dim").get_tvm_var(),
+            "m_single_core": get_te_var("m_single_core").get_tvm_var(),
+            "m_al1": get_te_var("m_al1").get_tvm_var(),
+            "m_l0": get_te_var("m_l0").get_tvm_var(),
+            "k_dim": get_te_var("k_dim").get_tvm_var(),
+            "k_l0": get_te_var("k_l0").get_tvm_var(),
+            "k_al0": get_te_var("k_l0").get_tvm_var(),
+            "k_bl0": get_te_var("k_l0").get_tvm_var(),
+            "kal1_factor": get_te_var("kal1_factor").get_tvm_var(),
+            "kbl1_factor": get_te_var("kbl1_factor").get_tvm_var(),
+            "kal0_factor": get_te_var("kal0_factor").get_tvm_var(),
+            "kbl0_factor": get_te_var("kbl0_factor").get_tvm_var(),
+            "kal1_16": get_te_var("kal1_16").get_tvm_var(),
+            "kbl1_16": get_te_var("kbl1_16").get_tvm_var(),
+            "kl1_times": get_te_var("kl1_times").get_tvm_var(),
+            "m_aub": get_optional_te_var("m_aub"),
+            "n_bub": get_optional_te_var("n_bub"),
+            "k_aub": get_optional_te_var("k_aub"),
+            "k_bub": get_optional_te_var("k_bub"),
+            "multi_n_ub_l1": get_optional_te_var("multi_n_ub_l1"),
+            "multi_m_ub_l1": get_optional_te_var("multi_m_ub_l1"),
+            "multi_k_aub_l1": get_optional_te_var("multi_k_aub_l1"),
+            "multi_k_bub_l1": get_optional_te_var("multi_k_bub_l1"),
+            "a_align_value": get_optional_te_var("a_align_value"),
+            "b_align_value": get_optional_te_var("b_align_value"),
+            "aub_align_bound": get_optional_te_var("aub_align_bound"),
+            "bub_align_bound": get_optional_te_var("bub_align_bound"),
+        }
+        self.cache_tiling["kal1_16"] = self.cache_tiling.get("kal0_factor") * self.cache_tiling.get("k_l0")
+        self.cache_tiling["kbl1_16"] = self.cache_tiling.get("kbl0_factor") * self.cache_tiling.get("k_l0")
+        if not split_k_flag:
+            self.cache_tiling["k_dim"] = 1
+
+    def _norange_kal1_kbl1_equal(self, tiling, cce_simplification_obj, compute_param):
+        """
+        config k related tiling variable when kal1 equals kbl1
+        """
+        kal0_factor = self.cache_tiling.get("kal0_factor")
+        kal1_factor = self.cache_tiling.get("kal1_factor")
+        k_l0 = self.cache_tiling.get("k_l0")
+        k_dim = self.cache_tiling.get("k_dim")
+        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+            self.cache_tiling["k_al0"] = kal0_factor * k_l0
+            self.cache_tiling["k_bl0"] = kal0_factor * k_l0
+            if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+                self.cache_tiling["k_al0"] = kal1_factor * kal0_factor * k_l0
+                self.cache_tiling["k_bl0"] = self.cache_tiling.get("k_al0")
+                cce_simplification_obj.set_kaub_simplification_l1_fullload(
+                    kal1_factor * kal0_factor * k_l0, compute_param)
+
+        self.cache_tiling["kal1_16"] = kal0_factor * k_l0
+        self.cache_tiling["kbl1_16"] = kal0_factor * k_l0
+        self.k_expr = kal1_factor * kal0_factor * k_l0 * k_dim
+
+    def _norange_kal1(self, tiling, cce_simplification_obj, compute_param):
+        """
+        config k related tiling variable when kal1 large than kbl1
+        """
+        kbl0_factor = self.cache_tiling.get("kbl0_factor")
+        k_l0 = self.cache_tiling.get("k_l0")
+        kl1_times = self.cache_tiling.get("kl1_times")
+        k_dim = self.cache_tiling.get("k_dim")
+        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+            self.sch.set_var_value(kbl0_factor, 1)
+            self.cache_tiling["k_al0"] = kbl0_factor * k_l0
+            self.cache_tiling["k_bl0"] = kbl0_factor * k_l0
+        if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+            self.k_expr = self.cache_tiling.get("kbl1_factor") * kbl0_factor * k_l0 * k_dim
+            cce_simplification_obj.set_kaub_simplification_l1_fullload(
+                self.cache_tiling.get("kbl1_factor") * kbl0_factor * k_l0, compute_param)
+        else:
+            self.cache_tiling["kal1_16"] = kl1_times * kbl0_factor * k_l0
+            self.k_expr = self.cache_tiling.get("kal1_factor") * kl1_times * kbl0_factor * k_l0 * k_dim
+
+    def _norange_kbl1(self, tiling):
+        """
+        config k related tiling variable when kal1 smaller than kbl1
+        """
+        kal0_factor = self.cache_tiling.get("kal0_factor")
+        k_l0 = self.cache_tiling.get("k_l0")
+        kl1_times = self.cache_tiling.get("kl1_times")
+        k_dim = self.cache_tiling.get("k_dim")
+        if not tiling.get("attach_at_flag").get("min_kl1_cmp_kl0"):
+            self.sch.set_var_value(kal0_factor, 1)
+            self.cache_tiling["k_al0"] = kal0_factor * k_l0
+            self.cache_tiling["k_bl0"] = kal0_factor * k_l0
+        if tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
+            self.k_expr = self.cache_tiling.get("kal1_factor") * kal0_factor * k_l0 * k_dim
+        else:
+            self.cache_tiling["kbl1_16"] = kl1_times * kal0_factor * k_l0
+            self.k_expr = self.cache_tiling.get("kbl1_factor") * kl1_times * kal0_factor * k_l0 * k_dim
+
+    def _set_l0c_preload_flag(self, tiling):
+        l0c_pb = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
+        al1_attach_flag = tiling.get("attach_at_flag").get("al1_attach_flag")
+        bl1_attach_flag = tiling.get("attach_at_flag").get("bl1_attach_flag")
+        # enable l0c_preload for template_5 because only template_5's performance is improved for now
+        # 2,2,0 means that l0c_double_buffer, no_k_al1_full_load and bl1_full_load
+        self.flag_l0c_preload = (l0c_pb == 2 and al1_attach_flag == 2 and bl1_attach_flag == 0)
+
+
+class VarManage:
+    """
+    manage variable and range in shape and tiling
+    """
+    def __init__(self, sch, var_range):
+        self.sch = sch
+        self.var_range = var_range
+        self.m_var = None
+        self.n_var = None
+        self.k_var = None
+        self.commom_var_range = {
+            "range_block_dim": (1, 32),
+            "range_64": (1, 64),
+            "range_1024": (1, 1024),
+            "range_ub": (256, 262144)
+        }
+        self.binary_shape_name = ("m", "k", "n")
+
+    def set_var_range_for_dynamic_scene(self, compute_param, cache_tiling_manager):
+        """
+        set range for vars in shape and tiling
+        """
+        self.m_var = get_optional_te_var(compute_param.m_var_name)
+        self.k_var = get_optional_te_var(compute_param.k_var_name)
+        self.n_var = get_optional_te_var(compute_param.n_var_name)
+        if not cache_tiling_manager.cache_tiling:
+            self.sch.set_var_range(self.m_var, *self.var_range.get(compute_param.m_var_name))
+            self.sch.set_var_range(self.k_var, *self.var_range.get(compute_param.k_var_name))
+            self.sch.set_var_range(self.n_var, *self.var_range.get(compute_param.n_var_name))
+            if compute_param.batch_a and self.var_range.get("batch") is not None:
+                self.sch.set_var_range(get_optional_te_var("batch"), *self.var_range.get("batch"))
+        else:
+            self._set_var_range_for_cache_tiling(compute_param, cache_tiling_manager)
+
+    def _init_var_range_dict(self, compute_param):
+        range_1024 = self.commom_var_range.get("range_1024")
+        range_64 = self.commom_var_range.get("range_64")
+        range_ub = self.commom_var_range.get("range_ub")
+        range_block_dim = self.commom_var_range.get("range_block_dim")
+        var_range_dict = {"batch_dim": range_block_dim, "n_dim": range_block_dim, "m_dim": range_block_dim,
+                          "m_single_core": range_1024, "n_single_core": range_1024, "m_al1": range_1024,
+                          "n_bl1": range_1024, "cub_n1": range_64, "m_l0": range_64, "k_l0": range_64,
+                          "n_ub_l0_time": range_64, "kal0_factor": range_64, "kbl0_factor": range_64,
+                          "kal1_factor": range_64, "kbl1_factor": range_64, "kl1_times": range_64}
+        if compute_param.format_a == "ND":
+            value_range_append = {"m_aub": range_64, "k_aub": range_64, "k_bub": range_64, "n_bub": range_64,
+                                  "multi_n_ub_l1": range_64, "multi_m_ub_l1": range_64, "multi_k_aub_l1": range_64,
+                                  "multi_k_bub_l1": range_64, "a_align_value":range_1024, "b_align_value":range_1024,
+                                  "aub_align_bound": range_ub, "bub_align_bound":range_ub}
+            var_range_dict.update(value_range_append)
+        if compute_param.split_k_flag:
+            value_range_append_dim = {"k_dim": range_block_dim}
+            var_range_dict.update(value_range_append_dim)
+        return var_range_dict
+
+    def _set_var_range_for_cache_tiling(self, compute_param, cache_tiling_manager):
+        """
+        set var range for cache tiling
+        """
+        var_range_dict = self._init_var_range_dict(compute_param)
+        for var, var_range in var_range_dict.items():
+            self.sch.set_var_range(cache_tiling_manager.cache_tiling.get(var), *var_range)
+        if not compute_param.split_k_flag:
+            if compute_param.format_a == "ND":
+                self.sch.set_var_value(
+                    get_te_var(compute_param.k_var_name).get_tvm_var(),
+                    cache_tiling_manager.k_expr * tbe_platform.BLOCK_REDUCE)
+            else:
+                self.sch.set_var_value(get_te_var(compute_param.k_var_name).get_tvm_var(),
+                                       cache_tiling_manager.k_expr)
+        self.sch.set_var_value(get_optional_te_var('k'), cache_tiling_manager.k_expr)
+
