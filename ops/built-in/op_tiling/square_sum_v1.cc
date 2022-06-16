@@ -29,6 +29,11 @@ namespace optiling {
 using namespace ge;
 using namespace std;
 
+
+const int32_t MINUS_ONE_AXIS = 1;
+const int32_t MINUS_TOW_AXIS = 2;
+const int32_t MINUS_ONE_AXIS_TO_NEWAXIS = 1;
+const int32_t MINUS_TOW_AXIS_TO_NEWAXIS = 2;
 // define ignore_idx attr idx and name
 static const std::pair<int64_t, std::string> AXIS_ATTR_INFO{0, "axis"};
 
@@ -36,12 +41,35 @@ struct CompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
 };
 
+bool GetNewFormatAxis(const std::string& op_type, const int32_t len_input_ori, std::vector<int32_t>& axis) {
+  std::vector<int32_t>new_axis{};
+  OP_TILING_CHECK(len_input_ori == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input ori_shape size error!"),
+                  return false);
+
+  for (int32_t axle : axis) {
+    axle = axle % len_input_ori;
+    if (axle == len_input_ori - MINUS_ONE_AXIS) {
+      new_axis.insert(new_axis.end(), len_input_ori - MINUS_TOW_AXIS_TO_NEWAXIS);
+      new_axis.insert(new_axis.end(), len_input_ori + MINUS_ONE_AXIS_TO_NEWAXIS);
+    } else if (axle == len_input_ori - MINUS_TOW_AXIS) {
+      new_axis.insert(new_axis.end(), len_input_ori - MINUS_ONE_AXIS_TO_NEWAXIS);
+      new_axis.insert(new_axis.end(), len_input_ori);
+    } else {
+      new_axis.insert(new_axis.end(), axle);
+    }
+  }
+  axis = new_axis;
+
+  return true;
+}
+
 bool SquareSumV1Tiling(const std::string& op_type, const ge::Operator& op_paras, const CompileInfo& parsed_info,
                        utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator failed!"), return false);
 
   auto input_desc = operator_info->MutableInputDesc(0);
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input 0 opdesc failed"),
@@ -49,6 +77,7 @@ bool SquareSumV1Tiling(const std::string& op_type, const ge::Operator& op_paras,
 
   auto input_shape = input_desc->MutableShape().GetDims();
   ge::DataType type = input_desc->GetDataType();
+  ge::Format format = input_desc->GetFormat();
   int32_t input_shape_size = input_shape.size();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
@@ -64,13 +93,20 @@ bool SquareSumV1Tiling(const std::string& op_type, const ge::Operator& op_paras,
   }
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
+  if (format == ge::FORMAT_FRACTAL_NZ) {
+    int32_t len_input_ori = input_desc->GetOriginShape().GetDimNum();
+    OP_TILING_CHECK(!GetNewFormatAxis(op_type, len_input_ori, axis),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get new axis failed!"),
+                    return false);
+  }
+
   vector<vector<int64_t>> input_shapes = {input_shape};
   vector<vector<int32_t>> input_axes = {axis};
   OpInfo eletwise_info(input_shapes, type, input_axes);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling_handler is nullptr!"),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling_handler is null!"),
                   return false);
   bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
@@ -81,7 +117,7 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
                                  CompileInfo& parsed_info) {
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler failed!"),
                   return false);
   return true;
 }

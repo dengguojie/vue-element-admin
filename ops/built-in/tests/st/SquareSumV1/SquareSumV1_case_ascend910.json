@@ -391,5 +391,41 @@
         "value": false
       }
     ]
+  },
+  {
+    "case_name": "SquareSumV1_dynamic_rank_002",
+    "calc_expect_func_file":"test_SquareSumV1_golden.py:calc_fnz_expect_func",
+    "op": "SquareSumV1",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "type": "float32",
+        "shape": [-2],
+        "ori_format": "NCHW",
+        "ori_shape": [256, 256],
+        "typical_shape": [16, 16, 16, 16],
+        "name": "input_x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "type": "float32",
+        "shape": [1, 1],
+        "name": "output1"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [0, 1]
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
   }
 ]

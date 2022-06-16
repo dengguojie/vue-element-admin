@@ -21,3 +21,11 @@ def calc_expect_func(input_x, output1, axis, keep_dims):
     res = golden(x, axis, keep_dims)
 
     return [res]
+
+def calc_fnz_expect_func(input_x, output1, axis, keep_dims):
+
+    x = input_x.get('value')
+    axis = [0, 1, 2, 3]
+    res = golden(x, axis, keep_dims)
+
+    return [res]

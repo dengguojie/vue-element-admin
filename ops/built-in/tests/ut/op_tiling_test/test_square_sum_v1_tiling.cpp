@@ -56,7 +56,6 @@ TEST_F(SquareSumV1Tiling, test_SquareSumV1Tiling_1) {
   std::string op_name = "SquareSumV1";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  // dynamic_tile_d_llt_case_1
 std::string compileInfo = R"({ "_pattern": "CommReduce",
 "_reduce_vars": {"1000400": [20000, 20001,30000, 40000]},
  "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256],
@@ -82,7 +81,6 @@ TEST_F(SquareSumV1Tiling, test_SquareSumV1Tiling_2) {
   std::string op_name = "SquareSumV1";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  // dynamic_tile_d_llt_case_1
 std::string compileInfo = R"({ "_pattern": "CommReduce",
 "_reduce_vars": {"1000400": [20000, 20001,30000, 40000]},
  "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256],
@@ -95,6 +93,32 @@ std::string compileInfo = R"({ "_pattern": "CommReduce",
   auto opParas = op::SquareSumV1("SquareSumV1");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, input_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, input_dtype, ge::FORMAT_ND, {});
+  opParas.SetAttr("axis", axis);
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 65536 2048 1 ");
+}
+
+TEST_F(SquareSumV1Tiling, test_SquareSumV1Tiling_3) {
+  std::string op_name = "SquareSumV1";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+std::string compileInfo = R"({ "_pattern": "CommReduce",
+"_reduce_vars": {"1000400": [20000, 20001,30000, 40000]},
+ "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256],
+ "_ub_info_rf": [16256, 16000, 16256]})";
+  std::vector<int64_t> input{16, 16, 16, 16};
+  std::vector<int64_t> oriinput{256, 256};
+  std::vector<int64_t> output{1, 1};
+  std::vector<int32_t> axis{0, 1};
+  ge::DataType input_dtype = ge::DT_FLOAT;
+
+  auto opParas = op::SquareSumV1("SquareSumV1");
+  TENSOR_INPUT_WITH_ORI_SHAPE(opParas, x, input, input_dtype, ge::FORMAT_FRACTAL_NZ, oriinput, ge::FORMAT_NCHW, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, input_dtype, ge::FORMAT_NCHW, {});
   opParas.SetAttr("axis", axis);
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
