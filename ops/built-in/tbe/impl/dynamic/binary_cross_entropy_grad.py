@@ -15,6 +15,7 @@
 """
 binary_cross_entropy_grad
 """
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -118,7 +119,7 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
         for i in x_shape:
             reduce_elts *= i
         if isinstance(reduce_elts, float):
-            cof = reduce_elts ** (-1)
+            cof = reduce_elts if reduce_elts == 0.0 else reduce_elts ** (-1)
             cof = tvm.const(cof, dtype=calc_dtype)
         else:
             cof = tbe.var("cof", dtype=calc_dtype)
@@ -170,22 +171,21 @@ def binary_cross_entropy_grad(x, y, grad_output, weight, output,
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "reduction", reduction)
 
     predict_shape = x.get("shape")
-    predict_dtype = x.get("dtype")
-    predict_dtype_lower = predict_dtype.lower()
-
-    target_shape = y.get("shape")
-    target_dtype = y.get("dtype")
-    target_dtype_lower = target_dtype.lower()
+    predict_dtype_lower = x.get("dtype").lower()
+    target_dtype_lower = y.get("dtype").lower()
 
     dout_shape = grad_output.get("shape")
-    dout_dtype = grad_output.get("dtype")
-    dout_dtype_lower = dout_dtype.lower()
+    dout_dtype_lower = grad_output.get("dtype").lower()
 
     # if dout is scaler get the boardcast shape, else not chenged
-    dif_len = len(predict_shape) - len(dout_shape)
-    if dif_len > 0:
-        grad_output["shape"] = [1] * dif_len + list(grad_output["shape"])
-        grad_output["range"] = [(1, 1)] * dif_len + grad_output["range"]
+    if is_unknown_rank_input([x, grad_output]):
+        x, grad_output = [x, x] if is_unknown_rank_input(x) else [grad_output, grad_output]
+    else:
+        dif_len = len(predict_shape) - len(dout_shape)
+        if dif_len > 0:
+            grad_output["shape"] = [1] * dif_len + list(grad_output["shape"])
+            grad_output["range"] = [(1, 1)] * dif_len + grad_output["range"]
+
     check_list = ("float16", "float32")
     para_check.check_dtype(predict_dtype_lower, check_list, param_name="x")
 
@@ -195,8 +195,7 @@ def binary_cross_entropy_grad(x, y, grad_output, weight, output,
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", "y", error_detail)
 
     if weight is not None:
-        weight_dtype = weight.get("dtype")
-        weight_dtype_lower = weight_dtype.lower()
+        weight_dtype_lower = weight.get("dtype").lower()
 
         if predict_dtype_lower != weight_dtype_lower:
             error_detail = "dtype of x and weight should be same"

@@ -1,0 +1,56 @@
+[
+    {
+        "case_name": "Test_BinaryCrossEntropyGrad_001",
+        "calc_expect_func_file":"test_BinaryCrossEntropyGrad_golden.py:calc_expect_func",
+        "op": "BinaryCrossEntropyGrad",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "value_range": [[-10, 10]],
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "value_range": [[-10, 10]],
+                "name": "y"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "value_range": [[-10, 10]],
+                "name": "grad_output"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "value_range": [[-10, 10]],
+                "name": "weight"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [16, 16],
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "reduction",
+                "type": "string",
+                "value": "mean"
+            }
+        ]
+    }
+]
