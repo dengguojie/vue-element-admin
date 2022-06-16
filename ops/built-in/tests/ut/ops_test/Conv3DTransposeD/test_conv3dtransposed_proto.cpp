@@ -29,7 +29,7 @@ TEST_F(Conv3DTransposeDProtoTest, Conv3DTransposeDTest) {
     op.UpdateInputDesc("x", create_desc_with_ori(
         {2, 2, 2, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{2, 2, 2, 10, 10},ge::FORMAT_NDHWC));
     op.UpdateInputDesc("filter", create_desc_with_ori(
-        {1, 2, 3, 4, 10}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,{1, 2, 3, 4, 10},ge::FORMAT_DHWCN));
+        {1, 2, 3, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,{1, 2, 3, 10, 10},ge::FORMAT_DHWCN));
     op.UpdateOutputDesc("y", create_desc_with_ori(
         {1, 4, 6, 8, 10}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{1, 4, 6, 8, 10},ge::FORMAT_NDHWC));
     op.SetAttr("input_size", {1, 4, 6, 8, 10});
@@ -49,7 +49,7 @@ TEST_F(Conv3DTransposeDProtoTest, Conv3DTransposeDTest2) {
     op.UpdateInputDesc("x", create_desc_with_ori(
         {2, 10, 2, 2, 10}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,{2, 10, 2, 2, 10},ge::FORMAT_NCDHW));
     op.UpdateInputDesc("filter", create_desc_with_ori(
-        {10, 4, 1, 2, 3}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,{10, 4, 1, 2, 3},ge::FORMAT_NCDHW));
+        {10, 10, 1, 2, 3}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,{10, 10, 1, 2, 3},ge::FORMAT_NCDHW));
     op.UpdateOutputDesc("y", create_desc_with_ori(
         {1, 10, 4, 6, 8}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,{1, 10, 4, 6, 8},ge::FORMAT_NCDHW));
     op.SetAttr("input_size", {1, 10, 4, 6, 8});
@@ -69,7 +69,7 @@ TEST_F(Conv3DTransposeDProtoTest, Conv3DTransposeDTest3) {
     op.UpdateInputDesc("x", create_desc_with_ori(
         {2, 2, 2, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{2, 2, 2, 10, 10},ge::FORMAT_NDHWC));
     op.UpdateInputDesc("filter", create_desc_with_ori(
-        {10, 1, 2, 3, 4}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,{10, 1, 2, 3, 4},ge::FORMAT_NDHWC));
+        {10, 1, 2, 10, 4}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,{10, 1, 2, 10, 4},ge::FORMAT_DHWCN));
     op.UpdateOutputDesc("y", create_desc_with_ori(
         {1, 4, 6, 8, 10}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{1, 4, 6, 8, 10},ge::FORMAT_NDHWC));
     op.SetAttr("input_size", {1, 4, 6, 8, 10});
@@ -279,7 +279,7 @@ TEST_F(Conv3DTransposeDProtoTest, Conv3DTransposeDVerifyPadsValue) {
     op.UpdateInputDesc("x", create_desc_with_ori(
         {2, 2, 2, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{2, 2, 2, 10, 10},ge::FORMAT_NDHWC));
     op.UpdateInputDesc("filter", create_desc_with_ori(
-        {1, 2, 3, 4, 10}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,{1, 2, 3, 4, 10},ge::FORMAT_DHWCN));
+        {1, 2, 3, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,{1, 2, 3, 10, 10},ge::FORMAT_DHWCN));
     op.UpdateOutputDesc("y", create_desc_with_ori(
         {1, 4, 6, 8, 10}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{1, 4, 6, 8, 10},ge::FORMAT_NDHWC));
     op.SetAttr("input_size", {1, 4, 6, 8, 10});
@@ -588,4 +588,29 @@ TEST_F(Conv3DTransposeDProtoTest, conv3dbpD_infer_data_slice_stride_val){
     ge::AttrUtils::GetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice);
     auto status = op_desc->InferDataSlice();
     EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(Conv3DTransposeDProtoTest, calc_groups){
+  ge::op::Conv3DTransposeD conv3dtranspose;
+  conv3dtranspose.UpdateInputDesc("x", create_desc_with_ori({2, 2, 2, 10, 10},
+    ge::DT_FLOAT16, ge::FORMAT_NDHWC,{2, 2, 2, 10, 10},ge::FORMAT_NDHWC));
+  conv3dtranspose.UpdateInputDesc("filter", create_desc_with_ori(
+    {1, 2, 3, 4, 5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,{1, 2, 3, 4, 5},
+    ge::FORMAT_NDHWC));
+  conv3dtranspose.UpdateOutputDesc("y", create_desc_with_ori({1, 4, 6, 8, 10},
+    ge::DT_FLOAT16, ge::FORMAT_NDHWC,{1, 4, 6, 8, 10},ge::FORMAT_NDHWC));
+
+  std::vector<int64_t> dims_input_size{1, 4, 6, 8, 10};
+  conv3dtranspose.SetAttr("input_size", dims_input_size);
+  conv3dtranspose.SetAttr("strides", {1, 2, 2, 2, 1});
+  conv3dtranspose.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+  conv3dtranspose.SetAttr("dilations", {1, 1, 1, 1, 1});
+  conv3dtranspose.SetAttr("output_padding", {0, 0, 0, 0, 0});
+  auto status = conv3dtranspose.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = conv3dtranspose.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  int groups = 1;
+  conv3dtranspose.GetAttr("groups", groups);
+  EXPECT_EQ(groups, 2);
 }

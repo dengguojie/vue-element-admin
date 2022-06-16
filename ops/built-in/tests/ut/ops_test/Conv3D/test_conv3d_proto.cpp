@@ -889,3 +889,28 @@ TEST_F(Conv3DProtoTest, conv3d_Format_NCDHW_Padding_VALID_int8){
     auto output_desc = op.GetOutputDesc("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
 }
+
+TEST_F(Conv3DProtoTest, calc_groups){
+  ge::op::Conv3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori(
+    {1, 768, 8, 45, 45}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+    {1, 768, 8, 45, 45}, ge::FORMAT_NCDHW));
+  op.UpdateInputDesc("filter", create_desc_with_ori(
+    {2, 17, 9, 48, 448}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+    {2, 17, 9, 48, 448}, ge::FORMAT_DHWCN));
+  op.UpdateOutputDesc("y", create_desc_with_ori(
+    {}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+    {}, ge::FORMAT_NCDHW));
+
+  op.SetAttr("strides", {1, 1, 1, 1, 3});
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("data_format", "NCDHW");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), std::vector<int64_t>({1, 448, 8, 45, 15}));
+  int groups = 1;
+  op.GetAttr("groups", groups);
+  EXPECT_EQ(groups, 16);
+}

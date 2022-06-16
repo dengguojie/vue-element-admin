@@ -20,7 +20,7 @@ class Conv3DBackpropFilterDProtoTest : public testing::Test {
   }
 };
 
-// Base pass test case 
+// Base pass test case
 TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbp_Dw_Base){
     ge::op::Conv3DBackpropFilterD op;
     op.UpdateInputDesc("x", create_desc_with_ori(
@@ -32,7 +32,7 @@ TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbp_Dw_Base){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 16, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
       {2, 16, 2, 16, 16}, ge::FORMAT_NCDHW));
-    
+
     op.SetAttr("filter_size", {64, 2, 2, 2, 32});
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
@@ -58,7 +58,7 @@ TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbp_Dw_Filter_Size_Error_Failed){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 16, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
       {2, 16, 2, 16, 16}, ge::FORMAT_NCDHW));
-    
+
     op.SetAttr("filter_size", {64, 2, 2, 32});
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
@@ -80,7 +80,7 @@ TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbp_Dw_Not_Filter_Failed){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 16, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
       {2, 16, 2, 16, 16}, ge::FORMAT_NCDHW));
-    
+
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
 
@@ -189,7 +189,7 @@ TEST_F(Conv3DBackpropFilterDProtoTest, Conv3DBackpropFilterDVerifyTest1){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 16, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
       {2, 16, 2, 16, 16}, ge::FORMAT_NCDHW));
-    
+
     op.SetAttr("filter_size", {64, 2, 2, 2, 32});
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
@@ -210,7 +210,7 @@ TEST_F(Conv3DBackpropFilterDProtoTest, Conv3DBackpropFilterDVerifyTest2){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 16, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
       {2, 16, 2, 16, 16}, ge::FORMAT_NCDHW));
-    
+
     op.SetAttr("filter_size", {64, 2, 2, 2, 32});
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0, -1, -1});
@@ -231,11 +231,41 @@ TEST_F(Conv3DBackpropFilterDProtoTest, Conv3DBackpropFilterDVerifyTest3){
     op.UpdateOutputDesc("y", create_desc_with_ori(
       {2, 16, 2, 16, 16}, ge::DT_FLOAT, ge::FORMAT_NDHWC,
       {2, 16, 2, 16, 16}, ge::FORMAT_NCDHW));
-    
+
     op.SetAttr("filter_size", {64, 2, 2, 2, 32});
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     // op.SetAttr("pads", {0, 0, 0, 0, -1, -1});
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(Conv3DBackpropFilterDProtoTest, calc_groups){
+  ge::op::Conv3DBackpropFilterD op;
+  op.UpdateInputDesc("x", create_desc_with_ori(
+    {1, 768, 8, 45, 45}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+    {1, 768, 8, 45, 45}, ge::FORMAT_NCDHW));
+  op.UpdateInputDesc("out_backprop", create_desc_with_ori(
+    {1, 448, 8, 45, 15}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+    {1, 448, 8, 45, 15}, ge::FORMAT_NCDHW));
+  op.UpdateOutputDesc("y", create_desc_with_ori(
+    {}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+    {}, ge::FORMAT_DHWCN));
+
+  op.SetAttr("filter_size", {2, 17, 9, 48, 448});
+  op.SetAttr("strides", {1, 1, 1, 1, 3});
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("pads", {0, 1, 8, 8, 3, 3});
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), std::vector<int64_t>({2, 17, 9, 48, 448}));
+  int groups = 1;
+  op.GetAttr("groups", groups);
+  EXPECT_EQ(groups, 16);
+
 }

@@ -7216,26 +7216,8 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   int32_t kw = w_shape_new[DIM_INDEX3];
   int32_t kc = w_shape_new[DIM_INDEX4];
 
-  int64_t group = 1;
-  if (GRAPH_SUCCESS != op.GetAttr("groups", group)) {
-    OP_LOGI(op_name, "Failed to get the Groups attribute, set group as 1");
-  }
-
-  if (ic == -1) {
-    // print warn in IsDHWUnknown later
-    ic = kc * group;
-  }
-
-  if ((!unknown_rank) && (ic != kc * group)) {
-    OP_LOGE(op_name, "The C dimension verification fails.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3d";
-    err_map["channel_of_x"] = std::to_string(ic);
-    err_map["channel_of_filter"] = std::to_string(kc * group);
-    std::string report_error_code = "E50039";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK(ic > 0 && kc > 0 && (!SetGroupsConv(op, x_shape_new, FORMAT_NDHWC, w_shape_new, FORMAT_NDHWC)),
+        CUBE_INNER_ERR_REPORT(op_name, "failed to set groups."), return GRAPH_FAILED);
 
   int32_t strd = 0;
   int32_t strh = 0;
@@ -8383,6 +8365,10 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInputD, Conv3DBackpropInputDInfer) {
     OP_LOGE(op_name, "Conv3DBackpropInputD update pads list by padding failed.");
     return GRAPH_FAILED;
   }
+
+  CHECK(!SetGroupsConv(op, input_sizes, input_format, filter_sizes, filter_format),
+        CUBE_INNER_ERR_REPORT(op_name, "failed to set groups."), return GRAPH_FAILED);
+
   OP_LOGD(op_name, "Leaving Conv3DBackpropInputD inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -8849,6 +8835,8 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfer) {
   // update pads list by padding[SAME,VALID]
   CHECK(!SetPadListByPaddingConv3dbp(op, x_sizes, x_format, filter_sizes, filter_format),
         CUBE_INNER_ERR_REPORT(op_name, "failed to update pads list by padding"), return GRAPH_FAILED);
+  CHECK(!SetGroupsConv(op, x_sizes, x_format, filter_sizes, filter_format),
+        CUBE_INNER_ERR_REPORT(op_name, "failed to set groups."), return GRAPH_FAILED);
 
   OP_LOGD(op_name, "Leaving Conv3DBackpropFilterD inferfunction!");
   return GRAPH_SUCCESS;
@@ -9634,6 +9622,9 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   y_desc.SetShape(ge::Shape(out_shape));
   // update input_size shape
   op.SetAttr("input_size", dedx);
+
+  CHECK(!SetGroupsConv(op, dedx, input_format, filter_sizes, filter_format),
+        CUBE_INNER_ERR_REPORT(op_name.GetString(), "failed to set groups."), return GRAPH_FAILED);
 
   // update output desc
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
