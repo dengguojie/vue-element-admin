@@ -2,8 +2,7 @@
 # -*- coding: UTF-8 -*-
 from sch_test_frame.ut import OpUT
 
-ut_case = OpUT("SoftmaxCrossEntropyWithLogits", "impl.softmax_cross_entropy_with_logits",
-               "softmax_cross_entropy_with_logits")
+ut_case = OpUT("SoftmaxCrossEntropyWithLogits", None, None)
 
 case1 = {"params": [{"shape": (5, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 2),"ori_format": "NCHW"},
                     {"shape": (5, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 2),"ori_format": "NCHW"},

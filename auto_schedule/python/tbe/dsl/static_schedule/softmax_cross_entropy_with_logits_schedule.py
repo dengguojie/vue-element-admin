@@ -641,7 +641,7 @@ def logits_2d_schedule(res, input_tensors):
         return logits_2d_schedule_large_axis_workspace(res, input_tensors)
 
     broadcast_b_to_a_flag = any(feature_shape[i] > label_shape[i] for i in range(len(feature_shape)))
-    if broadcast_b_to_a_flag:
+    if broadcast_b_to_a_flag and is_high_performance:
         return None, []
 
     res.append(out)
