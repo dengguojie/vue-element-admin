@@ -19,7 +19,7 @@ STATUS_SUCCESS=0
 STATUS_FAILED=1
 
 CASE_SOURCE="${CUR_DIR}/st_plus"
-RESULT_SUMMARY="${CUR_DIR}/result.txt"
+RESULT_SUMMARY="${CUR_DIR}/result_summary.txt"
 PARAMS="${CUR_DIR}/params"
 
 run() {
@@ -74,18 +74,10 @@ parse_result_csv() {
 tar_results () {
   local files=""
 
+  cd "${CUR_DIR}"
   parse_result_csv
   if [[ -f "${RESULT_SUMMARY}" ]]; then
-    files=${files}" ${RESULT_SUMMARY}"
-  fi
-
-  cd "${CUR_DIR}"
-  if [[ -f st_plus_result.csv ]]; then
-    files=${files}" st_plus_result.csv"
-    if [[ -f "tbe_toolkits/scripts/gen_result_html.py" ]]; then
-      python3 tbe_toolkits/scripts/gen_result_html.py "st_plus_result.csv"
-      [[ -f "click_me_for_result.html" ]] && files=${files}" click_me_for_result.html"
-    fi
+    files=${files}" ${RESULT_SUMMARY##*/}"
   fi
 
   local log_count=`ls ${CUR_DIR}/tbetoolkits-*.log 2>/dev/null | wc -l`
@@ -106,7 +98,7 @@ get_results() {
     exit $STATUS_FAILED
   fi
 
-  # parse result.txt
+  # parse result_summary.txt
   local fail_case=`cat ${RESULT_SUMMARY}| grep "^FAIL_CASE:" | awk -F: '{print $2}'`
   local fail_count=`cat ${RESULT_SUMMARY}| grep "^FAIL:" | awk -F: '{print $2}'`
   local succ_count=`cat ${RESULT_SUMMARY}| grep "^SUCCESS:" | awk -F: '{print $2}'`

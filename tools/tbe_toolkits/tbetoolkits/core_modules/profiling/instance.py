@@ -170,7 +170,7 @@ class ProfilingInstance:
         for blacklist_device_id in self.switches.device_blacklist:
             logging.info(f"Device {blacklist_device_id} has been blacklisted, removing...")
         # Prepare testcases
-        logging.info("Parsing testcases...")
+        logging.info("Parsing testcases [%s] ...", self.input_path)
         self._prepare_testcases(self.input_path)
         logging.info(f"Case num: {len(tuple_flatten(tuple(self.testcases.values())))}")
         # Prepare Knowledge Base
@@ -241,7 +241,7 @@ class ProfilingInstance:
                     if not file.filename.endswith(".csv"):
                         logging.warning(f"Skipped zipped non-testcase file {file.filename}")
                         continue
-                    logging.info(f"Reading zipped testcase file {file.filename}")
+                    logging.info(f"Reading zipped testcase file {file.filename} ...")
                     with zipped_file.open(file) as real_file:
                         testcase_manager = UniversalTestcaseFactory(io.TextIOWrapper(real_file,
                                                                                      encoding="UTF-8", newline=''))
