@@ -1169,11 +1169,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/dsa_core/randomdsa_fusion_pass.cc
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
-      - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/copy_ops.cc
-      - ops/built-in/op_proto/data_flow_ops.cc
-      - ops/built-in/op_proto/nn_batch_norm_ops.cc
       - ops/built-in/op_proto/outfeed_ops.cc
       - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/ragged_array_ops.cc
@@ -1190,16 +1187,12 @@ vector_B:
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
       - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/transformation_ops.cc
-      - ops/built-in/op_proto/nonlinear_fuc_ops.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/reduce_infer_util.h
       - ops/built-in/op_proto/util/transfer_shape_according_to_format.cc
       -  ops/built-in/op_proto/util/transfer_shape_according_to_format.h
       - ops/built-in/op_tiling/op_tiling_util.h
-      - ops/built-in/op_proto/ctc_ops.cc
-      - ops/built-in/op_proto/nn_ops.cc
-      - ops/built-in/op_proto/nn_other_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
@@ -1629,8 +1622,6 @@ vector_B:
       - ops/built-in/kernel/binary_script/binary_json_cfg.ini
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
       - ops/CMakeLists.txt
-      - ops/built-in/op_proto/nn_detect_ops.cc
-      - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
@@ -1644,8 +1635,6 @@ vector_B:
       - ops/built-in/tbe/impl/sparse_apply_ftrl_v2_d.py
       - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/sparse_apply_rms_prop_d.py
-      - ops/built-in/op_proto/avg_pool_1d_ops.cc
-      - ops/built-in/op_proto/npu_loss_scale_ops.cc
       - ops/built-in/op_proto/sparse_ops.cc
       - ops/built-in/tbe/impl/im2col_common_func.py
       - ops/built-in/op_tiling/sparse_apply_common.cc
@@ -2499,6 +2488,17 @@ ops_pub:
       - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/common/fp16_t.cc
       - ops/built-in/op_proto/hvd_ops.cc
+      - ops/built-in/op_proto/boosted_trees_ops.cc
+      - ops/built-in/op_proto/ctc_ops.cc
+      - ops/built-in/op_proto/data_flow_ops.cc
+      - ops/built-in/op_proto/nn_batch_norm_ops.cc
+      - ops/built-in/op_proto/inc/selection_ops.h
+      - ops/built-in/op_proto/avg_pool_1d_ops.cc
+      - ops/built-in/op_proto/nn_detect_ops.cc
+      - ops/built-in/op_proto/nn_ops.cc
+      - ops/built-in/op_proto/nn_other_ops.cc
+      - ops/built-in/op_proto/nonlinear_fuc_ops.cc
+      - ops/built-in/op_proto/npu_loss_scale_ops.cc
       - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/op_proto/inc/rnn.h
