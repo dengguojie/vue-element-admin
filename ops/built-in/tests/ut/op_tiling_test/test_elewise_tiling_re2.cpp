@@ -947,3 +947,350 @@ TEST_F(ElewiseTilingRT2, elewise_set_attr_case1) {
 
   EXPECT_EQ(test.Test(), true);
 }
+
+// Test elewise not all fuse
+TEST_F(ElewiseTilingRT2, dynamic_not_all_fuse) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{128, 16, 16, 1}, {128, 16, 16, 1}};
+  std::vector<std::vector<int64_t>> in_shapes = {{128, 1, 16, 16, 16}, {128, 1, 16, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{128, 16, 16, 1}};
+  std::vector<std::vector<int64_t>> out_shapes = {{128, 1, 16, 16, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT8};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NHWC};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NHWC};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 3;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}},
+                                          {"111", {32, 4, 21840, 10920}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }},
+                                             {"211100000", {40300, 40301, 10000, 10100, 10200, 20000, 30000 }},
+                                             {"211100001", {40300, 40301, 10000, 10100, 10200, 20000, 30001 }},
+                                             {"211100002", {40300, 40301, 10000, 10100, 10200, 20000, 30002 }},
+                                             {"211100003", {40300, 40301, 10000, 10100, 10200, 20000, 30003 }},
+                                             {"211110000", {40300, 40301, 10000, 10100, 10200, 20000, 30000 }},
+                                             {"211110001", {40300, 40301, 10000, 10100, 10200, 20000, 30001 }},
+                                             {"211110002", {40300, 40301, 10000, 10100, 10200, 20000, 30002 }},
+                                             {"211110003", {40300, 40301, 10000, 10100, 10200, 20000, 30003 }},};
+
+  test.SetCompileInfo(&expect_compile_info);
+
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "1, 1, 128, 1, 256, 2, 2";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
+}
+
+// Test elewise not all fuse custom
+TEST_F(ElewiseTilingRT2, dynamic_not_all_fuse_custom) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{128, 1, 16, 16}, {128, 1, 16, 16}};
+  std::vector<std::vector<int64_t>> in_shapes = {{128, 1, 16, 16, 16}, {128, 1, 16, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{128, 1, 16, 16}};
+  std::vector<std::vector<int64_t>> out_shapes = {{128, 1, 16, 16, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT8};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 6;
+  expect_compile_info.only_const_tiling = false;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 1;
+  expect_compile_info.base_info.second = {{"100", {32, 4, 21840, 10920}},
+                                          {"111", {32, 4, 21840, 10920}}};
+  expect_compile_info.elewise_vars.first = true;
+  expect_compile_info.elewise_vars.second = {{"210000000", {10000, 20000, 30000 }},
+                                             {"210010000", {10000, 20000, 30000 }},
+                                             {"211100000", {40100, 40101, 10000, 10100, 10200, 20000, 30000 }},
+                                             {"211100001", {40100, 40101, 10000, 10100, 10200, 20000, 30001 }},
+                                             {"211100002", {40100, 40101, 10000, 10100, 10200, 20000, 30002 }},
+                                             {"211100003", {40100, 40101, 10000, 10100, 10200, 20000, 30003 }},
+                                             {"211110000", {40100, 40101, 10000, 10100, 10200, 20000, 30000 }},
+                                             {"211110001", {40100, 40101, 10000, 10100, 10200, 20000, 30001 }},
+                                             {"211110002", {40100, 40101, 10000, 10100, 10200, 20000, 30002 }},
+                                             {"211110003", {40100, 40101, 10000, 10100, 10200, 20000, 30003 }},};
+
+  test.SetCompileInfo(&expect_compile_info);
+  OpInfo op_info(&expect_compile_info);
+  op_info.SetInputShape(&in_shapes);
+  op_info.SetInputType(&in_dtypes[0]);
+  EXPECT_EQ(test.Test(&op_info), true);
+  std::string expect_tiling_data = "1, 1, 128, 1, 256, 2, 2";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
+}
+
+// Test elewise not all fuse const non custom
+TEST_F(ElewiseTilingRT2, only_const_tiling_not_all_fuse) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{128, 1, 16, 16}, {128, 1, 16, 16}};
+  std::vector<std::vector<int64_t>> in_shapes = {{128, 1, 16, 16, 16}, {128, 1, 16, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{128, 1, 16, 16}};
+  std::vector<std::vector<int64_t>> out_shapes = {{128, 1, 16, 16, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT8};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 1;
+  expect_compile_info.elewise_vars.first = false;
+
+  test.SetCompileInfo(&expect_compile_info);
+  EXPECT_EQ(test.Test(), true);
+  std::string expect_tiling_data = "1, 0, 2, 0, 2, 0";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
+}
+
+// Test elewise not all fuse const custom
+TEST_F(ElewiseTilingRT2, only_const_tiling_not_all_fuse_custom) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{128, 1, 16, 16}, {128, 1, 16, 16}};
+  std::vector<std::vector<int64_t>> in_shapes = {{128, 1, 16, 16, 16}, {128, 1, 16, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{128, 1, 16, 16}};
+  std::vector<std::vector<int64_t>> out_shapes = {{128, 1, 16, 16, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT8};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 1;
+  expect_compile_info.elewise_vars.first = false;
+
+  test.SetCompileInfo(&expect_compile_info);
+  OpInfo op_info(&expect_compile_info);
+  op_info.SetInputShape(&in_shapes);
+  op_info.SetInputType(&in_dtypes[0]);
+  EXPECT_EQ(test.Test(&op_info), true);
+  std::string expect_tiling_data = "1, 0, 2, 0, 2, 0";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
+}
+
+// eleiwse 5hd not full core
+TEST_F(ElewiseTilingRT2, elewise_5hd_not_all_core) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{1, 5, 10, 16}, {1, 5, 10, 16}};
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 1, 10, 16, 16}, {1, 1, 10, 16, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{1, 5, 10, 16}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 1, 10, 16, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 1;
+  expect_compile_info.elewise_vars.first = false;
+
+  test.SetCompileInfo(&expect_compile_info);
+  OpInfo op_info(&expect_compile_info);
+  op_info.SetInputShape(&in_shapes);
+  op_info.SetInputType(&in_dtypes[0]);
+  EXPECT_EQ(test.Test(&op_info), true);
+  std::string expect_tiling_data = "1, 0, 1, 3, 8, 0";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 20);
+}
+
+
+// eleiwse 5hd single core
+TEST_F(ElewiseTilingRT2, elewise_5hd_single_core) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{1, 1, 2, 2}, {1, 1, 2, 2}};
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 1, 2, 2, 16}, {1, 1, 2, 2, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{1, 1, 2, 2}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 1, 2, 2, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 1;
+  expect_compile_info.elewise_vars.first = false;
+
+  test.SetCompileInfo(&expect_compile_info);
+  OpInfo op_info(&expect_compile_info);
+  op_info.SetInputShape(&in_shapes);
+  op_info.SetInputType(&in_dtypes[0]);
+  EXPECT_EQ(test.Test(&op_info), true);
+  std::string expect_tiling_data = "0, 0, 1, 0, 1, 0";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 1);
+}
+
+// eleiwse 5hd double_buffer core
+TEST_F(ElewiseTilingRT2, elewise_5hd_double_buffer) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> ori_in_shapes = {{12345678, 1, 1, 1}, {12345678, 1, 1, 1}};
+  std::vector<std::vector<int64_t>> in_shapes = {{12345678, 1, 1, 1, 16}, {12345678, 1, 1, 1, 16}};
+  std::vector<std::vector<int64_t>> ori_out_shapes = {{12345678, 1, 1, 1}};
+  std::vector<std::vector<int64_t>> out_shapes = {{12345678, 1, 1, 1, 16}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_FLOAT};
+  std::vector<ge::Format> input_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> input_format = {ge::Format::FORMAT_NC1HWC0};
+  std::vector<ge::Format> output_ori_format = {ge::Format::FORMAT_NCHW};
+  std::vector<ge::Format> output_format = {ge::Format::FORMAT_NC1HWC0};
+
+  AutoTilingTest test(ori_in_shapes, in_shapes, ori_out_shapes, out_shapes, in_dtypes, out_dtypes, input_ori_format, input_format, output_ori_format, output_format);
+  // Construct compile_info
+  optiling::v3::ElewiseCompileInfo expect_compile_info;
+  // required compile info
+  expect_compile_info.pattern = SchPattern::ELETWISE;
+  expect_compile_info.classify_inputs_num = 2;
+  expect_compile_info.flag_info_size = 1;
+  expect_compile_info.only_const_tiling = true;
+  expect_compile_info.ub_factor_align = 128;
+  // optional compile info
+  expect_compile_info.classify_const_mode = false;
+  expect_compile_info.support_broadcast = false;
+  expect_compile_info.absorbable_broadcast = false;
+  expect_compile_info.const_block_dims.first = false;
+  expect_compile_info.base_info.first = true;
+  expect_compile_info.base_info.second = {{"000", {32, 4, 21840, 10920}}};
+  expect_compile_info.contains_need_pad_compute = true;
+  expect_compile_info.elewise_fused_index.first = true;
+  expect_compile_info.elewise_fused_index.second = {{0}, {1}, {2, 3}, {4}};
+  expect_compile_info.elewise_pad_axis.first = true;
+  expect_compile_info.elewise_pad_axis.second = 1;
+  expect_compile_info.elewise_vars.first = false;
+
+  test.SetCompileInfo(&expect_compile_info);
+  OpInfo op_info(&expect_compile_info);
+  op_info.SetInputShape(&in_shapes);
+  op_info.SetInputType(&in_dtypes[0]);
+  EXPECT_EQ(test.Test(&op_info), true);
+  std::string expect_tiling_data = "1, 0, 566, 0, 682, 1";
+  EXPECT_EQ(test.GetInt32TilingData(), expect_tiling_data);
+  EXPECT_EQ(test.GetBlockDims(), 32);
+}

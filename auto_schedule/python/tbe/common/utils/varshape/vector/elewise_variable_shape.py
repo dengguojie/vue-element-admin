@@ -22,7 +22,8 @@ from functools import reduce
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils.varshape.variable_shape import register_variable
-from tbe.dsl.base import operation, var_api
+from tbe.dsl.base import operation
+from tbe.dsl.base import var_api
 
 
 @register_variable("elewise")

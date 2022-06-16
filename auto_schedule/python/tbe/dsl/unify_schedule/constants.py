@@ -209,6 +209,7 @@ class CompileInfo:
     CONTAINS_ELEWISE_SCH = "_contains_elewise_sch"
     UB_FACTOR_ALIGN = "_ub_factor_align"
     CLASSIFY_INPUTS_NUM = "_classify_inputs_num"
+    ELEWISE_FUSED_INDEX = "_elewise_fused_index"
     CONTAINS_NEED_PAD_COMPUTE = "_contains_need_pad_compute"
 
 

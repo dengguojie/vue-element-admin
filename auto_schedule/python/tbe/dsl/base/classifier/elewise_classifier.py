@@ -17,6 +17,7 @@
 """
 classifier of shape in elewise
 """
+from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -32,6 +33,7 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
     classify
     :param ins:
     :param support_broadcast:
+    :param extra_params:
     :return:
     """
     operation.get_context().add("_classify_inputs_num", len(ins))
@@ -40,10 +42,12 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
         classifer.check_update_unknown_rank()
         classifer.check_update_empty_shape()
     else:
-        classifer = PureElewiseClassifier(ins)
+        classifer = PureElewiseClassifier(ins, extra_params)
+        classifer.check_and_update_inputs()
     from tbe.common.buildcfg import get_current_build_config
     operation.get_context().add("_support_broadcast", support_broadcast)
     if get_current_build_config("enable_op_prebuild"):
+
         return [ins] if support_broadcast else [classifer.classify()[0]]
 
     return classifer.classify()

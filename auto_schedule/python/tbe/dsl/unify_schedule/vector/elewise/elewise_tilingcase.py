@@ -39,9 +39,6 @@ CONST = "const"
 EMPTY = "empty"
 STATIC = "static"
 ORIGINAL = "original"
-DB_KEY = 10000
-INT32_MAX = 2147483647
-BLOCK_SIZE_BYTE = 32
 
 # TYPE DOUNDS
 TYPE_DOUNDS = {
@@ -51,22 +48,37 @@ TYPE_DOUNDS = {
     8: (1, 8191),
 }
 
+INT32_MAX = 2147483647
+BLOCK_SIZE_BYTE = 32
 DB_KEY = 10000
 CONST_BASE_KEY = 100000000
 COMMON_BASE_KEY = 210000000
+NOT_ALL_FUSE_BASE_KEY = 211100000
 BROADCAST_BASE_KEY = 220000000
 BROADCAST_SCALAR_BASE_KEY = 223000000
 SCALAR_BROADCAST_BASE_KEY = 232000000
-ERROR_KEY = 266600000
 TILING_DIV_VALUE = 100000
 PATTERN_DIV_VALUE = 1000
+CLASSIFY_PATTERN_LEN = 3
+INDEX_MULTI_VALUE = 100
+SHAPE_VAR_NUM = 10000
+SHAPE_DIM_INDEX = 1
+SHAPE_INPUT_INDEX = 2
+BLOCK_VAR_NUM = 20000
+BLOCK_TILING_AXIS_INDEX = 2
+UB_VAR_NUM = 30000
+UB_TILING_AXIS_INDEX = 2
+ORI_DIM_VAR_NUM = 40000
+ORI_C_INDEX = 2
+ORI_C_INPUT_INDEX = 3
 
 
 class TilingStrategy(Enum):
     """
     TilingStrategy
     """
-    ONE_CUT = auto()
+    ALL_FUSE = auto()
+    NOT_ALL_FUSE = auto()
     STATIC = auto()
     CONST = auto()
     EMPTY = auto()
@@ -79,7 +91,7 @@ class ElewiseComputation(Computation):
     """
 
     def __init__(self, outs, option):
-        self.outs = outs
+        self.outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
         self.option = option
 
     def do_tiling_case(self):
@@ -93,29 +105,36 @@ class ElewiseComputation(Computation):
                 max_dtype = out.dtype
 
         # calculate the tiling_key
-        support_broadcast = operation.get_context().get("_support_broadcast")
         pattern = operation.get_context().get_current_compute().get(CompileInfo.PATTERN)
         if pattern is not None:
             pattern = list(pattern)
 
-        base_key = self.calc_base_key(support_broadcast, pattern)
+        base_key = self.calc_base_key(pattern)
 
         mode = operation.get_context().get_current_compute().get("_mode")
 
+        tiling_case = None
         if mode == CONST or operation.get_context().get_mode() == STATIC:
             tiling_case = self._calc_const_tiling_case(max_len)
         elif mode == EMPTY:
             tiling_case = self._calc_empty_tiling_case()
-        else:
-            tiling_case = self._calc_special_tiling_case(base_key, max_dtype)
+        elif mode in (SPECIAL, SPECIAL_SCALAR, ORIGINAL):
+            if pattern != ['not_all_fuse']:
+                tiling_case = self._calc_special_tiling_case(base_key, max_dtype)
+            else:
+                tiling_case = self._calc_not_all_fuse_tiling_case(max_len, base_key, max_dtype, self._default_db_func)
 
         return tiling_case
 
-
-    def calc_base_key(self, support_broadcast, pattern):
+    def calc_base_key(self, pattern):
+        """
+        get tiling case base key
+        """
         # common includes old pure elewise, scalar broadcast, distribute of broadcast common pattern
-        if not support_broadcast or pattern == ['common']:
+        if pattern == ['common']:
             base_key = COMMON_BASE_KEY
+        elif pattern == ['not_all_fuse']:
+            base_key = NOT_ALL_FUSE_BASE_KEY
         elif pattern == ['broadcast']:
             base_key = BROADCAST_BASE_KEY
         elif pattern == ['broadcast', 'scalar']:
@@ -123,7 +142,7 @@ class ElewiseComputation(Computation):
         elif pattern == ['scalar', 'broadcast']:
             base_key = SCALAR_BROADCAST_BASE_KEY
         else:
-            base_key = ERROR_KEY
+            base_key = CONST_BASE_KEY
 
         return base_key
 
@@ -165,17 +184,36 @@ class ElewiseComputation(Computation):
     def _calc_all_fuse_tiling_case(self, base_key, dtype, enable_db_func):
         tiling_case = []
         all_fuse_tiling_case = ElewiseTilingCase()
-        all_fuse_tiling_case.set_all_fuse_tiling_case(base_key,
-                                                      TYPE_DOUNDS.get(DTYPE_BYTE_MAPPING.get(dtype)),
-                                                      is_one_dim=True)
+        all_fuse_tiling_case.set_all_fuse_tiling_case(base_key, TYPE_DOUNDS.get(DTYPE_BYTE_MAPPING.get(dtype)))
         tiling_case.append(all_fuse_tiling_case)
 
         if enable_db_func():
             all_fuse_db_tiling_case = ElewiseTilingCase()
             all_fuse_db_tiling_case.set_all_fuse_tiling_case(base_key + DB_KEY,
                                                              TYPE_DOUNDS.get(DTYPE_BYTE_MAPPING.get(dtype)),
-                                                             enable_db=True, is_one_dim=True)
+                                                             enable_db=True)
             tiling_case.append(all_fuse_db_tiling_case)
+        return tiling_case
+
+    def _calc_not_all_fuse_tiling_case(self, dim_len, base_key, dtype, enable_db_func):
+        if dim_len == 1:
+            return self._calc_all_fuse_tiling_case(base_key,
+                                                   TYPE_DOUNDS.get(DTYPE_BYTE_MAPPING.get(dtype)),
+                                                   self._default_db_func)
+        tiling_case = []
+        # do split
+        block_axis = 0
+        for i in range(dim_len):
+            tiling_key = base_key + block_axis * dim_len + i
+            not_all_fuse_tiling_case = ElewiseTilingCase()
+            not_all_fuse_tiling_case.set_not_all_fuse_tiling_case(tiling_key, block_axis, i)
+            tiling_case.append(not_all_fuse_tiling_case)
+
+            if enable_db_func():
+                tiling_key = base_key + block_axis * dim_len + i + DB_KEY
+                not_all_fuse_db_tiling_case = ElewiseTilingCase()
+                not_all_fuse_db_tiling_case.set_not_all_fuse_tiling_case(tiling_key, block_axis, i, enable_db=True)
+                tiling_case.append(not_all_fuse_db_tiling_case)
         return tiling_case
 
 
@@ -189,7 +227,7 @@ def _pre_build(schedules_list):
 
     def _get_pattern_key(_tiling_key):
         _pattern_key = _tiling_key // TILING_DIV_VALUE % PATTERN_DIV_VALUE
-        return str(_pattern_key).ljust(3, '0')
+        return str(_pattern_key).ljust(CLASSIFY_PATTERN_LEN, '0')
 
     def _name_to_int(_var_names):
         new_var_names = []
@@ -198,11 +236,15 @@ def _pre_build(schedules_list):
                 continue
             names = name[1:].split('_')
             if names[0] == 'dim':
-                new_var_names.append(10000 + int(names[1]) * 100 + int(names[2]))
+                new_var_names.append(
+                    SHAPE_VAR_NUM + int(names[SHAPE_DIM_INDEX]) * INDEX_MULTI_VALUE + int(names[SHAPE_INPUT_INDEX]))
             elif names[0] == 'block':
-                new_var_names.append(20000 + int(names[2]))
+                new_var_names.append(BLOCK_VAR_NUM + int(names[BLOCK_TILING_AXIS_INDEX]))
             elif names[0] == 'ub':
-                new_var_names.append(30000 + int(names[2]))
+                new_var_names.append(UB_VAR_NUM + int(names[UB_TILING_AXIS_INDEX]))
+            elif names[0] == 'ori':
+                new_var_names.append(
+                    ORI_DIM_VAR_NUM + int(names[ORI_C_INDEX]) * INDEX_MULTI_VALUE + int(names[ORI_C_INPUT_INDEX]))
         return new_var_names
 
     def _add_const_compile_info():
@@ -213,7 +255,7 @@ def _pre_build(schedules_list):
         operation.add_compile_info_inner(CompileInfo.CONST_SHAPES, const_shapes)
         operation.add_compile_info_inner(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
 
-    def _add_special_compile_info():
+    def _add_dynamic_compile_info():
         schedules = []
         _flatten_sch(schedules)
 
@@ -240,7 +282,7 @@ def _pre_build(schedules_list):
             max_available_ub = (((min(cpt_ub_sizes) // max(cpt_coexisting_quantitys)) // BLOCK_SIZE_BYTE) *
                                 BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
             max_available_ub_db = (((min(cpt_ub_sizes) // 2 // max(cpt_coexisting_quantitys)) // BLOCK_SIZE_BYTE) *
-                                BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
+                                   BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
             base_info[pattern_key] = [max(cores), max(cpt_max_dtypes), max_available_ub, max_available_ub_db]
 
         if base_info:
@@ -259,7 +301,7 @@ def _pre_build(schedules_list):
         operation.add_build_arg("double_buffer_non_reuse", True)
         # close double calculation switch
         operation.add_build_arg("enable_vector_2x", False)
-        # v220 eletwise schedule use mask counter mode
+        # if enable mask count, schedule use mask counter mode
         if util.is_v220():
             operation.add_build_arg("enable_mask_counter_mode", "default_counter")
 
@@ -291,7 +333,7 @@ def _pre_build(schedules_list):
     if is_const_shapes:
         _add_const_compile_info()
     else:
-        _add_special_compile_info()
+        _add_dynamic_compile_info()
 
 
 @register_build_pointcut(pattern=Pattern.ELEMWISE)
@@ -311,6 +353,7 @@ class ElewiseTilingCase:
     """
     Elewise Tiling Case
     """
+
     def __init__(self):
         self._tiling_key = INT32_MAX
         self._tiling_strategy: Optional[Enum] = None
@@ -319,26 +362,6 @@ class ElewiseTilingCase:
         self._ub_factor_bound = None
         self._enable_db = False
         self._is_one_dim = False
-
-    def set_const_tiling_case(self, key, is_one_dim=False):
-        """
-        set const tiling case
-        """
-        self._tiling_strategy = TilingStrategy.CONST
-        self._tiling_key = key
-        self._is_one_dim = is_one_dim
-
-    def set_all_fuse_tiling_case(self, key, ub_factor_bound, enable_db=False, is_one_dim=False):
-        """
-        set all fuse tiling case
-        """
-        self._tiling_strategy = TilingStrategy.ONE_CUT
-        self._tiling_key = key
-        self._block_split_axis = 0
-        self._ub_split_axis = 0
-        self._ub_factor_bound = ub_factor_bound
-        self._enable_db = enable_db
-        self._is_one_dim = is_one_dim
 
     @property
     def tiling_key(self):
@@ -388,3 +411,34 @@ class ElewiseTilingCase:
         elewise is_one_dim for schedule
         """
         return self._is_one_dim
+
+    def set_const_tiling_case(self, key, is_one_dim=False):
+        """
+        set const tiling case
+        """
+        self._tiling_strategy = TilingStrategy.CONST
+        self._tiling_key = key
+        self._is_one_dim = is_one_dim
+
+    def set_all_fuse_tiling_case(self, key, ub_factor_bound, enable_db=False, is_one_dim=True):
+        """
+        set all fuse tiling case
+        """
+        self._tiling_strategy = TilingStrategy.ALL_FUSE
+        self._tiling_key = key
+        self._block_split_axis = 0
+        self._ub_split_axis = 0
+        self._ub_factor_bound = ub_factor_bound
+        self._enable_db = enable_db
+        self._is_one_dim = is_one_dim
+
+    def set_not_all_fuse_tiling_case(self, key, block_split_axis, ub_split_axis, enable_db=False, is_one_dim=False):
+        """
+        set not all fuse tiling case
+        """
+        self._tiling_strategy = TilingStrategy.NOT_ALL_FUSE
+        self._tiling_key = key
+        self._block_split_axis = block_split_axis
+        self._ub_split_axis = ub_split_axis
+        self._enable_db = enable_db
+        self._is_one_dim = is_one_dim

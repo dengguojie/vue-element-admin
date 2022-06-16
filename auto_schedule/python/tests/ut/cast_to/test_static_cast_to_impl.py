@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 
 def dsl_cast_to(x, _, dest_type, f16_8_flag, kernel_name='dsl_cast_to'):
-    with tbe.common.context.op_context.OpContext("static"):
+    with tbe.common.context.op_context.OpContext("pre-static"):
         input_shape = x.get("shape")
         input_dtype = x.get("dtype")
 

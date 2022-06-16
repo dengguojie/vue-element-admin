@@ -19,13 +19,20 @@ elewise schedule
 """
 from copy import deepcopy as deep_copy
 from typing import Optional
+from typing import List
 
 from tbe import tvm
+from tbe.tvm.tensor import Tensor
 from tbe.common.utils import op_tiling
 from tbe.common.platform import intrinsic_check_support
 from tbe.dsl.base import operation
+from tbe.dsl.base import d_format_util
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
+from tbe.dsl.base.padding import padding
+from tbe.dsl.base.padding.padding import Action
+from tbe.dsl.base.padding.padding import ActionType
+from tbe.dsl.base.padding.padding import ActionValueType
 
 from ... import util
 from ...constants import CompileInfo
@@ -157,10 +164,10 @@ class ElewiseSchedule(Schedule):
 
         self._ir_axes = []
         self._inner_shape = []
-
         self._mem_reuse_map = {}
-
         self._emit_insn_map = {}
+        self._5hd_actions: List[Action] = None
+        self._set_value_cache_read_map = []
 
     def do_schedule(self):
         """
@@ -180,12 +187,15 @@ class ElewiseSchedule(Schedule):
         self._set_scope()
 
         self._calc_storage_bound()
+        self._calc_set_value()
         self._calc_tiling()
         self._calc_compute_inline()
 
         self._do_tiling()
         self._do_storage_bound()
         self._do_compute_inline()
+
+        self._do_set_value()
 
         self._calc_multi_core()
         self._do_multi_core()
@@ -290,13 +300,24 @@ class ElewiseSchedule(Schedule):
             sch[tensor_i].set_scope(self._scope)
 
     def _calc_tiling(self):
-        funcs = {TilingStrategy.ONE_CUT: self._calc_tiling_one_cut,
+        funcs = {TilingStrategy.ALL_FUSE: self._calc_tiling_all_fuse,
+                 TilingStrategy.NOT_ALL_FUSE: self._calc_tiling_not_all_fuse,
                  TilingStrategy.STATIC: self._calc_tiling_static,
                  TilingStrategy.CONST: self._calc_tiling_const,
                  }
         funcs[self._tiling_strategy]()
 
-    def _calc_tiling_one_cut(self):
+    def _calc_tiling_all_fuse(self):
+        res = self._out
+        shape = util.shape_to_list(res.shape)
+        b_bound = (1, util.get_bound(shape[0])[1])
+        u_bound = TYPE_DOUNDS.get(self._max_dtype_bytes)
+        if u_bound is None:
+            u_bound = (1, util.get_bound(shape[0])[1])
+        self._block_tiling_vars[0] = operation.var_inner("_block_factor_" + str(0), b_bound)
+        self._ub_tiling_vars[0] = operation.var_inner("_ub_factor_" + str(0), u_bound)
+
+    def _calc_tiling_not_all_fuse(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
         b_i = self._tiling_case.block_split_axis
@@ -310,6 +331,8 @@ class ElewiseSchedule(Schedule):
             u_bound = (1, util.get_bound(shape[u_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = operation.var_inner("_ub_factor_" + str(u_i), u_bound)
+        self._block_factor = self._block_tiling_vars.get(b_i)
+        self._ub_factor = self._ub_tiling_vars.get(u_i)
 
     def _calc_tiling_static(self):
         res = self._out
@@ -319,6 +342,8 @@ class ElewiseSchedule(Schedule):
         b_bound = (1, util.get_bound(shape[b_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = self._tiling_case.ub_factor_bound
+        self._block_factor = self._block_tiling_vars.get(b_i)
+        self._ub_factor = self._ub_tiling_vars.get(u_i)
 
     def _calc_tiling_const(self):
         res = self._out
@@ -346,7 +371,7 @@ class ElewiseSchedule(Schedule):
             CompileInfo.FLAG_INFO: [True],
             CompileInfo.BASE_INFO: base_info,
             CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align,
-            CompileInfo.CLASSIFY_INPUTS_NUM: len(inputs)
+            CompileInfo.CLASSIFY_INPUTS_NUM: operation.get_context().get('_classify_inputs_num'),
         }
         const_compile_info.update(get_compile_info())
 
@@ -374,73 +399,104 @@ class ElewiseSchedule(Schedule):
         self._compute_inline_tensors = self._absorbable_broadcast_tensors.copy()
 
     def _do_tiling(self):
-        funcs = {TilingStrategy.ONE_CUT: self._do_tiling_one_cut,
+        funcs = {TilingStrategy.ALL_FUSE: self._do_tiling_all_fuse,
+                 TilingStrategy.NOT_ALL_FUSE: self._do_tiling_not_all_fuse,
                  TilingStrategy.STATIC: self._do_tiling_static,
                  TilingStrategy.CONST: self._do_tiling_const,
                  }
-        funcs[self._tiling_strategy]()
+        funcs.get(self._tiling_strategy)()
 
-    def _do_tiling_one_cut(self):
+    def _do_tiling_ub_cut_first(self, u_idx, b_factor, u_factor):
         sch = self._schedule
         res = self._out
         shape = util.shape_to_list(res.shape)
         b_idx = self._tiling_case.block_split_axis
-        u_idx = self._tiling_case.ub_split_axis
         block_axes = []
         ub_axes = []
         inner_axes = []
-        for i in range(b_idx):
+
+        # step 1: split ub axis
+        u_o, u_i = sch[res].split(res.op.axis[u_idx], factor=u_factor)
+        ub_axes.append([u_o, u_idx])
+        inner_axes.append([u_i, u_idx])
+        self._inner_shape.append([u_factor, u_idx])
+        for i in range(u_idx):
             block_axes.append([res.op.axis[i], i])
-        b_o, b_i = sch[res].split(res.op.axis[b_idx],
-                                  factor=self._block_tiling_vars[b_idx])
-        block_axes.append([b_o, b_idx])
-        if b_idx == u_idx:
-            u_o, u_i = sch[res].split(b_i, factor=self._ub_tiling_vars[u_idx])
-            ub_axes.append([u_o, u_idx])
-            inner_axes.append([u_i, u_idx])
-            self._inner_shape.append([self._ub_tiling_vars[u_idx], u_idx])
-        else:
-            ub_axes.append([b_i, b_idx])
-            for i in range(b_idx + 1, u_idx):
-                ub_axes.append([res.op.axis[i], i])
-            u_o, u_i = sch[res].split(res.op.axis[u_idx],
-                                      factor=self._ub_tiling_vars[u_idx])
-            ub_axes.append([u_o, u_idx])
-            inner_axes.append([u_i, u_idx])
-            self._inner_shape.append([self._ub_tiling_vars[u_idx], u_idx])
+        block_axes.append([u_o, u_idx])
+
+        # step 2: fuse all block axis
+        block_fuse_axis = sch[res].fuse(*[x[0] for x in block_axes])
+
+        # step 3: split block axis
+        b_o, b_i = sch[res].split(block_fuse_axis, factor=b_factor)
+
         for i in range(u_idx + 1, len(res.op.axis)):
             inner_axes.append([res.op.axis[i], i])
             self._inner_shape.append([shape[i], i])
+        self._block_bind_axis = b_o
+        self._compute_at_axis = b_i
+        self._compute_at_axis_idx = u_idx
+        self._emit_insn_axis = inner_axes[0][0]
+
+
+    def _do_tiling_all_fuse(self):
+        sch = self._schedule
+        res = self._out
+        block_axes = []
+        ub_axes = []
+        inner_axes = []
+        b_o, b_i = sch[res].split(res.op.axis[0], factor=self._block_tiling_vars.get(0))
+        block_axes.append([b_o, 0])
+
+        u_o, u_i = sch[res].split(b_i, factor=self._ub_tiling_vars.get(0))
+        ub_axes.append([u_o, 0])
+        inner_axes.append([u_i, 0])
+        self._inner_shape.append([self._ub_tiling_vars.get(0), 0])
 
         self._ir_axes = block_axes + ub_axes + inner_axes
         self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-        self._compute_at_axis = ub_axes[-1][0]
-        self._compute_at_axis_idx = ub_axes[-1][1]
-        self._emit_insn_axis = inner_axes[0][0]
+        self._compute_at_axis = u_o
+        self._compute_at_axis_idx = 0
+        self._emit_insn_axis = u_i
+
+    def _do_tiling_not_all_fuse(self):
+        if self._is_one_dim:
+            return self._do_tiling_all_fuse()
+
+        b_idx = self._tiling_case.block_split_axis
+        u_idx = self._tiling_case.ub_split_axis
+        block_factor = self._block_tiling_vars.get(b_idx)
+        ub_factor = self._ub_tiling_vars.get(u_idx)
+        return self._do_tiling_ub_cut_first(u_idx, block_factor, ub_factor)
 
     def _do_tiling_static(self):
-        self._do_tiling_one_cut()
+        self._do_tiling_not_all_fuse()
 
-    def _do_tiling_const(self):
+    def _do_tiling_const_all_fuse(self):
         sch = self._schedule
         res = self._out
         block_axes = []
         if self._need_do_block:
-            for i in range(self._block_split_axis):
-                block_axes.append([res.op.axis[i], i])
-            b_o, b_i = sch[res].split(res.op.axis[self._block_split_axis],
-                                      factor=self._block_factor)
-            block_axes.append([b_o, self._block_split_axis])
+            b_o, b_i = sch[res].split(res.op.axis[0], factor=self._block_factor)
+            block_axes.append([b_o, 0])
             self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-            if self._block_split_axis == self._ub_split_axis:
-                u_o, u_i = sch[res].split(b_i, factor=self._ub_factor)
-            else:
-                u_o, u_i = sch[res].split(res.op.axis[self._ub_split_axis],
-                                          factor=self._ub_factor)
+            u_o, u_i = sch[res].split(b_i, factor=self._ub_factor)
             self._compute_at_axis = u_o
             self._emit_insn_axis = u_i
         else:
             self._emit_insn_axis = res.op.axis[0]
+
+    def _do_tiling_const(self):
+        if self._is_one_dim or not operation.get_context().get_current_compute().get('_is_5hd_pattern'):
+            self._do_tiling_const_all_fuse()
+        else:
+            u_idx = self._ub_split_axis
+            block_factor = self._block_factor
+            ub_factor = self._ub_factor
+            if self._need_do_block:
+                self._do_tiling_ub_cut_first(u_idx, block_factor, ub_factor)
+            else:
+                self._emit_insn_axis = self._out.op.axis[0]
 
     def _calc_multi_core(self):
         pass
@@ -509,7 +565,7 @@ class ElewiseSchedule(Schedule):
         for tensor_i, param in self._emit_insn_map.items():
             tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING.get(tensor_i.dtype))
             if param[1] == "unknown_broadcast":
-                attrs = {"storage_bound":[tensor_bound], "dynamic_fuse":False, "dynamic_split":False}
+                attrs = {"storage_bound": [tensor_bound], "dynamic_fuse": False, "dynamic_split": False}
                 sch[tensor_i].emit_insn(param[0], param[1], attrs)
             if len(param) > 2:
                 sch[tensor_i].emit_insn(param[0], param[2])
@@ -541,7 +597,7 @@ class ElewiseSchedule(Schedule):
             "elewise_multiple_maddrelu": 1,
         }
 
-        def __get_ub_tensor(_input_tensor, _output_tensor):
+        def __get_reuse_ub_tensor(_input_tensor, _output_tensor):
             if _input_tensor in self._placeholder_tensor_map:
                 _input_tensor = self._placeholder_tensor_map.get(_input_tensor, None)
             if _output_tensor in self._cache_write_tensor_map:
@@ -570,7 +626,7 @@ class ElewiseSchedule(Schedule):
                         index += 1
                 reuse_index = ternary_reuse_map.get(insn)
                 src_tensor = src_tensors[reuse_index]
-                src_tensor, dst_tensor = __get_ub_tensor(src_tensor, tensor_i)
+                src_tensor, dst_tensor = __get_reuse_ub_tensor(src_tensor, tensor_i)
                 util.merge_value(self._mem_reuse_map,
                                  src_tensor,
                                  dst_tensor)
@@ -646,7 +702,7 @@ class ElewiseSchedule(Schedule):
 
             for tensor_i in dependent_map:
                 if tensor_i in self._absorbable_broadcast_tensors and tensor_i.op.input_tensors and \
-                    tensor_i.op.input_tensors[0] in dependent_map:
+                        tensor_i.op.input_tensors[0] in dependent_map:
                     _current_coexist_node -= 1
 
             _refresh_dependent(_tensor)
@@ -660,6 +716,10 @@ class ElewiseSchedule(Schedule):
             # check if vcmp tensor impl by complex instructions
             if _vcmp_complex_instructions(_tensor):
                 _current_coexist_node += SPECIAL_VCMP_NODE
+
+            if self._5hd_actions is not None and len(self._5hd_actions) > 0:
+                _current_coexist_node += 1
+
 
             # check if all src be used later
             if _dst_can_not_reuse_src(_tensor):
@@ -752,7 +812,7 @@ class ElewiseSchedule(Schedule):
             .union(self._cache_write_buffer_tensor_map.keys())
 
         for tensor_i in tensors:
-            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
+            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING.get(tensor_i.dtype))
             sch[tensor_i].set_buffer_size(storage_bound)
 
     def _do_compute_inline(self):
@@ -787,6 +847,13 @@ class ElewiseSchedule(Schedule):
 
         operation.add_compile_info_inner(CompileInfo.UB_FACTOR_ALIGN, self._ub_factor_align)
 
+    def _get_ub_tensor(self, tensor_i):
+        if tensor_i in self._placeholder_tensor_map:
+            return self._placeholder_tensor_map.get(tensor_i)
+        if tensor_i in self._cache_write_tensor_map:
+            return self._cache_write_tensor_map.get(tensor_i)
+        return None
+
     def __dfs_sub_graph(self, out, visited_tensors: set):
         for tensor_i in out.op.input_tensors:
             util.merge_value(self._in_out_map, tensor_i, out)
@@ -805,6 +872,36 @@ class ElewiseSchedule(Schedule):
             visited_tensors.add(tensor_i)
 
             self.__dfs_sub_graph(tensor_i, visited_tensors)
+
+    def _calc_set_value(self):
+        if operation.get_context().get_current_compute().get('_is_5hd_pattern'):
+            self._5hd_actions = padding.calc_padding(self._outs)
+
+        if self._5hd_actions:
+            operation.add_compile_info_inner(CompileInfo.CONTAINS_NEED_PAD_COMPUTE, True)
+
+    def _do_set_value(self):
+        if self._5hd_actions:
+            for action in self._5hd_actions:
+                action_type = action.get_action_type()
+                tensor = action.get_tensor()
+                condition = action.get_condition()
+                value = action.get_value()
+                target_tensors = action.get_target_tensors()
+                value_type = action.get_value_type()
+
+                if value_type == ActionValueType.TENSOR:
+                    value = value(self._get_ub_tensor(tensor))
+                if action_type == ActionType.SET_VALUE:
+                    self._schedule[self._get_ub_tensor(tensor)].set_value(condition, value)
+                elif action_type == ActionType.CACHE_READ_AND_SET_VALUE:
+                    set_value_cache_read_buffer = self._schedule.cache_read(tensor, self._scope, target_tensors)
+                    self._emit_insn_map[set_value_cache_read_buffer] = \
+                        [set_value_cache_read_buffer.op.axis[0], 'dma_copy']
+                    if self._set_value_cache_read_map[tensor] is None:
+                        set_value_cache_read_buffer_set = {set_value_cache_read_buffer}
+                        self._set_value_cache_read_map[tensor] = set_value_cache_read_buffer_set
+                    self._set_value_cache_read_map[tensor].add(set_value_cache_read_buffer)
 
 
 def _fake_node(tensors):
@@ -839,6 +936,7 @@ def _fake_node(tensors):
         res = tvm.compute(shape, _fake_compute, name="fake_node")
 
     return res
+
 
 def _copy_node(tensor):
     shape = tensor.shape

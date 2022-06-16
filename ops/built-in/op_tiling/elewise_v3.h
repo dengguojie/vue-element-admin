@@ -33,7 +33,7 @@
 namespace optiling {
 namespace v3 {
 
-struct ElewiseCompileInfo : AutoTilingCompileInfo{
+struct ElewiseCompileInfo : AutoTilingCompileInfo {
   ElewiseCompileInfo() = default;
   ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
   ~ElewiseCompileInfo() override = default;
@@ -52,6 +52,9 @@ struct ElewiseCompileInfo : AutoTilingCompileInfo{
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> base_info;
   std::pair<bool, std::vector<int64_t>> const_block_dims;
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars;
+  bool contains_need_pad_compute{false};
+  std::pair<bool, std::vector<std::vector<size_t>>> elewise_fused_index;
+  std::pair<bool, size_t> elewise_pad_axis;
   // rl bank info
   std::pair<bool, std::vector<std::pair<rl::RlPattern, std::vector<rl::RlBankInfo>>>> bank_info_pair;
 
@@ -66,6 +69,9 @@ struct ElewiseCompileInfo : AutoTilingCompileInfo{
   void ParseBaseInfo(const nlohmann::json& outer_compile_info);
   void ParseConstCompileInfo(const nlohmann::json& outer_compile_info);
   void ParseElewiseVar(const nlohmann::json& outer_compile_info);
+  void ParseContainsPadCompute(const nlohmann::json& outer_compile_info);
+  void ParseFusedIndex(const nlohmann::json& outer_compile_info);
+  void ParsePadAxis(const nlohmann::json& outer_compile_info);
   bool ParseOptionalCompileInfo(const nlohmann::json& outer_compile_info);
 };
 
@@ -75,28 +81,28 @@ enum class ElewisePattern {
   BROADCAST = 200,
   BROADCAST_SCALAR = 230,
   SCALAR_BROADCAST = 320,
-  UNKNOWN = 666
+  NOT_ALL_FUSE = 111,
+  UNKNOWN = 444
 };
 
 template <typename T>
 class Elewise {
  public:
-  explicit Elewise(T* _context, const OpInfoImpl* _op_info)
-      : context(_context),
-        op_info(_op_info) {
-  }
+  explicit Elewise(T* _context, const OpInfoImpl* _op_info) : context(_context), op_info(_op_info) {}
   ~Elewise() = default;
   bool DoTiling();
-  bool DoTiling(const OpInfo& op_info);
   void SetBroadcastPattern(const ElewisePattern& pattern);
 
  private:
   void GetOutputDtype();
   bool CheckCompileInfo();
-  void GetCheckInputs(std::vector<uint32_t>& check_list);
-  bool GetShapeUnderCheckCustom(std::vector<uint32_t>& check_list);
-  bool GetShapeUnderCheck(std::vector<uint32_t>& check_list);
+  void GetCheckInputs(std::vector<size_t>& check_list);
+  bool GetShapeUnderCheckCustom(std::vector<size_t>& check_list);
+  bool GetShapeUnderCheck(std::vector<size_t>& check_list);
+  void RefineNoFuseShapes();
+  bool GetNotAllFuseShapeUnderCheck();
   bool GetInOutShapes();
+  void MatchNotAllFuseTiling();
   bool WriteKnownData();
   bool CalcConstKey();
   bool ConstModeTiling();
@@ -108,7 +114,12 @@ class Elewise {
   bool DoUbTiling();
   void CalcTilingKey();
   bool WriteTilingData() const;
-  bool SpecialModeTiling();
+  void DoBlockTilingNotAllFuse();
+  void AdjustNotAllFuseUbTiling(const int64_t& under_ub_shape, const int64_t& limit);
+  void CheckUpdateUbTiling();
+  void DoUbTilingNotAllFuse();
+  void NotAllFuseTiling();
+  bool AllFuseTiling();
   bool WriteRlTilingData(const rl::RlBankInfo& rl_bank_info) const;
   bool DoRlTiling(const rl::RlBankInfo& rl_bank_info);
   bool TryMatchRlBank();
@@ -119,12 +130,14 @@ class Elewise {
   const char* op_type;
   const ElewiseCompileInfo* compile_info;
   // input infos
-  uint32_t input_num{0};
+  size_t input_num{0};
+  bool is_custom_tiling = false;
   std::vector<int64_t> input_fuse_shapes{};
   std::unordered_set<int64_t> fuse_diff_shapes{};
   // output infos
   int64_t out_shape{1};
-  ge::DataType out_dtype{ge::DataType::DT_MAX};
+  std::vector<int64_t> partial_fuse_out_shape{};
+  ge::DataType max_output_dtype{ge::DataType::DT_MAX};
   // base infos
   int64_t core_num{-1};
   int64_t max_dtype{-1};
@@ -135,10 +148,16 @@ class Elewise {
   bool need_double_buffer{false};
   uint64_t tiling_key{1};
   int64_t block_dims{1};
+  int64_t multi_core_output{1};
+  int64_t block_axis{0};
+  int64_t ub_axis{0};
   int64_t block_factor{1};
   int64_t ub_factor{1};
   bool broadcast_dispatch{false};
   ElewisePattern classify_pattern{ElewisePattern::UNKNOWN};
+  bool disable_all_fuse = false;
+  std::vector<std::vector<size_t>> fused_index_list{};
+  size_t pad_c_axis{0};
   // rl
   bool hit_rl_bank{false};
   int64_t rl_ub_factor{1};
@@ -152,7 +171,7 @@ template class Elewise<AutoTilingContext>;
 template class Elewise<AutoTilingOp>;
 }  // namespace v3
 
-class ElewiseTilingHandler: public AutoTilingHandler {
+class ElewiseTilingHandler : public AutoTilingHandler {
  public:
   ElewiseTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
       : AutoTilingHandler(o, p), elewise_compile_info(o, c) {}
