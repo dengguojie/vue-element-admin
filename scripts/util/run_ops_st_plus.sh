@@ -19,7 +19,10 @@ STATUS_SUCCESS=0
 STATUS_FAILED=1
 
 CASE_SOURCE="${CUR_DIR}/st_plus"
+TOOLKIT_RUN_FILE="${CUR_DIR}/tbe_toolkits/run.sh"
 RESULT_SUMMARY="${CUR_DIR}/result_summary.txt"
+RESULT_CSV_FILE="${CUR_DIR}/st_plus_result.csv"
+RESULT_TAR_FILE="${CUR_DIR}/result_st_plus.tar.gz"
 PARAMS="${CUR_DIR}/params"
 
 run() {
@@ -34,7 +37,7 @@ run() {
   local cases=$(find "${op_dir}" -name "*.csv" | head -1 2>/dev/null)
   if [[ -n "$cases" ]]; then
     echo "[INFO] run case file: $cases, with parameters: ${params}"
-    "${CUR_DIR}/tbe_toolkits/run.sh" "$cases" "${CUR_DIR}/st_plus_result.csv ${params}"
+    "${TOOLKIT_RUN_FILE}" "$cases" "${RESULT_CSV_FILE} ${params}"
     if [[ $? -ne 0 ]]; then
       echo "[ERROR] run ops stest plus failed, case file is: $cases."
       exit $STATUS_FAILED
@@ -47,21 +50,20 @@ run() {
 }
 
 parse_result_csv() {
-  local result_file="${CUR_DIR}/st_plus_result.csv"
-  if [[ ! -f "${result_file}" ]]; then
-    echo "[ERROR] st_plus_result.csv is not found in ${CUR_DIR}"
+  if [[ ! -f "${RESULT_CSV_FILE}" ]]; then
+    echo "[ERROR] ${RESULT_CSV_FILE##*/} is not found in ${CUR_DIR}"
     return
   fi
 
-  local lines=$(wc -l "${result_file}" 2>/dev/null| awk '{print $1}')
+  local lines=$(wc -l "${RESULT_CSV_FILE}" 2>/dev/null| awk '{print $1}')
   if [[ $lines -le 1 ]]; then
-    echo "[ERROR] st_plus_result.csv is empty or only titiles in it."
+    echo "[ERROR] ${RESULT_CSV_FILE##*/} is empty or only titiles in it."
     return
   fi
   local total_count=$(expr $lines - 1)
 
   # parse result.csv
-  local fail_case=`grep -E "FAIL|CRASH|EXCEPTION" "${result_file}" | awk -F',' '{print $1}'`
+  local fail_case=`grep -E "FAIL|CRASH|EXCEPTION" "${RESULT_CSV_FILE}" | awk -F',' '{print $1}'`
   local arr=($fail_case)
   local fail_count=${#arr[@]}
   local succ_count=$(expr $total_count - $fail_count)
@@ -80,21 +82,25 @@ tar_results () {
     files=${files}" ${RESULT_SUMMARY##*/}"
   fi
 
+  if [[ -f "${RESULT_CSV_FILE}" ]]; then
+    files=${files}" ${RESULT_CSV_FILE##*/}"
+  fi
+
   local log_count=`ls ${CUR_DIR}/tbetoolkits-*.log 2>/dev/null | wc -l`
   if [[ $log_count -gt 0 ]]; then
     files=${files}" tbetoolkits-*.log"
   fi
 
   if [[ -d ~/ascend/log/plog ]]; then
-    tar czf result_st_plus.tar.gz $files ~/ascend/log/plog
+    tar czf ${RESULT_TAR_FILE} $files ~/ascend/log/plog
   elif [[ -n "$files" ]]; then
-    tar czf result_st_plus.tar.gz $files
+    tar czf ${RESULT_TAR_FILE} $files
   fi
 }
 
 get_results() {
   if [[ ! -f "${RESULT_SUMMARY}" ]]; then
-    echo "[ERROR] st_plus_result.csv is not found or empty in ${CUR_DIR}"
+    echo "[ERROR] ${RESULT_CSV_FILE##*/} is not found or empty in ${CUR_DIR}"
     exit $STATUS_FAILED
   fi
 
@@ -113,7 +119,7 @@ get_results() {
 
 main() {
   local start=$(date +%s)
-  if [ ! -f "${CUR_DIR}/tbe_toolkits/run.sh" ]; then
+  if [ ! -f "${TOOLKIT_RUN_FILE}" ]; then
     echo "[ERROR] tbe_toolkits is missing. please check."
     exit $STATUS_FAILED
   fi
