@@ -30,11 +30,18 @@
 
 namespace optiling {
 constexpr uint64_t kInvalidTilingId = std::numeric_limits<uint64_t>::max();
-constexpr uint32_t kVarBatchN = 0x01;
-constexpr uint32_t kVarDxH = 0x02;
-constexpr uint32_t kVarDxW = 0x04;
 
-const std::map<std::string, uint32_t> kVar2Flag = {{"batch_n", kVarBatchN}, {"dx_h", kVarDxH}, {"dx_w", kVarDxW}};
+constexpr uint32_t kVarBatchN = 0x01;  // conv2d dx
+constexpr uint32_t kVarDxH = 0x02;     // conv2d dx
+constexpr uint32_t kVarDxW = 0x04;     // conv2d dx
+
+constexpr uint32_t kVarBatch = 0x08;  // conv2d dw
+constexpr uint32_t kVarFmapH = 0x10;  // conv2d dw
+constexpr uint32_t kVarFmapW = 0x20;  // conv2d dw
+
+const std::map<std::string, uint32_t> kVar2Flag = {{"batch_n", kVarBatchN}, {"dx_h", kVarDxH},
+                                                   {"dx_w", kVarDxW},       {"batch", kVarBatch},
+                                                   {"fmap_h", kVarFmapH},   {"fmap_w", kVarFmapW}};
 
 enum CubeTilingType {
   CUBE_DYNAMIC_SHAPE_TILING,

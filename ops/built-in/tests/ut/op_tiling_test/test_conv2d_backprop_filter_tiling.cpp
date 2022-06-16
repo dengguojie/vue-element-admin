@@ -91,6 +91,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_nhw) {
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 16);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 52 13 635 159 ");
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_n) {
@@ -375,6 +376,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_normal) {
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 12);
   EXPECT_EQ(runInfo.GetTilingKey(), 14100625);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 5 56 56 257 54 54 3 3 1 17 1 1 0 0 0 0 1 1 1 1 4 3 2 1 1 1 9 1 1 1 1 17 1 1 1 61 61 61 61 1 19712 1 1 1 22 20 9 17 61 2 ");
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_l1_full_load) {
@@ -447,6 +449,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_l1_full_l
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 64);
   EXPECT_EQ(runInfo.GetTilingKey(), 12500000);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 256 13 13 512 13 13 1 1 16 32 1 1 0 0 0 0 1 1 1 1 1 1 1 1 4 1 1 4 16 1 1 2 11 1 1 1 1 11 11 1 12480 1 4 1 15 15 1 2 11 0 ");
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_pads_upadate) {
@@ -519,6 +522,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_pads_upad
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 28);
   EXPECT_EQ(runInfo.GetTilingKey(), 23866250);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 5 56 56 257 56 56 3 3 1 17 1 1 1 1 1 1 1 1 1 1 4 7 2 1 1 1 3 3 1 1 1 17 2 1 1 14 14 28 28 1 8960 1 1 1 10 8 9 17 28 2 ");
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_kl0_max_l1) {
@@ -530,7 +534,6 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_kl0_max_l
   const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "block_dim": {"CORE_NUM": 32}, "tiling_type": "binary", "max_core_num": 32, "attrs": {"dilation_h":1,"dilation_w":1,"groups":1,"padd":0,"padl":0,"padr":0,"padu":0,"stride_h":37,"stride_w":34}})";
 
   ge::Graph graph("conv2dbackprop_filter_op_tiling_test_binary_mode_kl0_max_l1");
-
 
   auto x_shape_vec = vector<int64_t>({11, 5, 150, 628});
   ge::Shape x_shape(x_shape_vec);
@@ -591,6 +594,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_kl0_max_l
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 33);
   EXPECT_EQ(runInfo.GetTilingKey(), 12584375);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "11 5 150 628 4 5 19 1 13 1 1 37 34 0 0 0 0 1 1 1 1 11 3 1 1 1 1 1 13 1 1 1 1 1 1 2 2 1 2 1 2 381824 1 1 1 2 2 13 1 2 0 ");
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_kernel_nhwc) {
@@ -663,6 +667,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_kernel_nh
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 33);
   EXPECT_EQ(runInfo.GetTilingKey(), 12584375);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "11 5 150 628 4 5 19 1 13 1 1 37 34 0 0 0 0 1 1 1 1 11 3 1 1 1 1 1 13 1 1 1 1 1 1 2 2 1 2 1 2 381824 1 1 1 2 2 13 1 2 0 ");
 }
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_filter_hwcn) {
   using namespace optiling;
@@ -733,4 +738,5 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_binary_mode_filter_hw
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 33);
   EXPECT_EQ(runInfo.GetTilingKey(), 12584375);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "11 5 150 628 4 5 19 1 13 1 1 37 34 0 0 0 0 1 1 1 1 11 3 1 1 1 1 1 13 1 1 1 1 1 1 2 2 1 2 1 2 381824 1 1 1 2 2 13 1 2 0 ");
 }

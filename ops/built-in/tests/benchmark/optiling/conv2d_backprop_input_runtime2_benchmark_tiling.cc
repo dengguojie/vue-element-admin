@@ -29,128 +29,78 @@ using namespace std;
 using namespace ge;
 using nlohmann::json;
 
-static void Conv2DBpInputTiling_Runtime2_repo_size_100(benchmark::State &state) {
+static void Conv2DBpInputTilingRuntime2Benchmark(benchmark::State &state, const char *compile_info_str) {
+  vector<int64_t> strides({1, 1, 1, 1});
+  vector<int64_t> pads({0, 0, 0, 0});
+  vector<int64_t> dilations({1, 1, 1, 1});
+  int64_t groups = 1;
+  string data_format("NCHW");
+
+  gert::StorageShape input_size = {{1, 32, 16, 16}, {1, 32, 16, 16}};
+  gert::StorageShape filter_shape = {{64, 32, 3, 3}, {64, 32, 3, 3}};
+  gert::StorageShape out_backprop_shape = {{1, 64, 16, 16}, {1, 64, 16, 16}};
+  std::vector<gert::StorageShape> output_shapes(1, {{1, 32, 16, 16}, {1, 32, 16, 16}});
+  std::vector<void *> output_shapes_ref(1);
+
+  for (size_t i = 0; i < output_shapes.size(); ++i) {
+    output_shapes_ref[i] = &output_shapes[i];
+  }
+
+  optiling::Conv2DBackPropCompileInfo compile_info;
+  auto kernel_holder = gert::KernelRunContextFaker()
+                    .KernelIONum(1, 1)
+                    .Inputs({const_cast<char *>(compile_info_str)})
+                    .Outputs({&compile_info})
+                    .Build();
+
+  std::string op_type("Conv2DBackpropInput");
+  auto tiling_func = gert::OpImplRegistry::GetInstance().GetOpImpl(op_type.c_str())->tiling;
+  auto tiling_parse_func = gert::OpImplRegistry::GetInstance().GetOpImpl(op_type.c_str())->tiling_parse;
+  tiling_parse_func(kernel_holder.GetContext<gert::KernelContext>());
+
+  auto tiling_data = gert::TilingData::CreateCap(2048);
+  auto holder = gert::TilingContextFaker()
+                    .NodeIoNum(3, 1)
+                    .IrInstanceNum({1, 1, 1})
+                    .InputShapes({&input_size, &filter_shape, &out_backprop_shape})
+                    .OutputShapes(output_shapes_ref)
+                    .NodeAttrs({{"strides", ge::AnyValue::CreateFrom<std::vector<int64_t>>(strides)},
+                                {"pads", ge::AnyValue::CreateFrom<std::vector<int64_t>>(pads)},
+                                {"dilations", ge::AnyValue::CreateFrom<std::vector<int64_t>>(dilations)},
+                                {"groups", ge::AnyValue::CreateFrom<int64_t>(groups)},
+                                {"data_format", ge::AnyValue::CreateFrom<std::string>(data_format)}})
+                    .NodeInputTd(0, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
+                    .NodeInputTd(1, ge::DT_FLOAT16, FORMAT_NCHW, ge::FORMAT_FRACTAL_Z)
+                    .NodeInputTd(2, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
+                    .NodeOutputTd(0, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
+                    .CompileInfo(&compile_info)
+                    .TilingData(tiling_data.get())
+                    .Build();
+
+  auto tiling_context = holder.GetContext<gert::TilingContext>();
+  tiling_func(tiling_context);
+  for (auto _ : state) {
+    tiling_func(tiling_context);
+  }
+}
+
+static void Conv2DBpInputTilingRuntime2RepoSize100(benchmark::State &state) {
   const char *compile_info_str =
       R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {"10000": [1, 16, 16], "10100": [4, 21, 21], "10101": [7, 12, 24], "10102": [7, 11, 23], "10103": [4, 12, 23], "10104": [10, 16, 20], "10105": [2, 21, 22], "10106": [9, 15, 14], "10107": [4, 25, 24], "10108": [7, 21, 21], "10109": [6, 23, 20], "10110": [1, 25, 21], "10111": [10, 10, 12], "10112": [4, 19, 14], "10113": [3, 18, 10], "10114": [10, 25, 20], "10115": [5, 10, 13], "10116": [4, 20, 23], "10117": [6, 20, 20], "10118": [4, 23, 15], "10119": [9, 18, 13], "10120": [3, 14, 21], "10121": [7, 25, 11], "10122": [10, 24, 19], "10123": [9, 14, 10], "10124": [1, 10, 25], "10125": [1, 22, 25], "10126": [6, 23, 16], "10127": [7, 24, 12], "10128": [4, 16, 16], "10129": [10, 19, 16], "10130": [9, 14, 21], "10131": [6, 13, 14], "10132": [6, 22, 13], "10133": [6, 17, 17], "10134": [7, 20, 19], "10135": [7, 25, 25], "10136": [9, 23, 21], "10137": [1, 25, 17], "10138": [1, 18, 19], "10139": [6, 16, 22], "10140": [4, 16, 22], "10141": [9, 25, 10], "10142": [7, 16, 22], "10143": [5, 12, 16], "10144": [10, 17, 12], "10145": [9, 14, 14], "10146": [5, 14, 11], "10147": [9, 25, 24], "10148": [9, 21, 16], "10149": [5, 13, 12], "10150": [2, 17, 25], "10151": [10, 13, 23], "10152": [9, 15, 15], "10153": [2, 10, 21], "10154": [4, 13, 14], "10155": [9, 14, 15], "10156": [4, 20, 15], "10157": [5, 13, 16], "10158": [2, 20, 18], "10159": [6, 21, 25], "10160": [10, 21, 12], "10161": [2, 12, 14], "10162": [10, 22, 22], "10163": [2, 15, 12], "10164": [2, 22, 22], "10165": [4, 19, 19], "10166": [3, 23, 24], "10167": [1, 14, 24], "10168": [3, 17, 20], "10169": [4, 15, 22], "10170": [7, 10, 12], "10171": [5, 23, 12], "10172": [4, 17, 20], "10173": [5, 23, 13], "10174": [3, 16, 15], "10175": [7, 10, 18], "10176": [7, 10, 22], "10177": [10, 12, 24], "10178": [6, 11, 19], "10179": [7, 10, 21], "10180": [6, 14, 17], "10181": [3, 15, 15], "10182": [1, 12, 11], "10183": [4, 11, 22], "10184": [7, 18, 16], "10185": [4, 14, 21], "10186": [3, 23, 12], "10187": [4, 11, 18], "10188": [5, 11, 16], "10189": [2, 25, 10], "10190": [5, 15, 12], "10191": [1, 11, 19], "10192": [2, 24, 12], "10193": [5, 24, 22], "10194": [5, 14, 14], "10195": [10, 12, 22], "10196": [5, 24, 10], "10197": [1, 10, 24], "10198": [3, 10, 10], "10199": [4, 17, 11]}, "repo_range": {"10000": [1, 10, 10, 25, 10, 25], "10100": [1, 10, 10, 25, 10, 25], "10101": [1, 10, 10, 25, 10, 25], "10102": [1, 10, 10, 25, 10, 25], "10103": [1, 10, 10, 25, 10, 25], "10104": [1, 10, 10, 25, 10, 25], "10105": [1, 10, 10, 25, 10, 25], "10106": [1, 10, 10, 25, 10, 25], "10107": [1, 10, 10, 25, 10, 25], "10108": [1, 10, 10, 25, 10, 25], "10109": [1, 10, 10, 25, 10, 25], "10110": [1, 10, 10, 25, 10, 25], "10111": [1, 10, 10, 25, 10, 25], "10112": [1, 10, 10, 25, 10, 25], "10113": [1, 10, 10, 25, 10, 25], "10114": [1, 10, 10, 25, 10, 25], "10115": [1, 10, 10, 25, 10, 25], "10116": [1, 10, 10, 25, 10, 25], "10117": [1, 10, 10, 25, 10, 25], "10118": [1, 10, 10, 25, 10, 25], "10119": [1, 10, 10, 25, 10, 25], "10120": [1, 10, 10, 25, 10, 25], "10121": [1, 10, 10, 25, 10, 25], "10122": [1, 10, 10, 25, 10, 25], "10123": [1, 10, 10, 25, 10, 25], "10124": [1, 10, 10, 25, 10, 25], "10125": [1, 10, 10, 25, 10, 25], "10126": [1, 10, 10, 25, 10, 25], "10127": [1, 10, 10, 25, 10, 25], "10128": [1, 10, 10, 25, 10, 25], "10129": [1, 10, 10, 25, 10, 25], "10130": [1, 10, 10, 25, 10, 25], "10131": [1, 10, 10, 25, 10, 25], "10132": [1, 10, 10, 25, 10, 25], "10133": [1, 10, 10, 25, 10, 25], "10134": [1, 10, 10, 25, 10, 25], "10135": [1, 10, 10, 25, 10, 25], "10136": [1, 10, 10, 25, 10, 25], "10137": [1, 10, 10, 25, 10, 25], "10138": [1, 10, 10, 25, 10, 25], "10139": [1, 10, 10, 25, 10, 25], "10140": [1, 10, 10, 25, 10, 25], "10141": [1, 10, 10, 25, 10, 25], "10142": [1, 10, 10, 25, 10, 25], "10143": [1, 10, 10, 25, 10, 25], "10144": [1, 10, 10, 25, 10, 25], "10145": [1, 10, 10, 25, 10, 25], "10146": [1, 10, 10, 25, 10, 25], "10147": [1, 10, 10, 25, 10, 25], "10148": [1, 10, 10, 25, 10, 25], "10149": [1, 10, 10, 25, 10, 25], "10150": [1, 10, 10, 25, 10, 25], "10151": [1, 10, 10, 25, 10, 25], "10152": [1, 10, 10, 25, 10, 25], "10153": [1, 10, 10, 25, 10, 25], "10154": [1, 10, 10, 25, 10, 25], "10155": [1, 10, 10, 25, 10, 25], "10156": [1, 10, 10, 25, 10, 25], "10157": [1, 10, 10, 25, 10, 25], "10158": [1, 10, 10, 25, 10, 25], "10159": [1, 10, 10, 25, 10, 25], "10160": [1, 10, 10, 25, 10, 25], "10161": [1, 10, 10, 25, 10, 25], "10162": [1, 10, 10, 25, 10, 25], "10163": [1, 10, 10, 25, 10, 25], "10164": [1, 10, 10, 25, 10, 25], "10165": [1, 10, 10, 25, 10, 25], "10166": [1, 10, 10, 25, 10, 25], "10167": [1, 10, 10, 25, 10, 25], "10168": [1, 10, 10, 25, 10, 25], "10169": [1, 10, 10, 25, 10, 25], "10170": [1, 10, 10, 25, 10, 25], "10171": [1, 10, 10, 25, 10, 25], "10172": [1, 10, 10, 25, 10, 25], "10173": [1, 10, 10, 25, 10, 25], "10174": [1, 10, 10, 25, 10, 25], "10175": [1, 10, 10, 25, 10, 25], "10176": [1, 10, 10, 25, 10, 25], "10177": [1, 10, 10, 25, 10, 25], "10178": [1, 10, 10, 25, 10, 25], "10179": [1, 10, 10, 25, 10, 25], "10180": [1, 10, 10, 25, 10, 25], "10181": [1, 10, 10, 25, 10, 25], "10182": [1, 10, 10, 25, 10, 25], "10183": [1, 10, 10, 25, 10, 25], "10184": [1, 10, 10, 25, 10, 25], "10185": [1, 10, 10, 25, 10, 25], "10186": [1, 10, 10, 25, 10, 25], "10187": [1, 10, 10, 25, 10, 25], "10188": [1, 10, 10, 25, 10, 25], "10189": [1, 10, 10, 25, 10, 25], "10190": [1, 10, 10, 25, 10, 25], "10191": [1, 10, 10, 25, 10, 25], "10192": [1, 10, 10, 25, 10, 25], "10193": [1, 10, 10, 25, 10, 25], "10194": [1, 10, 10, 25, 10, 25], "10195": [1, 10, 10, 25, 10, 25], "10196": [1, 10, 10, 25, 10, 25], "10197": [1, 10, 10, 25, 10, 25], "10198": [1, 10, 10, 25, 10, 25], "10199": [1, 10, 10, 25, 10, 25]}, "cost_range": {}, "block_dim": {"10000": 2, "10100": 14, "10101": 24, "10102": 5, "10103": 2, "10104": 2, "10105": 9, "10106": 24, "10107": 4, "10108": 26, "10109": 2, "10110": 22, "10111": 32, "10112": 23, "10113": 32, "10114": 32, "10115": 6, "10116": 31, "10117": 10, "10118": 7, "10119": 20, "10120": 27, "10121": 19, "10122": 1, "10123": 24, "10124": 24, "10125": 2, "10126": 5, "10127": 23, "10128": 32, "10129": 26, "10130": 26, "10131": 7, "10132": 6, "10133": 16, "10134": 8, "10135": 3, "10136": 28, "10137": 27, "10138": 4, "10139": 15, "10140": 14, "10141": 18, "10142": 6, "10143": 27, "10144": 16, "10145": 12, "10146": 9, "10147": 14, "10148": 2, "10149": 11, "10150": 18, "10151": 25, "10152": 15, "10153": 24, "10154": 6, "10155": 14, "10156": 3, "10157": 3, "10158": 25, "10159": 19, "10160": 9, "10161": 17, "10162": 12, "10163": 4, "10164": 23, "10165": 21, "10166": 21, "10167": 14, "10168": 9, "10169": 26, "10170": 11, "10171": 3, "10172": 10, "10173": 2, "10174": 15, "10175": 31, "10176": 18, "10177": 1, "10178": 23, "10179": 18, "10180": 15, "10181": 32, "10182": 27, "10183": 19, "10184": 24, "10185": 31, "10186": 29, "10187": 12, "10188": 27, "10189": 5, "10190": 31, "10191": 24, "10192": 5, "10193": 27, "10194": 1, "10195": 23, "10196": 6, "10197": 11, "10198": 31, "10199": 6}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
-
-  vector<int64_t> strides({1, 1, 1, 1});
-  vector<int64_t> pads({0, 0, 0, 0});
-  vector<int64_t> dilations({1, 1, 1, 1});
-  int64_t groups = 1;
-  string data_format("NCHW");
-
-  gert::StorageShape input_size = {{1, 32, 16, 16}, {1, 32, 16, 16}};
-  gert::StorageShape filter_shape = {{64, 32, 3, 3}, {64, 32, 3, 3}};
-  gert::StorageShape out_backprop_shape = {{1, 64, 16, 16}, {1, 64, 16, 16}};
-  std::vector<gert::StorageShape> output_shapes(1, {{1, 32, 16, 16}, {1, 32, 16, 16}});
-  std::vector<gert::StorageShape *> output_shapes_ref(1);
-
-  for (size_t i = 0; i < output_shapes.size(); ++i) {
-    output_shapes_ref[i] = &output_shapes[i];
-  }
-
-  optiling::Conv2DBackPropCompileInfo compile_info;
-  auto kernel_holder = gert::KernelRunContextFaker()
-                    .KernelIONum(1, 1)
-                    .Inputs({const_cast<char *>(compile_info_str)})
-                    .Outputs({&compile_info})
-                    .Build();
-
-  std::string op_type("Conv2DBackpropInput");
-  auto tiling_func = gert::OpImplRegistry::GetInstance().GetOpImpl(op_type.c_str())->tiling;
-  auto tiling_parse_func = gert::OpImplRegistry::GetInstance().GetOpImpl(op_type.c_str())->tiling_parse;
-  tiling_parse_func(kernel_holder.GetContext<gert::KernelContext>());
-
-  auto tiling_data = gert::TilingData::CreateCap(2048);
-  auto holder = gert::TilingContextFaker()
-                    .NodeIoNum(3, 1)
-                    .IrInstanceNum({1, 1, 1})
-                    .InputShapes({&input_size, &filter_shape, &out_backprop_shape})
-                    .OutputShapes(output_shapes_ref)
-                    .NodeAttrs({{"strides", ge::AnyValue::CreateFrom<std::vector<int64_t>>(strides)},
-                                {"pads", ge::AnyValue::CreateFrom<std::vector<int64_t>>(pads)},
-                                {"dilations", ge::AnyValue::CreateFrom<std::vector<int64_t>>(dilations)},
-                                {"groups", ge::AnyValue::CreateFrom<int64_t>(groups)},
-                                {"data_format", ge::AnyValue::CreateFrom<std::string>(data_format)}})
-                    .NodeInputTd(0, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
-                    .NodeInputTd(1, ge::DT_FLOAT16, FORMAT_NCHW, ge::FORMAT_FRACTAL_Z)
-                    .NodeInputTd(2, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
-                    .NodeOutputTd(0, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
-                    .CompileInfo(&compile_info)
-                    .TilingData(tiling_data.get())
-                    .Build();
-
-  auto tiling_context = holder.GetContext<gert::TilingContext>();
-  tiling_func(tiling_context);
-  for (auto _ : state) {
-    tiling_func(tiling_context);
-  }
-
-  // auto tiling_key = tiling_context->GetOutputPointer<uint64_t>(0);
-  // auto block_dim = tiling_context->GetOutputPointer<uint32_t>(1);
-  // auto tiling_data_result = TilingData2Str(tiling_context->GetRawTilingData());
+  Conv2DBpInputTilingRuntime2Benchmark(state, compile_info_str);
 }
-BENCHMARK(Conv2DBpInputTiling_Runtime2_repo_size_100);
+BENCHMARK(Conv2DBpInputTilingRuntime2RepoSize100);
 
-static void Conv2DBpInputTiling_Runtime2_cost_size_100(benchmark::State &state) {
+static void Conv2DBpInputTilingRuntime2CostSize100(benchmark::State &state) {
   const char *compile_info_str =
       R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25], "10100": [28, 369, 356, 485, 7, 299], "10101": [31, 342, 13, 152, 296, 314], "10102": [150, 499, 41, 290, 80, 105], "10103": [182, 330, 52, 310, 238, 385], "10104": [128, 309, 30, 171, 191, 497], "10105": [2, 415, 303, 406, 61, 228], "10106": [70, 306, 35, 142, 12, 148], "10107": [221, 359, 20, 443, 168, 198], "10108": [6, 390, 20, 369, 25, 265], "10109": [312, 462, 74, 414, 169, 430], "10110": [56, 283, 69, 493, 233, 423], "10111": [203, 473, 78, 160, 62, 286], "10112": [154, 355, 114, 244, 53, 246], "10113": [194, 327, 55, 410, 202, 391], "10114": [1, 122, 354, 436, 240, 473], "10115": [190, 409, 378, 465, 95, 288], "10116": [136, 369, 47, 412, 368, 476], "10117": [192, 451, 29, 470, 124, 430], "10118": [53, 213, 5, 435, 153, 251], "10119": [96, 390, 73, 268, 108, 423], "10120": [374, 483, 40, 418, 93, 332], "10121": [21, 306, 270, 423, 425, 499], "10122": [327, 497, 101, 329, 224, 471], "10123": [82, 452, 193, 327, 69, 137], "10124": [67, 488, 312, 325, 161, 246], "10125": [115, 396, 134, 452, 144, 486], "10126": [232, 432, 135, 373, 220, 340], "10127": [334, 480, 21, 283, 22, 370], "10128": [91, 291, 6, 384, 351, 371], "10129": [12, 409, 306, 499, 82, 390], "10130": [422, 499, 278, 492, 92, 213], "10131": [44, 401, 136, 285, 18, 479], "10132": [79, 296, 124, 265, 168, 355], "10133": [164, 494, 90, 492, 78, 468], "10134": [266, 471, 63, 439, 4, 161], "10135": [127, 356, 332, 387, 12, 417], "10136": [118, 479, 104, 294, 231, 457], "10137": [38, 497, 22, 203, 81, 440], "10138": [65, 278, 237, 414, 56, 163], "10139": [163, 447, 152, 391, 188, 330], "10140": [165, 486, 24, 243, 138, 326], "10141": [21, 386, 25, 217, 15, 429], "10142": [105, 461, 315, 479, 386, 467], "10143": [311, 497, 449, 497, 71, 442], "10144": [272, 490, 73, 430, 123, 325], "10145": [11, 479, 1, 349, 253, 425], "10146": [77, 476, 17, 182, 100, 244], "10147": [155, 326, 110, 395, 104, 293], "10148": [185, 499, 240, 478, 276, 493], "10149": [281, 477, 67, 280, 243, 346], "10150": [303, 330, 26, 316, 20, 148], "10151": [289, 479, 24, 258, 414, 455], "10152": [288, 454, 20, 444, 33, 261], "10153": [6, 207, 383, 491, 23, 165], "10154": [55, 377, 163, 498, 178, 461], "10155": [98, 487, 3, 215, 74, 219], "10156": [246, 498, 107, 442, 136, 358], "10157": [18, 337, 118, 475, 12, 455], "10158": [61, 459, 1, 372, 371, 445], "10159": [311, 368, 111, 415, 31, 160], "10160": [253, 495, 114, 367, 81, 265], "10161": [92, 483, 55, 484, 40, 141], "10162": [70, 209, 66, 468, 6, 303], "10163": [4, 386, 20, 321, 290, 466], "10164": [4, 473, 374, 481, 302, 455], "10165": [38, 412, 26, 412, 2, 374], "10166": [8, 429, 12, 346, 65, 302], "10167": [1, 439, 26, 481, 126, 262], "10168": [5, 103, 11, 211, 111, 310], "10169": [49, 444, 223, 500, 67, 403], "10170": [104, 421, 29, 255, 60, 368], "10171": [228, 493, 9, 414, 381, 476], "10172": [38, 318, 242, 420, 18, 470], "10173": [172, 333, 278, 484, 2, 347], "10174": [251, 446, 55, 367, 39, 413], "10175": [58, 330, 146, 494, 223, 311], "10176": [1, 141, 192, 475, 42, 377], "10177": [139, 412, 160, 497, 387, 447], "10178": [134, 428, 93, 329, 103, 432], "10179": [4, 387, 125, 488, 138, 197], "10180": [171, 485, 5, 163, 16, 247], "10181": [261, 397, 271, 418, 227, 328], "10182": [153, 437, 225, 467, 3, 330], "10183": [92, 424, 51, 250, 119, 474], "10184": [69, 245, 214, 495, 66, 394], "10185": [108, 486, 279, 394, 148, 491], "10186": [321, 394, 241, 325, 83, 317], "10187": [71, 500, 257, 490, 126, 437], "10188": [19, 145, 205, 466, 109, 355], "10189": [234, 433, 298, 458, 13, 110], "10190": [149, 344, 92, 383, 34, 373], "10191": [52, 488, 221, 496, 56, 491], "10192": [3, 428, 95, 446, 183, 459], "10193": [141, 398, 46, 445, 122, 350], "10194": [184, 438, 290, 495, 89, 267], "10195": [95, 452, 149, 314, 101, 250], "10196": [54, 280, 271, 343, 42, 302], "10197": [68, 251, 89, 415, 37, 450], "10198": [255, 480, 149, 379, 18, 369], "10199": [11, 451, 47, 495, 123, 194]}, "block_dim": {"10000": 2, "10100": 5, "10101": 3, "10102": 1, "10103": 18, "10104": 20, "10105": 23, "10106": 23, "10107": 10, "10108": 16, "10109": 7, "10110": 23, "10111": 11, "10112": 9, "10113": 8, "10114": 25, "10115": 14, "10116": 9, "10117": 25, "10118": 10, "10119": 11, "10120": 26, "10121": 24, "10122": 3, "10123": 14, "10124": 22, "10125": 19, "10126": 12, "10127": 19, "10128": 8, "10129": 20, "10130": 11, "10131": 15, "10132": 29, "10133": 17, "10134": 9, "10135": 13, "10136": 12, "10137": 25, "10138": 31, "10139": 23, "10140": 10, "10141": 9, "10142": 4, "10143": 22, "10144": 17, "10145": 21, "10146": 17, "10147": 6, "10148": 1, "10149": 1, "10150": 9, "10151": 17, "10152": 25, "10153": 23, "10154": 21, "10155": 12, "10156": 28, "10157": 26, "10158": 23, "10159": 30, "10160": 27, "10161": 32, "10162": 15, "10163": 16, "10164": 17, "10165": 15, "10166": 30, "10167": 31, "10168": 14, "10169": 13, "10170": 19, "10171": 13, "10172": 14, "10173": 9, "10174": 8, "10175": 11, "10176": 28, "10177": 17, "10178": 11, "10179": 27, "10180": 9, "10181": 12, "10182": 24, "10183": 6, "10184": 2, "10185": 11, "10186": 8, "10187": 1, "10188": 30, "10189": 11, "10190": 12, "10191": 5, "10192": 9, "10193": 10, "10194": 5, "10195": 14, "10196": 21, "10197": 23, "10198": 5, "10199": 28}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
-
-  vector<int64_t> strides({1, 1, 1, 1});
-  vector<int64_t> pads({0, 0, 0, 0});
-  vector<int64_t> dilations({1, 1, 1, 1});
-  int64_t groups = 1;
-  string data_format("NCHW");
-
-  gert::StorageShape input_size = {{1, 32, 16, 16}, {1, 32, 16, 16}};
-  gert::StorageShape filter_shape = {{64, 32, 3, 3}, {64, 32, 3, 3}};
-  gert::StorageShape out_backprop_shape = {{1, 64, 16, 16}, {1, 64, 16, 16}};
-  std::vector<gert::StorageShape> output_shapes(1, {{1, 32, 16, 16}, {1, 32, 16, 16}});
-  std::vector<gert::StorageShape *> output_shapes_ref(1);
-
-  for (size_t i = 0; i < output_shapes.size(); ++i) {
-    output_shapes_ref[i] = &output_shapes[i];
-  }
-
-  optiling::Conv2DBackPropCompileInfo compile_info;
-  auto kernel_holder = gert::KernelRunContextFaker()
-                    .KernelIONum(1, 1)
-                    .Inputs({const_cast<char *>(compile_info_str)})
-                    .Outputs({&compile_info})
-                    .Build();
-
-  std::string op_type("Conv2DBackpropInput");
-  auto tiling_func = gert::OpImplRegistry::GetInstance().GetOpImpl(op_type.c_str())->tiling;
-  auto tiling_parse_func = gert::OpImplRegistry::GetInstance().GetOpImpl(op_type.c_str())->tiling_parse;
-  tiling_parse_func(kernel_holder.GetContext<gert::KernelContext>());
-
-  auto tiling_data = gert::TilingData::CreateCap(2048);
-  auto holder = gert::TilingContextFaker()
-                    .NodeIoNum(3, 1)
-                    .IrInstanceNum({1, 1, 1})
-                    .InputShapes({&input_size, &filter_shape, &out_backprop_shape})
-                    .OutputShapes(output_shapes_ref)
-                    .NodeAttrs({{"strides", ge::AnyValue::CreateFrom<std::vector<int64_t>>(strides)},
-                                {"pads", ge::AnyValue::CreateFrom<std::vector<int64_t>>(pads)},
-                                {"dilations", ge::AnyValue::CreateFrom<std::vector<int64_t>>(dilations)},
-                                {"groups", ge::AnyValue::CreateFrom<int64_t>(groups)},
-                                {"data_format", ge::AnyValue::CreateFrom<std::string>(data_format)}})
-                    .NodeInputTd(0, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
-                    .NodeInputTd(1, ge::DT_FLOAT16, FORMAT_NCHW, ge::FORMAT_FRACTAL_Z)
-                    .NodeInputTd(2, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
-                    .NodeOutputTd(0, ge::DT_FLOAT16, FORMAT_NCHW, FORMAT_NCHW)
-                    .CompileInfo(&compile_info)
-                    .TilingData(tiling_data.get())
-                    .Build();
-
-  auto tiling_context = holder.GetContext<gert::TilingContext>();
-  tiling_func(tiling_context);
-  for (auto _ : state) {
-    tiling_func(tiling_context);
-  }
-
-  // auto tiling_key = tiling_context->GetOutputPointer<uint64_t>(0);
-  // auto block_dim = tiling_context->GetOutputPointer<uint32_t>(1);
-  // auto tiling_data_result = TilingData2Str(tiling_context->GetRawTilingData());
+  Conv2DBpInputTilingRuntime2Benchmark(state, compile_info_str);
 }
-BENCHMARK(Conv2DBpInputTiling_Runtime2_cost_size_100);
+BENCHMARK(Conv2DBpInputTilingRuntime2CostSize100);
+
+static void Conv2DBpInputTilingRuntime2Binary(benchmark::State &state) {
+  const char *compile_info_str =
+      R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}, "aub_num": 1, "cub_num": 2, "ub_size": 262000, "binary_mode": 2})";
+  Conv2DBpInputTilingRuntime2Benchmark(state, compile_info_str);
+}
+BENCHMARK(Conv2DBpInputTilingRuntime2Binary);

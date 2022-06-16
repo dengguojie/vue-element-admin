@@ -18,8 +18,6 @@
  * \file conv2d_backprop_infer_fns.cc
  * \brief
  */
-#include <map>
-
 #include "error_util.h"
 #include "../util/util.h"
 #include "graph/utils/type_utils.h"
@@ -70,6 +68,7 @@ graphStatus InferShapeForConvBackprop(InferShapeContext *context, size_t const_t
     return GRAPH_FAILED;
   }
 
+  OP_LOGD(context->GetNodeName(), "y_shape: %s", ge::Shape2String(*y_shape).c_str());
   return ge::GRAPH_SUCCESS;
 }
 
@@ -79,4 +78,11 @@ graphStatus InferShapeForConv2DBackpropInput(InferShapeContext *context) {
 
 IMPL_OP(Conv2DBackpropInput).InferShape(InferShapeForConv2DBackpropInput).InputsDataDependency({0});
 IMPL_OP(DepthwiseConv2DBackpropInput).InferShape(InferShapeForConv2DBackpropInput).InputsDataDependency({0});
+
+graphStatus InferShapeForConv2DBackpropFilter(InferShapeContext *context) {
+  return InferShapeForConvBackprop(context, 1, "filter_sizes", kConv2dDimSizeLimit);
+}
+
+IMPL_OP(Conv2DBackpropFilter).InferShape(InferShapeForConv2DBackpropFilter).InputsDataDependency({1});
+IMPL_OP(DepthwiseConv2DBackpropFilter).InferShape(InferShapeForConv2DBackpropFilter).InputsDataDependency({1});
 }  // namespace gert

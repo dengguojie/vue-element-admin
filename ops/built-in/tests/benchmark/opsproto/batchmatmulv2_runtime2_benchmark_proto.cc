@@ -32,7 +32,7 @@ using gert::InferShapeContext;
 namespace gert {
 ge::graphStatus InferShapeForBatchMatMulV2(InferShapeContext *context);
 }
-static void BatchMatMulV2InferShape_runtime2(benchmark::State &state) {
+static void BatchMatMulV2Runtime2InferShape(benchmark::State &state) {
   gert::StorageShape x1_shape = {{4, 8, 16, 32, 64}, {4, 8, 16, 4, 2, 16, 16}};
   gert::StorageShape x2_shape = {{16, 64, 64}, {16, 4, 4, 16, 16}};
   gert::StorageShape bias_shape = {{64}, {64}};
@@ -50,12 +50,5 @@ static void BatchMatMulV2InferShape_runtime2(benchmark::State &state) {
   for (auto _ : state) {
     gert::InferShapeForBatchMatMulV2(holder.GetContext<InferShapeContext>());
   }
-
-  // auto output = holder.GetContext<InferShapeContext>()->GetOutputShape(0);
-  // for (size_t idx = 0; idx < output->GetDimNum(); ++idx) {
-  //   std::cout << "BatchMatMulV2InferShape output " << output->GetDim(idx) << std::endl;
-  // }
-
-  // std::cout << "end" << std::endl;
 }
-BENCHMARK(BatchMatMulV2InferShape_runtime2);
+BENCHMARK(BatchMatMulV2Runtime2InferShape);

@@ -637,7 +637,7 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv2DBackpropInput, Conv2DBpInputTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(DepthwiseConv2DBackpropInput, Conv2DBpInputTiling);
 
-bool GetAttrFromOp(gert::TilingContext *context, DxParas &dx_paras, bool depthwise) {
+static bool GetAttrFromOp(gert::TilingContext *context, DxParas &dx_paras, bool depthwise) {
   auto attrs = context->GetAttrs();
   OP_TILING_CHECK(attrs == nullptr, CUBE_INNER_ERR_REPORT(context->GetNodeName(), "failed to get runtime attrs"),
                   return false);
@@ -711,8 +711,8 @@ bool GetAttrFromOp(gert::TilingContext *context, DxParas &dx_paras, bool depthwi
   return true;
 }
 
-void CalShapeInfoFromDesc(gert::TilingContext *context, size_t filter_input_index, size_t out_backprop_input_index,
-                          DxParas &dx_paras) {
+static void CalShapeInfoFromDesc(gert::TilingContext *context, size_t filter_input_index,
+                                 size_t out_backprop_input_index, DxParas &dx_paras) {
   auto filter_desc = context->GetInputDesc(filter_input_index);
   auto out_backprop_desc = context->GetInputDesc(out_backprop_input_index);
   auto y_desc = context->GetOutputDesc(0);
@@ -761,7 +761,7 @@ void CalShapeInfoFromDesc(gert::TilingContext *context, size_t filter_input_inde
   dx_paras.w = y_shape->GetStorageShape().GetDim(kWDimNC1HWC0Idx);
 }
 
-bool CalPadsAndGroups(gert::TilingContext *context, bool depthwise, DxParas &dx_paras) {
+static bool CalPadsAndGroups(gert::TilingContext *context, bool depthwise, DxParas &dx_paras) {
   if (dx_paras.kc == 0 || dx_paras.cin % dx_paras.kc != 0) {
     OP_LOGE(context->GetNodeName(), "fmap_channel(%d) %% filter_channel(%d) != 0", dx_paras.cin, dx_paras.kc);
     return false;
@@ -808,7 +808,7 @@ bool CalPadsAndGroups(gert::TilingContext *context, bool depthwise, DxParas &dx_
   return true;
 }
 
-bool Conv2DBackpropInputParseFunc(gert::TilingContext *context, bool depthwise, DxParas &dx_paras) {
+static bool Conv2DBackpropInputParseFunc(gert::TilingContext *context, bool depthwise, DxParas &dx_paras) {
   size_t out_backprop_input_index = static_cast<size_t>(kInputIndexTwo);
   size_t filter_input_index = 1;
   if (!GetAttrFromOp(context, dx_paras, depthwise)) {
@@ -888,7 +888,8 @@ bool Conv2DBackpropInputParseFunc(gert::TilingContext *context, bool depthwise, 
   return true;
 }
 
-bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling, int32_t tiling_id, gert::TilingContext *context) {
+static bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling, int32_t tiling_id,
+                                gert::TilingContext *context) {
   auto tiling_data = context->GetRawTilingData();
   size_t capacity = tiling_data->GetCapacity();
   bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
@@ -922,8 +923,8 @@ bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling, int32_t ti
   return true;
 }
 
-size_t InitVarsValues(uint32_t var_bit_flags, const gert::Shape &in_shape, const gert::Shape &out_shape,
-                      gert::Shape &var_value, int64_t *shape_for_range_match) {
+static size_t InitVarsValues(uint32_t var_bit_flags, const gert::Shape &in_shape, const gert::Shape &out_shape,
+                             gert::Shape &var_value, int64_t *shape_for_range_match) {
   if ((var_bit_flags & kVarBatchN) != 0) {
     var_value.AppendDim(out_shape.GetDim(kConv2dNDim));
   }

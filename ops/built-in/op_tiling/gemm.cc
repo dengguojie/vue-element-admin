@@ -880,13 +880,19 @@ bool UpdateGemmRunTimeParams(const char *op_name, TilingContext *context, const 
 
 void SetRunInfoForCacheTiling(const optiling::BatchmatmulCompileParas &compile_params,
                               const optiling::OpRunInfoParas &runinfoparas, TilingData *tiling_data) {
+  // need to get origin_k to limit the k real length in non-factorial segmentation.
   if (compile_params.format_a_nd) {
-    tiling_data->Append(runinfoparas.params.m_32);
+    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
+  } else {
     tiling_data->Append(runinfoparas.params.k_32);
   }
-  if (compile_params.format_b_nd) {
-    tiling_data->Append(runinfoparas.params.n_32);
+  tiling_data->Append(runinfoparas.params.m_32);
+  tiling_data->Append(runinfoparas.params.n_32);
+  if (runinfoparas.params.is_batch_matmul_mode) {
+    tiling_data->Append(runinfoparas.params.batch_32);
   }
+
+  tiling_data->Append(runinfoparas.params.k_32);
   tiling_data->Append(runinfoparas.batch_single_core);
   tiling_data->Append(runinfoparas.m_single_core);
   tiling_data->Append(runinfoparas.n_single_core);
@@ -956,12 +962,17 @@ void SetRunInfo(uint64_t tiling_id, const map<uint64_t, uint32_t> &block_dim_inf
   context->SetTilingKey(tiling_id);
 
   TilingData *tiling_data = context->GetRawTilingData();
+  if (is_cache_tiling) {
+    SetRunInfoForCacheTiling(compile_params, runinfoparas, tiling_data);
+    return;
+  }
+
   if (compile_params.format_a_nd) {
-    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_m));
     tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_k));
+    tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_m));
   } else {
-    tiling_data->Append(runinfoparas.params.m_32);
     tiling_data->Append(runinfoparas.params.k_32);
+    tiling_data->Append(runinfoparas.params.m_32);
   }
   if (compile_params.format_b_nd) {
     tiling_data->Append(static_cast<int32_t>(runinfoparas.params.ori_shape_n));
@@ -970,9 +981,6 @@ void SetRunInfo(uint64_t tiling_id, const map<uint64_t, uint32_t> &block_dim_inf
   }
   if (runinfoparas.params.is_batch_matmul_mode) {
     tiling_data->Append(runinfoparas.params.batch_32);
-  }
-  if (is_cache_tiling) {
-    SetRunInfoForCacheTiling(compile_params, runinfoparas, tiling_data);
   }
 }
 
@@ -1008,7 +1016,7 @@ uint64_t GEMMTilingSelect(bool is_batch_matmul_op, TilingContext *context, const
       optiling::GenTiling(op_name, compile_value.params, runinfoparas.params, tiling, str_tiling_id);
       tiling_id = stoull(str_tiling_id);
       if (tiling_id != optiling::kInvalidTilingId) {
-        OP_LOGD(op_name, "match tiling_id(%llu) in cache tiling mode", tiling_id);
+        OP_LOGD(op_name, "match tiling_id(%lu) in cache tiling mode", tiling_id);
       } else {
         CUBE_INNER_ERR_REPORT(op_name, "Failed to calculate tiling from cache tiling mode");
         return tiling_id;

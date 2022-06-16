@@ -89,7 +89,7 @@ static std::unique_ptr<uint8_t[]> InitListIntAttr(const std::vector<int32_t> &li
   return attr_ptr;
 }
 
-  TEST_P(Conv2DBackpropInputTilingRunTime2, general_cases) {
+TEST_P(Conv2DBackpropInputTilingRunTime2, general_cases) {
   Conv2DBpInputTilingTestParam param = GetParam();
   std::cout << "run case " << param.case_name << std::endl;
 

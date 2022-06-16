@@ -51,7 +51,7 @@ bool GetGemmCompileValue(const json &compile_info, shared_ptr<GemmCompileInfo> &
 bool GEMMTiling(const string &op_type, const ge::Operator &op_paras, vector<shared_ptr<GemmCompileInfo>> &compile_data,
                 optiling::utils::OpRunInfo &run_info);
 }
-static void BatchMatMulV2Tiling_repo_size_100(benchmark::State &state) {
+static void BatchMatMulV2TilingRepoSize100(benchmark::State &state) {
   string op_type("BatchMatMulV2");
   ge::TensorDesc desc_x1(ge::Shape({32, 32, 128, 16, 16}), ge::FORMAT_ND, ge::DT_FLOAT16);
   desc_x1.SetOriginShape(ge::Shape({32, 2048, 512}));
@@ -95,4 +95,4 @@ static void BatchMatMulV2Tiling_repo_size_100(benchmark::State &state) {
     optiling::GEMMTiling(op_type, batch_matmul, compile_info, run_info);
   }
 }
-BENCHMARK(BatchMatMulV2Tiling_repo_size_100);
+BENCHMARK(BatchMatMulV2TilingRepoSize100);

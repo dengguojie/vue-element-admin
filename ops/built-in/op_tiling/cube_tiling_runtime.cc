@@ -282,7 +282,7 @@ uint64_t CubeCompileInfo::CheckTilingInCostModel(const char *op_name, const int6
       break;
   }
 
-  OP_LOGD(op_name, "get tiling_id %llu from cost_range", tiling_id);
+  OP_LOGD(op_name, "get tiling_id %lu from cost_range", tiling_id);
   return tiling_id;
 }
 
@@ -312,7 +312,7 @@ uint64_t CubeCompileInfo::CheckDefaultTiling(const char *op_name, const int64_t 
       break;
   }
 
-  OP_LOGD(op_name, "get tiling_id %llu from default tiling", tiling_id);
+  OP_LOGD(op_name, "get tiling_id %lu from default tiling", tiling_id);
   return tiling_id;
 }
 
@@ -324,7 +324,7 @@ uint64_t CubeCompileInfo::CubeTilingBatch(const char *op_name, const int64_t *sh
     }
   }
 
-  OP_LOGD(op_name, "get tiling_id %llu for dynamic batch", tiling_id);
+  OP_LOGD(op_name, "get tiling_id %lu for dynamic batch", tiling_id);
   return tiling_id;
 }
 
@@ -334,10 +334,14 @@ bool Conv2DBackPropCompileInfo::AnalyzeExtendInfo(const json &compile_info) {
     OP_TILING_CHECK(!compile_info.contains("block_dim"),
                     CUBE_INNER_ERR_REPORT("Conv2DBackpropInput", "get block_dim failed"), return false);
 
-    OP_TILING_CHECK(!compile_info["block_dim"].contains("CORE_NUM"),
-                    CUBE_INNER_ERR_REPORT("Conv2DBackpropInput", "get core_num failed"), return false);
+    // dx/dw should use same field
+    if (compile_info["block_dim"].contains("CORE_NUM")) {
+      core_num = compile_info["block_dim"]["CORE_NUM"];  // dx
+    }
+    if (compile_info.contains("max_core_num")) {
+      core_num = compile_info["max_core_num"];  // dw
+    }
 
-    core_num = compile_info["block_dim"]["CORE_NUM"];
     if (compile_info.contains("binary_mode")) {
       binary_mode = compile_info["binary_mode"];
     }
