@@ -150,18 +150,19 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
     for (x_,) in ins:
         with tbe.compute():
             shape_x = shape_util.variable_shape([x_])[0]
+            y_out = shape_y[:]
 
             if ori_axis_value != 1:
-                shape_y[axis + 1] = shape_x[axis + 1]
+                y_out[axis + 1] = shape_x[axis + 1]
 
-            for i, shape_value in enumerate(shape_y):
+            for i, shape_value in enumerate(y_out):
                 if shape_value == -1:
-                    shape_y[i] = shape_x[i]
+                    y_out[i] = shape_x[i]
 
             data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)
 
             if tiles > 1:
-                res = tile_with_axis_compute(data_x, shape_y)
+                res = tile_with_axis_compute(data_x, y_out)
             else:
                 data_zero = tvm.const(0, dtype=dtype_x)
                 zero_broadcast = tbe.broadcast(data_zero, shape_x)
