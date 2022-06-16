@@ -15,6 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Dynamic layer_norm_x_backprop ut case
 """
+from impl.dynamic.layer_norm_x_backprop_v2 import op_select_format
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("LayerNormXBackpropV2", "impl.dynamic.layer_norm_x_backprop_v2", "layer_norm_x_backprop_v2")
@@ -86,6 +87,39 @@ ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
+
+
+def _test_op_select_format_func(x_shape, mean_shape, gamma_shape, expect_dtype, expect_format, case_name):
+    res = op_select_format(
+        {"shape": x_shape, "dtype": "float32", "format": "ND", "ori_shape": x_shape, "ori_format": "ND"},
+        {"shape": x_shape, "dtype": "float32", "format": "ND", "ori_shape": x_shape, "ori_format": "ND"},
+        {"shape": mean_shape, "dtype": "float32", "format": "ND", "ori_shape": mean_shape, "ori_format": "ND"},
+        {"shape": mean_shape, "dtype": "float32", "format": "ND", "ori_shape": mean_shape, "ori_format": "ND"},
+        {"shape": gamma_shape, "dtype": "float32", "format": "ND", "ori_shape": gamma_shape, "ori_format": "ND"},
+        {"shape": x_shape, "dtype": "float32", "format": "ND", "ori_shape": x_shape, "ori_format": "ND"},
+        {"shape": x_shape, "dtype": "float32", "format": "ND", "ori_shape": x_shape, "ori_format": "ND"},
+        case_name)
+
+
+def test_op_select_format(test_arg):
+    x_shape = (64, 64, 1024)
+    mean_shape = (64, 64, 1)
+    gamma_shape = (1024,)
+    case_name = "test_beta_gamma_v2_op_select_format_1"
+    expect_dtype = {'float16', ' float', 'float16', 'float16', 'float16', 'float', 'float', 'float'}
+    expect_format = {"FRACTAL_NZ", "FRACTAL_NZ", "NCHW", "NHWC", "ND", "NCHW", "NHWC", "ND"}
+    _test_op_select_format_func(x_shape, mean_shape, gamma_shape, expect_dtype, expect_format, case_name)
+
+    x_shape = (5120, 16384)
+    mean_shape = (5120, 1)
+    gamma_shape = (16384,)
+    case_name = "test_beta_gamma_v2_op_select_format_2"
+    expect_dtype = {'float16', 'float16', 'float16', 'float', 'float', 'float'}
+    expect_format = {"NCHW", "NHWC", "ND", "NCHW", "NHWC", "ND"}
+    _test_op_select_format_func(x_shape, mean_shape, gamma_shape, expect_dtype, expect_format, case_name)
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

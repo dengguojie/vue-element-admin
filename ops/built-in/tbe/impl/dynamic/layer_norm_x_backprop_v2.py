@@ -18,6 +18,7 @@ layer_norm_x_backprop_v2
 # 'pylint: disable=too-many-lines
 import tbe as mytbe
 from tbe.dsl.base import operation
+from impl.layer_norm_x_backprop_v2 import op_select_format as static_op_select_format
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
@@ -29,6 +30,42 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.norm_pattern_adapter import NormPattern
 from impl.util.util_common import is_unknown_rank_input
+
+
+def op_select_format(input_dy,
+                     input_x,
+                     input_variance,
+                     input_mean,
+                     input_gamma,
+                     output_pd_x,
+                     res_for_gamma,
+                     kernel_name="layer_norm_x_backprop_v2"):
+    """
+    function of selecting dynamic format
+
+    Parameters
+    ----------
+    input_dy : dict
+        shape and dtype of input dy, only support float16, float32
+    input_x: dict
+        shape and dtype of input x, only support float16, float32
+    input_variance: dict
+        shape and dtype of input variance, only support float16, float32
+    input_mean: dict
+        shape and dtype of input mean, only support float16, float32
+    input_gamma: dict
+        shape and dtype of input gamma, only support float16, float32
+    output_pd_x: dict
+        shape and dtype of output, only support float16, float32
+    kernel_name: str
+        cce kernel name, default value is "layer_norm_x_backprop_v2"
+
+    Returns
+    -------
+    None
+    """
+    return static_op_select_format(input_dy, input_x, input_variance, input_mean, input_gamma,
+                                   output_pd_x, res_for_gamma, kernel_name)
 
 
 def _update_gamma_shape(shape_x, shape_gamma):
