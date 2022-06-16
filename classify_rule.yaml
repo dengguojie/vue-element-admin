@@ -1465,6 +1465,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/not_equal.py
       - ops/built-in/tbe/impl/dynamic/nms_with_mask_common.py
       - ops/built-in/tbe/impl/dynamic/ones_like.py
+      - ops/built-in/tbe/impl/dynamic/pad_v2.py
       - ops/built-in/tbe/impl/dynamic/pow.py
       - ops/built-in/tbe/impl/dynamic/power.py
       - ops/built-in/tbe/impl/dynamic/prelu.py
@@ -3246,7 +3247,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/ascend_requant.py
       - ops/built-in/tbe/impl/dynamic/apply_ftrl_d.py
       - ops/built-in/tbe/impl/dynamic/atan_grad.py
-      - ops/built-in/tbe/impl/dynamic/pad_v2.py
       - ops/built-in/tbe/impl/dynamic/pad_v3.py
       - ops/built-in/tbe/impl/dynamic/ascend_quant.py
       - ops/built-in/tbe/impl/dynamic/drop_out_do_mask.py

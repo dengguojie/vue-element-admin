@@ -1280,7 +1280,8 @@ class PadInit(OpBase):
             "ub_size": self.ub_number,
             "core_num": self.core_nums,
             "dtype_rate": dtype_rate,
-            "tiling_two_max_output_size": self.tiling_two_max_output_size
+            "tiling_two_max_output_size": self.tiling_two_max_output_size,
+            "op_type": "PadV2"
         }
 
         # for StridedSliceGrad add attr to compile info
