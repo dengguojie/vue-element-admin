@@ -77,14 +77,17 @@ Status DynamicRNNSeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comput
       }
   }
   if (rnnGenMaskExist) {
-      ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0).Clone();
-      fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutDesc);
-      // Add Edge
-      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(existRnnNode->GetOutDataAnchor(0),
-                        fusedNode->GetInDataAnchor(SEQ_LEN_INDEX)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"),
-                        return FAILED);
-      return SUCCESS;
+    ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0).Clone();
+    fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutDesc);
+    // Remove Edge
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
+                                                            fusedNode->GetInDataAnchor(seqLenIndex)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and rnn failed"), return FAILED);
+    // Add Edge
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(existRnnNode->GetOutDataAnchor(0),
+                                                         fusedNode->GetInDataAnchor(SEQ_LEN_INDEX)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
+    return SUCCESS;
   }
   ge::OpDescPtr rnnMaskDesc = nullptr;
   ge::GeTensorDesc inputRnnMaskDesc = fusedNode->GetOpDesc()->GetInputDesc(seqLenIndex).Clone();

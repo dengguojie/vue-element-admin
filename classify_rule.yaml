@@ -830,6 +830,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_insert_transpose_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_insert_transpose_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_seqlength_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_seqlength_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v3_fusion_pass.cc
@@ -1077,6 +1079,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_preprocess_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
@@ -3762,7 +3765,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/derelu_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/copy_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_v2_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_seqlength_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/continuation_indicator_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/hostbn_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_softmax_grad_fusion_pass.cc
@@ -3859,7 +3861,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pooling_matrix_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_update_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_addn_l2loss_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_pass.cc
@@ -3933,7 +3934,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_arg_max_value_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/keep_ratio_resize_bilinear_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/non_zero_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/relu_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/relu_cast_fusion_pass.h

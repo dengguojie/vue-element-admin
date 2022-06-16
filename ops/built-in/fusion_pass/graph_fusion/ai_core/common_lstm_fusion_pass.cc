@@ -1161,12 +1161,16 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
 
     // connect seq_length
     if (hasSeqLength) {
-      FUSION_PASS_CHECK(SUCCESS != AddRNNMaskNode(fusedNode, dynamicRnnForwardNode, graph, hiddenSize, newNodes),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddRNNMaskNode return failed"),
-                        return FAILED);
-      FUSION_PASS_CHECK(SUCCESS != AddRNNMaskNode(fusedNode, dynamicRnnReverseNode, graph, hiddenSize, newNodes),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddRNNMaskNode return failed"),
-                        return FAILED);
+      // Add Edge
+      FUSION_PASS_CHECK(
+            SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
+                                               dynamicRnnForwardNode->GetInDataAnchor(3)),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add Seq input edge failed"), return FAILED);
+
+      FUSION_PASS_CHECK(
+            SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
+                                               dynamicRnnReverseNode->GetInDataAnchor(3)),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add Seq input edge failed"), return FAILED);
     }
 
     // connect init_h
@@ -1404,9 +1408,11 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
 
     // connect seq_length
     if (hasSeqLength) {
-      FUSION_PASS_CHECK(SUCCESS != AddRNNMaskNode(fusedNode, dynamicRnnNode, graph, hiddenSize, newNodes),
-                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddRNNMaskNode return failed"),
-                        return FAILED);
+      // Add Edge
+      FUSION_PASS_CHECK(
+            SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
+                                               dynamicRnnNode->GetInDataAnchor(3)),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add Seq input edge failed"), return FAILED);
     }
 
     // connect init_h
