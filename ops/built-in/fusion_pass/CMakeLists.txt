@@ -29,6 +29,7 @@ set(_common_fusion_pass_inc
   ${METADEF_INCLUDE}
   ${METADEF_INCLUDE}/external
   ${METADEF_INCLUDE}/external/graph
+  ${METADEF_INCLUDE}/exe_graph
   ${METADEF_INCLUDE}/register
   ${GRAPHENGINE_INCLUDE}
   ${GRAPHENGINE_INCLUDE}/external

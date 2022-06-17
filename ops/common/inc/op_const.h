@@ -80,6 +80,9 @@ bool GetConstIntData(const ge::Operator& paras, const int64_t const_input_idx, s
     case DT_INT32:
       GetDataToVector<T, int32_t>(data, size, values);
       break;
+    case DT_FLOAT:
+      GetDataToVector<T, float>(data, size, values);
+      break;
     default: {
       OP_LOGW("GetConstIntData", "GetConstValue of dtype[%d] has not implement.", dtype);
       return false;

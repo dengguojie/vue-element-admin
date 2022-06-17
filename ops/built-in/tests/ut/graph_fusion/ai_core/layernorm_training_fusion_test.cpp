@@ -43,8 +43,9 @@ class layernorm_training_fusion_test : public testing::Test {
     }
 };
 
+// LayerNorm + LayerNormGrad
 TEST_F(layernorm_training_fusion_test, layernorm_training_fusion_test_1) {
-    ge::Graph graph("layernorm_training_fusion_test");
+    ge::Graph graph("layernorm_training_fusion_test_1");
 
     ge::TensorDesc add0_desc(ge::Shape({1}), FORMAT_ND, DT_FLOAT);
     int64_t add0_size = add0_desc.GetShape().GetShapeSize();
@@ -61,19 +62,33 @@ TEST_F(layernorm_training_fusion_test, layernorm_training_fusion_test_1) {
     float add1_data = 1.;
     ge::Tensor add1_tensor(add1_desc, reinterpret_cast<uint8_t*>(&add1_data), add1_size);
 
+    ge::TensorDesc add2_desc(ge::Shape({1}), FORMAT_ND, DT_FLOAT);
+    int64_t add2_size = add2_desc.GetShape().GetShapeSize();
+    float add2_data = 1.;
+    ge::Tensor add2_tensor(add2_desc, reinterpret_cast<uint8_t*>(&add2_data), add2_size);
+
+    ge::TensorDesc axes_desc(ge::Shape({1}), FORMAT_ND, DT_INT32);
+    int64_t axes_size = axes_desc.GetShape().GetShapeSize();
+    int32_t axes_data = 2;
+    ge::Tensor axes_tensor(axes_desc, reinterpret_cast<uint8_t*>(&axes_data), axes_size*sizeof(int32_t));
+
     auto add0_const_op = op::Constant().set_attr_value(add0_tensor);
     auto mul1_const_op = op::Constant().set_attr_value(mul1_tensor);
     auto add1_const_op = op::Constant().set_attr_value(add1_tensor);
+    auto add2_const_op = op::Constant().set_attr_value(add2_tensor);
+    auto axes_const_op = op::Constant().set_attr_value(axes_tensor);
     add0_const_op.update_output_desc_y(add0_desc);
     mul1_const_op.update_output_desc_y(mul1_desc);
     add1_const_op.update_output_desc_y(add1_desc);
+    add2_const_op.update_output_desc_y(add2_desc);
+    axes_const_op.update_output_desc_y(axes_desc);
 
     std::vector<int64_t> axes;
     axes.push_back(-1);
     auto data0 = op::Data().set_attr_index(0);
-    auto mean0 = op::ReduceMeanD("mean0").set_input_x(data0).set_attr_axes(axes).set_attr_keep_dims(true);
+    auto mean0 = op::ReduceMean("mean0").set_input_x(data0).set_input_axes(axes_const_op).set_attr_keep_dims(true);
     auto squaredifference0 = op::SquaredDifference("SquaredDifference0").set_input_x1(data0).set_input_x2(mean0);
-    auto mean1 = op::ReduceMeanD("mean1").set_input_x(squaredifference0).set_attr_axes(axes).set_attr_keep_dims(true);
+    auto mean1 = op::ReduceMean("mean1").set_input_x(squaredifference0).set_input_axes(axes_const_op).set_attr_keep_dims(true);
     auto add0 = op::Add("add0").set_input_x1(mean1).set_input_x2(add0_const_op);
     auto rsqrt0 = op::Rsqrt("rsqrt0").set_input_x(add0);
     auto mul0 = op::Mul("mul0").set_input_x1(rsqrt0).set_input_x2(mul1_const_op);
@@ -81,7 +96,34 @@ TEST_F(layernorm_training_fusion_test, layernorm_training_fusion_test_1) {
     auto sub0 = op::Sub("sub0").set_input_x1(add1_const_op).set_input_x2(mul1);
     auto mul2 = op::Mul("mul2").set_input_x1(data0).set_input_x2(mul0);
     auto add1 = op::Add("add1").set_input_x1(mul2).set_input_x2(sub0);
-    auto add2 = op::Add("add2").set_input_x1(add1).set_input_x2(add0_const_op);
+
+    auto grad_sum2 = op::ReduceSumD("sum2").set_input_x(add2_const_op).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_out2 = op::Neg("grad_out2").set_input_x(grad_sum2);
+    auto grad_mul1 = op::Mul("grad_mul1").set_input_x1(add2_const_op).set_input_x2(mul0);
+    auto grad_neg = op::Neg("grad_neg").set_input_x(add2_const_op);
+    auto grad_mul2 = op::Mul("grad_mul2").set_input_x1(add2_const_op).set_input_x2(add1_const_op);
+    auto grad_sub = op::Sub("grad_sub").set_input_x1(add1_const_op).set_input_x2(mean0);
+    auto grad_mul4 = op::Mul("grad_mul4").set_input_x1(mean0).set_input_x2(grad_neg);
+    auto grad_addn0 = op::AddN("grad_addn0").create_dynamic_input_x(2)
+                      .set_dynamic_input_x(0, grad_mul2)
+                      .set_dynamic_input_x(1, grad_mul4)
+                      .set_attr_N(2);
+    auto grad_mul5 = op::Mul("grad_mul5").set_input_x1(grad_addn0).set_input_x2(mul1_const_op);
+    auto grad_mul8 = op::Mul("grad_mul8").set_input_x1(rsqrt0).set_input_x2(grad_addn0);
+    auto grad_sum3 = op::ReduceSumD("sum3").set_input_x(grad_mul8).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_out1 = op::Neg("grad_out1").set_input_x(grad_sum3);
+    auto grad_sum1 = op::ReduceSumD("sum1").set_input_x(grad_mul5).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_reshape = op::Reshape("grad_reshape").set_input_x(grad_sum1).set_input_shape(add1_const_op);
+    auto grad_rsqrt = op::RsqrtGrad("grad_rsqrt").set_input_y(rsqrt0).set_input_dy(grad_reshape);
+    auto grad_mul7 = op::Mul("grad_mul7").set_input_x1(mul1_const_op).set_input_x2(grad_sub);
+    auto grad_true_div = op::Mul("grad_true_div").set_input_x1(grad_neg).set_input_x2(mul1_const_op);
+    auto grad_addn1 = op::AddN("grad_addn1").create_dynamic_input_x(3)
+                      .set_dynamic_input_x(0, grad_mul1)
+                      .set_dynamic_input_x(1, grad_mul7)
+                      .set_dynamic_input_x(2, grad_true_div)
+                      .set_attr_N(3);
+
+    auto add2 = op::Add("add2").set_input_x1(add1).set_input_x2(grad_addn1);
 
     ge::TensorDesc data0_desc(ge::Shape({3, 224, 224}), FORMAT_ND,  DT_FLOAT);
     ge::TensorDesc data1_desc(ge::Shape({224}), FORMAT_ND,  DT_FLOAT);
@@ -89,25 +131,139 @@ TEST_F(layernorm_training_fusion_test, layernorm_training_fusion_test_1) {
     data0.update_output_desc_y(data0_desc);
     mean0.update_input_desc_x(data0_desc);
     std::vector<Operator> inputs{data0};
-    std::vector<Operator> outputs{add1};
+    std::vector<Operator> outputs{add1, grad_addn1};
     graph.SetInputs(inputs).SetOutputs(outputs);
 
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::RunGraphFusionPass("LayerNormTrainingFusionPass",
                                                 fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
-    bool findOp = false;
-    bool shapeMatch = false;
-    vector<int64_t> expectShape{3, 224, 224};
+
+    bool find_layer_norm = false;
+    bool find_layer_norm_grad = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "LayerNorm") {
-            findOp = true;
-            auto inputDesc = node->GetOpDesc()->GetInputDesc(0);
-            std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
-            if (dims == expectShape) {
-                shapeMatch = true;
-            }
+            find_layer_norm = true;
+        }
+        if (node->GetType() == "LayerNormGrad") {
+            find_layer_norm_grad = true;
         }
     }
-    EXPECT_EQ(findOp, true);
-    EXPECT_EQ(shapeMatch, true);
+    EXPECT_EQ(find_layer_norm, true);
+    EXPECT_EQ(find_layer_norm_grad, true);
+}
+
+// LayerNorm + LayerNormGrad + AddN
+TEST_F(layernorm_training_fusion_test, layernorm_training_fusion_test_2) {
+    ge::Graph graph("layernorm_training_fusion_test_2");
+
+    ge::TensorDesc add0_desc(ge::Shape({1}), FORMAT_ND, DT_FLOAT);
+    int64_t add0_size = add0_desc.GetShape().GetShapeSize();
+    float add0_data = 0.0000001;
+    ge::Tensor add0_tensor(add0_desc, reinterpret_cast<uint8_t*>(&add0_data), add0_size);
+
+    ge::TensorDesc mul1_desc(ge::Shape({224}), FORMAT_ND, DT_FLOAT);
+    int64_t mul1_size = mul1_desc.GetShape().GetShapeSize();
+    std::vector<int> mul1_data(224, 1);
+    ge::Tensor mul1_tensor(mul1_desc, reinterpret_cast<uint8_t*>(mul1_data.data()), mul1_size);
+
+    ge::TensorDesc add1_desc(ge::Shape({1}), FORMAT_ND, DT_FLOAT);
+    int64_t add1_size = add1_desc.GetShape().GetShapeSize();
+    float add1_data = 1.;
+    ge::Tensor add1_tensor(add1_desc, reinterpret_cast<uint8_t*>(&add1_data), add1_size);
+
+    ge::TensorDesc add2_desc(ge::Shape({1}), FORMAT_ND, DT_FLOAT);
+    int64_t add2_size = add2_desc.GetShape().GetShapeSize();
+    float add2_data = 1.;
+    ge::Tensor add2_tensor(add2_desc, reinterpret_cast<uint8_t*>(&add2_data), add2_size);
+
+    ge::TensorDesc axes_desc(ge::Shape({1}), FORMAT_ND, DT_INT32);
+    int64_t axes_size = axes_desc.GetShape().GetShapeSize();
+    int32_t axes_data = 2;
+    ge::Tensor axes_tensor(axes_desc, reinterpret_cast<uint8_t*>(&axes_data), axes_size*sizeof(int32_t));
+
+    auto add0_const_op = op::Constant().set_attr_value(add0_tensor);
+    auto mul1_const_op = op::Constant().set_attr_value(mul1_tensor);
+    auto add1_const_op = op::Constant().set_attr_value(add1_tensor);
+    auto add2_const_op = op::Constant().set_attr_value(add2_tensor);
+    auto axes_const_op = op::Constant().set_attr_value(axes_tensor);
+    add0_const_op.update_output_desc_y(add0_desc);
+    mul1_const_op.update_output_desc_y(mul1_desc);
+    add1_const_op.update_output_desc_y(add1_desc);
+    add2_const_op.update_output_desc_y(add2_desc);
+    axes_const_op.update_output_desc_y(axes_desc);
+
+    std::vector<int64_t> axes;
+    axes.push_back(-1);
+    auto data0 = op::Data().set_attr_index(0);
+    auto mean0 = op::ReduceMean("mean0").set_input_x(data0).set_input_axes(axes_const_op).set_attr_keep_dims(true);
+    auto squaredifference0 = op::SquaredDifference("SquaredDifference0").set_input_x1(data0).set_input_x2(mean0);
+    auto mean1 = op::ReduceMean("mean1").set_input_x(squaredifference0).set_input_axes(axes_const_op).set_attr_keep_dims(true);
+    auto add0 = op::Add("add0").set_input_x1(mean1).set_input_x2(add0_const_op);
+    auto rsqrt0 = op::Rsqrt("rsqrt0").set_input_x(add0);
+    auto mul0 = op::Mul("mul0").set_input_x1(rsqrt0).set_input_x2(mul1_const_op);
+    auto mul1 = op::Mul("mul1").set_input_x1(mean0).set_input_x2(mul0);
+    auto sub0 = op::Sub("sub0").set_input_x1(add1_const_op).set_input_x2(mul1);
+    auto mul2 = op::Mul("mul2").set_input_x1(data0).set_input_x2(mul0);
+    auto add1 = op::Add("add1").set_input_x1(mul2).set_input_x2(sub0);
+
+    auto grad_sum2 = op::ReduceSumD("sum2").set_input_x(add2_const_op).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_out2 = op::Neg("grad_out2").set_input_x(grad_sum2);
+    auto grad_mul1 = op::Mul("grad_mul1").set_input_x1(add2_const_op).set_input_x2(mul0);
+    auto grad_neg = op::Neg("grad_neg").set_input_x(add2_const_op);
+    auto grad_mul2 = op::Mul("grad_mul2").set_input_x1(add2_const_op).set_input_x2(add1_const_op);
+    auto grad_sub = op::Sub("grad_sub").set_input_x1(add1_const_op).set_input_x2(mean0);
+    auto grad_mul4 = op::Mul("grad_mul4").set_input_x1(mean0).set_input_x2(grad_neg);
+    auto grad_addn0 = op::AddN("grad_addn0").create_dynamic_input_x(2)
+                      .set_dynamic_input_x(0, grad_mul2)
+                      .set_dynamic_input_x(1, grad_mul4)
+                      .set_attr_N(2);
+    auto grad_mul5 = op::Mul("grad_mul5").set_input_x1(grad_addn0).set_input_x2(mul1_const_op);
+    auto grad_mul8 = op::Mul("grad_mul8").set_input_x1(rsqrt0).set_input_x2(grad_addn0);
+    auto grad_sum3 = op::ReduceSumD("sum3").set_input_x(grad_mul8).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_out1 = op::Neg("grad_out1").set_input_x(grad_sum3);
+    auto grad_sum1 = op::ReduceSumD("sum1").set_input_x(grad_mul5).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_reshape = op::Reshape("grad_reshape").set_input_x(grad_sum1).set_input_shape(add1_const_op);
+    auto grad_rsqrt = op::RsqrtGrad("grad_rsqrt").set_input_y(rsqrt0).set_input_dy(grad_reshape);
+    auto grad_mul7 = op::Mul("grad_mul7").set_input_x1(mul1_const_op).set_input_x2(grad_sub);
+    auto grad_true_div = op::Mul("grad_true_div").set_input_x1(grad_neg).set_input_x2(mul1_const_op);
+    auto grad_x = op::ReduceSumD("grad_x").set_input_x(add1_const_op).set_attr_axes(axes).set_attr_keep_dims(false);
+    auto grad_addn1 = op::AddN("grad_addn1").create_dynamic_input_x(4)
+                      .set_dynamic_input_x(0, grad_x)
+                      .set_dynamic_input_x(1, grad_mul1)
+                      .set_dynamic_input_x(2, grad_mul7)
+                      .set_dynamic_input_x(3, grad_true_div)
+                      .set_attr_N(4);
+
+    auto add2 = op::Add("add2").set_input_x1(add1).set_input_x2(grad_addn1);
+
+    ge::TensorDesc data0_desc(ge::Shape({3, 224, 224}), FORMAT_ND,  DT_FLOAT);
+    ge::TensorDesc data1_desc(ge::Shape({224}), FORMAT_ND,  DT_FLOAT);
+    data0.update_input_desc_x(data0_desc);
+    data0.update_output_desc_y(data0_desc);
+    mean0.update_input_desc_x(data0_desc);
+    std::vector<Operator> inputs{data0};
+    std::vector<Operator> outputs{add1, grad_addn1};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::RunGraphFusionPass("LayerNormTrainingFusionPass",
+                                                fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool find_layer_norm = false;
+    bool find_layer_norm_grad = false;
+    bool find_addn = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "LayerNorm") {
+            find_layer_norm = true;
+        }
+        if (node->GetType() == "LayerNormGrad") {
+            find_layer_norm_grad = true;
+        }
+        if (node->GetType() == "AddN") {
+            find_addn = true;
+        }
+    }
+    EXPECT_EQ(find_layer_norm, true);
+    EXPECT_EQ(find_layer_norm_grad, true);
+    EXPECT_EQ(find_addn, true);
 }
