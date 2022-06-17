@@ -951,7 +951,6 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic/softmax_grad.py
       - ops/built-in/tbe/impl/dynamic/softmax_v2.py
       - ops/built-in/tbe/impl/dynamic_gru_v2_hidden.py
-      - ops/built-in/tbe/impl/dynamic/swish.py
       - ops/built-in/tbe/impl/deformable_offsets.py
       - ops/built-in/tbe/impl/deformable_offsets_grad.py
       - ops/built-in/tbe/impl/leaky_relu.py
@@ -4215,6 +4214,8 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/one_hot.py
       - ops/built-in/tbe/impl/dynamic/threshold_v2.py
       - ops/built-in/tbe/impl/dynamic/shrink.py
+      - ops/built-in/tbe/impl/dynamic/swish.py
+      - ops/built-in/tbe/impl/dynamic/swish_grad.py
       - ops/built-in/tbe/impl/fill_v2_d.py
       - ops/built-in/tbe/impl/ldpc.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.cc

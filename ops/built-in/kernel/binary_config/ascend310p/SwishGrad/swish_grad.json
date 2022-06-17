@@ -1,0 +1,329 @@
+{
+    "op_type": "SwishGrad",
+    "op_list": [
+      {
+        "bin_filename": "SwishGrad_float16_NZ",
+        "inputs": [
+          {
+            "name": "grad",
+            "index": 0,
+            "dtype": "float16",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float16",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "y",
+            "index": 2,
+            "dtype": "float16",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "grad_x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "scale",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "SwishGrad_float16_5HD",
+        "inputs": [
+          {
+            "name": "grad",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "y",
+            "index": 2,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "grad_x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "scale",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "SwishGrad_float16_ND",
+        "inputs": [
+          {
+            "name": "grad",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "y",
+            "index": 2,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "grad_x",
+            "index": 0,
+            "dtype": "float16",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "scale",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "SwishGrad_float32_NZ",
+        "inputs": [
+          {
+            "name": "grad",
+            "index": 0,
+            "dtype": "float32",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float32",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "y",
+            "index": 2,
+            "dtype": "float32",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "grad_x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "FRACTAL_NZ",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "scale",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "SwishGrad_float32_5HD",
+        "inputs": [
+          {
+            "name": "grad",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "y",
+            "index": 2,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "grad_x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "NC1HWC0",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "scale",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      },
+      {
+        "bin_filename": "SwishGrad_float32_ND",
+        "inputs": [
+          {
+            "name": "grad",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "x",
+            "index": 1,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          },
+          {
+            "name": "y",
+            "index": 2,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "name": "grad_x",
+            "index": 0,
+            "dtype": "float32",
+            "format": "ND",
+            "paramType": "required",
+            "shape": [
+              -2
+            ]
+          }
+        ],
+        "attrs": [
+          {
+            "name": "scale",
+            "dtype": "float",
+            "value": null
+          }
+        ]
+      }
+    ]
+  }

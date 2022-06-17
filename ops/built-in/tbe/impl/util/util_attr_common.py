@@ -84,3 +84,17 @@ class Relu6DAttrInfo:
     define Relu6D attr info
     """
     ATTR_SCALE = OpAttr(0, "scale", "Float", 1.0)
+
+    
+class SwishAttrInfo:
+    """
+    define Swish attr info
+    """
+    ATTR_SCALE = OpAttr(0, "scale", "Float", 1.0)
+
+
+class SwishGradAttrInfo:
+    """
+    define SwishGrad attr info
+    """
+    ATTR_SCALE = OpAttr(0, "scale", "Float", 1.0)

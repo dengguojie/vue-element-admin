@@ -26,6 +26,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import SwishAttrInfo
+from impl.util.util_attr_common import get_attr_by_cls
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -38,7 +40,12 @@ class Constant:
 
 
 def swish_normal(data_input, scale, dtype, exp_support):
-    tmp_negative = tbe.vmuls(data_input, tvm.const(-scale, dtype=dtype))
+    scale = get_attr_by_cls(scale, SwishAttrInfo.ATTR_SCALE, dtype)
+    shape = data_input.shape
+    scale_tensor = tbe.broadcast(scale, shape)
+    # use vmuls instrucion to avoid unsupported "-x" binary op case
+    negative_scale_tensor = tbe.vmuls(scale_tensor, tvm.const(-1, dtype))
+    tmp_negative = tbe.vmul(data_input, negative_scale_tensor)
 
     # avoid data overflow
     if dtype == "float32" and exp_support:
@@ -69,7 +76,8 @@ def swish_normal(data_input, scale, dtype, exp_support):
 
 def swish_overflow(data_input, scale, dtype):
     data_input = tbe.cast_to(data_input, "float32")
-    scale_input = tbe.vmuls(data_input, tvm.const(scale, dtype="float32"))
+    scale = get_attr_by_cls(scale, SwishAttrInfo.ATTR_SCALE, "float32")
+    scale_input = tbe.vmuls(data_input, scale)
     abs_scale_input = tbe.vabs(scale_input)
     minus_abs = tbe.vmuls(abs_scale_input, tvm.const(-1.0, dtype="float32"))
     sign_diff = tbe.vadd(scale_input, minus_abs)

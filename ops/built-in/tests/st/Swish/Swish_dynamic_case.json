@@ -1,0 +1,64 @@
+[
+    {
+      "op": "Swish",
+      "calc_expect_func_file" : "test_swish_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [16, 2, 32],
+          "format": "ND",
+          "param_type": "input",
+          "name": "x",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [16, 2, 32],
+          "format": "ND",
+          "param_type": "output",
+          "name": "y",
+          "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+          "name": "scale",
+          "type": "float",
+          "value": 1.0
+        }
+      ],
+      "case_name": "test_swish_float32"
+    },
+    {
+      "op": "Swish",
+      "calc_expect_func_file" : "test_swish_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape":[-2],
+          "typical_shape": [16, 2, 32],
+          "format": "ND",
+          "param_type": "input",
+          "name": "x",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [16, 2, 32],
+          "format": "ND",
+          "param_type": "output",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "scale",
+          "type": "float",
+          "value": 1.0
+        }
+      ],
+      "case_name": "test_swish_float16"
+    }
+]

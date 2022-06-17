@@ -1,0 +1,97 @@
+[
+    {"compile_flag": 1},
+    {
+      "op": "SwishGrad",
+      "input_desc": [
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "grad",
+          "type": "float16"
+        },
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "x",
+          "type": "float16"
+        },
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "grad_x",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+            "name": "scale",
+            "type": "float",
+            "value": 1.0
+        }
+      ],
+      "case_name": "test_SwishGrad_float16"
+    },
+    {
+      "op": "SwishGrad",
+      "input_desc": [
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "grad",
+          "type": "float32"
+        },
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "x",
+          "type": "float32"
+        },
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "y",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [5, 10],
+          "format": "ND",
+          "ori_shape": [5, 10],
+          "ori_format": "ND",
+          "name": "grad_x",
+          "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+            "name": "scale",
+            "type": "float",
+            "value": 1.0
+        }
+      ],
+      "case_name": "test_SwishGrad_float32"
+    }
+]

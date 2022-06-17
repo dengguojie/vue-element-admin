@@ -69,6 +69,8 @@ Square,square.json
 SquaredDifference,squared_difference.json
 StridedSlice,strided_slice.json
 Sub,sub.json
+Swish,swish.json
+SwishGrad,swish_grad.json
 Tanh,tanh.json
 Tile,tile.json
 Transpose,transpose.json

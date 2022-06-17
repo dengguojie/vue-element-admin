@@ -30,6 +30,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.util_attr_common import SwishGradAttrInfo
+from impl.util.util_attr_common import get_attr_by_cls
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -63,7 +65,8 @@ def swish_grad_compute(input_gradients, fwd_input, fwd_output, bkwd_output, beta
     sigmoid_value = tbe.vdiv(fwd_output, fwd_input)
     # calculate 1-beta*B
     one_tensor = tbe.broadcast(tvm.const(1, dtype="float32"), fwd_output.shape)
-    beta_output = tbe.vmuls(fwd_output, tvm.const(beta, dtype="float32"))
+    beta = get_attr_by_cls(beta, SwishGradAttrInfo.ATTR_SCALE, "float32")
+    beta_output = tbe.vmuls(fwd_output, beta)
     one_minus_b = tbe.vsub(one_tensor, beta_output)
     # calculate B/A*(1 - scale*B)
     swish_part = tbe.vmul(sigmoid_value, one_minus_b)
