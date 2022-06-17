@@ -115,7 +115,7 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
     std::vector<std::pair<int64_t, int64_t>> range;
     int64_t min_dim = 1;
     std::vector<int64_t> max_dims = op.GetInputDescByName("params_dense_values").GetShape().GetDims();
-    for(const auto &maxdim : max_dims){
+    for (const auto &maxdim : max_dims) {
       auto p = std::make_pair(min_dim, maxdim);
       range.push_back(p);
     }

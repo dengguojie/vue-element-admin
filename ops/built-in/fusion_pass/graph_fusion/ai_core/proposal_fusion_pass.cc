@@ -106,7 +106,20 @@ void GenerateAnchors(const vector<float>& anchor_scale, const vector<float>& anc
   }
 }
 
-void ProposalFusionPass::GenerateShifts(int height, int width, float feat_stride, vector<float>& shifts) {
+Status ProposalFusionPass::GenerateShifts(int height, int width, float feat_stride, vector<float>& shifts) {
+  if (height < 0 || width < 0) {
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "Height and width cannot be negative.");
+    return FAILED;
+  }
+  unique_ptr<int[]> width_assit(new (std::nothrow) int[width]());
+  FUSION_PASS_CHECK(width_assit.get() == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "width_assit is NULL."),
+                    return FAILED);
+  unique_ptr<int[]> height_assit(new (std::nothrow) int[height]());
+  FUSION_PASS_CHECK(height_assit.get() == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "height_assit is NULL."),
+                    return FAILED);
   // vector<float> shift_x;
   // vector<float> shift_y;
   // vector<float> shifts_tmp;
@@ -146,6 +159,8 @@ void ProposalFusionPass::GenerateShifts(int height, int width, float feat_stride
   delete[] shift_x;
   delete[] shift_y;
   delete[] shifts_tmp;
+
+  return SUCCESS;
 }
 
 Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, const ge::NodePtr proposalVNode) {
@@ -201,7 +216,9 @@ Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, const ge::Node
   GenerateAnchors(anchor_scale, anchor_ratio, anchor_base_size, anchor_boxes);
 
   vector<float> shifts;
-  GenerateShifts(height, width, feat_stride, shifts);
+  Status ret = GenerateShifts(height, width, feat_stride, shifts);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get shifts"),
+                    return FAILED);
 
   int anchor_num = anchor_scale.size() * anchor_ratio.size();
   for (int batch_index = 0; batch_index < batch; batch_index++) {

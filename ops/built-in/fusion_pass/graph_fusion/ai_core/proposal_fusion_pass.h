@@ -32,7 +32,7 @@ class ProposalFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  void GenerateShifts(int height, int width, float feat_stride, vector<float>& shifts);
+  Status GenerateShifts(int height, int width, float feat_stride, vector<float>& shifts);
   Status GenerateAnchorsFp16(uint16_t* output1, const ge::NodePtr proposalVNode);
   const string FUSED_OP_TYPE = "ProposalD";
 };

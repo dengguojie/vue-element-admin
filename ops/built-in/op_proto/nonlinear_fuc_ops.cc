@@ -81,7 +81,7 @@ COMMON_INFER_FUNC_REG(GeluGrad, GeluGradInferShape);
 VERIFY_FUNC_REG(GeluGrad, GeluGradVerify);
 // ----------------------GeluGrad END----------------------
 
-//-----------------------ELUGRADV2-------------------------
+// ----------------------ELUGRADV2-------------------------
 IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape) {
     TensorDesc output_desc = op.GetOutputDescByName("y");
     DataType input_dtype = op.GetInputDescByName("activations").GetDataType();
@@ -107,7 +107,7 @@ IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify) {
 
 COMMON_INFER_FUNC_REG(EluGradV2, EluGradV2InferShape);
 VERIFY_FUNC_REG(EluGradV2, EluGradV2Verify);
-//-----------------------ELUGRADV2 END---------------------
+// ----------------------ELUGRADV2 END---------------------
 
 // ----------------------Gelu----------------------
 IMPLEMT_COMMON_INFERFUNC(GeluInferShape) {
