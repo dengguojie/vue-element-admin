@@ -43,7 +43,6 @@ binary_compile_infos = {
     ]
 }
 
-
 def compile_binary_kernels(test_arg):
     for binary_info in binary_compile_infos.get("feature"):
         for case in conv2d_binary_testcase:

@@ -627,7 +627,7 @@ class Conv2dParaProcess(CubeParaProcess):
         co1 = ceil_div(c_out, block_size_n)
 
         input_shape_5hd = (batch_n, ci1, fmap_h, fmap_w, block_size_k)
-        w_shape = (co1*block_size_n, ci1*block_size_n, k_h, k_w)
+        w_shape = (c_out, c_in, k_h, k_w)
         w_shape_fracz = (ci1*k_h*k_w, co1, block_size_n, block_size_k)
         group_para = {"enlarge": 1, "c1_opt": ci1, "cout1_opt": co1, "group_opt": 1}
 

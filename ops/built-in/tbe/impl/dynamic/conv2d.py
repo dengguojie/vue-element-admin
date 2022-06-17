@@ -411,8 +411,7 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     """
     option_dict = set_default_para().get("optim_dict")
     with tbe_base.compute():
-        res = _conv2d_compute(
-            inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+        res = _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
             groups, data_format, offset_x, kernel_name, False, option_dict)
 
     with tvm.target.cce():
