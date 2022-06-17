@@ -84,30 +84,59 @@ install_stest() {
   fi
 }
 
+install_csv_st_case() {
+  local op_case=$1
+  if [[ ! -d "${op_case}" ]]; then
+    return 1
+  fi
+
+  local cases=$(find "${op_case}" -name "*.csv")
+  if [[ -z $cases ]]; then
+    return 1
+  fi
+
+  echo "[INFO] install testcase: ${op_case}"
+  mkdir -p "${TEST_INSTALL_PATH}"
+  cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+  return 0
+}
+
 install_st_plus_test() {
   all_cases=""
   install_related_ops "${CHANGE_LOG}" "${OPS_SOURCE_DIR}" "*.csv"
   case_not_found=""
   for op_case in $(echo "${all_cases}" | tr ',' ' '); do
-    echo "[INFO] install testcase: ${op_case}"
-    if [[ ! -d "${op_case}" ]]; then
-      echo "[ERROR] cannot find testcase ${op_case}"
-      case_not_found="${case_not_found} ${op_case##*/}"
-      continue
-    else
-      cases=$(find "${op_case}" -name "*.csv")
-      if [[ -z $cases ]]; then
-        echo "[WARNING] no testcase file ending with .csv in ${op_case}"
-        case_not_found="${case_not_found} ${op_case##*/}"
-        continue
-      fi
-      mkdir -p "${TEST_INSTALL_PATH}"
-      cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+    install_csv_st_case "${op_case}"
+    if [[ $? -ne 0 ]]; then
+      case_not_found="${case_not_found} ${op_case}"
     fi
   done
 
-  if [ ! -z "${case_not_found}" ];then
-    echo "[ERROR] st case not found: [${case_not_found}]"
+  # try to install test cases in case they are in dynamic op directory
+  final_not_found_cases=""
+  for op_case in ${case_not_found}; do
+    # try static
+    attempt_static="${op_case}D"
+    install_csv_st_case "${attempt_static}"
+    if [[ $? -eq 0 ]]; then
+      continue
+    fi
+
+    # try dynamic
+    if [[ x${op_case: -1} == xD ]]; then
+      attempt_dynamic=$(echo "${op_case%?}")
+      install_csv_st_case "${attempt_dynamic}"
+      if [[ $? -eq 0 ]]; then
+        continue
+      fi
+    fi
+
+    echo "[ERROR] cannot find testcase ${op_case}"
+    final_not_found_cases="${final_not_found_cases} ${op_case##*/}"
+  done
+
+  if [ ! -z "${final_not_found_cases}" ];then
+    echo "[ERROR] st case not found: [${final_not_found_cases}]"
   fi
 }
 
@@ -228,6 +257,7 @@ else
   exit $STATUS_FAILED
 fi
 
+rm -rf ${TEST_INSTALL_PATH}
 test ! -d "${CANN_OUTPUT}" && mkdir -p "${CANN_OUTPUT}"
 test ! -d "${TEST_BIN_PATH}" && mkdir -p "${TEST_BIN_PATH}"
 test ! -d "`dirname ${CHANGE_LOG}`" && mkdir -p "`dirname ${CHANGE_LOG}`"
