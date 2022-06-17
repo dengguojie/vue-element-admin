@@ -66,7 +66,7 @@ class BaseComputeMode(object):
 
     def get_conv_attr_index(self):
         for idx, value in enumerate(self.attr_list):
-            if "name" in value and "Conv" in value.get("name"):
+            if "name" in value and "conv" in value.get("name").lower():
                 return idx
 
         dict_args = {"errCode": "E90001", "detailed_cause": "get attr idx failed"}
@@ -74,7 +74,7 @@ class BaseComputeMode(object):
 
     def get_conv_option_index(self):
         for idx, value in enumerate(self.option_list):
-            if "name" in value and "Conv" in value.get("name"):
+            if "name" in value and "conv" in value.get("name").lower():
                 return idx
 
         dict_args = {"errCode": "E90001", "detailed_cause": "get option idx failed"}
@@ -148,8 +148,11 @@ compute_calltbl = {
 
 def check_binary_mode(ins: list or tuple):
     input_list, _, _ = ins
-    fmap_ori_shape = input_list[0]["ori_shape"]
-    fmap_ori_range = input_list[0]["ori_range"]
+    # only support transdata + conv2d + transdata fusion
+    if input_list[0].get("format") != "NCHW":
+        return False
+    fmap_ori_shape = input_list[0].get("ori_shape")
+    fmap_ori_range = input_list[0].get("ori_range")
     for idx, _ in enumerate(fmap_ori_shape):
         if fmap_ori_shape[idx] != -1 or fmap_ori_range[idx] != [1, -1]:
             return False

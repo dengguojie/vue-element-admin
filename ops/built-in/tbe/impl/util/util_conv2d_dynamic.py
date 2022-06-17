@@ -595,7 +595,7 @@ class Conv2dParaProcess(CubeParaProcess):
                 if not operation.get_te_var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i)):
                     operation.var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i))
         def generate_ori_shape_attr():
-            if options.get("kernel"):
+            if options and options.get("kernel"):
                 self.ori_shape_attr[op_util_conv2d.TilingDataKey.K_H] = LOAD2D_H_VALUE
                 self.ori_shape_attr[op_util_conv2d.TilingDataKey.K_W] = LOAD2D_W_VALUE
 
