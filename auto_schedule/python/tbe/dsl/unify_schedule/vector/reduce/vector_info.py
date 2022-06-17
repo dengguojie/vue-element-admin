@@ -95,7 +95,6 @@ class ComputeGraphInfo:
         self.broadcast_tensor_set: Set[Tensor] = set()
         self.elewise_tensor_set: Set[Tensor] = set()
         self.input_tensor_set: Set[Tensor] = set()
-        self.non_gm_input_tensor_set: Set[Tensor] = set()
         # Extra info initialized after pre-initialization
         self.mid_output_tensor_set: Set[Tensor] = set()
         self.mid_tensor_set: Set[Tensor] = set()
@@ -131,8 +130,7 @@ class ComputeGraphInfo:
                                    (  # self.input_tensor_set hook
                                        (lambda _tensor: isinstance(_tensor.op, PlaceholderOp),
                                         lambda _tensor: self.input_tensor_set.add(_tensor),
-                                        lambda _tensor: self.non_gm_input_tensor_set.add(_tensor)
-                                        if not _tensor.op.input_tensors else None),
+                                        lambda _tensor: None),
                                        # self.reduce_tensor_set hook
                                        (lambda _tensor: _tensor.op.tag.find("reduce") != -1,
                                         lambda _tensor: self.reduce_tensor_set.add(_tensor),
@@ -219,7 +217,7 @@ class ComputeGraphInfo:
                 # Tensor in output and has consumers is middle_out_tensor
                 self.mid_output_tensor_set.add(tensor)
                 self.mid_tensor_set.add(tensor)
-            elif tensor not in self.output_tensor_set | self.input_tensor_set | self.non_gm_input_tensor_set:
+            elif tensor not in self.output_tensor_set | self.input_tensor_set:
                 self.mid_tensor_set.add(tensor)
 
     @staticmethod

@@ -70,7 +70,7 @@ class ReduceGroupSchedule:
         self._before_reduce_tensor_set = set()
 
         # mid tensor include pure mid tensor and non gm input tensor
-        self._mid_tensor_set = graph_info.mid_tensor_set | graph_info.non_gm_input_tensor_set
+        self._mid_tensor_set = graph_info.mid_tensor_set
         # real output except mid output tensor
         self._real_pure_output = graph_info.real_output_tensor_set - graph_info.mid_output_tensor_set
         # get last endpoint output tensor
