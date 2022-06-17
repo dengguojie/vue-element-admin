@@ -1,0 +1,394 @@
+[
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 4, 10240],
+        "typical_shape": [16, 4, 10240],
+        "oir_shape": [-1, 4, 10240],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 4, 10240],
+        "oir_shape":[-1, 4, 10240],
+        "shape_range": [[1,100]],
+        "typical_shape": [16, 4, 10240],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_000"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "typical_shape": [16, 28, 52],
+        "oir_shape": [-1, 28, 52],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "oir_shape":[-1, 28, 52],
+        "shape_range": [[1,100]],
+        "typical_shape": [16, 28, 52],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_001"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "typical_shape": [16, 28, 52],
+        "oir_shape": [-1, 28, 52],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "oir_shape":[-1, 28, 52],
+        "shape_range": [[1,100]],
+        "typical_shape": [16, 28, 52],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_002"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 1],
+        "typical_shape": [16, 1],
+        "oir_shape": [-1, 1],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 1],
+        "typical_shape": [16, 1],
+        "oir_shape": [-1, 1],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_003"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 11],
+        "typical_shape": [16, 11],
+        "oir_shape": [-1, 11],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 11],
+        "typical_shape": [16, 11],
+        "oir_shape": [-1, 11],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_004"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 28, -1],
+        "typical_shape": [16, 28, 52],
+        "oir_shape": [-1, 28, -1],
+        "shape_range": [[0,187147909],[52, 18714]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[2],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "oir_shape":[-1, 28, 52],
+        "shape_range": [[1,100]],
+        "typical_shape": [16, 28, 52],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_005"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "typical_shape": [16, 28, 52],
+        "oir_shape": [-1, 28, 52],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "oir_shape":[-1, 28, 52],
+        "shape_range": [[1,100]],
+        "typical_shape": [16, 28, 52],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_006"
+  },
+  {
+    "op": "Cumsum",
+    "calc_expect_func_file" : "test_cumsum_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "typical_shape": [16, 28, 52],
+        "oir_shape": [-1, 28, 52],
+        "shape_range": [[1,100]],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": ["float16"]
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[1],
+        "name": "axis",
+        "is_const": true,
+        "type": ["int32"]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-1, 28, 52],
+        "oir_shape":[-1, 28, 52],
+        "shape_range": [[1,100]],
+        "typical_shape": [16, 28, 52],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "y",
+        "type": ["float16"]
+      }
+    ],
+    "attr":[
+      {
+          "name": "exclusive",
+          "value": false,
+          "type": "bool"
+      },
+      {
+          "name": "reverse",
+          "value": false,
+          "type": "bool"
+      }
+    ],
+    "case_name": "test_Cumsum_float16_false_false_007"
+  }
+]

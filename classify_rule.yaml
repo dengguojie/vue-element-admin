@@ -1211,6 +1211,7 @@ vector_B:
       - ops/built-in/op_tiling/bninference_d.cc
       - ops/built-in/op_tiling/bounding_box_decode.cc
       - ops/built-in/op_tiling/broadcast_to.cc
+      - ops/built-in/op_tiling/cumsum.cc
       - ops/built-in/op_tiling/concat.cc
       - ops/built-in/op_tiling/concat_offset.cc
       - ops/built-in/op_tiling/diag.cc
@@ -1398,6 +1399,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/clip_by_value.py
       - ops/built-in/tbe/impl/dynamic/cos.py
       - ops/built-in/tbe/impl/dynamic/cosh.py
+      - ops/built-in/tbe/impl/dynamic/cum_computer.py
+      - ops/built-in/tbe/impl/dynamic/cumsum.py
       - ops/built-in/tbe/impl/dynamic/data_format_dim_map.py
       - ops/built-in/tbe/impl/dynamic/in_training_reduce_grad.py
       - ops/built-in/tbe/impl/dynamic/in_training_update_grad.py
