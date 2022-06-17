@@ -18,6 +18,7 @@ dynamic operator
 # 'pylint: disable=W0622
 from __future__ import absolute_import as _abs
 from .binary_query_register import register_binary_match
+from .dot import dot
 from .addcdiv import addcdiv
 from .aipp import aipp
 from .avg_pool_1d import avg_pool_1d
