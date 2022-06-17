@@ -1804,9 +1804,8 @@ bool Norm<T>::WriteTilingData() {
   }
 
   auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-  return context->WriteVarAttrs(tiling_key_uint);
 
-  return true;
+  return context->WriteVarAttrs(tiling_key_uint);
 }
 
 template <typename T>

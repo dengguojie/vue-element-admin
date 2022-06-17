@@ -31,7 +31,6 @@ from typing import Union
 
 from tbe import tvm
 from tbe.common.platform import ASCEND_910B
-from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import decode
 from tbe.common.utils import do_op_tiling
@@ -1489,7 +1488,7 @@ class NormInfo:
 
     def _gen_reduce_pattern(self):
         shape_len = len(self.shape_before_reduce)
-        pattern_list = ["R" if index in self.reduce_axis_indices else "A" for index in range(shape_len)]
+        pattern_list = ("R" if index in self.reduce_axis_indices else "A" for index in range(shape_len))
 
         return ''.join(pattern_list)
 
@@ -1597,7 +1596,7 @@ class NormInfo:
                     _tensor.op.tag in ("reduce_max", "reduce_min") and self.is_reduce_last_axis
                 _last_dim = util.shape_to_list(self.shape_before_reduce)[-1]
                 _last_dim_is_known = isinstance(_last_dim, int)
-                if get_soc_spec(SOC_VERSION) != ASCEND_910B:
+                if get_soc_spec("SHORT_SOC_VERSION") != ASCEND_910B:
                     # 910B use vcmax and vcmin all the time
                     _reduce_max_or_min_use_vc = _tensor.dtype == "float16"
                     if get_context().get_current_compute().get("_mode") == "const":
