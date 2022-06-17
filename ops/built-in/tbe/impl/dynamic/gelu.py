@@ -189,9 +189,9 @@ def gelu_compute(input_x, output_y, kernel_name="gelu", impl_mode=None):
 
 
 # 'pylint: disable=invalid-name
+@register_operator("Gelu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-@register_operator("Gelu")
 def gelu(x, y, kernel_name="gelu", impl_mode=None):
     """
     mathematical formula of gelu(x):

@@ -25,6 +25,15 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class BNInferAttrInfo:
+    """
+    define BNInfer attr info
+    """
+    ATTR_EPSILON = OpAttr(0, "epsilon", "Float", 0.0000001)
 
 
 def _check_dtype(dtype_x, dtype_scale, dtype_offset, dtype_mean, dtype_variance):
@@ -109,8 +118,8 @@ def bn_infer_compute(x, scale, offset, mean, variance, y, epsilon, kernel_name="
         multiplier_div = tbe.cast_to(multiplier_div, "float32")
         addend_sub = tbe.cast_to(addend_sub, "float32")
 
-    multiplier = tbe.broadcast(multiplier_div, shape_x)
-    addend = tbe.broadcast(addend_sub, shape_x)
+    multiplier = tbe.broadcast(multiplier_div, shape_max)
+    addend = tbe.broadcast(addend_sub, shape_max)
     res = tbe.vadd(tbe.vmul(multiplier, x), addend)
     if is_cast:
         res = tbe.cast_to(res, "float16")
@@ -121,7 +130,7 @@ def bn_infer_compute(x, scale, offset, mean, variance, y, epsilon, kernel_name="
 @register_operator("BNInfer")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_infer(x, scale, offset, mean, variance, y, epsilon, kernel_name="bn_infer"):
     """
     algorithm: fused_batch_norm_v2
@@ -180,13 +189,14 @@ def bn_infer(x, scale, offset, mean, variance, y, epsilon, kernel_name="bn_infer
             offset_input = tvm.placeholder(shape_list[2], name="offset_input", dtype=dtype_offset.lower())
             mean_input = tvm.placeholder(shape_list[3], name="mean_input", dtype=dtype_mean.lower())
             variance_input = tvm.placeholder(shape_list[4], name="variance_input", dtype=dtype_variance.lower())
+            epsilon_input = get_attr_by_cls(epsilon, BNInferAttrInfo.ATTR_EPSILON, dtype_variance)
             res = bn_infer_compute(x_input,
                                    scale_input,
                                    offset_input,
                                    mean_input,
                                    variance_input,
                                    y,
-                                   epsilon,
+                                   epsilon_input,
                                    kernel_name=kernel_name)
             tensors.append([x_input, scale_input, offset_input, mean_input, variance_input, res])
         with tvm.target.cce():

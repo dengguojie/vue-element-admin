@@ -25,6 +25,15 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class BNInferGradAttrInfo:
+    """
+    define BNInferGrad attr info
+    """
+    ATTR_EPSILON = OpAttr(0, "epsilon", "Float", 0.0000001)
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -135,12 +144,13 @@ def bn_infer_grad(grads, scale, batch_variance, x_backprop, epsilon=0.0001, kern
             batch_variance_input = tvm.placeholder(shape_batch_variance,
                                                    name="batch_variance_input",
                                                    dtype=batch_variance_dtype)
+            epsilon_input = get_attr_by_cls(epsilon, BNInferGradAttrInfo.ATTR_EPSILON, batch_variance_dtype)
 
             res = bn_infer_grad_compute(grads_input,
                                         scale_input,
                                         batch_variance_input,
                                         x_backprop,
-                                        epsilon,
+                                        epsilon_input,
                                         kernel_name=kernel_name)
             tensors.append([grads_input, scale_input, batch_variance_input, res])
         with tvm.target.cce():

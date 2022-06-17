@@ -124,8 +124,8 @@ def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
     mask_dtype_list = ("bool", "int8")
     para_check.check_dtype(mask_dtype, mask_dtype_list)
 
-    if mask_dtype == "bool":
-        mask_dtype = "int8"
+    if mask_dtype_lower == "bool":
+        mask_dtype_lower = "int8"
 
     value_dtype_list = ("float16", "float32", "int8", "int32")
     para_check.check_dtype(value_dtype, value_dtype_list)

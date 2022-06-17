@@ -41,6 +41,10 @@ Status FusedMulApplyMomentumPreCheck(const ge::NodePtr& node) {
       fused_mul_apply_momentum_op->GetInputDesc("var").GetDataType() != ge::DT_FLOAT16) {
     return NOT_CHANGED;
   }
+  // check output accum desc
+  if (fused_mul_apply_momentum_op->GetOutputDescPtr(1) != nullptr) {
+    return NOT_CHANGED;
+  }
   return SUCCESS;
 }
 

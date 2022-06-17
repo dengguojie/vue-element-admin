@@ -28,6 +28,18 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
 from impl.util.util_compute import check_support_fusion
+from impl.util.util_common import is_unknown_rank_input
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class BNInferenceDAttrInfo:
+    """
+    define BNInferenceD attr info
+    """
+    ATTR_MOMENTUM = OpAttr(0, "momentum", "Float", 0.999)
+    ATTR_EPSILON = OpAttr(1, "epsilon", "Float", 0.00001)
+    ATTR_MODE = OpAttr(3, "mode", "Int", 1)
 
 
 # 'pylint: disable=invalid-name,redefined-outer-name,too-many-locals
@@ -308,7 +320,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
 
 
 # 'pylint: disable=too-many-branches
-def brodcast_inputs_shape(x, mean, variance, scale, offset):
+def brodcast_inputs_shape(x, mean):
     """
     :param x:x tensor
     :param mean: mean tensor
@@ -337,17 +349,15 @@ def brodcast_inputs_shape(x, mean, variance, scale, offset):
         c1 = shape_x[1]
         c0 = shape_x[4]
     shape_mean = mean.get("shape")
-    shape_variance = variance.get("shape")
-
     if format_x in ("ND", "NCHW", "NHWC"):
         shape_mean = [1] * len(shape_x[:index_c]) + list(shape_mean) \
             + [1] * len(shape_x[index_c + 1:])
-        shape_variance = [1] * len(shape_x[:index_c]) + list(shape_variance) \
-            + [1] * len(shape_x[index_c + 1:])
     else:
         shape_mean = [1, c1, 1, 1, c0]
-        shape_variance = [1, c1, 1, 1, c0]
+    return [shape_x, shape_mean]
 
+
+def get_l1_depth_fusion(x, mean, variance, scale, offset):
     shape_scale = {}
     shape_offset = {}
     if scale is not None:
@@ -364,20 +374,14 @@ def brodcast_inputs_shape(x, mean, variance, scale, offset):
     _, l1_fusion_type = get_l1_paras(variance)
     is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
-    shape_scale_new = None
-    shape_offset_new = None
-
     if len(shape_scale) > 0:
-        shape_scale_new = get_param_scale_shape(shape_x, shape_scale)
         _, l1_fusion_type = get_l1_paras(scale)
         is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
         if len(shape_offset) > 0:
-            shape_offset_new = shape_scale_new
             _, l1_fusion_type = get_l1_paras(offset)
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-
-    return [shape_x, shape_mean, shape_variance, shape_scale_new, shape_offset_new, is_l1_depth_fusion]
+    return is_l1_depth_fusion
 
 
 def get_param_scale_shape(shape_x, shape_scale):
@@ -433,8 +437,8 @@ def get_l1_paras(x):
 @register_operator("BNInferenceD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
-                            para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_INT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)
 def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
                   use_global_stats, mode, kernel_name="bninference"):
@@ -495,24 +499,25 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
         dtype_offset = offset.get("dtype")
         para_check.check_dtype(dtype_offset.lower(), checklist, param_name="offset")
 
-    # brodcast inputs shape
-    shape_x, shape_mean, shape_variance, _, _, is_l1_depth_fusion = brodcast_inputs_shape(x, mean,
-                                                                                          variance, scale, offset)
+    is_l1_depth_fusion = get_l1_depth_fusion(x, mean, variance, scale, offset)
+    is_unknown_rank = is_unknown_rank_input([x, mean])
+    if is_unknown_rank:
+        x, mean = [x, x] if is_unknown_rank_input(x) else [mean, mean]
+        shape_mean = [-2]
+    else:
+        # brodcast inputs shape
+        shape_x, shape_mean = brodcast_inputs_shape(x, mean)
+        # compute mean shape
+        mean["shape"] = shape_mean
 
-    x["shape"] = shape_x
-
-    # compute mean shape
-    mean["shape"] = shape_mean
+        mean_range = []
+        for i, _range in enumerate(x["range"]):
+            _range = (shape_mean[i], shape_mean[i]) if shape_mean[i] != -1 else _range
+            mean_range.append(_range)
+        mean["range"] = tuple(mean_range)
 
     tbe_context.get_context().add_compile_info("broadcast_mean_shape", shape_mean)
-
-    mean_range = []
-    for i, _range in enumerate(x["range"]):
-        _range = (shape_mean[i], shape_mean[i]) if shape_mean[i] != -1 else _range
-        mean_range.append(_range)
-    mean["range"] = tuple(mean_range)
-
-    variance["shape"] = shape_variance
+    tbe_context.get_context().add_compile_info("is_unknown_rank", is_unknown_rank)
 
     # op compute and schedule
     ins = classify([x, mean], OpPatternMode.ELEWISE_WITH_BROADCAST)
@@ -531,21 +536,26 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
             data_mean = tvm.placeholder(shape_mean, name="data_mean", dtype=dtype_mean)
             data_variance = tvm.placeholder(shape_mean, name="data_variance", dtype=dtype_variance)
 
+            # attrs
+            momentum_input = get_attr_by_cls(momentum, BNInferenceDAttrInfo.ATTR_MOMENTUM, dtype_x)
+            epsilon_input = get_attr_by_cls(epsilon, BNInferenceDAttrInfo.ATTR_EPSILON, dtype_x)
+            mode_input = get_attr_by_cls(mode, BNInferenceDAttrInfo.ATTR_MODE, "int32")
+
             # add all tensors
             if scale is not None and offset is not None:
                 data_scale = tvm.placeholder(shape_mean, name="data_scale", dtype=dtype_scale)
                 data_offset = tvm.placeholder(shape_mean, name="data_offset", dtype=dtype_offset)
                 res = bninference_d_compute(data_x, data_mean, data_variance, data_scale, data_offset,
-                                            y, momentum, epsilon, use_global_stats, mode)
+                                            y, momentum_input, epsilon_input, use_global_stats, mode_input)
                 tensor_list = [data_x, data_mean, data_variance, data_scale, data_offset, res]
             elif scale is not None and offset is None:
                 data_scale = tvm.placeholder(shape_mean, name="data_scale", dtype=dtype_scale)
                 res = bninference_d_compute(data_x, data_mean, data_variance, data_scale, None,
-                                            y, momentum, epsilon, use_global_stats, mode)
+                                            y, momentum_input, epsilon_input, use_global_stats, mode_input)
                 tensor_list = [data_x, data_mean, data_variance, data_scale, res]
             else:
                 res = bninference_d_compute(data_x, data_mean, data_variance, None, None,
-                                            y, momentum, epsilon, use_global_stats, mode)
+                                            y, momentum_input, epsilon_input, use_global_stats, mode_input)
                 tensor_list = [data_x, data_mean, data_variance, res]
 
             tensors.append(tensor_list)

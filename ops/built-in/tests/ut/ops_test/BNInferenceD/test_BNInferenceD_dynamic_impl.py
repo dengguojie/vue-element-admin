@@ -44,8 +44,28 @@ case2 = {
     "support_expect": True
 }
 
+case3 = {
+    "params": [
+        {"shape": (-2,),"dtype":"float16","format":"NCHW","ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,None), (1,None),(1,None),(1,None)]},
+        {"shape": (-2,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-2,),"dtype": "float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-2,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-2,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-2,),"dtype":"float16", "format":"NCHW", "ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,None), (1,None),(1,None),(1,None)]},
+        0.999,
+        0.001,
+        True,
+        1
+    ],
+    "case_name": "bninferenced_dynamic_3",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910A"])

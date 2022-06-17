@@ -1457,6 +1457,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/log1p.py
       - ops/built-in/tbe/impl/dynamic/logical_not.py
       - ops/built-in/tbe/impl/dynamic/leaky_relu_grad.py
+      - ops/built-in/tbe/impl/dynamic/masked_fill.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad.py
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmaxv1.py
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmaxv2.py
@@ -3193,7 +3194,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/diag.py
       - ops/built-in/tbe/impl/dynamic/pad.py
       - ops/built-in/tbe/impl/dynamic/concat_offset.py
-      - ops/built-in/tbe/impl/dynamic/masked_fill.py
       - ops/built-in/tbe/impl/dynamic/sub.py
       - ops/built-in/tbe/impl/dynamic/non_zero.py
       - ops/built-in/tbe/impl/dynamic/acos.py
