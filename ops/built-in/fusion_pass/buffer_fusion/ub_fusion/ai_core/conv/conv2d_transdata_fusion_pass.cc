@@ -195,39 +195,39 @@ Status Conv2dTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mapp
   vector<ge::NodePtr> transdata2_nodes = GetMatchedNodesByDescName(kPatternTransData2, mapping);
   FUSION_PASS_CHECK(transdata1_nodes.empty(),
                     OP_LOGD(kFusedOpType.c_str(), " Pre TransData node is not matched."),
-                    return NOT_CHANGED);
+                    return SUCCESS);
   FUSION_PASS_CHECK(cube_nodes.empty(),
                     OP_LOGD(kFusedOpType.c_str(), "Conv2d node is not matched."),
-                    return NOT_CHANGED);
+                    return SUCCESS);
   FUSION_PASS_CHECK(transdata2_nodes.empty(),
                     OP_LOGD(kFusedOpType.c_str(), "Post TransData node is not matched."),
-                    return NOT_CHANGED);
+                    return SUCCESS);
 
   ge::NodePtr cube_node = cube_nodes[0];
   FUSION_PASS_CHECK(!CheckOpCube(cube_node), OP_LOGI(kFusedOpType.c_str(), "Check op cube failed."),
-                    return NOT_CHANGED);
+                    return SUCCESS);
 
   for (auto &transdata1_node : transdata1_nodes) {
     FUSION_PASS_CHECK(transdata1_node == nullptr,
                       OP_LOGI(kFusedOpType.c_str(), "Failed to get pre transData node. "),
-                      return NOT_CHANGED);
+                      return SUCCESS);
     FUSION_PASS_CHECK(!CheckTransDataFormat(transdata1_node, true),
                       OP_LOGI(kFusedOpType.c_str(), "unsupport input TransData format. "),
-                      return NOT_CHANGED);
+                      return SUCCESS);
     ge::OpDescPtr transdata_desc = transdata1_node->GetOpDesc();
     FUSION_PASS_CHECK(transdata_desc == nullptr,
                       OP_LOGI(kFusedOpType.c_str(), "Failed to get opdesc of pre transData node. "),
-                      return NOT_CHANGED);
+                      return SUCCESS);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(transdata_desc, UB_FUSION_OP_TYPE, kOpConv2D),
                       OP_LOGI(kFusedOpType.c_str(), "set op_type from TransData to Conv2D failed. "),
-                      return NOT_CHANGED);
+                      return SUCCESS);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(transdata_desc, "graph_pattern", "_transdata_conv2d_transdata"),
                       OP_LOGI(kFusedOpType.c_str(), "set graph_pattern failed. "),
-                      return NOT_CHANGED);
+                      return SUCCESS);
   }
   FUSION_PASS_CHECK(!CheckTransDataFormat(transdata2_nodes[0], false),
                     OP_LOGI(kFusedOpType.c_str(), "unsupport output TransData format. "),
-                    return NOT_CHANGED);
+                    return SUCCESS);
 
   fusion_nodes = GetMatchedNodes(mapping);
 
