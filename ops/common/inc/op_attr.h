@@ -79,6 +79,27 @@ bool GetAttrValue(const T& paras, const struct AttrBase& attr_info, int64_t& val
  * @param [in] paras: ge::Operator
  * @param [in] attr_info: attr info pair(attr_idx, attr_name)
  * @param [out] value: store value.
+ * @param [in] default_value: default_value
+ * @return bool: flag of success or not
+ */
+template <typename T>
+bool GetAttrValue(const T& paras, const struct AttrBase& attr_info, int64_t& value, 
+                  const int64_t default_value) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
+  if (!AttrUtils::GetInt(op_desc, attr_info.attr_name, value)) {
+    OP_LOGW("GetAttrValue", "Get the attr of %s is failed. return false", attr_info.attr_name.c_str());
+    value = default_value;
+    return false;
+  }
+  OP_LOGD("GetAttrValue", "Get the attr of %s is %d", attr_info.attr_name.c_str(), value);
+  return true;
+}
+
+/*
+ * @brief: read constvalue from paras store into values
+ * @param [in] paras: ge::Operator
+ * @param [in] attr_info: attr info pair(attr_idx, attr_name)
+ * @param [out] value: store value.
  * @return bool: flag of success or not
  */
 template <typename T>

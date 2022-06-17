@@ -102,9 +102,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling1) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -151,9 +151,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling2) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -199,9 +199,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling3) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -247,9 +247,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling4) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -295,9 +295,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling5) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -343,9 +343,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling6) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -391,9 +391,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling7) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -443,9 +443,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling8) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -800,9 +800,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling16) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
- 
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);
@@ -843,9 +843,9 @@ TEST_F(NLLLossTiling, NLLLoss_tiling17) {
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(opParas, iter->second, compileInfo, runInfo);

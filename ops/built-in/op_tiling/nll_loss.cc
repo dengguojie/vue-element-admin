@@ -34,6 +34,7 @@ namespace {
   constexpr int32_t RESIZE_VALUE_4 = 4;
   constexpr int32_t INDEX_THREE = 3;
   constexpr int32_t IN_SIZE = 2;
+  const struct ops::AttrBase IGNORE_INDEX_DIMS_INFO(1, "ignore_index");
 }
 
 namespace optiling {
@@ -71,7 +72,7 @@ static int64_t GetMod(const int64_t l_value, const int64_t r_value) {
 }
 
 bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& op_compile_info, int64_t& core_num,
-                      int64_t& ub_size, int64_t& reduction, int64_t& ignore_index) {
+                      int64_t& ub_size, int64_t& reduction) {
   OP_TILING_CHECK(
       op_compile_info.size() != 4,
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(4), is %zu",
@@ -80,9 +81,8 @@ bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& op
   core_num = op_compile_info[0];
   ub_size = op_compile_info[1];
   reduction = op_compile_info[2];
-  ignore_index = op_compile_info[INDEX_THREE];
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%lld], "
-          "ignore_index[%lld].", core_num, ub_size, reduction, ignore_index);
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%lld], ",
+          core_num, ub_size, reduction);
 
   return true;
 }
@@ -309,11 +309,6 @@ bool NLLLossParseFunc(const std::string& op_type,
                   return false);
   compile_value[2] = mode_it->second;
 
-  // get ignore_index value
-  OP_TILING_CHECK(!GetCompileValue(all_vars, "ignore_index", compile_value[3]),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossParseFunc, get ignore_index error"),
-                  return false);
-
   OP_LOGI(op_type.c_str(), "GetCompileParams success.");
   return true;
 }
@@ -361,6 +356,10 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   int64_t min_aligned = 1;
   bool is_left_data = true;
 
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, IGNORE_INDEX_DIMS_INFO, ignore_index),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "GetCompileParams, get ignore_index failed."),
+                  return false);
+
   auto input_x_desc = operator_info->MutableInputDesc(0);
   auto input_target_desc = operator_info->MutableInputDesc(1);
   auto input_weight_desc = operator_info->MutableInputDesc(2);
@@ -383,7 +382,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
     }
   }
 
-  if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction, ignore_index)) {
+  if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams error.");
     return false;
   }

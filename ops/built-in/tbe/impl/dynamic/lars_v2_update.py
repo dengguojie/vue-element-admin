@@ -25,6 +25,16 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.util_attr_common import OpAttr
+from impl.util.util_attr_common import get_attr_by_cls
+
+
+class LarsV2UpdateAttrInfo:
+    """
+    define attr info
+    """
+    ATTR_HYPERPARAM = OpAttr(0, "hyperparam", "Float", 0.001)
+    ATTR_EPSILON = OpAttr(1, "epsilon", "Float", 1e-5)
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
@@ -52,10 +62,12 @@ def lars_v2_update_compute(inputs_data, hyperparam, epsilon, use_clip, out, kern
     None
     """
     weight, grad, weight_s, grad_s, weight_decay, learning_rate = inputs_data
-
+    weight_dtype = weight.dtype
     weight_norm = tbe.vsqrt(weight_s)
     grad_norm = tbe.vsqrt(grad_s)
 
+    hyperparam = get_attr_by_cls(hyperparam, LarsV2UpdateAttrInfo.ATTR_HYPERPARAM, weight_dtype)
+    epsilon = get_attr_by_cls(epsilon, LarsV2UpdateAttrInfo.ATTR_EPSILON, weight_dtype)
     coeff_weight_norm = tbe.vmuls(weight_norm, hyperparam)
     weight_norm_decay = tbe.vmul(weight_norm, weight_decay)
     weight_grad_norm = tbe.vadd(weight_norm_decay, grad_norm)

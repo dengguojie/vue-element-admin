@@ -52,7 +52,7 @@ static const int64_t MODE_MEAN = 2;
 static const map<std::string, int64_t> REDUCE_MODE_STR_MAP = {
     {"none", MODE_NONE}, {"sum", MODE_SUM}, {"mean", MODE_MEAN}};
 // define ignore_idx attr idx and name
-static const std::pair<int64_t, std::string> IGNORE_IDX_ATTR_INFO{1, "ignore_index"};
+const struct ops::AttrBase IGNORE_IDX_ATTR_INFO(1, "ignore_index");
 static const int64_t IGNORE_IDX_DEFAULT_VALUE = -100;
 
 static string to_string(const ByteBuffer& tiling_data) {

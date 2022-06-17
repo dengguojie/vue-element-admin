@@ -792,8 +792,7 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
     tbe_context.get_context().add_compile_info("vars", {
         "ub_size": ub_size,
         "core_num": Constant.CORE_NUM,
-        "reduction": reduction,
-        "ignore_index": ignore_index
+        "reduction": reduction
     })
 
     if data_weight is None:

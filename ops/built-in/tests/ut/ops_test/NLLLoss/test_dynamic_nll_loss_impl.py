@@ -185,6 +185,46 @@ ut_case.add_case(["Ascend910A"],
                                                 "float32", "int32", "ND",
                                                 "mean", -100, "case_16", "success"))
 
+def gen_nllloss_case_unknown_shape(dynamic_input_shape_list, ori_input_shape_list,
+                                   dtype, dtype_target, src_format, reduction,
+                                   ignore_idx, case_name_val, expect):
+    """
+    generate ut case
+    """
+    inputs = []
+    for i in range(3):
+        if i == 1:
+            input_type = dtype_target
+        else:
+            input_type = dtype
+        inputs.append({"shape": dynamic_input_shape_list[i],
+                       "dtype": input_type,
+                       "ori_shape": ori_input_shape_list[i],
+                       "ori_format": src_format,
+                       "format": src_format})
+    outputs = []
+    for i in range(2):
+        outputs.append(
+            {"shape": (-1,),
+            "dtype": dtype,
+            "ori_shape": (1,),
+            "ori_format": src_format,
+            "format": src_format,
+            'range': [[1, 200000000]]},
+        )
+    return {"params": [inputs[0], inputs[1], inputs[2], outputs[0],
+                       outputs[1], reduction, ignore_idx],
+            "case_name": case_name_val,
+            "expect": expect,
+            "support_expect": True}
+
+
+ut_case.add_case(["Ascend910A"],
+                 gen_nllloss_case_unknown_shape([(-2,), (-1,), (-1,)],
+                                                [(200, 15003), (200,), (15003,)],
+                                                "float32", "int32", "ND",
+                                                "none", -100, "case_7", "success"))
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
