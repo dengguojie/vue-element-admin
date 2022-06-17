@@ -111,6 +111,13 @@ ut_case.add_case("Ascend310", case2)
 ut_case.add_case("Ascend310", case3)
 ut_case.add_case("Ascend310", case4)
 
+def test_ln_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
+ut_case.add_cust_test_func(test_func=test_ln_import_lib)
+
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
     ut_case.run("Ascend310")

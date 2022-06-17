@@ -80,9 +80,9 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
     return result
 
 
+@register_operator("FastGelu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME,
                             para_check.OPTION_ATTR_STR)
-@register_operator("FastGelu")
 def fast_gelu(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     mathematical formula of fast_gelu(x):
@@ -116,9 +116,9 @@ def fast_gelu(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.H
             result = fast_gelu_compute(data, output_y, kernel_name, impl_mode)
 
             tensors.append([data, result])
-
-    with tvm.target.cce():
-        schedules = tbe.auto_schedule(result)
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(result)
+        schedules.append(sch)
 
     config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
 

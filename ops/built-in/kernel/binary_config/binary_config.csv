@@ -95,6 +95,8 @@ Equal,equal.json
 Erf,erf.json
 Exp,exp.json
 Floor,floor.json
+FastGelu,fast_gelu.json
+FastGeluGrad,fast_gelu_grad.json
 GatherNd,gather_nd.json
 GeluGrad,gelu_grad.json
 Inv,inv.json
