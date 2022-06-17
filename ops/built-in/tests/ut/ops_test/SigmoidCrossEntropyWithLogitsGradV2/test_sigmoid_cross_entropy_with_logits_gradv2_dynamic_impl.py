@@ -95,11 +95,30 @@ case5 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_sh
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (2, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (2, 2), "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (2, 2), "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (2, 2), "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (2, 2), "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (2, 2), "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND",
+                     "ori_shape": (2, 2), "ori_format": "ND", "range": [(1, 100), (1, 100)]},
+                    "mean"
+                    ],
+         "case_name": "case6",
+         "expect": "success",
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):

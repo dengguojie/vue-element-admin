@@ -16,6 +16,7 @@
 """
 sigmoid_cross_entropy_with_logits_grad_v2
 """
+import math
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
@@ -40,7 +41,7 @@ def get_cof_by_shape(predict_shape, precision_dtype):
             reduce_elts *= i
 
     if isinstance(reduce_elts, float):
-        cof = reduce_elts**(-1)
+        cof = reduce_elts if math.isclose(reduce_elts, 0.0) else reduce_elts ** (-1)
         cof = tvm.const(cof, dtype=precision_dtype)
 
     else:

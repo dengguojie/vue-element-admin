@@ -15,6 +15,7 @@
 """
 binary_cross_entropy_grad
 """
+import math
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -119,7 +120,7 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
         for i in x_shape:
             reduce_elts *= i
         if isinstance(reduce_elts, float):
-            cof = reduce_elts if reduce_elts == 0.0 else reduce_elts ** (-1)
+            cof = reduce_elts if math.isclose(reduce_elts, 0.0) else reduce_elts ** (-1)
             cof = tvm.const(cof, dtype=calc_dtype)
         else:
             cof = tbe.var("cof", dtype=calc_dtype)
