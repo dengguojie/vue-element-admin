@@ -67,7 +67,8 @@
                 "LayerNormGradFusionRule2":"4227",
                 "ASliceConcatV2FusionPass": "4003",
                 "GroupNormReluFusionPass": "4228",
-                "GroupNormFusionPass": "4229"
+                "GroupNormFusionPass": "4229",
+                "UnsortedSegmentSumFusionPass": "4004"
             },
             "Down":{
                 "ZConcatDFusionPass":"5000",

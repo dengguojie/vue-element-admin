@@ -1154,7 +1154,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_remove_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_remove_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsum_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsum_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_subgraph_fusion_pass.cc
@@ -3880,7 +3881,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/extremum_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorminfgrad_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_update_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gelu_fusion_pass.h

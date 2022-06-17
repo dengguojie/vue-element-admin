@@ -342,7 +342,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
   graph_fusion/ai_core/tbe_vector_core_fusion_base_pass.cc
   graph_fusion/ai_core/unpack_fusion_pass.cc
-  graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
+  graph_fusion/ai_core/unsortedsegmentsum_fusion_pass.cc
   graph_fusion/ai_core/yolo_fusion_pass.cc
   graph_fusion/ai_core/yolo_v2_detection_output_fusion_pass.cc
   graph_fusion/ai_core/yolo_v3_detection_output_fusion_pass.cc
