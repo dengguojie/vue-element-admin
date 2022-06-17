@@ -25,13 +25,12 @@ from impl.util.platform_adapter import tik as tik_adapter
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl.util.util_common import is_vector_core
 
-
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2**(-126)
+SCALAR_MIN_FP32 = 2 ** (-126)
 # `define a scalar, value = 2**(50)`
-SCALAR_MUL_FP32 = 2**50
+SCALAR_MUL_FP32 = 2 ** 50
 # `define a scalar, value = 2**(26)`
-SCALAR_MUL2_FP32 = 2**26
+SCALAR_MUL2_FP32 = 2 ** 26
 # repeat max num
 MAX_REPEAT_NUM = 255
 # max int64
@@ -44,11 +43,13 @@ PER_LOOP_NUM = 4096
 BLOCK_ELE_B32 = 8
 INVALID_VALUE = -1
 
+
 # 'pylint: disable=too-many-instance-attributes
 class OpBase:
     """
     Class: class that OpBase
     """
+
     def __init__(self):
         self.tik_instance = tik_adapter.Tik()
         self.core_nums = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.CORE_NUM)
@@ -82,6 +83,7 @@ class OpBase:
         ------
         None
         """
+
         def gen_gm_scope(gm_dict, gm_type="input"):
             gm_dtype = gm_dict.get("dtype")
             if util_common.is_unknown([gm_dict]):
@@ -89,7 +91,7 @@ class OpBase:
             else:
                 gm_shape = gm_dict.get("shape")
                 if is_fused_1d:
-                    total_num = functools.reduce(lambda x, y: x*y, gm_shape)
+                    total_num = functools.reduce(lambda x, y: x * y, gm_shape)
                     gm_shape = [total_num]
 
             # get gm name from dict
@@ -244,17 +246,17 @@ def tik_func_vector(tik_instance, _ub, value, dup_len):
     do_dtype = _ub.dtype
     byte_num_one = common_util.get_data_size(do_dtype)
     block_num = constant_util.BLOCK_SIZE // byte_num_one
-    vector_num = block_num*constant_util.REPEAT_STRIDE_EIGHT
+    vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
     repeat = dup_len // vector_num
     repeat_tail = dup_len % vector_num
-    offset = 0
+    offset = ub_offset(_ub)
     while repeat > MAX_REPEAT_NUM:
         tik_instance.vector_dup(vector_num, _ub[offset], value, MAX_REPEAT_NUM, 1, 8)
         repeat = repeat - MAX_REPEAT_NUM
-        offset = offset + vector_num*MAX_REPEAT_NUM
+        offset = offset + vector_num * MAX_REPEAT_NUM
     if repeat > 0:
         tik_instance.vector_dup(vector_num, _ub[offset], value, repeat, 1, 8)
-        offset = offset + vector_num*repeat
+        offset = offset + vector_num * repeat
     if repeat_tail > 0:
         tik_instance.vector_dup(repeat_tail, _ub[offset], value, 1, 1, 8)
 
@@ -378,6 +380,67 @@ def tik_func_vrec(tik_instance, dst_ub, src_ub, do_len, newton_iteration=2,
                             vrec_blk=dst_blk, origin_blk=src_blk, vrec_rep=dst_rep, origin_rep=src_rep)
 
 
+def tik_func_vsingle(tik_instance, function, out_dst, src, copy_num,
+                     dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
+    """
+    tik_func_vsingle
+    """
+    do_dtype = out_dst.dtype
+    byte_num_one = common_util.get_data_size(do_dtype)
+    block_num = constant_util.BLOCK_SIZE // byte_num_one
+    vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
+    repeat_time = copy_num // vector_num
+    repeat_tail = copy_num % vector_num
+    tik_fun = None
+    ori_offset_dst = ub_offset(out_dst)
+    ori_offset_src = ub_offset(src)
+    if function == "vrelu":
+        tik_fun = tik_instance.vrelu
+    elif function == "vexp":
+        tik_fun = tik_instance.vexp
+    elif function == "vln":
+        tik_fun = tik_instance.vln
+    elif function == "vabs":
+        tik_fun = tik_instance.vabs
+    elif function == "vsqrt":
+        tik_fun = tik_instance.vsqrt
+    elif function == "vrsqrt":
+        tik_fun = tik_instance.vrsqrt
+    elif function == "vnot":
+        tik_fun = tik_instance.vnot
+    else:
+        raise RuntimeError("unsupported vector instruction")
+
+    while repeat_time > MAX_REPEAT_NUM:
+        tik_fun(vector_num,
+                out_dst[ori_offset_dst],
+                src[ori_offset_src],
+                255,
+                dst_blk, src_blk,
+                dst_rep, src_rep)
+        repeat_time = repeat_time - MAX_REPEAT_NUM
+        ori_offset_dst = ori_offset_dst + MAX_REPEAT_NUM * block_num * dst_rep
+        ori_offset_src = ori_offset_src + MAX_REPEAT_NUM * block_num * src_rep
+
+    if repeat_time > 0:
+        tik_fun(vector_num,
+                out_dst[ori_offset_dst],
+                src[ori_offset_src],
+                repeat_time,
+                dst_blk, src_blk,
+                dst_rep, src_rep)
+        ori_offset_dst = ori_offset_dst + repeat_time * block_num * dst_rep
+        ori_offset_src = ori_offset_src + repeat_time * block_num * src_rep
+
+    if repeat_tail > 0:
+        tik_fun(repeat_tail,
+                out_dst[ori_offset_dst],
+                src[ori_offset_src],
+                1,
+                dst_blk, src_blk,
+                dst_rep, src_rep)
+
+
 def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
                      dst_blk=1, src0_blk=1, src1_blk=1, dst_rep=8, src0_rep=8,
                      src1_rep=8):
@@ -387,7 +450,7 @@ def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
     do_dtype = out_dst.dtype
     byte_num_one = common_util.get_data_size(do_dtype)
     block_num = constant_util.BLOCK_SIZE // byte_num_one
-    vector_num = block_num*constant_util.REPEAT_STRIDE_EIGHT
+    vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
     repeat_time = copy_num // vector_num
     repeat_tail = copy_num % vector_num
     tik_fun = None
@@ -406,6 +469,8 @@ def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
         tik_fun = tik_instance.vsub
     elif function == "vdiv":
         tik_fun = tik_instance.vdiv
+    elif function == "vor":
+        tik_fun = tik_instance.vor
 
     if function != "vdiv" or tbe_platform.api_check_support("tik.vdiv"):
         while repeat_time > MAX_REPEAT_NUM:
@@ -530,13 +595,13 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
             tik_instance.vconv(block_num, mode, dst_ub[ori_dst_offset], src_ub[ori_src_offset],
                                MAX_REPEAT_NUM, 1, 1, dst_repeat_stride, src_repeat_stride, deqscale=deq_scale)
             repeat = repeat - MAX_REPEAT_NUM
-            ori_dst_offset = ori_dst_offset + block_num*MAX_REPEAT_NUM
-            ori_src_offset = ori_src_offset + block_num*MAX_REPEAT_NUM
+            ori_dst_offset = ori_dst_offset + block_num * MAX_REPEAT_NUM
+            ori_src_offset = ori_src_offset + block_num * MAX_REPEAT_NUM
         if repeat > 0:
             tik_instance.vconv(block_num, mode, dst_ub[ori_dst_offset], src_ub[ori_src_offset],
                                repeat, 1, 1, dst_repeat_stride, src_repeat_stride, deqscale=deq_scale)
-            ori_dst_offset = ori_dst_offset + block_num*repeat
-            ori_src_offset = ori_src_offset + block_num*repeat
+            ori_dst_offset = ori_dst_offset + block_num * repeat
+            ori_src_offset = ori_src_offset + block_num * repeat
         if repeat_tail > 0:
             tik_instance.vconv(repeat_tail, mode, dst_ub[ori_dst_offset], src_ub[ori_src_offset],
                                1, 1, 1, dst_repeat_stride, src_repeat_stride, deqscale=deq_scale)
@@ -606,6 +671,12 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
 
     elif src_dtype in ("float16",) and dst_dtype in ("float32",):
         do_vconv(8, 4)
+
+    elif src_dtype in ("int8",) and dst_dtype in ("float16",):
+        do_vconv(4, 2)
+
+    elif src_dtype in ("uint8",) and dst_dtype in ("float16",):
+        do_vconv(4, 2)
 
     elif src_dtype in ("int32",) and dst_dtype in ("float32",):
         cast_flag = tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32")
@@ -693,7 +764,8 @@ def ub2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, tail_o
             dst[index] = src[index]
 
 
-def ub2gm(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=None):
+def ub2gm(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=None,
+          repeat=1, src_stride=0, dst_stride=0):
     """
     move data from ub to gm
     :param tik_instance: tik instance
@@ -701,6 +773,9 @@ def ub2gm(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     :param src: src ub
     :param count: count to move
     :param burst: burst to move, if is None, burst=ceil(count / block_element), by default None
+    :param repeat: repeat to move
+    :param src_stride: src_stride to move
+    :param dst_stride: dst_stride to move
     :return: None
     """
     if dst.scope != tik.scope_gm:
@@ -716,10 +791,11 @@ def ub2gm(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     block_element = constant_util.BLOCK_SIZE // dtype_size
     if burst is None:
         burst = ceil_div(count, block_element)
-    tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
+    tik_instance.data_move(dst, src, 0, repeat, burst, src_stride, dst_stride)
 
 
-def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=None):
+def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=None,
+          repeat=1, src_stride=0, dst_stride=0):
     """
     move data from gm to ub
     :param tik_instance: tik instance
@@ -727,6 +803,9 @@ def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     :param src: src gm
     :param count: count to move
     :param burst: burst to move, if is None, burst=ceil(count / block_element), by default None
+    :param repeat: repeat to move
+    :param src_stride: src_stride to move
+    :param dst_stride: dst_stride to move
     :return: None
     """
     if dst.scope != tik.scope_ubuf:
@@ -742,7 +821,7 @@ def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     block_element = constant_util.BLOCK_SIZE // dtype_size
     if burst is None:
         burst = ceil_div(count, block_element)
-    tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
+    tik_instance.data_move(dst, src, 0, repeat, burst, src_stride, dst_stride)
 
 
 def ceil_align(count, base):
@@ -812,6 +891,7 @@ def sort_score_idx_by_desc(tik_instance, score_idx, score_idx_out, do_lens, leve
             count_list = [data_lens, data_lens, data_lens, data_lens]
             tik_instance.vmrgsort(score_idx_out[whole_lens * idx], src_list, count_list, False, 1)
             offset.set_as(offset + whole_lens)
+    
     if tail != 0:
         tail_mode = tail // compute_lens
         if tail_mode == 1:
@@ -827,11 +907,13 @@ def sort_score_idx_by_desc(tik_instance, score_idx, score_idx_out, do_lens, leve
                         score_idx[offset + compute_lens * 2:offset + compute_lens * 3]]
             count_list = [data_lens, data_lens, data_lens]
             tik_instance.vmrgsort(score_idx_out[offset], src_list, count_list, False, 1)
+    
     if whole_lens >= do_lens:
         if level % 2 == 0:
             ub2ub(tik_instance, score_idx, score_idx_out, do_lens)
         return INVALID_VALUE
     level += 1
+
     return sort_score_idx_by_desc(tik_instance, score_idx_out, score_idx, do_lens, level)
 
 

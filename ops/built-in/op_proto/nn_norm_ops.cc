@@ -955,6 +955,39 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropV2InferShape) {
 COMMON_INFER_FUNC_REG(LayerNormXBackpropV2, LayerNormXBackpropV2InferShape);
 // ---------------------LayerNormXBackpropV2 END--------------------------
 
+// --------------------------LNDropoutGrad-----------------------
+IMPLEMT_COMMON_INFERFUNC(LNDropoutGradInferShape) {
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    auto input_x_desc = op_desc->GetInputDescPtr(1);
+    auto input_gamma_desc = op_desc->GetInputDescPtr(4);
+
+    auto output_pd_x_desc = op_desc->MutableOutputDesc(0);
+    auto output_pd_x_after_dropout_desc = op_desc->MutableOutputDesc(1);
+    auto output_pd_gamma_desc = op_desc->MutableOutputDesc(2);
+    auto output_pd_beta_desc = op_desc->MutableOutputDesc(3);
+
+    if (input_x_desc == nullptr || input_gamma_desc == nullptr || output_pd_x_desc == nullptr ||
+      output_pd_gamma_desc == nullptr || output_pd_beta_desc == nullptr) {
+      OP_LOGE(TbeGetName(op).c_str(), "LNDropoutGradInferShape get null node ptr");
+      return GRAPH_FAILED;
+    }
+
+    output_pd_x_desc->SetShape(input_x_desc->GetShape());
+    output_pd_x_desc->SetDataType(input_x_desc->GetDataType());
+    output_pd_x_after_dropout_desc->SetShape(input_x_desc->GetShape());
+    output_pd_x_after_dropout_desc->SetDataType(input_x_desc->GetDataType());
+
+    output_pd_gamma_desc->SetShape(input_gamma_desc->GetShape());
+    output_pd_gamma_desc->SetDataType(DT_FLOAT);
+    output_pd_beta_desc->SetShape(input_gamma_desc->GetShape());
+    output_pd_beta_desc->SetDataType(DT_FLOAT);
+
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LNDropoutGrad, LNDropoutGradInferShape);
+// ---------------------LNDropoutGrad END--------------------------
+
 // ----------------DropOutDoMask Op Start-------------------
 IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
   if (!CheckTwoInputDtypeSame(op, "x", "keep_prob")) {

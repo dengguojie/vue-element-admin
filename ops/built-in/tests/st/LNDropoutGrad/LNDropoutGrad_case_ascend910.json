@@ -1,0 +1,1003 @@
+[
+  {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [12288, 1],
+        "format": "ND",
+        "ori_shape": [12288, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [12288, 1],
+        "format": "ND",
+        "ori_shape": [12288, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [64, 768, 16, 16],
+        "format": "ND",
+        "ori_shape": [64, 768, 16, 16],
+        "ori_format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_001"
+  },
+  {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64, 114, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 114, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [64, 114, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 114, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [1824, 1],
+        "format": "ND",
+        "ori_shape": [1824, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [1824, 1],
+        "format": "ND",
+        "ori_shape": [1824, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [64, 114, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 114, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64, 114, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 114, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [64, 114, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64, 114, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_002"
+  },
+  {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [12288,1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [12288,1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [12288, 1],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [12288, 1],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [12288,1024],
+        "format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [12288,1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [12288,1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_003"
+  },
+    {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [32, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [32, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [32, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [32, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [12288, 1],
+        "format": "ND",
+        "ori_shape": [12288, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [12288, 1],
+        "format": "ND",
+        "ori_shape": [12288, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [512],
+        "format": "ND",
+        "ori_shape": [512],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [32, 768, 16, 16],
+        "format": "ND",
+        "ori_shape": [32, 768, 16, 16],
+        "ori_format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [32, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [32, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [32, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [32, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [512],
+        "format": "ND",
+        "ori_shape": [512],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [512],
+        "format": "ND",
+        "ori_shape": [512],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_004"
+  },
+  {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [4, 64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [4, 64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [4, 64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [4, 64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [4, 12288, 1],
+        "format": "ND",
+        "ori_shape": [4, 12288, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [4, 12288, 1],
+        "format": "ND",
+        "ori_shape": [4, 12288, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [4, 64, 768, 16, 16],
+        "format": "ND",
+        "ori_shape": [4, 64, 768, 16, 16],
+        "ori_format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [4, 64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [4, 64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [4, 64, 768, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [4, 64, 768, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_005"
+  },
+    {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [1808, 1],
+        "format": "ND",
+        "ori_shape": [1808, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [1808, 1],
+        "format": "ND",
+        "ori_shape": [1808, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [64,113, 16, 16],
+        "format": "ND",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_006"
+  },
+    {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float32"
+      },
+      {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float32"
+      },
+      {
+        "shape": [1808, 1],
+        "format": "ND",
+        "ori_shape": [1808, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float32"
+      },
+      {
+        "shape": [1808, 1],
+        "format": "ND",
+        "ori_shape": [1808, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [64,113, 16, 16],
+        "format": "ND",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float32"
+      },
+	  {
+        "shape": [64,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [64,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1024],
+        "format": "ND",
+        "ori_shape": [1024],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_007"
+  },
+    {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [3,2768,256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768,256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768, 1],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768, 1],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768,256],
+        "format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [3,2768,256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [3,2768,256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [256],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_008"
+  },
+    {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [3,2768,1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768,1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768, 1],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768, 1],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [3,2768,1536],
+        "format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [3,2768,1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [3,2768,1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1536],
+        "format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_009"
+  },
+    {
+    "op": "LNDropoutGrad",
+    "calc_expect_func_file": "test_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [96,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [96,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "shape": [96,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [96,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [1808, 1],
+        "format": "ND",
+        "ori_shape": [1808, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "variance",
+        "type": "float16"
+      },
+      {
+        "shape": [1808, 1],
+        "format": "ND",
+        "ori_shape": [1808, 1],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "mean",
+        "type": "float16"
+      },
+      {
+        "shape": [1536],
+        "format": "ND",
+        "ori_shape": [1536],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [96,113, 16, 16],
+        "format": "ND",
+        "ori_shape": [96,113, 16, 16],
+        "ori_format": "ND",
+        "value_range": [[1, 1]],
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [96,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [96,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x",
+        "type": "float16"
+      },
+	  {
+        "shape": [96,113, 16, 16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [96,113, 16, 16],
+        "ori_format": "FRACTAL_NZ",
+        "value_range": [[0.01, 0.1]],
+        "name": "pd_x_after_dropout",
+        "type": "float16"
+      },
+      {
+        "shape": [1536],
+        "format": "ND",
+        "ori_shape": [1536],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [1536],
+        "format": "ND",
+        "ori_shape": [1536],
+        "ori_format": "ND",
+        "value_range": [[0.01, 0.1]],
+        "name": "pg_beta",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_LNDropoutGrad_010"
+  }
+]
+

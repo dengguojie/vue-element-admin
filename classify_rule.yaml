@@ -1108,6 +1108,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_dropoutdomaskv3d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_dropoutdomaskv3d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_fusion_pass.h
@@ -1589,6 +1591,7 @@ vector_B:
       - ops/built-in/tbe/impl/masked_fill_range.py
       - ops/built-in/tbe/impl/layer_norm.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
+      - ops/built-in/tbe/impl/ln_dropout_grad.py
       - ops/built-in/tbe/impl/matrix_diag_part_d.py
       - ops/built-in/tbe/impl/minimum_grad.py
       - ops/built-in/tbe/impl/not_equal.py
@@ -1622,6 +1625,7 @@ vector_B:
       - ops/built-in/tbe/impl/util/norm_pattern_adapter.py
       - ops/built-in/tbe/impl/util/reduce_pattern_adapter.py
       - ops/built-in/tbe/impl/util/util_attr_common.py
+      - ops/built-in/tbe/impl/util/util_tik_comm_func.py
       - ops/built-in/tbe/impl_mode/all_ops_impl_mode.ini
       - ops/built-in/tbe/impl_mode/high_performance.ini
       - ops/built-in/tbe/impl_mode/high_performance_for_all.ini
@@ -3300,7 +3304,6 @@ unkown:
       - ops/built-in/tbe/impl/util/fusion_util.py
       - ops/built-in/tbe/impl/util/__init__.py
       - ops/built-in/tbe/impl/util/util_apply_op_schedule.py
-      - ops/built-in/tbe/impl/util/util_tik_comm_func.py
       - ops/built-in/tbe/impl/ascend/_internal_types.py
       - ops/built-in/tbe/impl/ascend/_internal_lib.py
       - ops/built-in/tbe/impl/ascend/ascend_vec_cmd.py

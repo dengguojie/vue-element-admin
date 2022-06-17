@@ -797,6 +797,52 @@ REG_OP(LayerNormBetaGammaBackpropV2)
     .OP_END_FACTORY_REG(LayerNormBetaGammaBackpropV2)
 
 /**
+* @brief LNDropoutGrad operator interface implementation
+*   calculating: dy, x, variance, mean, gamma
+*   pd_xl = dy*gamma
+*   sub_x_mean = x - mean
+*   var_elta_2 = np.power((variance + EPSLON), (-0.5))
+*   pd_var = sum(pd_xl * sub_x_mean, reduce_axis, keepdims=True) * var_elta_2 * var_elta_2 * var_elta_2 * (-0.5)
+*   pd_mean = sum(pd_xl, reduce_axis, keepdims=True) * var_elta_2 * (-1.0)
+*   pd_x = pd_xl * var_elta_2 + pd_var * (2.0 / m) * sub_x_mean + pd_mean * (1.0 / m)
+*   pd_x_dropout = pd_x * mask * (1 / keep_prob)
+*   pd_gamma = sum(dy * sub_x_mean * var_elta_2, param_axis, keepdims=True)
+*   pd_beta = sum(dy, param_axis, keepdims=True)
+
+* @par Inputs:
+* Five inputs, including:
+*  @li dy: A Tensor. Must be one of the following types: float16, float32.
+*  @li x: A Tensor. Must be one of the following types: float16, float32.
+*  @li variance: A Tensor. Must be one of the following types: float16, float32.
+*  @li mean: A Tensor. Must be one of the following types: float16, float32.
+*  @li gamma: A Tensor. Must be one of the following types: float16, float32.
+*  @li mask: A Tensor. Must be one of the following types: uint8, int8.\n
+
+* @par Outputs:
+* Three outputs, including:
+*  @li pd_x: A Tensor. Must be one of the following types: float16, float32.
+*  @li pd_x_dropout: A Tensor. Must be one of the following types: float16, float32.
+*  @li pd_gamma: A Tensor. Must be one of the following types:  float16, float32.
+*  @li pd_beta: A Tensor. Must be one of the following types:  float16, float32.
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+REG_OP(LNDropoutGrad)
+    .INPUT(dy, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(variance, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(mean, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(mask, TensorType({DT_UINT8, DT_INT8}))
+    .OUTPUT(pd_x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(pd_x_dropout, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(pd_gamma, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(pd_beta, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(keep_prob, Float)
+    .OP_END_FACTORY_REG(LNDropoutGrad)
+
+/**
 *@brief Return "output" according to the algorithm of dropout_do_mask:
 *  scale_x = x *(1 / keep_prob)
 *  output = select(mask == 1, scale_x, 0)

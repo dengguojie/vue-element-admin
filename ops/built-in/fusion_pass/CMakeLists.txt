@@ -240,6 +240,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
   graph_fusion/ai_core/layer_norm_onnx_mul_fusion_pass.cc
   graph_fusion/ai_core/layernormgrad_fusion_pass.cc
+  graph_fusion/ai_core/layernormgrad_dropoutdomaskv3d_fusion_pass.cc
   graph_fusion/ai_core/lin_space_fusion_pass.cc
   graph_fusion/ai_core/logsoftmaxgrad_fusion_pass.cc
   graph_fusion/ai_core/lstm_fusion_pass.cc
