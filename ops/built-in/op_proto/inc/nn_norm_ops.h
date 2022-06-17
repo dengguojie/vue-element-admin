@@ -810,16 +810,16 @@ REG_OP(LayerNormBetaGammaBackpropV2)
 *   pd_beta = sum(dy, param_axis, keepdims=True)
 
 * @par Inputs:
-* Five inputs, including:
+* Six inputs, including:
 *  @li dy: A Tensor. Must be one of the following types: float16, float32.
 *  @li x: A Tensor. Must be one of the following types: float16, float32.
 *  @li variance: A Tensor. Must be one of the following types: float16, float32.
 *  @li mean: A Tensor. Must be one of the following types: float16, float32.
 *  @li gamma: A Tensor. Must be one of the following types: float16, float32.
-*  @li mask: A Tensor. Must be one of the following types: uint8, int8.\n
+*  @li mask: A Tensor. Must be one of the following types: uint8.\n
 
 * @par Outputs:
-* Three outputs, including:
+* Four outputs, including:
 *  @li pd_x: A Tensor. Must be one of the following types: float16, float32.
 *  @li pd_x_dropout: A Tensor. Must be one of the following types: float16, float32.
 *  @li pd_gamma: A Tensor. Must be one of the following types:  float16, float32.
@@ -834,7 +834,7 @@ REG_OP(LNDropoutGrad)
     .INPUT(variance, TensorType({DT_FLOAT, DT_FLOAT16}))
     .INPUT(mean, TensorType({DT_FLOAT, DT_FLOAT16}))
     .INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16}))
-    .INPUT(mask, TensorType({DT_UINT8, DT_INT8}))
+    .INPUT(mask, TensorType({DT_UINT8}))
     .OUTPUT(pd_x, TensorType({DT_FLOAT, DT_FLOAT16}))
     .OUTPUT(pd_x_dropout, TensorType({DT_FLOAT, DT_FLOAT16}))
     .OUTPUT(pd_gamma, TensorType({DT_FLOAT, DT_FLOAT16}))
