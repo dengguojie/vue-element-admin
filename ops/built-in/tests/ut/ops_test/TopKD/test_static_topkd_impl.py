@@ -69,6 +69,7 @@ case5 = {"params": [{"shape": (1, 6000), "dtype": "float16", "ori_shape": (1, 32
          "case_name": "TopkD_k_8",
          "expect": "success",
          "support_expect": True}
+
 case6 = {"params": [{"shape": (2, 57406), "dtype": "float16", "ori_shape": (2, 57406), "format": "ND", "ori_format": "ND", "range": ((1, 880), (1, 48))},
                     {"shape": (2048,), "dtype": "float16", "format": "ND", "ori_shape": (2048,),"ori_format": "ND", "range": ((8192,8192),)},
                     {"shape": (2,14082), "dtype": "float16", "format": "ND", "ori_shape": (2,14082),"ori_format": "ND", "range": ((1, 880), (1, 16))},
@@ -161,4 +162,12 @@ def test_v220_mock(test_arg):
                                 {"shape": (5, 10), "format": "ND", "dtype": "int32", "ori_shape": (5, 10),
                                  "ori_format": "ND"},
                                 10, True, -1, True)
+
+                        top_k_d({"shape": (1, 10000), "format": "ND", "dtype": "float16", "ori_shape": (1, 10000), "ori_format": "ND"},
+                                {"shape": (2048,), "format": "ND", "dtype": "int32", "ori_shape": (2048,), "ori_format": "ND"},
+                                {"shape": (1, 5000), "format": "ND", "dtype": "float16", "ori_shape": (1, 5000), "ori_format": "ND"},
+                                {"shape": (1, 5000), "format": "ND", "dtype": "int32", "ori_shape": (1, 5000), "ori_format": "ND"},
+                                5000, True, -1, False)
+
+
 ut_case.add_cust_test_func(test_func=test_v220_mock)

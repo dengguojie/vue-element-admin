@@ -16,7 +16,7 @@ case1 = {
         {"shape": shape_0, "dtype": data_type, "format": data_format, "ori_shape": shape_0, "ori_format": data_format},
         {"shape": shape_1, "dtype": data_type, "format": data_format, "ori_shape": shape_1, "ori_format": data_format},
         {"shape": shape_1, "dtype": "int32", "format": data_format, "ori_shape": shape_1, "ori_format": data_format},
-        k_num,
+        k_num, False
     ],
     "case_name": "single_merge_1",
     "expect": "success",

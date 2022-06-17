@@ -2516,6 +2516,7 @@ ops_pub:
       - ops/built-in/op_proto/npu_loss_scale_ops.cc
       - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/nn_detect_ops.h
+      - ops/built-in/op_proto/inc/nn_ops.h
       - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/selection_ops.cc
       - ops/built-in/op_proto/inc/transformation_ops.h
@@ -2615,7 +2616,6 @@ unkown:
       - ops/built-in/op_proto/inc/deep_md.h
       - ops/built-in/op_proto/inc/hvd_ops.h
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
-      - ops/built-in/op_proto/inc/nn_ops.h
       - ops/built-in/op_proto/inc/npu_loss_scale_ops.h
       - ops/built-in/op_proto/inc/hcom_ops.h
       - ops/built-in/op_proto/inc/condtake_ops.h
@@ -2893,8 +2893,6 @@ unkown:
       - ops/built-in/tbe/impl/renorm.py
       - ops/built-in/tbe/impl/scatter_nd_d_help.py
       - ops/built-in/tbe/impl/non_max_suppression_v7.py
-      - ops/built-in/tbe/impl/merge_sort.py
-      - ops/built-in/tbe/impl/multi_merge_v2.py
       - ops/built-in/tbe/impl/strided_slice_last_dim_with_vreducev2.py
       - ops/built-in/tbe/impl/log1p.py
       - ops/built-in/tbe/impl/n_p_u_clear_float_status_v2.py
@@ -4221,8 +4219,10 @@ pytorch:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.h
       - ops/built-in/tbe/impl/dynamic/resize.py
+      - ops/built-in/tbe/impl/merge_sort.py
       - ops/built-in/tbe/impl/merge_sort_v2.py
       - ops/built-in/tbe/impl/multi_merge.py
+      - ops/built-in/tbe/impl/multi_merge_v2.py
       - ops/built-in/tbe/impl/segment_sort.py
       - ops/built-in/tbe/impl/segment_sort_v2.py
       - ops/built-in/tbe/impl/single_merge.py

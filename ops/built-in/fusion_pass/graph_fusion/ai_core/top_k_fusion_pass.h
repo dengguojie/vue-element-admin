@@ -48,10 +48,10 @@ class TopKFusionPass : public PatternFusionBasePass {
   bool CheckMultiCoreSegment(ge::NodePtr& topk_node, SegmentCalcParams& calcParams,
                              PlatformInfo& platform_info, OptionalInfo& optional_info, int64_t dim_aim);
   Status AddMultiMergeNode(ge::ComputeGraph& graph, ge::NodePtr& topk_node, ge::NodePtr& segmentsort_node,
-                           int64_t segment_num, SegmentCalcParams& calcParams, int64_t dim_aim,
+                           int64_t segment_num, SegmentCalcParams& calcParams, int64_t dim_aim, const bool is_largest,
                            vector<NodePtr>& fusion_nodes);
   Status AddSegmentSortAndMergeNode(ge::ComputeGraph& graph, ge::NodePtr& topk_node, SegmentCalcParams& calcParams,
-                                    int64_t dim_aim, vector<ge::NodePtr>& fusion_nodes);
+                                    int64_t dim_aim, const bool is_largest, vector<ge::NodePtr>& fusion_nodes);
 };
 }  // namespace fe
 

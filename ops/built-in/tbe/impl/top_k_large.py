@@ -37,7 +37,7 @@ def _prod(values):
 
 class Base:
     def __init__(self, input_shape, indices_shape, out_shape, k_num, input_dtype,
-                 input_indices_dtype, out_indices_dtype, kernel_name):
+                 input_indices_dtype, out_indices_dtype, largest, kernel_name):
         self.input_shape = input_shape
         self.index_shape = indices_shape
         self.out_shape = out_shape
@@ -49,6 +49,7 @@ class Base:
         self.index_dtype = input_indices_dtype
         self.out_index_dtype = out_indices_dtype
         self.kernel_name = kernel_name
+        self.largest = largest
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         AContainer.reset_instance()
         self.cont = AContainer.get_instance()
@@ -73,12 +74,33 @@ class Base:
             loop_num = self.method.ceil_div(self.rows, ai_core_num)
         return loop_num, ai_core_num
 
+    def _emit_vmuls(self, dst, src, cnt):
+        """
+        emit vmuls
+        """
+        MASK_FP16 = 128
+        MAX_REPEAT_TIMES = 255
+        repeat = cnt // MASK_FP16
+        repeat_remain = cnt % MASK_FP16
+        times = (repeat + MAX_REPEAT_TIMES - 1) // MAX_REPEAT_TIMES
+        if repeat > 0:
+            with self.tik_instance.for_range(0, times, name="vmuls_i0") as i:
+                src0_scalar = self.tik_instance.Scalar(dtype="int64", name="src0_scalar",
+                                                       init_value=repeat - i * MAX_REPEAT_TIMES)
+                src1_scalar = self.tik_instance.Scalar(dtype="int64", name="src1_scalar", init_value=MAX_REPEAT_TIMES)
+                times_len = self.tik_instance.Scalar(dtype="int64", name="times_len")
+                self.tik_instance.scalar_min(times_len, src0_scalar, src1_scalar)
+                self.tik_instance.vmuls(MASK_FP16, dst[i * MASK_FP16 * MAX_REPEAT_TIMES],
+                                        src[i * MASK_FP16 * MAX_REPEAT_TIMES], -1, times_len, 1, 1, 8, 8)
+        if repeat_remain > 0:
+            self.tik_instance.vmuls(repeat_remain, dst[repeat * MASK_FP16], src[repeat * MASK_FP16], -1, 1, 1, 1, 8, 8)
+
 
 class SegmentSort(Base):
     def __init__(self, input_shape, indices_shape, out_shape, k_num, input_dtype,
-                 input_indices_dtype, out_indices_dtype, kernel_name):
+                 input_indices_dtype, out_indices_dtype, largest, kernel_name):
         super(SegmentSort, self).__init__(input_shape, indices_shape, out_shape, k_num, input_dtype,
-                                          input_indices_dtype, out_indices_dtype, kernel_name)
+                                          input_indices_dtype, out_indices_dtype, largest, kernel_name)
         self.ub_size = self.cont.const_ub_max_byte
         self.pro_data_num = self.cont.const_proposal_data_num
         self.pro_repeat_num = self.cont.const_proposal_repeat_num
@@ -210,6 +232,8 @@ class SegmentSort(Base):
         score_block_num = self.method.ceil_div(boxes_num, self.block_data_num)
         input_offset = batch_idx * self.cols + boxes_index
         self.tik_instance.data_move(score_ub, self.input_data[input_offset], 0, 1, score_block_num, 0, 0)
+        if not self.largest:
+            self._emit_vmuls(score_ub, score_ub, boxes_num)
         mask_h, mask_l, index_last = self.method.get_mask(boxes_num, self.repeat_data_num, self.pro_repeat_num)
         if mask_h != 0 or mask_l != 0:
             self.tik_instance.vector_dup([mask_h, mask_l], score_ub[index_last], self.fp16_ne_inf, 1, 1, 8)
@@ -258,6 +282,9 @@ class SegmentSort(Base):
         self.method.vector_extract(index_ub_2, proposal_ub, 2, proposal_num)
         self.method.vector_extract(score_ub, proposal_ub, 3, proposal_num)
 
+        if not self.largest:
+            self._emit_vmuls(score_ub, score_ub, data_num)
+
         mask = self.int_repeat_data_num
         repeat_num = data_num_align // self.int_repeat_data_num
 
@@ -301,9 +328,9 @@ class SegmentSort(Base):
 
 class SegmentSortV2(Base):
     def __init__(self, input_shape, indices_shape, out_shape, k_num, input_dtype,
-                 input_indices_dtype, out_indices_dtype, kernel_name):
+                 input_indices_dtype, out_indices_dtype, largest, kernel_name):
         super(SegmentSortV2, self).__init__(input_shape, indices_shape, out_shape, k_num, input_dtype,
-                                            input_indices_dtype, out_indices_dtype, kernel_name)
+                                            input_indices_dtype, out_indices_dtype, largest, kernel_name)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self.const_value = BaseConstant(self.dtype, "uint32", self.ub_size, kernel_name)
         self.merge_sort = MergeSortV2(self.tik, self.tik_instance, self.const_value)
@@ -401,6 +428,8 @@ class SegmentSortV2(Base):
         block_num = self.method.ceil_div(score_num, self.const_value.score_num_block)
         input_offset = batch_index * self.cols + score_index
         self.tik_instance.data_move(score_ub, self.input_data[input_offset], 0, 1, block_num, 0, 0)
+        if not self.largest:
+            self._emit_vmuls(score_ub, score_ub, score_num)
         align_num = self.const_value.proposal_num_repeat
         mask_h, mask_l, index_last = self.method.get_mask(score_num, align_num, align_num)
         if mask_h != 0 or mask_l != 0:
@@ -446,6 +475,9 @@ class SegmentSortV2(Base):
                                   index_src1_pattern, repeat_time, 1, 8, 0)
         index_ub = index_ub.reinterpret_cast_to(self.out_index_dtype)
 
+        if not self.largest:
+            self._emit_vmuls(score_ub, score_ub, proposal_num)
+
         out_offset = batch_idx * self.k_num + proposal_index_start
         if not multi_core:
             score_block_num = self.method.ceil_div(proposal_num, self.const_value.score_num_block)
@@ -473,11 +505,11 @@ class SegmentSortV2(Base):
 
 
 def top_k_large(input_shape, indices_shape, out_shape, k, input_dtype,
-                input_indices_dtype, out_indices_dtype, kernel_name):
+                input_indices_dtype, out_indices_dtype, largest, kernel_name):
     if tbe_platform.api_check_support("tik.vbitsort32"):
         obj = SegmentSortV2(input_shape, indices_shape, out_shape, k, input_dtype, input_indices_dtype,
-                            out_indices_dtype, kernel_name)
+                            out_indices_dtype, largest, kernel_name)
     else:
         obj = SegmentSort(input_shape, indices_shape, out_shape, k, input_dtype, input_indices_dtype,
-                          out_indices_dtype, kernel_name)
+                          out_indices_dtype, largest, kernel_name)
     obj.mode_compute()

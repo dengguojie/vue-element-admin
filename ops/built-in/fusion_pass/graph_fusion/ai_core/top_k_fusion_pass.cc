@@ -163,7 +163,7 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
 
 Status TopKFusionPass::AddMultiMergeNode(ComputeGraph& graph, NodePtr& topk_node, NodePtr& segmentsort_node,
                                          int64_t segment_num, SegmentCalcParams& calcParams,
-                                         int64_t dim_aim, vector<NodePtr>& fusion_nodes) {
+                                         int64_t dim_aim, const bool is_largest, vector<NodePtr>& fusion_nodes) {
   int64_t index = 0;
   NodePtr input_node = segmentsort_node;
   GeTensorDesc output_proposal_desc = topk_node->GetOpDesc()->GetOutputDesc(0);
@@ -273,6 +273,7 @@ Status TopKFusionPass::AddMultiMergeNode(ComputeGraph& graph, NodePtr& topk_node
   Operator lastMultiMerge = OpDescUtils::CreateOperatorFromNode(lastMultiMergeNode);
   lastMultiMerge.SetAttr("k_num", calcParams.k_num);
   lastMultiMerge.SetAttr("include_index", true);
+  lastMultiMerge.SetAttr("largest", is_largest);
   fusion_nodes.push_back(lastMultiMergeNode);
   return SUCCESS;
 }
@@ -290,7 +291,7 @@ output_data output_index             multi_merge * N
 */
 Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& topk_node,
                                                   SegmentCalcParams& calcParams, int64_t dim_aim,
-                                                  vector<NodePtr>& fusion_nodes) {
+                                                  const bool is_largest, vector<NodePtr>& fusion_nodes) {
   OP_LOGI(kFusedOpType.c_str(), "AddSegmentSortAndMergeNode start.");
   // define segmentsort Opdesc
   std::shared_ptr<ge::OpDesc> segmentsort_desc = std::make_shared<ge::OpDesc>(topk_node->GetName() + "_segmentsort",
@@ -338,11 +339,13 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
 
   Operator segmentSort = OpDescUtils::CreateOperatorFromNode(segmentSortNode);
   segmentSort.SetAttr("k_num", calcParams.k_num);
+  segmentSort.SetAttr("largest", is_largest);
   fusion_nodes.push_back(segmentSortNode);
 
   // define multimerge Opdesc
   FUSION_PASS_CHECK(
-      AddMultiMergeNode(graph, topk_node, segmentSortNode, ai_core_num, calcParams, dim_aim, fusion_nodes) != SUCCESS,
+      AddMultiMergeNode(graph, topk_node, segmentSortNode, ai_core_num, calcParams,
+                        dim_aim, is_largest, fusion_nodes) != SUCCESS,
       VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AddMultiMergeNode failed, fusion failed."), return FAILED);
 
   // connect inputdata_node with segmentsort_node
@@ -454,10 +457,12 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
 
 Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
   NodePtr topk_node = GetNodeFromMapping(kPatternTopK, mapping);
-  FUSION_PASS_CHECK(topk_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_node is null, fusion failed."),
+  FUSION_PASS_CHECK(topk_node == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_node is null, fusion failed."),
                     return PARAM_INVALID);
   OpDescPtr topk_desc = topk_node->GetOpDesc();
-  FUSION_PASS_CHECK(topk_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(topk_desc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_desc is null, fusion failed."),
                     return PARAM_INVALID);
   // may find TopKV2, use TopK instead
   topk_desc->SetType("TopK");
@@ -478,37 +483,47 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
 
   // first input of topkv2 is non-constant, second is constant
   InDataAnchorPtr topk_anchor_ptr0 = topk_node->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(topk_anchor_ptr0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_anchor_ptr0 is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      topk_anchor_ptr0 == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_anchor_ptr0 is null, fusion failed."),
+      return PARAM_INVALID);
   OutDataAnchorPtr data_anchor_ptr = topk_anchor_ptr0->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(data_anchor_ptr == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The data_anchor_ptr is null, fusion failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      data_anchor_ptr == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The data_anchor_ptr is null, fusion failed."),
+      return PARAM_INVALID);
   NodePtr data_node = data_anchor_ptr->GetOwnerNode();
   auto data_node_desc = data_node->GetOpDesc();
   FUSION_PASS_CHECK(data_node_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The data_node_desc is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The data_node_desc is null, fusion failed."),
+                    return PARAM_INVALID);
   GeTensorDesc topk_data_tensor = data_node_desc->GetOutputDesc(0);
   GeShape topk_data_shape = topk_data_tensor.GetShape();
   vector<int64_t> dim_info = topk_data_shape.GetDims();
-  FUSION_PASS_CHECK(dim_info.size() < 1, OP_LOGW(kFusedOpType.c_str(), "The dim_info size error."), return NOT_CHANGED);
+  FUSION_PASS_CHECK(dim_info.size() < 1,
+                    OP_LOGW(kFusedOpType.c_str(), "The dim_info size error."),
+                    return NOT_CHANGED);
 
   OutDataAnchorPtr topk_anchor_out_ptr0 = topk_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(topk_anchor_out_ptr0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_anchor_out_ptr0 is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      topk_anchor_out_ptr0 == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_anchor_out_ptr0 is null, fusion failed."),
+      return PARAM_INVALID);
   NodePtr data_node_out = topk_anchor_out_ptr0->GetOwnerNode();
   FUSION_PASS_CHECK(data_node_out == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The data_node_out is null, fusion failed."), return PARAM_INVALID);
-  auto topk_data_out_tensor_desc = data_node_out->GetOpDesc();
-  FUSION_PASS_CHECK(topk_data_out_tensor_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_data_out_tensor_desc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The data_node_out is null, fusion failed."),
                     return PARAM_INVALID);
+  auto topk_data_out_tensor_desc = data_node_out->GetOpDesc();
+  FUSION_PASS_CHECK(
+      topk_data_out_tensor_desc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The topk_data_out_tensor_desc is null, fusion failed."),
+      return PARAM_INVALID);
   GeTensorDesc topk_data_out_tensor = topk_data_out_tensor_desc->GetOutputDesc(0);
   GeShape topk_data_out_shape = topk_data_out_tensor.GetShape();
   vector<int64_t> dim_info_out = topk_data_out_shape.GetDims();
   FUSION_PASS_CHECK(dim_info_out.size() == 0,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The dim_info_out size is 0, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The dim_info_out size is 0, fusion failed."),
+                    return PARAM_INVALID);
 
   // get attr k_num
   Operator op = OpDescUtils::CreateOperatorFromNode(topk_node);
@@ -552,6 +567,11 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   }
   FUSION_PASS_CHECK(dim_aim >= dim_size,
                     VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "dim_aim is INVALID"), return FAILED);
+  // get attr largest
+  bool is_largest = true;
+  if (op.GetAttr("largest", is_largest) != ge::GRAPH_SUCCESS) {
+    OP_LOGI(kFusedOpType.c_str(), "Get attr largest failed, use default value.");
+  }
   // topk -> segment_sort + multi_merge
   SegmentCalcParams calcParams;
   calcParams.k_num = const_data_val;
@@ -560,9 +580,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   bool is_segment = (!is_topk_v2 &&
       CheckMultiCoreSegment(topk_node, calcParams, platform_info, optional_info, dim_aim));
   if (is_segment) {
-    FUSION_PASS_CHECK(AddSegmentSortAndMergeNode(graph, topk_node, calcParams, dim_aim, fusion_nodes) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AddSegmentSortAndMergeNode failed."),
-                      return false);
+    FUSION_PASS_CHECK(
+        AddSegmentSortAndMergeNode(graph, topk_node, calcParams, dim_aim, is_largest, fusion_nodes) != SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AddSegmentSortAndMergeNode failed."),
+        return false);
     fusion_node = fusion_nodes[0];
   } else {
     vector<PassAttrInfo> topk_attr_info;
@@ -721,25 +742,29 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   NodePtr trans_input_node =
       PatternFusionUtil::InsertSingleNode(graph, fusion_node, kPatternTranspose, true, 0, fusion_nodes);
   OpDescPtr trans_input_desc = trans_input_node->GetOpDesc();
-  FUSION_PASS_CHECK(trans_input_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_input_desc is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      trans_input_desc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_input_desc is null, fusion failed."),
+      return PARAM_INVALID);
   GeTensorDesc trans_data_tensor = trans_input_desc->GetInputDesc(0);
   GeShape trans_data_shape = trans_data_tensor.GetShape();
   vector<int64_t> trans_dim_info = trans_data_shape.GetDims();
   int64_t trans_dim_info_size = trans_dim_info.size();
-  FUSION_PASS_CHECK(dim_aim >= trans_dim_info_size, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dim index is out of shape range."),
+  FUSION_PASS_CHECK(dim_aim >= trans_dim_info_size,
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dim index is out of shape range."),
                     return PARAM_INVALID);
   swap(trans_dim_info[dim_aim], trans_dim_info[dim_size - 1]);
 
   // get input_transpose perm
   vector<int64_t> perm;
   ret = PermVecGen(dim_size, dim_aim, perm);
-  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "PermVecGen failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "PermVecGen failed."),
+                    return ret);
 
   // set input_transpose perm
   FUSION_PASS_CHECK(!AttrUtils::SetListInt(trans_input_desc, "perm", perm),
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Input transporse set perm failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Input transporse set perm failed"),
+                    return FAILED);
   // set input_transpose output shape range
   vector<pair<int64_t, int64_t>> shape_range_after_sorted;
   if (trans_data_tensor.GetShapeRange(shape_range_after_sorted) != GRAPH_SUCCESS) {
@@ -756,9 +781,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   // set input_transpose output shape
   GeShape transpose_assit_shape(trans_dim_info);
   auto transin_mutable_output0 = trans_input_desc->MutableOutputDesc(0);
-  FUSION_PASS_CHECK(transin_mutable_output0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The transin_mutable_output0 is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      transin_mutable_output0 == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The transin_mutable_output0 is null, fusion failed."),
+      return PARAM_INVALID);
   transin_mutable_output0->SetShape(GeShape(transpose_assit_shape));
   transin_mutable_output0->SetOriginShape(GeShape(transpose_assit_shape));
 
@@ -770,9 +796,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   }
 
   auto fusion_mutable_input0 = fusion_node_desc->MutableInputDesc(0);
-  FUSION_PASS_CHECK(fusion_mutable_input0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The fusion_mutable_input0 is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      fusion_mutable_input0 == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The fusion_mutable_input0 is null, fusion failed."),
+      return PARAM_INVALID);
 
   fusion_mutable_input0->SetShape(GeShape(transpose_assit_shape));
   fusion_mutable_input0->SetOriginShape(GeShape(transpose_assit_shape));
@@ -800,9 +827,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   // set topkd val output shape
   GeShape topk_out_ge_shape(topkd_dim_info);
   auto fusion_mutable_output0 = fusion_node_desc->MutableOutputDesc(0);
-  FUSION_PASS_CHECK(fusion_mutable_output0 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The fusion_mutable_output0 is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      fusion_mutable_output0 == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The fusion_mutable_output0 is null, fusion failed."),
+      return PARAM_INVALID);
   fusion_mutable_output0->SetShape(GeShape(topk_out_ge_shape));
   fusion_mutable_output0->SetOriginShape(GeShape(topk_out_ge_shape));
   // set topkd val output shape range
@@ -817,9 +845,10 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
 
   // set topkd index output shape
   auto fusion_mutable_output1 = fusion_node_desc->MutableOutputDesc(1);
-  FUSION_PASS_CHECK(fusion_mutable_output1 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The fusion_mutable_output1 is null, fusion failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      fusion_mutable_output1 == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The fusion_mutable_output1 is null, fusion failed."),
+      return PARAM_INVALID);
   fusion_mutable_output1->SetShape(GeShape(topk_out_ge_shape));
   fusion_mutable_output1->SetOriginShape(GeShape(topk_out_ge_shape));
   // set topkd index output shape range
@@ -832,21 +861,24 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   if (isInsert) {
     NodePtr trans_output_node =
       PatternFusionUtil::InsertSingleNode(graph, fusion_node, kPatternTranspose, false, 0, fusion_nodes);
-    FUSION_PASS_CHECK(trans_output_node == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_output_node is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        trans_output_node == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_output_node is null, fusion failed."),
+        return PARAM_INVALID);
     OpDescPtr trans_output_desc = trans_output_node->GetOpDesc();
 
     // set val transpose perm
     FUSION_PASS_CHECK(!AttrUtils::SetListInt(trans_output_desc, "perm", perm),
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Output val transporse set perm failed"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Output val transporse set perm failed"),
+                      return FAILED);
 
     // set val transepose output shape
     GeShape out_transpose_output_assit_shape(topk_out_shape);
     auto transout_mutable_output0 = trans_output_desc->MutableOutputDesc(0);
-    FUSION_PASS_CHECK(transout_mutable_output0 == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The transout_mutable_output0 is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        transout_mutable_output0 == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The transout_mutable_output0 is null, fusion failed."),
+        return PARAM_INVALID);
     transout_mutable_output0->SetShape(GeShape(out_transpose_output_assit_shape));
     transout_mutable_output0->SetOriginShape(GeShape(out_transpose_output_assit_shape));
     // set val transepose output shape input_shape_range
@@ -869,20 +901,23 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   if (isInsert) {
     NodePtr trans_output_index_node =
       PatternFusionUtil::InsertSingleNode(graph, fusion_node, kPatternTranspose, false, 1, fusion_nodes);
-    FUSION_PASS_CHECK(trans_output_index_node == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_output_index_node is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        trans_output_index_node == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_output_index_node is null, fusion failed."),
+        return PARAM_INVALID);
     OpDescPtr trans_output_index_desc = trans_output_index_node->GetOpDesc();
 
     // set index transpose perm
     FUSION_PASS_CHECK(!AttrUtils::SetListInt(trans_output_index_desc, "perm", perm),
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Output index transporse set perm failed"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Output index transporse set perm failed"),
+                      return FAILED);
     // set index transepose output shape
     GeShape out_index_transpose_output_assit_shape(topk_out_shape);
     auto trans_index_mutable_output0 = trans_output_index_desc->MutableOutputDesc(0);
-    FUSION_PASS_CHECK(trans_index_mutable_output0 == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_index_mutable_output0 is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        trans_index_mutable_output0 == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The trans_index_mutable_output0 is null, fusion failed."),
+        return PARAM_INVALID);
     trans_index_mutable_output0->SetShape(GeShape(out_index_transpose_output_assit_shape));
     trans_index_mutable_output0->SetOriginShape(GeShape(out_index_transpose_output_assit_shape));
     // set index transepose output shape input_shape_range

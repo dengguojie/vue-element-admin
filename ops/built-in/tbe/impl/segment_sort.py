@@ -61,11 +61,12 @@ def op_select_format(input_data, input_index, output_proposal, k_num, kernel_nam
 class SegmentSort:
     # 'pylint: disable=too-many-arguments
     """define SegmentSort"""
-    def __init__(self, input_shape, index_num, data_type, k_num, proposal_shape_result, kernel_name, cont):
+    def __init__(self, input_shape, index_num, data_type, k_num, proposal_shape_result, largest, kernel_name, cont):
         self.data_num = input_shape[-1]
         self.k_num = k_num
         self.data_type = data_type
         self.kernel_name = kernel_name
+        self.largest = largest
 
         self.cont = cont
         self.tik = self.cont.tik
@@ -218,6 +219,8 @@ class SegmentSort:
         score_label_0, score_label_1 = 3, 4
         score_block_num = self.method.ceil_div(boxes_num, self.block_data_num)
         self.tik_inst.data_move(score_ub, self.input_data[boxes_index], 0, 1, score_block_num, 0, 0)
+        if not self.largest:
+            self.method.emit_vmuls(score_ub, score_ub, boxes_num)
         mask_h, mask_l, index_last = self.method.get_mask(boxes_num, self.repeat_data_num, self.pro_repeat_num)
         if mask_h != 0 or mask_l != 0:
             self.tik_inst.vector_dup([mask_h, mask_l], score_ub[index_last], self.fp16_ne_inf, 1, 1, 8)
@@ -254,9 +257,9 @@ def check_params(input_data, input_index, kernel_name):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
-                            para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 # 'pylint: disable=unused-argument
-def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="SegmentSort"):
+def segment_sort(input_data, input_index, output_proposal, k_num, largest=True, kernel_name="SegmentSort"):
     """algorithm: Segment merge sort on multiple core
     Parameters
     ----------
@@ -268,6 +271,10 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
         A Tensor. Datatype and format is same as input_data. Proposal sorted for each channel.
     k_num: int
         Number to be sorted.
+    largest: An optional bool
+        Controls whether to return largest or smallest elements. Defaults to true.
+        If "True", the "k" largest elements are returned in descending order.
+        If "False", the "k" smallest elements are returned in ascending order.
     kernel_name : str
         cce kernel name, default value is top_k_3
     Returns
@@ -276,7 +283,7 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
     if check_soc_version_support(soc_version, ("Ascend910B",)):
-        segment_sort_v2(input_data, input_index, output_proposal, k_num, kernel_name)
+        segment_sort_v2(input_data, input_index, output_proposal, k_num, largest, kernel_name)
     else:
         input_shape = input_data.get("shape")
         input_dtype = input_data.get("dtype").lower()
@@ -291,5 +298,5 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
         cont = AContainer.get_instance()
         index_num = input_index.get("shape")[0]
         proposal_shape_result = output_proposal.get("shape")
-        obj = SegmentSort(input_shape, index_num, input_dtype, k_num, proposal_shape_result, kernel_name, cont)
+        obj = SegmentSort(input_shape, index_num, input_dtype, k_num, proposal_shape_result, largest, kernel_name, cont)
         obj.mode_compute()

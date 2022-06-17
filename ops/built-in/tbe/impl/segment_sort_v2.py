@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-from impl.merge_sort_v2 import MergeSort, BaseConstant, ceil_div, get_align_num
+from impl.merge_sort_v2 import MergeSort, BaseConstant, ceil_div, get_align_num, emit_vmuls
 from impl.util.platform_adapter import PlatformApi
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_vector
@@ -56,13 +56,15 @@ class SegmentSort:
     define SegmentSort
     """
 
-    def __init__(self, score_shape, index_num, score_type, index_type, k_num, proposal_shape_result, kernel_name):
+    def __init__(self, score_shape, index_num, score_type, index_type, k_num,
+                 proposal_shape_result, largest, kernel_name):
         self.score_num = score_shape[-1]
         self.index_num = index_num
         self.k_num = k_num
         self.score_type = score_type
         self.index_type = index_type
         self.kernel_name = kernel_name
+        self.largest = largest
 
         self.tik = tik
         self.tik_inst = self.tik.Tik()
@@ -162,6 +164,8 @@ class SegmentSort:
     def _init_score_channel(self, score_ub, score_index, score_num):
         block_num = ceil_div(score_num, self.const_value.score_num_block)
         self.tik_inst.data_move(score_ub, self.input_score[score_index], 0, 1, block_num, 0, 0)
+        if not self.largest:
+            emit_vmuls(self.tik_inst, score_ub, score_ub, score_num, self.score_type)
         align_num = self.const_value.proposal_num_repeat
         mask_h, mask_l, index_last = get_mask(score_num, align_num, align_num)
         if mask_h != 0 or mask_l != 0:
@@ -220,7 +224,7 @@ def check_param(input_score, input_index, k_num, kernel_name):
                                                            k_num)
 
 
-def segment_sort_v2(input_score, input_index, output_proposal, k_num, kernel_name="SegmentSort"):
+def segment_sort_v2(input_score, input_index, output_proposal, k_num, largest, kernel_name="SegmentSort"):
     """
     algorithm: Segment merge sort on multiple core
     Parameters
@@ -233,6 +237,10 @@ def segment_sort_v2(input_score, input_index, output_proposal, k_num, kernel_nam
         A Tensor. Datatype and format is same as input_data. Proposal sorted for each channel.
     k_num: int
         Number to be sorted.
+    largest: An optional bool
+        Controls whether to return largest or smallest elements. Defaults to true.
+        If "True", the "k" largest elements are returned in descending order.
+        If "False", the "k" smallest elements are returned in ascending order.
     kernel_name : str
         cce kernel name, default value is SegmentSort
     Returns
@@ -245,5 +253,6 @@ def segment_sort_v2(input_score, input_index, output_proposal, k_num, kernel_nam
     score_type = input_score.get("dtype").lower()
     index_type = input_index.get("dtype").lower()
     proposal_shape_result = output_proposal.get("shape")
-    obj = SegmentSort(score_shape, index_num, score_type, index_type, k_num, proposal_shape_result, kernel_name)
+    obj = SegmentSort(score_shape, index_num, score_type, index_type, k_num,
+                      proposal_shape_result, largest, kernel_name)
     obj.mode_compute()

@@ -27,12 +27,13 @@ from impl.merge_sort import MergeSort
 # 'pylint: disable=too-many-arguments,too-many-locals,too-few-public-methods
 class SingleMerge:
     """method to merge and sort on single core"""
-    def __init__(self, input_shape, out_shape, k_num, data_type, kernel_name, cont):
+    def __init__(self, input_shape, out_shape, k_num, data_type, largest, kernel_name, cont):
         self.channel_num = input_shape[0]
         self.sorted_num = input_shape[1]
         self.k_num = k_num
         self.data_type = data_type
         self.kernel_name = kernel_name
+        self.largest = largest
 
         self.cont = cont
         self.tik = self.cont.tik
@@ -131,6 +132,9 @@ class SingleMerge:
         self.method.vector_extract(index_ub_2, proposal_ub, 2, proposal_num)
         self.method.vector_extract(score_ub, proposal_ub, 3, proposal_num)
 
+        if not self.largest:
+            self.method.emit_vmuls(score_ub, score_ub, data_num)
+
         mask = self.int_repeat_data_num
         repeat_num = data_num_align // self.int_repeat_data_num
 
@@ -155,8 +159,8 @@ class SingleMerge:
 # 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
-                            para_check.KERNEL_NAME)
-def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="SingleMerge"):
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def single_merge(input_proposal, output_data, output_index, k_num, largest=True, kernel_name="SingleMerge"):
     """algorithm: merge and sort on single core
     Parameters
     ----------
@@ -168,6 +172,10 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
         A Tensor. int32. Data index.
     k_num: int
         Number to be sorted.
+    largest: An optional bool
+        Controls whether to return largest or smallest elements. Defaults to true.
+        If "True", the "k" largest elements are returned in descending order.
+        If "False", the "k" smallest elements are returned in ascending order.
     kernel_name : str
         cce kernel name, default value is SingleMerge
     Returns
@@ -185,5 +193,5 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
     para_check.check_shape(out_shape, param_name="output_data")
     AContainer.reset_instance()
     cont = AContainer.get_instance()
-    obj = SingleMerge(input_shape, out_shape, k_num, input_dtype, kernel_name, cont)
+    obj = SingleMerge(input_shape, out_shape, k_num, input_dtype, largest, kernel_name, cont)
     obj.mode_compute()

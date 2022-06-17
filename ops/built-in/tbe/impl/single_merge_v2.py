@@ -17,7 +17,7 @@
 """
 single_merge
 """
-from impl.merge_sort_v2 import ProposalMergeGM, BaseConstant, ceil_div, get_align_num, get_loop_info
+from impl.merge_sort_v2 import ProposalMergeGM, BaseConstant, ceil_div, get_align_num, get_loop_info, emit_vmuls
 from impl.util.platform_adapter import PlatformApi
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
@@ -27,10 +27,11 @@ from impl.util.platform_adapter import para_check
 class SingleMerge:
     """method to merge and sort on single core"""
 
-    def __init__(self, input_shape, out_shape, k_num, score_type, kernel_name):
+    def __init__(self, input_shape, out_shape, k_num, score_type, largest, kernel_name):
         self.k_num = k_num
         self.score_type = score_type
         self.kernel_name = kernel_name
+        self.largest = largest
 
         self.tik = tik
         self.tik_inst = self.tik.Tik()
@@ -145,6 +146,9 @@ class SingleMerge:
         self.tik_inst.vreduce(self.const_value.index_num_repeat, index_ub, index_proposal_ub,
                               index_src1_pattern, repeat_time, 1, 8, 0)
         index_ub = index_ub.reinterpret_cast_to(self.index_type)
+
+        if not self.largest:
+            emit_vmuls(self.tik_inst, score_ub, score_ub, proposal_num, self.score_type)
         score_block_num = ceil_div(proposal_num, self.const_value.score_num_block)
         index_block_num = ceil_div(proposal_num, self.const_value.index_num_block)
         self.tik_inst.data_move(self.output_data[proposal_index_start], score_ub, 0, 1, score_block_num, 0, 0)
@@ -152,7 +156,7 @@ class SingleMerge:
 
 
 # 'pylint: disable=unused-argument
-def single_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name):
+def single_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, largest, kernel_name):
     """algorithm: merge and sort on single core
     Parameters
     ----------
@@ -164,6 +168,10 @@ def single_merge_v2(input_proposal, output_proposal, output_index, k_num, includ
         A Tensor. int32. Data index.
     k_num: int
         Number to be sorted.
+    largest: An optional bool
+        Controls whether to return largest or smallest elements. Defaults to true.
+        If "True", the "k" largest elements are returned in descending order.
+        If "False", the "k" smallest elements are returned in ascending order.
     kernel_name : str
         cce kernel name, default value is top_k_3
     Returns
@@ -178,5 +186,5 @@ def single_merge_v2(input_proposal, output_proposal, output_index, k_num, includ
     out_shape = output_proposal.get("shape")
     para_check.check_shape(out_shape, param_name="output_proposal")
 
-    obj = SingleMerge(input_shape, out_shape, k_num, input_dtype, kernel_name)
+    obj = SingleMerge(input_shape, out_shape, k_num, input_dtype, largest, kernel_name)
     obj.mode_compute()

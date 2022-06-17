@@ -1590,7 +1590,7 @@ def top_k_d(input_tensor,
         max_k_num = 4096
     if int(shape[-1]) > max_last_size or k > max_k_num:
         return top_k_large(shape, indices_shape, out_shape, k, input_dtype, input_indices_dtype,
-                           out_indices_dtype, kernel_name)
+                           out_indices_dtype, largest, kernel_name)
 
     if tbe_platform.api_check_support("tik.vbitsort32"):
         return top_k_template(input_tensor,

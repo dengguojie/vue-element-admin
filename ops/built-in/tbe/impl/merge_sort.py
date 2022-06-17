@@ -149,6 +149,27 @@ class CommonMethod(object):
             result = input_num // align_num * align_num
         return result
 
+    def emit_vmuls(self, dst, src, cnt):
+        """
+        emit vmuls
+        """
+        MASK_FP16 = 128
+        MAX_REPEAT_TIMES = 255
+        repeat = cnt // MASK_FP16
+        repeat_remain = cnt % MASK_FP16
+        times = (repeat + MAX_REPEAT_TIMES - 1) // MAX_REPEAT_TIMES
+        if repeat > 0:
+            with self._tik_inst.for_range(0, times, name="vmuls_i0") as i:
+                src0_scalar = self._tik_inst.Scalar(dtype="int64", name="src0_scalar",
+                                                    init_value=repeat - i * MAX_REPEAT_TIMES)
+                src1_scalar = self._tik_inst.Scalar(dtype="int64", name="src1_scalar", init_value=MAX_REPEAT_TIMES)
+                times_len = self._tik_inst.Scalar(dtype="int64", name="times_len")
+                self._tik_inst.scalar_min(times_len, src0_scalar, src1_scalar)
+                self._tik_inst.vmuls(MASK_FP16, dst[i * MASK_FP16 * MAX_REPEAT_TIMES],
+                                     src[i * MASK_FP16 * MAX_REPEAT_TIMES], -1, times_len, 1, 1, 8, 8)
+        if repeat_remain > 0:
+            self._tik_inst.vmuls(repeat_remain, dst[repeat * MASK_FP16], src[repeat * MASK_FP16], -1, 1, 1, 1, 8, 8)
+
 
 # 'pylint: disable=useless-object-inheritance
 class MergeSort(object):

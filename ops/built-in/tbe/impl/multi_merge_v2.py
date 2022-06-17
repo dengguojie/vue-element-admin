@@ -95,7 +95,7 @@ class MultiMerge:
 
 
 # 'pylint: disable=unused-argument
-def multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name):
+def multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, largest, kernel_name):
     """
     algorithm: merge and sort on single core
     Parameters
@@ -106,6 +106,10 @@ def multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include
         A Tensor. Datatype and format is same as input_data. Data sorted.
     k_num: int
         Number to be sorted.
+    largest: An optional bool
+        Controls whether to return largest or smallest elements. Defaults to true.
+        If "True", the "k" largest elements are returned in descending order.
+        If "False", the "k" smallest elements are returned in ascending order.
     kernel_name : str
         cce kernel name, default value is top_k_3
     Returns
@@ -113,7 +117,7 @@ def multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include
     None
     """
     if include_index:
-        single_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
+        single_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, largest, kernel_name)
     else:
         input_shape = input_proposal.get("shape")
         input_dtype = input_proposal.get("dtype").lower()

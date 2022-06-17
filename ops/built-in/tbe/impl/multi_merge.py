@@ -142,9 +142,11 @@ def check_params(input_proposal, kernel_name):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 # 'pylint: disable=unused-argument
-def multi_merge(input_proposal, output_proposal, output_index, k_num, include_index=False, kernel_name="MultiMerge"):
+def multi_merge(input_proposal, output_proposal, output_index, k_num, include_index=False, largest=True,
+                kernel_name="MultiMerge"):
     """
     algorithm: merge and sort on single core
     Parameters
@@ -157,6 +159,10 @@ def multi_merge(input_proposal, output_proposal, output_index, k_num, include_in
         A Tensor. if include_index is true, output index.
     k_num: int
         Number to be sorted.
+    largest: An optional bool
+        Controls whether to return largest or smallest elements. Defaults to true.
+        If "True", the "k" largest elements are returned in descending order.
+        If "False", the "k" smallest elements are returned in ascending order.
     include_index: bool
         include_index is false,output proposal. include_index is true, output data and index
     kernel_name : str
@@ -167,9 +173,9 @@ def multi_merge(input_proposal, output_proposal, output_index, k_num, include_in
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
     if check_soc_version_support(soc_version, ("Ascend910B",)):
-        multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
+        multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, largest, kernel_name)
     elif include_index:
-        single_merge(input_proposal, output_proposal, output_index, k_num, kernel_name)
+        single_merge(input_proposal, output_proposal, output_index, k_num, largest, kernel_name)
     else:
         proposal_shape_result = output_proposal.get("shape")
         input_shape = input_proposal.get("shape")
