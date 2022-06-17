@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <unistd.h>
+#include <limits.h>
 
 #include "conv2d_transdata_fusion_pass.h"
 #include "anchor_util.h"
@@ -28,6 +30,7 @@ static const char kPatternTransData2[] = "transdata2";
 
 static const char kOpTransData[] = "TransData";
 static const char kOpConv2D[] = "Conv2D";
+static constexpr const char *BINARY_OPP_RELATIVE_PATH = "/op_impl/built-in/ai_core/tbe/kernel/config/";
 
 static pair<int64_t, int64_t> kNoRange = {1, -1};
 /*
@@ -85,6 +88,10 @@ bool Conv2dTransDataFusionPass::CheckTransDataFormat(const ge::NodePtr &node, co
 
 bool Conv2dTransDataFusionPass::CheckInputNoRange(const ge::NodePtr &cube_node) const {
   auto input_desc = GetCurrNodeMutableInputDesc(cube_node, 0);
+  if (input_desc == nullptr) {
+    OP_LOGI(kFusedOpType.c_str(), "Failed to get input_desc of cube_node.");
+    return false;
+  }
   vector<int64_t> input_dims = input_desc->GetOriginShape().GetDims();
   for (auto input_dim : input_dims) {
     FUSION_PASS_CHECK(input_dim != -1,
@@ -107,6 +114,56 @@ bool Conv2dTransDataFusionPass::CheckInputNoRange(const ge::NodePtr &cube_node) 
   return true;
 }
 
+bool Conv2dTransDataFusionPass::CheckBinaryReuse() const
+{
+  PlatformInfo platformInfo;
+  OptionalInfo optiCompilationInfo;
+  const char *ascendOppPath = nullptr;
+  char oppParentPath[PATH_MAX] = {0};
+
+  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(
+      platformInfo, optiCompilationInfo) != fe::SUCCESS) {
+    OP_LOGD("Fail to get platform info. ");
+    return false;
+  }
+  OP_LOGD(kFusedOpType.c_str(), "Get optiCompilationInfo.soc_version[%s]", optiCompilationInfo.soc_version.c_str());
+
+  std::string socVersion = optiCompilationInfo.soc_version;
+  std::transform(socVersion.begin(), socVersion.end(), socVersion.begin(), ::tolower);
+
+  std::string numStr = "0123456789";
+  size_t firstNumPos = socVersion.find_first_of(numStr);
+  std::string subSocVersion;
+
+  if (firstNumPos == std::string::npos) {
+    subSocVersion = socVersion;
+  } else {
+    size_t lastNumPos = socVersion.find_first_not_of(numStr, firstNumPos);
+    subSocVersion = socVersion.substr(0, lastNumPos);
+  }
+
+  ascendOppPath = std::getenv("ASCEND_OPP_PATH");
+  if (ascendOppPath == nullptr) {
+    OP_LOGD("Fail to get opp path. ");
+    return false;
+  }
+
+  if (realpath(ascendOppPath, oppParentPath) == nullptr) {
+    OP_LOGD("Fail to get opp realpath. ");
+    return false;
+  }
+
+  const std::string oppKernelPath = string(oppParentPath) + BINARY_OPP_RELATIVE_PATH +
+                                    subSocVersion + "/fusion_ops.json";
+  OP_LOGD(kFusedOpType.c_str(), "Get oppKernelPath[%s]", oppKernelPath.c_str());
+
+  if (access(oppKernelPath.c_str(), F_OK) != -1) {
+    OP_LOGD("opp kernel binary file exists. ");
+    return true;
+  }
+  return false;
+}
+
 bool Conv2dTransDataFusionPass::CheckOpCube(const ge::NodePtr &cube_node) const {
   FUSION_PASS_CHECK(cube_node->GetType() != kOpConv2D,
                     OP_LOGD(kFusedOpType.c_str(),
@@ -114,9 +171,12 @@ bool Conv2dTransDataFusionPass::CheckOpCube(const ge::NodePtr &cube_node) const 
                             cube_node->GetName().c_str(), cube_node->GetType().c_str()),
                     return false);
 
-  FUSION_PASS_CHECK(!CheckInputNoRange(cube_node),
-                    OP_LOGD(kFusedOpType.c_str(), "Check input shape dim and range fail."),
-                    return false);
+  if (!CheckBinaryReuse()) {
+    OP_LOGD(kFusedOpType.c_str(), "Cannot reuse kernel binary, check input no range. ");
+    FUSION_PASS_CHECK(!CheckInputNoRange(cube_node),
+                      OP_LOGD(kFusedOpType.c_str(), "Check input shape dim and range fail."),
+                      return false);
+  }
   return true;
 }
 
@@ -135,29 +195,41 @@ Status Conv2dTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mapp
   vector<ge::NodePtr> transdata2_nodes = GetMatchedNodesByDescName(kPatternTransData2, mapping);
   FUSION_PASS_CHECK(transdata1_nodes.empty(),
                     OP_LOGD(kFusedOpType.c_str(), " Pre TransData node is not matched."),
-                    return SUCCESS);
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(cube_nodes.empty(),
                     OP_LOGD(kFusedOpType.c_str(), "Conv2d node is not matched."),
-                    return SUCCESS);
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(transdata2_nodes.empty(),
                     OP_LOGD(kFusedOpType.c_str(), "Post TransData node is not matched."),
-                    return SUCCESS);
+                    return NOT_CHANGED);
 
   ge::NodePtr cube_node = cube_nodes[0];
   FUSION_PASS_CHECK(!CheckOpCube(cube_node), OP_LOGI(kFusedOpType.c_str(), "Check op cube failed."),
-                    return SUCCESS);
-
-  fusion_nodes = GetMatchedNodes(mapping);
+                    return NOT_CHANGED);
 
   for (auto &transdata1_node : transdata1_nodes) {
+    FUSION_PASS_CHECK(transdata1_node == nullptr,
+                      OP_LOGI(kFusedOpType.c_str(), "Failed to get pre transData node. "),
+                      return NOT_CHANGED);
     FUSION_PASS_CHECK(!CheckTransDataFormat(transdata1_node, true),
-                      OP_LOGI(kFusedOpType.c_str(), "unsupport input TransData format. "), return SUCCESS);
-    FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(transdata1_node->GetOpDesc(), UB_FUSION_OP_TYPE, kOpConv2D),
+                      OP_LOGI(kFusedOpType.c_str(), "unsupport input TransData format. "),
+                      return NOT_CHANGED);
+    ge::OpDescPtr transdata_desc = transdata1_node->GetOpDesc();
+    FUSION_PASS_CHECK(transdata_desc == nullptr,
+                      OP_LOGI(kFusedOpType.c_str(), "Failed to get opdesc of pre transData node. "),
+                      return NOT_CHANGED);
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(transdata_desc, UB_FUSION_OP_TYPE, kOpConv2D),
                       OP_LOGI(kFusedOpType.c_str(), "set op_type from TransData to Conv2D failed. "),
-                      return SUCCESS);
+                      return NOT_CHANGED);
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(transdata_desc, "graph_pattern", "_transdata_conv2d_transdata"),
+                      OP_LOGI(kFusedOpType.c_str(), "set graph_pattern failed. "),
+                      return NOT_CHANGED);
   }
   FUSION_PASS_CHECK(!CheckTransDataFormat(transdata2_nodes[0], false),
-                    OP_LOGI(kFusedOpType.c_str(), "unsupport output TransData format. "), return SUCCESS);
+                    OP_LOGI(kFusedOpType.c_str(), "unsupport output TransData format. "),
+                    return NOT_CHANGED);
+
+  fusion_nodes = GetMatchedNodes(mapping);
 
   OP_LOGD(kFusedOpType.c_str(), "End to do Conv2dTransDataFusionPass.");
   return SUCCESS;

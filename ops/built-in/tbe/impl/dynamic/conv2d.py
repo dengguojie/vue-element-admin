@@ -150,18 +150,19 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
     """
     if generalize_config is None:
         generalize_config = {"mode": "keep_rank"}
-    support_mode = ["keep_rank"]
-    if generalize_config.get("mode") not in support_mode:
+    support_mode = ["keep_rank", "all_shape"]
+    generalize_mode = generalize_config.get("mode")
+    if generalize_mode not in support_mode:
         err_man.raise_err_specific_user("conv2d", "invalid generalize mode {}, only support {}".format(
-            str(generalize_config.get("mode")), str(support_mode)))
+            generalize_mode, support_mode))
+    # unknow_rank inputs ori_shape is [-2], others' shape length is 4
+    unknow_rank = len(inputs["ori_shape"]) == 1 and inputs["ori_shape"][0] == -2
+    if unknow_rank:
+        err_man.raise_err_specific_user("conv2d", "not support unknow_rank under mode {}".format(
+            generalize_mode))
     result = []
-    if generalize_config.get("mode") == "keep_rank": # fuzz build situation
-        # unknow_rank inputs ori_shape is [-2], others' shape length is 4
-        unknow_rank = len(inputs["ori_shape"]) == 1 and inputs["ori_shape"][0] == -2
-        if unknow_rank:
-            err_man.raise_err_specific_user("conv2d", "not support unknow_rank under mode {}".format(
-                generalize_config.get("mode")))
-        log.debug("conv2d generalization inputs: %s", inputs)
+    log.debug("conv2d generalization mode: %s, inputs: %s", generalize_mode, inputs)
+    if generalize_mode == "keep_rank": # fuzz build situation
         graph_flag = check_graph_mode(inputs)
         if not graph_flag:
             x_range = gen_conv2d_range(inputs, weights, strides, pads, dilations)
@@ -180,10 +181,40 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
             if check_result:
                 log.debug("conv2d generalization invalid range, check result: %s", check_result)
                 return check_result
+    elif generalize_mode == "all_shape":
+        for tensor in [inputs, outputs]:
+            if len(tensor.get("ori_shape")) != ORI_SHAPE_LEN or len(tensor.get("shape")) != SHAPE_LEN:
+                err_man.raise_err_specific_user("conv2d", "check input shape size fail")
+            ci0 = tensor.get("shape")[-1]
+            tensor["shape"] = (DYNAMIC_VALUE, DYNAMIC_VALUE, DYNAMIC_VALUE, DYNAMIC_VALUE, ci0)
+            tensor["ori_shape"] = (DYNAMIC_VALUE, DYNAMIC_VALUE, DYNAMIC_VALUE, DYNAMIC_VALUE)
+            tensor["range"] = ((1, None), (1, None), (1, None), (1, None), (ci0, ci0))
+            tensor["ori_range"] = ((1, None), (1, None), (1, None), (1, None))
 
-        result.append([inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-            groups, data_format, offset_x, kernel_name])
+        if len(weights.get("ori_shape")) != ORI_SHAPE_LEN or len(weights.get("shape")) != ORI_SHAPE_LEN:
+            err_man.raise_err_specific_user("conv2d", "check weight shape size fail")
+        *_, n0, k0 = weights.get("shape")
+        weights["shape"] = (DYNAMIC_VALUE, DYNAMIC_VALUE, n0, k0)
+        weights["ori_shape"] = (DYNAMIC_VALUE, DYNAMIC_VALUE, DYNAMIC_VALUE, DYNAMIC_VALUE)
+        weights["range"] = ((1, None), (1, None), (n0, n0), (k0, k0))
+        weights["ori_range"] = ((1, None), (1, None), (1, None), (1, None))
 
+        for tensor in [bias, offset_w]:
+            if tensor is not None:
+                tensor["shape"] = (DYNAMIC_VALUE,)
+                tensor["ori_shape"] = (DYNAMIC_VALUE,)
+                tensor["range"] = ((1, None),)
+                tensor["ori_range"] = ((1, None),)
+
+        for attrs in [strides, pads, dilations]:
+            if len(attrs) != ORI_SHAPE_LEN:
+                err_man.raise_err_specific_user("conv2d", "check attrs shape size fail")
+            attrs = (None, None, None, None)
+        groups = None
+        offset_x = None
+
+    result.append([inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+                   groups, data_format, offset_x, kernel_name])
     log.debug("conv2d generalization result: %s", result)
     return result
 

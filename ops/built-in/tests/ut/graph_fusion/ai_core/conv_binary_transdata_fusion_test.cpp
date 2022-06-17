@@ -7,6 +7,7 @@
 #define protected public
 #define private public
 #include "buffer_fusion/ub_fusion/ai_core/conv/conv2d_transdata_fusion_pass.h"
+#include "common/util/platform_info.h"
 #undef protected
 #undef private
 
@@ -120,4 +121,20 @@ TEST_F(ConvBinaryTransdataFusionTest, ConvBinaryTransdataFusionTest_1) {
 
   vector<NodePtr> fusion_nodes;
   fe::Status status = fusion_pass.GetFusionNodes(mapping, fusion_nodes);
+}
+
+TEST_F(ConvBinaryTransdataFusionTest, ConvBinaryTransdataFusionTest_2) {
+  // set soc_version
+  fe::PlatformInfo platform_info;
+  fe::OptionalInfo opti_compilation_info;
+  opti_compilation_info.soc_version = "Ascend910A";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+  setenv("ASCEND_OPP_PATH", "/", 1);
+
+  fe::Conv2dTransDataFusionPass fusion_pass;
+  fusion_pass.CheckBinaryReuse();
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 }

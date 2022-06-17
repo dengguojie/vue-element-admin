@@ -31,6 +31,7 @@ from . import trans_data_positive_source_tc
 from . import trans_data_negative_target_ntc
 from . import trans_data_positive_source_ntc
 from . import trans_data_negative_target_tc
+from . import conv2d_data_rm_compute
 
 # the NCHW format length
 NCHW_LENTH = 4
@@ -212,10 +213,15 @@ def _nc1hwc0_to_nchw(src, dst):
     Tensor
     """
     src_n, src_c1, src_hw, src_c0 = src.shape
+    remove_pad_flag = False
     if src.op.tag == "conv2d_backprop_input":
         real_c = get_te_var("dx_c").get_tvm_var()
     elif src.op.name == "invalid_conv2d_rmpad":
         real_c = get_te_var("c_out").get_tvm_var()
+    elif src.op.tag == "convolution_C":
+        real_c = get_te_var("c_out").get_tvm_var()
+        src = src.op.input_tensors[0]
+        remove_pad_flag = True
     else:
         real_c = dst.get("ori_shape")[1]
     transpose_shape = (src_n, src_c1, src_c0, src_hw)
@@ -231,6 +237,10 @@ def _nc1hwc0_to_nchw(src, dst):
             transpose_tensor(n_idx, c_idx // src_c0, c_idx % src_c0, hw_idx),
         name="res_nchw",
         tag="5HD_TRANS_NCHW")
+
+    if remove_pad_flag:
+        dst_tensor = conv2d_data_rm_compute(dst_tensor)
+
     return dst_tensor
 
 

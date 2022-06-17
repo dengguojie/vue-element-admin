@@ -489,7 +489,12 @@ def _cube_transdata_shape(inputs: list):
     ori_shape = list(fmap.get("ori_shape"))
     ori_format = fmap.get("ori_format")
     in_range_nchw = _get_input_range_nchw("cube", ori_shape, ori_format, in_range)
-    in_dtype = fmap.get("data_type")
+    if "data_type" in fmap:
+        in_dtype = fmap.get("data_type")
+    elif "dtype" in fmap:
+        in_dtype = fmap.get("dtype")
+    else:
+        raise RuntimeError("need data_type or dtype in inputs[0]")
 
     _binary_flag = False
     if in_range == [(1, None), (1, None), (1, None), (1, None)]:
@@ -541,7 +546,7 @@ def _cube_variable_shape(inputs: list):
 
     groups = 1
     for op_info in get_context().get_op_info():
-        if op_info.pattern == "Convolution":
+        if op_info.pattern == "Convolution" and op_info.op_type == "Conv2D":
             groups = op_info.attrs[3]
             break
 

@@ -53,6 +53,7 @@ class Conv2dTransDataFusionPass : public BufferFusionPassBase {
   bool CheckTransDataFormat(const ge::NodePtr &node, const bool &is_input) const;
   bool CheckOpCube(const ge::NodePtr &cube_node) const;
   bool CheckInputNoRange(const ge::NodePtr &cube_node) const;
+  bool CheckBinaryReuse() const;
   void DeleteFusionNodes(const ge::NodePtr &transdata_node, vector<ge::NodePtr> &fusion_nodes,
                          const bool &is_input);
   const string kFusedOpType = "FusedOp";

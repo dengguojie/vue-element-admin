@@ -590,6 +590,48 @@ print("adding conv2d test_conv2d_fuzz_build_graph_mode_none_range testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_graph_mode_none_range)
 
 
+def test_conv2d_fuzz_build_all_shape(test_arg):
+    input_list = [
+        {
+            # inputs
+            'shape': (1, -1, -1, -1, 16),
+            'ori_shape': (1, -1, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, None), (1, None), (1, None), (1, None), (16, 16)),
+            'ori_range': ((1, None), (1, None), (1, None), (1, None))
+        }, {
+            # filter
+            'shape': (720, 8, 16, 16),
+            'ori_shape': (128, 1280, 3, 3),
+            'format': 'FRACTAL_Z',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        }, {
+            # bias
+            'shape': (128,),
+            'ori_shape': (128,),
+            'format': 'ND',
+            'ori_format': 'ND',
+            'dtype': 'float16'
+        }, None, {
+            # outputs
+            'shape': (-1, 8, -1, -1, 16),
+            'ori_shape': (-1, 128, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        },
+        # strides, pads, dilations, groups, data_format, offset_x, kernel_name
+        (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'test_conv2d_fuzz_build_all_shape',
+        {"mode": "all_shape"}]
+    conv2d_generalization(*input_list)
+print("adding conv2d test_conv2d_fuzz_build_all_shape testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_all_shape)
+
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])
     exit(0)

@@ -131,15 +131,23 @@ class InputNd2Nz:
 
             sch[self._fmap_in_ub.get("transpose_hw_c0")].mem_unique()
 
-    def input_nd_binary_compute_at(self, sch, al1, aub_nparts):
+    def input_nd_binary_compute_at(self, sch, al1, l0a_load2d_flag, aub_nparts):
         """
         compute at in binary input_nd
         """
         if self.mode == "NCHW":
-            c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[2], nparts=aub_nparts[0])
-            h_outer, h_inner = sch[al1].split(sch[al1].op.axis[3], nparts=aub_nparts[1])
-            sch[al1].reorder(c1_outer, h_outer, sch[al1].op.axis[0],
-                             sch[al1].op.axis[1], c1_inner, h_inner)
+            if l0a_load2d_flag:
+                # al1 shape [n, ci1, m, ci0]
+                c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[1], nparts=aub_nparts[0])
+                h_outer, h_inner = sch[al1].split(sch[al1].op.axis[2], nparts=aub_nparts[1])
+                sch[al1].reorder(c1_outer, h_outer, sch[al1].op.axis[0],
+                                 c1_inner, h_inner)
+            else:
+                # al1 shape [group_opt, n, ci1, hi, wi, ci0]
+                c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[2], nparts=aub_nparts[0])
+                h_outer, h_inner = sch[al1].split(sch[al1].op.axis[3], nparts=aub_nparts[1])
+                sch[al1].reorder(c1_outer, h_outer, sch[al1].op.axis[0],
+                                 sch[al1].op.axis[1], c1_inner, h_inner)
             for tensor in self._fmap_in_ub.values():
                 sch[tensor].compute_at(sch[al1], h_outer)
 
@@ -2775,7 +2783,7 @@ class Conv2dSchedule:
         self._convbn1.bn1fusion_compute_at(sch, res, cub_at_res_axis)
 
         if self._binary.flag:
-            self._input_nd2nz.input_nd_binary_compute_at(sch, al1, aub_nparts)
+            self._input_nd2nz.input_nd_binary_compute_at(sch, al1, self._l0a_load2d.flag, aub_nparts)
             self._output_nz2nd.output_nd_binary_compute_at(sch, res, cub_at_res_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
