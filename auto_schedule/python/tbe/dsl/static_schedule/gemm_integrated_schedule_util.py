@@ -626,7 +626,6 @@ class GemmTilingWork:
             tiling.get('AUB_shape')[1] = cache_tiling.get('m_aub')
             tiling.get('BUB_shape')[0] = cache_tiling.get('k_bub') * self.block_reduce
             tiling.get('BUB_shape')[1] = cache_tiling.get('n_bub')
-
         return tiling
 
     def set_factor_shape(self, cache_tiling, format_info, status_controller):
@@ -743,7 +742,7 @@ class GemmTilingWork:
         self.factor_shape["al12ddr"] = [cache_tiling.get("m_al1"), cache_tiling.get("n_single_core")]
         # al1 attach at ddr, bl1 full load
         if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == self.l1_full_load_flag:
-            self.factor_shape.get("al12ddr")[1] = cache_tiling.get("n_single_core") * cache_tiling.get("n_bl1")
+            self.factor_shape.get("al12ddr")[1] = cache_tiling.get("n_single_core")
 
         # al1/bl1 both attach at ddr
         self.factor_shape["bl12ddr"] = [1, cache_tiling.get("n_bl1")]
@@ -818,7 +817,6 @@ class CceSimplification:
         handles cce simplification for binary, include set_var_range, pragma, skip_bound_check, etc.
         """
         self.tensor_map = sch_container.tensor_map
-        sch_container.vector_muls_attr = {'axis_dynamic_shift': 1}
         self.var_manager.set_var_range_for_dynamic_scene(compute_param, cache_tiling_manager)
         if cache_tiling_manager.cache_tiling:
             self._enable_skip_bound_check(cache_tiling_manager, sch_container)
@@ -980,7 +978,10 @@ class CceSimplification:
         """
         use skip_bound_check to ignore iflikely restraint when k is splited by factor
         """
-        if not cache_tiling_manager.non_factor_k_flag:
+        if cache_tiling_manager.non_factor_k_flag:
+            get_context().get_current_compute().get_current_schedule().add(
+                "_build_config", {"predicate_realize_bound": True})
+        else:
             skip_bound_check_list = [self.tensor_map.get("a_l1"), self.tensor_map.get("b_l1"),
                 self.tensor_map.get("a_l0a"), self.tensor_map.get("b_l0b"),
                 self.tensor_map.get("c_l0c")]
@@ -989,9 +990,6 @@ class CceSimplification:
             skip_bound_check_list += sch_container.tensors_in_cub
             for tensor in skip_bound_check_list:
                 self.sch[tensor].skip_bound_check()
-        else:
-            get_context().get_current_compute().get_current_schedule().add(
-                "_build_config", {"predicate_realize_bound": True})
 
     def _buffer_tile_for_simplify(self, compute_param, sch_agent):
         """
@@ -1037,39 +1035,41 @@ class CacheTilingManager:
     manager tiling vars and cache tiling flags in bianry mode
     """
 
-    def __init__(self):
-        self.sch = None
+    def __init__(self, sch, dynamic_para):
+        self.sch = sch
+        self.tiling_strategy = dynamic_para.get("tiling_strategy")
+        self.attach_at_flag = None
+        self.non_factor_k_flag = None
         self.cache_tiling = None
-        self.tiling = None
-        self.non_factor_k_flag = False
         self.k_expr = None
         self.flag_l0c_preload = False
 
-    def config_cache_tiling(self, tiling, cce_simplification_obj, compute_param):
+    def config_cache_tiling(self, cce_simplification_obj, compute_param, sch_container):
         """
         config cache tiling variables in binary mode
         """
-
+        sch_container.vector_muls_attr = {'axis_dynamic_shift': 1}
+        self.attach_at_flag = self.tiling_strategy.get("attach_at_flag")
+        self.non_factor_k_flag = self.tiling_strategy.get("non_factor_k_flag")
         self._get_cache_tiling(compute_param.split_k_flag)
         cce_simplification_obj.cache_tiling = self.cache_tiling
-        self.non_factor_k_flag = tiling.get("non_factor_k_flag")
-        aub_multi_flag = tiling.get("attach_at_flag").get("aub_multi_flag")
-        bub_multi_flag = tiling.get("attach_at_flag").get("bub_multi_flag")
+        aub_multi_flag = self.attach_at_flag.get("aub_multi_flag")
+        bub_multi_flag = self.attach_at_flag.get("bub_multi_flag")
         if aub_multi_flag == 1:
             self.sch.set_var_value(self.cache_tiling.get("multi_k_aub_l1"), 1)
             self.sch.set_var_value(self.cache_tiling.get("multi_m_ub_l1"), 1)
         if bub_multi_flag == 1:
             self.sch.set_var_value(self.cache_tiling.get("multi_n_ub_l1"), 1)
             self.sch.set_var_value(self.cache_tiling.get("multi_k_bub_l1"), 1)
-        abkl1_attach_flag = tiling.get("attach_at_flag").get("abkl1_attach_flag")
+        abkl1_attach_flag = self.attach_at_flag.get("abkl1_attach_flag")
         if abkl1_attach_flag == 0:
             self.sch.set_var_value(self.cache_tiling.get("kl1_times"), 1)
-            self._norange_kal1_kbl1_equal(tiling, cce_simplification_obj, compute_param)
+            self._norange_kal1_kbl1_equal(cce_simplification_obj, compute_param)
         elif abkl1_attach_flag == 1:
-            self._norange_kal1(tiling, cce_simplification_obj, compute_param)
+            self._norange_kal1(cce_simplification_obj, compute_param)
         else:
-            self._norange_kbl1(tiling)
-        self._set_l0c_preload_flag(tiling)
+            self._norange_kbl1()
+        self._set_l0c_preload_flag()
 
     def cache_tiling_full_load(self, container, status_controller):
         """
@@ -1077,7 +1077,7 @@ class CacheTilingManager:
         """
         if self.cache_tiling:
             c_gm = container.tensor_map.get("c_gm")
-            if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
+            if self.attach_at_flag.get("bl1_attach_flag") == 0:
                 self.sch.set_var_value(self.cache_tiling.get("n_single_core"), 1)
                 bl1 = container.tensor_map.get("b_l1")
                 iter_axis = 1 if len(bl1.shape) == 4 else 3
@@ -1085,7 +1085,7 @@ class CacheTilingManager:
                 if status_controller.split_k_axis_by_tiling:
                     iter_axis += 2
                 self.sch[bl1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
-            if self.tiling.get("attach_at_flag").get("al1_attach_flag") == 0:
+            if self.attach_at_flag.get("al1_attach_flag") == 0:
                 self.sch.set_var_value(self.cache_tiling.get("m_single_core"), 1)
                 al1 = container.tensor_map.get("a_l1")
                 iter_axis = 1 if len(al1.shape) == 4 else 3
@@ -1139,7 +1139,7 @@ class CacheTilingManager:
         if not split_k_flag:
             self.cache_tiling["k_dim"] = 1
 
-    def _norange_kal1_kbl1_equal(self, tiling, cce_simplification_obj, compute_param):
+    def _norange_kal1_kbl1_equal(self, cce_simplification_obj, compute_param):
         """
         config k related tiling variable when kal1 equals kbl1
         """
@@ -1147,10 +1147,10 @@ class CacheTilingManager:
         kal1_factor = self.cache_tiling.get("kal1_factor")
         k_l0 = self.cache_tiling.get("k_l0")
         k_dim = self.cache_tiling.get("k_dim")
-        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+        if not self.attach_at_flag.get("min_kl1_cmp_kl0"):
             self.cache_tiling["k_al0"] = kal0_factor * k_l0
             self.cache_tiling["k_bl0"] = kal0_factor * k_l0
-            if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+            if self.attach_at_flag.get("al1_attach_flag") == 0:
                 self.cache_tiling["k_al0"] = kal1_factor * kal0_factor * k_l0
                 self.cache_tiling["k_bl0"] = self.cache_tiling.get("k_al0")
                 cce_simplification_obj.set_kaub_simplification_l1_fullload(
@@ -1160,7 +1160,7 @@ class CacheTilingManager:
         self.cache_tiling["kbl1_16"] = kal0_factor * k_l0
         self.k_expr = kal1_factor * kal0_factor * k_l0 * k_dim
 
-    def _norange_kal1(self, tiling, cce_simplification_obj, compute_param):
+    def _norange_kal1(self, cce_simplification_obj, compute_param):
         """
         config k related tiling variable when kal1 large than kbl1
         """
@@ -1168,11 +1168,11 @@ class CacheTilingManager:
         k_l0 = self.cache_tiling.get("k_l0")
         kl1_times = self.cache_tiling.get("kl1_times")
         k_dim = self.cache_tiling.get("k_dim")
-        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+        if not self.attach_at_flag.get("min_kl1_cmp_kl0"):
             self.sch.set_var_value(kbl0_factor, 1)
             self.cache_tiling["k_al0"] = kbl0_factor * k_l0
             self.cache_tiling["k_bl0"] = kbl0_factor * k_l0
-        if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+        if self.attach_at_flag.get("al1_attach_flag") == 0:
             self.k_expr = self.cache_tiling.get("kbl1_factor") * kbl0_factor * k_l0 * k_dim
             cce_simplification_obj.set_kaub_simplification_l1_fullload(
                 self.cache_tiling.get("kbl1_factor") * kbl0_factor * k_l0, compute_param)
@@ -1180,7 +1180,7 @@ class CacheTilingManager:
             self.cache_tiling["kal1_16"] = kl1_times * kbl0_factor * k_l0
             self.k_expr = self.cache_tiling.get("kal1_factor") * kl1_times * kbl0_factor * k_l0 * k_dim
 
-    def _norange_kbl1(self, tiling):
+    def _norange_kbl1(self):
         """
         config k related tiling variable when kal1 smaller than kbl1
         """
@@ -1188,20 +1188,20 @@ class CacheTilingManager:
         k_l0 = self.cache_tiling.get("k_l0")
         kl1_times = self.cache_tiling.get("kl1_times")
         k_dim = self.cache_tiling.get("k_dim")
-        if not tiling.get("attach_at_flag").get("min_kl1_cmp_kl0"):
+        if not self.attach_at_flag.get("min_kl1_cmp_kl0"):
             self.sch.set_var_value(kal0_factor, 1)
             self.cache_tiling["k_al0"] = kal0_factor * k_l0
             self.cache_tiling["k_bl0"] = kal0_factor * k_l0
-        if tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
+        if self.attach_at_flag.get("bl1_attach_flag") == 0:
             self.k_expr = self.cache_tiling.get("kal1_factor") * kal0_factor * k_l0 * k_dim
         else:
             self.cache_tiling["kbl1_16"] = kl1_times * kal0_factor * k_l0
             self.k_expr = self.cache_tiling.get("kbl1_factor") * kl1_times * kal0_factor * k_l0 * k_dim
 
-    def _set_l0c_preload_flag(self, tiling):
-        l0c_pb = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
-        al1_attach_flag = tiling.get("attach_at_flag").get("al1_attach_flag")
-        bl1_attach_flag = tiling.get("attach_at_flag").get("bl1_attach_flag")
+    def _set_l0c_preload_flag(self):
+        l0c_pb = self.tiling_strategy.get("manual_pingpong_buffer").get("CL0_pbuffer")
+        al1_attach_flag = self.attach_at_flag.get("al1_attach_flag")
+        bl1_attach_flag = self.attach_at_flag.get("bl1_attach_flag")
         # enable l0c_preload for template_5 because only template_5's performance is improved for now
         # 2,2,0 means that l0c_double_buffer, no_k_al1_full_load and bl1_full_load
         self.flag_l0c_preload = (l0c_pb == 2 and al1_attach_flag == 2 and bl1_attach_flag == 0)

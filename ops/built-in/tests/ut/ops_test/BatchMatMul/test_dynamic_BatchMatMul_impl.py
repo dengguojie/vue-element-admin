@@ -42,6 +42,7 @@ matmul_none_range_case = [
     ("float16", "float16", "FRACTAL_NZ", False, False, True, True),
 ]
 
+
 def gen_batch_matmul_dynamic_none_range(
     src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batch_b):
     """

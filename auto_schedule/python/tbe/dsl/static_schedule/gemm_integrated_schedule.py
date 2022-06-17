@@ -307,7 +307,7 @@ class GemmSchedule:
         self.tiling_work = GemmTilingWork()
         self.buffer_checker = BufferChecker()
         self.cce_simplification_obj = CceSimplification(self.sch, dynamic_para)
-        self.cache_tiling_manager = CacheTilingManager()
+        self.cache_tiling_manager = CacheTilingManager(self.sch, dynamic_para)
         self.tensor_b_reshape = 0
 
     @staticmethod
@@ -1916,12 +1916,10 @@ class GemmSchedule:
             # binary mode
             if -1 in tiling['block_dim']:
                 self.res.op.attrs["cache_tiling"] = 1
-                self.cache_tiling_manager.sch = self.sch
                 self.cache_tiling_manager.config_cache_tiling(
-                    tiling, self.cce_simplification_obj, self.compute_param)
+                    self.cce_simplification_obj, self.compute_param, self.container)
                 self.cache_tiling = self.cache_tiling_manager.cache_tiling
                 tiling = self.tiling_work.config_tiling(tiling, self.cache_tiling, self.compute_param)
-                self.cache_tiling_manager.tiling = tiling
         else:
             tiling = self._get_tiling_after_cmp(info_dict, new_fused_num)
         tiling = self._no_solution_tiling(tiling)
@@ -2326,9 +2324,6 @@ class GemmSchedule:
             affine_l0c = [cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_nc * cl0_tiling_n0]
         else:
             affine_l0c = [cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0]
-            if self.cache_tiling:
-                affine_l0c[0] = self.cache_tiling.get("n_ub_l0_time") * self.cache_tiling.get("cub_n1")
-
         cl0_tiling_shape = [cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0]
 
         if self.status_controller.have_batch:
@@ -2867,10 +2862,6 @@ class GemmSchedule:
         get l1b2out_affine_shape
         """
         bl1_m_shape = None
-        if self.cache_tiling:
-            bl1_m_shape = self.tiling_work.al1_tiling_m * self.tiling_work.cl0_tiling_m0
-            if self.status_controller.attach_at_flag.get("al1_attach_flag") != 1:
-                bl1_m_shape *= self.cache_tiling.get("m_single_core")
         l1b2out_affine_shape = [bl1_m_shape, self.tiling_work.bl1_tiling_n * self.tiling_work.bl0_tiling_n0]
         if self.format_info.get("out") != "ND":
             l1b2out_affine_shape = [self.tiling_work.bl1_tiling_n, None, None, self.tiling_work.bl0_tiling_n0]
