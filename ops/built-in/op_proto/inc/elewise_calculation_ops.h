@@ -48,29 +48,29 @@ REG_OP(AddN)
     .OP_END_FACTORY_REG(AddN)
 
 /**
-*@brief Calculates the reversed outputs of the function "maximum"
+*@brief Calculates the reversed outputs of the function "maximum".
 
 *@par Inputs:
-*Three inputs, including:
-* @li grads: A mutable Tensor. Must be one of the following types:
-*     float16, float32, int32.
-* @li x1: A mutable Tensor of the same type as "grads".
-* @li x2: A mutable Tensor of the same type as "grads". \n
+* Three inputs, including:
+*@li grads: A mutable Tensor. Must be one of the following types:
+* float16, float32, int32.
+*@li x1: A mutable Tensor of the same type as "grads".
+*@li x2: A mutable Tensor of the same type as "grads". \n
 
 *@par Attributes:
 *@li grad_x: An optional bool. Defaults to "True".
-*     If "True", "y1" will be output.
-*     If "False", "y1" will not be output. \n
+* If "True", "y1" will be output.
+* If "False", "y1" will not be output. \n
 
 *@li grad_y: An optional bool. Defaults to "True".
-*     If "True", "y2" will be output.
-*     If "False", "y2" will not be output. \n
+* If "True", "y2" will be output.
+* If "False", "y2" will not be output. \n
 
 *@par Outputs:
-* @li y1: A mutable Tensor. Has the same type as "grads".
-* @li y2: A mutable Tensor. Has the same type as "grads". \n
+*@li y1: A mutable Tensor. Has the same type as "grads".
+*@li y2: A mutable Tensor. Has the same type as "grads". \n
 
-*@par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator MaximumGrad.
 */
 REG_OP(MaximumGrad)
@@ -84,29 +84,29 @@ REG_OP(MaximumGrad)
     .OP_END_FACTORY_REG(MaximumGrad)
 
 /**
-*@brief Calculates the reversed outputs of the function "minimum"
+*@brief Calculates the reversed outputs of the function "minimum".
 
 *@par Inputs:
-*Three inputs, including:
-* @li grads: A mutable Tensor. Must be one of the following types:
-*     float16, float32, int32.
-* @li x1: A mutable Tensor of the same type as "grads".
-* @li x2: A mutable Tensor of the same type as "grads". \n
+* Three inputs, including:
+*@li grads: A mutable Tensor. Must be one of the following types:
+* float16, float32, int32.
+*@li x1: A mutable Tensor of the same type as "grads".
+*@li x2: A mutable Tensor of the same type as "grads". \n
 
 *@par Attributes:
 *@li grad_x: An optional bool. Defaults to "True".
-*     If "True", "y1" will be output.
-*     If "False", "y1" will not be output. \n
+* If "True", "y1" will be output.
+* If "False", "y1" will not be output. \n
 
 *@li grad_y: An optional bool. Defaults to "True".
-*     If "True", "y2" will be output.
-*     If "False", "y2" will not be output. \n
+* If "True", "y2" will be output.
+* If "False", "y2" will not be output. \n
 
 *@par Outputs:
-* @li y1: A mutable Tensor. Has the same type as "grads".
-* @li y2: A mutable Tensor. Has the same type as "grads". \n
+*@li y1: A mutable Tensor. Has the same type as "grads".
+*@li y2: A mutable Tensor. Has the same type as "grads". \n
 
-*@par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator MinimumGrad.
 */
 REG_OP(MinimumGrad)
@@ -552,15 +552,16 @@ REG_OP(Expint)
     .OP_END_FACTORY_REG(Expint)
 
 /**
-*@brief: Computes the reciprocal of "x". \n
+*@brief: Computes the reciprocal of "x".
 
-*@par Inputs:\n
-*x: A Tensor. Must be one of the following types: float16, float32, int32, int64, double, complex64, complex128. \n
+*@par Inputs:
+*x: A Tensor. Must be one of the following types: float16, float32,
+* int32, int64, double, complex64, complex128. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as "x". \n
+*y: A Tensor. Must be one of the following type: float16, float32, int32. \n
 
-*@par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator Inv.
 */
 REG_OP(Inv)
@@ -569,18 +570,19 @@ REG_OP(Inv)
     .OP_END_FACTORY_REG(Inv)
 
 /**
-*@brief: Computes "x" reciprocal grad, dx = -1*dy*y*y, where, "y = 1/x", and "dy"
-    is the corresponding input gradient. \n
+*@brief: Computes "x" reciprocal grad, dx = -1*dy*y*y, where, "y = 1/x",
+* and "dy" is the corresponding input gradient.
 
 *@par Inputs:
 * Two inputs, including:
-* @li x: A Tensor. Must be one of the following types: float16, float32, int32, int8.
-* @li grad: A Tensor. Has the same type as "x". \n
+*@li x: A Tensor. Must be one of the following types: float16, float32,
+* int32, int8.
+*@li grad: A Tensor. Has the same type as "x". \n
 
 *@par Outputs:
 *y: A Tensor, Has the same type as "x". \n
 
-*@par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator InvGrad.
 */
 REG_OP(InvGrad)
@@ -633,25 +635,27 @@ REG_OP(Log1p)
 
 /**
 *@brief Returns element-wise remainder of division.
+
 *@par Inputs:
-*Two inputs, including:
-* @li x1: A Tensor. Must be one of the following types: float16, float32,
- * int32, int64, int8, uint8, double.
-* @li x2: A Tensor of the same type as "x1". \n
+* Two inputs, including:
+*@li x1: A Tensor. Must be one of the following types: float16, float32,
+* int32, int64, int8, uint8, double.
+*@li x2: A Tensor of the same type as "x1". \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as "x1".
+*y: A Tensor. Has the same type as "x1". \n
 
 *@attention Constraints:
-*@li x2: The input data does not support 0
+*@li x2: The input data does not support 0.
 *@li When NUM exceeds 2048 , the accuracy of operator cannot guarantee the
-*requirement of double thousandths in the mini form
+* requirement of double thousandths in the mini form.
 *@li Due to different architectures, the calculation results of this operator
-*on NPU and CPU may be inconsistent
-*@li If shape is expressed as (D1,D2... ,Dn), then D1*D2... *DN<=1000000,n<=8
+* on NPU and CPU may be inconsistent.
+*@li If shape is expressed as (D1,D2... ,Dn),
+* then D1*D2... *DN<=1000000,n<=8. \n
 
-*@par Third-party framework compatibility
-*Compatible with the TensorFlow operator Mod.
+*@par Third-party framework compatibility:
+* Compatible with the TensorFlow operator Mod.
 */
 REG_OP(Mod)
     .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8,
@@ -663,18 +667,18 @@ REG_OP(Mod)
     .OP_END_FACTORY_REG(Mod)
 
 /**
-*@brief: Returns the truth value of (x != y) element-wise. \n
+*@brief Returns the truth value of (x != y) element-wise.
 
 *@par Inputs:
 * Two inputs, including:
 *@li x1: A Tensor. Must be one of the following types: float16, float32, int32,
- * int8, uint8, double, int16, int64, uint16, half, uint32, uint64
+* int8, uint8, double, int16, int64, uint16, half, uint32, uint64.
 *@li x2: A Tensor of the same type as "x1". \n
 
 *@par Outputs:
 *y: A Tensor of type bool. \n
 
-*@par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator NotEqual.
 */
 REG_OP(NotEqual)
@@ -684,16 +688,17 @@ REG_OP(NotEqual)
     .OP_END_FACTORY_REG(NotEqual)
 
 /**
-* @brief Computes ndtri element-wise (y = sqrt(2) * erfinv(2 * x - 1))
+*@brief Computes ndtri element-wise (y = sqrt(2) * erfinv(2 * x - 1)).
 
-* @par Inputs:
-* One input:
-* x: A Tensor. Must be one of the following types: bfloat16, float16, float32, double \n
+*@par Inputs:
+* One input, including: \n
+*x: A Tensor. Must be one of the following types: bfloat16, float16,
+* float32, double. \n
 
-* @par Outputs:
-* y: A Tensor. Has the same type and format as input "x". \n
+*@par Outputs:
+*y: A Tensor. Has the same type and format as input "x". \n
 
-* @par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator Ndtri.
 */
 REG_OP(Ndtri)
@@ -1509,18 +1514,18 @@ REG_OP(DivNoNan)
     .OP_END_FACTORY_REG(DivNoNan)
 
 /**
-*@brief Reverses specific dimensions of a tensor. \n
+*@brief Reverses specific dimensions of a tensor.
 
 *@par Inputs:
 * One input: \n
 *x: A Tensor, Must be one of the following types:
-*    int32, uint8, int16, int8, int64, int64, uint16, uint32, uint64,
-*    and format can be [NCHW,NHWC,ND]
+* int32, uint8, int16, int8, int64, int64, uint16, uint32, uint64,
+* and format can be [NCHW,NHWC,ND]. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type and format as "x"
+*y: A Tensor. Has the same type and format as "x". \n
 
-*@par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator Invert.
 */
 REG_OP(Invert)
@@ -1768,16 +1773,16 @@ REG_OP(Atan2)
     .OP_END_FACTORY_REG(Atan2)
 
 /**
-* @brief Computes fresnel_cos of x element-wise. \n
- 
+*@brief Computes fresnel_cos of x element-wise.
 * 
-* @par Inputs:
-*  x: A tensor. Must be one of the following types: bfloat16, float16, float32, double.
+*@par Inputs:
+*x: A tensor. Must be one of the following types: bfloat16, float16, float32,
+* double. \n
 * 
-* @par Outputs:
-*  y: A tensor. Has the same type as "x".
+*@par Outputs:
+*y: A tensor. Has the same type as "x". \n
 * 
-* @par Third-party framework compatibility
+*@par Third-party framework compatibility
 * Compatible with the TensorFlow operator FresnelCos.
 * 
 */
@@ -1787,16 +1792,17 @@ REG_OP(FresnelCos)
     .OP_END_FACTORY_REG(FresnelCos)
 
 /**
-* @brief Computes fresnel_sin of x element-wise. \n
+*@brief Computes fresnel_sin of x element-wise.
  
 * 
-* @par Inputs:
-*  x: A tensor. Must be one of the following types: bfloat16, float16, float32, double.
+*@par Inputs:
+*x: A tensor. Must be one of the following types: bfloat16, float16, float32,
+* double. \n
 * 
-* @par Outputs:
-*  y: A tensor. Has the same type as "x".
+*@par Outputs:
+*y: A tensor. Has the same type as "x". \n
 * 
-* @par Third-party framework compatibility
+*@par Third-party framework compatibility:
 * Compatible with the TensorFlow operator FresnelSin.
 * 
 */
@@ -3178,19 +3184,20 @@ REG_OP(SquareSumAll)
     .OP_END_FACTORY_REG(SquareSumAll)
 
 /**
-*@brief Confuse broadcast, addn and mul. \n
+*@brief Confuse broadcast, addn and mul.
 
 *@par Inputs:
 *Three inputs, including:
-* @li x1: A Tensor. Must be one of the following types:int32, int16, float16, float32.
-* @li x2: A Tensor of the same type as "x1".
-* @li x3: A Tensor of the same type as "x1". \n
+*@li x1: A Tensor. Must be one of the following types:int32, int16,
+* float16, float32.
+*@li x2: A Tensor of the same type as "x1".
+*@li x3: A Tensor of the same type as "x1". \n
 
 *@par Outputs:
-* y: A Tensor. Has the same type as "x1".
+*y: A Tensor. Has the same type as "x1". \n
 
 *@par Restrictions:
-*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(FusedMulAddN)
     .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT16}))
@@ -3405,11 +3412,14 @@ REG_OP(Fills)
      .OP_END_FACTORY_REG(Adds)
 
 /**
-*@brief Computes the product of x and y and returns 0 if the y is zero, even if x is NaN or infinite. \n
+*@brief Computes the product of x and y and returns 0 if the y is zero,
+* even if x is NaN or infinite.
 
 *@par Inputs:
-* @li x1: A Tensor. Must be one of the following types:float16, float32, double, complex64, complex128.
-* @li x2: A Tensor. Has the same type and shape as "x1". \n
+* Two inputs, including: \n
+*@li x1: A Tensor. Must be one of the following types:float16, float32,
+* double, complex64, complex128.
+*@li x2: A Tensor. Has the same type and shape as "x1". \n
 
 *@par Outputs:
 *y: A Tensor. Has the same type and shape as "x1". \n

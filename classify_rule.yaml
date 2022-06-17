@@ -1185,6 +1185,9 @@ vector_B:
       - ops/built-in/op_proto/randomdsa_ops.cc
       - ops/built-in/op_proto/rpn_ops.cc
       - ops/built-in/op_proto/split_combination_ops.cc
+      - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
+      - ops/built-in/op_proto/inc/nn_training_ops.h
+      - ops/built-in/op_proto/inc/reduce_ops.h
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
@@ -2606,11 +2609,8 @@ unkown:
       - ops/built-in/op_proto/inc/swap_co_ops.h
       - ops/built-in/op_proto/inc/target_crop_and_resize.h
       - ops/built-in/op_proto/inc/rpn_ops.h
-      - ops/built-in/op_proto/inc/nn_training_ops.h
-      - ops/built-in/op_proto/inc/reduce_ops.h
       - ops/built-in/op_proto/inc/aipp.h
       - ops/built-in/op_proto/inc/candidate_sampling_ops.h
-      - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
       - ops/built-in/op_proto/inc/ctc_ops.h
       - ops/built-in/op_proto/inc/deep_md.h
       - ops/built-in/op_proto/inc/hvd_ops.h

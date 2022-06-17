@@ -26,16 +26,17 @@
 namespace ge {
 /**
 *@brief The GELU activation function is x*Φ(x),
-*       where Φ(x) the standard Gaussian cumulative distribution function. \n
+* where Φ(x) the standard Gaussian cumulative distribution function.
 
 *@par Inputs:
-*One input, including:
-*x: A Tensor. Must be one of the following types: float16, float32
+*One input, including: \n
+*x: A Tensor. Must be one of the following types: float16, float32. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as "x".
-*@par Third-party framework compatibility
-*Compatible with the TensorFlow operator Gelu
+*y: A Tensor. Has the same type as "x". \n
+
+*@par Third-party framework compatibility:
+* Compatible with the TensorFlow operator Gelu.
 */
 REG_OP(Gelu)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -124,18 +125,18 @@ REG_OP(SwishGrad)
     .OP_END_FACTORY_REG(SwishGrad)
 
 /**
-*@brief Computes the gradient for the gelu of "x" . \n
+*@brief Computes the gradient for the gelu of "x" .
 
 *@par Inputs:
-*Three inputs, including:
-* @li dy: A Tensor. Must be one of the following types: float16, float32
-* @li x: A Tensor of the same type as "dy".
-* @li y: A Tensor of the same type as "dy" . \n
+* Three inputs, including:
+*@li dy: A Tensor. Must be one of the following types: float16, float32.
+*@li x: A Tensor of the same type as "dy".
+*@li y: A Tensor of the same type as "dy" . \n
 
 *@par Outputs:
 *z: A Tensor. Has the same type as "dy".
 *@par Third-party framework compatibility
-*Compatible with the TensorFlow operator GeluGrad
+* Compatible with the TensorFlow operator GeluGrad.
 */
 REG_OP(GeluGrad)
     .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))

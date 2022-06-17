@@ -2223,16 +2223,17 @@ REG_OP(InplaceIndexAdd)
     .OP_END_FACTORY_REG(InplaceIndexAdd)
 
 /**
-* @brief Replace the value of X with value according to mask.
-* @par Inputs:
-* three inputs, including:
-*  @li x: A Tensor of dtype is float16 or float32 or int64 or int32 or int8.
-*  @li mask: A Tensor of dtype bool.
-*  @li value: A Tensor of dtype float16 or float32 or int64 or int32 or int8.
+*@brief Replace the value of X with value according to mask.
 
-* @par Outputs:
-*  y: A tensor. Must be one of the following dtypes:
-*   float16, float32, int64, int32, int8.
+*@par Inputs:
+* Three inputs, including:
+*@li x: A Tensor of dtype is float16 or float32 or int64 or int32 or int8.
+*@li mask: A Tensor of dtype bool.
+*@li value: A Tensor of dtype float16 or float32 or int64 or int32 or int8. \n
+
+*@par Outputs:
+*y: A tensor. Must be one of the following dtypes:
+* float16, float32, int64, int32, int8.
 */
 REG_OP(MaskedFill)
     .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT8, DT_INT32, DT_INT64}))
