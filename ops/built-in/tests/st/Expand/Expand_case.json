@@ -82,5 +82,425 @@
       }
     ],
     "case_name": "test_Expand_001"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "case_name": "test_Expand_int32"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float32"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "case_name": "test_Expand_float32"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "uint8"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "case_name": "test_Expand_uint8"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "case_name": "test_Expand_int8"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_Expand_000_int64_shape"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "bool"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "case_name": "test_Expand_001_int64_shape"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "int32"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "case_name": "test_Expand_int32_int64_shape"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "float32"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "case_name": "test_Expand_float32_int64_shape"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "uint8"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "uint8"
+      }
+    ],
+    "case_name": "test_Expand_uint8_int64_shape"
+  },
+  {
+    "op": "Expand",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          1,
+          -1
+        ],
+        "typical_shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "x",
+        "type": "int8"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "input",
+        "name": "shape",
+        "type": "int64"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "param_type": "output",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "case_name": "test_Expand_int8_int64_shape"
   }
 ]
