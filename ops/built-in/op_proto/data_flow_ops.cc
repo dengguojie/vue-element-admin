@@ -1635,7 +1635,7 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
     }
   }
 
-  auto output_dim0 = all_indices_constant ? (max_index + 1) : (ge::UNKNOWN_DIM);
+  auto output_dim0 = all_indices_constant ? (max_index) : (ge::UNKNOWN_DIM);
   Shape output_shapePrefix({output_dim0});
   Shape output_shape;
   auto result = Concatenate(output_shapePrefix, last_suffix_shape, output_shape);

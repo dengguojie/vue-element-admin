@@ -26,7 +26,7 @@ TEST_F(ParallelDynamicStitch, ParallelDynamicStitch_infer_shape_1) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
-  std::vector<int64_t> expected_output_shape = {1};
+  std::vector<int64_t> expected_output_shape = {0};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
