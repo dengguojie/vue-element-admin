@@ -123,7 +123,7 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
         list_axis = NormPattern.REDUCE_UNKNOWN_MODE
         extra_params.update(NormPattern.REDUCE_SINGLE_TYPE)
         operation.add_compile_info(NormPattern.REDUCE_ATTR_IDX, 0)
-        operation.add_compile_info(NormPattern.REDUCE_ATTR_NAME, "axes")
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_NAME, "axis")
         operation.add_compile_info(NormPattern.REDUCE_ATTR_DTYPE, "ListInt")
     elif not isinstance(axis, int):
         list_axis = list(axis)
