@@ -28,6 +28,12 @@ MASK_FOR_00001111 = 1085102592571150095
 TRANSPOSE_SIZE = 256
 # one block can save the size of fp16
 ONE_BLOCK_FP16_SIZE = 16
+# max dim value for first dim while ub size large
+MAX_DIM_VALUE_128 = 128
+# max dim value for first dim while ub size small
+MAX_DIM_VALUE_96 = 96
+# ub size for slect max dim value
+SELECT_UB_SIZE = 196608
 
 
 def _apply_mem(tik_instance, dtype, shape, name, scope=tik.scope_ubuf):
@@ -95,8 +101,8 @@ class SplitLastDim():
         self.data_len_one_block = 32 // self.dtype_size
         self.data_len_one_vector = self.data_len_one_block * 8
 
-        self.ub_availble = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.UB_SIZE) - 8 * 1024
+        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ub_availble = self.ub_size - 8 * 1024
         self.ub_max_data = self.ub_availble // self.dtype_size
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.cce_conf.get_soc_spec(
@@ -127,7 +133,7 @@ class SplitLastDim():
         """copy all data from src to des
         """
         # core scedule
-        self.max_dims = 256 // 2
+        self.max_dims = MAX_DIM_VALUE_96 if self.ub_size == SELECT_UB_SIZE else MAX_DIM_VALUE_128
         inner_loop = self.data_len_one_block
         core_len = _get_ceil_int(self.data_size_first_dim, inner_loop)
         core_len = _get_ceil_int(core_len, self.core_num)

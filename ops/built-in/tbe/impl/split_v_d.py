@@ -18,28 +18,28 @@ split_v_d
 
 import functools
 
-from te import tik
 from te import tvm
+from te import tik
 from te import platform as tbe_platform
 from te.platform.cce_build import build_config
-from te.utils import para_check
 from te.utils import shape_util
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from tbe.dsl.compute.array import split_compute_com
 from tbe.dsl.static_schedule.split_schedule import split_schedule_com
-from impl.split_last_dim import check_use_last_dim_branch
-from impl.split_last_dim import split_last_dim
-from impl.split_last_dim import SplitWith5HD
-from impl.split_equal import SplitEqual
-from impl.split_d import SplitMov
-from impl.split_d import SplitLastDimVnv
 from impl.copy_only import copy_only
+from impl.split_d import SplitLastDimVnv
+from impl.split_d import SplitMov
+from impl.split_equal import SplitEqual
+from impl.split_last_dim import SplitWith5HD
+from impl.split_last_dim import split_last_dim
+from impl.split_last_dim import check_use_last_dim_branch
 from impl.util import util_common
 from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 # vtranspose can deal 16*16
 TRANSPOSE_SIZE = 256

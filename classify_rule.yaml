@@ -1324,6 +1324,7 @@ vector_B:
       - ops/built-in/tbe/impl/tile_d.py
       - ops/built-in/tbe/impl/top_k_d.py
       - ops/built-in/tbe/impl/top_k_large.py
+      - ops/built-in/tbe/impl/split_v_d.py
       - ops/built-in/tbe/impl/ifmr.py
       - ops/built-in/op_proto/ifmr.cc
       - ops/built-in/tbe/impl/dynamic/__init__.py
@@ -1588,6 +1589,7 @@ vector_B:
       - ops/built-in/tbe/impl/in_training_update_grad_gamma_beta.py
       - ops/built-in/tbe/impl/bn3d_training_reduce.py
       - ops/built-in/tbe/impl/bn3d_training_update_grad.py
+      - ops/built-in/tbe/impl/split_last_dim.py
       - ops/built-in/tbe/impl/bn3d_training_update.py
       - ops/built-in/tbe/impl/bn3d_training_reduce_grad.py
       - ops/built-in/tbe/impl/instance_norm.py
@@ -2874,7 +2876,6 @@ unkown:
       - ops/built-in/tbe/impl/confusion_softmax_grad.py
       - ops/built-in/tbe/impl/reduce_min.py
       - ops/built-in/tbe/impl/lamb_update_with_lr_v2.py
-      - ops/built-in/tbe/impl/split_v_d.py
       - ops/built-in/tbe/impl/expm1.py
       - ops/built-in/tbe/impl/scatter_nd_update.py
       - ops/built-in/tbe/impl/top_k_v2_d.py
@@ -3144,7 +3145,6 @@ unkown:
       - ops/built-in/tbe/impl/strided_slice_assign_d.py
       - ops/built-in/tbe/impl/acosh.py
       - ops/built-in/tbe/impl/apply_rms_prop_d.py
-      - ops/built-in/tbe/impl/split_last_dim.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w_v2.py
       - ops/built-in/tbe/impl/dynamic_rnn_v2.py
       - ops/built-in/tbe/impl/concat_tik.py
