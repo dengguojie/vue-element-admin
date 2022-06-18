@@ -80,8 +80,8 @@ class YoloxBoundingBoxDecode(object):
         byte_size = 8
         
         # loop split unit, split by axis 2, which is the number of boxes
-        self.split_unit = 512
         self.tik_instance = tik.Tik()
+        self.split_unit = self.tik_instance.Scalar("int32", name="split_unit", init_value=512)
 
         self.prois_dtype = priors.get("dtype").lower()
         self.bboxes_dtype = bboxes.get("dtype").lower()
@@ -100,9 +100,7 @@ class YoloxBoundingBoxDecode(object):
                                                         name="output_gm", scope=tik.scope_gm)
         self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
                                                         name="tiling_gm", scope=tik.scope_gm)                                          
-        self.tmp_gm = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, Constant.DIM_FOUR), 
-                                                        name="tmp_gm", scope=tik.scope_gm, is_workspace=True)
-
+    
         # init tiling data
         self.batch_num = self.tik_instance.Scalar("int32", name="batch_num")
         self.bboxes_num = self.tik_instance.Scalar("int32", name="bboxes_num")
@@ -179,16 +177,11 @@ class YoloxBoundingBoxDecode(object):
         self.tik_instance.vec_add(MASK_NUM, bottom_right, xys, whs, value_num // MASK_NUM, 
                                                     stride, stride, stride)
 
-        coords_ub = self.tik_instance.Tensor(self.bboxes_dtype, (box_num, Constant.DIM_FOUR), 
-                                                    name='coords_ub', scope=tik.scope_ubuf)
-
         with self.tik_instance.for_range(0, box_num) as i:
-            coords_ub[i * 4].set_as(top_left[i * 4])
-            coords_ub[i * 4 + 1].set_as(top_left[i * 4 + 1])
-            coords_ub[i * 4 + 2].set_as(bottom_right[i * 4])
-            coords_ub[i * 4 + 3].set_as(bottom_right[i * 4 + 1])
+            top_left[i * 4 + 2].set_as(bottom_right[i * 4])
+            top_left[i * 4 + 3].set_as(bottom_right[i * 4 + 1])
 
-        self.tik_instance.data_move(self.output_gm[output_addr], coords_ub, 0, 1, 
+        self.tik_instance.data_move(self.output_gm[output_addr], top_left, 0, 1, 
                                                     value_num // self.bboxes_data_each_block, 0, 0)
 
 
@@ -209,61 +202,98 @@ class YoloxBoundingBoxDecode(object):
         self.bboxes_num.set_as(tiling_ub[1])
 
 
-    def prior_tail_filled(self, box_num, loop_addr):
+    def reset_split_unit(self):
         """
-        fill the prior info to align 32 bytes when the last drop is not 32 bytes aligned
-        append the head data to the drop tail which can solve the multi-kernel-duplicated-address problem
+        reset the split unit
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+
+        with self.tik_instance.if_scope(self.bboxes_num < self.split_unit):
+            self.split_unit.set_as(32)
+
+    def slice_fallback_address_compute(self, box_num, loop_addr, batch_addr):
+        """
+        compute the result of the last loop of each batch by fallback address 
 
         Parameters
         ----------
         box_num: the box number of the last loop drop
         loop_addr: the begin address of the gm proior info 
+        batch_addr: the begin address of the batch gm info
         
         Returns
         -------
-        p1_ub: the fixed front 2 slices of prior info by the last loop drop
-        p2_ub: the fixed end 2 slices of prior info by the last loop drop
+        None
         """
+        data_num = self.split_unit * 4
+        back_num = (self.split_unit - box_num) * 4
+
+        back_loop_addr = loop_addr - back_num
+        back_batch_addr = batch_addr - back_num
+
+        b1_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
+                                                name='b1_ub', scope=tik.scope_ubuf)
+        b2_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
+                                                name='b2_ub', scope=tik.scope_ubuf)
         
-        align_head_box = box_num
-        align_tail_box = self.split_unit - align_head_box
-
-        # box_num * per_box_dim
-        align_head_num = align_head_box * 4
-        align_tail_num = align_tail_box * 4
-        head_bursts = align_head_num // self.bboxes_data_each_block + 1
-        tail_bursts = align_tail_num // self.bboxes_data_each_block + 1
-        unit_bursts = (self.split_unit * 4) // self.bboxes_data_each_block
-
-        p1_head_ub = self.tik_instance.Tensor(self.bboxes_dtype, (align_head_box, 4), 
-                                                    name='p1_head_ub', scope=tik.scope_ubuf)
-        p1_tail_ub = self.tik_instance.Tensor(self.bboxes_dtype, (align_tail_box, 4), 
-                                                    name='p1_tail_ub', scope=tik.scope_ubuf)
+        self.tik_instance.data_move(b1_ub, self.bboxes_gm[back_batch_addr], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+        self.tik_instance.data_move(b2_ub, self.bboxes_gm[back_batch_addr + 2], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+        
         p1_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
-                                                    name='tail_p1_ub', scope=tik.scope_ubuf)
-        
-        self.tik_instance.data_move(p1_head_ub, self.priors_gm[loop_addr], 0, 1, head_bursts, 0, 0)
-        self.tik_instance.data_move(p1_tail_ub, self.priors_gm[0], 0, 1, tail_bursts, 0, 0)
-        self.tik_instance.data_move(self.tmp_gm, p1_head_ub, 0, 1, head_bursts, 0, 0)
-        self.tik_instance.data_move(self.tmp_gm[box_num*4], p1_tail_ub, 0, 1, tail_bursts, 0, 0)
-        
-        self.tik_instance.data_move(p1_ub, self.tmp_gm, 0, 1, unit_bursts, 0, 0)      
-        
-        p2_head_ub = self.tik_instance.Tensor(self.bboxes_dtype, (align_head_box, 4), 
-                                                    name='p2_head_ub', scope=tik.scope_ubuf)
-        p2_tail_ub = self.tik_instance.Tensor(self.bboxes_dtype, (align_tail_box, 4), 
-                                                    name='p2_tail_ub', scope=tik.scope_ubuf)
+                                                name='p1_ub', scope=tik.scope_ubuf)
         p2_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
-                                                    name='tail_p2_ub', scope=tik.scope_ubuf)  
+                                                name='p2_ub', scope=tik.scope_ubuf)  
+
+        self.tik_instance.data_move(p1_ub, self.priors_gm[back_loop_addr], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+        self.tik_instance.data_move(p2_ub, self.priors_gm[back_loop_addr + 2], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
         
-        self.tik_instance.data_move(p2_head_ub, self.priors_gm[loop_addr+2], 0, 1, head_bursts, 0, 0)
-        self.tik_instance.data_move(p2_tail_ub, self.priors_gm[2], 0, 1, tail_bursts, 0, 0)
-        self.tik_instance.data_move(self.tmp_gm, p2_head_ub, 0, 1, head_bursts, 0, 0)
-        self.tik_instance.data_move(self.tmp_gm[box_num*4], p2_tail_ub, 0, 1, tail_bursts, 0, 0)
+        self.batch_computational_logic(p1_ub, p2_ub, b1_ub, b2_ub, self.split_unit, back_batch_addr)
+
+
+    def slice_normal_compute(self, loop_addr, batch_addr):
+        """
+        compute the result of the common loop of each batch
+
+        Parameters
+        ----------
+        loop_addr: the begin address of the gm proior info 
+        batch_addr: the begin address of the batch gm info
         
-        self.tik_instance.data_move(p2_ub, self.tmp_gm, 0, 1, unit_bursts, 0, 0)   
-        return p1_ub, p2_ub
-        
+        Returns
+        -------
+        None
+        """
+        data_num = self.split_unit * 4
+        b1_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
+                                                name='b1_ub', scope=tik.scope_ubuf)
+        b2_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
+                                                name='b2_ub', scope=tik.scope_ubuf)
+
+        self.tik_instance.data_move(b1_ub, self.bboxes_gm[batch_addr], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+        self.tik_instance.data_move(b2_ub, self.bboxes_gm[batch_addr+2], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+
+        p1_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
+                                                name='p1_ub', scope=tik.scope_ubuf)
+        p2_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
+                                                name='p2_ub', scope=tik.scope_ubuf)
+        self.tik_instance.data_move(p1_ub, self.priors_gm[loop_addr], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+        self.tik_instance.data_move(p2_ub, self.priors_gm[loop_addr+2], 0, 1, 
+                                                data_num//self.bboxes_data_each_block, 0, 0)
+
+        self.batch_computational_logic(p1_ub, p2_ub, b1_ub, b2_ub, self.split_unit, batch_addr)
 
               
     def batch_calculate(self, batch_id):
@@ -289,30 +319,11 @@ class YoloxBoundingBoxDecode(object):
             loop_addr = loop_id * data_num
             batch_addr = batch_id * (self.bboxes_num * 4)  + loop_addr
 
-            b1_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
-                                                    name='b1_ub', scope=tik.scope_ubuf)
-            b2_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
-                                                    name='b2_ub', scope=tik.scope_ubuf)
-        
-            self.tik_instance.data_move(b1_ub, self.bboxes_gm[batch_addr], 0, 1, 
-                                                    data_num//self.bboxes_data_each_block, 0, 0)
-            self.tik_instance.data_move(b2_ub, self.bboxes_gm[batch_addr+2], 0, 1, 
-                                                    data_num//self.bboxes_data_each_block, 0, 0)
-
-            with self.tik_instance.if_scope(loop_id == n_loop - 1):
-                p1_ub, p2_ub = self.prior_tail_filled(self.bboxes_num % self.split_unit, loop_addr) 
-                self.batch_computational_logic(p1_ub, p2_ub, b1_ub, b2_ub, self.split_unit, batch_addr)
+            with self.tik_instance.if_scope(tik.all(loop_id == n_loop - 1, self.bboxes_num % self.split_unit > 0)):
+                self.slice_fallback_address_compute(self.bboxes_num % self.split_unit, loop_addr, batch_addr)
             
             with self.tik_instance.else_scope():
-                p1_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
-                                                    name='p1_ub', scope=tik.scope_ubuf)
-                p2_ub = self.tik_instance.Tensor(self.bboxes_dtype, (self.split_unit, 4), 
-                                                    name='p2_ub', scope=tik.scope_ubuf)
-                self.tik_instance.data_move(p1_ub, self.priors_gm[loop_addr], 0, 1, 
-                                                    data_num//self.bboxes_data_each_block, 0, 0)
-                self.tik_instance.data_move(p2_ub, self.priors_gm[loop_addr+2], 0, 1, 
-                                                    data_num//self.bboxes_data_each_block, 0, 0)
-                self.batch_computational_logic(p1_ub, p2_ub, b1_ub, b2_ub, self.split_unit, batch_addr)
+                self.slice_normal_compute(loop_addr, batch_addr)
 
 
     def get_tik_instance(self):
@@ -327,25 +338,41 @@ class YoloxBoundingBoxDecode(object):
         None
         """
 
-        with self.tik_instance.for_range(0, self.batch_num) as batch_id:
-              # set tiling info
-            with self.tik_instance.new_stmt_scope():
-                tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), 
-                                                        name="tiling_ub", scope=tik.scope_ubuf)
-                self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
-                self.tiling_args(tiling_ub)
+        # set tiling info
+        with self.tik_instance.new_stmt_scope():
+            tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), 
+                                                     name="tiling_ub", scope=tik.scope_ubuf)
+            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
+            self.tiling_args(tiling_ub)
 
-            self.batch_calculate(batch_id)
+        # reset the split unit
+        self.reset_split_unit()
+        block_batches = self.tik_instance.Scalar('int32', name='block_batches')
+        tail_batches = self.tik_instance.Scalar('int32', name='tail_batches')
+        tail_batches.set_as(self.batch_num % self.core_num)
+        i_batch = self.tik_instance.Scalar('int32', name='i_batch', init_value=0)
+
+        with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
+            with self.tik_instance.if_scope(block_id < tail_batches):
+                block_batches.set_as(self.batch_num // self.core_num + 1)
+                i_batch.set_as(block_id * block_batches)
             
+            with self.tik_instance.else_scope():
+                block_batches.set_as(self.batch_num // self.core_num)
+                i_batch.set_as(tail_batches * (block_batches + 1) + (block_id  - tail_batches) * block_batches)
+                
+            with self.tik_instance.for_range(0, block_batches) as batch_id:
+                self.batch_calculate(i_batch + batch_id)
+
         opt_config = {"out_of_bound_sync_check":True}
+        tbe_context.get_context().add_compile_info("vars",
+                                                   {"core_num": self.core_num,
+                                                    "bboxes_data_each_block": self.bboxes_data_each_block})
+                                                    
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.priors_gm, self.bboxes_gm],
                                    outputs=[self.output_gm],
                                    flowtable=[self.tiling_gm], config=opt_config)
-
-        tbe_context.get_context().add_compile_info("vars",
-                                                   {"core_num": self.core_num,
-                                                    "bboxes_data_each_block": self.bboxes_data_each_block})
         return self.tik_instance
 
 

@@ -112,5 +112,45 @@
         }
       ],
       "case_name": "test_YoloxBoundingBoxDecode_001"
+    },
+    {
+      "op": "YoloxBoundingBoxDecode",
+      "input_desc": [
+        {
+          "shape": [
+            8400,
+            4
+          ],
+          "format": "ND",
+          "param_type": "input",
+          "name": "priors",
+          "type": "float32"
+        },
+        {
+          "shape": [
+            64,
+            8400,
+            4
+          ],
+          "format": "ND",
+          "param_type": "input",
+          "name": "bboxes",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            64,
+            8400,
+            4
+          ],
+          "format": "ND",
+          "param_type": "output",
+          "name": "decoded_bboxes",
+          "type": "float32"
+        }
+      ],
+      "case_name": "test_YoloxBoundingBoxDecode_002"
     }
 ]
