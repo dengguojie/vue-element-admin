@@ -1632,6 +1632,7 @@ vector_B:
       - ops/built-in/tbe/impl/util/reduce_pattern_adapter.py
       - ops/built-in/tbe/impl/util/util_attr_common.py
       - ops/built-in/tbe/impl/util/util_tik_comm_func.py
+      - ops/built-in/tbe/impl/util/util_common.py
       - ops/built-in/tbe/impl_mode/all_ops_impl_mode.ini
       - ops/built-in/tbe/impl_mode/high_performance.ini
       - ops/built-in/tbe/impl_mode/high_performance_for_all.ini
@@ -3293,7 +3294,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/logical_and.py
       - ops/built-in/tbe/impl/auto_tune/__init__.py
       - ops/built-in/tbe/impl/auto_tune/resize_bilinear_v2.py
-      - ops/built-in/tbe/impl/util/util_common.py
       - ops/built-in/tbe/impl/util/util_tensor_dict.py
       - ops/built-in/tbe/impl/util/util_build.py
       - ops/built-in/tbe/impl/util/util_frac_z.py

@@ -15,6 +15,7 @@
 """
 dynamic reduce any
 """
+from impl.util.util_common import update_dtype_bool_to_int8
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -83,6 +84,7 @@ def reduce_any(x, axes, y, keepdims=False, kernel_name="reduce_any"):
     -------
     None
     """
+    x = update_dtype_bool_to_int8(x)
     keepdims = False if keepdims is None else keepdims
     dtype_x = x.get("dtype")
     dtype_lower_x = dtype_x.lower()

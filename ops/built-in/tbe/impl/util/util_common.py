@@ -458,6 +458,18 @@ def update_shape_base_other_format_dynamic(input_dict):
     return input_dict
 
 
+def update_dtype_bool_to_int8(input_dict):
+    """
+    update_dtype_bool_to_int8
+    """
+    trans_dtype_dict = {"bool": "int8"}
+    input_dtype = input_dict.get("dtype")
+    if input_dtype:
+        input_dict["dtype"] = trans_dtype_dict.get(input_dtype, input_dtype)
+
+    return input_dict
+
+
 def get_fused_format_str(format_char_list):
     """
     get_fused_format from char

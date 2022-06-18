@@ -2,7 +2,7 @@
   "op_type": "Mul",
   "op_list": [
     {
-      "bin_filename": "Mul_d2db1a80c523e7e59a032c95969880af",
+      "bin_filename": "Mul_93b3f8e9594b4018902b635fff3a83c5",
       "inputs": [
         {
           "name": "x1",
@@ -12,7 +12,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -22,7 +23,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -34,12 +36,13 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ]
     },
     {
-      "bin_filename": "Mul_5c5e58e043224cccf51a06108010ae13",
+      "bin_filename": "Mul_ee98c6628030785f610b924ab1557b31",
       "inputs": [
         {
           "name": "x1",
@@ -49,7 +52,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -59,7 +63,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -71,12 +76,13 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ]
     },
     {
-      "bin_filename": "Mul_8098b79498645e9c0da095babdeaf862",
+      "bin_filename": "Mul_9342884c99c006e21fc9d5d9260b8bef",
       "inputs": [
         {
           "name": "x1",
@@ -86,7 +92,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -96,7 +103,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -108,12 +116,13 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ]
     },
     {
-      "bin_filename": "Mul_2060cf8d69781f9a7462e2f67555909f",
+      "bin_filename": "Mul_ee91e1da47a6324737df0865c55d5b5f",
       "inputs": [
         {
           "name": "x1",
@@ -123,7 +132,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -133,7 +143,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -145,12 +156,13 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ]
     },
     {
-      "bin_filename": "Mul_209e1e3c807895591394a370155f4fc6",
+      "bin_filename": "Mul_dbb43ab56c1dcaffa05616abcf1124fe",
       "inputs": [
         {
           "name": "x1",
@@ -160,7 +172,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -170,7 +183,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -182,7 +196,8 @@
           "paramType": "required",
           "shape": [
             -2
-          ]
+          ],
+          "format_match_mode": "FormatAgnostic"
         }
       ]
     }
