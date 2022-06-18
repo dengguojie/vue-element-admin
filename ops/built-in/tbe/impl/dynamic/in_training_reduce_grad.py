@@ -26,6 +26,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=too-few-public-methods
@@ -37,7 +38,7 @@ class Constant:
     EPSLON = 1e-6
 
 
-@register_operator_compute("INTrainingReduceGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("INTrainingReduceGrad", op_mode="dynamic", support_fusion=only_static_support)
 def in_training_reduce_grad_compute(dy,
                                     x,
                                     variance,
@@ -47,8 +48,7 @@ def in_training_reduce_grad_compute(dy,
                                     gamma,
                                     pd_x,
                                     kernel_name="in_training_reduce_grad",
-                                    reduce_shape=None,
-                                    dyn_flag=True):
+                                    reduce_shape=None):
     """
     DSL description of the layernorm_grad operator's mathematical
 
@@ -74,8 +74,6 @@ def in_training_reduce_grad_compute(dy,
         cce kernel name, default value is "in_training_reduce_grad"
     reduce_shape: list
         reduce shape of input shape
-    dyn_flag: bool
-        flag of dynamic or static shape
 
     Returns
     -------
@@ -93,20 +91,20 @@ def in_training_reduce_grad_compute(dy,
 
     shape_dy = shape_util.shape_to_list(dy.shape)
     shape_var = shape_util.shape_to_list(variance.shape)
+    data_format = pd_x.get("format").upper()
+    if not reduce_shape and data_format in ("NC1HWC0",) and len(shape_dy) == 5:
+        reduce_dims = [shape_dy[2], shape_dy[3]]
+    elif not reduce_shape and data_format in ("NDC1HWC0",) and len(shape_dy) == 6:
+        reduce_dims = [shape_dy[1], shape_dy[3], shape_dy[4]]
+    else:
+        reduce_dims = reduce_shape
 
-    if not dyn_flag:
-        data_format = pd_x.get("format").upper()
-        if not reduce_shape and data_format in ("NC1HWC0",):
-            reduce_dims = [shape_dy[2], shape_dy[3]]
-        elif not reduce_shape and data_format in ("NDC1HWC0",):
-            reduce_dims = [shape_dy[1], shape_dy[3], shape_dy[4]]
-        else:
-            reduce_dims = reduce_shape
-
-        num = 1
+    num = 1
+    if reduce_dims:
         for dim in reduce_dims:
             num *= dim
 
+    if reduce_dims and isinstance(num, int):
         num_bw = 1.0 / num
         num_rec = tvm.const(num_bw, dtype="float32")
         neg_num_rec = tvm.const(-num_bw, dtype="float32")
@@ -234,8 +232,7 @@ def in_training_reduce_grad(dy,
                                                   gamma_input,
                                                   pd_x,
                                                   kernel_name=kernel_name,
-                                                  reduce_shape=reduce_shape,
-                                                  dyn_flag=dyn_flag)
+                                                  reduce_shape=reduce_shape)
 
             tensor_list = [
                 dy_input, x_input, variance_input, mean_input, res_gamma_input, res_beta_input, gamma_input, res

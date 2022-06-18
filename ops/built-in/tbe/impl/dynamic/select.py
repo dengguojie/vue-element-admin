@@ -27,7 +27,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.select import op_select_format as static_op_select_format
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
@@ -65,7 +65,7 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
 
 
 # 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
-@register_operator_compute("Select", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("Select", op_mode="dynamic", support_fusion=only_static_support)
 def select_compute(condition, x1, x2, y, kernel_name="select"):
     """
     compute for select

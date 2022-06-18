@@ -18,13 +18,14 @@ dynamic bn_3d_training_reduce_grad
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_compute import only_static_support
 from impl.dynamic.bn_training_reduce_grad import bn_training_reduce_grad
 from impl.dynamic.bn_training_reduce_grad import bn_training_reduce_grad_compute
 
 
 # 'pylint: disable=unused-argument,too-many-locals
 # 'pylint: disable=invalid-name,redefined-builtin,too-many-statements,too-many-arguments
-@register_operator_compute("BN3DTrainingReduceGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BN3DTrainingReduceGrad", op_mode="dynamic", support_fusion=only_static_support)
 def bn3d_training_reduce_grad_compute(grads,
                                       x,
                                       diff_scale,

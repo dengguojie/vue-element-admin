@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -267,7 +267,7 @@ def shape_multiples_range_with_adapt(input_shape, multiples, input_range):
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-statements
-@register_operator_compute("TileD", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("TileD", op_mode="dynamic", support_fusion=only_static_support)
 def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     """TVM calculation process, used for fusion operation.
 

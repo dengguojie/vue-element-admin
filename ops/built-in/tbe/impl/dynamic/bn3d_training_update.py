@@ -18,13 +18,14 @@ dynamic bn_3d_training_update
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_compute import only_static_support
 from impl.dynamic.bn_training_update import bn_training_update
 from impl.dynamic.bn_training_update import bn_training_update_compute
 
 
 # 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 # 'pylint: disable=invalid-name,redefined-builtin,too-many-statements
-@register_operator_compute("BN3DTrainingUpdate", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BN3DTrainingUpdate", op_mode="dynamic", support_fusion=only_static_support)
 def bn3d_training_update_compute(x,
                                  sum,
                                  square_sum,

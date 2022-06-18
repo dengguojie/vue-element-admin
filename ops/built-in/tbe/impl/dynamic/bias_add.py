@@ -28,7 +28,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util.util_common import is_unknown_rank_input
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=too-many-statements,too-many-branches,invalid-name,too-many-locals,unused-argument
@@ -146,7 +146,7 @@ def check_equal(a, b):
     return True
 
 
-@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=only_static_support)
 def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
     """
     calculating data's bias add

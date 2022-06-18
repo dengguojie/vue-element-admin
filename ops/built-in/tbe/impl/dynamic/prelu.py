@@ -29,7 +29,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=locally-disabled,too-many-branches,too-many-statements,invalid-name,unused-argument,too-many-locals
@@ -207,7 +207,7 @@ def reshape(tensor_in, new_shape):
 
 
 # 'pylint: disable=unused-argument
-@register_operator_compute("PRelu", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("PRelu", op_mode="dynamic", support_fusion=only_static_support)
 def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     """
     calculating data

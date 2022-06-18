@@ -29,7 +29,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.util_attr_common import OpAttr
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -206,7 +206,7 @@ def _check_format(data_format, origin_foramt):
                                                           "The origin format only supports NCHW when format is NCHW")
 
 
-@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=only_static_support)
 def bn_training_reduce_grad_compute(grads,
                                     x,
                                     diff_scale,
@@ -217,8 +217,7 @@ def bn_training_reduce_grad_compute(grads,
                                     y,
                                     epsilon,
                                     kernel_name="bn_training_reduce_grad",
-                                    reduce_shape=None,
-                                    dyn_flag=True):
+                                    reduce_shape=None):
     """
     Compute for batch_norm_grad
     y:(grads*scale*np.power((batch_variance + epsilon), (-0.5)))+
@@ -257,8 +256,6 @@ def bn_training_reduce_grad_compute(grads,
         kernel name, default value is "bn_training_reduce_grad"
     reduce_shape: list
         reduce shape of input shape
-    dyn_flag: bool
-        flag of dynamic or static shape
 
     Returns
     -------
@@ -275,20 +272,20 @@ def bn_training_reduce_grad_compute(grads,
         x = tbe.cast_to(x, "float32")
 
     shape_grads = shape_util.shape_to_list(grads.shape)
+    data_format = y.get("format").upper()
+    if not reduce_shape and data_format in ("NC1HWC0", "NCHW") and len(shape_grads) in (5, 4):
+        reduce_dims = [shape_grads[0], shape_grads[2], shape_grads[3]]
+    elif not reduce_shape and data_format in ("NDC1HWC0",) and len(shape_grads) == 6:
+        reduce_dims = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
+    else:
+        reduce_dims = reduce_shape
 
-    if not dyn_flag:
-        data_format = y.get("format").upper()
-        if not reduce_shape and data_format in ("NC1HWC0", "NCHW"):
-            reduce_dims = [shape_grads[0], shape_grads[2], shape_grads[3]]
-        elif not reduce_shape and data_format in ("NDC1HWC0",):
-            reduce_dims = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
-        else:
-            reduce_dims = reduce_shape
-
-        num = 1
+    num = 1
+    if reduce_dims:
         for dim in reduce_dims:
             num *= dim
 
+    if reduce_dims and isinstance(num, int):
         num_bw = 1.0 / num
         num_rec = tvm.const(num_bw, dtype="float32")
         neg_num_rec = tvm.const(-num_bw, dtype="float32")
@@ -478,8 +475,7 @@ def bn_training_reduce_grad(grads,
                                                   y,
                                                   epsilon,
                                                   kernel_name=kernel_name,
-                                                  reduce_shape=reduce_shape,
-                                                  dyn_flag=dyn_flag)
+                                                  reduce_shape=reduce_shape)
 
             tensor_list = [
                 grads_input, x_input, diff_scale_input, diff_offset_input, scale_input, batch_mean_input,

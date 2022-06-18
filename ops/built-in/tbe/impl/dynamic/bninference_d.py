@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_attr_common import OpAttr
 from impl.util.util_attr_common import get_attr_by_cls
@@ -185,7 +185,7 @@ def _fused_compute(x, mean, variance):
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
 # 'pylint: disable=too-many-arguments
-@register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=only_static_support)
 def bninference_d_compute(x, mean, variance, scale, bias, y,
                           momentum, epsilon, use_global_stats, mode):
     """

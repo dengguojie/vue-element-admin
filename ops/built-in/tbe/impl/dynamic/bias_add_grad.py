@@ -29,7 +29,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 from impl.bias_add_grad import get_op_support_info as bias_add_grad_get_op_support_info
 
 
@@ -117,7 +117,7 @@ def _infer_axes(input_data_format, data_format, shape):
     return g_shape_list
 
 
-@register_operator_compute("BiasAddGrad", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("BiasAddGrad", op_mode="dynamic", support_fusion=only_static_support)
 def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.

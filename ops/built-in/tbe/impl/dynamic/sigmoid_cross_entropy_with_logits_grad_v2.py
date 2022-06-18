@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_context
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 def get_cof_by_shape(predict_shape, precision_dtype):
@@ -65,7 +65,7 @@ def get_weight_shape(weight, predict_shape):
 # 'pylint: disable=too-many-arguments
 @register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2",
                            op_mode="dynamic",
-                           support_fusion=check_support_fusion)
+                           support_fusion=only_static_support)
 def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target, dout, weight, pos_weight, reduction="mean"):
     """
     sigmoid_cross_entropy_with_logits_grad_v2 compute function

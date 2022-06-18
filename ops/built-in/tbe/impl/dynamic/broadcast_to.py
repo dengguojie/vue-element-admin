@@ -26,11 +26,11 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.util_common import gen_range
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@register_operator_compute("BroadcastTo", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("BroadcastTo", op_mode="dynamic", support_fusion=only_static_support)
 def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     """
     TVM calculation process, used for fusion operation.

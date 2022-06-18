@@ -101,7 +101,7 @@ def check_fc_fuse(input_tensor):
     return False
 
 
-def check_support_fusion():
+def only_static_support():
     """check fusion support, only static shape can support ub fusion"""
     if tbe_context.get_context().get_op_mode() == "static":
         return True

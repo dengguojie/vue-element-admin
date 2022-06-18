@@ -27,7 +27,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_compute import get_cof
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
@@ -52,7 +52,7 @@ def get_calc_dtype(dtype_x, impl_mode):
     return calc_dtype
 
 
-@register_operator_compute("ReduceMean", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("ReduceMean", op_mode="dynamic", support_fusion=only_static_support)
 def reduce_mean_compute(x,
                         axes,
                         y,

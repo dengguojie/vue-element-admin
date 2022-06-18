@@ -27,7 +27,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 from impl.bias import op_select_format as static_op_select_format
 
 
@@ -269,7 +269,7 @@ def _check_dtype(dtype_x, dtype_bias):
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-@register_operator_compute("Bias", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("Bias", op_mode="dynamic", support_fusion=only_static_support)
 def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias"):
     """
     calculating data

@@ -28,6 +28,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_compute import only_static_support
 from impl.util.util_common import is_unknown_rank_input
 from impl.util.util_attr_common import get_attr_by_cls
 from impl.util.util_attr_common import OpAttr
@@ -99,7 +100,7 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,invalid-name,unused-argument
-@register_operator_compute("BNTrainingUpdate", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BNTrainingUpdate", op_mode="dynamic", support_fusion=only_static_support)
 def bn_training_update_compute(x,
                                sum,
                                square_sum,
@@ -115,8 +116,7 @@ def bn_training_update_compute(x,
                                factor,
                                epsilon,
                                kernel_name="bn_training_update",
-                               reduce_shape=None,
-                               dyn_flag=True):
+                               reduce_shape=None):
     """
     algorithm: fused_batch_norm_v2
     Batch normalization.
@@ -158,8 +158,6 @@ def bn_training_update_compute(x,
         kernel name, default value is "bn_training_update"
     reduce_shape: list
         reduce shape of input shape
-    dyn_flag: bool
-        flag of dynamic or static shape
 
     Returns
     -------
@@ -176,20 +174,20 @@ def bn_training_update_compute(x,
     epsilon = get_attr_by_cls(epsilon, OpAttr(1, "epsilon", "Float", 0.0000001), "float32")
 
     shape_x = shape_util.shape_to_list(x.shape)
+    data_format = y.get("format").upper()
+    if not reduce_shape and data_format in ("NC1HWC0",) and len(shape_x) == 5:
+        reduce_dims = [shape_x[0], shape_x[2], shape_x[3]]
+    elif not reduce_shape and data_format in ("NDC1HWC0",) and len(shape_x) == 6:
+        reduce_dims = [shape_x[0], shape_x[1], shape_x[3], shape_x[4]]
+    else:
+        reduce_dims = reduce_shape
 
-    if not dyn_flag:
-        data_format = y.get("format").upper()
-        if not reduce_shape and data_format in ("NC1HWC0",):
-            reduce_dims = [shape_x[0], shape_x[2], shape_x[3]]
-        elif not reduce_shape and data_format in ("NDC1HWC0",):
-            reduce_dims = [shape_x[0], shape_x[1], shape_x[3], shape_x[4]]
-        else:
-            reduce_dims = reduce_shape
-
-        num = 1
+    num = 1
+    if reduce_dims:
         for dim in reduce_dims:
             num *= dim
 
+    if reduce_dims and isinstance(num, int):
         num_bw = 1.0 / num
         num_rec = tvm.const(num_bw, dtype="float32")
 
@@ -378,8 +376,7 @@ def bn_training_update(x,
                                              factor,
                                              epsilon,
                                              kernel_name=kernel_name,
-                                             reduce_shape=reduce_shape,
-                                             dyn_flag=dyn_flag)
+                                             reduce_shape=reduce_shape)
             tensor_list.append(
                 [x_input, sum_input, square_sum_input, scale_input, offset_input, mean_input, variance_input] +
                 list(res))

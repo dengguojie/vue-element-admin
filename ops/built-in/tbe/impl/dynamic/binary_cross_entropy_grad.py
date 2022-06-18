@@ -28,7 +28,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
-from impl.util.util_compute import check_support_fusion
+from impl.util.util_compute import only_static_support
 
 
 # 'pylint: disable=too-few-public-methods
@@ -46,7 +46,7 @@ class Constant:
 
 # 'pylint: disable=locally-disabled,unused-argument
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
-@register_operator_compute("BinaryCrossEntropyGrad", op_mode="dynamic", support_fusion=check_support_fusion)
+@register_operator_compute("BinaryCrossEntropyGrad", op_mode="dynamic", support_fusion=only_static_support)
 def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
                                       reduction, kernel_name):
     """
