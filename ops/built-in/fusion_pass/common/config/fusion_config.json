@@ -90,7 +90,8 @@
                 "BatchNormBnInferFusionPass": "5140",
                 "HostBNFusionPass": "5150",
                 "ZBNupdateReluV2Conv2DBNreducePass": "5160",
-                "ZConcatV2DAlignedFusionPass": "5170"
+                "ZConcatV2DAlignedFusionPass": "5170",
+                "SwinTransformerLnQKVFusionPass": "5185"
             }
         },
         "UBFusion":{

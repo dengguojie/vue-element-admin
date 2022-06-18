@@ -26,6 +26,48 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import PlatformApi
 
 
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-locals
+def check_supported(x, gamma, beta, weight, bias,
+                    query_output, key_output, value_output,
+                    head_num, head_dim, seq_length, shifts=(), epsilon=1e-7,
+                    kernel_name="swin_transformer_ln_qkv"):
+    """
+    check_supported
+    """
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
+    support_version = ("Ascend310P",)
+    if soc_version not in support_version:
+        return False, "not support short soc version"
+    support_dtype = ("float16", "float32")
+    input_params_all = (x, gamma, beta, weight, bias, query_output, key_output, value_output)
+    for input_params in input_params_all:
+        if input_params.get("dtype").lower() not in support_dtype:
+            return False, "not support data dtype"
+    if len(shifts) == 4:
+        roll_num = shifts[1]
+        if tuple(shifts) != (0, roll_num, roll_num, 0):
+            return False, "attr shifts not support"
+    elif shifts:
+        return False, "attr shifts not support"
+    x_shape = tuple(x.get("ori_shape"))
+    weight_shape = tuple(weight.get("ori_shape"))
+    output_shape = tuple(query_output.get("ori_shape"))
+    if len(x_shape) != 3 or len(weight_shape) != 2:
+        return False, "input shape not support"
+    batch_num, m_num, k_num = x_shape
+    n_num = weight_shape[1]
+    if output_shape != (batch_num * m_num // seq_length, head_num, seq_length, head_dim):
+        return False, "output shape not support"
+    support_shape_all = ((9216, 128, 384), (2304, 256, 768), (576, 512, 1536), (144, 1024, 3072))
+    if (m_num, k_num, n_num) not in support_shape_all:
+        return False, "input shape not support"
+    if (seq_length, head_dim) != (144, 32):
+        return False, "input shape not support"
+    if epsilon < 0:
+        return False, "not support eps"
+    return True, ""
+
+
 def ceil_div(dividend, divisor):
     return (dividend + divisor - 1) // divisor
 
@@ -119,7 +161,7 @@ class TilingArgs:
         if self.each_core_m1_unit > self.m_1 // self.m_1_num_unit:
             self.each_core_m1_unit = get_align_num(self.each_core_m1_unit, self.m_1 // self.m_1_num_unit)
         else:
-            while(self.m_1 // self.m_1_num_unit) % self.each_core_m1_unit != 0:
+            while (self.m_1 // self.m_1_num_unit) % self.each_core_m1_unit != 0:
                 self.each_core_m1_unit += 1
 
         self.core_num, self.last_core_m1_unit = get_loop_info(self.m_1_unit_all, self.each_core_m1_unit)
