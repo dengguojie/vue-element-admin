@@ -121,7 +121,7 @@ bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const
 
 bool CheckInputDtypeSame(const Operator& op, std::vector<std::string>& input_tensors) {
   auto first_name = input_tensors.begin();
-  auto first_input_dtype = op.GetInputDesc((*first_name).c_str()).GetDataType();
+  auto first_input_dtype = op.GetInputDescByName((*first_name).c_str()).GetDataType();
   for (const string& input_name : input_tensors) {
     const TensorDesc input_desc = op.GetInputDescByName(input_name.c_str());
     auto input_dtype = input_desc.GetDataType();
@@ -139,10 +139,10 @@ bool CheckInputDtypeSame(const Operator& op, std::vector<std::string>& input_ten
 
 bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string>& input_names) {
   auto first_input_name = input_names.begin();
-  auto first_input_des = op.GetInputDesc((*first_input_name).c_str());
+  auto first_input_des = op.GetInputDescByName((*first_input_name).c_str());
   auto input_name = first_input_name;
   for (++input_name; input_name != input_names.end(); ++input_name) {
-    auto input_des = op.GetInputDesc((*first_input_name).c_str());
+    auto input_des = op.GetInputDescByName((*first_input_name).c_str());
 
     if (input_des.GetDataType() != first_input_des.GetDataType() ||
         input_des.GetShape().GetDims() != first_input_des.GetShape().GetDims()) {

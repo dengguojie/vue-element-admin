@@ -44,7 +44,7 @@ bool AxisUtil::GetAxisValueByOriginFormat(const Format& format, const vector<int
                                           vector<int64_t>& axisValue, vector<int64_t>& ndValue) {
   auto iterGetAxisFunc = getAxisValueFuncMap.find(format);
   if (iterGetAxisFunc == getAxisValueFuncMap.end()) {
-    LOG_INFO("Can not get axis value of old format %u!", format);
+    LOG_INFO("Can not get axis value of old format %u!", static_cast<int>(format));
     return false;
   }
   GetAxisValueInfoByFormatPtr getAxisFunc = iterGetAxisFunc->second;
@@ -55,7 +55,7 @@ bool AxisUtil::GetAxisValueByOriginFormat(const Format& format, const vector<int
 bool AxisUtil::HasAxisValueFunc(const Format& format) {
   auto iterGetAxisFunc = getAxisValueFuncMap.find(format);
   if (iterGetAxisFunc == getAxisValueFuncMap.end()) {
-    LOG_INFO("Can not get axis value of format %u!", format);
+    LOG_INFO("Can not get axis value of format %u!", static_cast<int>(format));
     return false;
   }
   return true;
@@ -84,14 +84,14 @@ bool AxisUtil::GetAxisValueByND(const vector<int64_t>& originalDimVec, const uin
   CHECK(originalDimVec.empty(), LOG_INFO("Original dim vector is empty!"), return true);
   ndValue = originalDimVec;
   /* To differentiate the input datatype of int8 and others */
-  axisValue[AXIS_C0] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_C0)] = c0;
   if (originalDimVec.size() == NCHW_DIMENSION_NUM) {
-    axisValue[AXIS_N] = originalDimVec[AXIS_NCHW_DIM_N];
-    axisValue[AXIS_C] = originalDimVec[AXIS_NCHW_DIM_C];
-    axisValue[AXIS_H] = originalDimVec[AXIS_NCHW_DIM_H];
-    axisValue[AXIS_W] = originalDimVec[AXIS_NCHW_DIM_W];
-    axisValue[AXIS_C1] = DivisionCeiling(originalDimVec[AXIS_NCHW_DIM_C], (int64_t)c0);
-    axisValue[AXIS_Co] = c0;
+    axisValue[static_cast<uint64_t>(AXIS_N)] = originalDimVec[AXIS_NCHW_DIM_N];
+    axisValue[static_cast<uint64_t>(AXIS_C)] = originalDimVec[AXIS_NCHW_DIM_C];
+    axisValue[static_cast<uint64_t>(AXIS_H)] = originalDimVec[AXIS_NCHW_DIM_H];
+    axisValue[static_cast<uint64_t>(AXIS_W)] = originalDimVec[AXIS_NCHW_DIM_W];
+    axisValue[static_cast<uint64_t>(AXIS_C1)] = DivisionCeiling(originalDimVec[AXIS_NCHW_DIM_C], (int64_t)c0);
+    axisValue[static_cast<uint64_t>(AXIS_Co)] = c0;
   }
   return true;
 }
@@ -101,16 +101,16 @@ bool AxisUtil::GetAxisValueByNCHW(const vector<int64_t>& originalDimVec, const u
   CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
   CHECK(originalDimVec.empty(), LOG_INFO("Original dim vector is empty!"), return true);
   /* C0 Must be set for case ND or 2D-NCHW to NZ */
-  axisValue[AXIS_C0] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_C0)] = c0;
   CHECK(CheckParams(originalDimVec, c0, axisValue, ndValue) != true, LOG_ERROR("[ERROR]Parameter is invalid!"),
         return false);
 
-  axisValue[AXIS_N] = originalDimVec[AXIS_NCHW_DIM_N];
-  axisValue[AXIS_C] = originalDimVec[AXIS_NCHW_DIM_C];
-  axisValue[AXIS_H] = originalDimVec[AXIS_NCHW_DIM_H];
-  axisValue[AXIS_W] = originalDimVec[AXIS_NCHW_DIM_W];
-  axisValue[AXIS_C1] = DivisionCeiling(originalDimVec[AXIS_NCHW_DIM_C], (int64_t)c0);
-  axisValue[AXIS_Co] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_N)] = originalDimVec[AXIS_NCHW_DIM_N];
+  axisValue[static_cast<uint64_t>(AXIS_C)] = originalDimVec[AXIS_NCHW_DIM_C];
+  axisValue[static_cast<uint64_t>(AXIS_H)] = originalDimVec[AXIS_NCHW_DIM_H];
+  axisValue[static_cast<uint64_t>(AXIS_W)] = originalDimVec[AXIS_NCHW_DIM_W];
+  axisValue[static_cast<uint64_t>(AXIS_C1)] = DivisionCeiling(originalDimVec[AXIS_NCHW_DIM_C], (int64_t)c0);
+  axisValue[static_cast<uint64_t>(AXIS_Co)] = c0;
   return true;
 }
 
@@ -119,16 +119,16 @@ bool AxisUtil::GetAxisValueByNHWC(const vector<int64_t>& originalDimVec, const u
   CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
   CHECK(originalDimVec.empty(), LOG_INFO("Original dim vector is empty!"), return true);
   /* C0 Must be set for case ND or 2D-NHWC to NZ */
-  axisValue[AXIS_C0] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_C0)] = c0;
   CHECK(CheckParams(originalDimVec, c0, axisValue, ndValue) != true, LOG_ERROR("[ERROR]Parameter is invalid!"),
         return false);
 
-  axisValue[AXIS_N] = originalDimVec[AXIS_NHWC_DIM_N];
-  axisValue[AXIS_C] = originalDimVec[AXIS_NHWC_DIM_C];
-  axisValue[AXIS_H] = originalDimVec[AXIS_NHWC_DIM_H];
-  axisValue[AXIS_W] = originalDimVec[AXIS_NHWC_DIM_W];
-  axisValue[AXIS_C1] = DivisionCeiling(originalDimVec[AXIS_NHWC_DIM_C], (int64_t)c0);
-  axisValue[AXIS_Co] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_N)] = originalDimVec[AXIS_NHWC_DIM_N];
+  axisValue[static_cast<uint64_t>(AXIS_C)] = originalDimVec[AXIS_NHWC_DIM_C];
+  axisValue[static_cast<uint64_t>(AXIS_H)] = originalDimVec[AXIS_NHWC_DIM_H];
+  axisValue[static_cast<uint64_t>(AXIS_W)] = originalDimVec[AXIS_NHWC_DIM_W];
+  axisValue[static_cast<uint64_t>(AXIS_C1)] = DivisionCeiling(originalDimVec[AXIS_NHWC_DIM_C], (int64_t)c0);
+  axisValue[static_cast<uint64_t>(AXIS_Co)] = c0;
   return true;
 }
 
@@ -141,18 +141,19 @@ bool AxisUtil::GetAxisValueByNC1HWC0(const vector<int64_t>& originalDimVec, cons
 
   auto dimSize = originalDimVec.size();
   if (dimSize == ge::DIM_DEFAULT_SIZE + 1) {
-    axisValue[AXIS_C1] = originalDimVec[AXIS_NC1HWC0_DIM_C1];
-    axisValue[AXIS_C0] = originalDimVec[AXIS_NC1HWC0_DIM_C0];
-    axisValue[AXIS_C] = axisValue[AXIS_C1] * axisValue[AXIS_C0];
+    axisValue[static_cast<uint64_t>(AXIS_C1)] = originalDimVec[AXIS_NC1HWC0_DIM_C1];
+    axisValue[static_cast<uint64_t>(AXIS_C0)] = originalDimVec[AXIS_NC1HWC0_DIM_C0];
+    axisValue[static_cast<uint64_t>(AXIS_C)] = axisValue[static_cast<uint64_t>(AXIS_C1)] \
+                                               * axisValue[static_cast<uint64_t>(AXIS_C0)];
   } else {
-    axisValue[AXIS_C1] = DivisionCeiling(originalDimVec[AXIS_NCHW_DIM_C], (int64_t)c0);
-    axisValue[AXIS_C0] = c0;
-    axisValue[AXIS_C] = originalDimVec[AXIS_NCHW_DIM_C];
+    axisValue[static_cast<uint64_t>(AXIS_C1)] = DivisionCeiling(originalDimVec[AXIS_NCHW_DIM_C], (int64_t)c0);
+    axisValue[static_cast<uint64_t>(AXIS_C0)] = c0;
+    axisValue[static_cast<uint64_t>(AXIS_C)] = originalDimVec[AXIS_NCHW_DIM_C];
   }
 
-  axisValue[AXIS_N] = originalDimVec[AXIS_NCHW_DIM_N];
-  axisValue[AXIS_H] = originalDimVec[AXIS_NCHW_DIM_H];
-  axisValue[AXIS_W] = originalDimVec[AXIS_NCHW_DIM_W];
+  axisValue[static_cast<uint64_t>(AXIS_N)] = originalDimVec[AXIS_NCHW_DIM_N];
+  axisValue[static_cast<uint64_t>(AXIS_H)] = originalDimVec[AXIS_NCHW_DIM_H];
+  axisValue[static_cast<uint64_t>(AXIS_W)] = originalDimVec[AXIS_NCHW_DIM_W];
   return true;
 }
 
@@ -161,16 +162,16 @@ bool AxisUtil::GetAxisValueByHWCN(const vector<int64_t>& originalDimVec, const u
   CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
   CHECK(originalDimVec.empty(), LOG_INFO("Original dim vector is empty!"), return true);
   /* C0 Must be set for case ND or 2D-NHWC to NZ */
-  axisValue[AXIS_C0] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_C0)] = c0;
   CHECK(CheckParams(originalDimVec, c0, axisValue, ndValue) != true, LOG_ERROR("[ERROR]Parameter is invalid!"),
         return false);
 
-  axisValue[AXIS_N] = originalDimVec[AXIS_HWCN_DIM_N];
-  axisValue[AXIS_C] = originalDimVec[AXIS_HWCN_DIM_C];
-  axisValue[AXIS_H] = originalDimVec[AXIS_HWCN_DIM_H];
-  axisValue[AXIS_W] = originalDimVec[AXIS_HWCN_DIM_W];
-  axisValue[AXIS_C1] = DivisionCeiling(originalDimVec[AXIS_HWCN_DIM_C], (int64_t)c0);
-  axisValue[AXIS_Co] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_N)] = originalDimVec[AXIS_HWCN_DIM_N];
+  axisValue[static_cast<uint64_t>(AXIS_C)] = originalDimVec[AXIS_HWCN_DIM_C];
+  axisValue[static_cast<uint64_t>(AXIS_H)] = originalDimVec[AXIS_HWCN_DIM_H];
+  axisValue[static_cast<uint64_t>(AXIS_W)] = originalDimVec[AXIS_HWCN_DIM_W];
+  axisValue[static_cast<uint64_t>(AXIS_C1)] = DivisionCeiling(originalDimVec[AXIS_HWCN_DIM_C], (int64_t)c0);
+  axisValue[static_cast<uint64_t>(AXIS_Co)] = c0;
   return true;
 }
 
@@ -179,16 +180,16 @@ bool AxisUtil::GetAxisValueByC1HWNCoC0(const vector<int64_t>& originalDimVec, co
   CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
   CHECK(originalDimVec.empty(), LOG_INFO("Original dim vector is empty!"), return true);
   /* C0 Must be set for case ND or 2D-NHWC to NZ */
-  axisValue[AXIS_C0] = c0;
+  axisValue[static_cast<uint64_t>(AXIS_C0)] = c0;
   CHECK(CheckParams(originalDimVec, c0, axisValue, ndValue) != true, LOG_ERROR("[ERROR]Parameter is invalid!"),
         return false);
 
-  axisValue[AXIS_N] = originalDimVec[AXIS_C1HWNCoC0_DIM_N];
-  axisValue[AXIS_C] = originalDimVec[AXIS_C1HWNCoC0_DIM_C1] * c0;
-  axisValue[AXIS_H] = originalDimVec[AXIS_C1HWNCoC0_DIM_H];
-  axisValue[AXIS_W] = originalDimVec[AXIS_C1HWNCoC0_DIM_W];
-  axisValue[AXIS_C1] = originalDimVec[AXIS_C1HWNCoC0_DIM_C1];
-  axisValue[AXIS_Co] = originalDimVec[AXIS_C1HWNCoC0_DIM_Co];
+  axisValue[static_cast<uint64_t>(AXIS_N)] = originalDimVec[AXIS_C1HWNCoC0_DIM_N];
+  axisValue[static_cast<uint64_t>(AXIS_C)] = originalDimVec[AXIS_C1HWNCoC0_DIM_C1] * c0;
+  axisValue[static_cast<uint64_t>(AXIS_H)] = originalDimVec[AXIS_C1HWNCoC0_DIM_H];
+  axisValue[static_cast<uint64_t>(AXIS_W)] = originalDimVec[AXIS_C1HWNCoC0_DIM_W];
+  axisValue[static_cast<uint64_t>(AXIS_C1)] = originalDimVec[AXIS_C1HWNCoC0_DIM_C1];
+  axisValue[static_cast<uint64_t>(AXIS_Co)] = originalDimVec[AXIS_C1HWNCoC0_DIM_Co];
   return true;
 }
 

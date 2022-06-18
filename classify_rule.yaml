@@ -1189,6 +1189,7 @@ vector_B:
       - ops/built-in/op_proto/inc/nn_training_ops.h
       - ops/built-in/op_proto/inc/reduce_ops.h
       - ops/built-in/op_proto/util/axis_util.h
+      - ops/built-in/op_proto/util/axis_util.cc
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
       - ops/built-in/op_proto/util/common_shape_fns.h
@@ -2650,7 +2651,6 @@ unkown:
       - ops/built-in/op_proto/util/linalg_ops_shape_fns.cc
       - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.h
-      - ops/built-in/op_proto/util/axis_util.cc
       - ops/built-in/tbe/impl/approximate_equal.py
       - ops/built-in/tbe/impl/clip_boxes_d.py
       - ops/built-in/tbe/impl/bn3d_training_update_grad.py

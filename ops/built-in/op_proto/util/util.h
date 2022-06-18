@@ -43,8 +43,6 @@
 
 #include "op_log.h"
 
-#define LOG_ERROR(format, args...) printf(format, ##args)
-
 #define CHECK_KEY_IN_MAP(map, key, name, re_expr)                \
   if (map.find(key) == map.end()) {                              \
     CUBE_INNER_ERR_REPORT("", "not found %s in %s", name, #map); \

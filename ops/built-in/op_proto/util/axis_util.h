@@ -31,8 +31,8 @@
 
 #include "op_log.h"
 
-#define LOG_ERROR(format, args...) printf(format, ##args)
-#define LOG_INFO(format, args...) printf(format, ##args)
+#define LOG_ERROR(format, args...) (void)printf(format, ##args)
+#define LOG_INFO(format, args...) (void)printf(format, ##args)
 namespace ge {
 const uint32_t NCHW_DIMENSION_NUM = 4;
 
