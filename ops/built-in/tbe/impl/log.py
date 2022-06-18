@@ -70,6 +70,11 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', "float16", dtype)
 
     if _isclose(scale, 1.0) and _isclose(shift, 0.0):
+        if dtype == "float16":
+            esp_min = tvm.const(1.18e-7, dtype)
+        else:
+            esp_min = tvm.const(1.18e-38, dtype)
+        input_x = tbe.vmaxs(input_x, esp_min)
         x_log = tbe.vlog(input_x)
     else:
         x_scale_and_shift = input_x

@@ -1598,6 +1598,7 @@ vector_B:
       - ops/built-in/tbe/impl/layer_norm.py
       - ops/built-in/tbe/impl/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/ln_dropout_grad.py
+      - ops/built-in/tbe/impl/log.py
       - ops/built-in/tbe/impl/matrix_diag_part_d.py
       - ops/built-in/tbe/impl/minimum_grad.py
       - ops/built-in/tbe/impl/not_equal.py
@@ -2793,7 +2794,6 @@ unkown:
       - ops/built-in/tbe/impl/concat_offset.py
       - ops/built-in/tbe/impl/max_pool_grad_with_argmaxv2.py
       - ops/built-in/tbe/impl/roi_pooling_onec0.py
-      - ops/built-in/tbe/impl/log.py
       - ops/built-in/tbe/impl/kl_div.py
       - ops/built-in/tbe/impl/kl_div_loss_grad.py
       - ops/built-in/tbe/impl/elu_grad_v2.py

@@ -38,6 +38,47 @@ ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (11, 33))
 ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (10, 12))
 ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (10, 13))
 
+case1 = {
+    "params": [{
+        "shape": (10, 13),
+        "ori_shape": (10, 13),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_format": "ND"
+    }, {
+        "shape": (10, 13),
+        "ori_shape": (10, 13),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_format": "ND"
+    }, -1.0, 1.0, 0.0
+    ],
+    "case_name": "test_log_case_000",
+    "expect": "success",
+    "support_expect": True
+}
+case2 = {
+    "params": [{
+        "shape": (10, 13),
+        "ori_shape": (10, 13),
+        "dtype": "float32",
+        "format": "ND",
+        "ori_format": "ND"
+    }, {
+        "shape": (10, 13),
+        "ori_shape": (10, 13),
+        "dtype": "float32",
+        "format": "ND",
+        "ori_format": "ND"
+    }, -1.0, 1.0, 0.0
+    ],
+    "case_name": "test_log_case_001",
+    "expect": "success",
+    "support_expect": True
+}
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case2)
+
 # ============ auto gen ["Ascend910"] test cases end =================
 def calc_expect_func(input_x, output_y):
     dtype = input_x["dtype"]
@@ -82,5 +123,5 @@ ut_case.add_precision_case("all", {
 """
 if __name__ == '__main__':
     # ut_case.run("Ascend910")
-    ut_case.run()
+    ut_case.run(["Ascend910A", "Ascend310"])
     exit(0)
