@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetShape(Shape({UNKNOWN_DIM, 2}));
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_indices", i, temp_desc) != GRAPH_SUCCESS) {
-      std::string err_msg = ConcatString("update description for output decoded_indices[", i,"] failed");
+      std::string err_msg = ConcatString("update description for output decoded_indices[", i, "] failed");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -192,7 +192,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetShape(Shape({UNKNOWN_DIM}));
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_values", i, temp_desc) != GRAPH_SUCCESS) {
-      std::string err_msg = ConcatString("update description for dynimic output decoded_values[", i,"] failed");
+      std::string err_msg = ConcatString("update description for dynimic output decoded_values[", i, "] failed");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
@@ -203,7 +203,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetShape(Shape({2}));
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_shape", i, temp_desc) != GRAPH_SUCCESS) {
-      std::string err_msg = ConcatString("update description for dynimic output decoded_shape[", i,"] failed");
+      std::string err_msg = ConcatString("update description for dynimic output decoded_shape[", i, "] failed");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }

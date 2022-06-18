@@ -15,8 +15,14 @@
  */
 
 #include <gtest/gtest.h>
-#include "register/op_impl_registry.h"
-#include "kernel_run_context_facker.h"
+#include "op_proto_test_util.h"
+#include "array_ops.h"
+#include "selection_ops.h"
+#include "graph/debug/ge_attr_define.h"
+#include "utils/attr_utils.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "common/utils/ut_op_common.h"
 
 namespace gert_test{
 class StridedSliceV3UT : public testing::Test {
@@ -28,184 +34,165 @@ class StridedSliceV3UT : public testing::Test {
   static void TearDownTestCase() {
     std::cout << "strided_slice_v3 TearDown" << std::endl;
   }
-
-  template <typename T>
-  std::unique_ptr<uint8_t[]> ConstructConstTensor(const std::vector<T> &const_value) {
-    auto const_dtype = ge::DT_INT32;
-    if (sizeof(T) == sizeof(int64_t)) {
-      const_dtype = ge::DT_INT64;
-    }
-
-    int64_t value_size = const_value.size();
-    auto input_tensor_holder = std::unique_ptr<uint8_t[]>(new uint8_t[sizeof(gert::Tensor) + sizeof(T) * value_size]);
-    auto input_tensor = reinterpret_cast<gert::Tensor *>(input_tensor_holder.get());
-    gert::Tensor tensor({{value_size}, {value_size}},              // shape
-                        {ge::FORMAT_ND, ge::FORMAT_ND, {}},        // format
-                        gert::kFollowing,                          // placement
-                        const_dtype,                               //dt
-                        nullptr);
-    std::memcpy(input_tensor, &tensor, sizeof(gert::Tensor));
-    auto tensor_data = reinterpret_cast<T *>(input_tensor + 1);
-    for (size_t j = 0; j < value_size; j++) {
-      tensor_data[j] = const_value[j];
-    }
-    input_tensor->SetData(gert::TensorData(tensor_data, nullptr));
-    return input_tensor_holder;
-  }
-
-  template <typename T>
-  void ConstructContextFaker(gert::StorageShape &x_shape, gert::StorageShape &y_shape,
-                             std::map<std::string, std::vector<T>> &value_dict) {
-    ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3"), nullptr);
-    auto infer_shape_func = gert::OpImplRegistry::GetInstance().GetOpImpl("StridedSliceV3")->infer_shape;
-    ASSERT_NE(infer_shape_func, nullptr);
-
-    std::vector<T>& axes_value = value_dict["axis"];
-    std::vector<T>& stride_value = value_dict["stride"];
-    std::unique_ptr<uint8_t[]> begin_tensor_holder = ConstructConstTensor(value_dict["begin"]);
-    std::unique_ptr<uint8_t[]> end_tensor_holder = ConstructConstTensor(value_dict["end"]);
-    std::unique_ptr<uint8_t[]> axes_tensor_holder = ConstructConstTensor(axes_value);
-    std::unique_ptr<uint8_t[]> stride_tensor_holder = ConstructConstTensor(stride_value);
-
-    auto begin_tensor = reinterpret_cast<gert::Tensor *>(begin_tensor_holder.get());
-    auto end_tensor = reinterpret_cast<gert::Tensor *>(end_tensor_holder.get());
-    auto axes_tensor = reinterpret_cast<gert::Tensor *>(axes_tensor_holder.get());
-    auto stride_tensor = reinterpret_cast<gert::Tensor *>(stride_tensor_holder.get());
-
-    std::vector<uint32_t> instance_num = {1, 1, 1, 1, 1};
-    if (axes_value.empty()) {
-      instance_num[3] = 0;
-    }
-    if (stride_value.empty()) {
-      instance_num[4] = 0;
-    }
-    auto holder = gert::InferShapeContextFaker()
-                     .NodeIoNum(5, 1)
-                     .IrInstanceNum(instance_num)
-                     .InputShapes({&x_shape, begin_tensor, end_tensor, axes_tensor, stride_tensor})
-                     .OutputShapes({&y_shape})
-                     .Build();
-
-    EXPECT_EQ(infer_shape_func(holder.GetContext<gert::InferShapeContext>()), ge::GRAPH_SUCCESS);
-  }
 };
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_normal) {
-  gert::StorageShape x_shape = {{9, 10, 11, 12}, {9, 10, 11, 12}};
-  gert::StorageShape y_shape = {{}, {}};
+using namespace ut_util;
+
+template <typename T>
+static void RunTest(const vector<int64_t>& x_shape, const std::vector<int64_t>& expected_output_shape,
+                    std::map<std::string, std::vector<T>>& value_dict) {
+  auto const_dtype = ge::DT_INT32;
+  if (sizeof(T) == sizeof(int64_t)) {
+    const_dtype = ge::DT_INT64;
+  }
+
+  std::vector<T>& begin_value = value_dict["begin"];
+  std::vector<T>& end_value = value_dict["end"];
+  std::vector<T>& axes_value = value_dict["axes"];
+  std::vector<int64_t> axes_shape = {};
+  if (!axes_value.empty()) {
+    axes_shape.push_back(static_cast<int64_t>(axes_value.size()));
+  }
+
+  std::vector<T>& strides_value = value_dict["strides"];
+  std::vector<int64_t> strides_shape = {};
+  if (!strides_value.empty()) {
+    strides_shape.push_back(static_cast<int64_t>(strides_value.size()));
+  }
+
+  // gen StridedSliceV3 op
+  auto test_op = op::StridedSliceV3("StridedSliceV3");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, x_shape, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, begin, {static_cast<int64_t>(begin_value.size())}, const_dtype,
+                                          ge::FORMAT_ND, begin_value);
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, end, {static_cast<int64_t>(end_value.size())}, const_dtype,
+                                          ge::FORMAT_ND, end_value);
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, axes, axes_shape, const_dtype, ge::FORMAT_ND, axes_value);
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, strides, strides_shape, const_dtype, ge::FORMAT_ND, strides_value);
+  std::vector<bool> input_const = {false, true, true, true, true};
+  CommonInferShapeOperatorWithConst(test_op, input_const, {}, {expected_output_shape});
+}
+
+TEST_F(StridedSliceV3UT, normal_case) {
+  std::vector<int64_t> x_shape = {9, 10, 11, 12};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {2, 3}},
       {"end", {8, 7}},
-      {"axis", {2, 3}},
-      {"stride", {1, 1}}};
+      {"axes", {2, 3}},
+      {"strides", {1, 1}}};
   std::vector<int64_t> expected_output_shape = {9, 10, 6, 4};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_neg_axes) {
-  gert::StorageShape x_shape = {{9, 10, 11, 12}, {9, 10, 11, 12}};
-  gert::StorageShape y_shape = {{}, {}};
+TEST_F(StridedSliceV3UT, neg_axes) {
+  std::vector<int64_t> x_shape = {9, 10, 11, 12};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0}},
       {"end", {8, 7}},
-      {"axis", {-2, -1}},
-      {"stride", {1, 1}}};
+      {"axes", {-2, -1}},
+      {"strides", {1, 1}}};
   std::vector<int64_t> expected_output_shape = {9, 10, 8, 7};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_neg_ends) {
-  gert::StorageShape x_shape = {{9, 10, 11, 12}, {9, 10, 11, 12}};
-  gert::StorageShape y_shape = {{}, {}};
+TEST_F(StridedSliceV3UT, neg_ends) {
+  std::vector<int64_t> x_shape = {9, 10, 11, 12};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0}},
       {"end", {-2, -1}},
-      {"axis", {-2, -1}},
-      {"stride", {2, 3}}};
+      {"axes", {-2, -1}},
+      {"strides", {2, 3}}};
   std::vector<int64_t> expected_output_shape = {9, 10, 5, 4};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_ends_out_of_range) {
-  gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
-  gert::StorageShape y_shape = {{}, {}};
+TEST_F(StridedSliceV3UT, ends_out_of_range) {
+  std::vector<int64_t> x_shape = {20, 10, 5};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 1}},
       {"end", {1000, 1000}},
-      {"axis", {0, 1}},
-      {"stride", {1, 1}}};
+      {"axes", {0, 1}},
+      {"strides", {1, 1}}};
   std::vector<int64_t> expected_output_shape = {20, 9, 5};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_strides) {
-  gert::StorageShape x_shape = {{20, 10, 5, 100}, {20, 10, 5, 100}};
-  gert::StorageShape y_shape = {{}, {}};
+TEST_F(StridedSliceV3UT, empty_strides) {
+  std::vector<int64_t> x_shape = {20, 10, 5, 100};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0, 3}},
       {"end", {20, 10, 4}},
-      {"axis", {0, 1, 2}},
-      {"stride", {}}};
+      {"axes", {0, 1, 2}},
+      {"strides", {}}};
   std::vector<int64_t> expected_output_shape = {20, 10, 1, 100};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_axes) {
-  gert::StorageShape x_shape = {{20, 10, 5, 100}, {20, 10, 5, 100}};
-  gert::StorageShape y_shape = {{}, {}};
+TEST_F(StridedSliceV3UT, empty_axes) {
+  std::vector<int64_t> x_shape = {20, 10, 5, 100};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0, 3}},
       {"end", {20, 10, 4}},
-      {"axis", {}},
-      {"stride", {2, 3, 4}}};
+      {"axes", {}},
+      {"strides", {2, 3, 4}}};
   std::vector<int64_t> expected_output_shape = {10, 4, 1, 100};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 
-TEST_F(StridedSliceV3UT, strided_slice_v3_infer_shape_empty_axes_and_strides) {
-  gert::StorageShape x_shape = {{20, 10, 5}, {20, 10, 5}};
-  gert::StorageShape y_shape = {{}, {}};
+TEST_F(StridedSliceV3UT, empty_axes_and_strides) {
+  std::vector<int64_t> x_shape = {20, 10, 5};
   std::map<std::string, std::vector<int32_t>> value_dict = {
       {"begin", {0, 0, 0}},
       {"end", {10,10,10}},
-      {"axis", {}},
-      {"stride", {}}};
+      {"axes", {}},
+      {"strides", {}}};
   std::vector<int64_t> expected_output_shape = {10, 10, 5};
 
-  ConstructContextFaker<int32_t>(x_shape, y_shape, value_dict);
-  EXPECT_EQ(y_shape.GetOriginShape().GetDimNum(), expected_output_shape.size());
-  for (int i = 0; i < expected_output_shape.size(); i++) {
-    EXPECT_EQ(y_shape.GetOriginShape().GetDim(i), expected_output_shape[i]);
-  }
+  RunTest(x_shape, expected_output_shape, value_dict);
+}
+
+TEST_F(StridedSliceV3UT, ends_out_of_int32_range) {
+  std::vector<int64_t> x_shape = vector<int64_t>({10, 10, 64});
+  std::map<std::string, std::vector<int64_t>> value_dict = {
+      {"begin", {-1}},
+      {"end", {9223372036854775807}},
+      {"axes", {0}},
+      {"strides", {1}}};
+  // expect result info
+  std::vector<int64_t> expected_output_shape = {1, 10, 64};
+
+  RunTest(x_shape, expected_output_shape, value_dict);
+}
+
+TEST_F(StridedSliceV3UT, neg_begin) {
+  std::vector<int64_t> x_shape = vector<int64_t>({28, 8, 10, 64});
+  std::map<std::string, std::vector<int64_t>> value_dict = {
+      {"begin", {-85}},
+      {"end", {9223372036854775807}},
+      {"axes", {2}},
+      {"strides", {1}}};
+  // expect result info
+  std::vector<int64_t> expected_output_shape = {28, 8, 10, 64};
+
+  RunTest(x_shape, expected_output_shape, value_dict);
+}
+
+TEST_F(StridedSliceV3UT, neg_start_ends_out_of_range) {
+  std::vector<int64_t> x_shape = vector<int64_t>({20, 10, 5});
+  std::map<std::string, std::vector<int32_t>> value_dict = {
+      {"begin", {-85}},
+      {"end", {9223372}},
+      {"axes", {1}},
+      {"strides", {1}}};
+  // expect result info
+  std::vector<int64_t> expected_output_shape = {20, 10, 5};
+
+  RunTest(x_shape, expected_output_shape, value_dict);
 }
 }  // namespace gert_test

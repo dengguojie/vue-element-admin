@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,10 @@ int64_t MultiplyWithoutOverflow(const int64_t x, const int64_t y) {
   const uint64_t uy = y;
   const uint64_t uxy = ux * uy;
 
-  if ((ux | uy) >> 32 != 0) {
-    if (ux != 0 && uxy / ux != uy)
+  if ((ux | uy) >> 32 != 0) {  // Divided by 2**32, to determine whether x or y is greater than 2**32.
+    if (ux != 0 && uxy / ux != uy) {
       return -1;
+    }
   }
 
   return static_cast<int64_t>(uxy);

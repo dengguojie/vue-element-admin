@@ -53,7 +53,7 @@ static void PositiveAxisImpl(int32_t input_dims, const gert::Tensor* axes_tensor
 
 static std::vector<int64_t> ConstructValidAxis(const gert::Tensor* axes_tensor, int32_t input_dims) {
   std::vector<int64_t> new_axes;
-  if (!axes_tensor || !(axes_tensor->GetShapeSize())) {
+  if (!axes_tensor || axes_tensor->GetShapeSize() == 0) {
     new_axes.resize(input_dims);
     std::iota(new_axes.begin(), new_axes.end(), 0);
     return new_axes;
@@ -175,9 +175,7 @@ static void AppendTilingData(const SliceParameters& params, gert::TilingData* ti
   };
 
   for (auto item : tiling_params) {
-    for (auto x : *item) {
-      tiling_data->Append<int64_t>(x);
-    }
+    tiling_data->Append<int64_t>(item->data(), item->size());
   }
   return;
 }

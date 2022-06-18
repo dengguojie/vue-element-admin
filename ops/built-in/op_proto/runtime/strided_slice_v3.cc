@@ -29,30 +29,30 @@ const int INDEX_Y = 0;
 }  // namespace
 
 namespace ops {
-static int32_t GetConstIndexValue(const gert::Tensor* tensor, size_t idx) {
+static int64_t GetConstIndexValue(const gert::Tensor* tensor, size_t idx) {
   // idx must be valid
-  int32_t value = 0;
+  int64_t value = 0;
   if (tensor->GetDataType() == ge::DT_INT32) {
     const int32_t* data = tensor->GetData<int32_t>();
-    value = data[idx];
+    value = static_cast<int64_t>(data[idx]);
   } else {
     const int64_t* data = tensor->GetData<int64_t>();
-    value = static_cast<int32_t>(data[idx]);
+    value = data[idx];
   }
-  OP_LOGD(OP_NAME.c_str(), "const tensor[%lld] is %ld.", idx, value);
+  OP_LOGD(OP_NAME.c_str(), "const tensor[%ld] is %ld.", idx, value);
   return value;
 }
 
-static int32_t GetConstIndexValue(const gert::Tensor* tensor, size_t idx, int32_t input_size, int32_t clip_lower,
-                                  int32_t clip_upper) {
+static int64_t GetConstIndexValue(const gert::Tensor* tensor, size_t idx, int64_t input_size, int64_t clip_lower,
+                                  int64_t clip_upper) {
   // idx must be valid
-  int32_t value = 0;
+  int64_t value = 0;
   if (tensor->GetDataType() == ge::DT_INT32) {
     const int32_t* data = tensor->GetData<int32_t>();
-    value = data[idx];
+    value = static_cast<int64_t>(data[idx]);
   } else {
     const int64_t* data = tensor->GetData<int64_t>();
-    value = static_cast<int32_t>(data[idx]);
+    value = data[idx];
   }
   if (value < 0) {
     value += input_size;
@@ -64,16 +64,16 @@ static int32_t GetConstIndexValue(const gert::Tensor* tensor, size_t idx, int32_
   } else if (value > clip_upper) {
     value = clip_upper;
   }
-  OP_LOGD(OP_NAME.c_str(), "const tensor[%lld] is %ld.", idx, value);
+  OP_LOGD(OP_NAME.c_str(), "const tensor[%ld] is %ld.", idx, value);
   return value;
 }
 
 template <typename T>
 static void PositiveAxisImpl(int32_t input_dims, const gert::Tensor* axis_tensor, vector<int32_t>& new_axis) {
-  const int32_t axis_size = static_cast<int32_t>(axis_tensor->GetShapeSize());
+  const int64_t axis_size = axis_tensor->GetShapeSize();
   const T* data = axis_tensor->GetData<T>();
   for (int i = 0; i < axis_size; i++) {
-    int32_t value = static_cast<int32_t>(data[i]);
+    int64_t value = static_cast<int64_t>(data[i]);
     if (value >= 0 && value < input_dims) {
       new_axis.push_back(value);
     } else if (value < 0 && value >= -input_dims) {
@@ -85,7 +85,7 @@ static void PositiveAxisImpl(int32_t input_dims, const gert::Tensor* axis_tensor
 
 static std::vector<int32_t> ConstructValidAxis(int32_t input_dims, const gert::Tensor* axis_tensor) {
   std::vector<int32_t> new_axis;
-  if (!axis_tensor || !(axis_tensor->GetShapeSize())) {
+  if (!axis_tensor || axis_tensor->GetShapeSize() == 0) {
     new_axis.resize(input_dims);
     std::iota(new_axis.begin(), new_axis.end(), 0);
     return new_axis;
@@ -119,28 +119,28 @@ ge::graphStatus StridedSliceV3InferShape(gert::InferShapeContext* context) {
   const int32_t axis_size = static_cast<int32_t>(new_axis.size());
   for (int32_t i = 0; i < axis_size; i++) {
     const int32_t axis_value = new_axis[i];
-    int step_value = 1;
+    int64_t step_value = 1;
     if (i < strides_size) {
       step_value = GetConstIndexValue(strides_tensor, i);
     }
-    int32_t cur_axis_input_size = x_shape->GetDim(axis_value);
-    int begin_value = 0;
+    int64_t cur_axis_input_size = x_shape->GetDim(axis_value);
+    int64_t begin_value = 0;
     if (i < begins_size) {
-      int clip_upper = cur_axis_input_size;
+      int64_t clip_upper = cur_axis_input_size;
       if (step_value < 0) {
         clip_upper -= 1;  // if stpep <0, start from last valid_index
       }
       begin_value = GetConstIndexValue(begin_tensor, i, cur_axis_input_size, 0, clip_upper);
     }
-    int end_value = cur_axis_input_size;
+    int64_t end_value = cur_axis_input_size;
     if (i < ends_size) {
-      int clip_lower = 0;
+      int64_t clip_lower = 0;
       if (step_value < 0) {
         clip_lower = -1;  // if stpep <0, end with first valid_index
       }
       end_value = GetConstIndexValue(end_tensor, i, cur_axis_input_size, clip_lower, cur_axis_input_size);
     }
-    int32_t cur_out_size = std::ceil((end_value - begin_value) / static_cast<float>(step_value));
+    int64_t cur_out_size = std::ceil((end_value - begin_value) / static_cast<float>(step_value));
     if (cur_out_size < 0) {
       cur_out_size = 0;
     }

@@ -108,4 +108,36 @@ TEST_F(expand, expand_infershape_const_2) {
     CommonInferShapeOperatorWithConst(expand_op, input_const, {}, expect_shapes_vector);
 }
 
+TEST_F(expand, expand_infershape_x1D_expand2D) {
+    ge::op::Expand expand_op;
 
+    ge::TensorDesc x_desc;
+    ge::Shape xShape({10});
+    x_desc.SetDataType(ge::DT_INT32);
+    x_desc.SetShape(xShape);
+    x_desc.SetOriginShape(xShape);
+
+    ge::TensorDesc shape_desc;
+    ge::Shape yShape({2});
+    shape_desc.SetDataType(ge::DT_INT32);
+    shape_desc.SetShape(yShape);
+    shape_desc.SetOriginShape(yShape);
+
+    ge::Tensor constTensor;
+    ge::TensorDesc constDesc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+    constDesc.SetSize(2 * sizeof(int32_t));
+    constTensor.SetTensorDesc(constDesc);
+    int32_t constData[2] = {10, 10};
+    constTensor.SetData((uint8_t *)constData, 2 * sizeof(int32_t));
+    auto shape = ge::op::Constant().set_attr_value(constTensor);
+
+    expand_op.set_input_shape(shape);
+
+    expand_op.UpdateInputDesc("x", x_desc);
+    expand_op.UpdateInputDesc("shape", shape_desc);
+
+    vector<bool> input_const = {false, true};
+    std::vector<vector<int64_t>> expect_shapes_vector = {{10, 10}};
+
+    CommonInferShapeOperatorWithConst(expand_op, input_const, {}, expect_shapes_vector);
+}

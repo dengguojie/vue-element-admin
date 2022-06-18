@@ -78,3 +78,39 @@ TEST_F(ExpandTiling, Expand_tiling_test_1) {
   HOLDER_DO_TILING(holder, "Expand", ge::GRAPH_SUCCESS);
   TILING_DATA_VERIFY_BYTYPE(holder, int32_t, expectTilingData);
 }
+
+TEST_F(ExpandTiling, Expand_tiling_test_x1D_expand_2D) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Expand");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::Expand("Expand");
+
+  vector<vector<int64_t>> input_shapes = {
+      {10},
+      {2},
+  };
+  vector<int64_t> output = {10, 10};
+
+  vector<ge::DataType> dtypes = {ge::DT_INT32, ge::DT_INT32};
+  std::vector<int32_t> shape_value{10, 10};
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, shape, input_shapes[1], dtypes[1], ge::FORMAT_ND, shape_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtypes[0], ge::FORMAT_ND, {});
+
+  std::string compileInfo =
+      R"( {"_pattern": "Broadcast", "_ub_factor_align": 128, "push_status": 0,"_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 2, 43680, 21840]}, "_elewise_vars": {"0": [10000, 10100], "1": [10000, 10100, 20000, 30000], "2": [10000, 10100, 20000, 30001], "3": [10000, 10100, 20000, 30002], "5": [10000, 10100, 20001, 30001], "6": [10000, 10100, 20001, 30002], "9": [10000, 10100, 20002, 30002]}, "_vars": {"0": ["_dim_0_0", "_dim_1_0"], "1": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "3": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_2"], "5": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"], "6": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_2"], "9": ["_dim_0_0", "_dim_1_0", "_block_factor_2", "_ub_factor_2"]}})";
+  std::string expectTilingData = "10 10 ";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), expectTilingData);
+
+  optiling::ExpandCompileInfo info;
+  TILING_PARSE_JSON_TO_COMPILEINFO("Expand", compileInfo, info);
+  std::vector<bool> input_const = {false, true};
+  std::vector<std::string> attrs = {};
+  ATTACH_OPERATOR_TO_HOLDER_CONST(holder, opParas, input_const, attrs, 20, info);
+  HOLDER_DO_TILING(holder, "Expand", ge::GRAPH_SUCCESS);
+  TILING_DATA_VERIFY_BYTYPE(holder, int32_t, expectTilingData);
+}
