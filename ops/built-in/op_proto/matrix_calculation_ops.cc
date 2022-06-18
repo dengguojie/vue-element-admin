@@ -3787,7 +3787,7 @@ graphStatus GetDiagIndex(Operator& op, Tensor k_tensor, Shape k_shape,
 
 graphStatus GetRowsAndCols(Operator& op, Shape diagonal_shape,
                            int32_t lower_diag_index, int32_t upper_diag_index,
-                           int32_t num_rows, int32_t num_cols)
+                           int32_t& num_rows, int32_t& num_cols)
 {
   auto diagonal_dims = diagonal_shape.GetDims();
   const int32_t diagonal_rank = diagonal_shape.GetDimNum();
@@ -3939,7 +3939,6 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV3InferShape) {
   if (GetRowsAndCols(op, diagonal_shape, lower_diag_index, upper_diag_index, num_rows, num_cols) != GRAPH_SUCCESS) {
     return GRAPH_PARAM_INVALID;
   }
-
   const int32_t diagonal_rank = diagonal_shape.GetDimNum();
   Shape output_shape;
   OP_LOGI(TbeGetName(op), "num_rows: ", num_rows, " num_cols: ", num_cols);
