@@ -1554,17 +1554,17 @@ EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "900012010 2 480 2 240 ");
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_20) {
 using namespace optiling;
 std::string compileInfo = R"({"_base_info":[32, 262144, 0, 4, 4],
-"_custom_info":[32786, 0, false, 0],
+"_custom_info":[32786, 0, true, 0],
 "_tensor_sizes": {"901210003": [10001, 10003, 20001, 30000, 40003]},
 "_gather_vars": {"0": [209964, 6552]},
 "attr_name": "batch_dims",
-"batch_dims_attr_idx": 0,
+"batch_dims_attr_idx": 2,
 "_vars": {"901210002": ["_params_dims_1", "_params_dims_3", "_indices_dims_1", "_block_factor_0", "_ub_factor_3"]}, "_pattern":"Gather"})";
 
 nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
 
 GatherDslCompileInfo actual_struct("gather", op_info);
-ASSERT_TRUE(actual_struct.org_batch_dims == 0);
+ASSERT_TRUE(actual_struct.attr_idx == 2);
 }
 
 TEST_F(GatherScheduleTiling, gather_schedule_tiling_21) {

@@ -167,7 +167,7 @@ constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
 
       if (unknown_batch_dims) {
         attr_name = org_compile_info.at("attr_name").get<std::string>();
-        attr_idx = org_compile_info.at("bath_dims_attr_idx").get<std::size_t>();
+        attr_idx = org_compile_info.at("batch_dims_attr_idx").get<std::size_t>();
       }
     } catch (const std::exception &e) {
       is_valid = false;
