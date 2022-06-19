@@ -54,7 +54,7 @@ vector<BufferFusionPattern*> TbeConv3dDxElemwisePass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
   string pass_name = "TbeConv3dDxElemwisePass";
   BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(pass_name);
-  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   pattern->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV3D_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -73,7 +73,7 @@ vector<BufferFusionPattern*> TbeConv3dDxElemwisePass::DefinePatterns() {
 
   string pass_name1 = "TbeConv3dDxElemwisePass1";
   BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pass_name1);
-  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   pattern1->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV3D_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -90,7 +90,7 @@ vector<BufferFusionPattern*> TbeConv3dDxElemwisePass::DefinePatterns() {
 
   string pass_name2 = "TbeConv3dDxElemwisePass2";
   BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
-  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
   pattern2->AddOpDesc(PATTERN_DX, {OP_PATTERN_CONV3D_BACKPROP_INPUT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -113,13 +113,11 @@ void TbeConv3dDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, s
   vector<ge::NodePtr> elemwise_node = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
 
   vector<ge::NodePtr> elemwise1_node = GetMatchedNodesByDescName(PATTERN_ELEM1, mapping);
-  if (elemwise_node.empty() && elemwise1_node.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise node not matched");
-    return;
-  }
+  FUSION_PASS_CHECK(elemwise_node.empty() && elemwise1_node.empty(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise node not matched"), return);
 
   FUSION_PASS_CHECK(dx_nodes[0]->GetInDataNodes().size() <= 0,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "conv3d_backprop_input's inputs can not <= 0."), return);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "conv3d_backprop_input's inputs can not <= 0."), return);
   int inpre = dx_nodes[0]->GetInDataNodes().size() - 1;
 
   vector<int64_t> split_flag = {-1};
@@ -130,7 +128,7 @@ void TbeConv3dDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, s
   } else {
     int addn_inpre = 0;
     FUSION_PASS_CHECK(elemwise_node[0]->GetInDataNodes().size() <= 0,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "elemwise_node's inputs can not <= 0."), return);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise_node's inputs can not <= 0."), return);
     addn_inpre = elemwise_node[0]->GetInDataNodes().size() - 1;
     fusion_inpre = inpre + addn_inpre + 1;
   }
@@ -179,28 +177,26 @@ Status TbeConv3dDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mappin
     auto input0desc = GetCurrNodeInputDesc(dxNode, 0);
     auto input1desc = GetCurrNodeInputDesc(dxNode, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                  return FAILED);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                      return SUCCESS);
     FUSION_PASS_CHECK(input1desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
-                  return FAILED);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                      return SUCCESS);
     vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
     for (auto singleDim : allDims) {
-      if (singleDim < 0) {
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
-        return SUCCESS;
-      }
+        FUSION_PASS_CHECK(singleDim < 0, OP_LOGI(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape"),
+                          return SUCCESS);
     }
   }
 
   vector<ge::NodePtr> elem2_node = GetMatchedNodesByDescName(PATTERN_ELEM1, mapping);
   for (auto& node : elem2_node) {
     if (node->GetType() != typelist[1]) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(),
+      OP_LOGD(FUSED_OP_TYPE.c_str(),
               "the second elemwise node must be LeakyReluGrad, actually [%s].",
               node->GetType().c_str());
       return SUCCESS;
@@ -209,19 +205,14 @@ Status TbeConv3dDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mappin
 
   vector<ge::NodePtr> elem_node = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   for (auto& node : elem_node) {
-    if (node->GetType() != typelist[0]) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(),
-              "the first elemwise node must be AddN, actually [%s].",
-              node->GetType().c_str());
-      return SUCCESS;
-    }
+    FUSION_PASS_CHECK(node->GetType() != typelist[0],
+                      OP_LOGD(FUSED_OP_TYPE.c_str(), "the first elemwise node must be AddN, actually [%s].",
+                              node->GetType().c_str()),
+                      return SUCCESS);
   }
 
-  if (elem_node.empty() && elem2_node.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(),
-            "the num of elemwise nodes is empty.");
-    return SUCCESS;
-  }
+  FUSION_PASS_CHECK(elem_node.empty() && elem2_node.empty(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "the num of elemwise nodes is empty."), return SUCCESS);
 
   fusion_nodes = GetMatchedNodes(mapping);
 

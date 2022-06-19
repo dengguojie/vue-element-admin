@@ -54,7 +54,7 @@ vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatter
 
   BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(pass_name);
   FUSION_PASS_CHECK(pattern == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL})
@@ -77,7 +77,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::CheckDropoutOutNode(const ge::Node
                                                                   const ge::NodePtr &dropout_control_node,
                                                                   std::vector<ge::NodePtr>& add_nodes) {
   FUSION_PASS_CHECK(dropout_out_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
   bool invalid_node = dropout_out_node->GetType() != "Add" || add_nodes.empty();
   FUSION_PASS_CHECK(
     invalid_node && ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
@@ -89,7 +89,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::CheckDropoutOutNode(const ge::Node
     // dropout_out_node is add_node
     for (const auto& add_out_node : dropout_out_node->GetOutAllNodes()) {
       FUSION_PASS_CHECK(add_out_node == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
+                        OP_LOGW(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
       if (add_out_node->GetInControlAnchor() != nullptr) {
         FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
@@ -115,7 +115,7 @@ void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMappi
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "DropOutV3 node not matched"),
                     return);
   FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
 
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
@@ -127,7 +127,7 @@ void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMappi
   AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   FUSION_PASS_CHECK(!elemWiseNodes1.empty(),
                     AddElemwiseSplitMap(split_maps, elemWiseNodes1[0], pre),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Add node matched"));
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Add node matched"));
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
@@ -163,7 +163,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     }
     for (const auto& batch_matmul_control_node : batch_matmul_node->GetOutControlNodes()) {
       FUSION_PASS_CHECK(batch_matmul_control_node == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Out control of batch_matmul is null."), return FAILED);
+                        OP_LOGW(FUSED_OP_TYPE.c_str(), "Out control of batch_matmul is null."), return SUCCESS);
       if (batch_matmul_control_node->GetType() != "ConfusionTransposeD") {
         continue;
       }
@@ -173,16 +173,17 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
           batch_matmul_control_node->GetInControlAnchor()) != SUCCESS,
         OP_LOGD(FUSED_OP_TYPE.c_str(),
                 "Removing control-edge between BatchMatMul and ConfusionTransposeD is failed."),
-        return FAILED);
+        return SUCCESS);
       for (const auto& confusion_transpose_out_node : batch_matmul_control_node->GetOutAllNodes()) {
         FUSION_PASS_CHECK(confusion_transpose_out_node == nullptr,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of confusion transpose is null."), return FAILED);
+                          OP_LOGW(FUSED_OP_TYPE.c_str(), "Output node of confusion transpose is null."),
+                          return SUCCESS);
         FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(batch_matmul_node->GetOutControlAnchor(),
             confusion_transpose_out_node->GetInControlAnchor()) != SUCCESS,
           OP_LOGD(FUSED_OP_TYPE.c_str(),
                   "Adding control-edge between BatchMatMul and ConfusionTransposeD's output node is failed."),
-          return FAILED);
+          return SUCCESS);
       }
     }
   }
@@ -195,7 +196,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     }
     for (const auto& dropout_control_node : dropout_node->GetInControlNodes()) {
       FUSION_PASS_CHECK(dropout_control_node == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "in control of dropout is null."), return FAILED);
+                        OP_LOGW(FUSED_OP_TYPE.c_str(), "in control of dropout is null."), return SUCCESS);
       bool type_invalid = dropout_control_node->GetType() != TYPE_BATCHMATMUL &&
                           dropout_control_node->GetType() != TYPE_BATCHMATMULV2;
       if (type_invalid) {
@@ -207,11 +208,11 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
           dropout_node->GetInControlAnchor()) != SUCCESS,
         OP_LOGD(FUSED_OP_TYPE.c_str(),
                 "Removing control-edge between BatchMatMul and DropOutDoMaskV3D is failed."),
-        return FAILED);
+        return SUCCESS);
       for (const auto& dropout_out_node : dropout_node->GetOutAllNodes()) {
         Status sta = CheckDropoutOutNode(dropout_out_node, dropout_control_node, add_nodes);
         FUSION_PASS_CHECK(sta != SUCCESS, OP_LOGD(FUSED_OP_TYPE.c_str(), "Check dropout out node failed."),
-                          return FAILED);
+                          return SUCCESS);
       }
     }
   }
@@ -223,11 +224,11 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     auto input0desc = GetCurrNodeInputDesc(batch_matmul_node, 0);
     auto input1desc = GetCurrNodeInputDesc(batch_matmul_node, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                  return FAILED);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                      return SUCCESS);
     FUSION_PASS_CHECK(input1desc == nullptr,
-                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
-                  return FAILED);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                      return SUCCESS);
     vector<int64_t> input0_dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> input1_dims = input0desc->GetOriginShape().GetDims();
     vector<int64_t> all_dims;
@@ -236,7 +237,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     for (auto single_dim : all_dims) {
       if (single_dim < 0) {
         fusion_nodes.clear();
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "Ub fusion do not support dynamic shape.");
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "Ub fusion do not support dynamic shape.");
         return SUCCESS;
       }
     }

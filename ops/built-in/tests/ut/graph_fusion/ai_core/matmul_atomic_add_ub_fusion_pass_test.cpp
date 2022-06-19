@@ -253,7 +253,7 @@ TEST_F(matmul_atomic_add_ub_fusion_test, matmul_atomic_add_test_3) {
 }
 
 TEST_F(matmul_atomic_add_ub_fusion_test, matmul_atomic_add_test_4) {
-  ge::Graph graph("matmul_atomic_add_test_3");
+  ge::Graph graph("matmul_atomic_add_test_4");
 
   std::vector<int64_t> dims_x1{32, 16384};
   std::vector<int64_t> dims_x2{16284, 64};
@@ -307,6 +307,67 @@ TEST_F(matmul_atomic_add_ub_fusion_test, matmul_atomic_add_test_4) {
   matmul_op.update_input_desc_x1(desc_x1);
   matmul_op.update_input_desc_x2(desc_x2);
   matmul_op.update_input_desc_bias(desc_bias);
+  matmul_op.update_output_desc_y(desc_y);
+
+  std::vector<Operator> inputs{x1_data, x2_data};
+  std::vector<Operator> outputs{matmul_op};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  // set soc_version
+  fe::PlatformInfo platform_info;
+  fe::OptionalInfo opti_compilation_info;
+  platform_info.soc_info.ai_core_cnt = 32;
+  opti_compilation_info.soc_version = "Ascend910A";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  Status ret = fe::RunBufferFusionPassMatMulAtomicAdd("MatmulAtomicAddUbFusion",
+                                                      fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, compute_graph_ptr);
+  EXPECT_EQ(ret, SUCCESS);
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+}
+
+TEST_F(matmul_atomic_add_ub_fusion_test, matmul_atomic_add_test_5) {
+  ge::Graph graph("matmul_atomic_add_test_5");
+
+  std::vector<int64_t> dims_x1{32, 16};
+  std::vector<int64_t> dims_x2{16, -1};
+  std::vector<int64_t> dims_y{32, -1};
+
+  ge::Shape shape_x1(dims_x1);
+  ge::TensorDesc desc_x1(shape_x1, FORMAT_ND, ge::DT_FLOAT16);
+  desc_x1.SetOriginShape(shape_x1);
+  desc_x1.SetOriginFormat(FORMAT_ND);
+  ge::Shape shape_x2(dims_x2);
+  ge::TensorDesc desc_x2(shape_x2, FORMAT_ND, ge::DT_FLOAT16);
+  desc_x2.SetOriginShape(shape_x2);
+  desc_x2.SetOriginFormat(FORMAT_ND);
+  ge::Shape shape_y(dims_y);
+  ge::TensorDesc desc_y(shape_y, FORMAT_ND, ge::DT_FLOAT16);
+  desc_y.SetOriginShape(shape_y);
+  desc_y.SetOriginFormat(FORMAT_ND);
+
+  ge::TensorDesc x1_desc(shape_x1, FORMAT_ND, ge::DT_FLOAT16);
+  x1_desc.SetOriginShape(shape_x1);
+  auto x1_data = op::Data("x1_data");
+  x1_data.update_input_desc_x(x1_desc);
+  x1_data.update_output_desc_y(x1_desc);
+
+  ge::TensorDesc x2_desc(shape_x2, FORMAT_ND, ge::DT_FLOAT16);
+  x2_desc.SetOriginShape(shape_x2);
+  auto x2_data = op::Data("x2_data");
+  x2_data.update_input_desc_x(x2_desc);
+  x2_data.update_output_desc_y(x2_desc);
+
+  auto matmul_op = op::MatMul("matmul")
+                       .set_input_x1(x1_data)
+                       .set_input_x2(x2_data)
+                       .set_attr_transpose_x1(false)
+                       .set_attr_transpose_x2(false);
+  matmul_op.update_input_desc_x1(desc_x1);
+  matmul_op.update_input_desc_x2(desc_x2);
   matmul_op.update_output_desc_y(desc_y);
 
   std::vector<Operator> inputs{x1_data, x2_data};

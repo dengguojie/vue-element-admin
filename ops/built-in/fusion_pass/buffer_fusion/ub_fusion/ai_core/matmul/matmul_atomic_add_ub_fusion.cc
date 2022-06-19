@@ -73,7 +73,7 @@ vector<BufferFusionPattern *> MatmulAtomicAddUbFusion::DefinePatterns() {
   string pass_name = "MatmulAtomicAddUbFusion";
 
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(pass_name);
-  FUSION_PASS_CHECK((pattern == nullptr), CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "new an object failed."),
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGW(kFusedOpType.c_str(), "new an object failed."),
                     return patterns);
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
 
@@ -167,10 +167,8 @@ bool MatmulAtomicAddUbFusion::NeedSplitK(const ge::NodePtr &matmul_node) {
     vector<int> block_dims = {m_dim, k_dim, n_dim};
     float cur_cost;
     bool ret = computePerf(shapes, block_dims, cur_bandwidth, hbm_bandwidth, out_dtype, out_format, cur_cost);
-    if (!ret) {
-      OP_LOGW(kFusedOpType.c_str(), "Failed compute best perf corenum, will not split k.");
-      return false;
-    }
+    FUSION_PASS_CHECK(!ret, OP_LOGD(kFusedOpType.c_str(), "Failed compute best perf corenum, will not split k."),
+                      return false);
     if (cur_cost < min_cost) {
       min_cost = cur_cost;
       k_factor = k_dim;
@@ -386,10 +384,10 @@ Status MatmulAtomicAddUbFusion::IsDynamicMatmul(const ge::NodePtr &matmul_node, 
   vector<pair<int64_t, int64_t>> range_data_0;
   vector<pair<int64_t, int64_t>> range_data_1;
   FUSION_PASS_CHECK(matmul_node->GetOpDesc()->MutableInputDesc(0)->GetShapeRange(range_data_0) == ge::GRAPH_FAILED,
-                    OP_LOGE(kFusedOpType, "Failed to set first shape range of MatMul."),
+                    OP_LOGW(kFusedOpType, "Failed to set first shape range of MatMul."),
                     return FAILED);
   FUSION_PASS_CHECK(matmul_node->GetOpDesc()->MutableInputDesc(1)->GetShapeRange(range_data_1) == ge::GRAPH_FAILED,
-                    OP_LOGE(kFusedOpType, "Failed to set second shape range of MatMul."),
+                    OP_LOGW(kFusedOpType, "Failed to set second shape range of MatMul."),
                     return FAILED);
 
   if (IsTheRangeOfNoRange(range_data_0) || IsTheRangeOfNoRange(range_data_1)) {
@@ -419,7 +417,7 @@ Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, 
   auto op_name = base_name + "_transdata";
   ge::OpDescPtr new_desc_ptr = nullptr;
   FUSION_PASS_MAKE_SHARED((new_desc_ptr = std::make_shared<ge::OpDesc>(op_name, kOpTypeTransdata)),
-                          OP_LOGE(kFusedOpType.c_str(), "create %s_desc_ptr failed.", op_name.c_str());
+                          OP_LOGW(kFusedOpType.c_str(), "create %s_desc_ptr failed.", op_name.c_str());
                           new_desc_ptr = nullptr;
                           return FAILED);
   ge::GeTensorDesc matmul_out_desc = matmul_node->GetOpDesc()->GetOutputDesc(0);
@@ -462,7 +460,7 @@ Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, 
     std::vector<std::pair<int64_t, int64_t>> out_nz_range_matmul;
     FUSION_PASS_CHECK(
         matmul_node->GetOpDesc()->MutableOutputDesc(0)->GetShapeRange(out_ori_range_matmul) == ge::GRAPH_FAILED,
-        OP_LOGE(kFusedOpType.c_str(), "Failed to get output shape range of matmul."), return fe::FAILED);
+        OP_LOGW(kFusedOpType.c_str(), "Failed to get output shape range of matmul."), return fe::FAILED);
 
     pair<int64_t, int64_t> n_range;
     if (n_shape == -1) {
@@ -490,7 +488,7 @@ Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, 
     transdata_out_desc.SetOriginShapeRange(out_nz_range_matmul);
     FUSION_PASS_CHECK(
         matmul_node->GetOpDesc()->MutableOutputDesc(0)->SetShapeRange(out_nz_range_matmul) == ge::GRAPH_FAILED,
-        OP_LOGE(kFusedOpType.c_str(), "Failed to set output shape range of matmul."), return fe::FAILED);
+        OP_LOGW(kFusedOpType.c_str(), "Failed to set output shape range of matmul."), return fe::FAILED);
   }
 
   new_desc_ptr->AddInputDesc(transdata_in_desc);
@@ -523,7 +521,7 @@ Status MatmulAtomicAddUbFusion::GenerateCastNode(ge::NodePtr &matmul_node, ge::N
   auto op_name = base_name + "_cast";
   ge::OpDescPtr new_desc_ptr = nullptr;
   FUSION_PASS_MAKE_SHARED((new_desc_ptr = std::make_shared<ge::OpDesc>(op_name, kOpTypeCast)),
-                          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "create %s_desc_ptr failed.", op_name.c_str());
+                          OP_LOGW(kFusedOpType.c_str(), "create %s_desc_ptr failed.", op_name.c_str());
                           new_desc_ptr = nullptr;
                           return FAILED);
   ge::ComputeGraphPtr graph_ptr = matmul_node->GetOwnerComputeGraph();
@@ -551,7 +549,7 @@ Status MatmulAtomicAddUbFusion::GenerateCastNode(ge::NodePtr &matmul_node, ge::N
     std::vector<std::pair<int64_t, int64_t>> out_ori_range_matmul;
     FUSION_PASS_CHECK(
         matmul_node->GetOpDesc()->MutableOutputDesc(0)->GetShapeRange(out_ori_range_matmul) == ge::GRAPH_FAILED,
-        OP_LOGE(kFusedOpType.c_str(), "Failed to get output shape range of matmul."), return fe::FAILED);
+        OP_LOGW(kFusedOpType.c_str(), "Failed to get output shape range of matmul."), return fe::FAILED);
     cast_in_desc.SetShapeRange(out_ori_range_matmul);
     cast_in_desc.SetOriginShapeRange(out_ori_range_matmul);
     cast_out_desc.SetShapeRange(out_ori_range_matmul);
@@ -589,10 +587,10 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
   auto next_node_name = base_name;
   ge::NodePtr next_node;
   FUSION_PASS_CHECK(matmul_node->GetOutDataAnchor(0) == nullptr,
-                    OP_LOGW(kFusedOpType.c_str(), "Node %s get output failed.", matmul_node->GetName().c_str()),
+                    OP_LOGD(kFusedOpType.c_str(), "Node %s get output failed.", matmul_node->GetName().c_str()),
                     return SUCCESS);
   FUSION_PASS_CHECK(matmul_node->GetAllOutDataAnchors().size() > 1,
-                    OP_LOGW(kFusedOpType.c_str(), "Node %s have multi out data anchor, not handle this now.",
+                    OP_LOGD(kFusedOpType.c_str(), "Node %s have multi out data anchor, not handle this now.",
                             matmul_node->GetName().c_str()),
                     return SUCCESS);
 
@@ -600,27 +598,27 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
     next_node_name = next_node_name + "_Transdata";
     FUSION_PASS_CHECK(
       SUCCESS != GenerateTransDataNode(matmul_node, next_node),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add transdata node for %s fail.", matmul_node->GetName().c_str()),
+      OP_LOGW(kFusedOpType.c_str(), "Add transdata node for %s fail.", matmul_node->GetName().c_str()),
       return FAILED);
   } else if (cur_add_node_type == kAtomicAddNeedCast) {
     next_node_name = next_node_name + "_Cast";
     FUSION_PASS_CHECK(
       SUCCESS != GenerateCastNode(matmul_node, next_node),
-      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add cast node for %s fail.", matmul_node->GetName().c_str()),
+      OP_LOGW(kFusedOpType.c_str(), "Add cast node for %s fail.", matmul_node->GetName().c_str()),
       return FAILED);
   }
   if (matmul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (ge::InDataAnchorPtr &in_anchor_ptr : matmul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::RemoveEdge(matmul_node->GetOutDataAnchor(0), in_anchor_ptr),
-          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Remove edge between node %s and %s fail.",
+          OP_LOGW(kFusedOpType.c_str(), "Remove edge between node %s and %s fail.",
                                 matmul_node->GetName().c_str(), in_anchor_ptr->GetOwnerNode()->GetName().c_str()),
           return FAILED);
       OP_LOGD(kFusedOpType.c_str(), "Remove edge between node %s and %s.", matmul_node->GetName().c_str(),
               in_anchor_ptr->GetOwnerNode()->GetName().c_str());
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(next_node->GetOutDataAnchor(0), in_anchor_ptr),
-          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add edge between node %s and %s fail.",
+          OP_LOGW(kFusedOpType.c_str(), "Add edge between node %s and %s fail.",
                                 next_node->GetName().c_str(), in_anchor_ptr->GetOwnerNode()->GetName().c_str()),
           return FAILED);
       OP_LOGD(kFusedOpType.c_str(), "Add edge between node %s and %s.", next_node->GetName().c_str(),
@@ -631,11 +629,11 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
   }
 
   FUSION_PASS_CHECK(SUCCESS != MatMulLinkControlEdge(matmul_node, next_node),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add control edge between node fail."),
+                    OP_LOGW(kFusedOpType.c_str(), "Add control edge between node fail."),
                     return FAILED);
 
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), next_node->GetInDataAnchor(0)),
-                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add edge between node %s and %s fail.",
+                    OP_LOGW(kFusedOpType.c_str(), "Add edge between node %s and %s fail.",
                                           matmul_node->GetName().c_str(), next_node->GetName().c_str()),
                     return FAILED);
   OP_LOGD(kFusedOpType.c_str(), "Add edge between node %s and %s.", matmul_node->GetName().c_str(),
@@ -651,14 +649,14 @@ Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(const ge::NodePtr &matmul_
       for (auto in_control_anchor : matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
         FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::RemoveEdge(matmul_node->GetOutControlAnchor(), in_control_anchor),
-          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Remove control edge between node %s and %s fail.",
+          OP_LOGW(kFusedOpType.c_str(), "Remove control edge between node %s and %s fail.",
                                 matmul_node->GetName().c_str(), in_control_anchor->GetOwnerNode()->GetName().c_str()),
           return FAILED);
         OP_LOGD(kFusedOpType.c_str(), "Remove control edge between node %s and %s.", matmul_node->GetName().c_str(),
                 in_control_anchor->GetOwnerNode()->GetName().c_str());
         FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(next_node->GetOutControlAnchor(), in_control_anchor),
-          CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add control edge between node %s and %s fail.",
+          OP_LOGW(kFusedOpType.c_str(), "Add control edge between node %s and %s fail.",
                                 next_node->GetName().c_str(), in_control_anchor->GetOwnerNode()->GetName().c_str()),
           return FAILED);
         OP_LOGD(kFusedOpType.c_str(), "Add control edge between node %s and %s.", next_node->GetName().c_str(),
@@ -699,7 +697,7 @@ Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mappin
                     return SUCCESS);
   FUSION_PASS_CHECK(
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, optional_info) != fe::SUCCESS,
-      OP_LOGE(kFusedOpType.c_str(), "Get platform_info failed."), return FAILED);
+      OP_LOGD(kFusedOpType.c_str(), "Get platform_info failed."), return SUCCESS);
   core_num = platform_info.soc_info.ai_core_cnt;
   l2_size = platform_info.soc_info.l2_size;
 
@@ -729,13 +727,13 @@ Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mappin
       OP_LOGD(kFusedOpType.c_str(), "Current matmul node %s will connect with Transdata.",
               matmul_node->GetName().c_str());
       FUSION_PASS_CHECK(AddCustomNode(kAtomicAddNeedTransdata, matmul_node, fusion_nodes) != SUCCESS,
-                        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add Transdata node fail."), return FAILED);
+                        OP_LOGW(kFusedOpType.c_str(), "Add Transdata node fail."), return SUCCESS);
     }
     if ((atomic_add_type & kAtomicAddNeedCast) == kAtomicAddNeedCast) {
       // add cast node
       OP_LOGD(kFusedOpType.c_str(), "Current matmul node %s will connect with Cast.", matmul_node->GetName().c_str());
       FUSION_PASS_CHECK(AddCustomNode(kAtomicAddNeedCast, matmul_node, fusion_nodes) != SUCCESS,
-                        CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add Cast node fail."), return FAILED);
+                        OP_LOGW(kFusedOpType.c_str(), "Add Cast node fail."), return SUCCESS);
     }
   } else {
     OP_LOGD(kFusedOpType.c_str(), "Current matmul node %s is disabled atomic add.", matmul_node->GetName().c_str());
