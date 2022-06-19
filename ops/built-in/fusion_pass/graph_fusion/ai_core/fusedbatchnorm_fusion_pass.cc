@@ -655,7 +655,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   std::ostringstream reduceOSS;
   reduceOSS << bnReduceOp->GetName() << " ";
   for (GeTensorDesc& tensorDesc : bnReduceOp->GetAllInputsDesc()) {
-    reduceOSS << endl << "Format:" << tensorDesc.GetFormat() << " OriFormat" << tensorDesc.GetOriginFormat();
+    reduceOSS << ", Format:" << tensorDesc.GetFormat() << " OriFormat:" << tensorDesc.GetOriginFormat();
     reduceOSS << " Dim:{";
     for (int64_t dim : tensorDesc.GetShape().GetDims()) {
       reduceOSS << dim << " ";
@@ -668,7 +668,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
     reduceOSS << "}";
   }
   for (GeTensorDesc& tensorDesc : bnReduceOp->GetAllOutputsDesc()) {
-    reduceOSS << endl << "Format:" << tensorDesc.GetFormat() << " OriFormat" << tensorDesc.GetOriginFormat();
+    reduceOSS << ", Format:" << tensorDesc.GetFormat() << " OriFormat:" << tensorDesc.GetOriginFormat();
     reduceOSS << " Dim:{";
     for (int64_t dim : tensorDesc.GetShape().GetDims()) {
       reduceOSS << dim << " ";
