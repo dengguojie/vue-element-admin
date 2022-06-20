@@ -445,4 +445,18 @@ REGISTER_CUSTOM_OP("CTCBeamSearchDecoder")
     .OriginOpType("CTCBeamSearchDecoder")
     .ParseParamsByOperatorFn(MappingFnCTCBeamSearchDecoder)
     .ImplyType(ImplyType::AI_CPU);
+
+// register RaggedTensorFromVariant op to GE
+Status RaggedTensorFromVariantMapping(const google::protobuf::Message* op_src, ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["out"] = pair<string, string>("output_nested_splits", "output_ragged_rank");
+  AutoMappingFnDynamic(op_src, op, value);
+  return SUCCESS;
+}
+
+REGISTER_CUSTOM_OP("RaggedTensorFromVariant")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("RaggedTensorFromVariant")
+    .ParseParamsFn(RaggedTensorFromVariantMapping)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

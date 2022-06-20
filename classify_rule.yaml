@@ -27,6 +27,7 @@ aicpu:
       - ops/built-in/op_proto/ocr_ops.cc
       - ops/built-in/op_proto/inc/ocr_ops.h
       - ops/built-in/op_proto/array_ops.cc
+      - ops/built-in/op_proto/inc/array_ops.h
       - ops/built-in/op_proto/data_preprocess.cc
       - ops/built-in/op_proto/data_preprocess.h
       - ops/built-in/op_proto/case_condition_ops.cc
@@ -116,6 +117,7 @@ aicpu:
       - ops/built-in/op_proto/internal_ops.cc
       - ops/built-in/op_proto/lookup_ops.cc
       - ops/built-in/op_proto/runtime/range_infer.cc
+      - ops/built-in/framework/tf_plugin/dynamic_plugin.cc
     unrelease:
   llt:
     ut_check: true
@@ -3417,7 +3419,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/unsorted_segment_prod_plugin.cc
       - ops/built-in/framework/tf_plugin/scatter_sub_plugin.cc
       - ops/built-in/framework/tf_plugin/batch_norm_plugin.cc
-      - ops/built-in/framework/tf_plugin/dynamic_plugin.cc
       - ops/built-in/framework/tf_plugin/pow_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_ftrl_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/batch_multi_class_nms_plugin.cc

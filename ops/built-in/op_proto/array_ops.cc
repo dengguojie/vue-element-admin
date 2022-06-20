@@ -3587,4 +3587,71 @@ IMPLEMT_INFERFUNC(EnsureShape, EnsureShapeInfer) {
 
 INFER_FUNC_REG(EnsureShape, EnsureShapeInfer);
 // ----------------EnsureShape End-------------------
+
+// ----------------RaggedTensorFromVariant Begin-------------------
+IMPLEMT_INFERFUNC(RaggedTensorFromVariant, RaggedTensorFromVariantInfer) {
+  int64_t input_ragged_rank;
+  if (op.GetAttr("input_ragged_rank", input_ragged_rank) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[input_ragged_rank] value failed"));
+    return GRAPH_FAILED;
+  }
+  int64_t output_ragged_rank;
+  if (op.GetAttr("output_ragged_rank", output_ragged_rank) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[output_ragged_rank] value failed"));
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto encoded_ragged_desc = op_desc->MutableInputDesc("encoded_ragged");
+  auto encoded_ragged_shape = encoded_ragged_desc->GetShape();
+  if(input_ragged_rank < -1 || output_ragged_rank < 0){
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+        string("Inferred input_ragged_rank must be at least -1 and output_ragged_rank must be at least 0."));
+    return GRAPH_FAILED;
+  }
+  if(input_ragged_rank == -1){
+    input_ragged_rank = output_ragged_rank - encoded_ragged_shape.GetDimNum();
+    if(input_ragged_rank < 0){
+       AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+        string("Inferred input_ragged_rank (output_ragged_rank - encoded_ragged's rank) must be >= 0"));
+        return GRAPH_FAILED;
+    }
+  }
+  if (!(IsUnKnownShape(encoded_ragged_shape.GetDims())) && input_ragged_rank >= 0) {
+    Shape unused;
+    if (WithRank(op.GetInputDescByName("encoded_ragged"), output_ragged_rank - input_ragged_rank, unused,
+                 TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+          TbeGetName(op), string("Rank of encoded_ragged must equal to output_ragged_rank - input_ragged_rank."));
+      return GRAPH_FAILED;
+    }
+  }
+
+  DataType splits_type = DT_INT64;
+  (void)op.GetAttr("Tsplits", splits_type);
+  // The number of dynamic output output_nested_splits must be at least output_ragged_rank + 1
+  TensorDesc nested_splits_i_desc;
+  for (int64_t i = 0; i < output_ragged_rank; i++) {
+    nested_splits_i_desc = op.GetDynamicOutputDesc("output_nested_splits", i);
+    nested_splits_i_desc.SetDataType(splits_type);
+    nested_splits_i_desc.SetShape(UnknownShapeOfRank(1));
+    if (op.UpdateDynamicOutputDesc("output_nested_splits", i, nested_splits_i_desc) != GRAPH_SUCCESS) {
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        TbeGetName(op), string("fail to update output[output_nested_splits] desc."));
+      return GRAPH_FAILED;
+    }
+  }
+  DataType value_type;
+  if (op.GetAttr("Tvalues", value_type) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), string("get attr[Tvalues] failed"));
+    return GRAPH_FAILED;
+  }
+  TensorDesc dense_values_desc = op.GetOutputDescByName("output_dense_values");
+  dense_values_desc.SetDataType(value_type);
+  dense_values_desc.SetShape(Shape(UNKNOWN_SHAPE));
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(RaggedTensorFromVariant, RaggedTensorFromVariantInfer);
+// ----------------RaggedTensorFromVariant End-------------------
 }  // namespace ge
