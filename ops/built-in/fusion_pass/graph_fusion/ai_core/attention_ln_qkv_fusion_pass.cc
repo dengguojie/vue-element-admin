@@ -70,6 +70,7 @@ static const int64_t kCandidateN1 = 1024;
 static const int64_t kCandidateN2 = 768;
 static const int64_t kCandidateTilingM1 = 12;
 static const int64_t kCandidateTilingM2 = 8;
+static const int64_t kMaxShape = 65536;
 static const string kBoolToStr[2] = {"false", "true"};
 static const string kPatternLayernorm = "LayerNorm";
 static const string kPatternMatmul = "MatMul";
@@ -234,6 +235,14 @@ bool AttentionLnQKVFusionPass::ShapeCheck(const ge::NodePtr &ln_node,
   if (training_flag && ln_out_shape[0] % kTrainMinMShape != 0) {
     OP_LOGI(matmul_node, "m_shape should be times of kTrainMinMShape [%ld] in training, but is [%ld] now.",
         kTrainMinMShape, ln_out_shape[0]);
+    return false;
+  }
+  // In tik mte instr, src_stride/dst_stride should be in range [0, 65535]
+  bool exceeded_shape_check = ln_out_shape[0] > kMaxShape || ln_out_shape[1] > kMaxShape ||
+      matmul_out_shape[1] > kMaxShape;
+  if (exceeded_shape_check) {
+    OP_LOGI(matmul_node, "The matmul input shape with m=%ld, k=%ld, n=%ld exceeds kMaxShape [%ld].",
+        ln_out_shape[0], ln_out_shape[1], matmul_out_shape[1], kMaxShape);
     return false;
   }
   vector<int64_t> out_shape = conf_trans_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();

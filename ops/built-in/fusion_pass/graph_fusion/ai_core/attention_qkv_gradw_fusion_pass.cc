@@ -33,6 +33,7 @@ static const size_t kKernelNum = 3;
 static const size_t kReduceSumIdx = 2;
 static const int64_t kCandidateK = 12288;
 static const int64_t kCandidateM = 1024;
+static const int64_t kMaxShape = 65536;
 static const string kBoolToStr[2] = {"false", "true"};
 static const string kPatternBatchMatmul = "BatchMatMul";
 static const string kPatternConfTranspose = "ConfTranspose";
@@ -200,7 +201,7 @@ bool AttentionQKVGradWFusionPass::CheckOpInfo(const ge::NodePtr &matmul_node,
   bool invalid_matmul_shape = x_shape[0] != kCandidateK || x_shape[1] != kCandidateM || kernel_shape[1] != kCandidateM;
   if (single_mode) {
     invalid_matmul_shape = x_shape[0] != kCandidateK || x_shape[1] != kCandidateM ||
-        kernel_shape[1] % kCandidateM != 0;
+        kernel_shape[1] % kCandidateM != 0 || kernel_shape[1] > kMaxShape;
   }
   if (invalid_matmul_shape) {
     OP_LOGI(matmul_node, "The matmul input shape with m=%ld, k=%ld, n=%ld is not supported.",
