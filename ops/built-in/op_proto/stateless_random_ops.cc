@@ -1112,6 +1112,21 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformV2, StatelessRandomUniformV2Infer) {
     return GRAPH_FAILED;
   }
   // counter-end
+
+  DataType output_type = DT_FLOAT;
+  op.GetAttr("dtype", output_type);
+  auto output_desc = op.GetOutputDescByName("y");
+  output_desc.SetDataType(output_type);
+  size_t dim_num = op.GetInputDescByName("shape").GetShape().GetDimNum();
+  std::vector<int64_t> empty_dim_vec = op.GetInputDescByName("shape").GetShape().GetDims();
+  std::vector<int64_t> empty_shape_vec;
+  for (size_t i = 0; i < dim_num; i++) {
+    if (empty_dim_vec[i] == 0) {
+      output_desc.SetShape(Shape(empty_shape_vec));
+      return op.UpdateOutputDesc("y", output_desc);
+    }
+  }
+
   GeShape shape;
   if (MakeShapeFromShapeTensor(op, "shape", shape,
                                TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
@@ -1119,8 +1134,7 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformV2, StatelessRandomUniformV2Infer) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     return GRAPH_FAILED;
   }
-  DataType output_type = DT_FLOAT;
-  op.GetAttr("dtype", output_type);
+
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto outputDesc = op_desc->MutableOutputDesc(0);
   outputDesc->SetDataType(output_type);
