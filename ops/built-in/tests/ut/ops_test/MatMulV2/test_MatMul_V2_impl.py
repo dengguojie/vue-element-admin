@@ -1016,6 +1016,86 @@ def test_requant_full_load(test_arg):
         if is_fail:
             raise RuntimeError('matmul_requant_full_load compile fail')
 
+def test_requant_n_odd(test_arg):
+    from impl.mat_mul import mat_mul_compute
+    from impl.ascend_requant import ascend_requant_compute
+    from tbe.common.platform import platform_info
+    ori_soc_version = platform_info.get_soc_spec('FULL_SOC_VERSION')
+    print('ori sov_version:', ori_soc_version)
+    # for DTS2022050714940
+    te_set_version("Ascend310P3")
+    try:
+        with cce():
+            x1 = tvm.placeholder((64, 8, 16, 32), name="x1",
+                                attrs={'format': "FRACTAL_NZ", 'ori_format': "ND", "ori_shape": (128, 2048)}, dtype="int8")
+            x2 = tvm.placeholder((64, 63, 16, 32), name="x2",
+                                attrs={'format': "FRACTAL_Z",'ori_format': "ND", "ori_shape": (2048, 1008)}, dtype="int8")
+            bias = tvm.placeholder((1008,), name="bias",
+                                attrs={'format': "FRACTAL_NZ", 'ori_format': "ND", "ori_shape": (1008,)}, dtype="int32")
+            output_y = {"shape": (63, 8, 16, 16), "dtype": "int32",
+                        "ori_shape": (128, 1008), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, -128, "matmul_requant_n_odd")
+
+            shape_out = {"shape": (63, 8, 16, 16), "dtype": 'int8', "format": 'FRACTAL_NZ',
+                        "ori_shape": (128, 1008), "ori_format": 'NHWC'}
+            req_tensor = tvm.placeholder((1, 63, 1, 1, 16), name='req_tensor',
+                        attrs={'format': 'FRACTAL_NZ', "ori_shape": (1008,)}, dtype='uint64')
+            out = ascend_requant_compute(matmul_out, req_tensor, shape_out, relu_flag=False, kernel_name='mm_requant')
+            tensor_list = [x1, x2, bias, req_tensor, out]
+
+            sch = auto_schedule(out)
+            config = {
+                "print_ir": False,
+                "need_build": True,
+                "name": "matmul_requant_n_odd",
+                "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+    except RuntimeError as e:
+        print(e)
+    finally:
+        te_set_version(ori_soc_version)
+
+def test_requant_n_odd(test_arg):
+    from impl.mat_mul import mat_mul_compute
+    from impl.ascend_requant import ascend_requant_compute
+    from tbe.common.platform import platform_info
+    ori_soc_version = platform_info.get_soc_spec('FULL_SOC_VERSION')
+    print('ori sov_version:', ori_soc_version)
+    # for DTS2022050714940
+    te_set_version("Ascend310P3")
+    try:
+        with cce():
+            x1 = tvm.placeholder((64, 8, 16, 32), name="x1",
+                                attrs={'format': "FRACTAL_NZ", 'ori_format': "ND", "ori_shape": (128, 2048)}, dtype="int8")
+            x2 = tvm.placeholder((64, 63, 16, 32), name="x2",
+                                attrs={'format': "FRACTAL_Z",'ori_format': "ND", "ori_shape": (2048, 1008)}, dtype="int8")
+            bias = tvm.placeholder((1008,), name="bias",
+                                attrs={'format': "FRACTAL_NZ", 'ori_format': "ND", "ori_shape": (1008,)}, dtype="int32")
+            output_y = {"shape": (63, 8, 16, 16), "dtype": "int32",
+                        "ori_shape": (128, 1008), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, -128, "matmul_requant_n_odd")
+
+            shape_out = {"shape": (63, 8, 16, 16), "dtype": 'int8', "format": 'FRACTAL_NZ',
+                        "ori_shape": (128, 1008), "ori_format": 'NHWC'}
+            req_tensor = tvm.placeholder((1, 63, 1, 1, 16), name='req_tensor',
+                        attrs={'format': 'FRACTAL_NZ', "ori_shape": (1008,)}, dtype='uint64')
+            out = ascend_requant_compute(matmul_out, req_tensor, shape_out, relu_flag=False, kernel_name='mm_requant')
+            tensor_list = [x1, x2, bias, req_tensor, out]
+
+            sch = auto_schedule(out)
+            config = {
+                "print_ir": False,
+                "need_build": True,
+                "name": "matmul_requant_n_odd",
+                "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+    except RuntimeError as e:
+        print(e)
+    finally:
+        te_set_version(ori_soc_version)
+
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
@@ -1025,6 +1105,7 @@ ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
 ut_case.add_cust_test_func(test_func=test_nd_k_full_load_conflict)
 ut_case.add_cust_test_func(test_func=test_requant_full_load)
+ut_case.add_cust_test_func(test_func=test_requant_n_odd)
 
 
 for case_info in nd_cases:
