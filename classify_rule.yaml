@@ -2030,7 +2030,6 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/DepthToSpace/test_depth_to_space_proto.cpp
       - ops/built-in/tests/ut/ops_test/DepthToSpace/test_DepthToSpace_impl.py
       - ops/built-in/tests/ut/ops_test/Dequantize/test_dequantize_proto.cpp
-      - ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
       - ops/built-in/tests/ut/ops_test/Dilation2D/test_Dilation2D_check_support_impl.py
       - ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/__init__.py
       - ops/built-in/tests/ut/ops_test/Dilation2DBackpropFilter/test_Dilation2DBackpropFilter_check_support_impl.py

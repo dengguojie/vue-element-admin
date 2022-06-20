@@ -22,15 +22,17 @@ from functools import reduce
 from tbe import tvm
 from tbe.common.platform import CORE_NUM
 from tbe.common.platform import platform_info as tbe_platform_info
-from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as err_man
 from . import gemm_schedule_util as util
+
+W_DIM = 2
 
 
 def _cal_mini_ub(shape_input, shape_out, dtype):
     """
     calculate the mininum ub
     """
-    return reduce(lambda x, y: x * y, shape_input) + reduce(lambda x, y: x * y, shape_out) * util.DATA_SIZE.get(dtype)
+    return (reduce(lambda x, y: x * y, shape_input) + reduce(lambda x, y: x * y, shape_out)) * util.DATA_SIZE.get(dtype)
 
 
 def _get_attach_axis(input_x, res, core_num):
@@ -43,20 +45,11 @@ def _get_attach_axis(input_x, res, core_num):
     shape_input = [block_inner_parts, *shape_input[1:]]
     shape_out = [block_inner_parts, *shape_out[1:]]
 
-    w_dim = 2
     ub_size_max = tbe_platform_info.get_soc_spec("UB_SIZE")
-    mini_ub_size = _cal_mini_ub(shape_input[w_dim:], shape_out[w_dim:], input_x.dtype)
-    if mini_ub_size > ub_size_max:
-        args_dict = {
-            "errCode": "E60114",
-            "reason": "mini split exceed UB Buffer",
-            "value": "tiling size = {}".format(mini_ub_size)
-        }
-        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     double_flag = False
-    attach_axis = w_dim
-    for attach_dim in range(0, w_dim + 1):
+    attach_axis = W_DIM
+    for attach_dim in range(0, W_DIM + 1):
         ub_size = _cal_mini_ub(shape_input[attach_dim:], shape_out[attach_dim:], input_x.dtype)
         if ub_size <= ub_size_max:
             double_flag = True
@@ -126,6 +119,12 @@ def dilation_schedule(res, sch_list):
     # blind multi block
     block_axis, core_num = _bind_multiblock(sch, res)
 
+    res_all_axis = [i for i in sch[res].op.axis]
+    w_split_npart = _get_npart_of_w_dim(x, res)
+    w_outter, w_inner = sch[res].split(res_all_axis[W_DIM], nparts=w_split_npart)
+    res_all_axis[W_DIM] = w_inner
+    sch[res].reorder(*block_axis, w_outter, *res_all_axis[1:])
+
     # get attach axis
     double_flag, attach_axis = _get_attach_axis(x, res, core_num)
     # attach at
@@ -147,6 +146,42 @@ def dilation_schedule(res, sch_list):
     if attach_axis == 0:
         sch[res].emit_insn(block_axis[2], "dma_copy")
     else:
-        sch[res].emit_insn(sch[res].op.axis[attach_axis], "dma_copy")
+        sch[res].emit_insn(res_all_axis[attach_axis], "dma_copy")
     return True
 
+
+def _get_npart_of_w_dim(input_x, res):
+    ub_size_max = tbe_platform_info.get_soc_spec("UB_SIZE")
+    shape_input_form_w = util.shape_to_list(input_x.shape)[W_DIM:]
+    shape_out_form_w = util.shape_to_list(res.shape)[W_DIM:]
+    all_npart_value = _gen_w_tiling_space(shape_input_form_w[0])
+    final_npart = 0
+    for npart in all_npart_value:
+        shape_input_w_atfer_splited = util.int_ceil_div(shape_input_form_w[0], npart)
+        shape_out_w_after_splited = util.int_ceil_div(shape_out_form_w[0], npart)
+        current_ub_size = _cal_mini_ub([shape_input_w_atfer_splited, *shape_input_form_w[1:]],
+                                       [shape_out_w_after_splited, *shape_out_form_w[1:]],
+                                       input_x.dtype)
+        if current_ub_size <= ub_size_max:
+            final_npart = npart
+            break
+    if final_npart == 0:
+        shape_input_w_atfer_splited = util.int_ceil_div(shape_input_form_w[0], all_npart_value[-1])
+        shape_out_w_after_splited = util.int_ceil_div(shape_out_form_w[0], all_npart_value[-1])
+        mini_ub_size = _cal_mini_ub([shape_input_w_atfer_splited, *shape_input_form_w[1:]],
+                                    [shape_out_w_after_splited, *shape_out_form_w[1:]],
+                                    input_x.dtype)
+        err_man.raise_err_common("Dilation", "mini split exceed UB Buffer", "tiling size = {}".format(mini_ub_size))
+    return final_npart
+
+
+def _gen_w_tiling_space(shape_w):
+    w_tiling_space = [1]
+    # the number 2 is align value
+    shape_w_aligned = util.int_ceil_div(shape_w, 2) * 2
+    # start from 2
+    for i in range(2, shape_w_aligned + 1, 2):
+        if i < shape_w:
+            w_tiling_space.append(i)
+    w_tiling_space.append(shape_w)
+    return w_tiling_space
