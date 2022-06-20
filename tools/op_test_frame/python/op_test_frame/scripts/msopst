@@ -189,6 +189,7 @@ def _gen_build_convert_run(args, report):
         # when the report is input,should avoid update the report
         global abnormal_termination
         abnormal_termination = True
+        output_path = os.path.dirname(output_path)
         report_path = os.path.join(output_path, 'st_report.json')
         utils.check_path_valid(report_path)
         report.load(report_path)
