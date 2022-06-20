@@ -54,22 +54,31 @@ fe::BufferFusionMapping TbeConvDequantS16FusionTest::ConstructFusionMappingOfCon
   vector<ge::NodePtr> nodes_conv;
   vector<ge::NodePtr> nodes_input1;
   vector<ge::NodePtr> nodes_input2;
+  vector<ge::NodePtr> nodes_input3;
+  vector<ge::NodePtr> nodes_input4;
   vector<ge::NodePtr> nodes_dequants16;
+  vector<ge::NodePtr> nodes_requants16;
   for (const auto &ptr_node : compute_graph_ptr->GetAllNodes()) {
     auto desc = ptr_node->GetOpDesc();
     if (desc->GetType() == "Conv2D") {
       nodes_conv.push_back(ptr_node);
-    } else if (desc->GetName() == "AscendDequantS16") {
+    } else if (desc->GetName() == "dequants16") {
       nodes_dequants16.push_back(ptr_node);
+    } else if (desc->GetName() == "requants16") {
+      nodes_requants16.push_back(ptr_node);
     } else if (desc->GetName() == "Data1") {
       nodes_input1.push_back(ptr_node);
     } else if (desc->GetName() == "Data2") {
       nodes_input2.push_back(ptr_node);
+    } else if (desc->GetName() == "Data3") {
+      nodes_input3.push_back(ptr_node);
+    } else if (desc->GetName() == "Data4") {
+      nodes_input4.push_back(ptr_node);
     }
   }
 
   fe::BufferFusionPattern *pattern;
-  EXPECT_TRUE(fe::FusionPassTestUtils::GetBufferFusionPattern(patterns, "TbeConvDequantS16Fusion", &pattern));
+  EXPECT_TRUE(fe::FusionPassTestUtils::GetBufferFusionPattern(patterns, "TbeConvDequantS16RequantS16Fusion", &pattern));
 
   fe::BufferFusionMapping mapping;
   for (const auto &desc : pattern->GetOpDescs()) {
@@ -77,10 +86,16 @@ fe::BufferFusionMapping TbeConvDequantS16FusionTest::ConstructFusionMappingOfCon
       mapping[desc] = nodes_conv;
     } else if (desc->desc_name == "dequants16") {
       mapping[desc] = nodes_dequants16;
+    } else if (desc->desc_name == "requants16") {
+      mapping[desc] = nodes_requants16;
     } else if (desc->desc_name == "otherInput") {
       mapping[desc] = nodes_input1;
     } else if (desc->desc_name == "otherInput1") {
       mapping[desc] = nodes_input2;
+    } else if (desc->desc_name == "otherInput2") {
+      mapping[desc] = nodes_input3;
+    } else if (desc->desc_name == "otherInput3") {
+      mapping[desc] = nodes_input4;
     }
   }
   return mapping;
@@ -90,6 +105,8 @@ TEST_F(TbeConvDequantS16FusionTest, conv2d_dequant_clipByValue_pass_test_1) {
   ut::GraphBuilder builder = ut::GraphBuilder(this->test_info_->name());
   auto data1 = builder.AddNode("Data1", "Data", 0, 1, {1, 1, 56, 56, 16}, FORMAT_NC1HWC0, ge::DT_FLOAT16);
   auto data2 = builder.AddNode("Data2", "Data", 0, 1, {1, 1, 56, 56, 16}, FORMAT_NC1HWC0, ge::DT_FLOAT16);
+  auto data3 = builder.AddNode("Data3", "Data", 0, 1, {1, 1, 56, 56, 16}, FORMAT_NC1HWC0, ge::DT_FLOAT16);
+  auto data4 = builder.AddNode("Data4", "Data", 0, 1, {1, 1, 56, 56, 16}, FORMAT_NC1HWC0, ge::DT_FLOAT16);
   auto conv_node = builder.AddNode("Conv2D", "Conv2D",
                                    {
                                      {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
@@ -97,7 +114,16 @@ TEST_F(TbeConvDequantS16FusionTest, conv2d_dequant_clipByValue_pass_test_1) {
                                    {
                                      {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
                                    });
-  auto dequants16_node = builder.AddNode("AscendDequantS16", "AscendDequantS16",
+  auto dequants16_node = builder.AddNode("dequants16", "dequants16",
+                                   {
+                                     {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
+                                     {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
+                                     {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
+                                   },
+                                   {
+                                     {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
+                                   });
+  auto requants16_node = builder.AddNode("requants16", "requants16",
                                    {
                                      {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
                                      {Format::FORMAT_NC1HWC0, ge::DT_FLOAT16, {1, 1, 56, 56, 16}},
@@ -111,6 +137,9 @@ TEST_F(TbeConvDequantS16FusionTest, conv2d_dequant_clipByValue_pass_test_1) {
   builder.AddDataEdge(conv_node, 0, dequants16_node, 0);
   builder.AddDataEdge(data1, 0, dequants16_node, 1);
   builder.AddDataEdge(data2, 0, dequants16_node, 2);
+  builder.AddDataEdge(dequants16_node, 0, requants16_node, 0);
+  builder.AddDataEdge(data3, 0, requants16_node, 1);
+  builder.AddDataEdge(data4, 0, requants16_node, 2);
 
 
   auto graph = builder.GetGraph();
