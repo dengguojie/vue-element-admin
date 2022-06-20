@@ -386,7 +386,7 @@ class LayerNormGradV2(util_tik_comm_func.OpBase):
 
     def _load_2d(self, src, dst, instr_params):
         """
-        load_2d instr is different in Ascend910 and Ascend710
+        load_2d instr is different in different platforms
         """
         start_index, repeat, repeat_stride, sid, is_transpose = instr_params
         if tbe_platform.api_check_support("tik.load2dv2"):
