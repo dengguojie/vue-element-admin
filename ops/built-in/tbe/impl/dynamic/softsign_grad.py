@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 # 'pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("SoftsignGrad", op_mode="dynamic", support_fusion=True)
-def softsign_grad_compute(gradients, features, output, kernel_name="softsign_grad", impl_mode="high_performance"):
+def softsign_grad_compute(gradients, features, output, kernel_name="softsign_grad"):
     """
     calculate the backpropagation of relu operation
     output = gradients / (1 + abs(features)) ** 2.
@@ -44,8 +44,6 @@ def softsign_grad_compute(gradients, features, output, kernel_name="softsign_gra
         output dict of relu grad
     kernel_name: str
         cce kernel name, default value is "softsign_grad"
-    impl_mode: str
-        "high_performance" mode or "high_precision" mode
 
     Returns
     -------
@@ -53,20 +51,7 @@ def softsign_grad_compute(gradients, features, output, kernel_name="softsign_gra
         the result of softsign_grad_compute
     """
     dtype = gradients.dtype
-
-    shape_gradients = shape_util.shape_to_list(gradients.shape)
-    shape_features = shape_util.shape_to_list(features.shape)
-    shape = shape_gradients
-
-    # broadcast in case the input shapes are not same
-    if list(shape_gradients) != list(shape_features):
-        shape_gradients, shape_features, shape = \
-            shape_util.broadcast_shapes(shape_gradients, shape_features,
-                                        param_name_input1="gradients",
-                                        param_name_input2="features")
-        gradients = tbe.broadcast(gradients, shape, dtype)
-        features = tbe.broadcast(features, shape, dtype)
-    estimate = impl_mode != "high_performance" and dtype != "float32"
+    estimate = dtype != "float32"
     if estimate:
         gradients = tbe.cast_to(gradients, "float32")
         features = tbe.cast_to(features, "float32")
@@ -74,12 +59,7 @@ def softsign_grad_compute(gradients, features, output, kernel_name="softsign_gra
     features_abs = tbe.vabs(features)
     features_add = tbe.vadds(features_abs, 1)
     features_mul = tbe.vmul(features_add, features_add)
-    if tbe_platform.api_check_support("tbe.dsl.vdiv", "float32"):
-        data_one = tbe.broadcast(tvm.const(1, gradients.dtype), shape)
-        features_rec = tbe.vdiv(data_one, features_mul)
-    else:
-        features_rec = tbe.vrec(features_mul)
-    result = tbe.vmul(gradients, features_rec)
+    result = tbe.vdiv(gradients, features_mul)
     if estimate:
         result = tbe.cast_to(result, "float16")
 
@@ -89,7 +69,7 @@ def softsign_grad_compute(gradients, features, output, kernel_name="softsign_gra
 @register_operator("SoftsignGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-def softsign_grad(gradients, features, output, kernel_name="softsign_grad", impl_mode="high_performance"):
+def softsign_grad(gradients, features, output, kernel_name="softsign_grad"):
     """
     calculate the backpropagation of relu operation
     output = gradients / (1 + abs(features)) ** 2.
@@ -106,8 +86,6 @@ def softsign_grad(gradients, features, output, kernel_name="softsign_grad", impl
         the output of relu back propagation
     kernel_name: str
         cce kernel name, default value is "softsign_grad"
-    impl_mode: str
-        "high_performance" mode or "high_precision" mode
 
     Returns
     -------
@@ -129,7 +107,7 @@ def softsign_grad(gradients, features, output, kernel_name="softsign_grad", impl
             g_shape, x_shape = shape_util.variable_shape([_g, _x])
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
-            res = softsign_grad_compute(tensor_g, tensor_x, output, kernel_name, impl_mode)
+            res = softsign_grad_compute(tensor_g, tensor_x, output, kernel_name)
             tensors.append((tensor_g, tensor_x, res))
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
