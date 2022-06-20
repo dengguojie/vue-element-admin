@@ -1818,6 +1818,57 @@ REG_OP(MatrixDiagV3)
     .ATTR(align, String, "RIGHT_LEFT")
     .OP_END_FACTORY_REG(MatrixDiagV3)
 
+/**
+* @brief Function SwinAttentionScore. \n
+
+* @par Inputs:
+* six inputs, including:
+* @li query: A matrix Tensor. The type only support float16.
+* @li key: A matrix Tensor. The type only support float16.
+* @li value: A matrix Tensor. The type only support float16.
+* @li padding_mask1: A matrix Tensor. The type only support float16.
+* @li padding_mask2: A matrix Tensor. The type only support float16.
+* @li scale: A scalar. The type only support float16.
+* @li drop_mask: A matrix Tensor. The type only support uint8. \n
+
+* @par Attributes:
+* @li keep_prob: A mutable Tensor. Must met all of the following rules:
+ shape of "keep_prob" should be (1,) or [1,].
+* @li query_transpose: A bool. If True, changes the shape of "query" from [K, M] to
+ [M, K].
+* @li key_transpose: A bool. If True, changes the shape of "key" from [N, K] to
+ [K, N].
+* @li bmm_score_transpose_a: A bool. If True, changes the shape of "mid_data" from [K, M] to
+ [M, K].
+* @li bmm_score_transpose_b: A bool. If True, changes the shape of "value" from [N, K] to
+ [K, N].
+* @li axes: A list of int. The dimension softmax would be performed on. Defaults
+ to "[]" . \n
+
+* @par Outputs:
+* attention_score: The result matrix Tensor. The type only support float16.
+* softmax: The result matrix Tensor. The type only support float16.
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(SwinAttentionScore)
+    .INPUT(query, TensorType({DT_FLOAT16}))
+    .INPUT(key, TensorType({DT_FLOAT16}))
+    .INPUT(value, TensorType({DT_FLOAT16}))
+    .INPUT(padding_mask1, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(padding_mask2, TensorType({DT_FLOAT16}))
+    .INPUT(scale, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(drop_mask, TensorType({DT_INT8}))
+    .OUTPUT(attention_score, TensorType({DT_FLOAT16}))
+    .OUTPUT(softmax, TensorType({DT_FLOAT16}))
+    .ATTR(keep_prob, Float, 1.0)
+    .ATTR(query_transpose, Bool, false)
+    .ATTR(key_transpose, Bool, false)
+    .ATTR(bmm_score_transpose_a, Bool, false)
+    .ATTR(bmm_score_transpose_b, Bool, false)
+    .ATTR(softmax_axes, ListInt, {})
+    .OP_END_FACTORY_REG(SwinAttentionScore)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATRIX_CALCULATION_OPS_H_

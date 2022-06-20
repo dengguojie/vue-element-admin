@@ -2546,6 +2546,33 @@ IMPLEMT_COMMON_INFERFUNC(AttentionScoreInferShape) {
 }
 COMMON_INFER_FUNC_REG(AttentionScore, AttentionScoreInferShape);
 // ----------------AttentionScore End------------
+
+// ----------------SwinAttentionScore------------
+IMPLEMT_COMMON_INFERFUNC(SwinAttentionScoreInferShape) {
+  auto attention_score_output = op.GetOutputDescByName("attention_score");
+  auto softmax_output = op.GetOutputDescByName("softmax_output");
+  vector<int64_t> query_dims = op.GetInputDescByName("query").GetShape().GetDims();
+  vector<int64_t> padding_mask_dims = op.GetInputDescByName("padding_mask1").GetShape().GetDims();
+  if (query_dims.size() != 4 || padding_mask_dims.size() != 4) {
+    OP_LOGE(TbeGetName(op).c_str(),
+            "The input query and padding_mask only support 4D.");
+    return GRAPH_FAILED;
+  }
+  vector<int64_t> attention_score_dims = {query_dims[0], query_dims[2], query_dims[3] * query_dims[1]};
+  attention_score_output.SetShape(ge::Shape(attention_score_dims));
+  attention_score_output.SetDataType(ge::DT_FLOAT16);
+  (void)op.UpdateOutputDesc("attention_score", attention_score_output);
+
+  vector<int64_t> softmax_dims = {query_dims[0], query_dims[1], query_dims[2], padding_mask_dims[3]};
+  softmax_output.SetShape(ge::Shape(softmax_dims));
+  softmax_output.SetDataType(ge::DT_FLOAT16);
+  (void)op.UpdateOutputDesc("softmax_output", softmax_output);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(SwinAttentionScore, SwinAttentionScoreInferShape);
+// ----------------SwinAttentionScore End------------
+
 // ----------------AttentionScoreGrad------------
 IMPLEMT_COMMON_INFERFUNC(AttentionScoreGradInferShape) {
   auto value_dw_output = op.GetOutputDescByName("value_dw");

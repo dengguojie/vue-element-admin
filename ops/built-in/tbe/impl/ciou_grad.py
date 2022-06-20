@@ -30,6 +30,7 @@ class CIoUGrad(DIoUGrad):
         super().__init__(dy, bboxes, trans, kernel_name)
         # func: apply only for the ciougrad
         self.atan_sub_ub = None
+        self.atan_sub_tmp_ub = None
         self.alpha_ub = None
         self.v_ub = None
         self.dv_ub = None
@@ -77,7 +78,7 @@ class CIoUGrad(DIoUGrad):
         # func: compute for dbboxes/dgtboxes in c2
         self.c2_part()
         # func: compute for dbboxes/dgtboxes in v
-        self.v_part(task_idx)
+        self.v_part()
         # func: resite res for attr_trans
         self.update_dboxes(task_idx)
 
@@ -104,6 +105,8 @@ class CIoUGrad(DIoUGrad):
                                                  scope=tik.scope_ubuf)
         self.atan_sub_ub = self.tik_instance.Tensor("float32", [self.data_align], name="atan_sub_ub",
                                                     scope=tik.scope_ubuf)
+        self.atan_sub_tmp_ub = self.tik_instance.Tensor("float32", [self.data_align], name="atan_sub_tmp_ub",
+                                                        scope=tik.scope_ubuf)
         self.v_ub = self.tik_instance.Tensor("float32", [self.data_align], name="v_ub", scope=tik.scope_ubuf)
         self.dv_ub = self.tik_instance.Tensor("float32", [self.data_align], name="dv_ub", scope=tik.scope_ubuf)
 
@@ -112,11 +115,13 @@ class CIoUGrad(DIoUGrad):
         # func: compute for  (1.0 + (w1 / h1) ** 2)
         self.tik_instance.h_add(self.b_box.h, self.b_box.h, 1e-9)
         self.tik_instance.h_div(self.rate_b1, self.b_box.w, self.b_box.h)
+        
         self.tik_instance.h_mul(self.delta_b1, self.rate_b1, self.rate_b1)
         self.tik_instance.h_add(self.delta_b1, self.delta_b1, 1.0)
 
         self.tik_instance.h_add(self.g_box.h, self.g_box.h, 1e-9)
         self.tik_instance.h_div(self.rate_b2, self.g_box.w, self.g_box.h)
+
         self.tik_instance.h_mul(self.delta_b2, self.rate_b2, self.rate_b2)
         self.tik_instance.h_add(self.delta_b2, self.delta_b2, 1.0)
         # func: compute for inter/union/cw/ch
@@ -144,8 +149,102 @@ class CIoUGrad(DIoUGrad):
         self.tik_instance.h_add(self.rho2, self.tmp_a, self.tmp_b)
 
         # func: `for v = 4 / pi ** 2 * atan_sub**2 & 4 / pi ** 2 = 0.405285`
-        self.tik_instance.data_move(self.atan_sub_ub, self.atan_sub[task_idx * self.data_align], 0, 1,
-                                    self.mov_rep_time, 0, 0)
+
+        # for gtbox
+        self.tik_instance.h_min(self.rate_b2, self.rate_b2, 1000.0)
+        # b2 atan_res1
+        self.tik_instance.h_mul(self.tmp_c, self.rate_b2, self.delta_b2) # 3
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -1 / 3)
+        self.tik_instance.h_add(self.tmp_a, self.rate_b2, self.tmp_c)  # x - x^3/3
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.delta_b2) # - x^5/3
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -3 / 5) # + x^5/5
+        self.tik_instance.h_add(self.tmp_a, self.tmp_a, self.tmp_c)  # x - x^3/3 + x^5/5
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.delta_b2)
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -5 / 7)
+        self.tik_instance.h_add(self.tmp_a, self.tmp_a, self.tmp_c)  # x - x^3/3 + x^5/5 - x^7/7
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.delta_b2)
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -7 / 9)
+        self.tik_instance.h_add(self.tmp_a, self.tmp_a, self.tmp_c)  # x - x^3/3 + x^5/5 - x^7/7 + x^9/9
+
+        # b2 atan_res2
+        self.tik_instance.h_sub(self.tmp_c, self.rate_b2, 1.0)
+        self.tik_instance.h_add(self.tmp_d, self.rate_b2, 1.0)
+        self.tik_instance.h_add(self.tmp_d, self.tmp_d, 1e-9)
+        self.tik_instance.h_div(self.tmp_b, self.tmp_c, self.tmp_d)  # x
+        self.tik_instance.h_mul(self.atan_sub_tmp_ub, self.tmp_b, self.tmp_b)  # x^2
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_b, self.atan_sub_tmp_ub) # x^3
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -1 / 3)
+        self.tik_instance.h_add(self.tmp_b, self.tmp_b, self.tmp_c)  # x - x^3/3
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -3 / 5)
+        self.tik_instance.h_add(self.tmp_b, self.tmp_b, self.tmp_c)  # x - x^3/3 + x^5/5
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -5 / 7)
+        self.tik_instance.h_add(self.tmp_b, self.tmp_b, self.tmp_c)  # x - x^3/3 + x^5/5 -  x^7/7
+
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_c, -7 / 9)
+        self.tik_instance.h_add(self.tmp_b, self.tmp_b, self.tmp_c)  # x - x^3/3 + x^5/5 -  x^7/7 + x^9/9
+
+        self.tik_instance.h_add(self.tmp_b, self.tmp_b, 0.7854)
+
+        # b2 atan
+        self.tik_instance.h_min(self.tmp_a, self.tmp_a, self.tmp_b)
+        
+        # for bbox
+        self.tik_instance.h_min(self.rate_b1, self.rate_b1, 1000.0)
+        # b1 atan_res1
+        self.tik_instance.h_mul(self.tmp_b, self.rate_b1, self.delta_b1)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -1 / 3)
+        self.tik_instance.h_add(self.tmp_c, self.rate_b1, self.tmp_b)  # x - x^3/3
+
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.delta_b1)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -3 / 5)
+        self.tik_instance.h_add(self.tmp_c, self.tmp_c, self.tmp_b)  # x - x^3/3 + x^5/5
+
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.delta_b1)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -5 / 7)
+        self.tik_instance.h_add(self.tmp_c, self.tmp_c, self.tmp_b)  # x - x^3/3 + x^5/5 - x^7/7
+
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.delta_b1)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -7 / 9)
+        self.tik_instance.h_add(self.tmp_c, self.tmp_c, self.tmp_b)  # x - x^3/3 + x^5/5 - x^7/7 + x^9/9
+
+        # b1 atan_res2
+        self.tik_instance.h_sub(self.tmp_b, self.rate_b1, 1.0)
+        self.tik_instance.h_add(self.atan_sub_tmp_ub, self.rate_b1, 1.0)
+        self.tik_instance.h_add(self.atan_sub_tmp_ub, self.atan_sub_tmp_ub, 1e-9)
+        self.tik_instance.h_div(self.tmp_d, self.tmp_b, self.atan_sub_tmp_ub) # x
+        self.tik_instance.h_mul(self.atan_sub_tmp_ub, self.tmp_d, self.tmp_d) # x^2
+
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_d, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -1 / 3)
+        self.tik_instance.h_add(self.tmp_d, self.tmp_d, self.tmp_b)  # x - x^3/3
+
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -3 / 5)
+        self.tik_instance.h_add(self.tmp_d, self.tmp_d, self.tmp_b)  # x - x^3/3 + x^5/5
+
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -5 / 7)
+        self.tik_instance.h_add(self.tmp_d, self.tmp_d, self.tmp_b)  # x - x^3/3 + x^5/5 -  x^7/7
+        
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, self.atan_sub_tmp_ub)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_b, -7 / 9)
+        self.tik_instance.h_add(self.tmp_d, self.tmp_d, self.tmp_b)  # x - x^3/3 + x^5/5 -  x^7/7 + x^9/9
+
+        self.tik_instance.h_add(self.tmp_d, self.tmp_d, 0.7854)
+
+        # b1 atan
+        self.tik_instance.h_min(self.tmp_c, self.tmp_c, self.tmp_d)
+
+        self.tik_instance.h_sub(self.atan_sub_ub, self.tmp_a, self.tmp_c)  # gtbox - bbox
 
         self.tik_instance.h_mul(self.tmp_a, self.atan_sub_ub, self.atan_sub_ub)
         self.tik_instance.h_mul(self.v_ub, self.tmp_a, 0.405285)
@@ -170,7 +269,7 @@ class CIoUGrad(DIoUGrad):
         self.tik_instance.h_div(self.delta_b1, self.tmp_c, self.delta_b1)
         self.tik_instance.h_div(self.delta_b2, self.tmp_c, self.delta_b2)
 
-    def v_part(self, task_idx):
+    def v_part(self):
         """v_part"""
         self.tik_instance.h_add(self.b_box.h, self.b_box.h, 1e-9)
         self.tik_instance.h_add(self.g_box.h, self.g_box.h, 1e-9)
@@ -252,3 +351,4 @@ def ciou_grad(dy, bboxes, gtboxes, atan_sub, dbboxes, dgtboxes, trans=False, is_
     op_obj = CIoUGrad(dy, bboxes, trans, kernel_name)
 
     return op_obj.compute()
+    
