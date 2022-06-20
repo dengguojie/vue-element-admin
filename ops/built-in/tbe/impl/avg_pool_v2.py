@@ -81,25 +81,20 @@ def check_supported(x, filter, bias, y, ksize, strides, padding="CALCULATED", pa
     if data_format == "NHWC":
         ksize_h = ksize[1]
         ksize_w = ksize[2]
-        strides_h = strides[1]
-        strides_w = strides[2]
         outputh = ori_shape[1]
         outputw = ori_shape[2]
     else:
         ksize_h = ksize[2]
         ksize_w = ksize[3]
-        strides_h = strides[2]
-        strides_w = strides[3]
         outputh = ori_shape[2]
         outputw = ori_shape[3]
-    ai_core_striedes = strides_h <= 63 and strides_w <= 63
     ai_core_skize = ksize_h <= 255 and ksize_w <= 255
     is_support_kernel = (ksize_h * ksize_w <= Constant.AVGV2_KERNEL_SIZE_H_MUL_W) or \
                         (ksize_h <= Constant.AVGV2_KERNEL_SIZE and ksize_w <= Constant.AVGV2_KERNEL_SIZE)
     reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" % (str(ksize), str(ori_shape))
     if not is_support_kernel and outputh != 1 and outputw == 1:
         return False, reason
-    if (not ai_core_striedes or not ai_core_skize) and (not global_pooling):
+    if not ai_core_skize and not global_pooling:
         return False, reason
     return True, ""
 
