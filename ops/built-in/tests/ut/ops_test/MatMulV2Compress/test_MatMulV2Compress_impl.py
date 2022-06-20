@@ -121,7 +121,6 @@ case9 = {"params": [{"shape": (98,1,16,32), "dtype": "int8", "format": "FRACTAL_
          "expect": "failed",
          "format_expect": [],
          "support_expect": True}
-
 ut_case.add_case(["Ascend310"], case1)
 ut_case.add_case(["Ascend310"], case2)
 ut_case.add_case(["Ascend310"], case3)
