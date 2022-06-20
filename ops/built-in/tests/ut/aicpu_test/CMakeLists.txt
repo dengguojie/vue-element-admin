@@ -85,6 +85,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/addcdiv.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/addcmul.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asinh.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
@@ -303,6 +304,7 @@ set(_cpu_kernels_ut_files
   testcase/add/src/add_utest.cpp
   testcase/add_n/src/add_n_utest.cpp
   testcase/addcdiv/src/addcdiv_utest.cpp
+  testcase/addcmul/src/addcmul_utest.cpp
   testcase/adjust_saturation/src/adjust_saturation_utest.cpp
   testcase/asin/src/asin_utest.cpp
   testcase/asinh/src/asinh_utest.cpp
