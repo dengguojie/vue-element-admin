@@ -1086,7 +1086,7 @@ class GemmSchedule:
             self._get_tensor_and_set_scope("tensor_gemm", tbe_platform_info.scope_ubuf, "c_add_bias_ub")
             self._get_tensor_and_set_scope("tensor_bias_aligned", tbe_platform_info.scope_ubuf, "bias_ub")
             if self.status_controller.ops_data_flow_mode == "fp162fp16":
-                self._get_tensor_and_set_scope("tensor_b_f32", tbe_platform_info.scope_ubuf, "bias_cast_to_fp32")
+                self._get_tensor_and_set_scope("tensor_bias_f162f32", tbe_platform_info.scope_ubuf, "bias_cast_to_fp32")
 
             if self.container.tensor_map.get("beta") is not None:
                 self._get_tensor_and_set_scope("tensor_beta_bias", tbe_platform_info.scope_ubuf, "beta_bias")

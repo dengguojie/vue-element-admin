@@ -227,6 +227,7 @@ def test_matmul_fuzzy_single_op_generalization(test_arg):
                                    generalize_config={"mode": "all_shape", "single_op": "true"})
 ut_case.add_cust_test_func(test_func=test_matmul_fuzzy_single_op_generalization)
 
+
 if __name__ == "__main__":
     with op_context.OpContext("dynamic"):
         context = op_context.get_context()

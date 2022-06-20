@@ -45,6 +45,13 @@ class GroupDictKeys:
     filter_ori_format = "filter_ori_format"
 
 
+def get_value(shape_dim):
+    """
+    get tvm shape value
+    """
+    return shape_dim.value if isinstance(shape_dim, tvm.expr.ConstExpr) else shape_dim
+
+
 def shape_to_list(shape):
     """
     translate tvm.shape to list type in python

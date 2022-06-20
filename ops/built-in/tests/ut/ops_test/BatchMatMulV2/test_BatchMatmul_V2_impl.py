@@ -797,6 +797,7 @@ def test_mock_cases(test_args):
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 
+
 for case_info in nd_cases_bmm:
     ut_case.add_case(["Ascend310"], case_info)
 

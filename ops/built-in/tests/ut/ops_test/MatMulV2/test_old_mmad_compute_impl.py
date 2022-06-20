@@ -739,6 +739,7 @@ ut_case.add_cust_test_func(test_func=test_old_matmul_fractal_shape_check_failed_
 ut_case.add_cust_test_func(test_func=test_old_matmul_gemv_invalid)
 
 
+
 if __name__ == '__main__':
     ut_case.run()
     exit(0)

@@ -373,6 +373,7 @@ def test_batch_matmul_fuzzy_binary_generalization(test_arg):
                                    trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
                                    generalize_config={"mode": "all_shape", "single_op": "true"})
 
+
 ut_case.add_cust_test_func(test_func=test_batch_matmul_fuzzy_binary_generalization)
 
 
