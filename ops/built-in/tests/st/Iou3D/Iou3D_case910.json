@@ -1,6 +1,7 @@
 [
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -119,6 +120,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -157,6 +159,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -195,6 +198,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -233,6 +237,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -271,6 +276,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -309,6 +315,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -347,6 +354,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [
@@ -385,6 +393,7 @@
   },
   {
     "op": "Iou3D",
+	"calc_expect—_func_file": "test_iou_3d_golden.py:calc_expect_func",
     "input_desc": [
       {
         "shape": [

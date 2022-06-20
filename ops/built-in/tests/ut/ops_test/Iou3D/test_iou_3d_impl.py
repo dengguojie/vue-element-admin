@@ -4,7 +4,7 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Iou3D", "impl.iou_3d", "iou_3d")
 
-ut_case.add_case(["Ascend910A","Ascend710"], {
+ut_case.add_case(["Ascend910A","Ascend310p3"], {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (8, 7, 16), "shape": (8, 7, 16),
                 "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (8, 7, 3), "shape": (8, 7, 3),
