@@ -19,6 +19,7 @@ from __future__ import absolute_import
 
 import math
 import re
+import json
 import copy
 import warnings
 import tbe.dsl as tbe_base
@@ -31,6 +32,7 @@ from tbe.common.register import register_op_compute
 from tbe.common.register import register_operator
 from tbe.common.register import register_param_generalization
 from tbe.common.utils import para_check
+from tbe.common.utils import shape_util
 from tbe.common.utils import log
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.common.utils.errormgr import error_manager_util
@@ -426,3 +428,67 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     }
 
     build(sch, config)
+
+
+def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+                        groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
+    """
+    algorithm: get_op_support_info
+
+    Notice
+    ------
+    get the conv2d split
+
+    Parameters
+    ----------
+    inputs: dict with keys(shape and dtype)
+        input 4d feature map tensor
+    weights: dict with keys(shape and dtype)
+        input 4d weight tensor
+    outputs: dict with keys(shape and dtype)
+        output tensor, dtype must be assigned
+    bias: dict with keys(shape and dtype) or None
+        input bias tensor
+    offset_w: keys(shape and dtype) or None
+        input offset_w tensor
+    strides: tuple/list of 4 integers
+        stride on H/W, format sensitive
+    pads: tuple/list of 4 integers
+        [pad_top, pad_bottom, pad_left, pad_right]
+    dilations: tuple/list of 4 integers
+        dilation on H/W, format sensitive
+    groups: int
+        param for group covolution
+    data_format: string
+        input data format
+    offset_x: int
+        offset of fmap
+    kernel_name: str
+        kernel name, default value is "conv2d"
+
+    Returns
+    -------
+    None
+    """
+    bias_idx = 2
+    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
+
+    # >>> start: process for dynamic shape
+    shape_x = inputs.get("ori_shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    # shape is [-2], all axes do not support split
+    if list(shape_x) == [-2]:
+        slice_info.get("_op_slice_info").get("splitMaps").clear()
+    else:
+        # H/W shape is -1, remove corresponding split info
+        format_fm = inputs.get("ori_format")
+        overlap_axis = {"H": [2], "W": [3]}
+        temp_info = slice_info.get('_op_slice_info').get("splitMaps")
+        for name, index in overlap_axis.items():
+            if shape_x[format_fm.find(name)] == -1:
+                last_maps = filter(lambda splits: splits["inputList"][0]["axis"] != index, temp_info)
+                temp_info = list(last_maps)
+        slice_info.get("_op_slice_info")["splitMaps"] = temp_info
+    # <<< end: process for dynamic shape
+
+    return json.dumps(slice_info)

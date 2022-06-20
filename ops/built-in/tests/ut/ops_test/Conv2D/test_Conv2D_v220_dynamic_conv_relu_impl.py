@@ -225,8 +225,29 @@ def test_conv2d_v220_dynamic(test_arg):
                                                           groups,
                                                           bias_flag,
                                                           cout_real=cout_real)
+
+    def test_dynamic_conv2d_split_info():
+        from impl.dynamic.conv2d import get_op_support_info
+
+        input_list = [
+            {
+                'ori_shape': (-1, 64, 32, 32),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16'
+            }, {
+                'format': 'FRACTAL_Z',
+                'dtype': 'float16'
+            }, None, None, {
+                'format': 'NC1HWC0',
+                'dtype': 'float16'
+            }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+        get_op_support_info(*input_list)
+
     cceconf.te_set_version('Ascend910B2')
     run_testcase(v220_dynamic_case)
+    test_dynamic_conv2d_split_info()
+
 
 print("adding Conv2D v220 dynamic ut testcases")
 ut_case.add_cust_test_func("Ascend910B2", test_func=test_conv2d_v220_dynamic)
