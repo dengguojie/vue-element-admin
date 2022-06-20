@@ -45,6 +45,7 @@ def gen_batch_norm_case2(shape_x, shape_scale, shape_mean, shape_reserve, dtype_
                        {"shape": shape_scale, "dtype": dtype_other, "ori_shape": shape_scale, "ori_format": format, "format": format},
                        {"shape": shape_reserve, "dtype": dtype_other, "ori_shape": shape_reserve, "ori_format": format, "format": format},
                        {"shape": shape_reserve, "dtype": dtype_other, "ori_shape": shape_reserve, "ori_format": format, "format": format},
+                       None,
                        0.001, ori_format, is_train],
             "case_name": case_name_val,
             "expect": expect,

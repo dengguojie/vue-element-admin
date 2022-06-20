@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019-2022. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.
@@ -75,7 +75,7 @@ def is_do_with_positive_source_ntc_100(src_format, dst_format):
 @register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def trans_data(src, dst, src_format=None, dst_format=None, group=1, kernel_name="trans_data"):
+def trans_data(src, dst, src_format=None, dst_format=None, groups=1, kernel_name="trans_data"):
     """
     algorithm: format_transfer
     doing format_transfer for various data format
@@ -93,7 +93,7 @@ def trans_data(src, dst, src_format=None, dst_format=None, group=1, kernel_name=
         source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
     dst_format: str
         target data format, can be NC1HWC0, NCHW, FRACTAL_Zn etc.
-    group: int
+    groups: int
         default 1
     kernel_name: str
         kernel name, default value is "format_transfer"
@@ -245,7 +245,7 @@ def _nc1hwc0_to_nchw(src, dst):
 
 
 @register_operator_compute("TransData", op_mode="dynamic", support_fusion=True)
-def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, group=1, kernel_name="trans_data"):
+def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, groups=1, kernel_name="trans_data"):
     """
     algorithm: format_transfer
     used for format transformation , only support transfer between NHWC and NC1HWC0
@@ -259,7 +259,7 @@ def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, group=
     source data format, can be NCHW and NC1HWC0, default value is None
     dst_format: str
     target data format, can be NC1HWC0 and NCHW, default value is None
-    group: int
+    groups: int
     default 1
     kernel_name: str
     kernel name, default value is "trans_data"

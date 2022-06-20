@@ -1661,6 +1661,8 @@ vector_B:
       - ops/built-in/tbe/impl/sparse_apply_ftrl_v2_d.py
       - ops/built-in/tbe/impl/sparse_apply_proximal_adagrad_d.py
       - ops/built-in/tbe/impl/sparse_apply_rms_prop_d.py
+      - ops/built-in/tbe/impl/batch_norm.py
+      - ops/built-in/tbe/impl/batch_norm3d.py
       - ops/built-in/op_proto/sparse_ops.cc
       - ops/built-in/tbe/impl/im2col_common_func.py
       - ops/built-in/op_tiling/sparse_apply_common.cc
@@ -2754,7 +2756,6 @@ unkown:
       - ops/built-in/tbe/impl/l2_normalize_grad.py
       - ops/built-in/tbe/impl/log_space_d.py
       - ops/built-in/tbe/impl/load_to_l1.py
-      - ops/built-in/tbe/impl/batch_norm.py
       - ops/built-in/tbe/impl/pass_through.py
       - ops/built-in/tbe/impl/yolo_v3_detection_output_d.py
       - ops/built-in/tbe/impl/concat_v2_d.py
@@ -3117,7 +3118,6 @@ unkown:
       - ops/built-in/tbe/impl/cross.py
       - ops/built-in/tbe/impl/hard_sigmoid.py
       - ops/built-in/tbe/impl/apply_add_sign_d.py
-      - ops/built-in/tbe/impl/batch_norm3d.py
       - ops/built-in/tbe/impl/constant_util.py
       - ops/built-in/tbe/impl/apply_adam_with_amsgrad_d.py
       - ops/built-in/tbe/impl/relu6.py

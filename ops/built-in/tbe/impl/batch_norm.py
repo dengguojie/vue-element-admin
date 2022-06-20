@@ -1,18 +1,16 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 batch_norm
 """
 import functools
@@ -31,7 +29,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 # 'pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 def get_op_support_info(x, scale, offset, mean, variance, y, batch_mean,
                         batch_variance, reserve_space_1, reserve_space_2,
-                        epsilon=0.0001, data_format="NHWC",
+                        reserve_space_3=None, epsilon=0.0001, data_format="NHWC",
                         is_training=True, kernel_name="batch_norm"):
     """
     get_op_support_info
@@ -499,11 +497,11 @@ def batch_norm_compute(x, scale, offset, mean, variance, y,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
-                            para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
                batch_variance, reserve_space_1, reserve_space_2,
-               epsilon=0.0001, data_format="NHWC",
+               reserve_space_3=None, epsilon=0.0001, data_format="NHWC",
                is_training=True, kernel_name="batch_norm"):
     """
     algorithm: fused_batch_norm
@@ -536,6 +534,8 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
         dict of reserve_space_1, A `Tensor`.
     reserve_space_2: dict
         dict of reserve_space_2, A `Tensor`.
+    reserve_space_3: dict
+        dict of reserve_space_3, A `Tensor`.
     epsilon: float
         A small float number added to the variance of x. Defaults to `0.001`.
     data_format: str
