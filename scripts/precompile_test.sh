@@ -260,6 +260,5 @@ fi
 rm -rf ${TEST_INSTALL_PATH}
 test ! -d "${CANN_OUTPUT}" && mkdir -p "${CANN_OUTPUT}"
 test ! -d "${TEST_BIN_PATH}" && mkdir -p "${TEST_BIN_PATH}"
-test ! -d "`dirname ${CHANGE_LOG}`" && mkdir -p "`dirname ${CHANGE_LOG}`"
 
 main $@
