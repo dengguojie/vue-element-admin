@@ -337,6 +337,17 @@ out_backprop = {'ori_shape': (-1, -1, 4, 91, -1), 'shape': (-1, -1, 4, 91, -1),
 strides = (1, 1, 1, 2, 2)
 range_lower_is_0 = _run_api_v2(x=x, out_backprop=out_backprop, filter=filter_m, strides=strides, data_format="NCDHW")
 
+# Test for dynamic D load2d
+x = {'ori_shape': (2, 2048, -1, 1, 1), 'shape': (2, 2048, -1, 1, 1),
+     'ori_format': "NCDHW", 'format': "NCDHW", 'dtype': "float16",
+     "range": [(2, 2), (2048, 2048), (1, 32), (1, 1), (1, 1)]}
+filter_m = {'ori_shape': (1, 1, 1, 2048, 256), 'shape': (1, 1, 1, 2048, 256),
+            'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float32'}
+out_backprop = {'ori_shape': (2, 256, -1, 1, 1), 'shape': (2, 256, -1, 1, 1),
+                'ori_format': "NCDHW", 'format': "NCDHW", 'dtype': "float16",
+                "range": [(2, 2), (256, 256), (4, 4), (1, 1), (1, 1)]}
+strides = (1, 1, 1, 1, 1)
+dynamic_d_load2d_scene = _run_api_v2(x=x, out_backprop=out_backprop, filter=filter_m, strides=strides, data_format="NCDHW")
 
 # Add test Cases
 # Params is the input params of the operator.
@@ -401,6 +412,8 @@ ut_case.add_case(["Ascend910A"],
                                 "success", "bl1_k_smaller_than_width_grads", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(range_lower_is_0, "success", "range_lower_is_0", True))
+
+ut_case.add_case(["Ascend910A"], _gen_data_case(dynamic_d_load2d_scene, "success", "dynamic_d_load2d_scene", True))
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])

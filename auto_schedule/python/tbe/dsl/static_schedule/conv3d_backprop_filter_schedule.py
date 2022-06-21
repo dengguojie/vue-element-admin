@@ -1466,8 +1466,7 @@ class CceConv3dBackpropFilterOp:
             if not load2d_flag:
                 tile_mode = _set_tile_mode()
 
-                hi_min, hi_extent, wi_min, wi_extent = \
-                    _set_tile_params(ho_len, tile_mode)
+                hi_min, hi_extent, wi_min, wi_extent = _set_tile_params(ho_len, tile_mode)
 
                 if "tile_h" not in tile_mode:
                     hi_min, hi_extent = None, None
@@ -1476,10 +1475,11 @@ class CceConv3dBackpropFilterOp:
                                          (hi_min, hi_extent),
                                          (wi_min, wi_extent),
                                          (None, None))
+            else:
+                sch[fmap_matrix].set_buffer_size(bl1_bound)
 
             # mem management in dynamic mode
             sch[grads_matrix].set_buffer_size(al1_bound)
-            sch[fmap_l1].set_buffer_size(bl1_bound)
 
         def _dynamic_memory_management():
             # sequential_malloc
@@ -1490,7 +1490,8 @@ class CceConv3dBackpropFilterOp:
             sch.sequential_malloc(tbe_platform_info.scope_ubuf)
 
             # mem_unique
-            sch[fmap_l1].mem_unique()
+            if not load2d_flag:
+                sch[fmap_l1].mem_unique()
             sch[grads_matrix].mem_unique()
             sch[fmap_matrix].mem_unique()
             sch[grads_fractal].mem_unique()
