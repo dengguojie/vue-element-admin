@@ -91,13 +91,14 @@ static const int64_t NUM_THREE = 3;
 static const int64_t NUM_FOUR = 4;
 static const int64_t NUM_FIVE = 5;
 static const int64_t NUM_SIX = 6;
-static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend710"};
+static bool is_inference_plateform = false;
+static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310P"};
 static const string kNameFusionPass = "SwinAttentionScoreFusionPass";
 
 vector<FusionPattern *> SwinAttentionScoreFusionPass::DefinePatterns() {
   vector<FusionPattern *> patterns;
   FusionPattern *pattern = new (std::nothrow) FusionPattern(kNameFusionPass);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kNameFusionPass, "Failed to create pattern."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(kNameFusionPass, "Failed to create pattern."),
                     return patterns);
 
   OP_LOGD(kNameFusionPass, "Start to define pattern");
@@ -125,7 +126,7 @@ vector<FusionPattern *> SwinAttentionScoreFusionPass::DefinePatterns() {
   OP_LOGD(kNameFusionPass, "End to define pattern.");
 
   FusionPattern *pattern1 = new (std::nothrow) FusionPattern(kNameFusionPass);
-  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(kNameFusionPass, "Failed to create pattern1."),
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGW(kNameFusionPass, "Failed to create pattern1."),
                     return patterns);
   OP_LOGD(kNameFusionPass, "Start to define pattern1.");
   pattern1->AddOpDesc(PATTERN_INPUT0)
@@ -160,21 +161,65 @@ vector<FusionPattern *> SwinAttentionScoreFusionPass::DefinePatterns() {
   return patterns;
 }
 
+bool SwinAttentionScoreFusionPass::IsTargetPlateform(const std::string plateform) {
+  OP_LOGD(kNameFusionPass, "IsTargetPlateform begin");
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
+      OP_LOGW(kNameFusionPass, "Failed to get platform info"), return NOT_CHANGED);
+
+  std::string socVersion = optionalInfo.soc_version;
+  bool is_target = false;
+  if (socVersion == plateform || socVersion.find(plateform) != string::npos) {
+    is_target = true;
+  }
+
+  OP_LOGD(kNameFusionPass, "IsTargetPlateform end");
+  return is_target;
+}
+
 Status SwinAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph,
                                             Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kNameFusionPass, "Start SwinAttentionScoreFusionPass::Fusion.");
   ge::NodePtr mul_node = GetNodeFromMapping(PATTERN_MUL, mapping);
+  FUSION_PASS_CHECK(mul_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get mul_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr transposed_node = GetNodeFromMapping(PATTERN_TRANSPOSED, mapping);
+  FUSION_PASS_CHECK(transposed_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get transposed_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr bmm_node = GetNodeFromMapping(PATTERN_BATCHMATMUL, mapping);
+  FUSION_PASS_CHECK(bmm_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get bmm_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr add_node = GetNodeFromMapping(PATTERN_ADD, mapping);
+  FUSION_PASS_CHECK(add_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get add_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr reshape_node = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
   ge::NodePtr add2_node = GetNodeFromMapping(PATTERN_ADD2, mapping);
   ge::NodePtr reshape2_node = GetNodeFromMapping(PATTERN_RESHAPE2, mapping);
   ge::NodePtr softmaxv2_node = GetNodeFromMapping(PATTERN_SOFTMAXV2, mapping);
+  FUSION_PASS_CHECK(softmaxv2_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get softmaxv2_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr bmm2_node = GetNodeFromMapping(PATTERN_BATCHMATMUL2, mapping);
+  FUSION_PASS_CHECK(bmm2_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get bmm2_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr transposed2_node = GetNodeFromMapping(PATTERN_TRANSPOSED2, mapping);
+  FUSION_PASS_CHECK(transposed2_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get transposed2_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr reshape3_node = GetNodeFromMapping(PATTERN_RESHAPE3, mapping);
-
+  FUSION_PASS_CHECK(reshape3_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get reshape3_node not success."),
+                    return NOT_CHANGED);
+  is_inference_plateform = IsTargetPlateform(SUPPORT_PLATFORM_PATTERN[0]);
+  FUSION_PASS_CHECK(!is_inference_plateform, OP_LOGW(kNameFusionPass, "Only support 310p series platform"),
+                    return NOT_CHANGED);
   std::shared_ptr<ge::OpDesc> bsb_desc = nullptr;
   FUSION_PASS_MAKE_SHARED(
     bsb_desc = std::make_shared<ge::OpDesc>(softmaxv2_node->GetName() + "/SwinAttentionScore", "SwinAttentionScore"),
@@ -208,11 +253,9 @@ Status SwinAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph,
   FUSION_PASS_CHECK(bsb_desc->AddInputDesc("scale",
                                            *(mul_node->GetOpDesc()->MutableInputDesc(1))) != SUCCESS,
                     OP_LOGE(kNameFusionPass, "Add input5 of SwinAttentionScore failed."), return FAILED);
-
   FUSION_PASS_CHECK(bsb_desc->AddOutputDesc("attention_score",
                                            *(reshape3_node->GetOpDesc()->MutableOutputDesc(0))) != SUCCESS,
                     OP_LOGE(kNameFusionPass, "Add output0 of SwinAttentionScore failed."), return FAILED);
-  
   bool first_transpose_a = false;
   bool first_transpose_b = false;
   bool second_transpose_a = false;
@@ -243,15 +286,18 @@ Status SwinAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph,
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(add2_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                               bsb_node->GetInDataAnchor(4)) != SUCCESS,
                       OP_LOGW(kNameFusionPass, "Failed to get nodes."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                              bsb_node->GetInDataAnchor(5)) != SUCCESS,
+                      OP_LOGW(kNameFusionPass, "Failed to get nodes."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(add2_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                               bsb_node->GetInDataAnchor(6)) != SUCCESS,
                       OP_LOGW(kNameFusionPass, "Failed to get nodes."), return FAILED);
-  }
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                                            bsb_node->GetInDataAnchor(5)) != SUCCESS,
-                    OP_LOGW(kNameFusionPass, "Failed to get nodes."), return FAILED);
-    
-  AddOutputEdgeForNode(transposed2_node, bsb_node, 0, 0);
+  } else { 
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                              bsb_node->GetInDataAnchor(4)) != SUCCESS,
+                      OP_LOGW(kNameFusionPass, "Failed to get nodes."), return FAILED);
+  } 
+  AddOutputEdgeForNode(reshape3_node, bsb_node, 0, 0);
   
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(mul_node),
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
@@ -265,7 +311,7 @@ Status SwinAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph,
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(add_node),
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
                                          add_node->GetName().c_str()), return FAILED);
-  if (add2_node != nullptr) {
+  if (reshape_node != nullptr) {
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(reshape_node),
                       CUBE_CALL_ERR_REPORT(kNameFusionPass, "remove fusedNode node[%s] failed",
                                            reshape_node->GetName().c_str()), return FAILED);

@@ -48,20 +48,15 @@ class MatMulSoftmax:
         self.matmul_dtype = self.vector_dtype = "float16"
         self.x1_shape, self.x2_shape, self.x3_shape = x1["shape"], x2["shape"], x3["shape"]
         self.model_type = Constant.TRAINGING
-        if drop_mask["dtype"] == "float16":
-            self.model_type = Constant.TUILI
-        if self.model_type == Constant.TRAINGING:
-            self.softmax_output_shape = softmax_output["shape"]
+        self.model_type = Constant.TUILI
 
-        self.drop_shape = drop_mask["shape"]
         self.ele_shape1 = add_x1["shape"]
         if add_x2 is not None:
             self.structure_swin = True
             self.ele_shape2 = add_x2["shape"]
+            self.drop_shape = drop_mask["shape"]
         else:
             self.structure_swin = False
-        if self.model_type == Constant.TRAINGING:
-            self.softmax_output_shape = softmax_output["shape"]
         self.y_shape = y["shape"]
 
         self.batch_dim = self.x1_shape[0] * self.x1_shape[1] // self.cur_op_core_num
@@ -97,8 +92,8 @@ class MatMulSoftmax:
         if self.structure_swin:
             self.add2_gm = self.tik_instance.Tensor(self.matmul_dtype, self.ele_shape2,
                                                     name="add2_gm", scope=self.tik.scope_gm)
-        self.drop_mask_gm = self.tik_instance.Tensor(self.matmul_dtype, self.drop_shape,
-                                                     name="drop_mask_gm", scope=self.tik.scope_gm)
+            self.drop_mask_gm = self.tik_instance.Tensor(self.matmul_dtype, self.drop_shape,
+                                                         name="drop_mask_gm", scope=self.tik.scope_gm)
         self.x3_gm = self.tik_instance.Tensor(self.matmul_dtype, self.x3_shape, name="x3_gm", scope=self.tik.scope_gm)
         if self.model_type == Constant.TRAINGING:
             self.softmax_output_gm = self.tik_instance.Tensor(self.matmul_dtype, self.softmax_output_shape,
@@ -125,7 +120,7 @@ class MatMulSoftmax:
                       cur_om_idx * om_size * self.first_n_dim * self.block_num * self.block_num + \
                       cur_m_idx * single_m_size * self.first_n_dim * self.block_num * self.block_num
         mask_length = single_m_size * self.first_n_dim * self.block_num
-        if self.model_type == Constant.TRAINGING:
+        if self.model_type == Constant.TRAINGING and self.structure_swin:
             self.tik_instance.data_move(ub_mask[0], self.drop_mask_gm[mask_offset],
                                         0, 1, mask_length, 0, 0)
 
@@ -865,7 +860,7 @@ class MatMulSoftmax:
             input_gm_list = [self.x1_gm, self.x2_gm, self.x3_gm, self.add1_gm, self.add2_gm,
                              self.mul_gm, self.drop_mask_gm]
         else:
-            input_gm_list = [self.x1_gm, self.x2_gm, self.x3_gm, self.add1_gm, self.mul_gm, self.drop_mask_gm]
+            input_gm_list = [self.x1_gm, self.x2_gm, self.x3_gm, self.add1_gm, self.mul_gm]
         output_gm_list = [self.y_gm]
         if self.model_type == Constant.TRAINGING:
             output_gm_list = [self.y_gm, self.softmax_output_gm]
@@ -877,7 +872,7 @@ class MatMulSoftmax:
 # 'pylint: disable=redefined-builtin
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),

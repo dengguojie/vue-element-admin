@@ -222,5 +222,5 @@ TEST_F(swin_attention_score_fusion_pass_test, swin_attention_score_fusion_pass_t
       findAiCoreNode = true;
     }
   }
-  EXPECT_EQ(findAiCoreNode, true);
+  EXPECT_EQ(findAiCoreNode, false);
 }

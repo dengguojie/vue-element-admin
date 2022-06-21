@@ -27,6 +27,7 @@ class SwinAttentionScoreFusionPass : public PatternFusionBasePass {
 protected:
   vector<FusionPattern *> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
+  bool IsTargetPlateform(const std::string plateform);
 
 private:
   ge::NodePtr batch_matmul_node1 = nullptr;
