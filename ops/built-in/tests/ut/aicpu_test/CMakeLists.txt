@@ -224,6 +224,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/tanhgrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/triu.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/zeroslike.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/zeta.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/tile_with_axis.cc
@@ -460,6 +461,7 @@ set(_cpu_kernels_ut_files
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data_rnn/src/trans_data_rnn_utest.cpp
+  testcase/triu/src/triu_utest.cpp
   testcase/unpack/src/unpack_utest.cpp
   testcase/unsorted_segment_max/src/unsorted_segment_max_utest.cpp
   testcase/unsorted_segment_min/src/unsorted_segment_min_utest.cpp
