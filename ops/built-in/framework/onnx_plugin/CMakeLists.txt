@@ -105,6 +105,7 @@ set(_onnx_plugins
   if_plugin.cc
   random_uniform_plugin.cc
   deformable_conv_plugin.cc
+  deformable_offsets_plugin.cc
   nonzero_plugin.cc
   quant/int8_dequantize_plugin.cc
   quant/Int8Transpose_plugin.cc
