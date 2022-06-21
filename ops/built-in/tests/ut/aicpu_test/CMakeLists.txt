@@ -222,6 +222,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/sub.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/tan.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/tanhgrad.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/tensor_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/triu.cc
@@ -455,6 +456,7 @@ set(_cpu_kernels_ut_files
   testcase/svd/src/svd_utest.cpp
   testcase/tan/src/tan_utest.cpp
   testcase/tanhgrad/src/tanhgrad_utest.cpp
+  testcase/tensor_equal/src/tensor_equal_utest.cpp
   testcase/tile_with_axis/src/tile_with_axis_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
   testcase/top_k_pq_distance/src/top_k_pq_distance_utest.cpp
