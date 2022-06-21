@@ -144,6 +144,7 @@ Bias,bias.json
 ClipByNormNoDivSum,clip_by_norm_no_div_sum.json
 Relu6D,relu6d.json
 PRelu,p_relu.json
+Scale,scale.json
 Gelu,gelu.json
 Mod,mod.json
 MaximumGrad,maximum_grad.json

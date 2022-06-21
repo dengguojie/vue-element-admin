@@ -89,3 +89,70 @@ TEST_F(ScaleTiling, Scale_tiling_test_2) {
             "1 1 ");
 }
 
+TEST_F(ScaleTiling, Scale_tiling_test_unknown_rank1) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Scale");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::Scale("Scale");
+
+  vector<vector<int64_t>> input_shapes = {
+      {2,3,4},
+      {3,4},
+      {1}
+  };
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, scale, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[2], dtypes[2], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  opParas.SetAttr("axis", 1);
+  opParas.SetAttr("num_axes", 2);
+  opParas.SetAttr("scale_from_blob", true);
+
+  std::string compileInfo = R"({"is_unknown_rank": true, "_classify_inputs_num": 2, "_fusion_index": [[0, 1, 2]],
+    "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false],
+    "_ub_factor_align": 128, "_base_info": {"210": [32, 4, 21840, 10920]},
+    "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000],
+    "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, 
+    "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"],
+    "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 12 ");
+}
+
+TEST_F(ScaleTiling, Scale_tiling_test_unknown_rank2) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Scale");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::Scale("Scale");
+
+  vector<vector<int64_t>> input_shapes = {
+      {2,3,4},
+      {3,4},
+      {1}
+  };
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, scale, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[2], dtypes[2], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  opParas.SetAttr("axis", 1);
+  opParas.SetAttr("num_axes", 2);
+  opParas.SetAttr("scale_from_blob", false);
+
+  std::string compileInfo = R"({"is_unknown_rank": true, "_classify_inputs_num": 2, "_fusion_index": [[0, 1, 2]],
+    "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false],
+    "_ub_factor_align": 128, "_base_info": {"210": [32, 4, 21840, 10920]},
+    "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000],
+    "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, 
+    "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"],
+    "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 12 ");
+}

@@ -379,9 +379,15 @@ def _fused_scale_compute(x, scale):
             scale = tbe.cast_to(scale, 'float32')
 
     shape_x = shape_util.shape_to_list(x.shape)
-    scale_broad = tbe.broadcast(scale, shape_x)
+    shape_scale = shape_util.shape_to_list(scale.shape)
+    shape_x, shape_scale, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_scale,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="scale")
+    x_broad = tbe.broadcast(x, shape_max)
+    scale_broad = tbe.broadcast(scale, shape_max)
 
-    res = tbe.vmul(x, scale_broad)
+    res = tbe.vmul(x_broad, scale_broad)
 
     if is_cast:
         res = tbe.cast_to(res, dtype_x)
@@ -571,24 +577,29 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
     shape_scale = scale.get("shape")
     dtype_scale = scale.get("dtype")
     _check_dtype(dtype_scale.lower(), "input_scale")
+    
+    if any((axis is None, num_axes is None, scale_from_blob is None)):
+        if bias is not None and bool(bias):
+            dtype_bias = bias.get("dtype")
+        tbe_context.get_context().add_compile_info("is_unknown_rank", True)
+    else:
+        shape_bias = ()
+        if bias is not None and bool(bias):
+            shape_bias = bias.get("shape")
+            dtype_bias = bias.get("dtype")
+            para_check.check_shape(shape_bias, param_name="input_bias")
+            _check_dtype(dtype_bias.lower(), "input_bias")
 
-    shape_bias = ()
-    if bias is not None and bool(bias):
-        shape_bias = bias.get("shape")
-        dtype_bias = bias.get("dtype")
-        para_check.check_shape(shape_bias, param_name="input_bias")
-        _check_dtype(dtype_bias.lower(), "input_bias")
+        shape_scale_new, shape_bias_new = \
+            reshape_for_scale(x, shape_bias, shape_x, shape_scale, axis, num_axes, scale_from_blob)
 
-    shape_scale_new, shape_bias_new = \
-        reshape_for_scale(x, shape_bias, shape_x, shape_scale, axis, num_axes, scale_from_blob)
-
-    tbe_context.get_context().add_compile_info("_boardcast_scale_shape", shape_scale_new)
-    scale["shape"] = shape_scale_new
-    scale_range = []
-    for i, x_range in enumerate(x["range"]):
-        _range = (shape_scale_new[i], shape_scale_new[i]) if shape_scale_new[i] != -1 else x_range
-        scale_range.append(_range)
-    scale["range"] = tuple(scale_range)
+        tbe_context.get_context().add_compile_info("_boardcast_scale_shape", shape_scale_new)
+        scale["shape"] = shape_scale_new
+        scale_range = []
+        for i, x_range in enumerate(x["range"]):
+            _range = (shape_scale_new[i], shape_scale_new[i]) if shape_scale_new[i] != -1 else x_range
+            scale_range.append(_range)
+        scale["range"] = tuple(scale_range)
 
     ins = classify([x, scale], OpPatternMode.ELEWISE_WITH_BROADCAST)
 
@@ -606,7 +617,7 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
             res = scale_compute(tensor_x, tensor_scale, tensor_bias, y, axis, num_axes,
                                 scale_from_blob, kernel_name)
             tensor_list = [tensor_x, tensor_scale, res]
-            if len(shape_bias_new) > 0:
+            if tensor_bias is not None:
                 tensor_list = [tensor_x, tensor_scale, tensor_bias, res]
             tensors.append(tensor_list)
 
