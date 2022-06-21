@@ -400,6 +400,7 @@ cube:
       - ops/built-in/fusion_pass/common/lx_fusion_func.h
       - ops/built-in/fusion_pass/common/fusion_pre_trans_func.cc
       - ops/built-in/fusion_pass/common/fusion_pre_trans_func.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.cc
@@ -3870,7 +3871,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_addn_l2loss_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/im2col_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/reduce_mean_variance_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_with_logits_grad.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/maxpoolwithargmax_fusion_pass.h

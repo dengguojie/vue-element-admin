@@ -388,7 +388,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   bool fuzzy_flag = false;
   std::string build_mode;
   ge::GetContext().GetOption("ge.shape_generalized_build_mode", build_mode);
-  fuzzy_flag = build_mode == "shape_generalized";
+  fuzzy_flag = (build_mode == "shape_generalized") && avg_pool_shape.IsUnknownShape();
   is_dynamic = is_dynamic || fuzzy_flag;
   for (size_t i = 0; i < orig_input_shape_v.size(); i++) {
     auto dim = orig_input_shape_const_tensor_ptr[i];
@@ -416,13 +416,16 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
         avg_pool_dim_info[0] = orig_input_shape_const_tensor_ptr[0];
         avg_pool_dim_info[3] = orig_input_shape_const_tensor_ptr[3];
         avg_pool_dim_info[1] = (orig_input_shape_const_tensor_ptr[1] + strides[1] - 1) / strides[1];
+        // 2 denotes index of w dim
         avg_pool_dim_info[2] = (orig_input_shape_const_tensor_ptr[2] + strides[2] - 1) / strides[2];
       } else {
         avg_pool_dim_info[0] = orig_input_shape_const_tensor_ptr[0];
         avg_pool_dim_info[1] =
           (orig_input_shape_const_tensor_ptr[1] - k_size[1] + 1 + (strides[1] - 1)) / strides[1];
+        // 2 denotes index of w dim
         avg_pool_dim_info[2] =
           (orig_input_shape_const_tensor_ptr[2] - k_size[2] + 1 + (strides[2] - 1)) / strides[2];
+        // 3 denotes index of c dim
         avg_pool_dim_info[3] = orig_input_shape_const_tensor_ptr[3];
       }
     }
@@ -475,15 +478,20 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     vector<int64_t> tensor_output_shape = tensor_output.GetShape().GetDims();
     if (tensor_output_shape.size() == avg_pool_dim_info.size()) {
       size_t output_c_index = data_format.find("C");
+      // 3 denotes index of c dim
       avg_pool_dim_info[3] = avg_pool_dim_info[3] <= 0 ? tensor_output_shape[output_c_index] : avg_pool_dim_info[3];
     }
+    // 3 denotes index of c dim
     inputC1 = (avg_pool_dim_info[3] + COUT - 1) / COUT;
 
+    // 2 denotes index of w dim
     kernel_table_size = COUT * inputC1 * CIN * k_size[1] * k_size[2];
+    // 2 denotes index of w dim
     FUSION_PASS_CHECK((inputC1 != kernel_table_size / (COUT * CIN * k_size[1] * k_size[2])),
                   OP_LOGW(kFusedOpType.c_str(), "The kernel_table_size overlap , over int64"), return NOT_CHANGED);
     OP_LOGI(kFusedOpType.c_str(), "kernel_table_size is %d", kernel_table_size);
   } else {
+    // 3 denotes index of c dim, 2 denotes index of w dim
     kernel_table_size = orig_input_shape_v[3] * k_size[1] * k_size[2];
     FUSION_PASS_CHECK((orig_input_shape_v[3] != kernel_table_size / (k_size[1] * k_size[2])),
                 OP_LOGW(kFusedOpType.c_str(), "The kernel_table_size overlap , over int64"), return NOT_CHANGED);
@@ -540,8 +548,10 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   auto avg_pool_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
   if (!is_dynamic) {
     vector<int32_t> input_nodes_idx;
+    // 3 denotes input nodes size
     if (avg_pool_const_input_nodes.size() == 3) {
       input_nodes_idx = {1, 2};
+    // 2 denotes input nodes size
     } else if (avg_pool_const_input_nodes.size() == 2) {
       input_nodes_idx = {0, 1};
     } else {
