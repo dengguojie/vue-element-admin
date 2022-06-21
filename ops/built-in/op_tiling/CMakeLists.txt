@@ -87,7 +87,6 @@ set(_optiling_files
   conv2d_fast_tiling.cc
   conv2d_transpose.cc
   conv3d.cc
-  cumsum.cc
   pad_v3_grad.cc
   mse_loss.cc
   mse_loss_grad.cc

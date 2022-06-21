@@ -3238,7 +3238,6 @@ IMPLEMT_COMMON_INFERFUNC(CumprodDInferShape) {
   TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(op.GetInputDescByName("x").GetShape());
   output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
-
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;
@@ -3253,15 +3252,6 @@ IMPLEMT_COMMON_INFERFUNC(CumsumInferShape) {
   TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(op.GetInputDescByName("x").GetShape());
   output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
-  
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  vector<string> input_infer_depends = { "axis" };
-  op_desc->SetOpInferDepends(input_infer_depends);
-  
-  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
-  op_desc->MutableInputDesc("x")->GetShapeRange(x_shape_range);
-  output_desc.SetShapeRange(x_shape_range);
-
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;

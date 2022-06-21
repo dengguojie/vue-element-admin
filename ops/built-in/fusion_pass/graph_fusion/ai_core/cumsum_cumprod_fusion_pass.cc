@@ -38,6 +38,7 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE_CUMPROD = "CumprodD";
 static const std::string PATTERN_CUMPROD = "Cumprod";
+static const char* FUSED_NODE_CUMSUM = "CumsumD";
 static const std::string PATTERN_CUMSUM = "Cumsum";
 
 vector<FusionPattern*> CumFusionPass::DefinePatterns()
@@ -54,6 +55,9 @@ vector<FusionPattern*> CumFusionPass::DefinePatterns()
   FUSION_PASS_CHECK(pattern1 == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern1 object failed."),
                     return patterns);
+
+  pattern0->AddOpDesc(PATTERN_CUMSUM, {FUSED_NODE_CUMSUM}).SetOutput(PATTERN_CUMSUM);
+  patterns.push_back(pattern0);
 
   pattern1->AddOpDesc(PATTERN_CUMPROD, {FUSED_NODE_CUMPROD}).SetOutput(PATTERN_CUMPROD);
   patterns.push_back(pattern1);
