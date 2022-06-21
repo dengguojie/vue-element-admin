@@ -107,14 +107,7 @@ IMPLEMT_INFERFUNC(Unique, UniqueInfer) {
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr x_input = op_desc->MutableInputDesc(0);
 
-  GeShape x_shape;
-  if (WithRank(x_input, 1, x_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(0, DebugString(x_input->GetShape().GetDims()), "1D");
-    err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
-  }
-
+  const GeShape& x_shape = x_input->GetShape();
   DataType idx_type;
   if (op.GetAttr("out_idx", idx_type) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "Op get attr out_idx failed");
