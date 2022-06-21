@@ -306,7 +306,7 @@ IMPLEMT_INFERFUNC(UnravelIndex, UnravelIndexInfer) {
   std::vector<int64_t> dims_shape_vec = dims_shape.GetDims();
   std::vector<int64_t> indices_shape_vec = indices_shape.GetDims();
   if (indices_shape.GetDimNum() == 0) {
-    out_dims[0] = 1;
+    out_dims.pop_back();
   } else {
     if (indices_shape_vec != ge::UNKNOWN_RANK && indices_shape_vec != ge::UNKNOWN_SHAPE) {
       out_dims[1] = indices_shape_vec[0];

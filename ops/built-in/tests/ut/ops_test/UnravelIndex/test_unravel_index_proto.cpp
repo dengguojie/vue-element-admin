@@ -107,3 +107,21 @@ TEST_F(UnravelIndex, unravel_index_infer_shape04) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(UnravelIndex, unravel_index_infer_shape05) {
+  ge::op::UnravelIndex op;
+  std::vector<std::pair<int64_t,int64_t>> dim_shape_range = {{-1, 1}};
+  auto dim_tensor_desc = create_desc_shape_range({-1},
+                                                 ge::DT_INT32, ge::FORMAT_ND,
+                                                 {2},
+                                                 ge::FORMAT_ND, dim_shape_range);
+  std::vector<std::pair<int64_t,int64_t>> indice_shape_range = {{}};
+  auto indice_tensor_desc = create_desc_shape_range({},
+                                                    ge::DT_INT32, ge::FORMAT_ND,
+                                                    {},
+                                                    ge::FORMAT_ND, indice_shape_range);
+  op.UpdateInputDesc("indices", indice_tensor_desc);
+  op.UpdateInputDesc("dims", dim_tensor_desc);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
