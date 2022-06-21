@@ -24,6 +24,8 @@ from ..util.platform_adapter import register_operator
 from ..util.platform_adapter import register_operator_compute
 from ..util.platform_adapter import classify
 from ..util.platform_adapter import OpPatternMode
+from ..util.util_attr_common import HardSigmoidAttrInfo
+from ..util.util_attr_common import get_attr_by_cls
 
 
 # 'pylint: disable=unused-argument,too-many-locals
@@ -58,8 +60,10 @@ def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmo
         else:
             raise RuntimeError("Type of input x must be float16")
 
-    alpha_x = tbe.vmuls(input_x, tvm.const(alpha, input_x.dtype))
-    alpha_x_beta = tbe.vadds(alpha_x, tvm.const(beta, input_x.dtype))
+    alpha = get_attr_by_cls(alpha, HardSigmoidAttrInfo.ATTR_ALPHA, input_x.dtype)
+    beta = get_attr_by_cls(beta, HardSigmoidAttrInfo.ATTR_BETA, input_x.dtype)
+    alpha_x = tbe.vmuls(input_x, alpha)
+    alpha_x_beta = tbe.vadds(alpha_x, beta)
     result = tbe.clip(alpha_x_beta, tvm.const(1, dtype), tvm.const(0, dtype))
 
     if dtype != result.dtype:

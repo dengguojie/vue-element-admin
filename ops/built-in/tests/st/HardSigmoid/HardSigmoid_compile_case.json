@@ -1,0 +1,102 @@
+[
+    {"compile_flag": 1},
+    {
+        "case_name": "Test_HardSigmoid_fp16",
+        "op": "HardSigmoid",
+        "calc_expect_func_file" : "test_hard_sigmoid_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "input_x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [64, 512]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [64, 512]
+            }
+        ],
+        "attr": [
+            {
+                "name": "alpha",
+                "type": "float",
+                "value": 0.16666666
+            },
+            {
+                "name": "beta",
+                "type": "float",
+                "value": 0.5
+            }
+        ]
+    },
+    {
+        "case_name": "Test_HardSigmoid_fp32",
+        "op": "HardSigmoid",
+        "calc_expect_func_file" : "test_hard_sigmoid_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "input_x",
+                "format": "ND",
+                "type": "float32",
+                "shape": [64, 512]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_y",
+                "format": "ND",
+                "type": "float32",
+                "shape": [64, 512]
+            }
+        ],
+        "attr": [
+            {
+                "name": "alpha",
+                "type": "float",
+                "value": 0.16666666
+            },
+            {
+                "name": "beta",
+                "type": "float",
+                "value": 0.5
+            }
+        ]
+    },
+    {
+        "case_name": "Test_HardSigmoid_int32",
+        "op": "HardSigmoid",
+        "calc_expect_func_file" : "test_hard_sigmoid_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "input_x",
+                "format": "ND",
+                "type": "int32",
+                "shape": [64, 512]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "output_y",
+                "format": "ND",
+                "type": "int32",
+                "shape": [64, 512]
+            }
+        ],
+        "attr": [
+            {
+                "name": "alpha",
+                "type": "float",
+                "value": 0.16666666
+            },
+            {
+                "name": "beta",
+                "type": "float",
+                "value": 0.5
+            }
+        ]
+    }
+]

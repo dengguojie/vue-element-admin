@@ -98,3 +98,11 @@ class SwishGradAttrInfo:
     define SwishGrad attr info
     """
     ATTR_SCALE = OpAttr(0, "scale", "Float", 1.0)
+
+
+class HardSigmoidAttrInfo:
+    """
+    define HardSigmoid attr info
+    """
+    ATTR_ALPHA = OpAttr(0, "alpha", "Float", 0.16666666)
+    ATTR_BETA = OpAttr(1, "beta", "Float", 0.5)

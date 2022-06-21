@@ -31,6 +31,7 @@ Gather,gather.json
 GatherV2,gather_v2.json
 Greater,greater.json
 GreaterEqual,greater_equal.json
+HardSigmoid,hard_sigmoid.json
 LayerNorm,layer_norm.json
 L2Loss,l2_loss.json
 Less,less.json
