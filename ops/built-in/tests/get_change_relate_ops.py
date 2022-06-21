@@ -226,11 +226,12 @@ def get_case_change_op(change_dir_list):
 
 
 class FileChangeInfo:
-    def __init__(self, ops_files=[], op_test_frame_files=[], test_files=[], other_files=[]):
+    def __init__(self, ops_files=[], op_test_frame_files=[], test_files=[], other_files=[], ignored_files=[]):
         self.op_files = ops_files
         self.op_test_frame_files = op_test_frame_files
         self.test_files = test_files
         self.other_files = other_files
+        self.ignored_files = ignored_files
 
     def print_change_info(self):
         print("=========================================================================")
@@ -243,10 +244,23 @@ class FileChangeInfo:
         print("op test changed files: \n%s" % "\n".join(self.test_files))
         print("-------------------------------------------------------------------------")
         print("other changed files: \n%s" % "\n".join(self.other_files))
+        print("-------------------------------------------------------------------------")
+        print("ignored changed files: \n%s" % "\n".join(self.ignored_files))
         print("=========================================================================")
 
 
-def get_file_change_info_from_ci(changed_file_info_from_ci):
+def is_ignored_file(file_path, ignored_file_prefix: List[str]):
+    if not ignored_file_prefix:
+        return False
+    for ignored in ignored_file_prefix:
+        if not ignored:
+            continue
+        if file_path.startswith(ignored):
+            return True
+    return False
+
+
+def get_file_change_info_from_ci(changed_file_info_from_ci: str, ignore_file_prefix: List[str]):
     """
     get file change info from ci, ci will write `git diff > /pr_filelist.txt`
     :param changed_file_info_from_ci: git diff result file from ci
@@ -262,9 +276,12 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
     test_change_files = []
     op_test_frame_changed_files = []
     other_changed_files = []
+    ignored_files = []
     for line in lines:
         line = line.strip()
-        if line.startswith(os.path.join("ops", "built-in", "tests")):
+        if is_ignored_file(line, ignore_file_prefix):
+            ignored_files.append(line)
+        elif line.startswith(os.path.join("ops", "built-in", "tests")):
             test_change_files.append(line)
         elif line.startswith(os.path.join("ops", "built-in")):
             ops_changed_files.append(line)
@@ -273,7 +290,7 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
         else:
             other_changed_files.append(line)
     return FileChangeInfo(ops_files=ops_changed_files, op_test_frame_files=op_test_frame_changed_files,
-                          test_files=test_change_files, other_files=other_changed_files)
+                          test_files=test_change_files, other_files=other_changed_files, ignored_files=ignored_files)
 
 
 def is_util_file(file_path):
@@ -284,8 +301,8 @@ def is_util_file(file_path):
     return False
 
 
-def get_change_relate_op_type_list(changed_file_info_from_ci):
-    file_change_info = get_file_change_info_from_ci(changed_file_info_from_ci)
+def get_change_relate_op_type_list(changed_file_info_from_ci: str, ignore_file_prefix: List[str]):
+    file_change_info = get_file_change_info_from_ci(changed_file_info_from_ci, ignore_file_prefix)
     if not file_change_info:
         print("[ERROR] not found file change info, run failed.")
         return None
@@ -359,5 +376,10 @@ if __name__ == '__main__':
         pr_changed_file = sys.argv[1]
     else:
         pr_changed_file = "pr_filelist.txt"
-    case_dirs = get_change_relate_op_type_list(pr_changed_file)
+
+    ignore_file_prefix = None
+    if len(sys.argv) >= 3:
+        ignore_file_prefix = sys.argv[2].split(",")
+
+    case_dirs = get_change_relate_op_type_list(pr_changed_file, ignore_file_prefix)
     print("related_ops_dirs=%s" % ' '.join(case_dirs))

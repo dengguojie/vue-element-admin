@@ -89,8 +89,8 @@ def comparing(dyn_kernel_name: str, stc_kernel_name: str, cst_kernel_name: str, 
         logging_data += _logging_data
         # CST
         logging_data += "Comparing %s with numpy\n" % cst_kernel_name
-        cst_precision, _logging_data, _ = __compare(goldens, absolute_precision,
-                                                    percentage_thresholds, cst_outputs, fork_count)
+        cst_precision, _logging_data, c_passed = __compare(goldens, absolute_precision,
+                                                           percentage_thresholds, cst_outputs, fork_count)
         logging_data += _logging_data
         # RST
         logging_data += "Comparing %s with %s\n" % (cst_kernel_name, stc_kernel_name)
@@ -99,7 +99,7 @@ def comparing(dyn_kernel_name: str, stc_kernel_name: str, cst_kernel_name: str, 
         logging_data += _logging_data
         # BIN
         logging_data += "Comparing %s with numpy\n" % bin_kernel_name
-        bin_precision, _logging_data, _ = __compare(goldens, absolute_precision,
+        bin_precision, _logging_data, b_passed = __compare(goldens, absolute_precision,
                                                     relative_percentage_thresholds, bin_outputs, fork_count)
         logging_data += _logging_data
         # BRE
@@ -111,11 +111,17 @@ def comparing(dyn_kernel_name: str, stc_kernel_name: str, cst_kernel_name: str, 
 
         dyn_filter = ("DYN_OFF", "DYN_OPERATOR_NOT_FOUND", "SUPPRESSED")
         stc_filter = ("STC_OFF", "STC_OPERATOR_NOT_FOUND", "SUPPRESSED")
+        cst_filter = ("CST_OFF", "CST_OPERATOR_NOT_FOUND", "SUPPRESSED")
+        bin_filter = ("BIN_OFF", "BIN_OPERATOR_NOT_FOUND", "SUPPRESSED")
         if list(filter(lambda x: x in dyn_precision, dyn_filter)):
             d_passed = True
         if list(filter(lambda x: x in stc_precision, stc_filter)):
             s_passed = True
-        passed = "PASS" if d_passed and s_passed else "FAIL"
+        if list(filter(lambda x: x in cst_precision, cst_filter)):
+            c_passed = True
+        if list(filter(lambda x: x in bin_precision, bin_filter)):
+            b_passed = True
+        passed = "PASS" if all([d_passed, s_passed, c_passed, b_passed]) else "FAIL"
     except:
         (dyn_precision, stc_precision, rel_precision,
          cst_precision, rst_precision, bin_precision, bre_precision, passed) = ("COMPARE_FAILURE",) * 8

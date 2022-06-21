@@ -45,7 +45,8 @@ generate_related_ops_by_specified_op() {
 
 generate_related_ops_by_pr_file() {
   local pr_file="$1"
-  get_related_ops "${pr_file}" "${CHANGE_LOG}"
+  local ignore_file_prefix="$2"
+  get_related_ops "${pr_file}" "${CHANGE_LOG}" "${ignore_file_prefix}"
 }
 
 install_stest() {
@@ -95,9 +96,12 @@ install_csv_st_case() {
     return 1
   fi
 
-  echo "[INFO] install testcase: ${op_case}"
-  mkdir -p "${TEST_INSTALL_PATH}"
-  cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+  if [[ ! -d "${TEST_INSTALL_PATH}/${op_case##*/}" ]]; then
+    echo "[INFO] install testcase: ${op_case}"
+    mkdir -p "${TEST_INSTALL_PATH}"
+    cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+  fi
+
   return 0
 }
 
@@ -225,7 +229,7 @@ main() {
         if [[ $# -gt 2 ]] && [[ "x$3" != "xnone" ]]; then
           generate_related_ops_by_specified_op "$3"
         else
-          generate_related_ops_by_pr_file "${pr_file}"
+          generate_related_ops_by_pr_file "${pr_file}" "ops/built-in/tests/ut/"
         fi
         install_st_plus_test
         install_st_plus_script $4

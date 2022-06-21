@@ -51,50 +51,18 @@ class GPUProfilingInstance(ProfilingInstance):
 
     def __init__(self):
         super().__init__()
-        # Switches Storage
-        self.switches = get_global_storage()
         if self.switches.device_count == -1:
             self.switches.device_count = 8
-        # gdb friendly mode
-        self.debug_mode = self.switches.single_case_debugging
-        # Testcases
-        self.testcases: Optional[Dict[int, Set[UniversalTestcaseStructure]]] = None
-        self.testcase_manager: Optional[UniversalTestcaseFactory] = None
-        # Test Result CSV Storage
-        self.titles: Optional[tuple] = None
-        self.csv_writer = None
-        self.result_titles = ()
-        self.input_path: str = ""
-        self.result_path: str = ""
-        # Multiprocessing
-        self.mp_context = multiprocessing.get_context("forkserver")
-        self.device_to_process: Dict[int, SimpleCommandProcess] = {}
-        self.process_to_device: Dict[SimpleCommandProcess, int] = {}
-        # Initialized tasks without device
-        self.waiting_tasks: List[Task, ...] = []
-        self.total_tasks_count: int = 0
-        self.completed_task_count: int = 0
         # Tasks executing
         self.process_to_task: Dict[SimpleCommandProcess, Task] = {}
-        self.last_print_timestamp = time.time() - 20
-        self.start_timestamp = time.time()
 
     def profile(self):
+        logging.info("Preparing TBEToolkits GPU Profiling Infrastructure...")
+        logging.info(f"Mode: {self.switches.mode.name}")
         # Prepare titles
         self._prepare_result_titles()
         # Check result csv
-        self.input_path = self.switches.input_file_name
-        self.result_path = self.switches.output_file_name
-        if self.input_path is None:
-            raise RuntimeError("Please specify input csv file path")
-        if self.result_path is None:
-            split_input_path = self.input_path.split(".")
-            split_input_path[-2] += "_result"
-            self.result_path = '.'.join(split_input_path)
-        if not self.result_path.endswith(".csv"):
-            self.result_path += ".csv"
-        logging.info("Preparing TBEToolkits GPU Profiling Infrastructure...")
-        logging.info(f"Mode: {self.switches.mode.name}")
+        self._prepare_input_result_path()
         logging.info(f"result_path: {self.result_path}")
         logging.info(f"Precision Comparison: NOT AVAILABLE")
         # Print Device blacklist info
@@ -125,12 +93,6 @@ class GPUProfilingInstance(ProfilingInstance):
         # Close all processes
         for proc in self.process_to_device:
             proc.close()
-
-    def init_flush(self, file_path: str):
-        self.csv_writer = csv.writer(open(file_path, newline='', mode='w+'))
-
-    def flush(self, row: tuple):
-        self.csv_writer.writerow(row)
 
     @staticmethod
     def __get_process_stage_info(proc: SimpleCommandProcess) -> str:
@@ -164,20 +126,23 @@ class GPUProfilingInstance(ProfilingInstance):
 
     def _update_processes(self):
         self.__update_all_processes()
-        if time.time() - self.last_print_timestamp > self.print_time:
-            title = (f"Version: {VERSION} Summary (Device Total: {self.switches.device_count}) "
-                     f"Progress: {int(self.completed_task_count / self.total_tasks_count * 100)}% "
-                     f"{self.completed_task_count} / {self.total_tasks_count} "
-                     f"ET: {time.time() - self.start_timestamp}s",)
-            loop_count = self.switches.device_count // 2
-            remain_count = self.switches.device_count % 2
-            lines = [title]
-            for loop in range(loop_count):
-                lines.append((*self.__gen_info(loop * 2), *self.__gen_info(loop * 2 + 1)))
-            if remain_count:
-                lines.append((*self.__gen_info(loop_count * 2),))
-            logging.info("\n" + table_print(lines))
-            self.last_print_timestamp = time.time()
+        now = time.time()
+        if now - self.last_print_timestamp > self.print_time:
+            self.last_print_timestamp = now
+            self._output_progress(now)
+            if self.switches.summary_print:
+                title = (f"Version: {VERSION} Summary (Device Total: {self.switches.device_count}) "
+                        f"Progress: {int(self.completed_task_count / self.total_tasks_count * 100)}% "
+                        f"{self.completed_task_count} / {self.total_tasks_count} "
+                        f"ET: {now - self.start_timestamp}s",)
+                loop_count = self.switches.device_count // 2
+                remain_count = self.switches.device_count % 2
+                lines = [title]
+                for loop in range(loop_count):
+                    lines.append((*self.__gen_info(loop * 2), *self.__gen_info(loop * 2 + 1)))
+                if remain_count:
+                    lines.append((*self.__gen_info(loop_count * 2),))
+                logging.info("\n" + table_print(lines))
         # Check for completed process
         completed_process = []
         for proc in self.process_to_task:

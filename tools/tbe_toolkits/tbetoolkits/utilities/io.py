@@ -507,3 +507,10 @@ def __soc_core_num_override(switches: SWITCHES, secondary_param: str):
         raise RuntimeError("Could not override CORE_NUM to None")
     else:
         switches.soc_spec_override["CORE_NUM"] = int(secondary_param)
+
+
+@register_param(["--po", "--progress-output"])
+def __progress_output(switches: SWITCHES, secondary_param: str):
+    if not secondary_param:
+        raise RuntimeError("progress-output must specify a file to output.")
+    switches.progress_output = secondary_param

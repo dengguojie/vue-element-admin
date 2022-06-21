@@ -17,17 +17,18 @@
 get_related_ops() {
   if [[ $# -lt 2 ]]; then
     echo "[ERROR] invalid parameter for get_related_ops."
-    echo "[ERROR] it should be: get_related_ops pr_file output_change_log"
+    echo "[ERROR] it should be: get_related_ops pr_file output_change_log [ignore_file_prefix]"
     exit $STATUS_FAILED
   fi
 
   local pr_file="$1"
   local output_change_log="$2"
+  local ignore_file_prefix="$3"
 
   change_log_dir=`dirname ${output_change_log}`
   mkdir -p ${change_log_dir}
 
-  "$PYTHON" "${PY_GET_RELATED_OPS}" "${pr_file}" 2>&1 | tee "${output_change_log}"
+  "$PYTHON" "${PY_GET_RELATED_OPS}" "${pr_file}" "${ignore_file_prefix}" 2>&1 | tee "${output_change_log}"
   if [[ $? -ne 0 ]]; then
     echo "[ERROR] not found related ops stest"
     exit $STATUS_FAILED

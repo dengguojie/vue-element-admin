@@ -139,7 +139,8 @@ class SWITCHES:
         "testcase_server",
         "preserve_original_csv",
         "perf_compare_flag",
-        "plugins"
+        "plugins",
+        "progress_output"
     ]
 
     def __init__(self):
@@ -199,6 +200,7 @@ class SWITCHES:
         self.testcase_server = None
         self.preserve_original_csv = False
         self.plugins = {}
+        self.progress_output = None
 
     def has_plugin(self, plugin_type: str, op: str):
         return self.plugins and self.plugins[plugin_type] and op in self.plugins[plugin_type]

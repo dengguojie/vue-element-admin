@@ -102,7 +102,7 @@ class ProfilingInstance:
         self.mp_context = multiprocessing.get_context("forkserver")
         self.manager = None
         self.device_locks = ()
-        self.device_to_processes: Dict[int, Tuple[SimpleCommandProcess, ...]] = {}
+        self.device_to_process: Dict[int, Tuple[SimpleCommandProcess, ...]] = {}
         self.process_to_device: Dict[SimpleCommandProcess, int] = {}
         # Initialized tasks without device
         self.waiting_tasks: List[Task, ...] = []
@@ -140,16 +140,7 @@ class ProfilingInstance:
         # Prepare titles
         self._prepare_result_titles()
         # Check result csv
-        self.input_path = self.switches.input_file_name
-        self.result_path = self.switches.output_file_name
-        if self.input_path is None:
-            raise RuntimeError("Please specify input csv file path")
-        if self.result_path is None:
-            split_input_path = self.input_path.split(".")
-            split_input_path[-2] += "_result"
-            self.result_path = '.'.join(split_input_path)
-        if not self.result_path.endswith('.csv'):
-            self.result_path += '.csv'
+        self._prepare_input_result_path()
         # Download models
         if self.switches.mode.is_model():
             downloader.get_models(self.switches.device_platform, self.switches.mode)
@@ -289,7 +280,7 @@ class ProfilingInstance:
             if dev_lock is not None:
                 usable_devices.append(dev_logicid)
             else:
-                self.device_to_processes[dev_logicid] = ()
+                self.device_to_process[dev_logicid] = ()
         if len(usable_devices) <= 0:
             raise RuntimeError("Available device count is zero, aborting.")
         if self.switches.process_per_device is None:
@@ -305,11 +296,11 @@ class ProfilingInstance:
                 self.switches.parallel_fatbin = True
         logging.info(f"Parallel fat-bin compilation: {self.switches.parallel_fatbin}")
         for logicid in usable_devices:
-            self.device_to_processes[logicid] = tuple(
+            self.device_to_process[logicid] = tuple(
                 SimpleCommandProcess(self.mp_context, name=f"D{logicid}P{i}",
                                      debug_mode=self.switches.single_case_debugging)
                 for i in range(self.switches.process_per_device))
-            for proc in self.device_to_processes[logicid]:
+            for proc in self.device_to_process[logicid]:
                 self.process_to_device[proc] = logicid
 
     def _initialize_processes(self):
@@ -344,20 +335,23 @@ class ProfilingInstance:
 
     def _update_processes(self):
         self.__update_all_processes()
-        if time.time() - self.last_print_timestamp > self.print_time and self.switches.summary_print:
-            title = (f"Version: {VERSION} Summary (Device Total: {self.switches.device_count}) "
-                     f"Progress: {int(self.completed_task_count / self.total_tasks_count * 100)}% "
-                     f"{self.completed_task_count} / {self.total_tasks_count} "
-                     f"ET: {int(time.time() - self.start_timestamp)}s",)
-            loop_count = self.switches.device_count // 2
-            remain_count = self.switches.device_count % 2
-            lines = [title]
-            for loop in range(loop_count):
-                lines.append((*self.__gen_info(loop * 2), *self.__gen_info(loop * 2 + 1)))
-            if remain_count:
-                lines.append((*self.__gen_info(loop_count * 2),))
-            logging.info("\n" + table_print(lines))
-            self.last_print_timestamp = time.time()
+        now = time.time()
+        if now - self.last_print_timestamp > self.print_time:
+            self.last_print_timestamp = now
+            self._output_progress(now)
+            if self.switches.summary_print:
+                title = (f"Version: {VERSION} Summary (Device Total: {self.switches.device_count}) "
+                        f"Progress: {int(self.completed_task_count / self.total_tasks_count * 100)}% "
+                        f"{self.completed_task_count} / {self.total_tasks_count} "
+                        f"ET: {int(now - self.start_timestamp)}s",)
+                loop_count = self.switches.device_count // 2
+                remain_count = self.switches.device_count % 2
+                lines = [title]
+                for loop in range(loop_count):
+                    lines.append((*self.__gen_info(loop * 2), *self.__gen_info(loop * 2 + 1)))
+                if remain_count:
+                    lines.append((*self.__gen_info(loop_count * 2),))
+                logging.info("\n" + table_print(lines))
         # Check for completed process
         completed_process = []
         for proc in self.process_to_subtask:
@@ -368,8 +362,8 @@ class ProfilingInstance:
             self.__handle_result(proc)
             del self.process_to_subtask[proc]
         # Check for subtasks and launch subtasks for them
-        for dev_id in self.device_to_processes:
-            for dev_proc in self.device_to_processes[dev_id]:
+        for dev_id in self.device_to_process:
+            for dev_proc in self.device_to_process[dev_id]:
                 if dev_proc not in self.process_to_subtask and \
                         dev_id in self.device_subtasks and self.device_subtasks[dev_id]:
                     subtask = self.device_subtasks[dev_id].pop()
@@ -378,9 +372,29 @@ class ProfilingInstance:
                                  f"{subtask.task.testcase_struct.testcase_name} to process pid {dev_proc.get_pid()}")
                     subtask.send_to_proc(dev_proc)
 
+    def _output_progress(self, now):
+        if self.switches.progress_output:
+            with open(self.switches.progress_output, 'w') as f:
+                f.write(f"StartAt:{str(self.start_timestamp)}\n"
+                        f"ElapsedTime:{str(now - self.start_timestamp)}\n"
+                        f"TotalCases:{str(self.total_tasks_count)}\n"
+                        f"CompletedCases:{str(self.completed_task_count)}\n")
+
+    def _prepare_input_result_path(self):
+        self.input_path = self.switches.input_file_name
+        self.result_path = self.switches.output_file_name
+        if self.input_path is None:
+            raise RuntimeError("Please specify input csv file path")
+        if self.result_path is None:
+            split_input_path = self.input_path.split(".")
+            split_input_path[-2] += "_result"
+            self.result_path = '.'.join(split_input_path)
+        if not self.result_path.endswith('.csv'):
+            self.result_path += '.csv'
+
     def __update_all_processes(self):
-        for dev_id in self.device_to_processes:
-            for proc in self.device_to_processes[dev_id]:
+        for dev_id in self.device_to_process:
+            for proc in self.device_to_process[dev_id]:
                 proc.update()
 
     # noinspection PyBroadException
@@ -440,14 +454,14 @@ class ProfilingInstance:
                               f"{proc.data['stage'].ljust(20) if 'stage' in proc.data else 'UNKNOWN_STAGE'.ljust(20)} "
                               f"{proc.status.name.ljust(8)} "
                               f"{int(time.time() - proc.process_status_timestamp)}s"
-                              for proc in self.device_to_processes[device_id])
+                              for proc in self.device_to_process[device_id])
         return dev_info, proc_info
 
     def _push_tasks(self):
         # Simple task pushing mechanism
         if self.waiting_tasks:
-            for dev_id in self.device_to_processes:
-                for dev_proc in self.device_to_processes[dev_id]:
+            for dev_id in self.device_to_process:
+                for dev_proc in self.device_to_process[dev_id]:
                     if dev_proc not in self.process_to_subtask and self.waiting_tasks:
                         task = self.waiting_tasks.pop()
                         self.device_subtasks.setdefault(dev_id, [])

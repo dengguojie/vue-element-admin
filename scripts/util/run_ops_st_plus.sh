@@ -24,6 +24,7 @@ RESULT_SUMMARY="${CUR_DIR}/result_summary.txt"
 RESULT_CSV_FILE="${CUR_DIR}/st_plus_result.csv"
 RESULT_TAR_FILE="${CUR_DIR}/result_st_plus.tar.gz"
 PARAMS="${CUR_DIR}/params"
+PROGRESS_OUTPUT="${CUR_DIR}/progress.txt"
 
 run() {
   local op_dir="${CASE_SOURCE}"
@@ -31,6 +32,7 @@ run() {
   if [[ -f "${PARAMS}" ]]; then
     params=`cat ${PARAMS}`
   fi
+  params="${params} --fatbin-parallel=false --progress-output=${PROGRESS_OUTPUT}"
 
   echo "[INFO]===============now run st_plus ==================="
 
