@@ -1,0 +1,674 @@
+[
+  {
+    "case_name": "Test_GridSampler3DGrad_001",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,2,5,5],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "bilinear"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "zeros"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_002",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,3,16,16]],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,3,16,16]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "bilinear"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "zeros"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_003",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,3,16,16]],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "bilinear"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "border"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_004",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "bilinear"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "border"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_005",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "bilinear"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "reflection"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_006",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "bilinear"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "reflection"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_007",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "nearest"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "zeros"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_008",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "nearest"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "zeros"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_009",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "nearest"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "border"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_010",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "nearest"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "border"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_011",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "nearest"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "reflection"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "Test_GridSampler3DGrad_012",
+    "op": "GridSampler3DGrad",
+    "input_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,3,2,5,5]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-10,10]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16],
+        "data_distribute": ["uniform"],
+        "value_range": [[0,255]]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]],
+        "data_distribute": ["uniform"],
+        "value_range": [[-1,1]]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [32,3,3,16,16]
+      },
+      {
+        "format": ["ND"],
+        "type": ["float16","float","double"],
+        "shape": [[32,2,5,5,3]]
+      }
+    ],
+    "attr": [
+      {
+        "name": "interpolation_mode",
+        "type": "string",
+        "value": "nearest"
+      },
+      {
+        "name": "padding_mode",
+        "type": "string",
+        "value": "reflection"
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  }
+]
