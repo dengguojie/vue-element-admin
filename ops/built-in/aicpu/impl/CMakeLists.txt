@@ -108,6 +108,7 @@ set(local_kernels_src_files
     kernels/normalized/top_k.cc
     kernels/normalized/top_k_pq_distance.cc
     kernels/normalized/top_k_v2_d.cc
+    kernels/normalized/tril.cc
     kernels/normalized/triu.cc
     kernels/normalized/zeroslike.cc
     kernels/normalized/zeta.cc
