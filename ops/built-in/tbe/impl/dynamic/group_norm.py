@@ -61,6 +61,8 @@ def op_select_format(x, scale, offset, y, mean, variance, num_groups, data_forma
     """
 
     shape_x = x.get("ori_shape")
+    format_x = x.get("ori_format")
+    dtype_x = x.get("dtype")
 
     soc_version = tbe_platform.get_soc_spec("SHORT_SOC_VERSION")
     dtype_list = []
@@ -86,13 +88,14 @@ def op_select_format(x, scale, offset, y, mean, variance, num_groups, data_forma
         dtype_list = ["float16", "float32", "float32"]
         format_list0 = ["NC1HWC0", "NC1HWC0", "ND"]
         format_list1 = ["ND", "ND", "ND"]
+        only_support_nd = dtype_x == "float16" and format_x == "ND"
 
         if is_training:
             dtype_list = ["float32", "float32"]
             format_list0 = ["NC1HWC0", "ND"]
             format_list1 = ["ND", "ND"]
 
-        if -1 in shape_x:
+        if -1 in shape_x or only_support_nd:
             dtype_list = ["float32"]
             format_list0 = ["ND"]
             format_list1 = ["ND"]
