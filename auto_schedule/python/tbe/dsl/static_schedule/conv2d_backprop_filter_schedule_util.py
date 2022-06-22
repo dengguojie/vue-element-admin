@@ -71,6 +71,32 @@ class ScheduleAgentReverse(ScheduleAgent):
             self._scope_managers[key] = ScopeManagerReverse(self._sch[key])
         return self._scope_managers.get(key)
 
+    def rfactor(self, parent, rfactor_axis):
+        """
+        Factor a reduction axis in tensor's schedule to an explicit axis.
+
+        Parameters
+        ----------
+        tensor : Tensor, the tensor to be factored
+        axis: IterVar, the reduction axis in the shcedule to be factored
+
+        Returns
+        -------
+        tensor : Tensor
+
+        """
+        scopes = self[parent]
+        axis_unit = scopes.get_axis_unit()
+        rfactor_res = self._sch.rfactor(parent, rfactor_axis)
+        new_axes = self._sch[parent].leaf_iter_vars
+        for axis in new_axes:
+            if isinstance(axis.dom.extent, tvm.expr.IntImm):
+                axis_unit[axis] = [int(axis.dom.extent), int(axis.dom.extent)]
+            else:
+                axis_unit[axis] = [axis.dom.extent, axis.dom.extent]
+
+        return rfactor_res
+
 
 class Conv2dbpFilterReverseLoad:
     """

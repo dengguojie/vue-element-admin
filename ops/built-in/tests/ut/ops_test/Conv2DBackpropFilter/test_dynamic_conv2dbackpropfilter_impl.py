@@ -1230,6 +1230,7 @@ def test_conv2d_backprop_filter_binary_mode(test_arg):
             }
             build(sch, config)
 
+
 ut_case.add_cust_test_func(["Ascend910A"],test_func=test_conv2d_backprop_filter_binary_mode)
 
 

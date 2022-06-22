@@ -1031,8 +1031,8 @@ class Conv2dBackpropFilter:
             group_dict = {
                 "real_g": groups,
                 "mag_factor": 1,
-                "cin1_g": _ceil_div(cin, self.c0_size),
-                "cout_g": _ceil_div(cout, self.c0_size) * self.c0_size,
+                "cin1_g": get_te_var("fmap_c1").get_tvm_var(),
+                "cout_g": get_te_var("dedy_c1").get_tvm_var() * self.c0_size,
                 "cin_ori": fmap_c,
                 "cout_ori": cout
             }

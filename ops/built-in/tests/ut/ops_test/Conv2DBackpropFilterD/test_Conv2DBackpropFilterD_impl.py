@@ -456,6 +456,7 @@ def test_reverse(test_args):
     tbe.build(sch, config)
     set_current_compile_soc_info(test_args)
 
+
 ut_case.add_cust_test_func("Ascend910A", test_func=test_reverse)
 
 
