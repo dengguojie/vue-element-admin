@@ -423,7 +423,7 @@ def test_reverse(test_args):
                 'AL0_pbuffer': 2, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 2,
                 'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
             },
-            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 32
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 24
         }
     }
 

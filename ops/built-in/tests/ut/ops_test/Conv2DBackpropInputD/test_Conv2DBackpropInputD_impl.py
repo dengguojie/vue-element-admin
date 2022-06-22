@@ -553,7 +553,6 @@ ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at2)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at3)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_preload_cl0c_al1)
 
-
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
     sys.exit(0)

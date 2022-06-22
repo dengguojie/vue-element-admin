@@ -1191,7 +1191,7 @@ class CceConv2dBackpropFilterOp:
             preload_flag = tbe_sch_control_para.get("preload")
             reverse_load_flag = tbe_sch_control_para.get("reverse_load")
             if preload_flag and (tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2):
-                    sch[dw_cc].preload()
+                sch[dw_cc].preload()
             # reverse is conflit with nbuffer
             self.reverse_params["reverse_load"] = reverse_load_flag and (
                 not tiling.get("A_overhead_opt_flag")) and (not tiling.get("B_overhead_opt_flag"))

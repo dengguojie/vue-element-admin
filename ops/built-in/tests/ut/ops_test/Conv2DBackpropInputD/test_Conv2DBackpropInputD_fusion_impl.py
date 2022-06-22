@@ -616,6 +616,7 @@ ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_add_milan)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_fixpipe_milan)
 
+
 if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend310P3", "Ascend310"])
     sys.exit(0)

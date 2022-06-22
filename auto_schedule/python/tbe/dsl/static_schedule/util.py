@@ -98,7 +98,6 @@ TILING_RADICAL = 0
 TILING_CONSERVATIVE = 1
 
 INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
-UNIT_POST_ELTWISE = "post_eltwise"
 
 
 class L1CommonParam:
@@ -109,19 +108,12 @@ class L1CommonParam:
         pass
 
 
-def check_fixpipe_op_support():
-    if tbe_platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):
-        return tbe_platform_info.intrinsic_check_support(
-            INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
-    return False
-
-
 def get_fixpipe_emit_str():
     """
     get emit tag for fixpipe data flow
     :return: str
     """
-    return "fixpipe_op" if check_fixpipe_op_support() else "dma_copy"
+    return "fixpipe_op" if tbe_platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST) else "dma_copy"
 
 
 def parse_tbe_compile_para(compile_para):
