@@ -186,6 +186,11 @@ Status SwinAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph,
   FUSION_PASS_CHECK(mul_node == nullptr,
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get mul_node not success."),
                     return NOT_CHANGED);
+  std::string mul_name = mul_node->GetName();
+  if (string::npos != mul_name.find("swin") || string::npos == mul_name.find("CTCREVIVEV")) {
+    OP_LOGW(kNameFusionPass, "swin_attention_score fusion pass only used in swin_transformer network.");
+    return NOT_CHANGED;
+  }
   ge::NodePtr transposed_node = GetNodeFromMapping(PATTERN_TRANSPOSED, mapping);
   FUSION_PASS_CHECK(transposed_node == nullptr,
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get transposed_node not success."),
