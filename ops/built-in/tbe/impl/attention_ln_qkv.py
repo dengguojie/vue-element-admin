@@ -118,15 +118,24 @@ class AttentionLnQKV:
             self.matmul_m_l0 = Constant.CANDIDATE_TILING_M2
         else:
             self.matmul_m_l0 = Constant.CANDIDATE_TILING_M1
-        self.matmul_m_al1 = self.matmul_m_l0
         self.matmul_n_l0 = Constant.CANDIDATE_TILING_N
-        self.matmul_n_l1 = self.matmul_n_l0
         # restrict matmul_k_l0 by L0A_SIZE && matmul_m_l0 / L0B_SIZE && matmul_n_l0
         self.matmul_k_l0 = min(
             tbe_platform.get_soc_spec("L0A_SIZE") // self.matmul_m_l0 // Constant.FRAC_SIZE // \
                 Constant.DTYPE_SIZE.get(self.dtype) // Constant.DOUBLE_BUFFER,
             tbe_platform.get_soc_spec("L0B_SIZE") // self.matmul_n_l0 // Constant.FRAC_SIZE // \
                 Constant.DTYPE_SIZE.get(self.dtype) // Constant.DOUBLE_BUFFER)
+        # in case of matmul_m_l0 is less than m1_shape/block_m, it must be inference pattern running on the training
+        # platform with core_num is 32
+        if self.m1_shape // self.block_m < self.matmul_m_l0:
+            # To generalize old inference tiling, block_m should be set as 8 and block_n is 4
+            self.block_m = Constant.CANDIDATE_TILING_M2
+            self.block_n = Constant.CANDIDATE_TILING_K
+            self.matmul_m_l0 = Constant.CANDIDATE_TILING_M1
+            self.matmul_n_l0 = self.n1_shape // self.block_n
+            self.matmul_k_l0 = Constant.CANDIDATE_TILING_K
+        self.matmul_m_al1 = self.matmul_m_l0
+        self.matmul_n_l1 = self.matmul_n_l0
         self.matmul_k_al1 = self.matmul_k_l0
         self.matmul_k_bl1 = self.matmul_k_l0
         self.ln_mal1_times = self.matmul_m_al1 // self.ln_m_al1
