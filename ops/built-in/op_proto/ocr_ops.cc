@@ -174,7 +174,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
   (void)op.GetAttr("data_format", dt_format);
   const std::set<std::string> kVaildFormat = {"NHWC", "NCHW"};
   if (kVaildFormat.find(dt_format) == kVaildFormat.end()) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "Format is invalid, is ", dt_format);
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Format is invalid, is %s", dt_format.c_str());
     return GRAPH_FAILED;
   }
   
@@ -182,7 +182,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
   size_t pos_h = dt_format.find("H") - 1;
   size_t pos_w = dt_format.find("W") - 1;
   if (image_shape[pos_c] != kChannelNum) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "Img channel must be 3, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Img channel must be 3, but got %lld",
 	    image_shape[pos_c]);
     return GRAPH_FAILED;
   }
@@ -231,32 +231,32 @@ IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
   std::vector<int64_t> list_out_size;
   (void)op.GetAttr("size", list_out_size);
   if (list_out_size.size() != 2) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "The size of size attr must be 2, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "The size of size attr must be 2, but got %d",
 	    list_out_size.size());
     return GRAPH_FAILED;
   }
 
   if (imgs_data_desc.GetShape().GetDimNum() != 1) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs data shape dims size must be 1, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs data shape dims size must be 1, but got %d",
       imgs_data_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   if (imgs_offset_desc.GetShape().GetDimNum() != 1) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs offset shape dims size must be 1, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs offset shape dims size must be 1, but got %d",
       imgs_offset_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   if (imgs_size_desc.GetShape().GetDimNum() != 2) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs size shape dims size must be 2, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs size shape dims size must be 2, but got %d",
       imgs_size_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   /* dim 1 is the shape of image, must be 3 */
   if (imgs_size_desc.GetShape().GetDim(1) != 3) {
-    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs size shape dim[1] must be 3, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs size shape dim[1] must be 3, but got %lld",
       imgs_size_desc.GetShape().GetDim(1));
     return GRAPH_FAILED;
   }

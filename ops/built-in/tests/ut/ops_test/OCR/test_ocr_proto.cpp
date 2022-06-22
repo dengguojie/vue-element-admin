@@ -64,6 +64,14 @@ TEST_F(OCRTest, OCRDetectionPreHandleInferShapeFail) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
+TEST_F(OCRTest, OCRDetectionPreHandleInferShapeErrorFormat) {
+  ge::op::OCRDetectionPreHandle op;
+  op.UpdateInputDesc("img", create_desc({2,2,2}, ge::DT_UINT8));
+  op.SetAttr("data_format", "NHWC0");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
 TEST_F(OCRTest, OCRIdentifyPreHandleInferShape) {
   ge::op::OCRIdentifyPreHandle op;
   op.UpdateInputDesc("imgs_data", create_desc({3}, ge::DT_UINT8));
@@ -163,6 +171,31 @@ TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeUnknown) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeErrorDim) {
+  ge::op::OCRIdentifyPreHandle op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 100}};
+  auto tensor_desc1 = create_desc_shape_range({-1},
+                                             ge::DT_UINT8, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range);
+  auto tensor_desc2 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range);
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{1, 100}, {3, 3}};
+  auto tensor_desc3 = create_desc_shape_range({-1, 3, 2},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1, 3, 2},
+                                             ge::FORMAT_ND, shape_range2);
+  op.UpdateInputDesc("imgs_data", tensor_desc1);
+  op.UpdateInputDesc("imgs_offset", tensor_desc2);
+  op.UpdateInputDesc("imgs_size", tensor_desc3);
+  
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("size", {1,1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
 
 TEST_F(OCRTest, OCRRecognitionPreHandleInferShape) {
   ge::op::OCRRecognitionPreHandle op;
