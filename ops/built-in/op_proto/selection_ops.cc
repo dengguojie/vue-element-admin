@@ -544,30 +544,30 @@ COMMON_INFER_FUNC_REG(TileD, TileDInferShape);
 // -----------------------TileD Op end----------------------------------
 
 // -----------------------range Op Begin----------------------------------
-static void GetRangeConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+static void GetRangeConstValue(const Operator& op, const GeTensor* const_tensor, const DataType& dtype,
                                std::vector<float>& const_data) {
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
-    size = const_tensor.GetSize() / sizeof(int32_t);
+    int32_t* const_data_ptr = (int32_t*)const_tensor->GetData().GetData();
+    size = const_tensor->GetData().GetSize() / sizeof(int32_t);
     for (size_t i = 0; i < size; i++) {
       const_data.push_back((int32_t)((*(const_data_ptr + i))));
     }
   } else if (dtype == ge::DT_FLOAT) {
-    float* const_data_ptr = (float*)const_tensor.GetData();
-    size = const_tensor.GetSize() / sizeof(float);
+    float* const_data_ptr = (float*)const_tensor->GetData().GetData();
+    size = const_tensor->GetData().GetSize() / sizeof(float);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((float)((*(const_data_ptr + i))));
     }
   } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
-    size = const_tensor.GetSize() / sizeof(int64_t);
+    int64_t* const_data_ptr = (int64_t*)const_tensor->GetData().GetData();
+    size = const_tensor->GetData().GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((int64_t)((*(const_data_ptr + i))));
     }
   } else if (dtype == ge::DT_DOUBLE) {
-    double* const_data_ptr = (double*)const_tensor.GetData();
-    size = const_tensor.GetSize() / sizeof(double);
+    double* const_data_ptr = (double*)const_tensor->GetData().GetData();
+    size = const_tensor->GetData().GetSize() / sizeof(double);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back((double)((*(const_data_ptr + i))));
     }
@@ -577,9 +577,6 @@ static void GetRangeConstValue(const Operator& op, const Tensor& const_tensor, c
 }
 
 IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
-  Tensor input_start_tensor;
-  Tensor input_limit_tensor;
-  Tensor input_delta_tensor;
   std::vector<float> start_multiples;
   std::vector<float> limit_multiples;
   std::vector<float> delta_multiples;
@@ -592,9 +589,12 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
   GeTensorDescPtr start_desc = op_desc->MutableInputDesc(0);
   GeTensorDescPtr limit_desc = op_desc->MutableInputDesc(1);
   GeTensorDescPtr delta_desc = op_desc->MutableInputDesc(2);
-  if ((op.GetInputConstData("start", input_start_tensor) != GRAPH_SUCCESS) ||
-      (op.GetInputConstData("delta", input_delta_tensor) != GRAPH_SUCCESS) ||
-      (op.GetInputConstData("limit", input_limit_tensor) != GRAPH_SUCCESS)) {
+  const GeTensor *input_start_tensor = OpDescUtils::GetInputConstData(op, 0);
+  const GeTensor *input_limit_tensor = OpDescUtils::GetInputConstData(op, 1);
+  const GeTensor *input_delta_tensor = OpDescUtils::GetInputConstData(op, 2);
+  if ((input_start_tensor == nullptr) ||
+      (input_limit_tensor == nullptr) ||
+      (input_delta_tensor == nullptr)) {
     OP_LOGI(TbeGetName(op).c_str(), "Get constValue failed of in input[start], input[delta], input[limit]");
     dimsIn.emplace_back(UNKNOWN_DIM);
     y_output->SetShape(GeShape(dimsIn));

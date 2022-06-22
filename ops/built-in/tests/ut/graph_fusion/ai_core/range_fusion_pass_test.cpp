@@ -172,3 +172,93 @@ TEST_F(range_fusion_pass_test, range_fusion_pass_test_3) {
   }
   EXPECT_EQ(ret, true);
 }
+
+TEST_F(range_fusion_pass_test, range_fusion_pass_test_4) {
+  ge::Graph graph("range_fusion_pass_test_4");
+
+  auto input0 = op::Const("input0");
+  Tensor axis;
+  float* dataValue = new float[1];
+  *dataValue = 1.1;
+  axis.SetTensorDesc(TensorDesc(ge::Shape({1}), FORMAT_NCHW, DT_INT64));
+  axis.SetData((uint8_t*)dataValue, 4);
+  TensorDesc desc_data(ge::Shape({1, 1, 1, 1}), FORMAT_NCHW, DT_INT64);
+  input0.set_attr_value(axis);
+  input0.update_output_desc_y(desc_data);
+  delete[] dataValue;
+
+  auto input1 = op::Const("input1");
+  input1.set_attr_value(axis);
+  input1.update_output_desc_y(desc_data);
+  auto input2 = op::Const("input2");
+  input2.set_attr_value(axis);
+  input2.update_output_desc_y(desc_data);
+
+  auto range = op::Range("range");
+  range.set_input_start(input0);
+  range.set_input_limit(input1);
+  range.set_input_delta(input2);
+
+  auto output0 = op::Data("output0");
+  output0.set_input_x(range);
+
+  std::vector<Operator> inputs{input0, input1, input2};
+  std::vector<Operator> outputs{output0};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("RangeFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool ret = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "RangeD") {
+      ret = false;
+    }
+  }
+  EXPECT_EQ(ret, true);
+}
+
+TEST_F(range_fusion_pass_test, range_fusion_pass_test_5) {
+  ge::Graph graph("range_fusion_pass_test_5");
+
+  auto input0 = op::Const("input0");
+  Tensor axis;
+  float* dataValue = new float[1];
+  *dataValue = 1.1;
+  axis.SetTensorDesc(TensorDesc(ge::Shape({1}), FORMAT_NCHW, DT_DOUBLE));
+  axis.SetData((uint8_t*)dataValue, 4);
+  TensorDesc desc_data(ge::Shape({1, 1, 1, 1}), FORMAT_NCHW, DT_DOUBLE);
+  input0.set_attr_value(axis);
+  input0.update_output_desc_y(desc_data);
+  delete[] dataValue;
+
+  auto input1 = op::Const("input1");
+  input1.set_attr_value(axis);
+  input1.update_output_desc_y(desc_data);
+  auto input2 = op::Const("input2");
+  input2.set_attr_value(axis);
+  input2.update_output_desc_y(desc_data);
+
+  auto range = op::Range("range");
+  range.set_input_start(input0);
+  range.set_input_limit(input1);
+  range.set_input_delta(input2);
+
+  auto output0 = op::Data("output0");
+  output0.set_input_x(range);
+
+  std::vector<Operator> inputs{input0, input1, input2};
+  std::vector<Operator> outputs{output0};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("RangeFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool ret = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "RangeD") {
+      ret = false;
+    }
+  }
+  EXPECT_EQ(ret, true);
+}
