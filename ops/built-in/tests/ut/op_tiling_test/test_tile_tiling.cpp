@@ -148,6 +148,6 @@ TEST_F(TileTiling, Tile_tiling3) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(runInfo.GetBlockDim(), 30);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 3 26 ");
+  EXPECT_EQ(runInfo.GetBlockDim(), 28);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 4 21 ");
 }

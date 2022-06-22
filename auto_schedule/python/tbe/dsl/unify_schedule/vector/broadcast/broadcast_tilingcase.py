@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright 2019-2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2019-2020. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,16 +38,21 @@ DEFAULT = "default"
 COMMON = "common"
 BROADCAST = "broadcast"
 SCALAR = "scalar"
-UNKNOWN = "UNKNOWN"
+UNKNOWN = "unknown"
+ALIGN = "align"
 SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 EMPTY = "empty"
+PURE_BRC = "pure_brc"
+STORE_ALIGN = "store_align"
 STATIC = "static"
 ORIGINAL = "original"
 DB_KEY = 10000
 EMPTY_KEY = 2 ** 31 - 1
 BLOCK_SIZE_BYTE = 32
+DISABLE_BRANCH_NODE_LIMIT = 60
+DIGIST_BASE = 10
 
 # TYPE DOUNDS
 TYPE_DOUNDS = {
@@ -71,11 +76,28 @@ class TilingStrategy(Enum):
     EMPTY = auto()
 
 
+class TilingKey:
+    CONST_BASE_KEY = 100000000
+    SPECIAL_BASE_KEY = 200000000
+    PURE_BRC_BASE_KEY = 300000000
+    STORE_ALIGN_BASE_KEY = 400000000
+    PATTERN_KEY = 10000000
+    PATTERN_OFFSET = 30000000
+    DB_KEY = 10000
+    FEATURE_KEY = 1000000
+    COMMON_KEY = 1
+    BROADCAST_KEY = 2
+    SCALAR_KEY = 3
+    ALIGN_KEY = 8
+    UNKNOWN_KEY = 9
+
+
 # noinspection PyMethodMayBeStatic
 class BroadcastComputation(Computation):
     """
     Broadcast Tilingcase Computation
     """
+
     def __init__(self, outs, option):
         self.outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
         self.option = option
@@ -83,7 +105,7 @@ class BroadcastComputation(Computation):
     def do_tiling_case(self):
         # ###############TILING KEY RULE################
         # use int32, max value 2147483647, currently using 9 bits, the description from high to low is as follows:
-        # 0: model, 0 is ORIGINAL, 1 is CONST, 2 is SPECIAL or SPECIAL_SCALAR
+        # 0: model, 0 is ORIGINAL, 1 is CONST, 2 is SPECIAL or SPECIAL_SCALAR, 3 is PURE_BRC
         # 1-3: pattern, 1 is COMMON, 2 is BROADCAST, 3 is SCALAR, only valid by SPECIAL and SPECIAL_SCALAR
         # 4: double buffer, 0 is disable, 1 is enable
         # 5-8: block_split_axis * dim_length + ub_split_axis
@@ -104,6 +126,10 @@ class BroadcastComputation(Computation):
             tiling_case = self._calc_const_tiling_case(dim_len)
         elif mode == EMPTY:
             tiling_case = self._calc_empty_tiling_case()
+        elif mode == STORE_ALIGN:
+            tiling_case = self._calc_store_align_tiling_case(dim_len)
+        elif mode == PURE_BRC:
+            tiling_case = self._calc_pure_brc_tiling_case(dim_len, dtype)
         else:
             tiling_case = self._calc_original_tiling_case(dim_len, dtype)
 
@@ -130,20 +156,26 @@ class BroadcastComputation(Computation):
     def _pure_eletwise_db_func(self):
         return True
 
-    def _calc_special_tiling_case(self, dim_len, dtype):
-        pattern = operation.get_context().get_current_compute().get(CompileInfo.PATTERN)
-        base_key = 200000000
-        base = 10000000
+    def _calc_pattern_key(self, pattern):
+        pattern_key = 0
+        base = TilingKey.PATTERN_KEY
         for axis in pattern:
             if axis == COMMON:
-                base_key += base
+                pattern_key += (base * TilingKey.COMMON_KEY)
             elif axis == BROADCAST:
-                base_key += (base * 2)
+                pattern_key += (base * TilingKey.BROADCAST_KEY)
             elif axis == SCALAR:
-                base_key += (base * 3)
+                pattern_key += (base * TilingKey.SCALAR_KEY)
+            elif axis == ALIGN:
+                pattern_key += (base * TilingKey.ALIGN_KEY)
             elif axis == UNKNOWN:
-                base_key += (base * 9)
-            base //= 10
+                pattern_key += (base * TilingKey.UNKNOWN_KEY)
+            base //= DIGIST_BASE
+        return pattern_key
+
+    def _calc_special_tiling_case(self, dim_len, dtype):
+        pattern = operation.get_context().get_current_compute().get(CompileInfo.PATTERN)
+        base_key = TilingKey.SPECIAL_BASE_KEY + self._calc_pattern_key(pattern)
 
         t_pattern = tuple(pattern)
         enable_db_func = self._default_db_func
@@ -155,11 +187,40 @@ class BroadcastComputation(Computation):
         if dim_len == 1:
             tiling_case = self._calc_one_dim(dtype, base_key, enable_db_func)
         else:
-            tiling_case = self._calc_general(dim_len, base_key, enable_db_func)
+            tiling_case = self._calc_general(dim_len, base_key, False, enable_db_func)
+        return tiling_case
+
+    def _calc_store_align_tiling_case(self, dim_len):
+        pattern = operation.get_context().get_current_compute().get(CompileInfo.PATTERN)
+        base_key = TilingKey.STORE_ALIGN_BASE_KEY + self._calc_pattern_key(pattern)
+        enable_db_func = self._default_db_func
+        tiling_case = self._calc_general(dim_len, base_key, True, enable_db_func)
+        return tiling_case
+
+    def _calc_pure_brc_tiling_case(self, dim_len, dtype):
+        pattern = operation.get_context().get_current_compute().get(CompileInfo.PATTERN)
+        base_key = TilingKey.PURE_BRC_BASE_KEY + self._calc_pattern_key([pattern[-1]]) + TilingKey.PATTERN_OFFSET
+        last_common = pattern[-1] == COMMON
+        operation.get_context().add("_pure_brc_common", last_common)
+        enable_db_func = self._default_db_func
+        if dim_len == 1:
+            tiling_case = self._calc_one_dim(dtype, base_key, enable_db_func)
+        else:
+            tiling_case = self._calc_general(dim_len, base_key, False, enable_db_func)
+            if util.is_v220():
+                return tiling_case
+            base_key += TilingKey.FEATURE_KEY
+            if last_common:
+                base_key += DB_KEY
+                operation.get_context().add("_pure_brc_common_db", True)
+                store_align_case = self._calc_pure_brc_store_align(dim_len, base_key, True)
+            else:
+                store_align_case = self._calc_pure_brc_store_align(dim_len, base_key)
+            tiling_case.extend(store_align_case)
         return tiling_case
 
     def _calc_const_tiling_case(self, dim_len):
-        base_key = operation.get_context().get("_const_base_key") or 100000000
+        base_key = operation.get_context().get("_const_base_key") or TilingKey.CONST_BASE_KEY
         const_tiling_case = BroadcastTilingCase()
         const_tiling_case.set_const_tiling_case(base_key, dim_len == 1)
         tiling_case = [const_tiling_case]
@@ -178,7 +239,7 @@ class BroadcastComputation(Computation):
         if dim_len == 1:
             tiling_case = self._calc_one_dim(dtype, base_key, enable_db_func)
         else:
-            tiling_case = self._calc_general(dim_len, base_key, enable_db_func)
+            tiling_case = self._calc_general(dim_len, base_key, False, enable_db_func)
         return tiling_case
 
     def _special_last_broadcast_db_func(self, db_params):
@@ -199,14 +260,35 @@ class BroadcastComputation(Computation):
 
         return tiling_case
 
-    def _calc_general(self, dim_len, base_key, enable_db_func):
+    def _calc_pure_brc_store_align(self, dim_len, base_key, enable_db=False):
         tiling_case = []
 
         # methodology 1:
         # general, no split: no block tiling, no ub tiling, no db
         none_cut_tiling_case = BroadcastTilingCase()
-        none_cut_tiling_case.set_none_cut_tiling_case(base_key)
+        none_cut_tiling_case.set_none_cut_tiling_case(base_key, True)
         tiling_case.append(none_cut_tiling_case)
+
+        # methodology 2:
+        block_axis = 0
+        base_key += 1
+        for i in range(dim_len):
+            tiling_key = base_key + block_axis * dim_len + i
+            one_cut_tiling_case = BroadcastTilingCase()
+            one_cut_tiling_case.set_pure_brc_store_align_tiling_case(tiling_key, block_axis, i, enable_db=enable_db)
+            tiling_case.append(one_cut_tiling_case)
+
+        return tiling_case
+
+    def _calc_general(self, dim_len, base_key, is_storage_align, enable_db_func):
+        tiling_case = []
+
+        # methodology 1:
+        # general, no split: no block tiling, no ub tiling, no db
+        if not is_storage_align:
+            none_cut_tiling_case = BroadcastTilingCase()
+            none_cut_tiling_case.set_none_cut_tiling_case(base_key)
+            tiling_case.append(none_cut_tiling_case)
 
         # methodology 2:
         # split special axis for block tiling and ub tiling
@@ -219,14 +301,15 @@ class BroadcastComputation(Computation):
         for i in range(dim_len):
             tiling_key = base_key + block_axis * dim_len + i
             one_cut_tiling_case = BroadcastTilingCase()
-            one_cut_tiling_case.set_one_cut_tiling_case(tiling_key, block_axis, i)
+            one_cut_tiling_case.set_general_tiling_case(tiling_key, block_axis, i, is_storage_align)
             tiling_case.append(one_cut_tiling_case)
 
             db_params = {"ub_tiling_axis": i, "dim_len": dim_len}
             if enable_db_func(db_params):
                 tiling_key = base_key + block_axis * dim_len + i + DB_KEY
                 one_cut_db_tiling_case = BroadcastTilingCase()
-                one_cut_db_tiling_case.set_one_cut_tiling_case(tiling_key, block_axis, i, enable_db=True)
+                one_cut_db_tiling_case.set_general_tiling_case(
+                    tiling_key, block_axis, i, is_storage_align, enable_db=True)
                 tiling_case.append(one_cut_db_tiling_case)
 
         return tiling_case
@@ -262,26 +345,35 @@ def _pre_build():
         for cpt in cpt_computes:
             if cpt.get("_mode") == EMPTY or len(cpt.get_schedules()) == 0:
                 continue
-            cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []
             tiling_key = -1
             for sch_context in cpt.get_schedules():
                 if sch_context.get("sch_pattern") == "rl_sch":
                     continue
-                cpt_ub_sizes.append(sch_context.get(CompileInfo.UB_SIZE))
-                cpt_max_dtypes.append(sch_context.get(CompileInfo.MAX_DTYPE))
-                cpt_coexisting_quantitys.append(sch_context.get(CompileInfo.COEXISTING_QUANTITY))
-                cores.append(sch_context.get(CompileInfo.CORE_NUM))
+                cur_ub_size = sch_context.get(CompileInfo.UB_SIZE)
+                cur_max_dtype = sch_context.get(CompileInfo.MAX_DTYPE)
+                cur_coexisting_quantity = sch_context.get(CompileInfo.COEXISTING_QUANTITY)
+                cur_core = sch_context.get(CompileInfo.CORE_NUM)
+                max_brc_type = sch_context.get(CompileInfo.MAX_BRC_TYPE) or 1
                 tiling_key = sch_context.get("_tiling_key")
-            pattern_key = _get_pattern_key(tiling_key)
-            max_available_ub = (((min(cpt_ub_sizes) // max(cpt_coexisting_quantitys)) // BLOCK_SIZE_BYTE) *
-                                BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
-            max_available_ub_db = (((min(cpt_ub_sizes) // 2 // max(cpt_coexisting_quantitys)) // BLOCK_SIZE_BYTE) *
-                                   BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
-            base_info[pattern_key] = [max(cores), max(cpt_max_dtypes), max_available_ub, max_available_ub_db]
+                pattern_key = _get_pattern_key(tiling_key)
+                max_available_ub = (((cur_ub_size // cur_coexisting_quantity) // BLOCK_SIZE_BYTE) *
+                                    BLOCK_SIZE_BYTE) // cur_max_dtype
+                max_available_ub_db = (((cur_ub_size // 2 // cur_coexisting_quantity) // BLOCK_SIZE_BYTE) *
+                                       BLOCK_SIZE_BYTE) // cur_max_dtype
+                default_base_info = [cur_core, cur_max_dtype, max_available_ub, max_available_ub_db, max_brc_type]
+                last_base_info = base_info.get(pattern_key, default_base_info)
+                base_info[pattern_key] = [max(cur_core, last_base_info[0]),
+                                          max(cur_max_dtype, last_base_info[1]),
+                                          min(max_available_ub, last_base_info[2]),
+                                          min(max_available_ub_db, last_base_info[3]),
+                                          max(max_brc_type, last_base_info[4])]
         operation.add_compile_info_inner(CompileInfo.BASE_INFO, base_info)
 
     # add build config
     operation.add_build_arg("double_buffer_non_reuse", True)
+    node_nums = operation.get_context().get("_node_nums") or 0
+    if node_nums > DISABLE_BRANCH_NODE_LIMIT:
+        operation.add_build_arg("enable_branch_eliminator_else_case", False)
 
     only_const_tiling = False
     use_special_pattern = False
@@ -289,16 +381,24 @@ def _pre_build():
     support_broadcast = operation.get_context().get("_support_broadcast")
     unknown_rank = operation.get_context().get("_unknown_rank") or False
     has_all_unknown = operation.get_context().get("_has_all_unknown") or False
+    all_unknown_last_const = operation.get_context().get("_all_unknown_last_const") or False
     cpt_computes = operation.get_context().get_computes()
     is_const = False
+    is_pure_brc = False
+    has_store_align = False
     compute_patterns = set()
     for compute in cpt_computes:
-        if compute.get("_mode") in [SPECIAL, SPECIAL_SCALAR]:
+        mode = compute.get("_mode")
+        if mode in [SPECIAL, SPECIAL_SCALAR]:
             use_special_pattern = True
-        if compute.get("_mode") == SPECIAL_SCALAR:
+        if mode == SPECIAL_SCALAR:
             support_absorbable_broadcast = True
-        if compute.get("_mode") == CONST:
+        if mode == CONST:
             is_const = True
+        if mode == PURE_BRC:
+            is_pure_brc = True
+        if mode == STORE_ALIGN:
+            has_store_align = True
 
         compute_patterns.add(compute.get_pattern())
 
@@ -309,6 +409,9 @@ def _pre_build():
         operation.add_compile_info_inner(CompileInfo.CONTAINS_ELEWISE_SCH, True)
 
     operation.add_compile_info_inner(CompileInfo.SOC_VERSION, get_soc_spec(SHORT_SOC_VERSION))
+    operation.add_compile_info_inner("_all_unknown_last_const", all_unknown_last_const)
+    operation.add_compile_info_inner("_is_pure_brc", is_pure_brc)
+    operation.add_compile_info_inner("_has_store_align", has_store_align)
     if is_const:
         _add_const_compile_info()
         return
@@ -366,13 +469,15 @@ class BroadcastTilingCase:
         self._ub_factor_bound = None
         self._enable_db = False
         self._is_one_dim = False
+        self._is_storage_align = False
 
-    def set_none_cut_tiling_case(self, tiling_key):
+    def set_none_cut_tiling_case(self, tiling_key, is_storage_align=False):
         """
         set_none_cut_tiling_case
         """
         self._tiling_strategy = TilingStrategy.NONE_CUT
         self._tiling_key = tiling_key
+        self._is_storage_align = is_storage_align
 
     def set_const_tiling_case(self, tiling_key, is_one_dim=False):
         """
@@ -393,6 +498,33 @@ class BroadcastTilingCase:
         self._ub_split_axis = ub_split_axis
         self._enable_db = enable_db
         self._is_one_dim = is_one_dim
+
+    def set_general_tiling_case(self, tiling_key, block_split_axis,
+                                ub_split_axis, is_storage_align=False,
+                                enable_db=False, is_one_dim=False):
+        """
+        set_general_tiling_case
+        """
+        self._tiling_strategy = TilingStrategy.ONE_CUT
+        self._tiling_key = tiling_key
+        self._block_split_axis = block_split_axis
+        self._ub_split_axis = ub_split_axis
+        self._enable_db = enable_db
+        self._is_one_dim = is_one_dim
+        self._is_storage_align = is_storage_align
+
+    def set_pure_brc_store_align_tiling_case(self, tiling_key, block_split_axis,
+                                             ub_split_axis, enable_db=False, is_one_dim=False):
+        """
+        set_pure_brc_store_align_tiling_case
+        """
+        self._tiling_strategy = TilingStrategy.ONE_CUT
+        self._tiling_key = tiling_key
+        self._block_split_axis = block_split_axis
+        self._ub_split_axis = ub_split_axis
+        self._enable_db = enable_db
+        self._is_one_dim = is_one_dim
+        self._is_storage_align = True
 
     def set_one_dim_tiling_case(self, tiling_key, ub_factor_bound, enable_db=False, is_one_dim=False):
         """
@@ -455,3 +587,10 @@ class BroadcastTilingCase:
         return ub_factor_bound
         """
         return self._ub_factor_bound
+
+    @property
+    def is_storage_align(self):
+        """
+        return is_storage_align
+        """
+        return self._is_storage_align

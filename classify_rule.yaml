@@ -254,6 +254,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/unify_schedule/auto_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/broadcast_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/broadcast_tilingcase.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/broadcast_helper.py
       - auto_schedule/python/tbe/dsl/unify_schedule/build.py
       - auto_schedule/python/tbe/dsl/unify_schedule/computation.py
       - auto_schedule/python/tbe/dsl/unify_schedule/constants.py

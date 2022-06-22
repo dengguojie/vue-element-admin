@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# Copyright 2019-2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,23 +27,25 @@ from enum import auto
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
+from tbe import dsl
 
 from . import util
 
 COMMON = "common"
 BROADCAST = "broadcast"
-UNKNOWN = "UNKNOWN"
+UNKNOWN = "unknown"
+ALIGN = "align"
 SCALAR = "scalar"
-SPECIAL = "special"
-SPECIAL_SCALAR = "special_scalar"
-CONST = "const"
-ORIGINAL = "original"
-EMPTY = "empty"
 STATIC_CONTEXT = "static"
+FORMAT_5HD = "NC1HWC0"
+
 VAR_BOUND_LIMIT = 2147483647
 MAX_BROADCAST_INPUT = 70
 UNKNOWN_RANK = -2
 MAX_RANK = 8
+UNKNOWN_SHAPE = -1
+BRC_SHAPE = 1
+COMPLETE = 1
 CONST_5HD_FORMATS = ["N", "C1", "H", "W", "C0"]
 PAD_C0_MAPPING = {
     "int64": 4,
@@ -156,6 +158,42 @@ def check_5hd(inputs, is_binary):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
+class BrcMode:
+    """
+    broadcast mode
+    """
+    SPECIAL = "special"
+    SPECIAL_SCALAR = "special_scalar"
+    PURE_BRC = "pure_brc"
+    STORE_ALIGN = "store_align"
+    CONST = "const"
+    ORIGINAL = "original"
+    EMPTY = "empty"
+
+
+class BrcOptParams:
+    """
+    broadcast schedule compile options
+    "disable_optimization": bool, turn off the optimization of the fuse axis
+    "const_fuse_shape": bool, turn off the optimization of the fuse axis for const input
+    "input_shape_type": list, the length is the same as input num. It represented the type of input shape and
+                        only support 0 or 1. 1 means complete shape, 0 means partial shape, default is all 0.
+    "same_input_shape_group": list[list], the value in sub_list represents index of input and
+                              all inputs in sub_list are same.
+                              Example: [[1, 2]] means input 1 and input 2 are equal.
+                              But intersection is not supported, such as [[1, 2], [2, 3]] is illegal.
+                              Default is all inputs are not same.
+    "pure_brc": pure broadcast
+    "ignore_fractal_format":
+    """
+    INPUT_SHAPE_TYPE = "input_shape_type"
+    SAME_INPUT_SHAPE_GROUP = "same_input_shape_group"
+    PURE_BRC = "pure_brc"
+    DISABLE_OPTIMIZATION = "disable_optimization"
+    CONST_FUSE_SHAPE = "const_fuse_shape"
+    IGNORE_FRACTAL_FORMAT = "ignore_fractal_format"
+
+
 class BroadcastElewiseClassifier:
     """
     Elewise with broadcast classifier
@@ -165,24 +203,82 @@ class BroadcastElewiseClassifier:
         """
         init
         :param ins:
+        :param extra_params: broadcast schedule compile options
         """
         self.ins = ins
         extra_params = {} if extra_params is None else extra_params
-        self.disable_optimization = extra_params.get("disable_optimization", False)
-        self.ignore_fractal_format = extra_params.get("ignore_fractal_format", True)
+        self.disable_optimization = extra_params.get(BrcOptParams.DISABLE_OPTIMIZATION, False)
+        self.ignore_fractal_format = extra_params.get(BrcOptParams.IGNORE_FRACTAL_FORMAT, True)
         operation.get_context().add("_ignore_fractal_format", self.ignore_fractal_format)
+        self.const_fuse_shape = extra_params.get(BrcOptParams.CONST_FUSE_SHAPE, False)
+        if BrcOptParams.INPUT_SHAPE_TYPE in extra_params:
+            self.input_shape_type = list(extra_params.get(BrcOptParams.INPUT_SHAPE_TYPE, []))
+            if len(self.input_shape_type) != len(ins):
+                dict_args = {
+                    "errCode": "E90001",
+                    "detailed_cause": "input_shape_type length error, it must be equal to the number of inputs"
+                }
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+            for value in self.input_shape_type:
+                if value not in (0, 1):
+                    dict_args = {
+                        "errCode": "E90001",
+                        "detailed_cause": "input_shape_type value error, only support 0 or 1"
+                    }
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+        else:
+            self.input_shape_type = [0] * len(ins)
+        if BrcOptParams.SAME_INPUT_SHAPE_GROUP in extra_params:
+            self.same_input_shape_group = list(extra_params.get(BrcOptParams.SAME_INPUT_SHAPE_GROUP, []))
+            input_index = set()
+            for index, value in enumerate(self.same_input_shape_group):
+                if isinstance(value, int):
+                    self.same_input_shape_group[index] = [value]
+                input_index.update(self.same_input_shape_group[index])
+            if len(input_index) != len(ins):
+                dict_args = {"errCode": "E90001", "detailed_cause": "same_input_shape_group length error"}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+            if min(input_index) < 0:
+                dict_args = {
+                    "errCode": "E90001",
+                    "detailed_cause": "same_input_shape_group value error, input index is too small"
+                }
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+            if max(input_index) >= len(ins):
+                dict_args = {
+                    "errCode": "E90001",
+                    "detailed_cause": "same_input_shape_group value error, input index is too large"
+                }
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+        else:
+            self.same_input_shape_group = []
+            # SAME_INPUT_SHAPE_GROUP is empty and INPUT_SHAPE_TYPE has 0, place all 0 as one group
+            complete_group = []
+            if COMPLETE in self.input_shape_type:
+                for index, in_type in enumerate(self.input_shape_type):
+                    if in_type == COMPLETE:
+                        complete_group.append(index)
+            if complete_group:
+                self.same_input_shape_group.append(complete_group)
+            for index, _ in enumerate(self.ins):
+                if index not in complete_group:
+                    self.same_input_shape_group.append([index])
+        operation.get_context().add("_same_input_shape_group", self.same_input_shape_group)
+        self.pure_brc = extra_params.get(BrcOptParams.PURE_BRC, False)
         self.is_unknown_rank = False
         self.maybe_empty_tensor = False
-        self.f_shapes = None
-        self.f_ranges = None
-        self.fusion_index = None
-
         self.disable_fuse_axes = None
-        self.formats = None
-        self.dtypes = None
+        self.dtypes = []
         self.pad_axes = None
         self.np_mapping = None
         self.is_5hd_input = False
+        self.completed_shapes = []
+        self.completed_ranges = []
+        self.ins_formats = []
+        self.ins_dtype = []
+        self.f_shapes = []
+        self.f_ranges = []
+        self.fusion_index = []
 
     def _init(self):
         shapes = [x["shape"] for x in self.ins]
@@ -190,23 +286,26 @@ class BroadcastElewiseClassifier:
         operation.get_context().add("_unknown_rank", self.is_unknown_rank)
 
         self.completed_ins = self._complete()
-        self.completed_shapes = [x["shape"] for x in self.completed_ins]
-        self.completed_ranges = [x["range"] for x in self.completed_ins]
-        self.formats = [x.get("format") for x in self.completed_ins]
-        self.dtypes = [x.get("dtype") for x in self.completed_ins]
+
+        group_index = 0
+        for index, x in enumerate(self.completed_ins):
+            if group_index < len(self.same_input_shape_group) and index == self.same_input_shape_group[group_index][0]:
+                self.completed_shapes.append(x.get("shape"))
+                self.completed_ranges.append(x.get("range"))
+                self.ins_formats.append(x.get("format", ""))
+                self.ins_dtype.append(x.get("dtype", ""))
+                self.dtypes.append(x.get("dtype", ""))
+                group_index += 1
 
         self._update_shape_range()
-
-        self.is_5hd_input = is_5hd_input(self.ins) and not self.ignore_fractal_format
         if self.is_5hd_input:
             check_5hd(self.ins, self.is_unknown_rank)
             self.disable_fuse_axes = [1, 4]
             operation.add_compile_info_inner("_disable_fuse_axes", self.disable_fuse_axes)
             self.pad_axes = parse_pad_axes(self.ins)
             self.np_mapping = parse_np_mapping(True)
-
-        self.f_shapes, self.f_ranges, self.fusion_index = _simplify_shape(self.completed_shapes, self.completed_ranges,
-                                                          self.disable_optimization, self.disable_fuse_axes)
+        self.f_shapes, self.f_ranges, self.fusion_index = _simplify_shape(
+                self.completed_shapes, self.completed_ranges, self.disable_optimization, self.disable_fuse_axes)
         operation.add_compile_info_inner("_fusion_index", self.fusion_index)
 
         self.normalize_shapes = self._normalize()
@@ -217,14 +316,31 @@ class BroadcastElewiseClassifier:
         :return:
         """
         self._init()
-        if len(self.completed_shapes) > MAX_BROADCAST_INPUT:
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "more than 70 input are not supported"
+        if len(self.completed_ins) > MAX_BROADCAST_INPUT:
+            dict_args = {"errCode": "E90001", "detailed_cause": "more than 70 input are not supported"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
-        return self._classify_const() if self._is_const() else self._classify_var()
+        if self._is_const():
+            all_ins = self._classify_const()
+        elif self.pure_brc:
+            if len(self.ins) != 2:
+                dict_args = {"errCode": "E90001", "detailed_cause": "pure broadcast only support 2 inputs"}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+            return self._classify_pure_brc()
+        else:
+            all_ins = self._classify_var()
+        if len(self.same_input_shape_group) == len(self.ins):
+            return all_ins
+        new_ins = [[] for _ in all_ins]
+        for in_id, single_in in enumerate(all_ins):
+            new_single_in = [[] for _ in self.ins]
+            for single, group in zip(single_in, self.same_input_shape_group):
+                for index in group:
+                    new_single_in[index] = copy.deepcopy(single)
+            new_ins[in_id] = new_single_in
+        return new_ins
 
     def _complete(self):
+
         def clone_complete(_in):
             _shape, _range = list(_in["shape"]), _in.get("range")
             d_v = self.dim_length - len(_shape)
@@ -288,7 +404,9 @@ class BroadcastElewiseClassifier:
         return normalize_shapes
 
     def _update_shape_range(self):
+
         def get_range_intersection(ranges):
+
             def range_intersection(range_a, range_b):
                 if range_a is None or range_b is None:
                     return None
@@ -324,8 +442,10 @@ class BroadcastElewiseClassifier:
             if len(no_one_range) > 0:
                 mied_range = get_range_intersection(no_one_range)
                 if mied_range is None:
-                    dict_args = {"errCode": "E90001",
-                                 "detailed_cause": "input shape error, shape range no intersection"}
+                    dict_args = {
+                        "errCode": "E90001",
+                        "detailed_cause": "input shape error, shape range no intersection"
+                    }
                     raise RuntimeError(dict_args, get_error_message(dict_args))
                 for i, r in enumerate(_range):
                     if 1 in r:
@@ -343,10 +463,11 @@ class BroadcastElewiseClassifier:
         if operation.get_context().get_mode() == STATIC_CONTEXT:
             return True
 
-        if len(self.completed_shapes) > 2:
+        _completed_shapes = [x.get("shape") for x in self.completed_ins]
+        if len(_completed_shapes) > 2:
             return False
         for i in range(self.dim_length):
-            dims_i = [s[i] for s in self.completed_shapes]
+            dims_i = [s[i] for s in _completed_shapes]
             min_dim_v, max_dim_v = min(dims_i), max(dims_i)
             if min_dim_v == -1 and max_dim_v in (-1, 1):
                 return False
@@ -354,6 +475,7 @@ class BroadcastElewiseClassifier:
         return True
 
     def _classify_const(self):
+
         def divide(i, _shapes):
             if i == self.dim_length:
                 return [_shapes]
@@ -422,7 +544,7 @@ class BroadcastElewiseClassifier:
                 if self.is_5hd_input and const_disable_fuse_axes is not None:
                     for f_index in fusion_index:
                         s_formats.append([CONST_5HD_FORMATS[index] for index in f_index])
-                    ret.append([ConstMode5HD.gen_in(fused_shape[i], shapes[i], self.formats[i], ori_shapes[i],
+                    ret.append([ConstMode5HD.gen_in(fused_shape[i], shapes[i], self.ins_formats[i], ori_shapes[i],
                                s_formats, self.pad_axes, self.np_mapping, True) for i in range(len(fused_shape))])
                 else:
                     ret.append([ConstMode.gen_in(fused_shape[i], shapes[i]) for i in range(len(fused_shape))])
@@ -433,15 +555,20 @@ class BroadcastElewiseClassifier:
             return classify_const_5hd()
 
         ret = []
-        for shapes in divide(0, [[] for _ in self.completed_ins]):
+        for shapes in divide(0, [[] for _ in self.completed_shapes]):
             const_range = gen_const_range(shapes)
-            fused_shape, _, _ = _simplify_shape(shapes, const_range, self.disable_optimization, None)
+            fused_shape, _, _ = _simplify_shape(shapes, const_range,
+                                                self.disable_optimization and not self.const_fuse_shape, None)
             fused_shape = list(map(list, zip(*fused_shape)))
             ret.append([ConstMode.gen_in(fused_shape[i], shapes[i]) for i in range(len(fused_shape))])
 
         return ret
 
+    def _classify_pure_brc(self):
+        return PureBrcMode.gen_in(self.dim_length)
+
     def _classify_var(self):
+
         def merge_shape_range(left, right, common_need_update):
             shape = [1] * input_length
             _range = [(1, 1)] * input_length
@@ -485,6 +612,7 @@ class BroadcastElewiseClassifier:
             return [a_shape], [a_range]
 
         def find_broadcast(location_b):
+
             def find_common_broadcast():
                 a_index = [left_no_one, dim_length - 2]
                 b_index = [left_no_one + 1, dim_length - 1]
@@ -504,8 +632,7 @@ class BroadcastElewiseClassifier:
                 return a_index, b_index
 
             def find_common_broadcast_common():
-                a_index = [[left_no_one, right_no_one - 2],
-                           [left_no_one + 2, right_no_one]]
+                a_index = [[left_no_one, right_no_one - 2], [left_no_one + 2, right_no_one]]
                 b_index = [left_no_one + 1, right_no_one - 1]
                 if len(known_broadcast_index) > 0:
                     a_index = [[left_no_one, known_broadcast_index[0] - 1],
@@ -528,12 +655,12 @@ class BroadcastElewiseClassifier:
 
         def gen_common_broadcast():
             after_known_broadcast_has_const = len(known_const_index) > 0 and len(known_broadcast_index) > 0 \
-                                              and known_const_index[-1] > known_broadcast_index[0]
+                and known_const_index[-1] > known_broadcast_index[0]
             befor_known_broadcast_no_common = len(known_broadcast_index) > 0 and \
-                                              left_no_one >= known_broadcast_index[0]
+                left_no_one >= known_broadcast_index[0]
             last_no_broadcast_first_no_common = dim_length - 1 in known_const_index or left_no_one >= dim_length - 1
             no_common_broadcast = after_known_broadcast_has_const or \
-                                  befor_known_broadcast_no_common or last_no_broadcast_first_no_common
+                befor_known_broadcast_no_common or last_no_broadcast_first_no_common
             if no_common_broadcast:
                 return [], []
             a_index, b_index = find_broadcast(SpecialMode.RIGHT)
@@ -546,12 +673,12 @@ class BroadcastElewiseClassifier:
 
         def gen_broadcast_common():
             befer_known_broadcast_has_const = len(known_const_index) > 0 and len(known_broadcast_index) > 0 \
-                                              and known_const_index[0] < known_broadcast_index[0]
+                and known_const_index[0] < known_broadcast_index[0]
             after_known_broadcast_no_common = len(known_broadcast_index) > 0 and \
-                                              right_no_one <= known_broadcast_index[-1]
+                right_no_one <= known_broadcast_index[-1]
             first_no_broadcast_last_no_common = 0 in known_const_index or right_no_one <= 0
             no_broadcast_common = befer_known_broadcast_has_const or \
-                                  after_known_broadcast_no_common or first_no_broadcast_last_no_common
+                after_known_broadcast_no_common or first_no_broadcast_last_no_common
             if no_broadcast_common:
                 return [], []
             a_index, b_index = find_broadcast(SpecialMode.LEFT)
@@ -563,11 +690,12 @@ class BroadcastElewiseClassifier:
             return [b_shape, a_shape], [b_range, a_range]
 
         def gen_common_broadcast_common():
+
             def all_const():
                 return all(i in known_const_index for i in range(left_no_one + 1, right_no_one))
 
             right_left_no_common = len(known_broadcast_index) > 0 and \
-                    (right_no_one <= known_broadcast_index[-1] or left_no_one >= known_broadcast_index[0])
+                (right_no_one <= known_broadcast_index[-1] or left_no_one >= known_broadcast_index[0])
             no_broadcast = right_no_one <= left_no_one or all_const()
             if right_left_no_common or no_broadcast:
                 return [], []
@@ -608,7 +736,7 @@ class BroadcastElewiseClassifier:
                 SpecialMode.COMMON_BROADCAST_COMMON: gen_common_broadcast_common(),
                 SpecialMode.BROADCAST_COMMON: gen_broadcast_common(),
             }
-            if len(self.completed_shapes) > 2:
+            if len(self.completed_ins) > 2:
                 special_pattern[SpecialMode.BROADCAST] = gen_broadcast()
             for key, value in special_pattern.items():
                 if len(value[0]) > 0 and check_pattern(key, value[1]):
@@ -619,15 +747,15 @@ class BroadcastElewiseClassifier:
             ins_list = []
             shapes = list(zip(*self.f_shapes))
             ranges = list(zip(*self.f_ranges))
-            if len(shapes) != 2:
+            if len(self.completed_ins) != 2:
                 return ins_list
             # SA
             is_sa = SpecialScalarMode.maybe_all_one(shapes[0], ranges[0]) and \
-                    not SpecialScalarMode.must_all_one(shapes[1])
+                not SpecialScalarMode.must_all_one(shapes[1])
 
             # AS
             is_as = not SpecialScalarMode.must_all_one(shapes[0]) and \
-                    SpecialScalarMode.maybe_all_one(shapes[1], ranges[1])
+                SpecialScalarMode.maybe_all_one(shapes[1], ranges[1])
 
             match_list = [is_sa, is_as]
             for match, pattern, shape_list in zip(match_list, SpecialScalarMode.PATTERNS,
@@ -650,7 +778,7 @@ class BroadcastElewiseClassifier:
                     s_formats.append([CONST_5HD_FORMATS[index] for index in f_index])
                 ori_shapes = [input_i.get("ori_shape") for input_i in self.completed_ins]
                 for index, (shape, _range) in enumerate(zip(t_shapes, t_ranges)):
-                    in_x = OriginalMode5HD.gen_in(shape, _range, self.formats[index], ori_shapes[index], s_formats,
+                    in_x = OriginalMode5HD.gen_in(shape, _range, self.ins_formats[index], ori_shapes[index], s_formats,
                                                self.pad_axes, self.np_mapping, self.is_5hd_input)
                     ins.append(in_x)
                 return [ins]
@@ -677,6 +805,7 @@ class BroadcastElewiseClassifier:
             return [ins]
 
         def get_known_broadcast_and_const(n_shapes):
+
             def _all_const(shape):
                 return all([s == ShapeValueType.COMMON for s in shape])
 
@@ -738,6 +867,37 @@ class BroadcastElewiseClassifier:
                     return True
             return False
 
+        def add_all_unknown(_unknown_len):
+            shapes = [[UNKNOWN_SHAPE] * _unknown_len] * input_length
+            ranges = [[(1, None)] * _unknown_len] * input_length
+            if not dsl.unify_schedule.util.is_v220():
+                is_all_5hd = all(in_format == FORMAT_5HD for in_format in self.ins_formats)
+                last_is_all_const = all(len(in_shape) == 5 and in_shape[-1] > 0 for in_shape in self.completed_shapes)
+                if is_all_5hd and last_is_all_const and len(self.fusion_index[-1]) == 1:
+                    for _shape, _range, in_shape in zip(shapes, ranges, self.completed_shapes):
+                        _shape[-1] = in_shape[-1]
+                        _range[-1] = (in_shape[-1], in_shape[-1])
+                    operation.get_context().add("_all_unknown_last_const", True)
+            pattern = SpecialMode.All_UNKNOWN
+            return [SpecialMode.gen_ins(shapes, ranges, pattern)]
+
+        def add_all_unknown_align():
+            is_all_align = True
+            for shape, dtype in zip(self.completed_shapes, self.ins_dtype):
+                ele_in_block = util.BLOCK_NUM_MAPPING.get(dtype, 1)
+                if not dtype or shape[-1] < 0 or shape[-1] % ele_in_block != 0:
+                    is_all_align = False
+                    break
+            if is_all_align:
+                return []
+            if self.disable_optimization:
+                shapes = list(map(list, zip(*self.f_shapes)))
+                ranges = list(map(list, zip(*self.f_ranges)))
+            else:
+                shapes = [[-1] * dim_length] * input_length
+                ranges = [[(1, None)] * dim_length] * input_length
+            return [StoreAlignMode.gen_ins(shapes, ranges)]
+
         known_broadcast_pattern, known_broadcast_index, known_const_index = \
             get_known_broadcast_and_const(self.normalize_shapes)
         left_no_one, right_no_one = get_no_one_index()
@@ -749,12 +909,11 @@ class BroadcastElewiseClassifier:
             ret.extend(add_special_scalar())
         ret.extend(add_original())
         ret.extend(add_empty())
+        if not dsl.unify_schedule.util.is_v220() and dim_length > 1:
+            ret.extend(add_all_unknown_align())
         if not self.disable_optimization and dim_length > 2 and has_unknown_broadcast():
             unknown_len = dim_length - 1
-            shapes = [[-1] * unknown_len] * input_length
-            ranges = [[(1, None)] * unknown_len] * input_length
-            pattern = SpecialMode.All_UNKNOWN
-            ret.append(SpecialMode.gen_ins(shapes, ranges, pattern))
+            ret.extend(add_all_unknown(unknown_len))
             operation.get_context().add("_has_all_unknown", True)
         return ret
 
@@ -855,6 +1014,7 @@ class SpecialMode:
         """
 
         def gen_in(s, r):
+
             def _get_pattern():
                 pattern_list = []
                 for p in pattern:
@@ -869,9 +1029,38 @@ class SpecialMode:
             return {"shape": s,
                     "range": r,
                     "support_broadcast": True,
-                    "mode": SPECIAL,
+                    "mode": BrcMode.SPECIAL,
                     "pattern": _get_pattern()
                     }
+
+        shapes = []
+        for s, r in zip(shape, _range):
+            shapes.append(gen_in(s, r))
+        return shapes
+
+
+class StoreAlignMode:
+    """
+    StoreAlignMode
+    """
+
+    @classmethod
+    def gen_ins(cls, shape, _range):
+        """
+        generate input
+        :param shape:
+        :param _range:
+        :return:
+        """
+
+        def gen_in(s, r):
+            return {
+                "shape": s,
+                "range": r,
+                "support_broadcast": True,
+                "mode": BrcMode.STORE_ALIGN,
+                "pattern": (ALIGN, ALIGN, ALIGN)
+            }
 
         shapes = []
         for s, r in zip(shape, _range):
@@ -919,12 +1108,52 @@ class SpecialScalarMode:
         :param pattern:
         :return:
         """
-        return {"shape": shape,
+        return {
+            "shape": shape,
+            "range": util.generate_range(shape),
+            "support_broadcast": True,
+            "mode": BrcMode.SPECIAL_SCALAR,
+            "pattern": pattern
+        }
+
+
+class PureBrcMode:
+    """
+    PureBrcMode
+    """
+
+    @classmethod
+    def gen_in(cls, dim_length):
+        """
+        generate input
+        :param dim_length:
+        :return:
+        """
+
+        def gen_in(shape, pattern):
+            return {
+                "shape": shape,
                 "range": util.generate_range(shape),
                 "support_broadcast": True,
-                "mode": SPECIAL_SCALAR,
+                "mode": BrcMode.PURE_BRC,
                 "pattern": pattern
-                }
+            }
+
+        src_shape_ab = []
+        src_shape_ba = []
+        dst_brc_shape = [UNKNOWN_SHAPE] * dim_length
+        for i in range(dim_length):
+            if i % 2 == 0:
+                src_shape_ab.append(UNKNOWN_SHAPE)
+                src_shape_ba.append(BRC_SHAPE)
+            else:
+                src_shape_ab.append(BRC_SHAPE)
+                src_shape_ba.append(UNKNOWN_SHAPE)
+        ab_pattern = [COMMON, BROADCAST] * (dim_length // 2) + [COMMON] * (dim_length % 2)
+        ba_pattern = [BROADCAST, COMMON] * (dim_length // 2) + [BROADCAST] * (dim_length % 2)
+        ab_pattern_case = [gen_in(src_shape_ab, ab_pattern), gen_in(dst_brc_shape, ab_pattern)]
+        ba_pattern_case = [gen_in(src_shape_ba, ba_pattern), gen_in(dst_brc_shape, ba_pattern)]
+        return [ab_pattern_case, ba_pattern_case]
 
 
 class OriginalMode5HD:
@@ -965,11 +1194,12 @@ class OriginalMode:
         :param shape:
         :return:
         """
-        return {"shape": shape,
-                "range": _range,
-                "support_broadcast": True,
-                "mode": ORIGINAL,
-                }
+        return {
+            "shape": shape,
+            "range": _range,
+            "support_broadcast": True,
+            "mode": BrcMode.ORIGINAL,
+        }
 
 
 class EmptyMode:
@@ -983,11 +1213,12 @@ class EmptyMode:
         generate input
         :return:
         """
-        return {"shape": (0, ),
-                "range": [(0, 0)],
-                "support_broadcast": True,
-                "mode": EMPTY,
-                }
+        return {
+            "shape": (0, ),
+            "range": [(0, 0)],
+            "support_broadcast": True,
+            "mode": BrcMode.EMPTY,
+        }
 
 
 class ConstMode:
@@ -1002,12 +1233,13 @@ class ConstMode:
         :param shape:
         :return:
         """
-        return {"shape": shape,
-                "range": util.generate_range(shape),
-                "const_shape": const_shape,
-                "mode": CONST,
-                "support_broadcast": True,
-                }
+        return {
+            "shape": shape,
+            "range": util.generate_range(shape),
+            "const_shape": const_shape,
+            "mode": BrcMode.CONST,
+            "support_broadcast": True,
+        }
 
 
 class ConstMode5HD:

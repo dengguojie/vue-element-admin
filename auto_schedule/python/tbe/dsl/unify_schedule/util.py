@@ -49,6 +49,7 @@ from .constants import NEED_TEMP_SPACE_INSNS
 from .constants import VCMP_INSNS
 from .constants import VSEL_INSNS
 from .constants import VCMPSEL_INSNS
+from .constants import TERNARY_INSNS
 from .constants import NEED_SPACE_WITH_DIFF_TYPE
 from .constants import NEED_EXTENT_NODE_INSNS
 
@@ -111,7 +112,8 @@ def is_v200():
     """
     :return:
     """
-    return get_soc_spec(SHORT_SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_310P, HI3796CV300ES, HI3796CV300CS, SD3403)
+    return get_soc_spec(SHORT_SOC_VERSION) in \
+        (ASCEND_610, ASCEND_615, ASCEND_310P, HI3796CV300ES, HI3796CV300CS, SD3403)
 
 
 def is_v220():
@@ -161,6 +163,14 @@ def is_vcmpsel_insn(tensor: tvm.tensor.Tensor):
     :return:
     """
     return get_dsl_insn(tensor) in VCMPSEL_INSNS
+
+
+def is_ternary_insn(tensor: tvm.tensor.Tensor):
+    """
+    :param tensor:
+    :return:
+    """
+    return get_dsl_insn(tensor) in TERNARY_INSNS
 
 
 def get_tensor_size(tensor: tvm.tensor.Tensor):
@@ -302,7 +312,11 @@ def get_bound(expr):
             left_lower, left_upper = _parse(_expr.a)
             right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _add(left_lower, right_lower), _add(left_upper, right_upper)
-        elif isinstance(_expr, (tvm.expr.Max, tvm.expr.FloorDiv, tvm.expr.Sub)):
+        elif isinstance(_expr, tvm.expr.Max):
+            left_lower, left_upper = _parse(_expr.a)
+            right_lower, right_upper = _parse(_expr.b)
+            _lower, _upper = _max(left_lower, right_lower), _max(left_upper, right_upper)
+        elif isinstance(_expr, (tvm.expr.FloorDiv, tvm.expr.Sub)):
             left_lower, left_upper = _parse(_expr.a)
             right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)

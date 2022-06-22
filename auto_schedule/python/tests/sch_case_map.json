@@ -205,6 +205,12 @@
         "broadcast_schedule",
         "broadcast_tilingcase"
     ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/broadcast/broadcast_helper.py":[
+        "vsub",
+        "broadcast_classify",
+        "broadcast_schedule",
+        "broadcast_tilingcase"
+    ],
     "auto_schedule/python/tbe/dsl/static_schedule/elewise_schedule_new.py":[
         "vadd/test_vadd_impl.py",
         "vsub/test_vsub_impl.py",

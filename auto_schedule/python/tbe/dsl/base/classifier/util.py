@@ -21,6 +21,22 @@ from functools import reduce
 
 VAR_BOUND_LIMIT = 2147483647
 
+BLOCK_NUM_MAPPING = {
+    "uint1": 256,
+    "bool": 32,
+    "int8": 32,
+    "uint8": 32,
+    "float16": 16,
+    "int16": 16,
+    "uint16": 16,
+    "float32": 8,
+    "int32": 8,
+    "uint32": 8,
+    "int64": 4,
+    "uint64": 4,
+    "bfloat16": 16,
+}
+
 
 def generate_range(shape):
     """

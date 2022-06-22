@@ -18,12 +18,15 @@
 elewise variable shape
 """
 from functools import reduce
+from operator import add
 
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.utils.varshape.variable_shape import register_variable
 from tbe.dsl.base import operation
 from tbe.dsl.base import var_api
+
+_PURE_BRC = "pure_brc"
 
 
 @register_variable("elewise")
@@ -122,6 +125,8 @@ def variable_shape(inputs):
 
     def _mode_process():
         broadcast_unfold_max_num = 2
+        pattern = inputs[0].get("pattern")
+        operation.get_context().get_current_compute().add("_pattern", pattern)
         if mode == para_check.CONST:
             if support_broadcast and len(inputs) == broadcast_unfold_max_num:
                 input1 = inputs[0]["const_shape"]
@@ -130,18 +135,13 @@ def variable_shape(inputs):
             else:
                 const_shape = inputs[0]["shape"]
             operation.get_context().get_current_compute().add("_const_shape", const_shape)
-        elif mode == para_check.SPECIAL and inputs[0].get("pattern"):
-            pattern = inputs[0].get("pattern")
-            operation.get_context().get_current_compute().add("_pattern", pattern)
+        elif (mode == para_check.SPECIAL and pattern) or mode == _PURE_BRC:
             for i, _pattern in enumerate(pattern):
                 if _pattern == para_check.COMMON:
                     for _, shape_j in enumerate(shapes):
                         if shape_j[i] == -1:
                             # mark this dimension dose not exist broadcast
                             shape_j[i] = -77
-        elif mode == para_check.SPECIAL_SCALAR:
-            pattern = inputs[0].get("pattern")
-            operation.get_context().get_current_compute().add("_pattern", pattern)
 
     if len(inputs) < 1:
         return []
@@ -152,6 +152,14 @@ def variable_shape(inputs):
 
     shapes, ranges = _extract(inputs)
     _mode_process()
+
+    same_input_shape_group = operation.get_context().get("_same_input_shape_group") or []
+    same_group_num = reduce(add, (len(x) for x in same_input_shape_group), 0)
+    need_update_inputs = same_input_shape_group and len(same_input_shape_group) != len(inputs) and \
+        same_group_num == len(inputs) and mode != para_check.CONST
+    if need_update_inputs:
+        shapes = [shapes[group[0]] for group in same_input_shape_group]
+        ranges = [ranges[group[0]] for group in same_input_shape_group]
 
     d_shapes = [[] for _ in shapes]
 
@@ -210,21 +218,27 @@ def variable_shape(inputs):
     for i in range(len(shapes[0])):
         _var = None
         need_two_vars = _maybe_broadcast()
-        _suffix = 0
-        for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
+        for suffix, (d_shape, shape, _range) in enumerate(zip(d_shapes, shapes, ranges)):
+            if need_update_inputs:
+                suffix = same_input_shape_group[suffix][0]
             if shape[i] == -1 and _range[i][0] == _range[i][1]:
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)), _range[i])
+                    _var = operation.var_inner(f"_dim_{i}_{suffix}", _range[i])
                 d_shape.append(_var)
             elif shape[i] == -77:
                 # no broadcast
                 if _var is None:
-                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)), _range[i])
+                    _var = operation.var_inner(f"_dim_{i}_{suffix}", _range[i])
                 d_shape.append(_var)
             else:
                 d_shape.append(shape[i])
-            _suffix += 1
 
+    if need_update_inputs:
+        var_shapes = [[] for _ in inputs]
+        for i, group in enumerate(same_input_shape_group):
+            for index in group:
+                var_shapes[index] = d_shapes[i].copy()
+        return var_shapes
     return d_shapes

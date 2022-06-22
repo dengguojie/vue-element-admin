@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright 2019-2021 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@
 """
 broadcast schedule for milan
 """
+from functools import reduce
+from operator import mul
+
 from tbe import tvm
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform import ASCEND_910B
@@ -108,9 +111,10 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
                         len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
                     current_space -= 1
             # temporary plan: use a temp node
-            if util.need_extent_node(_tensor):
+            if util.need_extent_node(_tensor) and not self._is_last_align(_tensor):
                 current_space += 1
-            if util.is_unified_broadcast(_tensor) and self._broadcast_axis_num.get(_tensor, 0) > 1:
+            if util.is_unified_broadcast(_tensor) and not self._is_last_align(_tensor) and \
+                    self._broadcast_axis_num.get(_tensor, 0) > 1:
                 current_space += 1
             if self._5hd_actions is not None and len(self._5hd_actions) > 0:
                 current_space += 1
@@ -125,6 +129,8 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
                 return len(dependent_map)
             _need_space = []
             for _tensor_i in _tensor.op.input_tensors:
+                if _tensor in self._compute_root_tensors:
+                    continue
                 _need_space.append(_r_coexisting(_tensor_i))
 
             _current_space = _calc_current_space(_tensor)
@@ -169,6 +175,8 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
             dependent_map[tensor_i] = all_producers.copy()
             init_map.add(tensor_i)
         for tensor_i in self._out.op.input_tensors:
+            if tensor_i in self._compute_root_tensors:
+                continue
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
             _current_space = _calc_current_space(self._out)
@@ -198,6 +206,9 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
                 self._remove_pad_tensors.add(tensor_i)
                 use_tensors = [super(BroadcastScheduleMl, self)._get_ub_tensor(_tensor) for
                                _tensor in self._in_out_map.get(tensor_i, [])]
+                if not use_tensors:
+                    if tensor_i.op.input_tensors and tensor_i.op.input_tensors[0] in self._input_tensors:
+                        use_tensors = list(self._in_out_map.get(tensor_i.op.input_tensors[0], []))
                 remove_pad_buffer = sch.cache_read(super(BroadcastScheduleMl, self)._get_ub_tensor(tensor_i),
                                                    self._scope, use_tensors)
                 util.merge_value(self._in_out_map, remove_pad_buffer, use_tensors)
@@ -258,3 +269,29 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
 
         for tensor_i, (axis, factor) in self._compute_align_map.items():
             sch[tensor_i].compute_align(axis, factor)
+
+    def _do_storage_bound(self):
+        sch = self._schedule
+        tensors = self._pure_middle_tensors \
+            .union(self._cache_read_buffer_tensor_map.keys()) \
+            .union(self._cache_write_buffer_tensor_map.keys())
+
+        before_ub_tensor = set()
+        for tensor_i in self._compute_root_tensors:
+            before_ub_tensor.add(self._get_ub_tensor(tensor_i))
+
+        for tensor_i in tensors:
+            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING.get(tensor_i.dtype))
+            if tensor_i in before_ub_tensor or tensor_i in self._compute_root_tensors:
+                continue
+            if self._tiling_strategy == TilingStrategy.CONST:
+                dst_shape = util.shape_to_list(tensor_i.shape)
+                ele_in_block = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(tensor_i.dtype)
+                dst_shape[-1] = (dst_shape[-1] + ele_in_block - 1) // ele_in_block * ele_in_block
+                if self._need_do_block:
+                    dst_shape[self._ub_split_axis] = 1 if dst_shape[self._ub_split_axis] == 1 else self._ub_factor
+                real_storage_bound = reduce(mul, dst_shape[self._ub_split_axis:], 1)
+                if real_storage_bound % ele_in_block != 0:
+                    real_storage_bound = (real_storage_bound + ele_in_block - 1) // ele_in_block * ele_in_block
+                storage_bound = min(storage_bound, int(real_storage_bound))
+            sch[tensor_i].set_buffer_size(storage_bound)

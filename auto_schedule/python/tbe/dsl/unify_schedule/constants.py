@@ -211,6 +211,8 @@ class CompileInfo:
     CLASSIFY_INPUTS_NUM = "_classify_inputs_num"
     ELEWISE_FUSED_INDEX = "_elewise_fused_index"
     CONTAINS_NEED_PAD_COMPUTE = "_contains_need_pad_compute"
+    IS_VNCHWCONV_ALIGN = "_is_vnchwconv_align"
+    MAX_BRC_TYPE = "_max_brc_type"
 
 
 class VarAttrMode:

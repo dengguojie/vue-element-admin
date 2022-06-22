@@ -5,10 +5,10 @@ from tbe import tvm
 from tbe.common.utils import shape_util
 
 
-def dsl_dync_sbroadcast(x, y, z, kernel_name="dsl_dync_sbroadcast"):
+def dsl_pure_brc(x, y, z, kernel_name="dsl_pure_brc"):
     input_dtype = x.get("dtype")
 
-    extra_params = {"disable_optimization": True}
+    extra_params = {"pure_brc": True}
     ins = tbe.dsl.classify([x, y], "broadcast", extra_params)
     schedules, tensors = [], []
 
@@ -28,13 +28,13 @@ def dsl_dync_sbroadcast(x, y, z, kernel_name="dsl_dync_sbroadcast"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("sbroadcast", "broadcast_schedule.test_dynamic_broadcast_schedule_op_impl", "dsl_dync_sbroadcast")
+ut_case = OpUT("pbroadcast", "broadcast_schedule.test_dynamic_broadcast_schedule_pure_brc_impl", "dsl_pure_brc")
 
 case1 = {
     "params": [{
-        "shape": (1,),
+        "shape": (-1, -1),
         "dtype": "float16",
-        "range": [(1, 1)]
+        "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),
         "dtype": "float16",
@@ -45,7 +45,7 @@ case1 = {
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dynamic_broadcast_schedule_op_impl_1",
+        "test_dynamic_broadcast_schedule_pure_brc_impl_1",
     "expect":
         "success",
     "support_expect":

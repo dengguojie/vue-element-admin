@@ -34,22 +34,6 @@ SPLIT = "split"
 SPLIT_GENERAL = "split_general"
 SPLIT_EMPTY = "split_empty"
 
-BLOCK_NUM_MAPPING = {
-    "uint1": 256,
-    "bool": 32,
-    "int8": 32,
-    "uint8": 32,
-    "float16": 16,
-    "int16": 16,
-    "uint16": 16,
-    "float32": 8,
-    "int32": 8,
-    "uint32": 8,
-    "int64": 4,
-    "uint64": 4,
-    "bfloat16": 16,
-}
-
 
 def classify(ins: list, extra_params: dict):
     """
@@ -201,7 +185,7 @@ class SplitClassifier:
     def _generate_ins(self):
         if self.only_empty:
             return [EmptyMode.gen_in(self.split_size)]
-        general_factor = BLOCK_NUM_MAPPING.get(self.dtype) * TRANSPOSE_FACTOR
+        general_factor = util.BLOCK_NUM_MAPPING.get(self.dtype) * TRANSPOSE_FACTOR
         res = []
         if self.is_single_output:
             res.append(OriginalMode.gen_in(self.merged_shapes, self.merged_ranges, SPLIT, self.split_size))

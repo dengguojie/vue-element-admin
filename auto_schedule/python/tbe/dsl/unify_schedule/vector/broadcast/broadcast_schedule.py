@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright 2019-2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2019-2020. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 broadcast schedule
 """
 from tbe.common.platform import intrinsic_check_support
+from tbe.dsl.base import operation
 
 from ... import util
 from ...constants import BroadcastPattern
@@ -27,6 +28,7 @@ from ...constants import SUPPORT_SCALAR_INSNS
 from ...constants import TERNARY_INSNS
 from ...schedule import Schedule
 from .broadcast_schedule_base import BaseBroadcastSchedule
+from .broadcast_tilingcase import TilingStrategy
 
 DEFAULT = "default"
 
@@ -92,8 +94,10 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
             return False
 
         def _calc_current_space(_tensor):
+            is_brc_tensor = _tensor in self._broadcast_tensors
             # one of the input of the ternary instruction must be reused with the output
-            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
+            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or \
+                    _tensor in dependent_map or (self._is_pure_brc_common_db and is_brc_tensor):
                 current_space = len(dependent_map)
             else:
                 current_space = len(dependent_map) + 1
@@ -101,10 +105,26 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
                 if tensor_i in self._absorbable_broadcast_tensors and \
                         len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
                     current_space -= 1
-            if util.need_extent_node(_tensor):
+            if is_brc_tensor:
+                if len(_tensor.op.input_tensors) == 1 and \
+                        (len(self._in_out_map.get(_tensor.op.input_tensors[0])) > 1 or
+                         _tensor.op.input_tensors[0] in self._compute_root_tensors):
+                    self._broadcast_by_no_other_use[_tensor] = False
+                else:
+                    self._broadcast_by_no_other_use[_tensor] = True
+            if util.need_extent_node(_tensor) and not self._is_last_align(_tensor):
                 current_space += 1
-            if util.is_unified_broadcast(_tensor) and self._broadcast_axis_num.get(_tensor, 0) > 1:
+                if is_brc_tensor and self._broadcast_by_no_other_use.get(_tensor):
+                    current_space -= 1
+                if self._is_no_store_align and not self._is_vnchwconv_align:
+                    current_space += 1
+            if (util.is_unified_broadcast(_tensor) and not self._is_last_align(_tensor)) or \
+                    (self._is_pure_brc and not self._is_pure_brc_common_db):
                 current_space += 1
+                if is_brc_tensor and self._broadcast_by_no_other_use.get(_tensor):
+                    current_space -= 1
+                if (self._is_pure_brc or self._is_no_store_align) and not self._is_vnchwconv_align:
+                    current_space += 1
             if _vcmp_complex_instructions(_tensor):
                 current_space += SPECIAL_VCMP_NODE
             if self._5hd_actions is not None and len(self._5hd_actions) > 0:
@@ -116,10 +136,10 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
         def _r_coexisting(_tensor):
             if _tensor in dependent_map and _tensor not in init_map:
                 return len(dependent_map)
-            if util.is_vtranspose_broadcast(_tensor):
-                self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
             _need_space = []
             for _tensor_i in _tensor.op.input_tensors:
+                if _tensor_i in self._compute_root_tensors:
+                    continue
                 _need_space.append(_r_coexisting(_tensor_i))
 
             _current_space = _calc_current_space(_tensor)
@@ -145,7 +165,7 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
 
         def _need_external_space(_tensor):
             exist_absorbable_broadcast = any(x in self._absorbable_broadcast_tensors
-                                              for x in _tensor.op.input_tensors)
+                                             for x in _tensor.op.input_tensors)
             if not exist_absorbable_broadcast:
                 return False
 
@@ -166,11 +186,10 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
             dependent_map[tensor_i] = all_producers.copy()
             init_map.add(tensor_i)
         for tensor_i in self._out.op.input_tensors:
+            if tensor_i in self._compute_root_tensors:
+                continue
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
-            if util.is_vtranspose_broadcast(self._out):
-                self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
-
             _current_space = _calc_current_space(self._out)
 
             # correct ub size in vcmp or vsel or vcmpsel
@@ -182,5 +201,12 @@ class BroadcastSchedule(BaseBroadcastSchedule, Schedule):
 
         if self._coexisting_quantity == 1:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
-        if len(self._broadcast_tensors - self._absorbable_broadcast_tensors) > 0:
+        brc_need_one_block = False
+        for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
+            if not tensor_i.op.input_tensors:
+                continue
+            if not self._is_last_align(tensor_i):
+                brc_need_one_block = True
+        if ((self._coexisting_quantity % 2 == 0 or self._tiling_strategy == TilingStrategy.CONST) and
+                self._tmp_ub_size < BLOCK_SIZE_BYTE) and brc_need_one_block:
             self._tmp_ub_size += BLOCK_SIZE_BYTE

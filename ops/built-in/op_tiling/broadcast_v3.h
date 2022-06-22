@@ -51,6 +51,11 @@ struct BroadcastCompileInfo : AutoTilingCompileInfo{
   bool contains_elewise_sch {false};
   int64_t pad_axis_index {3};
   bool contains_need_pad_compute {true};
+  bool is_pure_brc{false};
+  bool has_store_align{false};
+  bool is_vnchwconv_align{false};
+  bool brc_avoid_bank_conflict{false};
+  bool all_unknown_last_const{false};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
   std::pair<bool, std::vector<int64_t>> const_block_dims_compile;
   std::pair<bool, std::vector<std::vector<int64_t>>> const_shapes_compile;
@@ -80,6 +85,11 @@ enum class Pattern {
   BROADCAST_COMMON = 210,
   BROADCAST_SCALAR = 230,
   SCALAR_BROADCAST = 320,
+  PURE_BRC_COMMON = 400,
+  PURE_BRC_COMMON_ALIGN = 410,
+  PURE_BRC_BROADCAST = 500,
+  PURE_BRC_BROADCAST_ALIGN = 510,
+  UNKNOWN_ALIGN = 888,
   UNKNWON_UNKNOWN = 999
 };
 
@@ -101,23 +111,22 @@ class Broadcast {
     void TrySwitchToElewise();
     void TrySwitchToPerfPattern();
     void TrySwitchToPerfPatternMilan();
+    void SwitchToAlignPattern();
+    bool GenPureBrcOutput();
     void FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y);
     void MulTrySwitchToPerfPattern();
     void MulTrySwitchToPerfPatternMilan();
     void MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length);
-    void GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
-                              const int64_t split_axis, const int64_t split_factor);
-    bool CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis, const int64_t ele_in_block,
-                           int64_t& split_axis, int64_t& split_factor);
+    void GenerateAllUnknown(size_t start);
     bool RefineShapesForBroadcast();
+    bool AfterUbNoFused();
+    bool GetBaseInfo(const std::string& pattern_key);
     bool CalcTiling();
     bool DoBlockTiling();
-    int64_t SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_block);
-    int64_t FindLowestMiddle();
     bool DoUbTiling();
     bool MilanUbTiling();
     bool DefaultUbTiling();
-    void AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit);
+    bool AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit);
     void CheckUpdateUbTiling();
     void OptimizeUbTiling();
     void CalcKey();
@@ -170,6 +179,7 @@ class Broadcast {
     int64_t block_factor{1};
     int64_t max_available_ub{0};
     int64_t max_available_ub_db{0};
+    int64_t max_brc_type{2};
     size_t original_dim_len{0};
     Pattern s_pattern{Pattern::ORIGINAL};
     bool is_const{false};
@@ -190,6 +200,8 @@ class Broadcast {
     bool use_special_pattern_compile{false};
     bool is_unknown_rank_compile{false};
     bool has_all_unknown_compile{false};
+    bool is_last_common_align{false};
+    bool pure_brc_use_align{false};
 
     // rl
     bool hit_rl_bank{false};

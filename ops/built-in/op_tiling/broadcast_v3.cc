@@ -56,10 +56,13 @@ const std::unordered_map<ge::DataType, int64_t> PAD_C0_MAPPING {
 
 const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN {
     {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
-    {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
+    {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON}, {400, Pattern::PURE_BRC_COMMON},
+    {410, Pattern::PURE_BRC_COMMON_ALIGN}, {500, Pattern::PURE_BRC_BROADCAST}, {510, Pattern::PURE_BRC_BROADCAST_ALIGN}
 };
 
 const std::string ALL_UNKNOWN_PATTERN = "999";
+const std::string ALL_UNKNOWN_ALIGN_PATTERN = "888";
+const std::string PURE_BRC_COMMON_PATTERN = "400";
 const std::string MILAN = "Ascend910B";
 
 constexpr std::int32_t DTYPE_UINT1 = 100;
@@ -82,6 +85,7 @@ constexpr std::int32_t CUR_CORE_INDEX = 0;
 
 constexpr std::int32_t MAX_AVAILABLE_UB_INDEX = 2;
 constexpr std::int32_t MAX_AVAILABLE_UB_DB_INDEX = 3;
+constexpr std::int32_t MAX_BRC_TYPE_INDEX = 4;
 
 constexpr std::int32_t NUM_TEN = 10;
 constexpr std::int32_t NUM_TWO = 2;
@@ -90,7 +94,9 @@ constexpr std::int32_t NUM_ONE_HUNDRED = 100;
 constexpr std::int32_t MIN_SPLIT_FACTOR = 2;
 constexpr std::int32_t SPLIT_FACTOR_STEP = 2;
 
-constexpr std::int32_t BASE_KEY_NUM = 200000000;
+constexpr std::int32_t SPECIAL_KEY_NUM = 200000000;
+constexpr std::int32_t PURE_BRC_KEY_NUM = 300000000;
+constexpr std::int32_t ALIGN_KEY_NUM = 400000000;
 constexpr std::int32_t ORIGINAL_NO_DB_TILING_LEN = 7;
 constexpr std::int32_t TILING_LEN = 8;
 
@@ -101,13 +107,14 @@ constexpr std::int32_t MIN_ORI_DIM_INEDEX = 40000;
 constexpr int64_t BLOCK_SIZE_BYTES = 32;
 constexpr size_t MAX_UNKNOWN_RANK = 8;
 constexpr int64_t DOUBLE_BUFFER_SIZE = 2;
-constexpr int64_t BLOCK_NUM = 8;
+constexpr int64_t ONE_REPEAT_BLOCK_NUM = 8;
 constexpr int64_t MAX_REPEAT_TIMES = 8;
 constexpr int64_t N_LAST_BROADCAST_THRESHOLD = 1024;
 constexpr int64_t LAST_AND_N_LAST_FACTOR = 7;
-constexpr int64_t MAX_PATTERN_DIM = 3;
+constexpr size_t MAX_PATTERN_DIM = 3;
 constexpr int64_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
 constexpr int64_t BROADCAST_BASE_KEY = 2;
+constexpr int64_t ROW_LIMIT = 16;
 constexpr int64_t NONE_BRC_AXIS_OPTIMIZE_BLOCK_NUMS = 3;
 constexpr float MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS = 1.5;
 }
@@ -231,7 +238,8 @@ void Broadcast<T>::FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std
       state = (input_shape_x[i] == input_shape_y[i]);
       fusion_index.push_back(current_index);
       current_index = {i};
-      if (fused_shape_x.size() > MAX_PATTERN_DIM && !has_all_unknown_compile) {
+      if (fused_shape_x.size() > MAX_PATTERN_DIM && !has_all_unknown_compile &&
+          !broadcast_compile_info->is_pure_brc && !broadcast_compile_info->has_store_align) {
         break;
       }
     }
@@ -245,13 +253,14 @@ void Broadcast<T>::TrySwitchToPerfPattern() {
   fusion_shapes.push_back({input_shapes[0][0]});
   fusion_shapes.push_back({input_shapes[1][0]});
   FusionContinuousAxis(fusion_shapes[0], fusion_shapes[1]);
-  if ((fusion_shapes[0].size() > MAX_PATTERN_DIM && !is_milan_soc) || !use_special_pattern_compile) {
+  size_t fusion_len = fusion_shapes[0].size();
+  if ((fusion_len > MAX_PATTERN_DIM && !is_milan_soc) || !use_special_pattern_compile) {
     return ;
   }
   int64_t pattern_key = 0;
   int64_t base = 100;
   size_t b_axis = 0;
-  for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
+  for (size_t i = 0; i < fusion_len; i++) {
     if (fusion_shapes[0][i] == fusion_shapes[1][i]) {
       pattern_key += base;
     } else {
@@ -260,7 +269,7 @@ void Broadcast<T>::TrySwitchToPerfPattern() {
     }
     base /= NUM_TEN;
   }
-  if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
+  if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end() && fusion_len <= MAX_PATTERN_DIM) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
     if (s_pattern == Pattern::BROADCAST && is_support_absorbable_broadcast_compile) {
       s_pattern = fusion_shapes[0][0] == 1 ? Pattern::SCALAR_BROADCAST : Pattern::BROADCAST_SCALAR;
@@ -325,7 +334,8 @@ void Broadcast<T>::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fu
       fusion_length++;
       fusion_index.push_back(current_index);
       current_index = {i};
-      if (fusion_length > (MAX_PATTERN_DIM - 1) && !has_all_unknown_compile) {
+      if (fusion_length > (MAX_PATTERN_DIM - 1) && !has_all_unknown_compile &&
+          !broadcast_compile_info->has_store_align) {
         break;
       }
     }
@@ -389,7 +399,8 @@ template <typename T>
 void Broadcast<T>::MulTrySwitchToPerfPatternMilan() {
   int64_t pattern_key = 0;
   int64_t base = 100;
-  for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
+  size_t fusion_len = fusion_shapes[0].size();
+  for (size_t i = 0; i < fusion_len; i++) {
     bool is_broadcast = false;
     int64_t shape = fusion_shapes[0][i];
     for (size_t j = 1; j < input_num; j++) {
@@ -406,7 +417,7 @@ void Broadcast<T>::MulTrySwitchToPerfPatternMilan() {
     }
     base /= NUM_TEN;
   }
-  if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
+  if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end() && fusion_len <= MAX_PATTERN_DIM) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
   } else if (original_dim_len > fusion_shapes[0].size()) {
     s_pattern = Pattern::UNKNWON_UNKNOWN;
@@ -422,8 +433,8 @@ void Broadcast<T>::MulTrySwitchToPerfPatternMilan() {
   for (size_t i = 0; i < start; i++) {
     for (size_t j = 0; j < input_num; j++) {
       input_shapes[j][i] = 1;
-      output_shape.push_back(1);
     }
+    output_shape.push_back(1);
   }
   for (size_t i = 0; i < dim_len; i++) {
     int64_t max_output = 1;
@@ -434,6 +445,75 @@ void Broadcast<T>::MulTrySwitchToPerfPatternMilan() {
       }
     }
     output_shape.push_back(max_output);
+  }
+}
+
+template <typename T>
+bool Broadcast<T>::GenPureBrcOutput() {
+  fusion_shapes.push_back({input_shapes[0][0]});
+  fusion_shapes.push_back({input_shapes[1][0]});
+  fusion_shapes[0].reserve(dim_len);
+  fusion_shapes[1].reserve(dim_len);
+  output_shape.reserve(dim_len);
+  FusionContinuousAxis(fusion_shapes[0], fusion_shapes[1]);
+  size_t fusion_len = fusion_shapes[0].size();
+  size_t start = dim_len - fusion_len;
+  for(size_t i = 0; i < start; i++) {
+    input_shapes[0][i] = 1;
+    input_shapes[1][i] = 1;
+    output_shape.push_back(1);
+    broadcast_axis[i] = false;
+  }
+  for (size_t i = 0; i < fusion_len; i++) {
+    size_t col = i + start;
+    input_shapes[0][col] = fusion_shapes[0][i];
+    input_shapes[1][col] = fusion_shapes[1][i];
+    broadcast_axis[col] = input_shapes[0][col] != input_shapes[1][col];
+    output_shape.push_back(std::max(input_shapes[0][col], input_shapes[1][col]));
+  }
+  bool ret = GetBaseInfo(PURE_BRC_COMMON_PATTERN);
+  int64_t last_common_limit = max_available_ub / (ROW_LIMIT * (BLOCK_SIZE_BYTES / max_brc_type));
+  pure_brc_use_align = output_shape[dim_len - 1] > last_common_limit && !is_milan_soc;
+  if (input_shapes[0][dim_len - 1] == input_shapes[1][dim_len - 1]) {
+    is_last_common_align = pure_brc_use_align;
+    if (is_last_common_align) {
+      s_pattern = Pattern::PURE_BRC_COMMON_ALIGN;
+      need_double_buffer = true;
+    } else {
+      s_pattern = Pattern::PURE_BRC_COMMON;
+    }
+  } else {
+    if (pure_brc_use_align) {
+      s_pattern = Pattern::PURE_BRC_BROADCAST_ALIGN;
+    } else {
+      s_pattern = Pattern::PURE_BRC_BROADCAST;
+    }
+  }
+  return ret;
+}
+
+template <typename T>
+void Broadcast<T>::SwitchToAlignPattern() {
+  bool is_single_dim_brc = s_pattern == Pattern::COMMON ||
+                           s_pattern == Pattern::BROADCAST_SCALAR ||
+                           s_pattern == Pattern::SCALAR_BROADCAST ||
+                           s_pattern == Pattern::BROADCAST;
+  int64_t last_dim = output_shape[output_shape.size() - 1];
+  int64_t ele_in_block = BLOCK_SIZE_BYTES / max_brc_type;
+  if (broadcast_compile_info->brc_avoid_bank_conflict) {
+    max_available_ub -= (ROW_LIMIT * ele_in_block);
+  }
+  int64_t last_dim_threshold = max_available_ub / (ele_in_block * ROW_LIMIT) / ele_in_block * ele_in_block;
+  if (!is_single_dim_brc && last_dim > last_dim_threshold &&
+      last_dim % ele_in_block != 0 && (broadcast_compile_info->has_store_align || only_const_tiling)) {
+    if (only_const_tiling || !use_special_pattern_compile) {
+      s_pattern = Pattern::UNKNOWN_ALIGN;
+      return;
+    }
+    int64_t fusion_len = fusion_shapes[0].size();
+    size_t start = original_dim_len - fusion_len;
+    GenerateAllUnknown(start);
+    s_pattern = Pattern::UNKNOWN_ALIGN;
   }
 }
 
@@ -456,16 +536,16 @@ bool Broadcast<T>::GenerateOutputShape() {
         fusion_index.push_back({i});
       }
   } else {
-    if (is_milan_soc) {
-      if (!broadcast_compile_info->fusion_index_compile.first) {
-        original_dim_len = dim_len;
-      } else {
-        original_dim_len = broadcast_compile_info->fusion_index_compile.second.size();
-      }
+    if (!broadcast_compile_info->fusion_index_compile.first) {
+      original_dim_len = dim_len;
+    } else {
+      original_dim_len = broadcast_compile_info->fusion_index_compile.second.size();
     }
     if (broadcast_compile_info->disable_fuse_axes_compile.second.size() == 0 || use_special_in_5hd) {
       if (!is_support_broadcast_compile) {
         TrySwitchToElewise();
+      } else if (broadcast_compile_info->is_pure_brc) {
+        return GenPureBrcOutput();
       } else if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
         TrySwitchToPerfPattern();
       } else {
@@ -479,8 +559,9 @@ bool Broadcast<T>::GenerateOutputShape() {
   return ret;
 }
 
-void GenOutputAndBrcAxis(std::vector<int64_t>& out_shape, std::vector<bool>& brc_axis,
-                         const std::vector<std::vector<int64_t>>& fusion_shapes, const size_t shape_len) {
+void GenOutputAndBrcAxis(std::array<int64_t, B_MAX_DIM_LEN>& faker_output_shape,
+                         const std::vector<std::vector<int64_t>>& fusion_shapes,
+                         const size_t shape_len) {
   for (size_t i = 0; i < shape_len; i++) {
     int64_t max_output = 1;
     int64_t min_output = 2;
@@ -488,102 +569,13 @@ void GenOutputAndBrcAxis(std::vector<int64_t>& out_shape, std::vector<bool>& brc
       max_output = std::max(max_output, fusion_shapes[j][i]);
       min_output = std::min(min_output, fusion_shapes[j][i]);
     }
-    out_shape[i] = max_output;
-    if (min_output == 1 && max_output != 1) {
-      brc_axis[i] = true;
-    }
+    faker_output_shape[i] = max_output;
   }
-}
-
-int64_t FindAlignFactor(const int64_t max_ub_shape, const int64_t ele_in_block) {
-  int64_t split_factor = -1;
-  for (int64_t f = MIN_SPLIT_FACTOR; f <= ele_in_block; f += SPLIT_FACTOR_STEP) {
-    if ((max_ub_shape * f) % ele_in_block == 0) {
-      split_factor = f;
-      break;
-    }
-  }
-  return split_factor;
 }
 
 template <typename T>
-bool Broadcast<T>::CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
-                                   const int64_t ele_in_block, int64_t& split_axis, int64_t& split_factor) {
-  int64_t cur_core;
-  int64_t max_ub;
-  try {
-    const auto& base_info = broadcast_compile_info->base_info_compile.second.at(ALL_UNKNOWN_PATTERN);
-    const size_t base_info_size = 4;
-    V_CHECK_EQ(base_info.size(), base_info_size,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-               "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
-               return false);
-    cur_core = base_info[CUR_CORE_INDEX];
-    max_ub = base_info[MAX_UB_INDEX];
-  } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-                                    "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
-    return false;
-  }
-  int64_t b_axis = 0;
-  int64_t block_output = -1;
-  const int64_t multi_core_threshold = BGetElementByType(out_type) * cur_core * DOUBLE_BUFFER_SIZE;
-  if (output_size > multi_core_threshold) {
-    for (size_t i = 0; i < out_shape.size(); i++) {
-      if (out_shape[i] > cur_core) {
-        b_axis = i;
-        int64_t factor = std::ceil(out_shape[i] * 1.0 / cur_core);
-        block_output = out_shape[i];
-        out_shape[i] = factor;
-        break;
-      } else {
-        cur_core /= out_shape[i];
-      }
-    }
-  }
-  int64_t max_ub_shape = 1;
-  int64_t last_index = static_cast<int64_t>(out_shape.size()) - 1;
-  for (int64_t i = last_index; i >= b_axis; i--) {
-    if (out_shape[i] < max_ub) {
-      max_ub /= out_shape[i];
-      if (brc_axis[i] && i != last_index && i != b_axis &&
-          ((max_ub_shape * out_shape[i]) % ele_in_block == 0) && max_ub_shape % ele_in_block != 0) {
-        split_axis = i;
-        split_factor = FindAlignFactor(max_ub_shape, ele_in_block);
-        break;
-      }
-      max_ub_shape *= out_shape[i];
-    }
-  }
-  out_shape[b_axis] = output_size > multi_core_threshold ? block_output : out_shape[b_axis];
-  return true;
-}
-
-std::tuple<bool, int64_t> LastFuseOutput(const std::string& op_type,
-                                         const std::vector<std::vector<int64_t>>& fusion_shapes) {
-  int64_t fuse_last = 0;
-  for (size_t i = 0; i < fusion_shapes.size(); i++) {
-    V_CHECK_GT(fusion_shapes[i].size(), 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The input shape must be greater than 0"),
-               return std::make_tuple(false, 0));
-    fuse_last = fusion_shapes[i].back();
-    if (fuse_last != 1) {
-      break;
-    }
-  }
-  return std::make_tuple(true, fuse_last);
-}
-
-template <typename T>
-void Broadcast<T>::GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
-                                      const int64_t split_axis, const int64_t split_factor) {
-  V_OP_TILING_CHECK((split_factor != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "split_factor cannot be zero."),
-                    return);
-  int64_t shape_len = fusion_shapes[0].size();
-  int64_t fusion_len = output_shape.size();
+void Broadcast<T>::GenerateAllUnknown(size_t start) {
   output_shape.clear();
-  size_t start = split_axis == -1 ? fusion_len - 1 - shape_len : fusion_len - shape_len - NUM_TWO;
   for (size_t i = 0; i < start; i++) {
     for (size_t j = 0; j < input_num; j++) {
       input_shapes[j][i] = 1;
@@ -591,58 +583,20 @@ void Broadcast<T>::GenerateAllUnknown(const std::vector<int64_t>& out_shape, con
     output_shape.push_back(1);
     broadcast_axis[i] = false;
   }
-  size_t dim_index = start;
-  for (int64_t i = 0; i < shape_len; i++) {
-    for (int64_t j = 0; j < static_cast<int64_t>(input_num); j++) {
-      if (i == split_axis) {
-        input_shapes[j][dim_index] = fusion_shapes[j][i] == 1 ? 1 : fusion_shapes[j][i] / split_factor;
-        input_shapes[j][dim_index + 1] = fusion_shapes[j][i] == 1 ? 1 : split_factor;
-      } else {
-        input_shapes[j][dim_index] = fusion_shapes[j][i];
-      }
+  for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
+    int64_t max_output = 1;
+    int64_t min_output = 2;
+    size_t real_start = start + i;
+    for (size_t j = 0; j < input_num; j++) {
+      input_shapes[j][real_start] = fusion_shapes[j][i];
+      max_output = std::max(max_output, input_shapes[j][real_start]);
+      min_output = std::min(min_output, input_shapes[j][real_start]);
     }
-    broadcast_axis[dim_index] = brc_axis[i];
-    dim_index++;
-    if (i == split_axis) {
-      broadcast_axis[dim_index] = brc_axis[i];
-      output_shape.push_back(out_shape[i] / split_factor);
-      output_shape.push_back(split_factor);
-      dim_index++;
-    } else {
-      output_shape.push_back(out_shape[i]);
+    output_shape.push_back(max_output);
+    if (min_output == 1 && max_output != 1) {
+      broadcast_axis[real_start] = true;
     }
   }
-  s_pattern = Pattern::UNKNWON_UNKNOWN;
-}
-
-template <typename T>
-bool Broadcast<T>::TryMatchAllUnknown() {
-  V_CHECK_GT(fusion_shapes.size(), 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The input number must be greater than 0"),
-             return false);
-  size_t shape_len = fusion_shapes[0].size();
-  int64_t split_axis = -1;
-  int64_t split_factor = -1;
-  std::vector<int64_t> out_shape(shape_len, 1);
-  std::vector<bool> brc_axis(shape_len, false);
-  GenOutputAndBrcAxis(out_shape, brc_axis, fusion_shapes, shape_len);
-  output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
-  int64_t ele_in_block = BGetElementByType(in_type);
-  V_OP_TILING_CHECK((ele_in_block != 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
-                    return false);
-  bool ret = true;
-  if ((output_shape.size() - 1) > shape_len && shape_len > NUM_TWO && output_size % ele_in_block == 0) {
-    ret = CalcSplitFactor(out_shape, brc_axis, ele_in_block, split_axis, split_factor);
-  }
-  int64_t fuse_last = 0;
-  bool check_res = true;
-  std::tie(check_res, fuse_last) = LastFuseOutput(op_type, fusion_shapes);
-  bool need_fuse_axis = output_shape.back() != fuse_last;
-  if (ret && check_res && (need_fuse_axis || split_axis != -1)) {
-    GenerateAllUnknown(out_shape, brc_axis, split_axis, split_factor);
-  }
-  return ret;
 }
 
 template <typename T>
@@ -696,6 +650,95 @@ bool Broadcast<T>::RefineShapesForBroadcast() {
 }
 
 template <typename T>
+bool Broadcast<T>::AfterUbNoFused() {
+  // step 0: get output shapes
+  size_t shape_len = fusion_shapes[0].size();
+  std::array<int64_t, B_MAX_DIM_LEN> faker_output_shape{};
+  GenOutputAndBrcAxis(faker_output_shape, fusion_shapes, shape_len);
+  // step 1: get Pattern:UNKNOWN_UNKNOWN base info
+  GetBaseInfo(ALL_UNKNOWN_PATTERN);
+  // step 2: simulate split
+  int64_t limit = max_available_ub;
+  int64_t ele_in_block = BLOCK_SIZE_BYTES / max_dtype_compile;
+  auto last_dim = static_cast<int64_t>(shape_len - 1);
+  faker_output_shape[last_dim] = (faker_output_shape[last_dim] + ele_in_block - 1) / ele_in_block * ele_in_block;
+  int64_t split_axis = last_dim + 1;
+  for (int64_t i = last_dim; i >= 0; i--) {
+    if (faker_output_shape[i] >= limit) {
+      split_axis = i;
+      break;
+    } else {
+      limit /= faker_output_shape[i];
+    }
+  }
+  // step 3: is there axis fusion
+  int64_t diff_index = output_shape.size() - shape_len;
+  for (int64_t i = last_dim; i >= split_axis; i--) {
+    if (faker_output_shape[i] != output_shape[i + diff_index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename T>
+bool Broadcast<T>::TryMatchAllUnknown() {
+  V_CHECK_GT(fusion_shapes.size(), 0,
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The input number must be greater than 0"),
+             return false;);
+  size_t shape_len = fusion_shapes[0].size();
+  if (shape_len == output_shape.size()) {
+    return true;
+  }
+  // last axis be fused, cannot use all_unknown_last_const_pattern
+  if (broadcast_compile_info->all_unknown_last_const) {
+    int64_t fused_last = 1;
+    for (const auto& fusion_shape : fusion_shapes) {
+      fused_last = std::max(fused_last, fusion_shape[fusion_shape.size() - 1]);
+    }
+    if (output_shape[-1] != fused_last) {
+      return true;
+    }
+  }
+  // after ub split axis not fused axis
+  if (AfterUbNoFused()) {
+    return true;
+  }
+  int64_t fusion_len = fusion_shapes[0].size();
+  size_t start = original_dim_len - fusion_len - 1;
+  GenerateAllUnknown(start);
+  s_pattern = Pattern::UNKNWON_UNKNOWN;
+  return true;
+}
+
+template <typename T>
+bool Broadcast<T>::GetBaseInfo(const std::string& pattern_key) {
+  OP_LOGD(op_type, "tiling key:%s", pattern_key.c_str());
+  try {
+    const auto& base_info = broadcast_compile_info->base_info_compile.second.at(pattern_key);
+    // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db", "_max_brc_type"]
+    const size_t base_info_size = 4;
+    V_CHECK_GE(base_info.size(), base_info_size,
+               VECTOR_INNER_ERR_REPORT_TILIING(
+                 op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               return false);
+    core_num_compile = base_info[0];
+    max_dtype_compile = base_info[1];
+    max_available_ub = base_info[MAX_AVAILABLE_UB_INDEX];
+    max_available_ub_db = base_info[MAX_AVAILABLE_UB_DB_INDEX];
+    if (base_info.size() > MAX_BRC_TYPE_INDEX) {
+      max_brc_type = base_info[MAX_BRC_TYPE_INDEX];
+    } else {
+      max_brc_type = max_dtype_compile;
+    }
+  } catch (const std::exception &e) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
+    return false;
+  }
+  return true;
+}
+
+template <typename T>
 bool Broadcast<T>::CalcTiling() {
   int64_t pattern = static_cast<int64_t>(s_pattern);
   int64_t key_len = 2;
@@ -706,21 +749,22 @@ bool Broadcast<T>::CalcTiling() {
     key_len--;
   }
   std::string pattern_key = keys;
-  try {
-    const auto& base_info = broadcast_compile_info->base_info_compile.second.at(pattern_key);
-    // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db"]
-    const size_t base_info_size = 4;
-    V_CHECK_EQ(base_info.size(), base_info_size,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-               "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
-               return false);
-    core_num_compile = base_info[0];
-    max_dtype_compile = base_info[1];
-    max_available_ub = base_info[MAX_AVAILABLE_UB_INDEX];
-    max_available_ub_db = base_info[MAX_AVAILABLE_UB_DB_INDEX];
-  } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
+  bool ret = GetBaseInfo(pattern_key);
+  if (!ret) {
     return false;
+  }
+  if (!(broadcast_compile_info->is_pure_brc || is_milan_soc)) {
+    SwitchToAlignPattern();
+  }
+  if (s_pattern == Pattern::UNKNOWN_ALIGN && !only_const_tiling) {
+    ret = GetBaseInfo(ALL_UNKNOWN_ALIGN_PATTERN);
+    if (!ret) {
+      return false;
+    }
+    if (broadcast_compile_info->brc_avoid_bank_conflict) {
+      int64_t ele_in_block = BLOCK_SIZE_BYTES / max_brc_type;
+      max_available_ub -= (ROW_LIMIT * ele_in_block);
+    }
   }
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
   V_CHECK_LE(output_size, INT32_MAX,
@@ -731,12 +775,16 @@ bool Broadcast<T>::CalcTiling() {
              return false);
   const int64_t multi_core_threshold = BGetElementByType(out_type) * core_num_compile * DOUBLE_BUFFER_SIZE;
   // block factor whole cut when the shape size is less than the cores size
-  const int64_t block_align_threshold = BGetElementByType(out_type) * BLOCK_NUM *
+  const int64_t block_align_threshold = BGetElementByType(out_type) * ONE_REPEAT_BLOCK_NUM *
                                         MAX_REPEAT_TIMES * core_num_compile;
   if (output_size <= multi_core_threshold) {
     need_tiling_cut = false;
   } else if (output_size <= block_align_threshold) {
     need_block_align = true;
+  }
+  // UNKNOWN_ALIGN has no un-split templates
+  if (s_pattern == Pattern::UNKNOWN_ALIGN && !only_const_tiling) {
+    need_tiling_cut = true;
   }
   return true;
 }
@@ -801,84 +849,6 @@ bool Broadcast<T>::DoBlockTiling() {
 }
 
 template <typename T>
-int64_t Broadcast<T>::FindLowestMiddle() {
-  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
-  int64_t lowest_middle_index = shape_len - 1;
-  if (!broadcast_axis[shape_len] && input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
-    if (input_shapes[0][shape_len] == 1 && input_shapes[1][shape_len] == 1) {
-      lowest_middle_index--;
-      for (int64_t i = shape_len - 1; i >= ub_axis; i--) {
-        if (input_shapes[0][i] == 1 && input_shapes[1][i] == 1) {
-          lowest_middle_index--;
-        } else {
-          break;
-        }
-      }
-    }
-  }
-  bool maby_continuous_brc = broadcast_axis[lowest_middle_index] && broadcast_axis[lowest_middle_index + 1] &&
-                             input_num == SPECIAL_BROADCAST_INPUT_NUMS;
-  if (maby_continuous_brc) {
-    for (int64_t i = lowest_middle_index; i >= ub_axis; i--) {
-      if (!broadcast_axis[i]) {
-        break;
-      }
-      bool same_broadcast_direct = (input_shapes[0][i] == input_shapes[0][i + 1] && input_shapes[0][i] == 1) ||
-                                   (input_shapes[0][i] != 1 && input_shapes[0][i + 1] != 1);
-      if (same_broadcast_direct) {
-        lowest_middle_index--;
-      } else {
-        break;
-      }
-    }
-  }
-  return lowest_middle_index;
-}
-
-template <typename T>
-int64_t Broadcast<T>::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_block) {
-  int64_t last_ub_axis = ub_axis;
-  int64_t ub_output = output_shape[last_ub_axis];
-  output_shape[last_ub_axis] = ub_factor;
-  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
-  int64_t last_broadcast_size = 1;
-  bool is_middle_optimize = false;
-  int64_t last_under_ub_shape = 1;
-  int64_t under_ub_shape = 1;
-  int64_t out_ele_in_block = BGetElementByType(out_type);
-  int64_t lowest_middle_index = FindLowestMiddle();
-  for (int64_t i = shape_len; i >= last_ub_axis; i--) {
-    if (broadcast_axis[i] && i != shape_len) {
-      if (under_ub_shape > N_LAST_BROADCAST_THRESHOLD && !is_middle_optimize) {
-        ub_axis = i + 1;
-        ub_factor = output_shape[i + 1];
-        break;
-      } else if (i <= lowest_middle_index && output_shape[i] >= (ele_in_block * MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS) &&
-                 output_shape[i] > last_broadcast_size) {
-        if (ub_factor * under_ub_shape >= out_ele_in_block) {
-          ub_axis = i;
-          ub_factor = output_shape[i];
-          last_under_ub_shape = under_ub_shape;
-          is_middle_optimize = true;
-          last_broadcast_size = output_shape[i];
-        }
-      } else if (!broadcast_axis[i + 1] &&
-                 under_ub_shape > (max_ub_shape / under_ub_shape * NONE_BRC_AXIS_OPTIMIZE_BLOCK_NUMS) &&
-                 under_ub_shape > (BLOCK_NUM * ele_in_block) && !is_middle_optimize) {
-        ub_axis = i + 1;
-        ub_factor = output_shape[i + 1];
-        break;
-      }
-    }
-    if (i != last_ub_axis) {
-      under_ub_shape *= output_shape[i];
-    }
-  }
-  output_shape[last_ub_axis] = ub_output;
-  return is_middle_optimize ? last_under_ub_shape : under_ub_shape;
-}
-
-template <typename T>
 bool Broadcast<T>::MilanUbTiling() {
   int64_t limit = max_available_ub;
   V_OP_TILING_CHECK((SPLIT_FACTORS.find(max_dtype_compile) != SPLIT_FACTORS.end()),
@@ -919,9 +889,28 @@ bool Broadcast<T>::DefaultUbTiling() {
   if (output_shape.size() == 1 &&  max_available_ub > SPLIT_FACTORS.at(max_dtype_compile)) {
     limit = SPLIT_FACTORS.at(max_dtype_compile);
   }
+  int64_t ele_in_block = BLOCK_SIZE_BYTES / max_brc_type;
+  if (max_brc_type != max_dtype_compile && s_pattern == Pattern::UNKNOWN_ALIGN) {
+    ele_in_block = BLOCK_SIZE_BYTES / max_dtype_compile;
+  }
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
+  int64_t ori_last_dim_shape = output_shape[shape_len];
+  output_shape[shape_len] = (output_shape[shape_len] + ele_in_block - 1) / ele_in_block * ele_in_block;
+  bool need_update_limit = broadcast_compile_info->is_vnchwconv_align && s_pattern != Pattern::UNKNOWN_ALIGN &&
+                           !pure_brc_use_align && output_shape.size() != 1;
+  if (need_update_limit) {
+    int64_t row_block = ele_in_block * ROW_LIMIT;
+    int64_t row_size = limit / output_shape[shape_len];
+    int64_t row_ceil = (row_size + row_block - 1) / row_block;
+    int64_t cur_last = ori_last_dim_shape;
+    if (block_axis == shape_len) {
+      cur_last = multi_core_output;
+    }
+    if (!(cur_last % ele_in_block == 0 && (row_ceil * row_block * ele_in_block <= limit))) {
+      limit = row_size / row_block * row_block * output_shape[shape_len];
+    }
+  }
   int64_t max_ub_shape = 1;
-  int64_t ele_in_block = BGetElementByType(in_type);
   V_OP_TILING_CHECK((ele_in_block != 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
                     return false);
@@ -941,13 +930,17 @@ bool Broadcast<T>::DefaultUbTiling() {
       ub_factor = output_shape[i];
     }
   }
-  int64_t under_ub_shape = 1;
-  if (!has_ub_align) {
-    under_ub_shape = SplitUb(max_ub_shape, ele_in_block);
-  } else {
-    under_ub_shape = max_ub_shape / ub_factor;
+  int64_t under_ub_shape = max_ub_shape / ub_factor;
+  if ((broadcast_compile_info->is_pure_brc && under_ub_shape >= ori_last_dim_shape) || ub_axis != shape_len) {
+    under_ub_shape = under_ub_shape / output_shape[shape_len] * ori_last_dim_shape;
   }
-  AdjustUbTiling(under_ub_shape, limit);
+  output_shape[shape_len] = ori_last_dim_shape;
+  if (ub_axis == shape_len) {
+    ub_factor = std::min(ub_factor, output_shape[ub_axis]);
+  }
+  V_OP_TILING_CHECK((AdjustUbTiling(under_ub_shape, limit)),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "adjust ub tiling failed."),
+                    return false);
   if (output_shape.size() != 1) {
     CheckUpdateUbTiling();
   }
@@ -976,20 +969,34 @@ void Broadcast<T>::OptimizeUbTiling() {
 }
 
 template <typename T>
-void Broadcast<T>::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit) {
+bool Broadcast<T>::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit) {
   if (ub_axis < 0) {
     ub_axis = block_axis;
     ub_factor = output_shape[block_axis];
   } else {
-    if (block_axis == ub_axis) {
+    int64_t ele_in_block = BLOCK_SIZE_BYTES / max_brc_type;
+    if (max_brc_type != max_dtype_compile && s_pattern == Pattern::UNKNOWN_ALIGN) {
+      ele_in_block = BLOCK_SIZE_BYTES / max_dtype_compile;
+    }
+    if (block_axis == ub_axis || is_last_common_align) {
       int64_t ub_for_num = std::ceil(output_shape[ub_axis] * 1.0 / ub_factor);
-      ub_factor = std::ceil(output_shape[ub_axis] * 1.0 / ub_for_num);
+      V_OP_TILING_CHECK((ub_for_num != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_for_num cannot be zero."),
+                        return false);
+      int64_t avg_ub_factor = std::ceil(output_shape[ub_axis] * 1.0 / ub_for_num);
+      avg_ub_factor = (avg_ub_factor + ele_in_block - 1) / ele_in_block * ele_in_block;
+      ub_factor = std::min(ub_factor, avg_ub_factor);
+    } else if (broadcast_compile_info->is_pure_brc ||
+               (s_pattern == Pattern::UNKNOWN_ALIGN && ub_factor != output_shape[ub_axis])) {
+      if ((under_ub_shape * ub_factor) % ele_in_block != 0 &&
+          ub_factor > ele_in_block * ONE_REPEAT_BLOCK_NUM && output_shape[ub_axis] != ub_factor) {
+        ub_factor = ub_factor / ele_in_block * ele_in_block;
+      }
     }
     int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
     if (ub_axis == shape_len && ub_factor != output_shape[shape_len]) {
       int64_t ele_in_block = BGetElementByType(out_type);
       V_OP_TILING_CHECK((ele_in_block != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
-               return);
+                        return false);
       if (output_shape.size() == 1) {
         ele_in_block = broadcast_compile_info->ub_factor_align;
       }
@@ -1002,8 +1009,8 @@ void Broadcast<T>::AdjustUbTiling(const int64_t under_ub_shape, const int64_t li
     }
     // Adjust the UB factor to avoid tail block less than 32 bytes
     V_OP_TILING_CHECK((ub_factor != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_factor cannot be zero."),
-               return);
-    int64_t ele_in_block = BGetElementByType(out_type);
+                      return false);
+    ele_in_block = BGetElementByType(out_type);
     int64_t ub_tail = output_shape[ub_axis] % ub_factor;
     if (ub_tail != 0 && (under_ub_shape * ub_tail < ele_in_block)) {
       int64_t need_tail = std::ceil(ele_in_block * 1.0 / under_ub_shape);
@@ -1011,6 +1018,7 @@ void Broadcast<T>::AdjustUbTiling(const int64_t under_ub_shape, const int64_t li
       ub_factor -= ub_gap;
     }
   }
+  return true;
 }
 
 template <typename T>
@@ -1022,22 +1030,23 @@ void Broadcast<T>::CheckUpdateUbTiling() {
       ge::DataType tmp_out_type;
       context->GetOutputDataType(i, tmp_out_type);
       int64_t ele_in_block = BGetElementByType(tmp_out_type);
-      std::vector<int64_t> out_shape{};
+      std::vector<int64_t> faker_output_shape{};
       OpShape output_op_shape = context->GetOutputShape(i);
       for(size_t i = 0; i < output_op_shape.GetDimNum(); i++) {
-        out_shape.push_back(output_op_shape.GetDim(i));
+        faker_output_shape.push_back(output_op_shape.GetDim(i));
       }
-      int64_t start = fusion_index[ub_axis][0] - max_output_shape_size + out_shape.size();
-      int64_t end = fusion_index[ub_axis].back() - max_output_shape_size + out_shape.size();
+      int64_t start = fusion_index[ub_axis][0] - max_output_shape_size + faker_output_shape.size();
+      int64_t end = fusion_index[ub_axis].back() - max_output_shape_size + faker_output_shape.size();
       int64_t cut_output = 1;
       int64_t under_ub = 1;
       if (start >= 0) {
-        cut_output = std::accumulate(out_shape.begin() + start, out_shape.begin() + end + 1,
+        cut_output = std::accumulate(faker_output_shape.begin() + start, faker_output_shape.begin() + end + 1,
                                      1LL, std::multiplies<int64_t>());
-        under_ub = std::accumulate(out_shape.begin() + end + 1, out_shape.end(),
+        under_ub = std::accumulate(faker_output_shape.begin() + end + 1, faker_output_shape.end(),
                                    1LL, std::multiplies<int64_t>());
       } else {
-        under_ub = std::accumulate(out_shape.begin(), out_shape.end(), 1LL, std::multiplies<int64_t>());
+        under_ub = std::accumulate(faker_output_shape.begin(), faker_output_shape.end(),
+                                   1LL, std::multiplies<int64_t>());
       }
       need_single_core = (cut_output % ub_factor != 0 &&
                           (cut_output % ub_factor) * under_ub < ele_in_block) ||
@@ -1077,7 +1086,14 @@ void Broadcast<T>::CalcKey() {
   int64_t base_key = 0;
   if (s_pattern != Pattern::ORIGINAL) {
     constexpr int64_t s_pattern_key_num = 100000;
-    base_key = BASE_KEY_NUM + static_cast<int64_t>(s_pattern) * s_pattern_key_num;
+    base_key = SPECIAL_KEY_NUM;
+    if (s_pattern == Pattern::UNKNOWN_ALIGN) {
+      base_key = ALIGN_KEY_NUM;
+    }
+    if (broadcast_compile_info->is_pure_brc) {
+      base_key = PURE_BRC_KEY_NUM;
+    }
+    base_key += static_cast<int64_t>(s_pattern) * s_pattern_key_num;
   }
   if (need_double_buffer) {
     constexpr int64_t doubleBufferKey = 10000;
@@ -1101,6 +1117,7 @@ bool Broadcast<T>::WriteTilingData() const {
   context->SetBlockDim(static_cast<uint32_t>(block_dims));
   if (only_const_tiling) {
     context->Append(static_cast<int32_t>(need_tiling_cut));
+    context->Append(static_cast<int32_t>(s_pattern == Pattern::UNKNOWN_ALIGN));
     context->Append(static_cast<int32_t>(block_axis));
     context->Append(static_cast<int32_t>(block_factor));
     context->Append(static_cast<int32_t>(ub_axis));
@@ -1167,7 +1184,7 @@ bool Broadcast<T>::WriteTilingData() const {
 template <typename T>
 bool Broadcast<T>::IsNeedDoubleBuffer() const {
   return ((s_pattern == Pattern::COMMON_BROADCAST && output_shape[1] >= max_available_ub) ||
-       s_pattern == Pattern::COMMON);
+       s_pattern == Pattern::COMMON || is_last_common_align);
 }
 template <typename T>
 bool Broadcast<T>::WriteRlTilingData(const rl::RlBankInfo& rl_bank_info) {
@@ -1690,6 +1707,26 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
     soc_version.second = outer_compile_info.at("_soc_version").get<std::string>();
   }
 
+  if (outer_compile_info.contains("_has_store_align")) {
+    has_store_align = outer_compile_info.at("_has_store_align").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_is_pure_brc")) {
+    is_pure_brc = outer_compile_info.at("_is_pure_brc").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_is_vnchwconv_align")) {
+    is_vnchwconv_align = outer_compile_info.at("_is_vnchwconv_align").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_brc_avoid_bank_conflict")) {
+    brc_avoid_bank_conflict = outer_compile_info.at("_brc_avoid_bank_conflict").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_all_unknown_last_const")) {
+    all_unknown_last_const = outer_compile_info.at("_all_unknown_last_const").get<bool>();
+  }
+
   if (!var_attr_wrap.ParseVarAttr(outer_compile_info)) {
     VECTOR_INNER_ERR_REPORT_TILIING("AutoTiling","broadcast parse var_attr error");
   }
@@ -1758,6 +1795,26 @@ bool BroadcastCompileInfo::Parse(const nlohmann::json& outer_compile_info) {
   if (outer_compile_info.contains("_soc_version")) {
     soc_version.first = true;
     soc_version.second = outer_compile_info.at("_soc_version").get<std::string>();
+  }
+
+  if (outer_compile_info.contains("_has_store_align")) {
+    has_store_align = outer_compile_info.at("_has_store_align").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_is_pure_brc")) {
+    is_pure_brc = outer_compile_info.at("_is_pure_brc").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_is_vnchwconv_align")) {
+    is_vnchwconv_align = outer_compile_info.at("_is_vnchwconv_align").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_brc_avoid_bank_conflict")) {
+    brc_avoid_bank_conflict = outer_compile_info.at("_brc_avoid_bank_conflict").get<bool>();
+  }
+
+  if (outer_compile_info.contains("_all_unknown_last_const")) {
+    all_unknown_last_const = outer_compile_info.at("_all_unknown_last_const").get<bool>();
   }
 
   if (!var_attr_wrap.ParseVarAttr(outer_compile_info)) {
