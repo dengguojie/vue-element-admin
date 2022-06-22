@@ -243,6 +243,7 @@ set(_tf_plugins
   if_plugin.cc
   ifmr_plugin.cc
   image_projective_transform_plugin.cc
+  image_projective_transform_v2_plugin.cc
   inplace_add_plugin.cc
   inplace_sub_plugin.cc
   inplace_update_plugin.cc

@@ -20,7 +20,7 @@
 
 #include <iostream>
 namespace domi {
-Status ParseImageProjectiveTransform(const Message* op_src, ge::Operator& op) {
+Status ParseImageProjectiveTransformV2(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   ge::TensorDesc input_tensor = op.GetInputDesc("images");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
@@ -38,10 +38,10 @@ Status ParseImageProjectiveTransform(const Message* op_src, ge::Operator& op) {
   }
   return SUCCESS;
 }
-// register ImageProjectiveTransform op to GE
-REGISTER_CUSTOM_OP("ImageProjectiveTransform")
+// register ImageProjectiveTransformV2 op to GE
+REGISTER_CUSTOM_OP("ImageProjectiveTransformV2")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("ImageProjectiveTransformV2")
-    .ParseParamsFn(ParseImageProjectiveTransform)
+    .OriginOpType("ImageProjectiveTransformV3")
+    .ParseParamsFn(ParseImageProjectiveTransformV2)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

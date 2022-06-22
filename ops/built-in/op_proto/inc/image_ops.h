@@ -2371,5 +2371,34 @@ REG_OP(ImageProjectiveTransform)
     .ATTR(fill_mode, String, "CONSTANT")
     .OUTPUT(transformed_images, TensorType({DT_UINT8, DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .OP_END_FACTORY_REG(ImageProjectiveTransform)
+
+/**
+* @brief image to transforms. \n
+
+* @par Inputs:
+* @li images: [batch, height, width, channels], 4-D tensor. 
+* @li transforms: [batch, 8] or [1, 8] matrix, 2-D tensor.
+* @li outout_shape: [new_height, new_width], 1-D tensor.
+* @li fill_value: [scalar], 1-D tensor.
+
+* @par Attributes:
+* @li interpolation: Interpolation method, "NEAREST" or "BILINEAR", 0-D tensor.
+* @li fill_mode: Defaults to "CONSTANT". Fill mode, "REFLECT", "WRAP", or "CONSTANT", 0-D tensor.
+
+* @par Outputs
+* transformed_images: has the same type as iamges, 4-D tensor with shape[batch, new_height, new_width, channels]. \n
+
+* @par Third-party framework compatibility.
+* Compatible with tensorflow ImageProjectiveTransformv2 operator.
+*/
+REG_OP(ImageProjectiveTransformV2)
+    .INPUT(images, TensorType({DT_UINT8, DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(transforms, TensorType({DT_FLOAT}))
+    .INPUT(output_shape, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(fill_value, TensorType({DT_UINT8, DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .REQUIRED_ATTR(interpolation, String)
+    .ATTR(fill_mode, String, "CONSTANT")
+    .OUTPUT(transformed_images, TensorType({DT_UINT8, DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(ImageProjectiveTransformV2)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_IMAGE_OPS_H_

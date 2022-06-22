@@ -1054,6 +1054,8 @@ vector_B:
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
+      - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
+      - ops/built-in/framework/tf_plugin/image_projective_transform_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/non_zero_with_value_shape_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_segment_sum_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
@@ -1204,6 +1206,7 @@ vector_B:
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.cc
       - ops/built-in/op_proto/util/images_ops_shape_fns.cc
       - ops/built-in/op_proto/transformation_ops.cc
+      - ops/built-in/op_proto/image_ops.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/util/reduce_infer_util.cc
       - ops/built-in/op_proto/util/reduce_infer_util.h
@@ -1238,6 +1241,7 @@ vector_B:
       - ops/built-in/op_tiling/in_top_k.cc
       - ops/built-in/op_tiling/iou.cc
       - ops/built-in/op_tiling/inplace_index_add.cc
+      - ops/built-in/op_tiling/image_projective_transform.cc
       - ops/built-in/op_tiling/pad_v3_5hd.cc
       - ops/built-in/op_tiling/pad_v3_grad.cc
       - ops/built-in/op_tiling/tensor_move.cc
@@ -1568,6 +1572,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/unpack.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_sum.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_sum_no_atomic.py
+      - ops/built-in/tbe/impl/dynamic/image_projective_transform.py
+      - ops/built-in/tbe/impl/dynamic/image_projective_transform_v2.py
       - ops/built-in/tbe/impl/dynamic/xdivy.py
       - ops/built-in/tbe/impl/dynamic/xlog1py.py
       - ops/built-in/tbe/impl/dynamic/xlogy.py
@@ -2604,7 +2610,6 @@ unkown:
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/acts_ulq.cc
       - ops/built-in/op_proto/condtake_ops.cc
-      - ops/built-in/op_proto/image_ops.cc
       - ops/built-in/op_proto/wts_arq.cc
       - ops/built-in/op_proto/strided_slice_infer_shape.h
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
@@ -3530,7 +3535,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/getspan_plugin.cc
       - ops/built-in/framework/tf_plugin/rsqrt_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/ifmr_plugin.cc
-      - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
       - ops/built-in/framework/tf_plugin/space_to_batch_plugin.cc
       - ops/built-in/framework/tf_plugin/adam_apply_one_with_decay_assign_plugin.cc
       - ops/built-in/framework/tf_plugin/sqrt_grad_plugin.cc

@@ -11,7 +11,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
 
- * ImageProjectiveTransform ut case
+ * ImageProjectiveTransformV2 ut case
  */
 #include <gtest/gtest.h>
 #include <iostream>
@@ -20,19 +20,19 @@
 #include "all_ops.h"
 #include "common/utils/ut_op_util.h"
 
-class imageprojectivetransform : public testing::Test {
+class ImageProjectiveTransformV2 : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "imageprojectivetransform SetUp" << std::endl;
+    std::cout << "ImageProjectiveTransformV2 SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "imageprojectivetransform TearDown" << std::endl;
+    std::cout << "ImageProjectiveTransformV2 TearDown" << std::endl;
   }
 };
 
 using namespace ut_util;
-TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_ok_test){
+TEST_F(ImageProjectiveTransformV2, ImageProjectiveTransformV2_input_images_ok_test){
   using namespace ge;
   // Graph graph("ReduceSum_1");
   // input images info
@@ -49,7 +49,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_ok_test){
   std::vector<int64_t> expected_output_shape = {1, 5, 3, 3};
 
   // gen ReduceSum op
-  auto test_op = op::ImageProjectiveTransform("ImageProjectiveTransform");
+  auto test_op = op::ImageProjectiveTransformV2("ImageProjectiveTransformV2");
   TENSOR_INPUT_WITH_SHAPE(test_op, images, images_shape, images_dtype, FORMAT_NHWC, {});
   TENSOR_INPUT_WITH_SHAPE(test_op, transforms, transform_shape, transform_dtype, FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, output_shape, output_shape_shape, output_shape_dtype, FORMAT_ND, output_shape_value);
@@ -63,7 +63,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_ok_test){
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_ERR_test){
+TEST_F(ImageProjectiveTransformV2, ImageProjectiveTransformV2_input_images_ERR_test){
   using namespace ge;
   // Graph graph("ReduceSum_1");
   // input images info
@@ -80,7 +80,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_ERR_test)
   std::vector<int64_t> expected_output_shape = {1, 5, 3, 3};
 
   // gen ReduceSum op
-  auto test_op = op::ImageProjectiveTransform("ImageProjectiveTransform");
+  auto test_op = op::ImageProjectiveTransformV2("ImageProjectiveTransformV2");
   TENSOR_INPUT_WITH_SHAPE(test_op, images, images_shape, images_dtype, FORMAT_NHWC, {});
   TENSOR_INPUT_WITH_SHAPE(test_op, transforms, transform_shape, transform_dtype, FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, output_shape, output_shape_shape, output_shape_dtype, FORMAT_ND, output_shape_value);
@@ -93,7 +93,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_ERR_test)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(imageprojectivetransform, imageprojectivetransform_outputshape_isnot1D_ERR_test){
+TEST_F(ImageProjectiveTransformV2, ImageProjectiveTransformV2_outputshape_isnot1D_ERR_test){
   using namespace ge;
   // Graph graph("ReduceSum_1");
   // input images info
@@ -110,7 +110,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_outputshape_isnot1D_ER
   std::vector<int64_t> expected_output_shape = {1, 5, 3, 3};
 
   // gen ReduceSum op
-  auto test_op = op::ImageProjectiveTransform("ImageProjectiveTransform");
+  auto test_op = op::ImageProjectiveTransformV2("ImageProjectiveTransformV2");
   TENSOR_INPUT_WITH_SHAPE(test_op, images, images_shape, images_dtype, FORMAT_NHWC, {});
   TENSOR_INPUT_WITH_SHAPE(test_op, transforms, transform_shape, transform_dtype, FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, output_shape, output_shape_shape, output_shape_dtype, FORMAT_ND, output_shape_value);
@@ -123,7 +123,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_outputshape_isnot1D_ER
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(imageprojectivetransform, imageprojectivetransform_outputshape_interpolation_null){
+TEST_F(ImageProjectiveTransformV2, ImageProjectiveTransformV2_outputshape_interpolation_null){
   using namespace ge;
   // Graph graph("ReduceSum_1");
   // input images info
@@ -140,7 +140,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_outputshape_interpolat
   std::vector<int64_t> expected_output_shape = {1, 5, 3, 3};
 
   // gen ReduceSum op
-  auto test_op = op::ImageProjectiveTransform("ImageProjectiveTransform");
+  auto test_op = op::ImageProjectiveTransformV2("ImageProjectiveTransformV2");
   TENSOR_INPUT_WITH_SHAPE(test_op, images, images_shape, images_dtype, FORMAT_NHWC, {});
   TENSOR_INPUT_WITH_SHAPE(test_op, transforms, transform_shape, transform_dtype, FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, output_shape, output_shape_shape, output_shape_dtype, FORMAT_ND, output_shape_value);
@@ -153,7 +153,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_outputshape_interpolat
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
-TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_shapeerr_test){
+TEST_F(ImageProjectiveTransformV2, ImageProjectiveTransformV2_input_images_shapeerr_test){
   using namespace ge;
   // Graph graph("ReduceSum_1");
   // input images info
@@ -170,7 +170,7 @@ TEST_F(imageprojectivetransform, imageprojectivetransform_input_images_shapeerr_
   std::vector<int64_t> expected_output_shape = {1, 5, 3, 3};
 
   // gen ReduceSum op
-  auto test_op = op::ImageProjectiveTransform("ImageProjectiveTransform");
+  auto test_op = op::ImageProjectiveTransformV2("ImageProjectiveTransformV2");
   TENSOR_INPUT_WITH_SHAPE(test_op, images, images_shape, images_dtype, FORMAT_NHWC, {});
   TENSOR_INPUT_WITH_SHAPE(test_op, transforms, transform_shape, transform_dtype, FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE(test_op, output_shape, output_shape_shape, output_shape_dtype, FORMAT_ND, {});

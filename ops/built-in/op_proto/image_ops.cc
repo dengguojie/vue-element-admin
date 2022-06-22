@@ -3634,53 +3634,49 @@ INFER_FUNC_REG(EncodeJpegVariableQuality, EncodeJpegVariableQualityInferShape);
 // ----------------EncodeJpegVariableQuality END---------------------
 
 // ---------------ImageProjectiveTransform Op START-------------------
-IMPLEMT_INFERFUNC(ImageProjectiveTransform, ImageProjectiveTransformInferShape) {
-  OP_LOGD(TbeGetName(op).c_str(), "Enter ImageProjectiveTransform inferfunction!");
-  auto opname = TbeGetName(op).c_str();
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto image_descptr = op_desc->MutableInputDesc("images");
-  GeShape image_shape;
-  if (WithRank(image_descptr, 4, image_shape, opname) != GRAPH_SUCCESS) {
-    OP_LOGE(opname, "Expected images should be 4-D. but get %lu.", image_descptr->GetShape().GetDimNum());
-    return GRAPH_FAILED;
-  }
-  
-  auto outputshape_descptr = op_desc->MutableInputDesc("output_shape");
-  GeShape outputshape_shape;
-  if (WithRank(outputshape_descptr, 1, outputshape_shape, opname) != GRAPH_SUCCESS) {
-    OP_LOGE(opname, "output_shape should be 1. but get %lu.", outputshape_descptr->GetShape().GetDimNum());
+IMPLEMT_COMMON_INFERFUNC(ImageProjectiveTransformInferShape) {
+  static const std::pair<uint32_t, std::string> input_x{0, "images"};
+  static const std::pair<uint32_t, std::string> input_size{2, "output_shape"};
+  static const std::pair<uint32_t, std::string> output_y{0, "transformed_images"};
+  const vector<string> depends{input_size.second};
+  PREPARE_DYNAMIC_SHAPE(depends);
+  if (!ResizeConstInferShape(op, input_x, input_size, output_y)) {
     return GRAPH_FAILED;
   }
 
-  int64_t unused_dim = 0;
-  if (WithValue(outputshape_shape.GetDim(0), 2, unused_dim, opname) != GRAPH_SUCCESS) {
-    OP_LOGE(opname, "output_shape's dim[0] should be 2. but get %lu.", outputshape_shape.GetDim(0));
-    return GRAPH_FAILED;
-  }
-  
-  std::string interpolation; // required attr
-  if (op.GetAttr("interpolation", interpolation) != GRAPH_SUCCESS) {
-    OP_LOGE(TbeGetName(op).c_str(), "get attr interpolation failed");
-    return GRAPH_FAILED;
-  }
-
-  op_desc->SetOpInferDepends({"output_shape"});
-  int64_t new_width = UNKNOWN_DIM;
-  int64_t new_height = UNKNOWN_DIM;
-  Tensor outputshape_tensor;
-  if (op.GetInputConstData("output_shape", outputshape_tensor) == GRAPH_SUCCESS) {
-    auto output_data = reinterpret_cast<const int32_t*>(outputshape_tensor.GetData());
-    new_width = static_cast<int64_t>(output_data[0]);
-    new_height = static_cast<int64_t>(output_data[1]);
-  }
-  auto output_descptr = op_desc->MutableOutputDesc("transformed_images");
-  FillOpDesc(output_descptr,
-             GeShape({image_shape.GetDim(0), new_height, new_width, image_shape.GetDim(3)}),
-             image_descptr->GetDataType()); // NHWC
   return GRAPH_SUCCESS;
 }
-INFER_FUNC_REG(ImageProjectiveTransform, ImageProjectiveTransformInferShape);
+
+IMPLEMT_VERIFIER(ImageProjectiveTransform, ImageProjectiveTransformVerify) {
+  std::string interpolation; // required attr
+  if (op.GetAttr("interpolation", interpolation) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("interpolation");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ImageProjectiveTransform, ImageProjectiveTransformInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ImageProjectiveTransform);
+VERIFY_FUNC_REG(ImageProjectiveTransform, ImageProjectiveTransformVerify);
 // ----------------ImageProjectiveTransform END---------------------
+
+// ----------------ImageProjectiveTransformV2 START---------------------
+IMPLEMT_VERIFIER(ImageProjectiveTransformV2, ImageProjectiveTransformV2Verify) {
+  std::string interpolation; // required attr
+  if (op.GetAttr("interpolation", interpolation) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("interpolation");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(ImageProjectiveTransformV2, ImageProjectiveTransformInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ImageProjectiveTransformV2);
+VERIFY_FUNC_REG(ImageProjectiveTransformV2, ImageProjectiveTransformV2Verify);
+// ----------------ImageProjectiveTransformV2 END---------------------
 
 std::vector<std::pair<int64_t, int64_t>> GetOpShapeRangeByAttr(Operator& op)
 {

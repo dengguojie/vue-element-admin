@@ -233,6 +233,7 @@ set(_optiling_files
   tiling_handler.h
   prod_force_se_a.cc
   trace.cc
+  image_projective_transform.cc
   moving_sum_with_sigmoid.cc
   dyn_seq_outer.cc
   resize.cc
