@@ -105,7 +105,7 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
   return SUCCESS;
 }
 
-Status Vec2ConstNode(vector<int64_t>& vals, ge::NodePtr& constNode, 
+Status Vec2ConstNode(vector<int64_t>& vals, ge::NodePtr& constNode,
                      ge::DataType dtype, ge::Format format, ge::ComputeGraph& graph) {
   vector<int64_t> dims = {static_cast<int64_t>(vals.size())};
   ge::GeShape shape(dims);
@@ -183,7 +183,7 @@ Status AddDynamicTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(PermNode->GetOutDataAnchor(0),
                                             beforeTransposeNode->GetInDataAnchor(1)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED); 
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
   // remove fused node input edge
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
                                                fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,

@@ -30,7 +30,7 @@ protected:
               std::vector<int64_t> y_shape,
               std::string expect_optype,
               bool &findOp) {
-      ge::Graph graph(case_name);
+      ge::Graph graph(case_name.c_str());
 
       auto construct_a_node = [](std::vector<T> x) {
         if (x.empty()) {
@@ -93,9 +93,9 @@ protected:
     }
 };
 
-TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_1) {
+TEST_F(strided_slice_v2_fusion_test, static_input) {
   bool findOp = false;
-  test<int32_t>("strided_slice_v2_fusion_test_1",
+  test<int32_t>("static_input",
                 {0, 0, 0}, // begin
                 {3, 2, 4}, // end
                 {0, 1, 2}, // axes
@@ -107,9 +107,51 @@ TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_1) {
   EXPECT_EQ(findOp, true);
 }
 
-TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_2) {
+TEST_F(strided_slice_v2_fusion_test, empty_stride) {
+  bool findOp = false;
+  test<int32_t>("empty_stride",
+                {0, 0, 0}, // begin
+                {3, 2, 4}, // end
+                {0, 1, 2}, // axes
+                {}, // strides
+                {10, 12, 12}, // x shape
+                {3, 2, 4}, // y shape
+                "StridedSliceD",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
+
+TEST_F(strided_slice_v2_fusion_test, empty_axes) {
+  bool findOp = false;
+  test<int32_t>("empty_axes",
+                {0, 0, 0}, // begin
+                {3, 2, 4}, // end
+                {}, // axes
+                {1, 1, 1}, // strides
+                {10, 12, 12}, // x shape
+                {3, 2, 4}, // y shape
+                "StridedSliceD",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
+
+TEST_F(strided_slice_v2_fusion_test, empty_optional_input) {
+  bool findOp = false;
+  test<int32_t>("empty_optional_input",
+                {0, 0, 0}, // begin
+                {3, 2, 4}, // end
+                {}, // axes
+                {}, // strides
+                {10, 12, 12}, // x shape
+                {3, 2, 4}, // y shape
+                "StridedSliceD",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
+
+TEST_F(strided_slice_v2_fusion_test, neg_stride_reverse) {
     bool findOp = false;
-  test<int32_t>("strided_slice_v2_fusion_test_2",
+  test<int32_t>("neg_stride_reverse",
                 {-1, -1, -1}, // begin
                 {-1000, -1000, -1000}, // end
                 {0, 1, 2}, // axes
@@ -121,9 +163,23 @@ TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_2) {
   EXPECT_EQ(findOp, true);
 }
 
-TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_3) {
+TEST_F(strided_slice_v2_fusion_test, dyn_input_neg_stride) {
+    bool findOp = false;
+  test<int32_t>("dyn_input_neg_stride",
+                {-1, -1, -1}, // begin
+                {-1000, -1000, -1000}, // end
+                {}, // axes
+                {-1, -1, -1}, // strides
+                {-1, 12, 12}, // x shape
+                {-1, 12, 12}, // y shape
+                "ReverseV2",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
+
+TEST_F(strided_slice_v2_fusion_test, dyn_input_empty_stride) {
   bool findOp = false;
-  test<int32_t>("strided_slice_v2_fusion_test_3",
+  test<int32_t>("dyn_input_empty_stride",
                 {0, 0, 0}, // begin
                 {3, 2, 4}, // end
                 {0, 1, 2}, // axes
@@ -149,9 +205,9 @@ TEST_F(strided_slice_v2_fusion_test, last_dim_stride_greater_than_one) {
   EXPECT_EQ(findOp, true);
 }
 
-TEST_F(strided_slice_v2_fusion_test, strided_slice_v2_fusion_test_5) {
+TEST_F(strided_slice_v2_fusion_test, optional_input_dims_less_than_x_dims) {
   bool findOp = false;
-  test<int64_t>("strided_slice_v2_fusion_test_5",
+  test<int64_t>("optional_input_dims_less_than_x_dims",
                 {0, 0}, // begin
                 {2, 4}, // end
                 {1, 2}, // axes
@@ -173,6 +229,34 @@ TEST_F(strided_slice_v2_fusion_test, negative_stride) {
                 {10, 12, 12}, // x shape
                 {3, 2, 2}, // y shape
                 "StridedSlice",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
+
+TEST_F(strided_slice_v2_fusion_test, dyn_input_stride_less_than_neg_one) {
+  bool findOp = false;
+  test<int32_t>("negative_stride",
+                {0, 0, 0}, // begin
+                {3, 2, 4}, // end
+                {0, 1, 2}, // axes
+                {1, 1, -2}, // strides
+                {10, -1, 12}, // x shape
+                {3, -1, 2}, // y shape
+                "StridedSlice",
+                findOp);
+  EXPECT_EQ(findOp, true);
+}
+
+TEST_F(strided_slice_v2_fusion_test, dyn_input_empty_optional_input) {
+  bool findOp = false;
+  test<int32_t>("dyn_input_empty_stride",
+                {0, 0, 0}, // begin
+                {3, 2, 4}, // end
+                {}, // axes
+                {}, // strides
+                {-1, 12, 12}, // x shape
+                {-1, -1, -1}, // y shape
+                "StridedSliceV3",
                 findOp);
   EXPECT_EQ(findOp, true);
 }

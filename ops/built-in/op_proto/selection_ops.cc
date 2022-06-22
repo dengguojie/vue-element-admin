@@ -4270,9 +4270,9 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
 
   OP_LOGD(TbeGetName(op).c_str(), "input stride_valid:%d", stride_valid);
   OP_LOGD(TbeGetName(op).c_str(), "input begin_len:%lld", begin_len);
-  if (!stride_valid && begin_len > 0) {
-    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-    if (op_info->MutableInputDesc("strides") == nullptr) {
+  if (begin_len > 0) {
+    auto stride_desc = op_info->MutableInputDesc("strides");
+    if (!stride_valid && (!stride_desc || stride_desc->MutableShape().GetDimNum() == 0)) {
       stride_valid = true;
       slice_params.stride_list.assign(begin_len, 1);
     }
@@ -4851,13 +4851,14 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
 
   OP_LOGD(TbeGetName(op).c_str(), "input stride_valid:%d", stride_valid);
   OP_LOGD(TbeGetName(op).c_str(), "input begin_len:%lld", begin_len);
-  if (!stride_valid && begin_len > 0) {
-    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-    if (op_info->MutableInputDesc("strides") == nullptr) {
+  if (begin_len > 0) {
+    auto stride_desc = op_info->MutableInputDesc("strides");
+    if (!stride_valid && (!stride_desc || stride_desc->MutableShape().GetDimNum() == 0)) {
       stride_valid = true;
       slice_params.stride_list.assign(begin_len, 1);
     }
   }
+
   OP_LOGD(TbeGetName(op).c_str(), "input stride_list:%s", to_string(slice_params.stride_list).c_str());
 
   if (shape.GetDims() == UNKNOWN_RANK) {

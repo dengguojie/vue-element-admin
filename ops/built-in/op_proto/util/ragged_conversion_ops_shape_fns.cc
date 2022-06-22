@@ -86,14 +86,20 @@ graphStatus ValidateDefaultValueShape(const TensorShape& default_value_shape, co
   }
 
   if (default_value_shape.dims.size() > value_shape.dims.size()) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("default_value_shape.dims:", default_value_shape.dims.size(), " must have no more dimensions than the value_shape.dims:", value_shape.dims.size())));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+        op_name, OtherErrMsg(ConcatString(
+            "default_value_shape.dims:", default_value_shape.dims.size(),
+            " must have no more dimensions than the value_shape.dims:", value_shape.dims.size())));
     return GRAPH_FAILED;
   }
 
   for (size_t i = 0; i < std::min(default_value_shape.dims.size(), value_shape.dims.size() - 1); ++i) {
     if (default_value_shape.dims[i].size >= 0 && value_shape.dims[i + 1].size >= 0 &&
         default_value_shape.dims[i].size != 1 && default_value_shape.dims[i].size != value_shape.dims[i + 1].size) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("default_value_shape.dims:", default_value_shape.dims[i].size, " and value_shape:", value_shape.dims[i + 1].size, " do not match on dimension.")));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+          op_name,
+          OtherErrMsg(ConcatString("default_value_shape.dims:", default_value_shape.dims[i].size,
+                                   " and value_shape:", value_shape.dims[i + 1].size, " do not match on dimension.")));
       return GRAPH_FAILED;
     }
   }
@@ -110,7 +116,8 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(const Tensor& tens
 
   size_t rank_size = 1;
   if (!((dims.size() <= rank_size) || (dims == ge::UNKNOWN_SHAPE))) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("Shape's rank must be at most ", rank_size, ", but it is ", dims.size())));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+        op_name, OtherErrMsg(ConcatString("Shape's rank must be at most ", rank_size, ", but it is ", dims.size())));
     return GRAPH_FAILED;
   }
 
@@ -124,11 +131,14 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(const Tensor& tens
     } else if (data_type == DT_INT64) {
       const int64_t* shape_data = reinterpret_cast<const int64_t*>(tensor.GetData());
       if (shape_data[0] != -1) {
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("if its rank 0 it must have value -1, but shape_data[0] is ", shape_data[0])));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+            op_name,
+            OtherErrMsg(ConcatString("if its rank 0 it must have value -1, but shape_data[0] is ", shape_data[0])));
         return GRAPH_FAILED;
       }
     } else {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("Data type:", data_type, " invalid, should be DT_INT32 or DT_INT64")));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+          op_name, OtherErrMsg(ConcatString("Data type:", data_type, " invalid, should be DT_INT32 or DT_INT64")));
       return GRAPH_FAILED;
     }
     out = Shape(ge::UNKNOWN_SHAPE);
@@ -184,7 +194,9 @@ graphStatus CombineRaggedTensorToTensorShapes(int32_t ragged_rank, const TensorS
   }
 
   if (ragged_rank + value_shape.dims.size() != output_shape.dims.size()) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("Value shape dims:", value_shape.dims.size(), " and ragged_rank:", ragged_rank, " dont have a consistent number of dimensions.")));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+        op_name, OtherErrMsg(ConcatString("Value shape dims:", value_shape.dims.size(), " and ragged_rank:",
+                                          ragged_rank, " dont have a consistent number of dimensions.")));
     return GRAPH_FAILED;
   }
 
@@ -211,7 +223,8 @@ graphStatus IsValidShape(const TensorShape& shape, const char* op_name) {
   int64_t num_elements = 1;
   size_t max_dimensions = 254;
   if (shape.dims.size() > max_dimensions) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("shape.dims:", shape.dims.size(), "Shape has too many dimensions.")));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+        op_name, OtherErrMsg(ConcatString("shape.dims:", shape.dims.size(), "Shape has too many dimensions.")));
     return GRAPH_FAILED;
   }
   for (const auto& d : shape.dims) {
@@ -220,7 +233,9 @@ graphStatus IsValidShape(const TensorShape& shape, const char* op_name) {
     } else {
       num_elements = MultiplyWithoutOverflow(num_elements, d.size);
       if (num_elements < 0) {
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("num_elements:", num_elements, "Shape is too large (more than 2**63 - 1 entries).")));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(
+            op_name, OtherErrMsg(ConcatString("num_elements:", num_elements,
+                                              "Shape is too large (more than 2**63 - 1 entries).")));
         return GRAPH_FAILED;
       }
     }
@@ -261,7 +276,8 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   }
   if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(tensor, shape_handle, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("MakeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                        OtherErrMsg("MakeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
     return GRAPH_FAILED;
   }
 
@@ -282,7 +298,8 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   ShapeHandleToTensorShape(op.GetInputDescByName("default_value").GetShape(), default_value_shape);
 
   if (ValidateDefaultValueShape(default_value_shape, value_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("Validate default value shape failed")));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
+                                        OtherErrMsg(ConcatString("Validate default value shape failed")));
     return GRAPH_FAILED;
   }
 
