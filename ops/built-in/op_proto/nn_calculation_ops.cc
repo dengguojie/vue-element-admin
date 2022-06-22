@@ -8400,7 +8400,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSli
   vector<vector<int64_t>> w_data_slice(kFilterDataSlice, vector<int64_t>(0));
 
   CHECK(!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice),
-        OP_LOGW(op_name, "no data slice, not need infer input"),return GRAPH_FAILED);
+        OP_LOGW(op_name, "no data slice, not need infer input"), return GRAPH_FAILED);
 
   graphStatus ret = VerifyDataSlice(op, y_data_slice);
   if (ret != GRAPH_SUCCESS) {

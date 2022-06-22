@@ -56,6 +56,7 @@ DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 BRC_STANDARD_BLOCK_SIZE = 16
 OUT_OF_ORDER_SHIFT_BIT = 13
 UINT32_MAX = 2 ^ 32 - 1
+INDEX_2 = 2
 DTYPE_SIZE = {
     "float32": 4,
     "float16": 2,
@@ -2890,16 +2891,15 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         sch_agent.apply_compute(attach_dict, compute_path)
 
     def _split_group():
-        # split g_dim for ddr; outer is g, inner is c1
-        if tensor_attr.get("5HD_TRANS_NHWC"):
-            #n hw c,the channel axis is the third axis
-            sch_agent[c_ddr].split_group(c_ddr.op.axis[2], nparts=g_after)
-        else:
-            if l0c_multi_group_flag:
-                cl0_factor = cin1_g * cl0_tiling_g // 2
-                sch_agent[c_ddr].split_group(c_ddr.op.axis[1], cl0_factor)
-            else:
-                sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
+        # split g_dim for ddr; outer is g_axis, inner is c1
+        n_0 = tbe_platform.CUBE_MKN.get(b_l1.dtype).get("mac")[1] if b_l1.dtype == "float32" else tbe_platform.C0_SIZE
+        c_0 = c_ddr.shape[-1].value if not tensor_attr.get("5HD_TRANS_NHWC") else 1
+        c_index = INDEX_2 if tensor_attr.get("5HD_TRANS_NHWC") else 1
+        # dx_c1_extend is c / n0. for c_gm, c1 is c / c0.
+        c_factor_split_group = max(cin1_g * n_0 // c_0, 1)
+        if l0c_multi_group_flag: # cin1_g % 2 is not 0, l0c need to calculate cl0_tiling_g * cin1_g at c1 dim
+            c_factor_split_group = cl0_tiling_g * cin1_g * n_0 // c_0
+        sch_agent[c_ddr].split_group(c_ddr.op.axis[c_index], c_factor_split_group)
 
     sch_agent = ScheduleAgent(sch)
 

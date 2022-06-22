@@ -84,7 +84,7 @@ Status BatchMatmulConfusiontransposeUbFusion::CheckInputParameters(const vector<
         FUSION_PASS_CHECK(transpose_out_node == nullptr,
                           OP_LOGD(FUSED_OP_TYPE.c_str(), "output node of transpose is null"), return FAILED);
         FUSION_PASS_CHECK(
-            ge::GraphUtils::AddEdge(matmul_node->GetOutControlAnchor(),transpose_out_node->GetInControlAnchor()) !=
+            ge::GraphUtils::AddEdge(matmul_node->GetOutControlAnchor(), transpose_out_node->GetInControlAnchor()) !=
                 SUCCESS,
             OP_LOGD(FUSED_OP_TYPE.c_str(), "add edge between batch_matmul and confusion_transpose_d's output error"),
             return FAILED);

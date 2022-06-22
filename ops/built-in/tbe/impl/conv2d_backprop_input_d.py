@@ -22,6 +22,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+import tbe.common.platform.platform_info as platform_info
 
 # the dim of shape in conv2d_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -53,6 +54,7 @@ CONV1D_W_MAX = 2147483647
 N_DIM = 0
 H_DIM = 2
 W_DIM = 3
+INTRINSTIC_FIX_PIPE_L0C2OUT = "Intrinsic_fix_pipe_l0c2out"
 
 
 def _cal_min_l1space(out_backprop,  # pylint: disable=invalid-name
@@ -702,7 +704,8 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         pads, shape_res, strides, shape_filters, dilations
     )
 
-    if util_deconv_comm.need_exchange_hw_axis(shape_filters, shape_out_backprop, shape_res, strides, pads):
+    if (util_deconv_comm.need_exchange_hw_axis(shape_filters, shape_out_backprop, shape_res, strides, pads)
+        and not platform_info.intrinsic_check_support(INTRINSTIC_FIX_PIPE_L0C2OUT)):
         dict_args = {}
         dict_args["errCode"] = "E50058"
         dict_args["description"] = "not support to exchange HW axis in fusion mode"

@@ -390,14 +390,14 @@ bool MatmulTransdataFusionPass::DoFusion() {
 void MatmulTransdataFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
                                              std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(kPatternMatmul, mapping);
-  FUSION_PASS_CHECK(matmul_nodes.empty(), OP_LOGW(kFusedOpType, "Matmul node not matched in SetSplitInfo"), return );
+  FUSION_PASS_CHECK(matmul_nodes.empty(), OP_LOGW(kFusedOpType, "Matmul node not matched in SetSplitInfo"), return);
 
   vector<AxisSplitMap> split_maps;
   OpL1FusionType fusion_type = L1FUSION_DISABLE;
   int64_t min_tbe_l1space = 0;
 
   FUSION_PASS_CHECK(!GetSplitMap(split_maps, matmul_nodes[0], kFusedOpType, fusion_type, min_tbe_l1space),
-                    OP_LOGW(matmul_nodes[0], "get split_maps of matmul node fail in SetSplitInfo"), return );
+                    OP_LOGW(matmul_nodes[0], "get split_maps of matmul node fail in SetSplitInfo"), return);
 
   SetSplitMap(split_maps, fusion_nodes, kFusedOpType, fusion_type, min_tbe_l1space);
 }

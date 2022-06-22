@@ -75,7 +75,7 @@ FUSION_TYPE_2_NUM = {
     FUSION_DX_REQUANT: 7,
     FUSION_DX_DRELU: 8
 }
-
+IDX_2 = 2
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
 
@@ -237,7 +237,7 @@ class Conv2dDxOptiSchedule:
                     // TILING["block_dim"][1]
                 )
         else:
-            block_m, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l1").dtype)["mac"]
+            block_m, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l1").dtype).get("mac")
             # if l0c_multi_group_flag and TILING.get(l1_shape) is [], l1 comput at l0c
             full_k = DIM_MAP.get("B_matrix_dim")[1] * block_k
             l1_k = TILING.get(l1_shape)[0] if TILING.get(l1_shape) else full_k
@@ -1744,6 +1744,25 @@ class Conv2dDxOptiSchedule:
         blockidx_list = [g_outer, batch_out, l1_n_out_inner_out, l1_m_outer_inner_out]
         return [batch_in, g_inner, l1_m_outer_inner_in, l1_n_out_inner_out, l1_n_out_inner_in, blockidx_list]
 
+    def _split_c_axis_factor(self, c_gm, l0c_multi_group_flag, dx_c1_extend, l0c_factor):
+        """
+        calculate factors of one group and one mmad
+        In int8 scene: dx_c1_extend is calculated according 16, c0 of c_gm is 32
+        In float32 input scene: dx_c1_extend is calculated according 8
+        """
+        _, block_k, block_n = tbe_platform.CUBE_MKN.get(TENSOR_MAP.get("b_l0b").dtype).get("mac")
+        if TENSOR_MAP.get("b_l0b").dtype == "float32":
+            block_n = block_k
+        block_c0 = c_gm.shape[-1].value if not self.dx_para.get_para_map("5HD_TRANS_NHWC") else tbe_platform.C0_SIZE
+        c_factor_split_group = max(dx_c1_extend * block_n // block_c0, 1)
+        l0c_c_axis_factor = l0c_factor[0]
+        if l0c_multi_group_flag:
+            c_factor_split_group = l0c_factor[0]
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+            c_factor_split_group = c_factor_split_group * block_c0
+            l0c_c_axis_factor = l0c_c_axis_factor * block_c0
+        return c_factor_split_group, l0c_c_axis_factor
+
 
     def _get_l0c_and_l1_axis(
         self, sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, dx_c1_extend, var_map, l0c_multi_group_flag
@@ -1764,49 +1783,23 @@ class Conv2dDxOptiSchedule:
 
         def _get_reorder_flag(al1_parts, bl1_parts):
             reorder_flag = False
-            if (
-                TILING["AL1_shape"]
-                and al1_parts[0] != 1
-                and TILING["BL1_shape"]
-                and bl1_parts[0] != 1
-            ):
-                if bl1_parts[1] >= al1_parts[1]:
-                    reorder_flag = True
-            if (
-                TILING["AL1_shape"]
-                and al1_parts[0] == 1
-                and TILING["BL1_shape"]
-                and bl1_parts[0] == 1
-            ):
-                if bl1_parts[1] >= al1_parts[1]:
-                    reorder_flag = True
-            if (
-                TILING["BL1_shape"]
-                and bl1_parts[0] != 1
-                and TILING["AL1_shape"]
-                and al1_parts[0] == 1
-            ):
-                reorder_flag = True
+            if not var_map and TILING["AL1_shape"] and TILING["BL1_shape"]:
+                a_k_full_load = al1_parts[0] == 1
+                b_k_full_load = bl1_parts[0] == 1
+                reorder_flag = ((a_k_full_load == b_k_full_load and bl1_parts[1] >= al1_parts[1])
+                                 or (a_k_full_load and not b_k_full_load))
             self._print_debug("reorder_flag:", reorder_flag)
             return reorder_flag
 
-        if self.dx_para.get_para_map("5HD_TRANS_NHWC"): # (batch, howo_axis, co_axis)
-            c_gm_howo_axis_idx = 1
-            c_gm_co_axis_idx = 2
-        else:                                           # (batch, co_aixs//16, howo_axis, 16)
-            c_gm_howo_axis_idx = 2
-            c_gm_co_axis_idx = 1
+        # if 5HD_TRANS_NHWC is true c_gm shape is (batch, howo_axis, co_axis)
+        # else is (batch, co1_axis, howo_axis, c0_axis), 2 means index of c_axis in c_gm
+        c_gm_howo_axis_idx, c_gm_co_axis_idx = (1, IDX_2) if self.dx_para.get_para_map("5HD_TRANS_NHWC") else (IDX_2, 1)
+        c_factor_split_group, l0c_c_axis_factor = self._split_c_axis_factor(c_gm, l0c_multi_group_flag,
+                                                                            dx_c1_extend, l0c_factor)
+        # split group axis
+        g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], c_factor_split_group)
 
-        # split c_gm according to factor of loc and out_shape
-        if not l0c_multi_group_flag:
-            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], dx_c1_extend)
-        else:
-            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], l0c_factor[0])
-
-        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
-            l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0] * 16)
-        else:
-            l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
+        l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_c_axis_factor)
 
         l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[c_gm_howo_axis_idx], l0c_factor[1])
         sch[c_gm].reorder(g_dim, c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
@@ -1825,9 +1818,7 @@ class Conv2dDxOptiSchedule:
         batch_in_out_axis, batch_in_inner_axis = sch[c_gm].split(batch_in, factor=1)
 
         # m or n reorder flag, if m_outer is smaller, reorder is true
-        reorder_flag = False
-        if not var_map:
-            reorder_flag = _get_reorder_flag(al1_parts, bl1_parts)
+        reorder_flag = _get_reorder_flag(al1_parts, bl1_parts)
         self._print_ir_conv("before reorder", sch)
         if reorder_flag:
             sch[c_gm].reorder(l1_m_outer_outer, batch_in_inner_axis, l1_n_outer_outer)

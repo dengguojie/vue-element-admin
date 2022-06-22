@@ -49,7 +49,7 @@ static const uint32_t kSupportAicoreNum = 32;
 static const vector<int64_t> kSupportBatch = {32, 256};
 static const uint32_t kWDimIdx = 3;
 static const vector<int64_t> Batch256AddCase = {
-  256, 1024, 14, 14, 14, 14, 1, 1
+    256, 1024, 14, 14, 14, 14, 1, 1
 };
 static const vector<vector<int64_t>> kSupportCases = {
     // c_in, c_out, x_h, x_w, y_h, y_w, k_h, k_w

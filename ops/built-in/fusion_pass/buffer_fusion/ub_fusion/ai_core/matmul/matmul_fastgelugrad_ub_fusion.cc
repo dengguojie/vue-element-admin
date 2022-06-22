@@ -72,8 +72,8 @@ void MatmulFastGelugradUbFusion::SetSplitInfo(const BufferFusionMapping &mapping
                                               std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE, mapping);
-  FUSION_PASS_CHECK(matmulNodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched."), return );
-  FUSION_PASS_CHECK(elemWiseNodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWiseNodes node not matched."), return );
+  FUSION_PASS_CHECK(matmulNodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched."), return);
+  FUSION_PASS_CHECK(elemWiseNodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWiseNodes node not matched."), return);
 
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;

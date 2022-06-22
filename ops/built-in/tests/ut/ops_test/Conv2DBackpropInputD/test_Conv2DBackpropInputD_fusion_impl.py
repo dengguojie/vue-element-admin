@@ -606,6 +606,37 @@ def test_conv2d_bp_input_fixpipe_milan(test_arg):
                     tensor_list = [out_backprop, filters, dx_out, out]
                     sch = auto_schedule(out)
 
+def test_conv2d_bp_input_fixpipe_milan_w_1(test_arg):
+    with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+            with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+                with cce():
+                    out_backprop = tvm.placeholder((28, 1, 20, 1, 16),
+                                                   name="out_backprop",
+                                                   attrs={
+                                                       "format": "NC1HWC0",
+                                                       "ori_format": "NHWC",
+                                                       "ori_shape": (28, 20, 1, 16),
+                                                   },
+                                                   dtype="float16")
+                    filters = tvm.placeholder((6, 1, 16, 16),
+                                              name="filters",
+                                              attrs={
+                                                  "format": "Fractal_Z",
+                                                  "ori_format": "NHWC",
+                                                  "ori_shape": (16, 3, 1, 20)
+                                              },
+                                              dtype="float16")
+                    y = {"shape": (28, 2, 20, 1, 16), "ori_shape": (28, 20, 1, 20), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                    input_size_tuple = (28, 20, 1, 20)
+                    strides_tuple = (1, 1, 1, 1)
+                    # dilation_tuple = (1, 1, 1, 1)
+                    pads_tuple = (1, 1, 0, 0)
+                    dx_out = conv2d_backprop_input_d_compute(filters, out_backprop, y, input_size_tuple, strides_tuple, pads_tuple)
+                    out = fixpipe_compute(dx_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
+                    tensor_list = [out_backprop, filters, dx_out, out]
+                    sch = auto_schedule(out)
+
 # _gen_conv2d_bp_input_op_fusion_case()
 # _gen_conv2d_bp_input_op_slice_case()
 # _gen_conv2d_bp_input_check_support_case()
@@ -615,6 +646,7 @@ ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion_milan)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_add_milan)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_fixpipe_milan)
+ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_fixpipe_milan_w_1)
 
 
 if __name__ == "__main__":
