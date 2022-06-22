@@ -2409,6 +2409,7 @@ vector_D:
       - ops/built-in/framework/tf_plugin/softmax_cross_entropy_with_logits_plugin.cc
       - ops/built-in/tbe/impl/max_pool_grad.py
       - ops/built-in/tbe/impl/max_pool_v3_grad.py
+      - ops/built-in/tbe/impl/max_pool3d_with_argmax.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
       - ops/built-in/op_tiling/bn_training_update.cc
       - ops/built-in/tbe/impl/dynamic/bn_training_update.py
@@ -2428,6 +2429,7 @@ vector_D:
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/__init__.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGrad/test_Dynamic_MaxPoolGrad_impl.py
       - ops/built-in/tests/ut/ops_test/MaxPoolGradWithArgmax/test_MaxPoolGradWithArgmax_impl.py
+      - ops/built-in/tests/ut/ops_test/MaxPool3DWithArgmax/test_MaxPool3DWithArgmax_impl.py
       - ops/built-in/tests/ut/ops_test/SoftmaxCrossEntropyWithLogits/test_SoftmaxCrossEntropyWithLogits_impl.py
   llt:
     ut_check: true
@@ -2938,7 +2940,6 @@ unkown:
       - ops/built-in/tbe/impl/tile.py
       - ops/built-in/tbe/impl/crop.py
       - ops/built-in/tbe/impl/xdivy.py
-      - ops/built-in/tbe/impl/max_pool3d_with_argmax.py
       - ops/built-in/tbe/impl/assign_add.py
       - ops/built-in/tbe/impl/population_count.py
       - ops/built-in/tbe/impl/basic_lstm_cell_weight_grad.py
