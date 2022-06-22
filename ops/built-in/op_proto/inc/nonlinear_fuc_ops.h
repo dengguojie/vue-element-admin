@@ -420,7 +420,7 @@ REG_OP(Softplus)
     .OP_END_FACTORY_REG(Softplus)
 
 /**
-*@brief Computes softplus gradients for a softplus operation . \n
+* @brief Computes softplus gradients for a softplus operation .
 
 *@par Inputs:
 *Two inputs:
@@ -441,7 +441,7 @@ REG_OP(SoftplusGrad)
     .OP_END_FACTORY_REG(SoftplusGrad)
 
 /**
-*@brief Computes softsign: x/(abs(x) + 1) . \n
+* @brief Computes softsign: x/(abs(x) + 1) .
 
 *@par Inputs:
 * One input:
@@ -799,7 +799,7 @@ REG_OP(LeakyReluGrad)
     .OP_END_FACTORY_REG(LeakyReluGrad)
 
 /**
-*@brief Thresholds grad each element of the input Tensor . \n
+*@brief Thresholds grad each element of the input Tensor .
 
 *@par Inputs:
 * @li gradients: A Tensor shape and dtype of input gradients. Support float16, int32.
@@ -822,7 +822,7 @@ REG_OP(ThresholdGradV2D)
     .OP_END_FACTORY_REG(ThresholdGradV2D)
 
 /**
-*@brief Thresholds each element of the input Tensor y = (x > threshold) ? x : value . \n
+*@brief Thresholds each element of the input Tensor y = (x > threshold) ? x : value .
 
 *@par Inputs:
 *x: A Tensor dtype of real number . \n

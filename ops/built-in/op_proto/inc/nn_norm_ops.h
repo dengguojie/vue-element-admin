@@ -124,7 +124,7 @@ REG_OP(SoftmaxGrad)
     .OP_END_FACTORY_REG(SoftmaxGrad)
 
 /**
-*@brief Computes the sigmoid cross entropy loss of "predict" and "target" . \n
+* @brief Computes the sigmoid cross entropy loss of "predict" and "target" .
 
 *@par Inputs:
 * Three inputs, including:
@@ -146,7 +146,7 @@ REG_OP(SigmoidCrossEntropyWithLogitsGrad)
     .OP_END_FACTORY_REG(SigmoidCrossEntropyWithLogitsGrad)
 
 /**
-*@brief Performs the backpropagation of SigmoidCrossEntropyWithLogits for training scenarios . \n
+* @brief Performs the backpropagation of SigmoidCrossEntropyWithLogits for training scenarios .
 
 *@par Inputs:
 * Two inputs, including:
@@ -194,7 +194,7 @@ REG_OP(SigmoidCrossEntropyWithLogitsV2)
     .OP_END_FACTORY_REG(SigmoidCrossEntropyWithLogitsV2)
 
 /**
-*@brief Computes the regression box of the RPN. It is a FasterRCNN operator . \n
+* @brief Computes the regression box of the RPN. It is a FasterRCNN operator .
 
 *@par Inputs:
 * Two inputs, including:
@@ -221,7 +221,7 @@ REG_OP(SmoothL1Loss)
     .OP_END_FACTORY_REG(SmoothL1Loss)
 
 /**
-*@brief Performs the backpropagation of SmoothL1Loss for training scenarios . \n
+* @brief Performs the backpropagation of SmoothL1Loss for training scenarios .
 
 *@par Inputs:
 * Three inputs, including:

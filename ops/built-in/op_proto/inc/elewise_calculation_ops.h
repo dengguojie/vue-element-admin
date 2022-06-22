@@ -726,13 +726,12 @@ REG_OP(Neg)
     .OP_END_FACTORY_REG(Neg)
 
 /**
-*@brief Returns x1/x2 element-wise for integer types. \n
+*@brief Returns x1/x2 element-wise for integer types.
 
 *@par Inputs:
 *@li x1: A Tensor. Must be one of the following types:
-*     float32, float64, int32, uint8, int16, int8,
-*     complex64, int64, qint8, quint8, qint32, uint16,
-*     complex128, float16, uint32, uint64, complex64, complex128.
+*     float32, float16, int8, uint8, int32, int16,
+*     uint16, double, int64, complex64, complex128.
 *@li x2: A Tensor of the same data type as "x1". \n
 
 *@par Outputs:
@@ -783,7 +782,7 @@ REG_OP(Xdivy)
 
 /**
 * @brief Computes "x" multiplied by the logarithm of y element-wise,
-* if "x" == 0, return "0". \n
+* if "x" == 0, return "0".
 
 * @par Inputs:
 * Two inputs, including:
@@ -808,7 +807,7 @@ REG_OP(Xlog1py)
 
 /**
 *@brief Computes "x" multiplied by the logarithm of y element-wise,
-* if "x" == 0, return "0". \n
+* if "x" == 0, return "0".
 
 *@par Inputs:
 * Two inputs, including:
@@ -1037,7 +1036,7 @@ REG_OP(LogicalOr)
     .OP_END_FACTORY_REG(LogicalOr)
 
 /**
-* @brief Computes spence of x element-wise. \n
+* @brief Computes spence of x element-wise.
 
 *
 * @par Inputs:
@@ -1428,7 +1427,7 @@ REG_OP(RsqrtGrad)
     .OP_END_FACTORY_REG(RsqrtGrad)
 
 /**
-*@brief Computes hyperbolic sine of "x" element-wise. \n
+*@brief Computes hyperbolic sine of "x" element-wise.
 
 *@par Inputs:
 *x: An NCHW, NHWC,or ND Tensor of type float, double, complex64,
@@ -2318,7 +2317,7 @@ REG_OP(Sin)
     .OP_END_FACTORY_REG(Sin)
 
 /**
-*@brief: Computes tan of "x" element-wise. \n
+*@brief: Computes tan of "x" element-wise.
 
 *@par Inputs:
 *One input:
@@ -2338,7 +2337,7 @@ REG_OP(Tan)
     .OP_END_FACTORY_REG(Tan)
 
 /**
-*@brief Returns element-wise remainder of division. \n
+*@brief Returns element-wise remainder of division.
 
 *@par Inputs:
 *Two inputs, including:
@@ -2358,7 +2357,7 @@ REG_OP(Tan)
 *@li If shape is expressed as (D1,D2... ,Dn), then D1*D2... *DN<=1000000,n<=8
 
 *@par Third-party framework compatibility
-*@li Compatible with the TensorFlow operator TruncateMod.
+*Compatible with the TensorFlow operator TruncateMod.
 */
 REG_OP(TruncateMod)
     .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT64,
@@ -3139,7 +3138,7 @@ REG_OP(SquareSumV2)
     .OP_END_FACTORY_REG(SquareSumV2)
 
 /**
-*@brief Confuse reducesumd and square. \n
+*@brief Confuse reducesumd and square.
 
 *@par Inputs:
 *x: A Tensor of type float16, float32. \n
@@ -3207,7 +3206,7 @@ REG_OP(FusedMulAddN)
     .OP_END_FACTORY_REG(FusedMulAddN)
 
 /**
-*@brief Add 'bias' to 'x'. \n
+*@brief Add 'bias' to 'x'.
 
 *@par Inputs:
 * Two inputs, including:
@@ -3216,22 +3215,31 @@ REG_OP(FusedMulAddN)
 
 *@par Attributes:
 *@li axis: An optional int32 used to compute the shape of bias input from the online bottoms. Defaults to "1".
-*@li num_axes: An optional int32 used to compute the shape of bias input from a Caffe model trained offline. Defaults to "1".
-*@li bias_from_blob: An optional bool. If "true", bias is input from a Caffe model trained offline. If "false", bias is input from online bottoms. Defaults to "true". \n
+*@li num_axes: An optional int32 used to compute the shape of
+* bias input from a Caffe model trained offline. Defaults to "1".
+*@li bias_from_blob: An optional bool. If "true", bias is input from a Caffe model trained offline.
+* If "false", bias is input from online bottoms. Defaults to "true". \n
 
 *@par Outputs:
 *y: An ND tensor of type float16 or float32. \n
 
-*@attention Constraints:\n
+*@attention Constraints:
 * Assume that the shape length of "x" is "n" and that of "bias" is "m".
 *@li "axis" is within the range [-n, n-1]. num_axes >= -1.
-*@li If "bias_from_blob = true", "num_axes = -1", and "axis >= 0", the ith axis of "bias" and the (i+"axis")th axis of "x" must have the same size (0 <= i < n-axis).\n
+*@li If "bias_from_blob = true", "num_axes = -1", and "axis >= 0",
+* the ith axis of "bias" and the (i+"axis")th axis of "x" must have the same size (0 <= i < n-axis).
 * If "axis < 0", the ith axis of "bias" and the (i+n+"axis")th axis of "x" must have the same size (0 <= i < -axis).
 *@li If "bias_from_blob = true" and "num_axes = 0", "bias" is a scalar with shape length 1 and dimension size 1.
-*@li If "bias_from_blob = true", "num_axes > 0, and "axis >= 0", "axis + num_axes" must be less than or equal to "n" and the ith axis of "bias" and the (i+"axis")th axis of "x" must have the same size (0 <= i < num_axes).\n
-* If "axis < 0", "n + axis + num_axes" must be less than or equal to "n" and the ith axis of "bias" and the (i+n+"axis")th axis of "x" must have the same size (0 <= i < num_axes).
-*@li If "bias_from_blob = false", "bias" is not a scalar, and "axis >= 0","axis + m" must be less than or equal to "n" and the ith axis of "bias" and the (i+"axis")th axis of "x" must have the same size (0 <= i < m).\n
-* If "axis < 0", "n + axis + m" must be less than or equal to "n" and the ith axis of "bias" and the (i+n+"axis")th axis of "x" must have the same size (0 <= i < m).
+*@li If "bias_from_blob = true", "num_axes > 0, and "axis >= 0",
+* "axis + num_axes" must be less than or equal to "n" and the ith axis of "bias" and
+* the (i+"axis")th axis of "x" must have the same size (0 <= i < num_axes).
+* If "axis < 0", "n + axis + num_axes" must be less than or equal to "n" and
+* the ith axis of "bias" and the (i+n+"axis")th axis of "x" must have the same size (0 <= i < num_axes).
+*@li If "bias_from_blob = false", "bias" is not a scalar, and "axis >= 0",
+* "axis + m" must be less than or equal to "n" and the ith axis of "bias" and
+* the (i+"axis")th axis of "x" must have the same size (0 <= i < m).
+* If "axis < 0", "n + axis + m" must be less than or equal to "n" and
+* the ith axis of "bias" and the (i+n+"axis")th axis of "x" must have the same size (0 <= i < m). \n
 *@par Third-party framework compatibility
 * Compatible with the Caffe operator Bias.
 */
