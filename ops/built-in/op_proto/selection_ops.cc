@@ -5080,9 +5080,14 @@ IMPLEMT_COMMON_INFERFUNC(MovingSumWithSigmoidInferShape) {
     output_shape.SetDim(0, -1);
     output_shape.SetDim(1, -1);
 
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_energy_desc->GetShapeRange(input_range);
+    if (input_range.empty()) {
+      input_range.emplace_back(std::make_pair(1, -1));
+    }
     std::vector<std::pair<int64_t, int64_t>> range_vector;
-    range_vector.push_back(std::make_pair(1, -1));
-    range_vector.push_back(std::make_pair(1, -1));
+    range_vector.push_back(input_range[0]);
+    range_vector.push_back(input_range[0]);
     output_y_desc->SetShapeRange(range_vector);
   }
 
@@ -5129,10 +5134,16 @@ IMPLEMT_INFERFUNC(DynSeqOuter, DynSeqOuterInferShape) {
       return GRAPH_FAILED;
     }
     output_shape.SetDim(0, -1);
-    std::vector<std::pair<int64_t, int64_t>> range_vector;
-    range_vector.push_back(std::make_pair(1, -1));
-    range_vector.push_back(std::make_pair(1, -1));
-    output_y_desc->SetShapeRange(range_vector);
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_energy_desc->GetShapeRange(input_range);
+
+    if (input_range.empty()) {
+      input_range.emplace_back(std::make_pair(1, -1));
+      input_range.emplace_back(std::make_pair(1, -1));
+    } else {
+      input_range[0] = std::make_pair(1, -1);
+    }
+    output_y_desc->SetShapeRange(input_range);
   }
 
   OP_LOGD(TbeGetName(op).c_str(), "DynSeqOuterInferShape finish.");

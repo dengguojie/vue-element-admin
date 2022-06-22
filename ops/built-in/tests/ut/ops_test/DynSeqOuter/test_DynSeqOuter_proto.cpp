@@ -42,23 +42,25 @@ TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_0) {
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_1) {
+TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_normal_case) {
     ge::op::DynSeqOuter op;
-    std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, -1}};
+    std::vector<std::pair<int64_t, int64_t>> offset_range = {{1, -1}};
+    std::vector<std::pair<int64_t, int64_t>> x_range = {{1, -1}, {1, -1}};
+    std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, -1}, {1, -1}};
 
     ge::TensorDesc alpha_desc;
-    ge::Shape xShape({-1, 512});
+    ge::Shape xShape({-1, -1});
     alpha_desc.SetDataType(ge::DT_FLOAT);
     alpha_desc.SetShape(xShape);
     alpha_desc.SetOriginShape(xShape);
-    alpha_desc.SetShapeRange(shape_range);
+    alpha_desc.SetShapeRange(x_range);
 
     ge::TensorDesc offset_desc;
     ge::Shape yShape({-1});
     offset_desc.SetDataType(ge::DT_INT32);
     offset_desc.SetShape(yShape);
     offset_desc.SetOriginShape(yShape);
-    offset_desc.SetShapeRange(shape_range);
+    offset_desc.SetShapeRange(offset_range);
 
     op.UpdateInputDesc("x1", alpha_desc);
     op.UpdateInputDesc("x2", alpha_desc);
@@ -67,6 +69,43 @@ TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_1) {
 
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    auto output_desc = op.GetOutputDesc("y");
+    vector<std::pair<int64_t, int64_t>> output_range;
+    EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+    EXPECT_EQ(output_range, expected_shape_range);
+}
+
+TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_range) {
+    ge::op::DynSeqOuter op;
+    std::vector<std::pair<int64_t, int64_t>> offset_range = {{1, 100}};
+    std::vector<std::pair<int64_t, int64_t>> x_range = {{1, 100}, {512, 512}};
+    std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, -1}, {512, 512}};
+
+    ge::TensorDesc alpha_desc;
+    ge::Shape xShape({-1, 512});
+    alpha_desc.SetDataType(ge::DT_FLOAT);
+    alpha_desc.SetShape(xShape);
+    alpha_desc.SetOriginShape(xShape);
+    alpha_desc.SetShapeRange(x_range);
+
+    ge::TensorDesc offset_desc;
+    ge::Shape yShape({-1});
+    offset_desc.SetDataType(ge::DT_INT32);
+    offset_desc.SetShape(yShape);
+    offset_desc.SetOriginShape(yShape);
+    offset_desc.SetShapeRange(offset_range);
+
+    op.UpdateInputDesc("x1", alpha_desc);
+    op.UpdateInputDesc("x2", alpha_desc);
+    op.UpdateInputDesc("seq_len1", offset_desc);
+    op.UpdateInputDesc("seq_len2", offset_desc);
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    auto output_desc = op.GetOutputDesc("y");
+    vector<std::pair<int64_t, int64_t>> output_range;
+    EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+    EXPECT_EQ(output_range, expected_shape_range);
 }
 
 TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_2) {

@@ -41,6 +41,8 @@ ge::graphStatus TilingForDynSeqOuter(gert::TilingContext *context) {
 
   params->batch_size = seq_len1_shape_val.GetDim(0);
   params->feature_dim = x1_shape_val.GetDim(1);
+  OP_LOGD("op [DynSeqOuterTilingData] : batch_size=%d.", params->batch_size);
+  OP_LOGD("op [DynSeqOuterTilingData] : feature_dim=%d.", params->feature_dim);
   OP_TILING_CHECK(
     params->batch_size > BATCHSIZE_MAX,
     VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "batch_size is over 256."),

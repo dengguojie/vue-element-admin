@@ -47,9 +47,10 @@ TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_0) {
   CommonInferShapeOperatorFail(op, {"ksize"});
 }
 
-TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_1) {
+TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_range) {
   ge::op::MovingSumWithSigmoid op;
-  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, -1}};
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 1000}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 1000}, {1, 1000}};
 
   ge::TensorDesc alpha_desc;
   ge::Shape xShape({-1});
@@ -71,6 +72,10 @@ TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_1) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  vector<std::pair<int64_t, int64_t>> output_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_shape_range);
 }
 
 using namespace ut_util;

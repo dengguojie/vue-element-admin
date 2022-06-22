@@ -38,6 +38,7 @@ ge::graphStatus TilingForMovingSumWithSigmoid(gert::TilingContext* context) {
   OPS_CHECK_NULL_WITH_CONTEXT(context, param);
 
   param->batch_size = offset_storage_shape.GetDim(0) / TWICE;
+  OP_LOGD("op [MovingSumWithSigmoidTilingData] : batch_size=%d.", param->batch_size);
   OP_TILING_CHECK(param->batch_size > BATCHSIZE_MAX,
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "batch_size is over 256."),
                   return ge::GRAPH_FAILED);
