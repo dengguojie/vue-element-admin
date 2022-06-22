@@ -824,6 +824,10 @@ def correct_range(fmap, fmap_range, w_ori_shape, strides, dilations, pads, data_
         set_shape_and_range(fmap, dim_c, -1, (lower, upper))
 
     def _is_special_case():
+        # 2ddx or 2ddw no need to check special scene here
+        if data_format in ("NCHW", "NHWC"):
+            return False
+
         if is_dx:
             dedx_w_lower = fmap_range[dim_w][0]
             dedx_h_upper = fmap_range[dim_h][1]

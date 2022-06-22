@@ -638,13 +638,11 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         # load3d instruction not support out_w = 1
         # only Ascend310/Hi3796CS/SD3403 can support
         # in dx, out is fmap
-        if get_soc_spec("SHORT_SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]  \
+        return get_soc_spec("SHORT_SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]  \
             and not get_soc_spec("CUBE_VECTOR_SPLIT") \
             and fmap_h != 1 \
             and fmap_w == 1 \
-            and (DYNAMIC_FLAG in shape_out_backprop or DYNAMIC_FLAG in input_sizes):
-            return True
-        return False
+            and (DYNAMIC_FLAG in shape_out_backprop or DYNAMIC_FLAG in input_sizes)
 
     def _fusion_para_check(fusion_para):
         l1_fusion_type = fusion_para.get("l1_fusion_type")

@@ -191,7 +191,7 @@ def _gen_conv2d_transpose_op_fusion_case():
         )
 
 
-#_gen_conv2d_transpose_op_fusion_case()
+_gen_conv2d_transpose_op_fusion_case()
 
 
 def _test_conv2d_transpose_fusion_exception(
