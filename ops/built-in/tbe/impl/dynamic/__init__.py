@@ -432,3 +432,4 @@ from .erfinv import erfinv
 from .sign_bits_pack import sign_bits_pack
 from .fused_mul_apply_momentum_extern import fused_mul_apply_momentum_extern
 from .yolox_bounding_box_decode import yolox_bounding_box_decode
+from .ragged_bin_count import ragged_bin_count

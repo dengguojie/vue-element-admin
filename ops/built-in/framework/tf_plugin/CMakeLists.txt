@@ -349,6 +349,7 @@ set(_tf_plugins
   queue_enqueue_plugin.cc
   queue_is_close_plugin.cc
   queue_size_plugin.cc
+  ragged_bin_count_plugin.cc
   ragged_bincount_plugin.cc
   random_shuffle_queue_plugin.cc
   random_uniform_plugin.cc

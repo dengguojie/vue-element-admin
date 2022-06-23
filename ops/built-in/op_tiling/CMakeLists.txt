@@ -240,6 +240,7 @@ set(_optiling_files
   runtime/strided_slice_v3.cc
   group_norm.cc
   yolox_bounding_box_decode.cc
+  ragged_bin_count.cc
 )
 
 set(_op_tiling_include

@@ -1057,6 +1057,7 @@ vector_B:
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
       - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
       - ops/built-in/framework/tf_plugin/image_projective_transform_v2_plugin.cc
+      - ops/built-in/framework/tf_plugin/ragged_bin_count_plugin.cc
       - ops/built-in/framework/tf_plugin/non_zero_with_value_shape_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_segment_sum_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
@@ -1118,6 +1119,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_dropoutdomaskv3d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_dropoutdomaskv3d_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/ragged_bin_count_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/ragged_bin_count_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_fusion_pass.h
@@ -1243,6 +1246,7 @@ vector_B:
       - ops/built-in/op_tiling/iou.cc
       - ops/built-in/op_tiling/inplace_index_add.cc
       - ops/built-in/op_tiling/image_projective_transform.cc
+      - ops/built-in/op_tiling/ragged_bin_count.cc
       - ops/built-in/op_tiling/pad_v3_5hd.cc
       - ops/built-in/op_tiling/pad_v3_grad.cc
       - ops/built-in/op_tiling/tensor_move.cc
@@ -1579,6 +1583,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/xlog1py.py
       - ops/built-in/tbe/impl/dynamic/xlogy.py
       - ops/built-in/tbe/impl/dynamic/fill_d.py
+      - ops/built-in/tbe/impl/dynamic/ragged_bin_count.py
       - ops/built-in/tbe/impl/batch_multi_class_non_max_suppression.py
       - ops/built-in/tbe/impl/maximum_grad.py
       - ops/built-in/tbe/impl/elu.py

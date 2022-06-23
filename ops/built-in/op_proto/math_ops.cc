@@ -26,6 +26,15 @@
 #include "error_util.h"
 #include "data_preprocess.h"
 #include "util/vector_proto_profiling.h"
+#include <utility>
+#include "util/images_ops_shape_fns.h"
+#include "op_const.h"
+#include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/type_utils.h"
+#include "axis_util.h"
+#include "inc/graph/utils/type_utils.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 
@@ -2076,4 +2085,301 @@ IMPLEMT_COMMON_INFERFUNC(SparseCountSparseOutputInferShape) {
 }
 COMMON_INFER_FUNC_REG(SparseCountSparseOutput, SparseCountSparseOutputInferShape);
 // ----------------SparseCountSparseOutput End----------------------------
+
+// ---------------RaggedBinCount Op START-------------------
+static bool ValidParamsCheck(const ge::OpDescPtr& op_desc) {
+  const size_t input_idx_0 = 0; // splits
+  const size_t input_idx_1 = 1; // values
+  const size_t input_idx_3 = 3; // weights
+  const size_t output_idx_0 = 0;
+
+  CHECK(op_desc->MutableInputDesc(input_idx_0) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("input splits is null.")), 
+        return false);
+  CHECK(op_desc->MutableInputDesc(input_idx_1) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("input values is null.")), 
+        return false);
+  CHECK(op_desc->MutableInputDesc(input_idx_3) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("input weights is null.")), 
+        return false);
+  CHECK(op_desc->MutableOutputDesc(output_idx_0) == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("output is null.")), 
+        return false);
+
+  auto splits_format = op_desc->MutableInputDesc(input_idx_0)->GetFormat();
+  OP_LOGD("RaggedBinCount", "get the splits format is %s.", 
+          TypeUtils::FormatToSerialString(splits_format).c_str());
+  CHECK(splits_format != FORMAT_ND,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("The splits format is invalid.")),
+        return false);
+
+  auto values_format = op_desc->MutableInputDesc(input_idx_1)->GetFormat();
+  OP_LOGD("RaggedBinCount", "get the values format is %s", 
+          TypeUtils::FormatToSerialString(values_format).c_str());
+  CHECK(values_format != FORMAT_ND,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("The values format is invalid.")),
+        return false);
+
+  auto weights_format = op_desc->MutableInputDesc(input_idx_3)->GetFormat();
+  OP_LOGD("RaggedBinCount", "get the weights format is %s", 
+          TypeUtils::FormatToSerialString(weights_format).c_str());
+  CHECK(weights_format != FORMAT_ND,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("The weights format is invalid.")),
+        return false);
+
+  return true;
+}
+
+static bool GetSizeData(const ge::Operator& op, const ge::OpDescPtr& op_desc, bool& is_size_const,
+                        std::vector<int64_t>& size_tensor, const size_t input_idx_2) {
+  const std::vector<string> depend_names = {"size"};
+  op_desc->SetOpInferDepends(depend_names);
+  const size_t size_len = 1;  
+
+  if (!ops::GetConstIntData(op, input_idx_2, size_tensor)) {
+    OP_LOGW("RaggedBinCount", "get const value of input size failed, set size = -1.");
+    size_tensor = {-1};
+    is_size_const = false;
+  }
+  OP_LOGD("RaggedBinCount", "the size num must be 1. get the num is %zu.", size_tensor.size());
+  CHECK(size_tensor.size() != size_len,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+        OtherErrMsg("the input size num must be 1.")),
+        return false);
+  
+  return true;
+}
+
+static bool SetOutputDim(const GeShape& splits_shape, GeShape& output_shape,
+                         const size_t splits_shape_len, const int64_t size_data) {
+  if (!splits_shape.IsUnknownDimNum()) {
+    OP_LOGD("RaggedBinCount", "the splits shape size must be 1. get shape size is %zu.", 
+            splits_shape.GetDimNum());
+    CHECK(splits_shape.GetDimNum() != splits_shape_len,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+          OtherErrMsg("The dim of input splits is not 1.")),
+          return false);
+    output_shape.SetDim(0, splits_shape.GetDim(0) - 1);
+  }
+  output_shape.SetDim(1, size_data);
+
+  return true;
+}
+
+static bool CheckShapeLength(const ge::OpDescPtr& op_desc, const size_t shape_len_max) {
+  const size_t input_idx_1 = 1; // values
+  const size_t input_idx_3 = 3; // weights
+
+  const GeShape& values_shape = op_desc->MutableInputDesc(input_idx_1)->MutableShape();
+  const size_t values_shape_len = values_shape.GetDimNum();
+  GeShape& weights_shape = op_desc->MutableInputDesc(input_idx_3)->MutableShape();
+  const size_t weights_shape_len = weights_shape.GetDimNum();
+
+  if (!values_shape.IsUnknownDimNum()) {
+    OP_LOGD("RaggedBinCount", "the values shape size must be less or equal to 2. get shape size is %zu.",
+            values_shape_len);
+    CHECK(values_shape_len > shape_len_max,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount",
+          OtherErrMsg("The dim of input values is more than 2.")),
+          return false);
+  }
+
+  if (!weights_shape.IsUnknownDimNum()) {
+    OP_LOGD("RaggedBinCount", "the weights shape size must be less or equal to 2. get shape size is %zu.",
+            weights_shape_len);
+    CHECK(weights_shape_len > shape_len_max,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount",
+          OtherErrMsg("The dim of input weights is more than 2.")),
+          return false);
+  }
+
+  if (weights_shape_len != values_shape_len) {
+    OP_LOGW("RaggedBinCount", "weights shape is not same as values shape, set weights shape to values shape.");
+    weights_shape.SetDimNum(values_shape_len);
+  }
+
+  return true;
+}
+
+static void InferShapeRange(const ge::OpDescPtr& op_desc,
+                            std::vector<std::pair<int64_t, int64_t>>& out_range,
+                            const size_t values_shape_len,
+                            const size_t values_weights_shape_len_max) {
+  const size_t input_idx_0 = 0; // splits
+  const size_t input_idx_1 = 1; // values
+  const size_t input_idx_3 = 3; // weights
+  std::vector<std::pair<int64_t, int64_t>> splits_range;
+  std::vector<std::pair<int64_t, int64_t>> values_range;
+
+  auto input_desc_splits = op_desc->MutableInputDesc(input_idx_0);
+  const GeShape& splits_shape = input_desc_splits->MutableShape();
+  auto input_desc_values = op_desc->MutableInputDesc(input_idx_1);
+  const GeShape& values_shape = input_desc_values->MutableShape();
+  auto input_desc_weights = op_desc->MutableInputDesc(input_idx_3);
+  GeShape& weights_shape = input_desc_weights->MutableShape();
+
+  if (!splits_shape.IsUnknownShape() && !splits_shape.IsUnknownDimNum()) {
+    out_range.push_back(std::pair<int64_t, int64_t>(splits_shape.GetDim(0) - 1, splits_shape.GetDim(0) - 1));
+  }
+  else {
+    (void)input_desc_splits->GetShapeRange(splits_range);
+    out_range.push_back(std::pair<int64_t, int64_t>(splits_range[0].first - 1, splits_range[0].second - 1));
+  }
+
+  weights_shape.SetDim(0, values_shape.GetDim(0));
+  if (values_shape_len == values_weights_shape_len_max) {
+    weights_shape.SetDim(1, values_shape.GetDim(1));
+  }
+
+  if (values_shape.IsUnknownShape()) {
+    (void)input_desc_values->GetShapeRange(values_range);
+    input_desc_weights->SetShapeRange(values_range);
+  }
+}
+
+static bool SetOutShapeRange(const ge::OpDescPtr& op_desc, const bool is_size_const,
+                             std::vector<std::pair<int64_t, int64_t>>& out_range,
+                             const int64_t size_data) {
+  const size_t input_idx_2 = 2; // size
+  const size_t output_idx_0 = 0;
+  const size_t size_len = 1;
+
+  if (!is_size_const) {
+    std::vector<std::pair<int64_t, int64_t>> size_value_range;
+    auto input_size_data = op_desc->MutableInputDesc(input_idx_2);
+    CHECK(input_size_data == nullptr,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("RaggedBinCount", 
+          OtherErrMsg("input size is null.")),
+          return false);
+    // means no const size value, will get the size value range
+    (void)input_size_data->GetValueRange(size_value_range);
+    // the size num must be 1, so the size value range num must be 1
+    OP_LOGD("RaggedBinCount", "the size value range num must be 1, but get %zu.", size_value_range.size());
+    if (size_value_range.size() != size_len) {
+      out_range.push_back(std::pair<int64_t, int64_t>(0, -1));
+    }
+    else {
+      out_range.push_back(size_value_range[0]);
+    }
+  }
+  else {
+    out_range.push_back(std::pair<int64_t, int64_t>(size_data, size_data));
+  }
+
+  op_desc->MutableOutputDesc(output_idx_0)->SetShapeRange(out_range);
+  return true;
+}
+
+IMPLEMT_INFERFUNC(RaggedBinCount, RaggedBinCountInferShape) {
+  auto opname = TbeGetName(op).c_str();
+  OP_LOGD(opname, "Enter RaggedBinCount inferfunction!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr, OP_LOGE(opname, "op desc is null."), return GRAPH_FAILED);
+  if (!ValidParamsCheck(op_desc)) {
+    return GRAPH_FAILED;
+  }
+  const size_t input_idx_0 = 0; // splits
+  const size_t input_idx_1 = 1; // values
+  const size_t input_idx_2 = 2; // size
+  const size_t input_idx_3 = 3; // weights
+  const size_t output_idx_0 = 0;
+  static const size_t output_len = 2;
+  auto input_desc_splits = op_desc->MutableInputDesc(input_idx_0);
+  auto input_desc_values = op_desc->MutableInputDesc(input_idx_1);
+  auto input_desc_weights = op_desc->MutableInputDesc(input_idx_3);
+  auto output_desc = op_desc->MutableOutputDesc(output_idx_0);
+  bool is_size_const = true;
+  int64_t size_data = UNKNOWN_DIM;
+  std::vector<int64_t> size_tensor;
+  if (!GetSizeData(op, op_desc, is_size_const, size_tensor, input_idx_2)) {
+    return GRAPH_FAILED;
+  }
+  size_data = size_tensor[0];
+  const GeShape& splits_shape = input_desc_splits->MutableShape();
+  const GeShape& values_shape = input_desc_values->MutableShape();
+  const size_t splits_shape_len = 1;
+  GeShape& output_shape = output_desc->MutableShape();
+  output_shape.SetDimNum(output_len);
+  if (!SetOutputDim(splits_shape, output_shape, splits_shape_len, size_data)) {
+    return GRAPH_FAILED;
+  }
+  const size_t values_weights_shape_len_max = 2;
+  const size_t values_shape_len = values_shape.GetDimNum();
+  if (!CheckShapeLength(op_desc, values_weights_shape_len_max)) {
+    return GRAPH_FAILED;
+  }
+  output_desc->SetDataType(input_desc_weights->GetDataType());
+  CHECK(!output_shape.IsUnknownShape(), OP_LOGD(opname, "the output is static shape. infer success."),
+        return GRAPH_SUCCESS);
+  output_shape.SetDim(0, -1);
+  OP_LOGD(opname, "the output is dynamic shape. will infer range");
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  InferShapeRange(op_desc, out_range, values_shape_len, values_weights_shape_len_max);
+  if (!SetOutShapeRange(op_desc, is_size_const, out_range, size_data)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(RaggedBinCount, RaggedBinCountVerify) {
+  auto opname = TbeGetName(op).c_str();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr, OP_LOGE(opname, "op desc is null."), return false);
+
+  const size_t input_idx_0 = 0; // splits
+  const size_t input_idx_1 = 1; // values
+  const size_t input_idx_2 = 2; // size
+  const size_t input_idx_3 = 3; // weights
+
+  auto splits_descptr = op_desc->MutableInputDesc(input_idx_0); // splits
+  GeShape splits_shape_check;
+  if (WithRank(splits_descptr, 1, splits_shape_check, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "Expected splits should be 1-D. but get %lu.",
+            splits_descptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  auto values_descptr = op_desc->MutableInputDesc(input_idx_1); // values
+  GeShape values_shape_check;
+  if (WithRankAtMost(values_descptr, 2, values_shape_check, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "Expected values should be less 2-D. but get %lu.",
+            values_descptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  auto size_descptr = op_desc->MutableInputDesc(input_idx_2); // size
+  GeShape size_shape_check;
+  if (WithRank(size_descptr, 1, size_shape_check, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "Expected size should be 1-D. but get %lu.",
+            size_descptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  auto weights_descptr = op_desc->MutableInputDesc(input_idx_3); // weights
+  GeShape weights_shape_check;
+  if (WithRankAtMost(weights_descptr, 2, weights_shape_check, opname) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "Expected weights should be less 2-D. but get %lu.",
+            weights_descptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  bool binary_output;
+  if (op.GetAttr("binary_output", binary_output) != GRAPH_SUCCESS) {
+    OP_LOGE(opname, "get attr binary_output failed.");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(RaggedBinCount, RaggedBinCountInferShape);
+VERIFY_FUNC_REG(RaggedBinCount, RaggedBinCountVerify);
+// ---------------RaggedBinCount Op END-------------------
 }  // namespace ge
