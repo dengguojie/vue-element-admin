@@ -159,6 +159,7 @@ def add_case(_):
         group_norm_relu(*case)
 
     cce_conf.cce_conf.te_set_version("Ascend910A")
+    check_supported(*case_all[0])
 
 
 ut_case.add_cust_test_func("Ascend910A", add_case)

@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import PlatformApi
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tbe_platform
 
 SUPPORT_SHAPE = (
     (64, 56), (64, 120), (64, 128),
@@ -36,6 +37,9 @@ def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001
     check_supported
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SHORT_SOC_VERSION)
+    is_support_vgather = tbe_platform.api_check_support("tik.vgather", "float32")
+    if not is_support_vgather:
+        return False, "not support soc version"
     support_version = ("Ascend310P",)
     if soc_version not in support_version:
         return False, "not support short soc version"
