@@ -743,7 +743,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         compile_info = self._get_compile_info(kernel_name)
         tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
                                              inputs=input_info_list, outputs=output_info_list)
-        return tiling_info.get("block_dim"), tiling_info.get("tiling_data")
+        return tiling_info
 
     def _check_and_fix_param_desc(self, param_desc_list, op_params):
 
@@ -850,10 +850,17 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             if self.imply_type.value == OpImplyType.DYNAMIC.value or  self.imply_type.value == OpImplyType.STATIC.value:
                 op_kernel.set_compile_info({})
                 tiling_inputs, tiling_outputs = self._build_tiling_args(case_info.op_params)
-                block_dim, tiling_data = self._do_tiling(run_soc_version=run_soc_version,
-                                                         case_info=case_info,
-                                                         input_info_list=tiling_inputs,
-                                                         output_info_list=tiling_outputs)
+                tiling_info = self._do_tiling(run_soc_version=run_soc_version,
+                                              case_info=case_info,
+                                              input_info_list=tiling_inputs,
+                                              output_info_list=tiling_outputs)
+                block_dim = tiling_info.get("block_dim")
+                tiling_data = tiling_info.get("tiling_data")
+                tiling_key = tiling_info.get("tiling_key")
+                workspaces = tiling_info.get("workspaces")
+                if not op_kernel.stub_func_name.endswith("kernel0"):
+                    op_kernel.stub_func_name = op_kernel.stub_func_name + "_" + str(tiling_key)
+                op_kernel.workspace = workspaces
                 output_data_list = runner.run(op_kernel, inputs=input_data_list,
                                               tiling=tiling_data, block_dim=block_dim)
             else:

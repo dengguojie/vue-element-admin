@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
 
 ut_case = OpUT("Add", "impl.dynamic.add", "add")
 
@@ -42,5 +43,28 @@ ut_case.add_case(["Ascend910A"],
                                           32, 32), (32,), "ND", "ND",
                                       "dynamic_mul_fp32_NZ_ND", "success", "static"))
 
+
+def calc_expect_func(input_x1, input_x2, output_arr):
+    x1_value = input_x1.get("value")
+    x2_value = input_x2.get("value")
+    output_arr = x1_value + x2_value
+    return output_arr
+
+
+# precision
+ut_case.add_precision_case(["Ascend910A"], {
+    "params": [
+        {"shape": (-1, 3, 100, 16), "dtype": "float16", "format": "ND", "range": [(1, 200),],
+         "ori_shape": (1, 3, 100, 16), "ori_format": "ND", "param_type": "input", "run_shape":(1, 3, 100, 16)},
+        {"shape": (-1, 3, 100, 16), "dtype": "float16", "format": "ND", "range": [(1, 200),],
+         "ori_shape": (1, 3, 100, 16), "ori_format": "ND", "param_type": "input", "run_shape":(1, 3, 100, 16)},
+        {"shape": (-1, 3, 100, 16), "dtype": "float16", "format": "ND", "range": [(1, 200),],
+         "ori_shape": (1, 3, 100, 16), "ori_format": "ND", "param_type": "output", "run_shape":(1, 3, 100, 16)},
+    ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A", simulator_mode="pv",
+                simulator_lib_path="/usr/local/Ascend/latest/toolkit/tools/simulator")

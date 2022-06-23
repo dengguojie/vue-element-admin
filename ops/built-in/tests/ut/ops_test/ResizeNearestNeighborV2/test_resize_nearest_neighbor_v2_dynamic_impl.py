@@ -282,4 +282,5 @@ ut_case.add_precision_case(
 '''
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A", simulator_mode="pv", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
+    ut_case.run("Ascend910A", simulator_mode="pv",
+                simulator_lib_path="/usr/local/Ascend/latest/toolkit/tools/simulator")

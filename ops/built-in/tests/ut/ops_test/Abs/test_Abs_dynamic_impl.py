@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
 
 ut_case = OpUT("Abs", "impl.dynamic.abs", "abs")
 
@@ -45,5 +46,24 @@ ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 ut_case.add_case(["Ascend910A", "Ascend310"], case4)
 
+def calc_expect_func(x, output):
+    import numpy as np
+    x_value = x.get("value")
+    output = np.abs(x_value)
+    return output
+
+
+ut_case.add_precision_case("all", {
+    "params": [
+        {"shape": (-1, 3, 100, 16), "dtype": "float16", "format": "ND", "range": [(1, 200),(1, 200),(1, 200),(1, 200)],
+         "ori_shape": (1, 3, 100, 16), "ori_format": "ND", "param_type": "input", "run_shape":(1, 3, 100, 16)},
+        {"shape": (-1, 3, 100, 16), "dtype": "float16", "format": "ND", "range": [(1, 200),(1, 200),(1, 200),(1, 200)],
+         "ori_shape": (1, 3, 100, 16), "ori_format": "ND", "param_type": "output", "run_shape":(1, 3, 100, 16)},
+    ],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend310"])
+    ut_case.run("Ascend910A", simulator_mode="pv",
+                simulator_lib_path="/usr/local/Ascend/latest/toolkit/tools/simulator")

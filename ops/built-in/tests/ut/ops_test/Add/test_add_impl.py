@@ -5,7 +5,6 @@ test_add_impl
 # pylint: disable=unused-import
 from impl.util import util_common
 from op_test_frame.ut import BroadcastOpUT
-from op_test_frame.utils.op_param_util import cartesian_set_format_dtype
 
 ut_case = BroadcastOpUT("Add")
 
