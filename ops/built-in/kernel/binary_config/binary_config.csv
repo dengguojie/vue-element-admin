@@ -21,6 +21,8 @@ BatchMatMul,batch_matmul.json
 BiasAdd,bias_add.json
 BiasAddGrad,bias_add_grad.json
 Cast,cast.json
+Cosh,cosh.json
+ClipByValue,clip_by_value.json
 DataFormatDimMap, data_format_dim_map.json
 Dawsn, dawsn.json
 Div,div.json
