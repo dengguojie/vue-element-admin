@@ -57,8 +57,8 @@ def test_conv2d_dynamic_transdata_fusion(test_arg):
                 conv_in = trans_data_fusion_compute(data, None, "NCHW", "NC1HWC0")
 
                 conv_out = conv2d_fusion_compute(conv_in, weight, bias, None, outputs, strides,
-                                                pads, dilations, groups, "NCHW", 0, kernel_name,
-                                                options={"invalid_data_rm": invalid_data_rm_flag})
+                                                 pads, dilations, groups, "NCHW", 0, kernel_name,
+                                                 options={"invalid_data_rm": invalid_data_rm_flag})
 
                 dst = {"ori_shape": [-1, c_out, -1, -1]}
                 res = trans_data_fusion_compute(conv_out, dst, "NC1HWC0", "NCHW")

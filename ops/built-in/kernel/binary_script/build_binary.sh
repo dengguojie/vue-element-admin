@@ -39,12 +39,17 @@ if [ ! -f ${ROOT_DEFAULT_PATH}/compiler/bin/setenv.bash ] && [ ! -f ${USER_DEFAU
     exit 1
 fi
 
+if [ ! -f ${ROOT_DEFAULT_PATH}/runtime/bin/setenv.bash ] && [ ! -f ${USER_DEFAULT_PATH}/runtime/bin/setenv.bash ]; then
+    echo "ERROR: Runtime Setenv File Not Exists, Please Check."
+    exit 1
+fi
+
 if [ $(id -u) -ne 0 ];then
     python_path=`find ${HOME} -name "tbe" | grep python | grep site-packages`
     sitepackage=${python_path%/*}
     tbe_path="$_CURR_PATH""/../../tbe"
     export PYTHONPATH=$PYTHONPATH:${sitepackage}:${tbe_path}
-    for type in "compiler"; do
+    for type in "compiler" "runtime"; do
         source ${USER_DEFAULT_PATH}/${type}/bin/setenv.bash
         if [ "$?" != 0 ]; then
             echo "ERROR: Source ${type} Env Falied."
@@ -54,7 +59,7 @@ if [ $(id -u) -ne 0 ];then
         fi
     done
 else
-    for type in "compiler"; do
+    for type in "compiler" "runtime"; do
         source ${ROOT_DEFAULT_PATH}/${type}/bin/setenv.bash
         if [ "$?" != 0 ]; then
             echo "ERROR: Source ${type} Env Falied."
@@ -111,5 +116,11 @@ done
 
 # exe task
 bash build_binary_single_op_exe_task.sh ${task_path} ${PRONUM}
+
+echo "**************Start to Generate Fusion Ops*****************"
+FUSION_OPS_FOLDER_PATH="${_CURR_PATH}/../binary_config/${short_soc_version,,}/FusionOps/"
+if [ -d "${FUSION_OPS_FOLDER_PATH}" ]; then
+    bash build_binary_fusion_ops.sh ${short_soc_version} ${FUSION_OPS_FOLDER_PATH} ${OUTPUT_PATH}
+fi
 
 echo "run build_binary.sh SUCCESS"

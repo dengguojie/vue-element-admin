@@ -2492,6 +2492,7 @@ cube-conv2d:
       - ops/built-in/op_tiling/conv2d.cc
       - ops/built-in/op_tiling/conv2d.h
       - ops/built-in/op_proto/runtime/conv2d_infer_fns.cc
+      - ops/built-in/kernel/binary_config/ascend910/FusionOps/transdata_conv2d_transdata.cpp
     unrelease:
   llt:
     ut_check: true
@@ -2513,6 +2514,7 @@ cube-conv2d-python:
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_factory.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
       - auto_schedule/python/tbe/dsl/base/classifier/conv2d_classifier.py
+      - ops/built-in/kernel/binary_script/gen_output_fusion_op_json.py
     unrelease:
   llt:
     ut_check: true

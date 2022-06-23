@@ -621,6 +621,7 @@ class Conv2dParaProcess(CubeParaProcess):
         pad_left = get_te_var(op_util_conv2d.TilingDataKey.PAD_LEFT).get_tvm_var()
         pad_right = get_te_var(op_util_conv2d.TilingDataKey.PAD_RIGHT).get_tvm_var()
         self.pads = [pad_top, pad_bottom, pad_left, pad_right]
+        self.groups = 1
 
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]["mac"][1:3]
         ci1 = ceil_div(c_in, block_size_k)
