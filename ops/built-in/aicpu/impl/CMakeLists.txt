@@ -47,6 +47,7 @@ set(local_kernels_src_files
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/greater.cc
     kernels/normalized/greater_equal.cc
+    kernels/normalized/grid_sampler_3d.cc
     kernels/normalized/grid_sampler_3d_grad.cc
     kernels/normalized/identity.cc
     kernels/normalized/image_warp_offsets.cc
