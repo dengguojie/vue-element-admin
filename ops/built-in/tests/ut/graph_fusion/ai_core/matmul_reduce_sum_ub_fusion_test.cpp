@@ -9,8 +9,12 @@
 #include "reduce_ops.h"
 #include "nonlinear_fuc_ops.h"
 #include "transformation_ops.h"
+#include "fusion_pass_test_slice_utils.h"
 #include "fusion_pass_test_utils.h"
 
+using fe::CreateAxisSplitMap;
+using fe::CreateInputSplitInfo;
+using fe::CreateOutputSplitInfo;
 using namespace ge;
 using namespace op;
 
@@ -119,6 +123,17 @@ TEST_F(matmul_reduce_sum_ub_fusion_test, bmm_reducesumd_test_1) {
 
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  vector<fe::AxisSplitMap> asm_bmm{
+    CreateAxisSplitMap({CreateInputSplitInfo(0, {0}), CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {0})}),
+    CreateAxisSplitMap({CreateInputSplitInfo(0, {2})}, {CreateOutputSplitInfo(0, {1})}),
+    CreateAxisSplitMap({CreateInputSplitInfo(1, {2})}, {CreateOutputSplitInfo(0, {2})})
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_bmm, {"BatchMatMul"}));
+  vector<fe::AxisSplitMap> asm_reduce_sum{
+    CreateAxisSplitMap({CreateInputSplitInfo(0, {1})}, {CreateOutputSplitInfo(0, {1})}),
+    CreateAxisSplitMap({CreateInputSplitInfo(0, {2})}, {CreateOutputSplitInfo(0, {2})})
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_reduce_sum, {"ReduceSumD"}));
   Status ret =
       fe::RunBufferFusionPass("MatmulReduceSumUbFusion", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, compute_graph_ptr);
   EXPECT_EQ(ret, SUCCESS);

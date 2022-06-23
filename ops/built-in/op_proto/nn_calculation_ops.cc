@@ -23,7 +23,7 @@
     if (!(cond)) {                                 \
       expr_exception_handling;                     \
     }                                              \
-  } while (0);
+  } while (0)
 
 #define CHECK_OP_FUNC(cond, post_action_expr, msg, ...)          \
   {                                                              \

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 namespace fe {
 void DelSplitInfoByOutputAxis(std::vector<AxisSplitMap>& split_maps, int axis) {
   std::vector<AxisSplitMap> temp_maps;
-  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+  for (auto it = split_maps.begin(); it != split_maps.end(); ++it) {
     bool del_axis = false;
     auto output_split_infos = (*it).GetOutputSplitInfoVec();
     for (auto output_split_info : output_split_infos) {
@@ -42,7 +42,7 @@ void DelSplitInfoByOutputAxis(std::vector<AxisSplitMap>& split_maps, int axis) {
 
 void DelSplitInfoByInputAxis(std::vector<AxisSplitMap>& split_maps, int axis) {
   std::vector<AxisSplitMap> temp_maps;
-  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+  for (auto it = split_maps.begin(); it != split_maps.end(); ++it) {
     bool del_axis = false;
     auto input_split_infos = (*it).GetInputSplitInfoVec();
     for (auto input_split_info : input_split_infos) {
@@ -107,7 +107,7 @@ void AddElemwiseSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& ele
   for (uint i = 1; i < elemWiseNode->GetOpDesc()->GetAllInputsDesc().size(); i++) {
     index += 1;
     vector<int64_t> split_flag = {-1};
-    for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+    for (auto it = split_maps.begin(); it != split_maps.end(); ++it) {
       auto output_split_infos = (*it).GetOutputSplitInfoVec();
       auto input_split_infos = (*it).GetInputSplitInfoVec();
       if (output_split_infos.empty() || input_split_infos.empty()) {
