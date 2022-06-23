@@ -314,16 +314,18 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if isinstance(pad_top, tvm.expr.Expr) or isinstance(pad_bottom, tvm.expr.Expr) or \
                 isinstance(pad_left, tvm.expr.Expr) or isinstance(pad_right, tvm.expr.Expr):
             return
-        if pad_top < PAD_MIN or pad_bottom < PAD_MIN or pad_top > PAD_MAX or pad_bottom > PAD_MAX:
-            range_value = "".join([str(PAD_MIN), ", ", str(PAD_MAX)])
+        if pad_top < PAD_MIN or pad_bottom < PAD_MIN or pad_top > DMA_MAX_VAL or pad_bottom > DMA_MAX_VAL:
+            range_value = "".join([str(PAD_MIN), ", ", str(DMA_MAX_VAL)])
             actual_value = "".join([str(pad_top), ", ", str(pad_bottom)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value,
                                                  "pad_top or pad_bottom", actual_value)
-        if pad_left < PAD_MIN or pad_right < PAD_MIN or pad_left > PAD_MAX or pad_right > PAD_MAX:
-            range_value = "".join([str(PAD_MIN), ", ", str(PAD_MAX)])
+        if pad_left < PAD_MIN or pad_right < PAD_MIN or pad_left > DMA_MAX_VAL or pad_right > DMA_MAX_VAL:
+            range_value = "".join([str(PAD_MIN), ", ", str(DMA_MAX_VAL)])
             actual_value = "".join([str(pad_left), ", ", str(pad_right)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value,
                                                  "pad_left or pad_right", actual_value)
+        if pad_top > PAD_MAX or pad_bottom > PAD_MAX or pad_left > PAD_MAX or pad_right > PAD_MAX:
+            ConvParam.l0a_dma_flag = True
 
     w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
     shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n)*w_block_size_n

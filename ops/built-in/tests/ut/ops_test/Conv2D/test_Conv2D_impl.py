@@ -378,6 +378,7 @@ def test_invalid_data_rm_1(test_arg):
 print("adding conv2d test_invalid_data_rm_1 testcase")
 ut_case.add_cust_test_func(test_func=test_invalid_data_rm_1)
 
+
 def test_invalid_data_rm_2(test_arg):
     inputs = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8",
                              attrs={"ori_shape": (1, 32, 8, 8), "format": "NCHW", "ori_fomat": "NCHW"})
@@ -395,7 +396,6 @@ def test_invalid_data_rm_2(test_arg):
     res = conv(inputs, weights, para_dict, optim_dict, dsl_flag=False)
 print("adding conv2d test_invalid_data_rm_2 testcase")
 ut_case.add_cust_test_func(test_func=test_invalid_data_rm_2)
-
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310P3", "Ascend310"])

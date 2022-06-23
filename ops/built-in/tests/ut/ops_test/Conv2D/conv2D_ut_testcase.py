@@ -55,6 +55,8 @@ conv2D_ut_testcase = [
 ["Ascend310", {'ori_shape': (1, 64, 1, 40544), 'shape': (1, 4, 1, 40544, 16), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (1, 3, 64, 64), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 512), "success"],
 ["Ascend310", {'ori_shape': (1, 64, 3, 40544), 'shape': (1, 4, 3, 40544, 16), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (3, 3, 64, 64), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 512), RuntimeError],
 ["Ascend310", {'ori_shape': (1, 64, 1, 40544), 'shape': (1, 4, 1, 40544, 16), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (1, 3, 64, 64), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 64), (0, 0, 0, 0), (1, 1, 1, 512), "success"],
+# ============ dma load3d large pad ===============
+["Ascend310", {'ori_shape': (1, 64, 300, 300), 'shape': (1, 4, 300, 300, 16), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (3, 3, 64, 64), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (300, 1, 1, 1), (1, 1, 1, 1), "success"],
 ]
 
 conv2D_op_select_ut_testcase = [

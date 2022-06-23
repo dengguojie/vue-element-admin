@@ -685,6 +685,8 @@ class DynamicShape:
         fmap = tensor_param["fmap"]
         al1 = tensor_param["al1"]
         al0 = tensor_param["al0"]
+        aub_dma = tensor_param["aub_dma"]
+        al1_im2col = tensor_param["al1_im2col"]
         dynamic_al0_pragma_axis = emit_insn_dict["dynamic_al0_pragma_axis"]
 
         im2col_attr = {
@@ -722,7 +724,10 @@ class DynamicShape:
             'l1_group_flag': 1
         }
 
-        if l0a_load2d_flag:
+        if conv_param.l0a_dma_flag:
+            sch[aub_dma].emit_insn(aub_dma.op.axis[0], "dma_copy")
+            sch[al1_im2col].emit_insn(al1_im2col.op.axis[5], "dma_copy")
+        elif l0a_load2d_flag:
             sch[al1].emit_insn(al1.op.axis[0], "dma_copy")
         elif input_nd_flag:
             im2col_attr.update({"layout_transform": "nd2nz"})
@@ -730,7 +735,9 @@ class DynamicShape:
         else:
             sch[al1].emit_insn(al1.op.axis[0], "dma_copy", im2col_attr)
 
-        if l0a_load2d_flag:
+        if conv_param.l0a_dma_flag:
+            sch[al0].emit_insn(al0.op.axis[0], "dma_copy")
+        elif l0a_load2d_flag:
             sch[al0].emit_insn(dynamic_al0_pragma_axis, "dma_copy")
         else:
             sch[al0].emit_insn(dynamic_al0_pragma_axis, 'im2col_v2', im2col_attr_0)
@@ -818,6 +825,39 @@ class Im2colDma:
     def __init__(self, conv_param):
         self.flag = conv_param.l0a_dma_flag
 
+    @staticmethod
+    def config_al0_im2coldma(sch, al1_im2col, cl0):
+        """
+        Cache read al1_im2col into L0.
+        """
+        al0 = sch.cache_read(al1_im2col, cce_params.scope_ca, [cl0])
+        return al0
+
+    @staticmethod
+    def im2col_dma_emit_insn(sch, al1_im2col, al0, al0_axis_list):
+        """
+        Emit insn for al1_im2col and al0.
+        """
+        sch[al0].emit_insn(al0_axis_list[0], "dma_copy")
+
+    @staticmethod
+    def aub_dma_compute_at(sch, aub_dma, al1_im2col):
+        """
+        Compute at for aub_dma.
+        """
+        sch[aub_dma].compute_at(sch[al1_im2col], al1_im2col.op.axis[4])
+
+    def config_aub(self, sch, tensor_map):
+        """
+        Get the fmap tensor in ub.
+        """
+        if self.flag:
+            aub_dma = tensor_map[Conv2dTensorName.FMAP_L1]
+            sch[aub_dma].set_scope(cce_params.scope_ubuf)
+        else:
+            aub_dma = None
+        return aub_dma
+
     def config_al1_im2col(self, sch, tensor_map):
         """
         Get the im2col_fractal tensor in L1.
@@ -828,14 +868,6 @@ class Im2colDma:
         else:
             al1_im2col = None
         return al1_im2col
-
-    @staticmethod
-    def config_al0_im2coldma(sch, al1_im2col, cl0):
-        """
-        Cache read al1_im2col into L0.
-        """
-        al0 = sch.cache_read(al1_im2col, cce_params.scope_ca, [cl0])
-        return al0
 
     def align_al1_im2col(self, sch, al1_im2col, block_k0):
         """
@@ -849,22 +881,6 @@ class Im2colDma:
                 (1, 1),
                 (1, 1),
                 (1, block_k0))
-
-    def inline_al1_im2coldma(self, sch, al1, fmap_row_major):
-        """
-        Inline al1 and row major tensor.
-        """
-        if self.flag:
-            sch[al1].compute_inline()
-            sch[fmap_row_major].compute_inline()
-
-    @staticmethod
-    def im2col_dma_emit_insn(sch, al1_im2col, al0, al0_axis_list):
-        """
-        Emit insn for al1_im2col and al0.
-        """
-        sch[al1_im2col].emit_insn(al1_im2col.op.axis[5], "dma_copy")
-        sch[al0].emit_insn(al0_axis_list[0], "dma_copy")
 
 
 class InnerBatch:
@@ -1417,7 +1433,10 @@ class Conv2dSchedule:
                                        self._c04.mode == "not_first_layer_c04")
             for flag in al1_already_exist_flags:
                 if flag:
-                    al1 = tensor_map["fmap_l1"]
+                    if self._im2col_dma.flag:
+                        al1 = tensor_map["fmap_im2col"]
+                    else:
+                        al1 = tensor_map["fmap_l1"]
                     sch[al1].set_scope(scope_al1)
                     return al1
 
@@ -1516,6 +1535,7 @@ class Conv2dSchedule:
         cub = config_cub()
         bias_l1, bias_bt = config_bias()
         bias_ub, cub_bias_add = config_bias_ub()
+        aub_dma = self._im2col_dma.config_aub(sch, tensor_map)
 
         if not self._binary.flag:
             self._fixpipe_fusion.fixpipe_inputs_set_scope(sch, self._op_graph)
@@ -1535,7 +1555,7 @@ class Conv2dSchedule:
         tensor_param = {"al1": al1, "bl1": bl1,
                         "fmap": fmap, "weight": weight,
                         "fmap_row_major": fmap_row_major, "fmap_row_major_reshape": fmap_row_major_reshape,
-                        "al1_im2col": al1_im2col,
+                        "al1_im2col": al1_im2col, "aub_dma": aub_dma,
                         "al0": al0, "bl0": bl0, "cl0": cl0,
                         "bias_l1": bias_l1, "bias_bt": bias_bt,
                         "cub": cub, "bias_ub": bias_ub, "cub_bias_add": cub_bias_add,
@@ -1607,7 +1627,6 @@ class Conv2dSchedule:
         if fmap_row_major_reshape is not None:
             sch[fmap_row_major_reshape].compute_inline()
 
-        self._im2col_dma.inline_al1_im2coldma(sch, al1, fmap_row_major)
         self._im2col_dma.align_al1_im2col(sch, al1_im2col, self._block_k0)
 
 
@@ -2561,6 +2580,9 @@ class Conv2dSchedule:
                 if fmap_row_major is not None:
                     sch[fmap_row_major].compute_at(sch[consumer], target_axis)
 
+            if self._im2col_dma.flag:
+                self._im2col_dma.aub_dma_compute_at(sch, aub_dma, al1_im2col)
+
         def bl1_compute_at():
             """
             Handle bl1 attach.
@@ -2734,6 +2756,8 @@ class Conv2dSchedule:
         al0 = tensor_param["al0"]
         bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
+        aub_dma = tensor_param["aub_dma"]
+        al1_im2col = tensor_param["al1_im2col"]
         fmap_row_major = tensor_param["fmap_row_major"]
         bias_l1 = tensor_param["bias_l1"]
         bias_bt = tensor_param["bias_bt"]
@@ -2938,6 +2962,7 @@ class Conv2dSchedule:
         bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
         cub = tensor_param["cub"]
+        aub_dma = tensor_param["aub_dma"]
 
         pingpong_map = {"AL1_pbuffer": al1,
                         "BL1_pbuffer": bl1,

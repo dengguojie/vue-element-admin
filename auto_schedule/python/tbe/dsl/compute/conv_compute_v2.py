@@ -91,10 +91,38 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         return False
 
+    def get_dma_flag():
+        """
+        Get binary dma flag.
+        """
+        if conv_param.binary_mode:
+            return get_fmpload_mode(BinaryInfoKey.DMA_FLAG)
+
+        return conv_param.l0a_dma_flag
+
     def al1_compute(fmap):
         """
         Compute of al1.
         """
+        #================================== dma ===========================================
+        if l0a_dma_flag:
+            fmap_ub_shape = [group_opt,
+                             batch,
+                             ci1_opt,
+                             in_height + pad_top + pad_bottom,
+                             in_width + pad_left + pad_right,
+                             in_c0]
+            fmap_ub_for_dma_im2col = tvm.compute(fmap_ub_shape,
+                                                 lambda g, n, c1, h, w, c0:
+                                                 tvm.select(
+                                                     tvm.any(h < pad_top,
+                                                             h > in_height + pad_top - 1,
+                                                             w < pad_left,
+                                                             w > in_width + pad_left - 1),
+                                                 tvm.const(offset_x, fmap.dtype),
+                                                 fmap(n, c1 + g*ci1_opt, h - pad_top, w - pad_left, c0)),
+                                                 name="fmap_ub_for_dma_im2col")
+            return fmap_ub_for_dma_im2col
         #===============================l0a load2d optimization==============================
         if l0a_load2d_flag:
             al1_load2d_shape = (batch, in_c1, in_height * in_width, in_c0)
@@ -267,6 +295,14 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                 back_c1 = virtual_w // block_size // kernel_w // kernel_h
                 back_h = (virtual_h // out_width)*stride[0] + (k1_idx // kernel_w % kernel_h)*dilate_h
                 back_w = (virtual_h % out_width)*stride[1] + (k1_idx % kernel_w)*dilate_w
+
+                if l0a_dma_flag:
+                    return fmap(group_idx,
+                                n_idx,
+                                back_c1,
+                                back_h,
+                                back_w,
+                                k0_idx)
 
                 return tvm.select(tvm.any(back_h < padding[0],
                                           back_h > fmap.shape[3] + padding[0] - 1,
@@ -748,6 +784,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         c04_mode = "disabled"
         c04_flag = False
 
+    l0a_dma_flag = get_dma_flag()
+
     # input_nd_flag, input_nd_mode
     input_nd_flag, input_nd_mode = get_input_nd_flag_mode()
     if input_nd_flag:  # to be completed
@@ -885,6 +923,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     conv_param.weight_nd_flag = weight_nd_flag
     conv_param.impl_mode = para_dict.get("impl_mode", "")
     conv_param.l0a_load2d_flag = l0a_load2d_flag
+    conv_param.l0a_dma_flag = l0a_dma_flag
 
     #==============save tiling_info_dict for conv2d_tiling_case=============
     tiling_query_param = conv_param.tiling_query_param
