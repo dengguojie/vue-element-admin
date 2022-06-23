@@ -47,7 +47,7 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
 
   Operator::OpListListInt elem_shapes;
   auto ret = op.GetAttr(shapes.c_str(), elem_shapes);
-  OP_LOGI(TbeGetName(op).c_str(), "elem_shapes = %ld, elem_types = %ld.", elem_shapes.size(), elem_types.size());
+  OP_LOGI(TbeGetName(op).c_str(), "elem_shapes is %ld, elem_types is %ld.", elem_shapes.size(), elem_types.size());
   if (ret == GRAPH_SUCCESS && elem_shapes.size() > 0) {
     size_t num = std::min(elem_shapes.size(), elem_types.size());
     std::vector<ShapeAndType> handle_shapes_and_types;
@@ -368,7 +368,7 @@ IMPLEMT_INFERFUNC(QueueEnqueue, QueueEnqueueInfer) {
 
   std::vector<AscendString> marks;
   context->GetMarks(marks);
-  OP_LOGI(TbeGetName(op).c_str(), "SaveShapesToAicpuResource marks.size() = %ld.", marks.size());
+  OP_LOGI(TbeGetName(op).c_str(), "SaveShapesToAicpuResource marks.size() is %ld.", marks.size());
   return SaveShapesToAicpuResource(op, marks, dynCompSize, "components");
 }
 
@@ -1552,8 +1552,8 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
 
   if (num_incides < 1) {
     std::string err_msg =
-        ConcatString("invalid value", "[", num_incides, "]",
-                     " of attr[N], it should be not less than 1");
+        ConcatString("invalid value num incides is", "[", num_incides, "]",
+                     " of attr[N], it should be not less than 1.");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -1595,7 +1595,7 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
     Shape data_suffix_shape;
     auto result = SubShape(data_shape, rank_of_indices, rank_of_data, 1, data_suffix_shape, TbeGetName(op).c_str());
     std::string  subshape_err_msg = ConcatString("failed  to subshape from 1 to ",
-      data_shape.GetDimNum(), " of input[x] shape", DebugString(data_shape.GetDims()));
+      data_shape.GetDimNum(), " of input[x] shape:", DebugString(data_shape.GetDims()));
     if (result != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), ConcatString("get ", subshape_err_msg));
       return GRAPH_FAILED;
@@ -1618,7 +1618,7 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
           int64_t count = indices_data_tensor.GetTensorDesc().GetShape().GetShapeSize();
           for (int32_t i = 0; i < count; ++i) {
             if (static_cast<int64_t>(indices_data[i]) > max_index) {
-              max_index = static_cast<int64_t>(indices_data[i]);
+              max_index = static_cast<int64_t>(indices_data[i]) + 1;
             }
           }
         } else {
