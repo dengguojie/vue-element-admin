@@ -40,6 +40,7 @@ OPS_SOURCE_DIR=""
 generate_related_ops_by_specified_op() {
   local ops="$1"
   echo "[INFO] ops is specified as: ${ops}"
+  test ! -d "`dirname ${CHANGE_LOG}`" && mkdir -p "`dirname ${CHANGE_LOG}`"
   echo "related_ops_dirs=${ops//,/ }" > "${CHANGE_LOG}"
 }
 
