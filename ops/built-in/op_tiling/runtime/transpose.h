@@ -121,7 +121,8 @@ enum TransposeScenario {
   SCENARIO_9 = 9,    // last axis block aligned and not transpose
   SCENARIO_10 = 10,  // last two axis: block aligned & transpose & not huge
   SCENARIO_11 = 11,  // last two axis: block aligned & transpose & huge
-  SCENARIO_INIT = 99, // SCENARIO_INIT
+  SCENARIO_12 = 12,  // last axis block aligned and & transpose & repeat axis need split
+  SCENARIO_INIT = 99,// SCENARIO_INIT
 };
 
 enum TilingModelPri {
@@ -963,6 +964,11 @@ struct RuntimeInfoV2 {
   int64_t nRangeSize;
   int64_t colRangeSize;
   int64_t rowRangeSize;
+  int64_t loopUnit;
+  int64_t loopMain;
+  int64_t loopTail;
+  int64_t loopSrcStride;
+  int64_t loopDstStride;
 
   /*
    * scenario_0: identical
@@ -1052,6 +1058,11 @@ struct RuntimeInfoV2 {
     nRangeSize = 0;
     colRangeSize = 0;
     rowRangeSize = 0;
+    loopUnit = 0;
+    loopMain = 0;
+    loopTail = 0;
+    loopSrcStride = 0;
+    loopDstStride = 0;
   }
 
   void ResetScenario0() {
@@ -1196,6 +1207,24 @@ struct RuntimeInfoV2 {
     twoDInfo.Reset(coreNum);
   }
 
+  void ResetScenario12() {
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCoreLastAxisNT[i].Reset();
+    }
+    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+      nJumpFactor[i] = 0;
+      nJumpStrideIn[i] = 0;
+      nJumpStrideOut[i] = 0;
+      nJumpFactorMod[i] = 1;
+      srcJumpFactor[i] = 0;
+      srcJumpStride[i] = 0;
+      srcJumpFactorMod[i] = 1;
+      dstJumpFactor[i] = 0;
+      dstJumpStride[i] = 0;
+      dstJumpFactorMod[i] = 1;
+    }
+  }
+
   void Reset() {
     if (scenarioSize == 0) {
         ResetScenario0();
@@ -1209,6 +1238,7 @@ struct RuntimeInfoV2 {
         ResetScenario9();
         ResetScenario10();
         ResetScenario11();
+        ResetScenario12();
     } else {
       for (int64_t i = 0; i < scenarioSize; i++) {
         switch(scenarios[i]) {
@@ -1244,6 +1274,9 @@ struct RuntimeInfoV2 {
             break;
           case SCENARIO_11:
             ResetScenario11();
+            break;
+          case SCENARIO_12:
+            ResetScenario12();
             break;
           default:
             break;

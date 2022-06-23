@@ -103,9 +103,6 @@ ut_case.add_precision_case(["Ascend910A"],
 ut_case.add_precision_case(["Ascend910A"],
                            gen_trans_data_precision_case((1, 1, 510, 1240), (3, 2, 16, 16),
                                                          "float16", "hwcn2fzlstm_4", "success"))
-ut_case.add_precision_case(["Ascend910A"],
-                           gen_trans_data_precision_case((1, 1, 201, 800), (3, 2, 16, 16),
-                                                         "float16", "hwcn2fzlstm_5", "success"))
 
 
 if __name__ == '__main__':
