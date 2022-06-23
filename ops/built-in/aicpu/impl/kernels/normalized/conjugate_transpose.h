@@ -25,17 +25,16 @@ class ConjugateTransposeCpuKernel : public CpuKernel {
  public:
   ~ConjugateTransposeCpuKernel() = default;
 
- protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
   std::vector<int64_t> perm;
-  uint32_t ConjugateTransposeParamCheck(CpuKernelContext &ctx);
+  uint32_t ConjugateTransposeParamCheck(const CpuKernelContext &ctx);
   uint32_t GetConjugateTransposeValue(Tensor *tensor,
                                       std::vector<int64_t> &value);
 
   template <typename T>
-  uint32_t ConjugateTransposeCompute(CpuKernelContext &ctx);
+  uint32_t ConjugateTransposeCompute(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif  //  AICPU_CONJUGATETRANSPOSE_H

@@ -22,7 +22,7 @@
 #include "status.h"
 
 namespace {
-const char* const kRound = "Round";
+const char *const kRound = "Round";
 template <typename T>
 const T ScalarRound(const T &x) {
   const bool isInt = Eigen::NumTraits<T>::IsInteger;

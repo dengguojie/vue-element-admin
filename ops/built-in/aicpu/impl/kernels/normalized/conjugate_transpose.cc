@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved. 
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -184,7 +184,7 @@ uint32_t ConjugateTransposeCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t ConjugateTransposeCpuKernel::ConjugateTransposeParamCheck(
-    CpuKernelContext &ctx) {
+    const CpuKernelContext &ctx) {
   std::vector<int64_t> shape_x = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   std::vector<int64_t> shape_perm =
       ctx.Input(1)->GetTensorShape()->GetDimSizes();
@@ -239,14 +239,14 @@ uint32_t ConjugateTransposeCpuKernel::ConjugateTransposeParamCheck(
 
 template <typename T>
 uint32_t ConjugateTransposeCpuKernel::ConjugateTransposeCompute(
-    CpuKernelContext &ctx) {
+    const CpuKernelContext &ctx) {
   auto x_data = ctx.Input(0)->GetData();
   auto y_data = ctx.Output(0)->GetData();
   std::vector<int64_t> shape_x = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   std::vector<int64_t> shape_y = ctx.Output(0)->GetTensorShape()->GetDimSizes();
   auto input_data = reinterpret_cast<T *>(x_data);
   auto output_data = reinterpret_cast<T *>(y_data);
-  int64_t input_dims = shape_x.size();
+  int64_t input_dims = static_cast<int64_t>(shape_x.size());
   switch (input_dims) {
     case dim_2: {
       CONJUGATETRANSPOSE_COMPUTE_DIM2(input_data, shape_x, output_data, shape_y)
