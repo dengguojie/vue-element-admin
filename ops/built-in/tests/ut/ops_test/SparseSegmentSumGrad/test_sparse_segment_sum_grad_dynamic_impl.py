@@ -35,8 +35,8 @@ def gen_dynamic_floormod_case(shape_x, shape_y, range_x, range_y, dtype_val, ker
             "support_expect": True}
 
 
-ut_case.add_case("Ascend910A",
+ut_case.add_case(["Ascend910A", "Ascend610", "Ascend615", "Ascend310P3"],
                  gen_dynamic_floormod_case((-1,), (1,), ((1, None),), ((1, 1),),
                                            "float32", "dynamic_sparse_segment_sum_grad_case", "success"))
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A", "Ascend610", "Ascend615", "Ascend310P3")
