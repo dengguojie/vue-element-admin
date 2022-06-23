@@ -83,7 +83,15 @@ aicpu:
       - ops/built-in/framework/tf_plugin/gather_point_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_plugin.cc
-      - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc
+      - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc     
+      - ops/built-in/framework/tf_plugin/crop_and_resize_grad_image_plugin.cc     
+      - ops/built-in/framework/tf_plugin/get_next_from_queue_plugin.cc
+      - ops/built-in/framework/tf_plugin/get_next_v2.cc
+      - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
+      - ops/built-in/framework/tf_plugin/optional_get_value_plugin.cc
+      - ops/built-in/framework/tf_plugin/out_feed_enqueue_op.cc
+      - ops/built-in/op_proto/data_flow_ops.cc
+      - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/audio_ops.cc
       - ops/built-in/op_proto/inc/audio_ops.h
       - ops/built-in/op_proto/logging_ops.cc
@@ -1055,7 +1063,6 @@ vector_B:
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/max_pool3d_plugin.cc
-      - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
       - ops/built-in/framework/tf_plugin/image_projective_transform_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/ragged_bin_count_plugin.cc
       - ops/built-in/framework/tf_plugin/non_zero_with_value_shape_plugin.cc
@@ -2533,7 +2540,6 @@ ops_pub:
       - ops/built-in/op_proto/hvd_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/ctc_ops.cc
-      - ops/built-in/op_proto/data_flow_ops.cc
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
       - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/avg_pool_1d_ops.cc
@@ -2645,7 +2651,6 @@ unkown:
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
       - ops/built-in/op_proto/inc/npu_loss_scale_ops.h
       - ops/built-in/op_proto/inc/hcom_ops.h
-      - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/inc/internal_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
       - ops/built-in/op_proto/inc/list_ops.h
@@ -3521,8 +3526,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/ascend_antiquant_plugin.cc
       - ops/built-in/framework/tf_plugin/unsorted_segment_max_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_proximal_adagrad_plugin.cc
-      - ops/built-in/framework/tf_plugin/get_next_v2.cc
-      - ops/built-in/framework/tf_plugin/out_feed_enqueue_op.cc
       - ops/built-in/framework/tf_plugin/asinh_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/reciprocal_plugin.cc
       - ops/built-in/framework/tf_plugin/drop_out_do_mask_plugin.cc
@@ -3623,7 +3626,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/reverse_sequence_plugin.cc
       - ops/built-in/framework/tf_plugin/diag_part_plugin.cc
       - ops/built-in/framework/tf_plugin/gelu_plugin.cc
-      - ops/built-in/framework/tf_plugin/crop_and_resize_grad_image_plugin.cc
       - ops/built-in/framework/tf_plugin/bitwise_or_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_gradient_descent_plugin.cc
       - ops/built-in/framework/tf_plugin/lru_cache_plugin.cc
@@ -3649,7 +3651,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/dawsn_plugin.cc
       - ops/built-in/framework/tf_plugin/floor_plugin.cc
       - ops/built-in/framework/tf_plugin/equal_plugin.cc
-      - ops/built-in/framework/tf_plugin/get_next_from_queue_plugin.cc
       - ops/built-in/framework/tf_plugin/population_count_plugin.cc
       - ops/built-in/framework/tf_plugin/decode_jpeg_plugin.cc
       - ops/built-in/framework/tf_plugin/unpack_plugin.cc
@@ -3715,7 +3716,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/sparse_softmax_cross_entropy_with_logits_plugin.cc
       - ops/built-in/framework/tf_plugin/slice_plugin.cc
       - ops/built-in/framework/tf_plugin/file_constant_plugin.cc
-      - ops/built-in/framework/tf_plugin/optional_get_value_plugin.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/pooling/tbe_antiquant_maxpooling_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/pooling/tbe_pooling_quant_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/pooling/tbe_antiquant_maxpooling_fusion_pass.h
