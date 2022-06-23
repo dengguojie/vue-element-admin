@@ -2519,6 +2519,7 @@ ops_pub:
   team: "OPS_PUB"
   src:
     release:
+      - ops/built-in/framework/tf_plugin/tensorflow_fusion_op_parser_util.cc
       - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
       - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/common/fp16_t.cc

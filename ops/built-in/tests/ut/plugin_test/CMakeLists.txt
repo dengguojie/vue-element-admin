@@ -18,3 +18,7 @@ endif()
 if(UT_TEST_ALL OR ONNX_PLUGIN_UT)
   add_subdirectory(onnx)
 endif()
+
+target_include_directories(ops_cpp_plugin_utest PRIVATE
+        ${OPS_DIR}/built-in/framework
+        )

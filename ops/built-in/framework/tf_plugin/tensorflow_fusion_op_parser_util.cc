@@ -33,15 +33,21 @@ static const char* TENSORFLOW_ATTR_VALUE = "value";
 bool is_index_less_than_val(const domi::tensorflow::TensorProto& tensor, int index, int& value) {
     google::protobuf::RepeatedField<int> val_vec = tensor.int_val();
     int32_t val_size = val_vec.size();
-    value =  val_vec.Get(index);
-    return index < val_size;
+    if (index < val_size) {
+        value = val_vec.Get(index);
+        return true;
+    }
+    return false;
 }
 
 bool is_index_less_than_val(const domi::tensorflow::TensorProto& tensor, int index, float& value) {
     google::protobuf::RepeatedField<float> val_vec = tensor.float_val();
     int32_t val_size = val_vec.size();
-    value = val_vec.Get(index);
-    return index < val_size;
+    if (index < val_size) {
+        value = val_vec.Get(index);
+        return true;
+    }
+    return false;
 }
 
 template<typename T>
