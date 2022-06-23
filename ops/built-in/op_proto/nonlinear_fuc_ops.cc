@@ -297,8 +297,21 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
         dims_mask.push_back(origin_shape.GetDim(i));
       }
     }
+  } else if (origin_format == FORMAT_HWCN) {
+    OP_LOGI(TbeGetName(op), "The format is HWCN");
+    for (unsigned int i = 0; i < dims.size(); i++) {
+        if (2 == i) {
+          if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
+            dims_mask.push_back((origin_shape.GetDim(2) + 31) / 32);
+          } else {
+            dims_mask.push_back((origin_shape.GetDim(2) + 15) / 16);
+          }
+        } else {
+          dims_mask.push_back(origin_shape.GetDim(i));
+        }
+      }
   } else {
-    OP_LOGE(TbeGetName(op).c_str(), "The format only support NHWC and NCHW.");
+    OP_LOGE(TbeGetName(op).c_str(), "The format only support NHWC and NCHW and HWCN.");
     return GRAPH_FAILED;
   }
   if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
