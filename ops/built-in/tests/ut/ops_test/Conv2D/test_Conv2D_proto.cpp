@@ -1610,3 +1610,68 @@ TEST_F(Conv2DProtoTest, conv2dAllShapeDynamicTest25) {
     auto ret = conv2d.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+// all -1
+TEST_F(Conv2DProtoTest, conv2dAllShapeDynamicTest26) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({-1, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{-1, -1, -1, -1},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({-1, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{-1, -1, -1, -1},ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("bias", create_desc_with_ori({-1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{-1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("auto_pad", "SAME_LOWER");
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<int> pads;
+    conv2d.GetAttr("pads",pads);
+    std::vector<int> expect_pads = {-1, -1, -1, -1};
+    EXPECT_EQ(expect_pads, pads);
+
+    auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    auto yTensor = opDesc->MutableOutputDesc(0);
+    auto yShape = yTensor->MutableShape();
+    std::vector<int64_t> yShapeVec = yShape.GetDims();
+    std::vector<int64_t> yShapeExpect = {-1, -1, -1, -1};
+    EXPECT_EQ(yShapeExpect, yShapeVec);
+
+    auto biasTensor = opDesc->MutableInputDesc(2);
+    auto biasShape = biasTensor->MutableShape();
+    std::vector<int64_t> biasShapeVec = biasShape.GetDims();
+    std::vector<int64_t> biasShapeExpect = {-1};
+    EXPECT_EQ(biasShapeExpect, biasShapeVec);
+}
+
+// all -1, with range
+TEST_F(Conv2DProtoTest, conv2dAllShapeDynamicTest27) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
+                                ge::FORMAT_NHWC, {{4, 4}, {6, -1}, {6, -1}, {64, 64}}));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({-1, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{-1, -1, -1, -1},ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("bias", create_desc_with_ori({-1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{-1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("auto_pad", "SAME_LOWER");
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<int> pads;
+    conv2d.GetAttr("pads",pads);
+    std::vector<int> expect_pads = {-1, -1, -1, -1};
+    EXPECT_EQ(expect_pads, pads);
+
+    auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    auto yTensor = opDesc->MutableOutputDesc(0);
+    auto yShape = yTensor->MutableShape();
+    std::vector<int64_t> yShapeVec = yShape.GetDims();
+    std::vector<int64_t> yShapeExpect = {4, -1, -1, -1};
+    EXPECT_EQ(yShapeExpect, yShapeVec);
+
+    auto biasTensor = opDesc->MutableInputDesc(2);
+    auto biasShape = biasTensor->MutableShape();
+    std::vector<int64_t> biasShapeVec = biasShape.GetDims();
+    std::vector<int64_t> biasShapeExpect = {-1};
+    EXPECT_EQ(biasShapeExpect, biasShapeVec);
+}
