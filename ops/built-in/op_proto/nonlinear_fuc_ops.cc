@@ -1139,7 +1139,7 @@ IMPLEMT_COMMON_INFERFUNC(ShrinkInferShape) {
   const int64_t output_y_id = 0;
   float lambda = 0.5;
   auto x_desc = op_desc->MutableInputDesc(input_x_id);
-  auto y_desc = op_desc->MutableInputDesc(output_y_id);
+  auto y_desc = op_desc->MutableOutputDesc(output_y_id);
   const GeShape &x_shape = x_desc->MutableShape();
   auto x_dtype = x_desc->GetDataType();
   auto x_format = x_desc->GetFormat();
