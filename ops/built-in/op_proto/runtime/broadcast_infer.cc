@@ -107,6 +107,10 @@ ge::graphStatus InferShapeForTwoInOneOut(gert::InferShapeContext *context) {
   return ge::GRAPH_SUCCESS;
 }
 
+ge::graphStatus InferShapeForCompare(gert::InferShapeContext *context) {
+  return InferShapeForTwoInOneOut(context);
+}
+
 ge::graphStatus InferShapeForMultiInput(gert::InferShapeContext *context, const size_t num) {
   auto in_shape1 = context->GetInputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context, in_shape1);
@@ -132,18 +136,43 @@ ge::graphStatus InferShapeForThreeInOneOut(gert::InferShapeContext *context) {
 
 IMPL_OP(Add)
     .InferShape(InferShapeForTwoInOneOut);
+
 IMPL_OP(Mul)
     .InferShape(InferShapeForTwoInOneOut);
+
 IMPL_OP(RealDiv)
     .InferShape(InferShapeForTwoInOneOut);
+
 IMPL_OP(ClipByValue)
     .InferShape(InferShapeForThreeInOneOut);
+
 IMPL_OP(SoftmaxGrad)
     .InferShape(InferShapeForTwoInOneOut);
+
 IMPL_OP(Sub)
     .InferShape(InferShapeForTwoInOneOut);
+
 IMPL_OP(MaskedFill)
     .InferShape(InferShapeForTwoInOneOut);
+
 IMPL_OP(ReluGrad)
     .InferShape(InferShapeForTwoInOneOut);
+
+IMPL_OP(Equal)
+    .InferShape(InferShapeForCompare);
+
+IMPL_OP(NotEqual)
+    .InferShape(InferShapeForCompare);
+
+IMPL_OP(Greater)
+    .InferShape(InferShapeForCompare);
+
+IMPL_OP(GreaterEqual)
+    .InferShape(InferShapeForCompare);
+
+IMPL_OP(Less)
+    .InferShape(InferShapeForCompare);
+
+IMPL_OP(LessEqual)
+    .InferShape(InferShapeForCompare);
 }  // namespace ops

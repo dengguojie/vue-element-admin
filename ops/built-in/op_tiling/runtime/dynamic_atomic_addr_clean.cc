@@ -52,10 +52,11 @@ static void InitTilingParams(DynamicAtomicAddrCleanTilingData *params, size_t to
 ge::graphStatus WriteAtomicTilingData(gert::TilingContext *context, DynamicAtomicAddrCleanTilingData *params,
                                       int64_t tensor_size, uint32_t core_num) {
   OP_TILING_CHECK(
-    ((tensor_size < 0) || (tensor_size % 32 != 0)),
+    ((tensor_size < 0) || (tensor_size % BYTE_BLOCK != 0)),
     VECTOR_INNER_ERR_REPORT_TILIING(
         context->GetNodeName(), "tensor_size %ld error! must be a natural multiple of 32", tensor_size),
     return ge::GRAPH_FAILED);
+  OP_LOGD(context->GetNodeName(), "the memory size to be clean is %ld", tensor_size);
   uint32_t ele_num_fp32 = tensor_size / BYTE_FP32;
   params->select_key_input_scalar = 1;
   // is using all core
