@@ -7802,8 +7802,10 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
       return GRAPH_FAILED;
     }
     if (padding_mode == "SAME" || padding_mode == "VALID") {
-      ksize[strides_h_dim] = 1;
-      ksize[strides_w_dim] = 1;
+      if (padding_mode == "SAME") {
+        ksize[strides_h_dim] = 1;
+        ksize[strides_w_dim] = 1;
+      }
       for (size_t i = 0; i < input_dims.size(); i++) {
         int64_t dim_size = input_dims[i];
         auto dim_range = input_range[i];
