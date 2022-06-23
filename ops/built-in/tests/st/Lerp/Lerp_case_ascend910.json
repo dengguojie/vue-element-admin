@@ -1,0 +1,322 @@
+[
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [2, 1, 2],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp16_2_1_2_unknownshape_2"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [2, 1, 2],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp32_2_1_2_unknownshape_2"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 1, 2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float16"
+      },
+      {
+        "shape": [-1, 1, 2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float16"
+      },
+      {
+        "shape": [-1, 1, 2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [2, 1, 2],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp16_2_1_2_unknownshape_1"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-1, 1, 2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float"
+      },
+      {
+        "shape": [-1, 1, 2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float"
+      },
+      {
+        "shape": [-1, 1, 2],
+        "typical_shape": [2, 1, 2],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [2, 1, 2],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp32_2_1_2_unknownshape_1"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [6, 7, 8],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp16_6_7_8_unknownshape_2"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [6, 7, 8],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp32_6_7_8_unknownshape_2"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [6, -1, 8],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float16"
+      },
+      {
+        "shape": [6, -1, 8],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float16"
+      },
+      {
+        "shape": [6, -1, 8],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [6, 7, 8],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp16_6_7_8_unknownshape_1"
+  },
+  {
+    "op": "Lerp",
+    "calc_expect_func_file" : "test_lerp_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [6, -1, 8],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "start",
+        "type": "float"
+      },
+      {
+        "shape": [6, -1, 8],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "end",
+        "type": "float"
+      },
+      {
+        "shape": [6, -1, 8],
+        "typical_shape": [6, 7, 8],
+        "shape_range": [[1, 100]],
+        "format": "ND",
+        "name": "weight",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [6, 7, 8],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Lerp_dynamic_fp32_6_7_8_unknownshape_1"
+  }
+]
