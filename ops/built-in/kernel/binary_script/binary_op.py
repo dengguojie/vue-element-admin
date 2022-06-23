@@ -856,7 +856,7 @@ def writer_config_csv(op_type, op_name, config_csv_path):
     """
     with open (config_csv_path) as f:
         read_csv = csv.reader(f)
-        column = [row[0] for row in read_csv]
+        column = [row[0].replace("#", "").strip() for row in read_csv]
     if op_type not in column:
         flags = os.O_WRONLY | os.O_CREAT
         modes = stat.S_IWUSR | stat.S_IRUSR

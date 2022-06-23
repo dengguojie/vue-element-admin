@@ -1,0 +1,3965 @@
+{
+  "op_type": "SigmoidCrossEntropyWithLogitsV2",
+  "op_list": [
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_705686f47d10dbdc9f91bd4b6ac01586",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_ee4dfbac9d2a494cbfab66f17dac8df6",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_d3413b16e9bc354516bb0737c794d4b7",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_d191a43ab8966026ad663ee663c74f49",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_189f1ee4db52b73fb21c09c3b79ce7e1",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_2acfe901aeca068440c104b1314a8c83",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_ff8a6966d9487ab6de9b2661b027977f",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_42f7763ee5e98d2a47b6d6373b469035",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_802a0648c57794e4babc9e8626022086",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_304687fe0f5031959fa346ae8366a495",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_92e87a445855f31f3463448ae353962b",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_a1527fbc8eb3b93b974cc71cb4bf1dee",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_ed46b976720603a16487ed543f8268ec",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_0103b99d29e283ceffe5161c738ad20d",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_cf533807e49a3f6485f5223348e21533",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_932cbd7958ac9c1a4d226002484ebdce",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_be97ff9814e7550f527a586bfab7e438",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_2da2f6ddac620d63db9fd432b1cdeb2e",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_89ea3f80cd6fbcceab5c4aff1e69b592",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_82351afa1adcea35de481649b2439c6b",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_6bb7dc37c173a35c566cfa6dc2e27c25",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_5ea00f58ed74fe687c081a728324283b",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_aa2916fedd21e9f96e64b986c1726ade",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_c2e90417ba41adb2de0b0cc3277a10f8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_2cbd935ef2050de24bad7fe51253277f",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_af926759f05add040064fc8546595a93",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_122e417e51126a341c0984da21dfdab3",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_a3c7d7b82a7b94efa25f15c1045d7861",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_2e59a75dfc5c7e76ca4546f3f72a4700",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_074ce9f95e26c966bc62c9e2c299da1a",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_3ab64aac8b8ff48b36240eaa2d836421",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_d9d13c0d50cf61aaa716dbdde56c4da8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_514d291b8d871139f2e8f5760c445103",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_40b91c3857a58883b3a27ea30e441f41",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_e6819baf9b562c91dbf2f4226d5419eb",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_19bfef2b764f2b68fed2dcfa086dac52",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_e0f20007eeb7c52a7e45df4e9c2dd89c",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_8798c32eac4de28fbb824cc42eea1a53",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_60cff2edf9833b74b5dd6497bbc2dec6",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_67a5f8f98bca950e40c99d6f07e07af8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_325c2c5fe7c38bdf62b4af2091808661",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_4a8bad962978e95a0896025e55e5f1e7",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_9a8b7269e563d92680367e94cf6c7106",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_29a9b4011713e07c8a7888d6d8ef72fd",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_9ba218ecc334f7795f08755486c9f3c8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_1b3a4bb43b25dd5ad9f79b13208df329",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_3a3b25a110b9b1f5838bae4843fa6a53",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_75a11e6d4f3e56aca8b29d357e56234e",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_edc68eca72111738e1c9e16b357cdc8d",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_94f9fb0b0b5b1d7aa782922967ba441a",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_85cbdc19cb77d62b37055e34dd3d0344",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_a0fb255f2837b0140c08147e6ed6c438",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_c8f582208fa7700306687a844d01aaf8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_a97fd0b58af4d89f9561a565db46b09f",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_29fd8d066304f0a543a92d65888133fb",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_6c71b7a900777ac49dd5fcec3e252805",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_c36fe93b373e6f3cc705b3a6933112f7",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_29ff4980ceff24b78e6581553311c68c",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_983fd4fb8695fb86b6ef0e2b9f102cf4",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_698ab44a30ba41cbfd9975a506ea8b0f",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_1c446ac0f5077488fd25f6cee6d4fa8d",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_c412410fca0ad64bdea91d4545e79bbe",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_322b5d5d912b6fc66039c09d7fd004a2",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_a76cd75ba1e14bd3a6a9fc492d5b00f8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_9f0dc06e29c3275b26c2c3114463b5f8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_20b80ccde428800191a39247a074cc0e",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        null,
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_1c60bfd7cfe1cfa2e40d38f8a9452b26",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_674efd2066b08285498fdfe6926776d8",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_1dae076326442f86f561aeb58fa8476a",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        null
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_344830b2354c674c728d6997c39e019c",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "mean"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_bb8c99e71a4990c99ae13927b55bcb43",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsV2_3cdfc66d5382ca7cca59de3f46744262",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "weight",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "pos_weight",
+          "index": 3,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "optional",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "loss",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "reduction",
+          "dtype": "string",
+          "value": "sum"
+        }
+      ]
+    }
+  ]
+}

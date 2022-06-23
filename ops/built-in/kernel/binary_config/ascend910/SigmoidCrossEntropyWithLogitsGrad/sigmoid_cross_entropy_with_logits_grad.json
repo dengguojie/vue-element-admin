@@ -1,0 +1,287 @@
+{
+  "op_type": "SigmoidCrossEntropyWithLogitsGrad",
+  "op_list": [
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsGrad_48c8d00cb42af18375005dc8b290b7ee",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dout",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gradient",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsGrad_377602bf52d6c20ed74f29ef1edcb5d9",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dout",
+          "index": 2,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gradient",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsGrad_1056052785b43db3ca4234fbf5e08c0e",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dout",
+          "index": 2,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gradient",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsGrad_61ca81c7435e5502c1c7e5c076adb54f",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dout",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gradient",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsGrad_327cbb496a7f06ac970e94a2c158b651",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dout",
+          "index": 2,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gradient",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NDC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "SigmoidCrossEntropyWithLogitsGrad_54f1d1caf8fe36c496f699fefe98fbca",
+      "inputs": [
+        {
+          "name": "predict",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "target",
+          "index": 1,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "dout",
+          "index": 2,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "gradient",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    }
+  ]
+}

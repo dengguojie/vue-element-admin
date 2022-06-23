@@ -1,0 +1,190 @@
+{
+  "op_type": "ReluGradV2",
+  "op_list": [
+    {
+      "bin_filename": "ReluGradV2_1980de735d9b8a262cc4a9e4dfe00742",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "mask",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "float16",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReluGradV2_89466db8fa85f6c88a130eeff98306fa",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "mask",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReluGradV2_c8574a76ba0730e7b0c644fb42eed93e",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "mask",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "int32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReluGradV2_078b2cec48a3fda440ea36755e41ebd9",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "int8",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "mask",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "int8",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    },
+    {
+      "bin_filename": "ReluGradV2_23f99ab10caeb3b05c7e55d8a0f99edf",
+      "inputs": [
+        {
+          "name": "gradients",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "mask",
+          "index": 1,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "backprops",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ]
+    }
+  ]
+}

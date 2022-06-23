@@ -161,3 +161,87 @@ MulNoNan,mul_no_nan.json
 FresnelCos,fresnel_cos.json
 FresnelSin,fresnel_sin.json
 FusedMulAddN,fused_mul_add_n.json
+AbsGrad,abs_grad.json
+Acos,acos.json
+AcosGrad,acos_grad.json
+Acosh,acosh.json
+AcoshGrad,acosh_grad.json
+# AdamApplyOne,adam_apply_one.json
+# AdamApplyOneAssign,adam_apply_one_assign.json
+# AdamApplyOneWithDecay,adam_apply_one_with_decay.json
+# AdamApplyOneWithDecayAssign,adam_apply_one_with_decay_assign.json
+AddMatMatElements,add_mat_mat_elements.json
+Adds,adds.json
+ApplyAdadeltaD,apply_adadelta_d.json
+ApplyAdagradV2D,apply_adagrad_v2d.json
+ApplyAdaMaxD,apply_ada_max_d.json
+# ApplyAdamWithAmsgradD,apply_adam_with_amsgrad_d.json
+ApplyAddSignD,apply_add_sign_d.json
+ApplyCenteredRMSPropD,apply_centered_rms_prop_d.json
+ApplyFtrlD,apply_ftrl_d.json
+ApplyFtrlV2D,apply_ftrl_v2d.json
+ApplyKerasMomentumD,apply_keras_momentum_d.json
+ApplyPowerSignD,apply_power_sign_d.json
+ApplyProximalAdagradD,apply_proximal_adagrad_d.json
+ApplyProximalGradientDescent,apply_proximal_gradient_descent.json
+ApproximateEqual,approximate_equal.json
+ArgMaxWithValue,arg_max_with_value.json
+ArgMin,arg_min.json
+ArgMinWithValue,arg_min_with_value.json
+Asin,asin.json
+AsinGrad,asin_grad.json
+Asinh,asinh.json
+AsinhGrad,asinh_grad.json
+AsStrided,as_strided.json
+Axpy,axpy.json
+BatchToSpace,batch_to_space.json
+BinaryCrossEntropy,binary_cross_entropy.json
+BinaryCrossEntropyGrad,binary_cross_entropy_grad.json
+BitwiseAnd,bitwise_and.json
+BitwiseOr,bitwise_or.json
+BitwiseXor,bitwise_xor.json
+DropOutDoMask,drop_out_do_mask.json
+FakeQuantWithMinMaxVars,fake_quant_with_min_max_vars.json
+Fill,fill.json
+Flatten,flatten.json
+LarsV2Update,lars_v2_update.json
+MirrorPad,mirror_pad.json
+NLLLoss,n_ll_loss.json
+NLLLossGrad,n_ll_loss_grad.json
+OnesLike,ones_like.json
+ReciprocalGrad,reciprocal_grad.json
+ReduceAny,reduce_any.json
+ReluGradV2,relu_grad_v2.json
+ReluV2,relu_v2.json
+ResizeNearestNeighborV2Grad,resize_nearest_neighbor_v2_grad.json
+ScatterDiv,scatter_div.json
+ScatterMax,scatter_max.json
+ScatterMin,scatter_min.json
+ScatterMul,scatter_mul.json
+ScatterNdAdd,scatter_nd_add.json
+ScatterNdSub,scatter_nd_sub.json
+ScatterNdUpdate,scatter_nd_update.json
+ScatterNonAliasingAdd,scatter_non_aliasing_add.json
+ScatterUpdate,scatter_update.json
+Selu,selu.json
+SeluGrad,selu_grad.json
+SigmoidCrossEntropyWithLogits,sigmoid_cross_entropy_with_logits.json
+SigmoidCrossEntropyWithLogitsGrad,sigmoid_cross_entropy_with_logits_grad.json
+SigmoidCrossEntropyWithLogitsGradV2,sigmoid_cross_entropy_with_logits_grad_v2.json
+SigmoidCrossEntropyWithLogitsV2,sigmoid_cross_entropy_with_logits_v2.json
+Sinh,sinh.json
+# SmoothL1Loss,smooth_l1_loss.json
+# SmoothL1LossGrad,smooth_l1_loss_grad.json
+SoftplusGrad,softplus_grad.json
+Softsign,softsign.json
+SoftsignGrad,softsign_grad.json
+Spence,spence.json
+SquareSumV1,square_sum_v1.json
+Tan,tan.json
+ThresholdGradV2D,threshold_grad_v2d.json
+ThresholdV2D,threshold_v2d.json
+TruncateDiv,truncate_div.json
+TruncateMod,truncate_mod.json
+Xdivy,xdivy.json
+Xlog1py,xlog1py.json
+Xlogy,xlogy.json

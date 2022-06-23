@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-ut for util_binary.py
+ut for util_binary.py and register_binary_match
 """
 from op_test_frame.ut import OpUT
 ut_case = OpUT("util_binary", "impl.util.util_binary")

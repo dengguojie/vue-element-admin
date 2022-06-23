@@ -1,0 +1,201 @@
+{
+  "op_type": "ResizeNearestNeighborV2Grad",
+  "op_list": [
+    {
+      "bin_filename": "ResizeNearestNeighborV2Grad_8957eef43f94cd6cfa9657f5f47302cd",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2Grad_124d8f3acca2003162ce557272a5e331",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": false
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2Grad_47fa665ab0b25cb58b0cf58b212d7dd5",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "bin_filename": "ResizeNearestNeighborV2Grad_2e73fdca75fb5b5e2840b35d66812bf8",
+      "inputs": [
+        {
+          "name": "grads",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "size",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "NC1HWC0",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "align_corners",
+          "dtype": "bool",
+          "value": true
+        },
+        {
+          "name": "half_pixel_centers",
+          "dtype": "bool",
+          "value": true
+        }
+      ]
+    }
+  ]
+}

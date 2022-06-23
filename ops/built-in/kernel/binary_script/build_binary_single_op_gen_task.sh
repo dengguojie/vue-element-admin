@@ -78,6 +78,7 @@ main() {
   cmd="sed -n "/^${op_type},/{p\;q\;}" ${common_binary_config}"
   opc_info_list=$(${cmd})
   binary_config_file=`echo ${opc_info_list} | awk -F',' 'BEGIN{OFS=",";} { if (NR==1)print $2}' |tr -d '\\n' | tr -d '\\r'`
+  binary_config_file=`echo ${binary_config_file// /}`
   if [ "${binary_config_file}" == "" ];then
     echo "[WARNING]op:${op_type} do not get the binary config file, will ignore"
     exit 0
