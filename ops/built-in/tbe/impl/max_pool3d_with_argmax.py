@@ -109,6 +109,27 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         self.l1_strategy = L1MoveStrategy.EMPTY
         self.ub_kernel_stg = UbKernelStrategy.EMPTY
 
+        # init some gm Tensor
+        self.input_gm_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                                shape=self.input_shape,
+                                                name='input_tensor',
+                                                scope=tik.scope_gm)
+        self.output_gm_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                                 shape=self.output_shape,
+                                                 name='output_tensor',
+                                                 scope=tik.scope_gm)
+        self.output_gm_tensor = self.output_gm_tensor.reshape((self.n, self.d_step, self.c1,
+                                                               self.h_step * self.w_step * self.c0))
+
+        # the output bitmask
+        self.final_bitmask_gm_tensor = self.inst.Tensor(
+            dtype=self.out_mask_type,
+            # the last two dimension of the shape aim to align to 32B.
+            shape=[self.n, self.d_step, self.c1 * self.k_elem, self.aligned_bm_line // 16 * 16],
+            name='final_bitmask',
+            scope=tik.scope_gm
+        )
+
         # encapsulate the data_move function when the data is continue.
         self._move_ctn = partial(self.inst.data_move,
                                  sid=0,
@@ -234,32 +255,6 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                     mask=line_rep_tail
                 )
 
-    def _init_gm_tensor(self):
-        input_gm_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                           shape=self.input_shape,
-                                           name='input_tensor',
-                                           scope=tik.scope_gm)
-        output_gm_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                       shape=self.output_shape,
-                                       name='output_tensor',
-                                       scope=tik.scope_gm)
-        output_gm_tensor = output_gm_tensor.reshape((self.n, self.d_step, self.c1, self.h_step * self.w_step * self.c0))
-
-        # the output bitmask
-        final_bitmask_gm_tensor = self.inst.Tensor(
-            dtype=self.out_mask_type,
-            # the last two dimension of the shape aim to align to 32B.
-            shape=[self.n, self.d_step, self.c1 * self.k_elem, self.aligned_bm_line // 16 * 16],
-            name='final_bitmask',
-            scope=tik.scope_gm
-        )
-
-        tensor_info = {'input': input_gm_tensor,
-                       'output': output_gm_tensor,
-                       'argmax': final_bitmask_gm_tensor}
-
-        return tensor_info
-
     # 'pylint: disable=too-many-arguments
     def _calc_bitmask(self, bitmask_ub, big_matrix_ub, max_line_ub, super_line_loop, super_line_tail):
         with self.inst.for_range(0, self.k_elem) as line_ind:
@@ -381,9 +376,16 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         self.ubtail_super_loop_cmp = self.ubtail_ub_loop // self.upper_cmp_rep
         self.ubtail_super_tail_cmp = self.ubtail_ub_loop % self.upper_cmp_rep
 
+        # init l1
+        l1_shape = [1, self.k_d, self.input_h + self.dirty_l1_pad, self.input_w, self.c0]
+
+        self.aux_l1_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                              shape=l1_shape,
+                                              name='aux_l1',
+                                              scope=tik.scope_cbuf)
+
     # 'pylint: disable=too-many-locals
     def _cut_ub_process(self, ind_ctx, mode):
-        tensor_info = ind_ctx['tensor_info']
         ind_n = ind_ctx['ind_n']
         ind_c1 = ind_ctx['ind_c1']
         ind_d = ind_ctx['ind_d']
@@ -420,7 +422,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
             l1_begin_h = (self.cut_ub_val * cut_ub_ind // self.w_step) * self.stride_h
             l1_begin_w = (self.cut_ub_val * cut_ub_ind % self.w_step) * self.stride_w
             l1_begin_pos = (l1_begin_h, l1_begin_w)
-            super()._img2col(aux_l1=tensor_info['aux_l1'],
+            super()._img2col(aux_l1=self.aux_l1_tensor,
                              big_matrix_ub=bigmat_ub_tensor,
                              l1_begin_pos=l1_begin_pos,
                              rep_times=self.cut_ub_val // 16)
@@ -435,7 +437,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                                   super_line_tail=self.super_line_tail)
 
             # step3: move the max_line_ub to gm
-            self._move_ctn(dst=tensor_info['output'][ind_n, ind_d, ind_c1, cut_ub_ind * self.ub_line],
+            self._move_ctn(dst=self.output_gm_tensor[ind_n, ind_d, ind_c1, cut_ub_ind * self.ub_line],
                            src=maxline_ub_tensor,
                            burst=self.ub_line * self.each_fp16_bytes // self.block_size)
 
@@ -456,8 +458,8 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
 
             # step6: move bitmask to gm
             self.inst.data_move(
-                dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem,
-                                              cut_ub_ind * self.cut_ub_val // 16 * 16],
+                dst=self.final_bitmask_gm_tensor[ind_n, ind_d, ind_c1 * self.k_elem,
+                                                 cut_ub_ind * self.cut_ub_val // 16 * 16],
                 src=bitmask_ub_tensor,
                 sid=0,
                 nburst=self.k_elem,
@@ -472,7 +474,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         l1_begin_h = (self.cut_ub_val * self.cut_ub_loop // self.w_step) * self.stride_h
         l1_begin_w = (self.cut_ub_val * self.cut_ub_loop % self.w_step) * self.stride_w
         l1_begin_pos = (l1_begin_h, l1_begin_w)
-        super()._img2col(aux_l1=tensor_info['aux_l1'],
+        super()._img2col(aux_l1=self.aux_l1_tensor,
                          big_matrix_ub=bigmat_ub_tensor,
                          l1_begin_pos=l1_begin_pos,
                          rep_times=self.cut_ub_tail_aligned // 16)
@@ -487,7 +489,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                               super_line_tail=self.ubtail_super_tail)
 
         # step3: move the max_line_ub to gm
-        self._move_ctn(dst=tensor_info['output'][ind_n, ind_d, ind_c1, self.cut_ub_loop * self.ub_line],
+        self._move_ctn(dst=self.output_gm_tensor[ind_n, ind_d, ind_c1, self.cut_ub_loop * self.ub_line],
                        src=maxline_ub_tensor,
                        burst=self.cut_ub_tail_ori * self.c0 * self.each_fp16_bytes // self.block_size)
 
@@ -508,8 +510,8 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
 
         # step6: move bitmask to gm
         self.inst.data_move(
-            dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem,
-                                          self.cut_ub_loop * self.cut_ub_val // 16 * 16],
+            dst=self.final_bitmask_gm_tensor[ind_n, ind_d, ind_c1 * self.k_elem,
+                                             self.cut_ub_loop * self.cut_ub_val // 16 * 16],
             src=bitmask_ub_tensor,
             sid=0,
             nburst=self.k_elem,
@@ -520,18 +522,6 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         return
 
     def run(self):
-        tensor_info = self._init_gm_tensor()
-
-        if self.l1_strategy is L1MoveStrategy.NO_NEED_TO_CUT:
-            l1_shape = [1, self.k_d, self.input_h + self.dirty_l1_pad, self.input_w, 16]
-        else:
-            l1_shape = [0, ]
-
-        aux_l1_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                         shape=l1_shape,
-                                         name='aux_l1',
-                                         scope=tik.scope_cbuf)
-        tensor_info['aux_l1'] = aux_l1_tensor
         core_nums = self.n * self.c1 * self.d_step
 
         with self.inst.for_range(0, core_nums, block_num=core_nums) as core_ind:
@@ -542,8 +532,8 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
             if self.l1_strategy is L1MoveStrategy.NO_NEED_TO_CUT:
                 if (self.c1 - 1) * self.input_h * self.input_w <= 65535:
                     self.inst.data_move(
-                        dst=aux_l1_tensor[0],
-                        src=tensor_info.get('input')[core.ind_n, core.ind_d * self.stride_d, core.ind_c1, 0, 0, 0],
+                        dst=self.aux_l1_tensor[0],
+                        src=self.input_gm_tensor[core.ind_n, core.ind_d * self.stride_d, core.ind_c1, 0, 0, 0],
                         sid=0,
                         nburst=self.k_d,
                         burst=self.input_h * self.input_w,
@@ -553,16 +543,15 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                 else:
                     with self.inst.for_range(0, self.k_d) as d_ind:
                         self._move_ctn(
-                            dst=aux_l1_tensor[0, d_ind, 0, 0, 0],
-                            src=tensor_info.get('input')[core.ind_n, core.ind_d * self.stride_d + d_ind,
-                                                         core.ind_c1, 0, 0, 0],
+                            dst=self.aux_l1_tensor[0, d_ind, 0, 0, 0],
+                            src=self.input_gm_tensor[core.ind_n, core.ind_d * self.stride_d + d_ind,
+                                                     core.ind_c1, 0, 0, 0],
                             burst=self.input_h * self.input_w
                         )
 
             ub_context = {"ind_n": core.ind_n,
                           "ind_c1": core.ind_c1,
-                          "ind_d": core.ind_d,
-                          "tensor_info": tensor_info}
+                          "ind_d": core.ind_d}
             # begin to calculate cut ub-process
             if self.cut_ub_loop != 0:
                 with self.inst.for_range(0, self.cut_ub_loop) as cut_ub_ind:
@@ -571,9 +560,9 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
             if self.cut_ub_tail_aligned != 0:
                 self._cut_ub_process(ub_context, mode='tail')
 
-        tensor_info['output'] = tensor_info['output'].reshape(self.output_shape)
-        self.inst.BuildCCE(kernel_name=self.kernel_name, inputs=[tensor_info['input']],
-                           outputs=[tensor_info['output'], tensor_info['argmax']])
+        output_gm_tensor_reshape = self.output_gm_tensor.reshape(self.output_shape)
+        self.inst.BuildCCE(kernel_name=self.kernel_name, inputs=[self.input_gm_tensor],
+                           outputs=[output_gm_tensor_reshape, self.final_bitmask_gm_tensor])
         return self.inst
 
 
@@ -660,37 +649,31 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
         # compute some values for copy data to storage
         self.storage_beg = self.aligned_bm_line - self.each_block_elem
 
+        # init some gm_tensor and ub tensor
+        self._init_ub_tensor()
+
     def run(self):
-        tensor_info = self._init_gm_tensor()
-        tensor_info = self._init_ub_tensor(tensor_info)
         core_nums = self.n * self.c1 * self.d_step
 
         with self.inst.for_range(0, core_nums, block_num=core_nums) as core_ind:
             core = Core(core_ind, self.c1, self.d_step)
-            ub_context = {"ind_n": core.ind_n,
-                          "ind_c1": core.ind_c1,
-                          "ind_d": core.ind_d,
-                          "tensor_info": tensor_info}
 
             if self.ub_kernel_stg == UbKernelStrategy.WHOLE_KERNEL:
-                # begin to calculate cut ub-process
-                ub_context["h_step_ind"] = 0
-                self._cut_ub_process_cut_h(ub_context, mode="loop")
+                self._cut_ub_process_cut_h_loop(core, h_step_ind=0)
 
             if self.ub_kernel_stg == UbKernelStrategy.CUT_H:
                 # begin to calculate cut ub-process
                 if self.h_step_loop != 0:
                     with self.inst.for_range(0, self.h_step_loop, name="h_step_ind") as h_step_ind:
-                        ub_context["h_step_ind"] = h_step_ind
-                        self._cut_ub_process_cut_h(ub_context, mode="loop")
+                        self._cut_ub_process_cut_h_loop(core, h_step_ind=h_step_ind)
                 if self.h_step_tail != 0:
-                    self._cut_ub_process_cut_h(ub_context, mode="tail")
+                    self._cut_ub_process_cut_h_tail(core)
                 if self.is_memory_conflict:
                     # 3.copy storage_ub to gm
                     self.inst.data_move(
-                        dst=tensor_info.get("argmax")[core.ind_n, core.ind_d,
-                                                      core.ind_c1 * self.k_elem, self.storage_beg],
-                        src=tensor_info.get("storage"),
+                        dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                         core.ind_c1 * self.k_elem, self.storage_beg],
+                        src=self.storage_ub_tensor,
                         sid=0,
                         nburst=self.k_elem,
                         burst=1,
@@ -701,19 +684,17 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
             if self.ub_kernel_stg == UbKernelStrategy.CUT_H_AND_W:
                 # begin to calculate cut ub-process
                 with self.inst.for_range(0, self.h_step, name="h_step_ind") as h_step_ind:
-                    ub_context["h_step_ind"] = h_step_ind
                     if self.w_step_loop != 0:
                         with self.inst.for_range(0, self.w_step_loop, name="w_step_ind") as w_step_ind:
-                            ub_context["w_step_ind"] = w_step_ind
-                            self._cut_ub_process_cut_w(ub_context, mode="loop")
+                            self._cut_ub_process_cut_w_loop(core, h_step_ind, w_step_ind)
                     if self.w_step_tail != 0:
-                        self._cut_ub_process_cut_w(ub_context, mode="tail")
+                        self._cut_ub_process_cut_w_tail(core, h_step_ind)
                 if self.is_memory_conflict:
                     # 3.copy storage_ub to gm
                     self.inst.data_move(
-                        dst=tensor_info.get("argmax")[core.ind_n, core.ind_d,
-                                                      core.ind_c1 * self.k_elem, self.storage_beg],
-                        src=tensor_info.get("storage"),
+                        dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                         core.ind_c1 * self.k_elem, self.storage_beg],
+                        src=self.storage_ub_tensor,
                         sid=0,
                         nburst=self.k_elem,
                         burst=1,
@@ -721,9 +702,9 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
                         dst_stride=self.aligned_bm_line // self.each_block_elem - 1
                     )
 
-        tensor_info['output'] = tensor_info.get("output").reshape(self.output_shape)
-        self.inst.BuildCCE(kernel_name=self.kernel_name, inputs=[tensor_info.get("input")],
-                           outputs=[tensor_info.get("output"), tensor_info.get("argmax")])
+        output_gm_tensor_reshape = self.output_gm_tensor.reshape(self.output_shape)
+        self.inst.BuildCCE(kernel_name=self.kernel_name, inputs=[self.input_gm_tensor],
+                           outputs=[output_gm_tensor_reshape, self.final_bitmask_gm_tensor])
 
         return self.inst
 
@@ -890,180 +871,157 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
             return (self.h_step - 1) * self.w_step + self.w_step_loop * self.cut_ub_val + \
                    self.aligned_tail_cut_ub_val > self.aligned_bm_line
 
-    def _init_ub_tensor(self, tensor_info):
+    def _init_ub_tensor(self):
         aux_ub_shape = [1, self.k_d, (self.h_step_once - 1) * self.stride_h + self.k_h,
                         (self.w_step_once - 1) * self.stride_w + self.k_w, const.C0_SIZE]
         # init a map in ub
-        aux_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                         shape=aux_ub_shape,
-                                         name="aux_ub",
-                                         scope = tik.scope_ubuf)
-        tensor_info["aux"] = aux_ub_tensor
+        self.aux_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                              shape=aux_ub_shape,
+                                              name="aux_ub",
+                                              scope=tik.scope_ubuf)
 
         # init a big maxtrix in ub, for register the img2col.
-        bigmat_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                            shape=[self.k_elem, self.cut_ub_val * const.C0_SIZE, ],
-                                            name="big_matrix",
-                                            scope=tik.scope_ubuf)
-        tensor_info["bigmat"] = bigmat_ub_tensor
+        self.bigmat_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                                 shape=[self.k_elem, self.cut_ub_val * const.C0_SIZE, ],
+                                                 name="big_matrix",
+                                                 scope=tik.scope_ubuf)
 
         # init a register to store the max line.
-        maxline_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                             shape=[math.ceil(self.cut_ub_val / 8) * 8 * const.C0_SIZE, ],
-                                             name="max_line",
-                                             scope=tik.scope_ubuf)
-        tensor_info["maxline"] = maxline_ub_tensor
+        self.maxline_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
+                                                  shape=[math.ceil(self.cut_ub_val / 8) * 8 * const.C0_SIZE, ],
+                                                  name="max_line",
+                                                  scope=tik.scope_ubuf)
 
         # init a uint16 bitmask, each number represents 16 bits. (16 pairs of numbers)
-        bitmask_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
-                                             shape=[self.k_elem, self.aligned_cut_ub_val],
-                                             name="bitmask_ub",
-                                             scope=tik.scope_ubuf)
-        tensor_info["bitmask"] = bitmask_ub_tensor
+        self.bitmask_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                                  shape=[self.k_elem, self.aligned_cut_ub_val],
+                                                  name="bitmask_ub",
+                                                  scope=tik.scope_ubuf)
 
-        #init some tensors for deduplication during the inter process.
-        maskor_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
-                                            shape=[self.cut_ub_val, ],
-                                            name="mask_or",
-                                            scope=tik.scope_ubuf)
-        tensor_info["maskor"] = maskor_ub_tensor
-
-        masknot_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
-                                             shape=[self.cut_ub_val, ],
-                                             name="mask_not",
-                                             scope=tik.scope_ubuf)
-        tensor_info["masknot"] = masknot_ub_tensor
-
-        if self.is_memory_conflict:
-            storage_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
-                                                 shape=[self.k_elem, const.C0_SIZE],
-                                                 name="storage",
+        # init some tensors for deduplication during the inter process.
+        self.maskor_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                                 shape=[self.cut_ub_val, ],
+                                                 name="mask_or",
                                                  scope=tik.scope_ubuf)
-            tensor_info["storage"] = storage_ub_tensor
 
-        return tensor_info
-
-    def _cut_ub_process_cut_h(self, ind_ctx, mode):
-        tensor_info = ind_ctx.get("tensor_info")  # ind_ctx is ub_context
-        ind_n = ind_ctx.get("ind_n")
-        ind_c1 = ind_ctx.get("ind_c1")
-        ind_d = ind_ctx.get("ind_d")
-
-        aux_ub_tensor = tensor_info.get("aux")
-        bigmat_ub_tensor = tensor_info.get("bigmat")
-        maxline_ub_tensor = tensor_info.get("maxline")
-        bitmask_ub_tensor = tensor_info.get("bitmask")
-        maskor_ub_tensor = tensor_info.get("maskor")
-        masknot_ub_tensor = tensor_info.get("masknot")
+        self.masknot_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                                  shape=[self.cut_ub_val, ],
+                                                  name="mask_not",
+                                                  scope=tik.scope_ubuf)
 
         if self.is_memory_conflict:
-            storage_ub_tensor = tensor_info["storage"]
+            self.storage_ub_tensor = self.inst.Tensor(dtype=self.out_mask_type,
+                                                      shape=[self.k_elem, const.C0_SIZE],
+                                                      name="storage",
+                                                      scope=tik.scope_ubuf)
 
-        # loop process
-        if mode == "loop":
-            h_step_ind = ind_ctx.get("h_step_ind")
-            # step1: move feature map into ub
-            with self.inst.for_range(0, self.k_d) as d_ind:
-                self.inst.data_move(
-                    dst=aux_ub_tensor[0, d_ind, 0, 0, 0],
-                    src=tensor_info.get("input")[ind_n, ind_d * self.stride_d + d_ind, ind_c1,
-                                                 h_step_ind * self.h_step_once * self.stride_h, 0, 0],
-                    sid=0,
-                    nburst=aux_ub_tensor.shape[2],
-                    burst=aux_ub_tensor.shape[3],
-                    src_stride=self.input_w - aux_ub_tensor.shape[3],
-                    dst_stride=0
-                )
+    def _cut_ub_process_cut_h_loop(self, core, h_step_ind):
+        # loop process for CUT_H strategy
+        # step1: move feature map into ub
+        with self.inst.for_range(0, self.k_d) as d_ind:
+            self.inst.data_move(
+                dst=self.aux_ub_tensor[0, d_ind, 0, 0, 0],
+                src=self.input_gm_tensor[core.ind_n, core.ind_d * self.stride_d + d_ind, core.ind_c1,
+                                         h_step_ind * self.h_step_once * self.stride_h, 0, 0],
+                sid=0,
+                nburst=self.aux_ub_tensor.shape[2],
+                burst=self.aux_ub_tensor.shape[3],
+                src_stride=self.input_w - self.aux_ub_tensor.shape[3],
+                dst_stride=0
+            )
 
-            # step2: begin to calculate img2col
-            self.img2col_milan(bigmat_ub_tensor=bigmat_ub_tensor,
-                               aux_ub=aux_ub_tensor,
-                               h_step=self.h_step_once)
+        # step2: begin to calculate img2col
+        self.img2col_milan(bigmat_ub_tensor=self.bigmat_ub_tensor,
+                           aux_ub=self.aux_ub_tensor,
+                           h_step=self.h_step_once)
 
-            # step3: begin to calculate max line.
-            super()._calc_maxline(max_line_ub=maxline_ub_tensor,
-                                  big_matrix_ub=bigmat_ub_tensor,
-                                  line_blk=self.cut_ub_val,
-                                  line_rep_loop=self.line_rep_loop,
-                                  line_rep_tail=self.line_rep_tail,
-                                  super_line_loop=self.super_line_loop,
-                                  super_line_tail=self.super_line_tail)
+        # step3: begin to calculate max line.
+        super()._calc_maxline(max_line_ub=self.maxline_ub_tensor,
+                              big_matrix_ub=self.bigmat_ub_tensor,
+                              line_blk=self.cut_ub_val,
+                              line_rep_loop=self.line_rep_loop,
+                              line_rep_tail=self.line_rep_tail,
+                              super_line_loop=self.super_line_loop,
+                              super_line_tail=self.super_line_tail)
 
-            # step4: move the max_line_ub to gm
-            cut_ub_val_beg = h_step_ind * self.cut_ub_val
-            self._move_ctn(dst=tensor_info.get("output")[ind_n, ind_d, ind_c1, cut_ub_val_beg * const.C0_SIZE],
-                           src=maxline_ub_tensor,
-                           burst=self.ub_line // self.each_block_elem)
+        # step4: move the max_line_ub to gm
+        cut_ub_val_beg = h_step_ind * self.cut_ub_val
+        self._move_ctn(dst=self.output_gm_tensor[core.ind_n, core.ind_d, core.ind_c1, cut_ub_val_beg * const.C0_SIZE],
+                       src=self.maxline_ub_tensor,
+                       burst=self.ub_line // self.each_block_elem)
 
-            # step5: compute the bit mask
-            super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
-                                  bitmask_ub=bitmask_ub_tensor,
-                                  max_line_ub=maxline_ub_tensor,
-                                  super_line_loop=self.super_line_loop_cmp,
-                                  super_line_tail=self.super_line_tail_cmp)
+        # step5: compute the bit mask
+        super()._calc_bitmask(big_matrix_ub=self.bigmat_ub_tensor,
+                              bitmask_ub=self.bitmask_ub_tensor,
+                              max_line_ub=self.maxline_ub_tensor,
+                              super_line_loop=self.super_line_loop_cmp,
+                              super_line_tail=self.super_line_tail_cmp)
 
-            # step6: deduplicate the bitmask, each column must have at most one "1".
-            super()._deduplicate_bitmask(mask_or_ub=maskor_ub_tensor,
-                                         mask_not_ub=masknot_ub_tensor,
-                                         bitmask_ub=bitmask_ub_tensor,
-                                         bm_loop=self.bm_line_loop,
-                                         bm_tail=self.bm_line_tail,
-                                         data_blk=self.aligned_cut_ub_val // self.each_block_elem)
+        # step6: deduplicate the bitmask, each column must have at most one "1".
+        super()._deduplicate_bitmask(mask_or_ub=self.maskor_ub_tensor,
+                                     mask_not_ub=self.masknot_ub_tensor,
+                                     bitmask_ub=self.bitmask_ub_tensor,
+                                     bm_loop=self.bm_line_loop,
+                                     bm_tail=self.bm_line_tail,
+                                     data_blk=self.aligned_cut_ub_val // self.each_block_elem)
 
-            # step7: move bitmask to gm
-            if self.is_memory_conflict:
-                # 1.move first ceil(cut_ub_val / 16) - 1 block if could
-                with self.inst.if_scope(cut_ub_val_beg + self.aligned_cut_ub_val > self.aligned_bm_line):
-                    if self.cut_ub_val > self.each_block_elem:
-                        burst_first = self.aligned_cut_ub_val // self.each_block_elem - 1
-                        self.inst.data_move(
-                            dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                            src=bitmask_ub_tensor,
-                            sid=0,
-                            nburst=self.k_elem,
-                            burst=burst_first,
-                            src_stride=1,
-                            dst_stride=self.aligned_bm_line // self.each_block_elem - burst_first
-                        )
-                with self.inst.else_scope():
+        # step7: move bitmask to gm
+        if self.is_memory_conflict:
+            # 1.move first ceil(cut_ub_val / 16) - 1 block if could
+            with self.inst.if_scope(cut_ub_val_beg + self.aligned_cut_ub_val > self.aligned_bm_line):
+                if self.cut_ub_val > self.each_block_elem:
+                    burst_first = self.aligned_cut_ub_val // self.each_block_elem - 1
                     self.inst.data_move(
-                        dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                        src=bitmask_ub_tensor,
+                        dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                         core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                        src=self.bitmask_ub_tensor,
                         sid=0,
                         nburst=self.k_elem,
-                        burst=self.aligned_cut_ub_val // self.each_block_elem,
-                        src_stride=0,
-                        dst_stride=(self.aligned_bm_line - self.aligned_cut_ub_val) // self.each_block_elem
+                        burst=burst_first,
+                        src_stride=1,
+                        dst_stride=self.aligned_bm_line // self.each_block_elem - burst_first
                     )
-
-                # 2.copy data to storage_ub
-                self._copy_to_storage(cut_ub_val_beg=cut_ub_val_beg,
-                                      valid_len=self.cut_ub_val,
-                                      storage_ub_tensor=storage_ub_tensor,
-                                      bitmask_ub_tensor=bitmask_ub_tensor)
-            else:
+            with self.inst.else_scope():
                 self.inst.data_move(
-                    dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                    src=bitmask_ub_tensor,
+                    dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                     core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                    src=self.bitmask_ub_tensor,
                     sid=0,
                     nburst=self.k_elem,
                     burst=self.aligned_cut_ub_val // self.each_block_elem,
                     src_stride=0,
                     dst_stride=(self.aligned_bm_line - self.aligned_cut_ub_val) // self.each_block_elem
                 )
-            return
 
-        # tail process
+            # 2.copy data to storage_ub
+            self._copy_to_storage(cut_ub_val_beg=cut_ub_val_beg,
+                                  valid_len=self.cut_ub_val,
+                                  storage_ub_tensor=self.storage_ub_tensor,
+                                  bitmask_ub_tensor=self.bitmask_ub_tensor)
+        else:
+            self.inst.data_move(
+                dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                 core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                src=self.bitmask_ub_tensor,
+                sid=0,
+                nburst=self.k_elem,
+                burst=self.aligned_cut_ub_val // self.each_block_elem,
+                src_stride=0,
+                dst_stride=(self.aligned_bm_line - self.aligned_cut_ub_val) // self.each_block_elem
+            )
+
+    def _cut_ub_process_cut_h_tail(self, core):
+        # tail process for CUT_H strategy
         aux_ub_tail_shape = [1, self.k_d, (self.h_step_tail - 1) * self.stride_h + self.k_h,
                              (self.w_step - 1) * self.stride_w + self.k_w, const.C0_SIZE]
 
         # step1: move feature map into ub
         with self.inst.for_range(0, self.k_d) as d_ind:
             self.inst.data_move(
-                dst=aux_ub_tensor[0, d_ind, 0, 0, 0],
-                src=tensor_info.get("input")[ind_n, ind_d * self.stride_d + d_ind,
-                                             ind_c1,
-                                             self.h_step_loop * self.h_step_once * self.stride_h, 0, 0],
+                dst=self.aux_ub_tensor[0, d_ind, 0, 0, 0],
+                src=self.input_gm_tensor[core.ind_n, core.ind_d * self.stride_d + d_ind,
+                                         core.ind_c1,
+                                         self.h_step_loop * self.h_step_once * self.stride_h, 0, 0],
                 sid=0,
                 nburst=aux_ub_tail_shape[2],
                 burst=aux_ub_tail_shape[3],
@@ -1072,13 +1030,13 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
             )
 
         # step2: begin to calculate img2col
-        self.img2col_milan(bigmat_ub_tensor=bigmat_ub_tensor,
-                           aux_ub=aux_ub_tensor,
+        self.img2col_milan(bigmat_ub_tensor=self.bigmat_ub_tensor,
+                           aux_ub=self.aux_ub_tensor,
                            h_step=self.h_step_tail)
 
         # step3: begin to calculate max line
-        super()._calc_maxline(max_line_ub=maxline_ub_tensor,
-                              big_matrix_ub=bigmat_ub_tensor,
+        super()._calc_maxline(max_line_ub=self.maxline_ub_tensor,
+                              big_matrix_ub=self.bigmat_ub_tensor,
                               line_blk=self.tail_cut_ub_val,
                               line_rep_loop=self.tail_line_rep_loop,
                               line_rep_tail=self.tail_line_rep_tail,
@@ -1087,21 +1045,21 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
 
         # step4: move the max_line_ub to gm
         cut_ub_val_beg = self.h_step_loop * self.cut_ub_val
-        self._move_ctn(dst=tensor_info.get("output")[ind_n, ind_d, ind_c1, cut_ub_val_beg * const.C0_SIZE],
-                       src=maxline_ub_tensor,
+        self._move_ctn(dst=self.output_gm_tensor[core.ind_n, core.ind_d, core.ind_c1, cut_ub_val_beg * const.C0_SIZE],
+                       src=self.maxline_ub_tensor,
                        burst=self.tail_ub_line // self.each_block_elem)
 
         # step5: compute the bit mask
-        super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
-                              bitmask_ub=bitmask_ub_tensor,
-                              max_line_ub=maxline_ub_tensor,
+        super()._calc_bitmask(big_matrix_ub=self.bigmat_ub_tensor,
+                              bitmask_ub=self.bitmask_ub_tensor,
+                              max_line_ub=self.maxline_ub_tensor,
                               super_line_loop=self.tail_super_line_loop_cmp,
                               super_line_tail=self.tail_super_line_tail_cmp)
 
         # step6: deduplicate the bitmask, each column must have at most "1"
-        super()._deduplicate_bitmask(mask_or_ub=maskor_ub_tensor,
-                                     mask_not_ub=masknot_ub_tensor,
-                                     bitmask_ub=bitmask_ub_tensor,
+        super()._deduplicate_bitmask(mask_or_ub=self.maskor_ub_tensor,
+                                     mask_not_ub=self.masknot_ub_tensor,
+                                     bitmask_ub=self.bitmask_ub_tensor,
                                      bm_loop=self.tail_bm_line_loop,
                                      bm_tail=self.tail_bm_line_tail,
                                      data_blk=self.aligned_tail_cut_ub_val // self.each_block_elem)
@@ -1112,8 +1070,9 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
             if self.tail_cut_ub_val > self.each_block_elem:
                 burst_first = self.aligned_tail_cut_ub_val // self.each_block_elem - 1
                 self.inst.data_move(
-                    dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                    src=bitmask_ub_tensor,
+                    dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                     core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                    src=self.bitmask_ub_tensor,
                     sid=0,
                     nburst=self.k_elem,
                     burst=burst_first,
@@ -1124,159 +1083,141 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
             # 2.copy data to storage_ub
             self._copy_to_storage(cut_ub_val_beg=cut_ub_val_beg,
                                   valid_len=self.tail_cut_ub_val,
-                                  storage_ub_tensor=storage_ub_tensor,
-                                  bitmask_ub_tensor=bitmask_ub_tensor)
+                                  storage_ub_tensor=self.storage_ub_tensor,
+                                  bitmask_ub_tensor=self.bitmask_ub_tensor)
         else:
             self.inst.data_move(
-                dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                src=bitmask_ub_tensor,
+                dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d, core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                src=self.bitmask_ub_tensor,
                 sid=0,
                 nburst=self.k_elem,
                 burst=self.aligned_tail_cut_ub_val // self.each_block_elem,
                 src_stride=(self.aligned_cut_ub_val - self.aligned_tail_cut_ub_val) // self.each_block_elem,
                 dst_stride=(self.aligned_bm_line - self.aligned_tail_cut_ub_val) // self.each_block_elem
             )
-        return
 
-    def _cut_ub_process_cut_w(self, ind_ctx, mode):
-        tensor_info = ind_ctx.get("tensor_info")  # ind_ctx is ub_context
-        ind_n = ind_ctx.get("ind_n")
-        ind_c1 = ind_ctx.get("ind_c1")
-        ind_d = ind_ctx.get("ind_d")
-        h_step_ind = ind_ctx.get("h_step_ind")
+    def _cut_ub_process_cut_w_loop(self, core, h_step_ind, w_step_ind):
+        # loop process for CUT_H_AND_W strategy
+        # step1: move feature map into ub
+        with self.inst.for_range(0, self.k_d) as k_d_ind:
+            self.inst.data_move(
+                dst=self.aux_ub_tensor[0, k_d_ind, 0, 0, 0],
+                src=self.input_gm_tensor[core.ind_n, core.ind_d * self.stride_d + k_d_ind, core.ind_c1,
+                                         h_step_ind * self.h_step_once * self.stride_h,
+                                         w_step_ind * self.w_step_once * self.stride_w, 0],
+                sid=0,
+                nburst=self.aux_ub_tensor.shape[2],
+                burst=self.aux_ub_tensor.shape[3],
+                src_stride=self.input_w - self.aux_ub_tensor.shape[3],
+                dst_stride=0
+            )
 
-        aux_ub_tensor = tensor_info.get("aux")
-        bigmat_ub_tensor = tensor_info.get("bigmat")
-        maxline_ub_tensor = tensor_info.get("maxline")
-        bitmask_ub_tensor = tensor_info.get("bitmask")
-        maskor_ub_tensor = tensor_info.get("maskor")
-        masknot_ub_tensor = tensor_info.get("masknot")
+        # step2: begin to calculate img2col
+        self.img2col_milan(bigmat_ub_tensor=self.bigmat_ub_tensor,
+                           aux_ub=self.aux_ub_tensor,
+                           h_step=self.h_step_once)
 
+        # step3: begin to calculate max line.
+        super()._calc_maxline(max_line_ub=self.maxline_ub_tensor,
+                              big_matrix_ub=self.bigmat_ub_tensor,
+                              line_blk=self.cut_ub_val,
+                              line_rep_loop=self.line_rep_loop,
+                              line_rep_tail=self.line_rep_tail,
+                              super_line_loop=self.super_line_loop,
+                              super_line_tail=self.super_line_tail)
+
+        # step4: move the max_line_ub to gm
+        cut_ub_val_beg = h_step_ind * self.w_step + w_step_ind * self.cut_ub_val
+        self._move_ctn(dst=self.output_gm_tensor[core.ind_n, core.ind_d, core.ind_c1, cut_ub_val_beg * const.C0_SIZE],
+                       src=self.maxline_ub_tensor,
+                       burst=self.ub_line // self.each_block_elem)
+
+        # step5: compute the bit mask
+        super()._calc_bitmask(big_matrix_ub=self.bigmat_ub_tensor,
+                              bitmask_ub=self.bitmask_ub_tensor,
+                              max_line_ub=self.maxline_ub_tensor,
+                              super_line_loop=self.super_line_loop_cmp,
+                              super_line_tail=self.super_line_tail_cmp)
+
+        # step6: deduplicate the bitmask, each column must have at most one "1".
+        super()._deduplicate_bitmask(mask_or_ub=self.maskor_ub_tensor,
+                                     mask_not_ub=self.masknot_ub_tensor,
+                                     bitmask_ub=self.bitmask_ub_tensor,
+                                     bm_loop=self.bm_line_loop,
+                                     bm_tail=self.bm_line_tail,
+                                     data_blk=self.aligned_cut_ub_val // self.each_block_elem)
+
+        # step7: move bitmask to gm
         if self.is_memory_conflict:
-            storage_ub_tensor = tensor_info["storage"]
-
-        # loop process
-        if mode == "loop":
-            w_step_ind = ind_ctx.get("w_step_ind")
-            # step1: move feature map into ub
-            with self.inst.for_range(0, self.k_d) as k_d_ind:
-                self.inst.data_move(
-                    dst=aux_ub_tensor[0, k_d_ind, 0, 0, 0],
-                    src=tensor_info.get("input")[ind_n, ind_d * self.stride_d + k_d_ind, ind_c1,
-                                                 h_step_ind * self.h_step_once * self.stride_h,
-                                                 w_step_ind * self.w_step_once * self.stride_w, 0],
-                    sid=0,
-                    nburst=aux_ub_tensor.shape[2],
-                    burst=aux_ub_tensor.shape[3],
-                    src_stride=self.input_w - aux_ub_tensor.shape[3],
-                    dst_stride=0
-                )
-
-            # step2: begin to calculate img2col
-            self.img2col_milan(bigmat_ub_tensor=bigmat_ub_tensor,
-                               aux_ub=aux_ub_tensor,
-                               h_step=self.h_step_once)
-
-            # step3: begin to calculate max line.
-            super()._calc_maxline(max_line_ub=maxline_ub_tensor,
-                                  big_matrix_ub=bigmat_ub_tensor,
-                                  line_blk=self.cut_ub_val,
-                                  line_rep_loop=self.line_rep_loop,
-                                  line_rep_tail=self.line_rep_tail,
-                                  super_line_loop=self.super_line_loop,
-                                  super_line_tail=self.super_line_tail)
-
-            # step4: move the max_line_ub to gm
-            cut_ub_val_beg = h_step_ind * self.w_step + w_step_ind * self.cut_ub_val
-            self._move_ctn(dst=tensor_info.get("output")[ind_n, ind_d, ind_c1, cut_ub_val_beg * const.C0_SIZE],
-                           src=maxline_ub_tensor,
-                           burst=self.ub_line // self.each_block_elem)
-
-            # step5: compute the bit mask
-            super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
-                                  bitmask_ub=bitmask_ub_tensor,
-                                  max_line_ub=maxline_ub_tensor,
-                                  super_line_loop=self.super_line_loop_cmp,
-                                  super_line_tail=self.super_line_tail_cmp)
-
-            # step6: deduplicate the bitmask, each column must have at most one "1".
-            super()._deduplicate_bitmask(mask_or_ub=maskor_ub_tensor,
-                                         mask_not_ub=masknot_ub_tensor,
-                                         bitmask_ub=bitmask_ub_tensor,
-                                         bm_loop=self.bm_line_loop,
-                                         bm_tail=self.bm_line_tail,
-                                         data_blk=self.aligned_cut_ub_val // self.each_block_elem)
-
-            # step7: move bitmask to gm
-            if self.is_memory_conflict:
-                # 1. move first ceil(cut_ub_val / 16) - 1 block if could
-                with self.inst.if_scope(cut_ub_val_beg + self.aligned_cut_ub_val > self.aligned_bm_line):
-                    if self.cut_ub_val > self.each_block_elem:
-                        burst_first = self.aligned_cut_ub_val // self.each_block_elem - 1
-                        self.inst.data_move(
-                            dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                            src=bitmask_ub_tensor,
-                            sid=0,
-                            nburst=self.k_elem,
-                            burst=burst_first,
-                            src_stride=1,
-                            dst_stride=self.aligned_bm_line // self.each_block_elem - burst_first
-                        )
-                with self.inst.else_scope():
+            # 1. move first ceil(cut_ub_val / 16) - 1 block if could
+            with self.inst.if_scope(cut_ub_val_beg + self.aligned_cut_ub_val > self.aligned_bm_line):
+                if self.cut_ub_val > self.each_block_elem:
+                    burst_first = self.aligned_cut_ub_val // self.each_block_elem - 1
                     self.inst.data_move(
-                        dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                        src=bitmask_ub_tensor,
+                        dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                         core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                        src=self.bitmask_ub_tensor,
                         sid=0,
                         nburst=self.k_elem,
-                        burst=self.aligned_cut_ub_val // self.each_block_elem,
-                        src_stride=0,
-                        dst_stride=(self.aligned_bm_line - self.aligned_cut_ub_val) // self.each_block_elem
+                        burst=burst_first,
+                        src_stride=1,
+                        dst_stride=self.aligned_bm_line // self.each_block_elem - burst_first
                     )
-
-                # 2.copy data to storage_ub
-                self._copy_to_storage(cut_ub_val_beg=cut_ub_val_beg,
-                                      valid_len=self.cut_ub_val,
-                                      storage_ub_tensor=storage_ub_tensor,
-                                      bitmask_ub_tensor=bitmask_ub_tensor)
-            else:
+            with self.inst.else_scope():
                 self.inst.data_move(
-                    dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                    src=bitmask_ub_tensor,
+                    dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d, core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                    src=self.bitmask_ub_tensor,
                     sid=0,
                     nburst=self.k_elem,
                     burst=self.aligned_cut_ub_val // self.each_block_elem,
                     src_stride=0,
                     dst_stride=(self.aligned_bm_line - self.aligned_cut_ub_val) // self.each_block_elem
                 )
-            return
 
-        # tail process
+            # 2.copy data to storage_ub
+            self._copy_to_storage(cut_ub_val_beg=cut_ub_val_beg,
+                                  valid_len=self.cut_ub_val,
+                                  storage_ub_tensor=self.storage_ub_tensor,
+                                  bitmask_ub_tensor=self.bitmask_ub_tensor)
+        else:
+            self.inst.data_move(
+                dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d, core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                src=self.bitmask_ub_tensor,
+                sid=0,
+                nburst=self.k_elem,
+                burst=self.aligned_cut_ub_val // self.each_block_elem,
+                src_stride=0,
+                dst_stride=(self.aligned_bm_line - self.aligned_cut_ub_val) // self.each_block_elem
+            )
+
+    def _cut_ub_process_cut_w_tail(self, core, h_step_ind):
+        # tail process for CUT_H_AND_W strategy
         aux_ub_tail_shape = [1, self.k_d, (self.h_step_once - 1) * self.stride_h + self.k_h,
                              (self.w_step_tail - 1) * self.stride_w + self.k_w, const.C0_SIZE]
 
         # step1: move feature map into ub
         with self.inst.for_range(0, self.k_d) as d_ind:
             self.inst.data_move(
-                dst=aux_ub_tensor[0, d_ind, 0, 0, 0],
-                src=tensor_info.get("input")[ind_n, ind_d * self.stride_d + d_ind,
-                                             ind_c1,
-                                             h_step_ind * self.h_step_once * self.stride_h,
-                                             self.w_step_loop * self.w_step_once * self.stride_w, 0],
+                dst=self.aux_ub_tensor[0, d_ind, 0, 0, 0],
+                src=self.input_gm_tensor[core.ind_n, core.ind_d * self.stride_d + d_ind,
+                                         core.ind_c1,
+                                         h_step_ind * self.h_step_once * self.stride_h,
+                                         self.w_step_loop * self.w_step_once * self.stride_w, 0],
                 sid=0,
                 nburst=aux_ub_tail_shape[2],
                 burst=aux_ub_tail_shape[3],
                 src_stride=self.input_w - aux_ub_tail_shape[3],
-                dst_stride=aux_ub_tensor.shape[3] - aux_ub_tail_shape[3]
+                dst_stride=self.aux_ub_tensor.shape[3] - aux_ub_tail_shape[3]
             )
 
         # step2: begin to calculate img2col
-        self.img2col_milan(bigmat_ub_tensor=bigmat_ub_tensor,
-                           aux_ub=aux_ub_tensor,
+        self.img2col_milan(bigmat_ub_tensor=self.bigmat_ub_tensor,
+                           aux_ub=self.aux_ub_tensor,
                            h_step=self.h_step_once)
 
         # step3: begin to calculate max line
-        super()._calc_maxline(max_line_ub=maxline_ub_tensor,
-                              big_matrix_ub=bigmat_ub_tensor,
+        super()._calc_maxline(max_line_ub=self.maxline_ub_tensor,
+                              big_matrix_ub=self.bigmat_ub_tensor,
                               line_blk=self.tail_cut_ub_val,
                               line_rep_loop=self.tail_line_rep_loop,
                               line_rep_tail=self.tail_line_rep_tail,
@@ -1285,21 +1226,21 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
 
         # step4: move the max_line_ub to gm
         cut_ub_val_beg = h_step_ind * self.w_step + self.w_step_loop * self.cut_ub_val
-        self._move_ctn(dst=tensor_info.get("output")[ind_n, ind_d, ind_c1, cut_ub_val_beg * const.C0_SIZE],
-                       src=maxline_ub_tensor,
+        self._move_ctn(dst=self.output_gm_tensor[core.ind_n, core.ind_d, core.ind_c1, cut_ub_val_beg * const.C0_SIZE],
+                       src=self.maxline_ub_tensor,
                        burst=self.tail_ub_line // self.each_block_elem)
 
         # step5: compute the bit mask
-        super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
-                              bitmask_ub=bitmask_ub_tensor,
-                              max_line_ub=maxline_ub_tensor,
+        super()._calc_bitmask(big_matrix_ub=self.bigmat_ub_tensor,
+                              bitmask_ub=self.bitmask_ub_tensor,
+                              max_line_ub=self.maxline_ub_tensor,
                               super_line_loop=self.tail_super_line_loop_cmp,
                               super_line_tail=self.tail_super_line_tail_cmp)
 
         # step6: deduplicate the bitmask, each column must have at most "1"
-        super()._deduplicate_bitmask(mask_or_ub=maskor_ub_tensor,
-                                     mask_not_ub=masknot_ub_tensor,
-                                     bitmask_ub=bitmask_ub_tensor,
+        super()._deduplicate_bitmask(mask_or_ub=self.maskor_ub_tensor,
+                                     mask_not_ub=self.masknot_ub_tensor,
+                                     bitmask_ub=self.bitmask_ub_tensor,
                                      bm_loop=self.tail_bm_line_loop,
                                      bm_tail=self.tail_bm_line_tail,
                                      data_blk=self.aligned_tail_cut_ub_val // self.each_block_elem)
@@ -1311,8 +1252,9 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
                 if self.tail_cut_ub_val > self.each_block_elem:
                     burst_first = self.aligned_tail_cut_ub_val // self.each_block_elem - 1
                     self.inst.data_move(
-                        dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                        src=bitmask_ub_tensor,
+                        dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                         core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                        src=self.bitmask_ub_tensor,
                         sid=0,
                         nburst=self.k_elem,
                         burst=burst_first,
@@ -1321,8 +1263,9 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
                     )
             with self.inst.else_scope():
                 self.inst.data_move(
-                    dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                    src=bitmask_ub_tensor,
+                    dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d,
+                                                     core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                    src=self.bitmask_ub_tensor,
                     sid=0,
                     nburst=self.k_elem,
                     burst=self.aligned_tail_cut_ub_val // self.each_block_elem,
@@ -1333,20 +1276,19 @@ class MaxPool3DWithArgmaxMilan(MaxPool3DWithArgmax):
             # 2.copy data to storage_ub
             self._copy_to_storage(cut_ub_val_beg=cut_ub_val_beg,
                                   valid_len=self.tail_cut_ub_val,
-                                  storage_ub_tensor=storage_ub_tensor,
-                                  bitmask_ub_tensor=bitmask_ub_tensor)
+                                  storage_ub_tensor=self.storage_ub_tensor,
+                                  bitmask_ub_tensor=self.bitmask_ub_tensor)
 
         else:
             self.inst.data_move(
-                dst=tensor_info.get("argmax")[ind_n, ind_d, ind_c1 * self.k_elem, cut_ub_val_beg],
-                src=bitmask_ub_tensor,
+                dst=self.final_bitmask_gm_tensor[core.ind_n, core.ind_d, core.ind_c1 * self.k_elem, cut_ub_val_beg],
+                src=self.bitmask_ub_tensor,
                 sid=0,
                 nburst=self.k_elem,
                 burst=self.aligned_tail_cut_ub_val // self.each_block_elem,
                 src_stride=(self.aligned_cut_ub_val - self.aligned_tail_cut_ub_val) // self.each_block_elem,
                 dst_stride=(self.aligned_bm_line - self.aligned_tail_cut_ub_val) // self.each_block_elem
             )
-        return
 
     def _copy_to_storage(self, cut_ub_val_beg, valid_len, storage_ub_tensor, bitmask_ub_tensor):
         cut_ub_val_end = cut_ub_val_beg + valid_len
