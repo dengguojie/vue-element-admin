@@ -65,6 +65,8 @@ def element_multiply(inputs):
     """
     if -1 in inputs:
         return -1
+    if None in inputs:
+        return None
     return shape_product(lambda x, y: x * y, inputs)
 
 
@@ -119,82 +121,30 @@ class PureElewiseClassifier:
         init
         :param ins:
         """
-        # record origin inputs info
+        # original inputs info record
         self.ins = ins
         extra_params = {} if extra_params is None else extra_params
-        self.ignore_fractal_format = extra_params.get('ignore_fractal_format', True)
-        self.disable_fuse_axes = self._get_disable_fuse_axes()
+        # inputs may contain -2, so use max len as the dim_length
         self.dim_length = max(len(_ins.get('shape')) for _ins in self.ins)
-        # record processed inputs info
+        # deal with -2 shape if it exists
         self.is_unknown_rank = self._check_update_unknown_rank()
         self.shapes = [list(x.get('shape')) for x in self.ins]
-        self.ori_shapes = [list(x.get('ori_shape', [])) for x in self.ins]
-        self.ranges = [list(
-            list(dim_range) for dim_range in x.get('range', [[i, i] if i != -1 else [1, None] for i in x.get('shape')]))
-                       for x in self.ins]
-        self.formats = [x.get('format', 'ND') for x in self.ins]
+
+        # judge if fractal_format sensitive and record corresponding infos
+        self.ignore_fractal_format = extra_params.get('ignore_fractal_format', True)
+        if not self.ignore_fractal_format:
+            self.ori_shapes = [list(x.get('ori_shape', [])) for x in self.ins]
+            self.formats = [x.get('format', 'ND') for x in self.ins]
+            self.disable_fuse_axes = self._get_disable_fuse_axes()
+
         self.is_5hd_sensitive = self._check_5hd_sensitive()
-        operation.get_context().add("_ignore_fractal_format", self.ignore_fractal_format)
+
+        # check and update elewise inputs to simplify elewise classifier
+        self._check_elewise_inputs_valid()
+        self._update_elewise_inputs()
+
         operation.get_context().add("_unknown_rank", self.is_unknown_rank)
-
-    def check_and_update_inputs(self):
-        """
-        check inputs valid and update inputs info
-        :return: updated inputs
-        """
-        # elewise classify only support same dim_len
-        for dim_index in range(self.dim_length):
-            shape_at_index = \
-                set(self.shapes[input_index][dim_index] for input_index in range(len(self.shapes)))
-            range_left_at_index = \
-                set(self.ranges[input_index][dim_index][0] for input_index in range(len(self.ranges)))
-            range_right_at_index = \
-                set(self.ranges[input_index][dim_index][1] for input_index in range(len(self.ranges)))
-            if None in range_right_at_index:
-                range_right_at_index.remove(None)
-                range_right_at_index.add(INT32_MAX)
-            # all dim range must be intersecting
-            max_range_left = max(range_left_at_index)
-            min_range_right = min(range_right_at_index)
-
-            # update shape and range
-            if len(shape_at_index) == 1:
-                for input_index in range(len(self.shapes)):
-                    self.ranges[input_index][dim_index][0] = max_range_left
-                    self.ranges[input_index][dim_index][1] = min_range_right
-                    # if shape is -1 and range_left == range_right, update shape to known value
-                    if self.shapes[input_index][dim_index] == -1 and max_range_left == min_range_right:
-                        self.shapes[input_index][dim_index] = max_range_left
-            elif len(shape_at_index) == DIFF_SHAPE_NUM:
-                if -1 not in shape_at_index:
-                    dict_args = {"errCode": "E90001",
-                                 "detailed_cause": "elewise shape is illegal."}
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-
-                shape_at_index.remove(-1)
-                known_shape = shape_at_index.pop()
-                for input_index in range(len(self.shapes)):
-                    self.shapes[input_index][dim_index] = known_shape
-                    self.ranges[input_index][dim_index][0] = known_shape
-                    self.ranges[input_index][dim_index][1] = known_shape
-            else:
-                dict_args = {"errCode": "E90001",
-                             "detailed_cause": "elewise shape is illegal because of different shape."}
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        for dim_index in range(len(self.ori_shapes[0])):
-            # update ori_shape
-            ori_shape_at_index = \
-                set(self.ori_shapes[input_index][dim_index] for input_index in range(len(self.ori_shapes)))
-            if len(ori_shape_at_index) == DIFF_SHAPE_NUM:
-                if -1 not in ori_shape_at_index:
-                    dict_args = {"errCode": "E90001",
-                                 "detailed_cause": "elewise ori_shape is illegal."}
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-                ori_shape_at_index.remove(-1)
-                known_ori_shape = ori_shape_at_index.pop()
-                for input_index in range(len(self.ori_shapes)):
-                    self.ori_shapes[input_index][dim_index] = known_ori_shape
+        operation.get_context().add("_ignore_fractal_format", self.ignore_fractal_format)
 
     def classify(self):
         """
@@ -202,16 +152,6 @@ class PureElewiseClassifier:
         :return: classify res
         """
         return self._classify_const() if self._is_const() else self._classify_var()
-
-    def _get_disable_fuse_axes(self):
-        """
-        get disable fuse axes
-        :return: disable fuse axes
-        """
-        if not self.ignore_fractal_format:
-            if 'NC1HWC0' in [x.get('format', 'ND') for x in self.ins]:
-                return [NC1HWC0_C1_INDEX, NC1HWC0_C0_INDEX]
-        return []
 
     def _check_update_unknown_rank(self):
         """
@@ -231,6 +171,16 @@ class PureElewiseClassifier:
                 is_unknown_rank = True
         return is_unknown_rank
 
+    def _get_disable_fuse_axes(self):
+        """
+        get disable fuse axes
+        :return: disable fuse axes
+        """
+        if not self.ignore_fractal_format:
+            if 'NC1HWC0' in self.formats:
+                return [NC1HWC0_C1_INDEX, NC1HWC0_C0_INDEX]
+        return []
+
     def _check_5hd_sensitive(self):
         """
         check if inputs format sensitive
@@ -245,11 +195,11 @@ class PureElewiseClassifier:
         if self.ignore_fractal_format:
             return False
 
-        for _in in self.ins:
-            in_shape = _in.get('shape')
-            in_ori_shape = _in.get('ori_shape')
+        for index, _in in enumerate(self.ins):
+            in_shape = self.shapes[index]
+            in_ori_shape = self.ori_shapes[index]
             in_dtype = _in.get('dtype').lower()
-            in_format = _in.get('format').upper()
+            in_format = self.formats[index]
             ori_format = _in.get('ori_format').upper()
 
             # shape len must be 5, ori_shape len must be 4
@@ -265,6 +215,103 @@ class PureElewiseClassifier:
                 return False
 
         return True
+
+    def _check_elewise_inputs_valid(self):
+        """
+        check if inputs satisify elewise requirement
+        """
+        # check shape valid
+        for dim_index in range(self.dim_length):
+            diff_shape = set([each_shape[dim_index] for each_shape in self.shapes])
+            if len(diff_shape) == DIFF_SHAPE_NUM:
+                if -1 not in diff_shape:
+                    dict_args = {"errCode": "E90001",
+                                 "detailed_cause": "elewise not support two diff shape without -1."}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+            if len(diff_shape) > DIFF_SHAPE_NUM:
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": "elewise not support different known shape at one dim."}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        # check ori_shape valid
+        if self.is_5hd_sensitive:
+            for ori_index in range(len(self.ori_shapes[0])):
+                # update ori_shape
+                diff_ori_shape = set([each_ori_shape[ori_index] for each_ori_shape in self.ori_shapes])
+                if len(diff_ori_shape) == DIFF_SHAPE_NUM:
+                    if -1 not in diff_ori_shape:
+                        dict_args = {"errCode": "E90001",
+                                     "detailed_cause": "elewise 5hd not support two diff ori shape without -1."}
+                        raise RuntimeError(dict_args, get_error_message(dict_args))
+                if len(diff_ori_shape) > DIFF_SHAPE_NUM:
+                    dict_args = {"errCode": "E90001",
+                                 "detailed_cause": "elewise 5hd not support different known ori shape at one dim."}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    def _update_elewise_shape_and_range(self):
+        """
+        update elewise shape and range to simplify elewise classify
+        """
+        # elewise classify only support same dim_len
+        for dim_index in range(self.dim_length):
+            diff_shape = set([each_shape[dim_index] for each_shape in self.shapes])
+            left_range = set([_in.get('range')[dim_index][0] for _in in self.ins])
+            right_range = set([_in.get('range')[dim_index][1] for _in in self.ins])
+            if None in right_range:
+                right_range.remove(None)
+                right_range.add(INT32_MAX)
+            # all dim must be intersecting
+            max_left_range = max(left_range)
+            min_right_range = min(right_range)
+
+            # update shape and range
+            if len(diff_shape) == 1:
+                # all shape at the index is same, update the range to be (max_left_range, min_right_range)
+                for input_index in range(len(self.shapes)):
+                    self.shapes[input_index][dim_index] = \
+                        max_left_range if max_left_range == min_right_range else self.shapes[input_index][dim_index]
+                    self.ins[input_index]['range'][dim_index] = \
+                        (max_left_range, min_right_range) if min_right_range < INT32_MAX else (max_left_range, None)
+
+            if len(diff_shape) == DIFF_SHAPE_NUM:
+                # the shape at index not support shape_combine without -1
+                diff_shape.remove(-1)
+                known_shape = diff_shape.pop()
+                for input_index in range(len(self.shapes)):
+                    self.ins[input_index]['range'][dim_index] = (known_shape, known_shape)
+                    self.shapes[input_index][dim_index] = known_shape
+
+    def _update_elewise_ori_shape(self):
+        """
+        update ori shape while fractal format sensitive
+        """
+        for ori_index in range(len(self.ori_shapes[0])):
+            # update ori_shape
+            diff_ori_shape = set([each_ori_shape[ori_index] for each_ori_shape in self.ori_shapes])
+            if len(diff_ori_shape) == DIFF_SHAPE_NUM:
+                # the ori shape at index not support shape_combine without -1
+                diff_ori_shape.remove(-1)
+                known_ori_shape = diff_ori_shape.pop()
+                for input_index in range(len(self.ori_shapes)):
+                    self.ori_shapes[input_index][ori_index] = known_ori_shape
+
+    def _update_elewise_inputs(self):
+        """
+        update inputs to simplify elewise classify
+        """
+        # static scene no need update any info
+        if operation.get_context().get_mode() == "static":
+            return
+        # convert tuple range to list for replace some elements
+        for _in in self.ins:
+            _in['range'] = list(_in.get('range'))
+
+        # update shape and range
+        self._update_elewise_shape_and_range()
+
+        # update ori_shape if satisfy 5hd scene
+        if self.is_5hd_sensitive:
+            self._update_elewise_ori_shape()
 
     def _is_const(self):
         for i in range(self.dim_length):
@@ -295,31 +342,38 @@ class PureElewiseClassifier:
     def _partial_fuse_shapes(self):
         fusion_axis = self._get_elewise_fused_index()
         in_shape = self.shapes[0]
-        in_range = self.ranges[0]
-
         fused_shape = []
         fused_range = []
         for axis_list in fusion_axis:
             if len(axis_list) == 1:
                 fused_shape.append(in_shape[axis_list[0]])
-                fused_range.append(tuple(in_range[axis_list[0]]))
             else:
                 need_fused_shape = in_shape[axis_list[0]:axis_list[1] + 1]
                 product_shape = element_multiply(need_fused_shape)
-
-                range_l = [in_range[i][0] for i in range(axis_list[0], axis_list[1] + 1)]
-                fuse_range_left = element_multiply(range_l)
-                fuse_range_left = fuse_range_left if fuse_range_left <= INT32_MAX else None
-
-                range_r = [in_range[i][1] for i in range(axis_list[0], axis_list[1] + 1)]
-                fuse_range_right = element_multiply(range_r)
-                fuse_range_right = fuse_range_right if fuse_range_right <= INT32_MAX else None
-
                 fused_shape.append(product_shape)
-                fused_range.append((fuse_range_left, fuse_range_right))
+
+        if operation.get_context().get_mode() == "static":
+            fused_range = [(known_shape, known_shape) for known_shape in fused_shape]
+        else:
+            in_range = self.ins[0].get('range')
+            for axis_list in fusion_axis:
+                if len(axis_list) == 1:
+                    fused_range.append(tuple(in_range[axis_list[0]]))
+                else:
+                    range_l = [in_range[i][0] for i in range(axis_list[0], axis_list[1] + 1)]
+                    fuse_range_left = element_multiply(range_l)
+                    fuse_range_left = \
+                        None if fuse_range_left is not None and fuse_range_left >= INT32_MAX else fuse_range_left
+
+                    range_r = [in_range[i][1] for i in range(axis_list[0], axis_list[1] + 1)]
+                    fuse_range_right = element_multiply(range_r)
+                    fuse_range_right = \
+                        None if fuse_range_right is not None and fuse_range_right >= INT32_MAX else fuse_range_right
+
+                    fused_range.append((fuse_range_left, fuse_range_right))
 
         fused_shapes = [fused_shape] * len(self.shapes)
-        fused_ranges = [fused_range] * len(self.ranges)
+        fused_ranges = [fused_range] * len(self.shapes)
         operation.add_compile_info_inner("_elewise_fused_index", fusion_axis)
         return fused_shapes, fused_ranges, fusion_axis
 
@@ -411,11 +465,12 @@ class PureElewiseClassifier:
         must_empty_tensor = False
         ins = []
         # format insensitive or format sensitive but ori_c all align will only generate ND res
-        for _, (_shape, _range) in enumerate(zip(self.shapes, self.ranges)):
+        for index, _shape in enumerate(self.shapes):
             in_x = SpecialMode.gen_in([-1])
-            in_x["range"] = [util.combine_range(_range)]
+            before_fuse_range = self.ins[index].get('range')
+            in_x["range"] = [util.combine_range(before_fuse_range)]
             maybe_empty_tensor = maybe_empty_tensor or 0 in in_x.get('range')[0]
-            if 0 in _shape or (0, 0) in _range or [0, 0] in _range:
+            if 0 in _shape or (0, 0) in before_fuse_range or [0, 0] in before_fuse_range:
                 must_empty_tensor = True
                 break
             ins.append(in_x)

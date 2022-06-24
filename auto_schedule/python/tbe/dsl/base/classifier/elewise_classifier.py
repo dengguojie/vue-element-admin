@@ -43,11 +43,9 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
         classifer.check_update_empty_shape()
     else:
         classifer = PureElewiseClassifier(ins, extra_params)
-        classifer.check_and_update_inputs()
     from tbe.common.buildcfg import get_current_build_config
     operation.get_context().add("_support_broadcast", support_broadcast)
     if get_current_build_config("enable_op_prebuild"):
-
         return [ins] if support_broadcast else [classifer.classify()[0]]
 
     return classifer.classify()

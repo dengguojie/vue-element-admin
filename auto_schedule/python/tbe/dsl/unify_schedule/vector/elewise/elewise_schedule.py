@@ -438,7 +438,6 @@ class ElewiseSchedule(Schedule):
         self._compute_at_axis_idx = u_idx
         self._emit_insn_axis = inner_axes[0][0]
 
-
     def _do_tiling_all_fuse(self):
         sch = self._schedule
         res = self._out
@@ -696,16 +695,30 @@ class ElewiseSchedule(Schedule):
                 return src_dtype in ("uint64", "int64") and dst_dtype == "int8"
             return False
 
+        def _match_node_reuse(_tensor):
+            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
+                return True
+            return False
+
+        def _match_broadcast_inline(_in_tensor):
+            if _in_tensor in self._absorbable_broadcast_tensors and _in_tensor.op.input_tensors and \
+                    _in_tensor.op.input_tensors[0] in dependent_map:
+                return True
+            return False
+
+        def _match_ub_size_correct(_tensor):
+            if util.need_temp_space(_tensor) or _need_external_space(_tensor):
+                return True
+            return False
+
         def _calc_current_coexist_node(_tensor):
             # one of the input of the ternary instruction must be reused with the output
             _current_coexist_node = len(dependent_map)
 
+            # broadcast_inline can reduce the coexist node
             for tensor_i in dependent_map:
-                if tensor_i in self._absorbable_broadcast_tensors and tensor_i.op.input_tensors and \
-                        tensor_i.op.input_tensors[0] in dependent_map:
+                if _match_broadcast_inline(tensor_i):
                     _current_coexist_node -= 1
-
-            _refresh_dependent(_tensor)
 
             # check if cast tensor impl by complex instructions
             if _cast_complex_instructions(_tensor):
@@ -717,9 +730,9 @@ class ElewiseSchedule(Schedule):
             if _vcmp_complex_instructions(_tensor):
                 _current_coexist_node += SPECIAL_VCMP_NODE
 
+            # 5hd pad need extra coexist node
             if self._5hd_actions is not None and len(self._5hd_actions) > 0:
                 _current_coexist_node += 1
-
 
             # check if all src be used later
             if _dst_can_not_reuse_src(_tensor):
@@ -730,7 +743,7 @@ class ElewiseSchedule(Schedule):
                 _current_coexist_node += 1
 
             # correct ub size in broadcast absorb
-            if util.need_temp_space(_tensor) or _need_external_space(_tensor):
+            if _match_ub_size_correct(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
 
             # correct ub size in vcmp or vsel or vcmpsel
@@ -749,8 +762,11 @@ class ElewiseSchedule(Schedule):
 
             _need_coexist_node.append(_current_coexist_node)
 
+            # after calculate current node then refresh its coexist relation
+            _refresh_dependent(_tensor)
+
             if _tensor not in dependent_map:
-                dependent_map[_tensor] = self._in_out_map[_tensor].copy()
+                dependent_map[_tensor] = self._in_out_map.get(_tensor).copy()
             return max(_need_coexist_node)
 
         def _refresh_dependent(_tensor):
@@ -758,7 +774,7 @@ class ElewiseSchedule(Schedule):
                 if _tensor_i not in dependent_map:
                     continue
                 dependent_map[_tensor_i].remove(_tensor)
-                if not dependent_map[_tensor_i]:
+                if not dependent_map.get(_tensor_i):
                     dependent_map.pop(_tensor_i)
 
         def _need_external_space(_tensor):
