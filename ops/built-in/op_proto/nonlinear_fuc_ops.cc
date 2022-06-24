@@ -1106,15 +1106,13 @@ VERIFY_FUNC_REG(LogSigmoidGrad, LogSigmoidGradVerify);
 
 // ----------------LogSigmoid--------------------
 IMPLEMT_COMMON_INFERFUNC(LogSigmoidInferShape) {
-  Shape input_shape = op.GetInputDescByName("x").GetShape();
-  TensorDesc output_desc = op.GetOutputDescByName("y");
-  output_desc.SetShape(input_shape);
-  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
-  output_desc.SetDataType(input_dtype);
-  Format input_format = op.GetInputDescByName("x").GetFormat();
-  output_desc.SetFormat(input_format);
-  (void)op.UpdateOutputDesc("y", output_desc);
-  return GRAPH_SUCCESS;
+  OP_LOGI(TbeGetName(op).c_str(), "Enter LogSigmoidInferShape");
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(LogSigmoid, LogSigmoidInferShape);

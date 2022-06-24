@@ -420,6 +420,7 @@ from .extract_image_patches import extract_image_patches
 from .expint import expint
 from .ndtri import ndtri
 from .celu_v2 import celu_v2
+from .log_sigmoid import log_sigmoid
 from .image_projective_transform import image_projective_transform
 from .image_projective_transform_v2 import image_projective_transform_v2
 from .non_max_suppression_bucketize import non_max_suppression_bucketize
