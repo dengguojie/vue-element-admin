@@ -2183,62 +2183,8 @@ IMPLEMT_INFERFUNC(UnsqueezeV3, UnsqueezeV3Infer) {
 
 INFER_FUNC_REG(UnsqueezeV3, UnsqueezeV3Infer);
 // -----------------------------------------SqueezeV3 & UnSqueezeV3 out---------------------------------------------
-IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
-  auto axis_arr = op.get_attr_axes();
-  auto axis_nums = axis_arr.size();
-  if (axis_nums <= 0) {
-    string reason = "rank of axes should >= 0, actually axes_rank=" + std::to_string(axis_nums);
-    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", TbeGetName(op).c_str(), reason.c_str());
-    GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
-    return GRAPH_PARAM_INVALID;
-  }
-  std::unordered_set<int64_t> values(axis_arr.begin(), axis_arr.end());
-  if (values.size() != axis_arr.size()) {
-    string reason = "axes should not contain duplicate values";
-    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", TbeGetName(op).c_str(), reason.c_str());
-    GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
-    return GRAPH_PARAM_INVALID;
-  }
-  Shape input_shape = op.get_input_desc_x().GetShape();
-  int64_t dim_num = input_shape.GetDimNum() + axis_nums;
-  std::vector<int64_t> vec_dim(dim_num, 0);
-
-  for (size_t i = 0UL; i < axis_nums; i++) {
-    int64_t axis = axis_arr[i];
-    if ((axis < -dim_num) || (axis > (dim_num - 1))) {
-      string reason = "axes[" + std::to_string(i) + "]=" + std::to_string(axis) + " out range of [-"+
-                      std::to_string(dim_num) +", " + std::to_string(dim_num) + ")";
-      REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", TbeGetName(op).c_str(), reason.c_str());
-      GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
-      return GRAPH_PARAM_INVALID;
-    }
-    if (axis < 0) {
-      axis += dim_num;
-    }
-    vec_dim.at(axis) = 1;
-  }
-  int64_t index = 0;
-  for (int64_t i = 0; i < dim_num; i++) {
-    if (vec_dim.at(i) != 1) {
-      vec_dim.at(i) = input_shape.GetDim(index);
-      index++;
-    }
-  }
-
-  TensorDesc td = op.get_output_desc_y();
-  td.SetShape(Shape(vec_dim));
-  td.SetDataType(op.get_input_desc_x().GetDataType());
-  (void)op.update_output_desc_y(td);
-  return GRAPH_SUCCESS;
-}
-
-INFER_FUNC_REG(Unsqueeze, UnsqueezeInfer);
-
-INFER_VALUE_RANGE_DEFAULT_REG(Unsqueeze);
-
-IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
+graphStatus UnsqueezeV2InferFunc(OpDescPtr &op_desc, std::vector<int32_t> &axis_arr) {
   GE_OP_LOGD("Enter UnSqueezeV2 Infershape!");
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_desc->MutableInputDesc(0);
   auto output_desc = op_desc->MutableOutputDesc(0);
   const auto &input_shape = input_desc->GetShape();
@@ -2251,10 +2197,7 @@ IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
     output_desc->SetOriginShape(input_desc->GetOriginShape());
     return GRAPH_SUCCESS;
   }
-  vector<int32_t> axis_arr;
-  (void)op.GetAttr("axis", axis_arr);
   auto &output_shape = output_desc->MutableShape();
-
   std::vector<std::pair<int64_t, int64_t>> input_range;
   std::vector<std::pair<int64_t, int64_t>> output_range;
   bool is_unknown_shape = input_shape.IsUnknownShape();
@@ -2269,8 +2212,8 @@ IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
   size_t k_axis_arr_size_unique = std::unique(axis_arr.begin(), axis_arr.end()) - axis_arr.begin();
   if (k_axis_arr_size_unique != axis_arr.size()) {
     string reason = "axes should not contain duplicate values";
-    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", TbeGetName(op).c_str(), reason.c_str());
-    GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", op_desc->GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op_desc->GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2284,8 +2227,9 @@ IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
         ((axis_arr[ax_idx] + static_cast<int32_t>(total_dim_num) < 0) || (axis_arr[ax_idx] >= total_dim_num))) {
       string reason = "Dimension is out of range (expect to be in range of [-" + std::to_string(total_dim_num) + "," +
                       std::to_string(total_dim_num - 1) + "], but got " + std::to_string(axis_arr[ax_idx]) + ".";
-      REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axis failed, as %s", TbeGetName(op).c_str(), reason.c_str());
-      GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axis failed, as %s",  op_desc->GetName().c_str(), 
+                         reason.c_str());
+      GE_OP_LOGE(op_desc->GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
       return GRAPH_PARAM_INVALID;
     }
     if ((ax_idx < axis_arr.size()) && (axis_arr[ax_idx] == i || (axis_arr[ax_idx] + total_dim_num == i))) {
@@ -2304,6 +2248,25 @@ IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
   }
   output_desc->SetShapeRange(output_range);
   return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
+  std::vector<int32_t> axis_arr;
+  (void)op.GetAttr("axes", axis_arr);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  return UnsqueezeV2InferFunc(op_desc, axis_arr);
+}
+
+INFER_FUNC_REG(Unsqueeze, UnsqueezeInfer);
+
+INFER_VALUE_RANGE_DEFAULT_REG(Unsqueeze);
+
+IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
+  GE_OP_LOGD("Enter UnSqueezeV2 Infershape!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<int32_t> axis_arr;
+  (void)op.GetAttr("axis", axis_arr);
+  return UnsqueezeV2InferFunc(op_desc, axis_arr);
 }
 
 INFER_FUNC_REG(UnsqueezeV2, UnsqueezeV2Infer);
