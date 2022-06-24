@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
+from impl.clip_boxes_d import get_op_support_info
 import numpy as np
 
 ut_case = OpUT("ClipBoxesD", None, None)
@@ -146,9 +147,9 @@ ut_case.add_precision_case("Ascend910",precision_case3)
 ut_case.add_precision_case("Ascend910",precision_case4)
 ut_case.add_precision_case("Ascend910",precision_case5)
 
+def test_support_info(test_arg):
+    boxes_input = {"shape": (4096, 4), "format": "ND"}
+    get_op_support_info(boxes_input, None, None)
 
-
-
-
-
+ut_case.add_cust_test_func(test_func=test_support_info)
 

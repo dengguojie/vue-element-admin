@@ -61,7 +61,7 @@ def get_op_support_info(boxes_input,
             and len(dims_boxes_input) == Constant.CONFIG_TWO \
             and dims_boxes_input[Constant.CONFIG_ONE] == Constant.CONFIG_FOUR:
         axis_split_matrix = []
-        for i in range(dims_boxes_input):
+        for i in dims_boxes_input:
             split_0 = [util_select_op_base.SplitInput(
                 [0, [i], [Constant.NEG_ONE], [Constant.NEG_ONE]]),
                 util_select_op_base.SplitOutput([0, [i]])]

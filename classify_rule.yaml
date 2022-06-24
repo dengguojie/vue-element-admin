@@ -83,8 +83,8 @@ aicpu:
       - ops/built-in/framework/tf_plugin/gather_point_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/group_point_plugin.cc
-      - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc     
-      - ops/built-in/framework/tf_plugin/crop_and_resize_grad_image_plugin.cc     
+      - ops/built-in/framework/tf_plugin/dense_image_warp_plugin.cc
+      - ops/built-in/framework/tf_plugin/crop_and_resize_grad_image_plugin.cc
       - ops/built-in/framework/tf_plugin/get_next_from_queue_plugin.cc
       - ops/built-in/framework/tf_plugin/get_next_v2.cc
       - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
@@ -654,6 +654,7 @@ cube:
       - ops/built-in/tbe/impl/attention_qkv_grad_w.py
       - ops/built-in/tbe/impl/util/attention_qkv_util.py
       - ops/built-in/tbe/impl/util/platform_adapter.py
+      - ops/built-in/tbe/impl/clip_boxes_d.py
 
     unrelease:
       - ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
@@ -2678,7 +2679,6 @@ unkown:
       - ops/built-in/op_proto/util/lookup_ops_shape_fns.h
       - ops/built-in/op_proto/util/images_ops_shape_fns.h
       - ops/built-in/tbe/impl/approximate_equal.py
-      - ops/built-in/tbe/impl/clip_boxes_d.py
       - ops/built-in/tbe/impl/bn3d_training_update_grad.py
       - ops/built-in/tbe/impl/lamb_apply_weight_assign.py
       - ops/built-in/tbe/impl/trunc.py
