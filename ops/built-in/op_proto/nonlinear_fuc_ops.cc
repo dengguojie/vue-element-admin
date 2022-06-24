@@ -876,18 +876,24 @@ VERIFY_FUNC_REG(ThresholdedRelu, ThresholdedReluVerify);
 
 // ----------------HardShrink Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(HardShrinkInferShape) {
-  TensorDesc output_desc = op.GetOutputDescByName("output_y");
-  DataType predict_dtype = op.GetInputDescByName("input_x").GetDataType();
-  Format predict_format = op.GetInputDescByName("input_x").GetFormat();
-  ge::Shape output_shape = op.GetInputDescByName("input_x").GetShape();
-  output_desc.SetDataType(predict_dtype);
-  output_desc.SetFormat(predict_format);
-  output_desc.SetShape(output_shape);
-  (void)op.UpdateOutputDesc("output_y", output_desc);
-      return GRAPH_SUCCESS;
+  OP_LOGI(TbeGetName(op).c_str(), "Enter HardShrinkInferShape");
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  const int64_t input_x_id = 0;
+  const int64_t output_y_id = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_id, {output_y_id})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 IMPLEMT_VERIFIER(HardShrink, HardShrinkVerify) {
+  float lambda = 0.5;
+  if (op.GetAttr("lambd", lambda) == ge::GRAPH_SUCCESS) {
+    if (lambda < 0) {
+      OP_LOGE(TbeGetName(op).c_str(), "Only support attr lambda >= 0.");
+      return GRAPH_FAILED;
+    }
+  }
   return GRAPH_SUCCESS;
 }
 

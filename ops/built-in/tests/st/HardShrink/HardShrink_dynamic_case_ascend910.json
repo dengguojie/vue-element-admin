@@ -1,0 +1,199 @@
+[
+  {
+    "op": "HardShrink",
+    "calc_expect_func_file":"test_hard_shrink_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          32
+        ],
+        "shape_range": [
+          [
+            1, 
+            100
+          ]
+        ],
+        "typical_shape": [
+          32,
+          32
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          32,
+          32
+        ],
+        "typical_shape": [
+          32,
+          32
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_HardShrink_dynamic_fp16_32_32_unknownaxis"
+  },
+  {
+    "op": "HardShrink",
+    "calc_expect_func_file":"test_hard_shrink_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          2,
+          8,
+          9
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          8,
+          9
+        ],
+        "typical_shape": [
+          2,
+          8,
+          9
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardShrink_dynamic_fp16_2_8_9_unknowndimension"
+  },
+  {
+    "op": "HardShrink",
+    "calc_expect_func_file":"test_hard_shrink_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          200,
+          -1
+        ],
+        "shape_range": [
+          [
+            100, 
+            1000
+          ],
+          [
+            100, 
+            1000
+          ]
+        ],
+        "typical_shape": [
+          400,
+          200,
+          800
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          400,
+          200,
+          800
+        ],
+        "typical_shape": [
+          400,
+          200,
+          800
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_HardShrink_dynamic_fp32_200_400_800_unknownaxis"
+  },
+  {
+    "op": "HardShrink",
+    "calc_expect_func_file":"test_hard_shrink_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "typical_shape": [
+          8,
+          9
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          9
+        ],
+        "typical_shape": [
+          8,
+          9
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "lambd",
+        "type": "float",
+        "value": 0.5
+      }
+    ],
+    "case_name": "test_HardShrink_dynamic_fp32_8_9_unknowndimension"
+  }
+]

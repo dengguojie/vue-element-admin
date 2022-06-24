@@ -34,7 +34,7 @@ protected:
     }
 };
 
-TEST_F(HardShrinkTest, hard_shrink_test_case_1) {
+TEST_F(HardShrinkTest, hard_shrink_test_failed_attr) {
     ge::op::HardShrink hard_shrink_op;
     ge::TensorDesc tensorDesc;
     ge::Shape shape({2, 3, 4});
@@ -46,6 +46,9 @@ TEST_F(HardShrinkTest, hard_shrink_test_case_1) {
 
     auto ret = hard_shrink_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    hard_shrink_op.SetAttr("lambd", (float)-1.0);
+    auto status = hard_shrink_op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
 
     auto output_desc = hard_shrink_op.GetOutputDesc("output_y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);

@@ -434,3 +434,4 @@ from .fused_mul_apply_momentum_extern import fused_mul_apply_momentum_extern
 from .yolox_bounding_box_decode import yolox_bounding_box_decode
 from .ragged_bin_count import ragged_bin_count
 from .lerp import lerp
+from .hard_shrink import hard_shrink
