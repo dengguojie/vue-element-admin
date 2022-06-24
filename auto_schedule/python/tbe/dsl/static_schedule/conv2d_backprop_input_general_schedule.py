@@ -295,10 +295,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 kernel_h = dyn_util.shape_vars.get("kernel_h")
                 kernel_w = dyn_util.shape_vars.get("kernel_w")
                 if kernel_h is None:
-                    kernel_h, kernel_w = (
-                        int(a_col.op.attrs["kernel_h"]),
-                        int(a_col.op.attrs["kernel_w"])
-                    )
+                    kernel_h, kernel_w = (int(a_col.op.attrs["kernel_h"]), int(a_col.op.attrs["kernel_w"]))
                 tensor_attr["kernel_h"] = kernel_h
                 tensor_attr["kernel_w"] = kernel_w
             else:
@@ -1116,9 +1113,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             _, _, b_ddr_k0, b_ddr_n0 \
                 = cube_util.shape_to_list(weight_fz_tensor.shape)
             # Cout, Cin1, Hk, Wk, Cin0
-            filter_shape_g = (cou1_g * b_ddr_k0,
-                              cin1_g,
-                              kernel_h, kernel_w, b_ddr_n0)
+            filter_shape_g = [cou1_g * b_ddr_k0, cin1_g, kernel_h, kernel_w, b_ddr_n0]
         l0c_multi_group_flag = False
         if deconv_res.dtype == "int8":
             if cin1_g % 2 == 1 and g_after > 1:
@@ -2762,7 +2757,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         sch[b_l1].mem_unique()
         sch[b_col].mem_unique()
         sch[c_col].mem_unique()
-        if deconv_res.op.tag != "elewise_multiple_sel" and bias_add_vector is None:
+        if deconv_res.op.tag != "elewise_multiple_sel" and bias_add_vector is None and c_ub is not None:
             sch[c_ub].mem_unique()
 
     def _handle_workspace():
@@ -2892,9 +2887,13 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
     def _split_group():
         # split g_dim for ddr; outer is g_axis, inner is c1
+        c_index = INDEX_2 if tensor_attr.get("5HD_TRANS_NHWC") else 1
+        # binary scene g_after is default to 1, split with factor reduce performance
+        if dyn_util.dynamic_mode == "binary":
+            sch_agent[c_ddr].split_group(c_ddr.op.axis[c_index], nparts=g_after)
+            return
         n_0 = tbe_platform.CUBE_MKN.get(b_l1.dtype).get("mac")[1] if b_l1.dtype == "float32" else tbe_platform.C0_SIZE
         c_0 = c_ddr.shape[-1].value if not tensor_attr.get("5HD_TRANS_NHWC") else 1
-        c_index = INDEX_2 if tensor_attr.get("5HD_TRANS_NHWC") else 1
         # dx_c1_extend is c / n0. for c_gm, c1 is c / c0.
         c_factor_split_group = max(cin1_g * n_0 // c_0, 1)
         if l0c_multi_group_flag: # cin1_g % 2 is not 0, l0c need to calculate cl0_tiling_g * cin1_g at c1 dim
@@ -2902,9 +2901,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         sch_agent[c_ddr].split_group(c_ddr.op.axis[c_index], c_factor_split_group)
 
     sch_agent = ScheduleAgent(sch)
-
     _split_group()
-
     affine_cub = _cub_process()
     _cl0_process(affine_cub)
     _fixpipe_process()

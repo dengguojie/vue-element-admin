@@ -9,11 +9,40 @@ from tbe.dsl import build
 from tbe.common.context.op_context import OpContext
 from impl.dynamic.conv2d_backprop_input import get_op_support_info
 from impl.dynamic.conv2d_backprop_input import conv2dbp_input_fusion_compute
+from impl.dynamic.conv2d_backprop_input import _conv2d_backprop_input_compute
 from impl.dynamic.trans_data import trans_data_fusion_compute
+from impl.util.platform_adapter import tbe
 from tbe.common.utils import shape_util
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 
 ut_case = OpUT("Conv2DBackpropInput", "impl.dynamic.conv2d_backprop_input",
                "conv2d_backprop_input")
+vals = {("CORE_NUM", ): 48,
+    ("CUBE_VECTOR_SPLIT",): True,
+    ("UB_SIZE", ): 196608,
+    ("L0A_SIZE", ): 65536,
+    ("L0B_SIZE", ): 65536,
+    ("L1_SIZE", ): 524288,
+    ("L0C_SIZE", ): 131072,
+    ("SHORT_SOC_VERSION",): "Ascend910A"
+}
+
+support_intrinsic_cube_vector_split = {
+    ("Intrinsic_fix_pipe_l0c2ub",) : False,
+    ("Intrinsic_fix_pipe_l0c2out",) : True,
+    ("Intrinsic_data_move_l0c2ub",) : False,
+    ("Intrinsic_data_move_l12bt",) : True,
+    ("Intrinsic_data_move_ub2l1",) : False,
+    ("Intrinsic_mmad", "f162f32",) : True,
+    ("CUBE_VECTOR_SPLIT",) : True,
+}
+def side_effects(*args):
+    return vals[args]
+
+def check_intrinsic_cube_vector_split(*args):
+    return support_intrinsic_cube_vector_split[args]
 
 dynamic_conv2d_bp_input_op_testcase = [
     ((192, 192, 5, 5), (1, 192, -1, 28), (1, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 2], "success", "conv2d_bp_input_w_dim_upper_boud_None"),
@@ -776,11 +805,31 @@ def _test_dx_transdata_shape_util(test_arg):
     ]
     shape_util.variable_shape(inputs, op_mode="conv2d_backprop_input")
 
+def _test_conv2d_bp_input_milan_dynamic_case_1(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
+            with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+                with OpContext("dynamic"):
+                    x = {"shape": (-1, 2, 14, 14, 16), "ori_shape": (-1, 14, 14, 32),
+                        "range": ((1, 4), (2, 2), (14, 14), (14, 14), (16, 16)),
+                        "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                    y = {"shape": (-1, 2, 14, 14, 16), "ori_shape": (-1, 14, 14, 32),
+                        "range": ((1, 4), (2, 2), (14, 14), (14, 14), (16, 16)),
+                        "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                    filter = {"shape": (6,2,16,16), "ori_shape": (32,32,1,3), "format": "FRACTAL_Z", "ori_format": "NCHW", "dtype": "float16"}
+                    input_size = {"shape": (4,), "ori_shape": (4,),
+                        "format": "ND", "ori_format": "ND", "dtype": "int32"}
+                    with tbe.compute():
+                        res = _conv2d_backprop_input_compute(
+                            input_size, filter, x, y,
+                            (1,1,1,1), (0,0,1,1), (1,1,1,1), 1, "NHWC")
+                    with tvm.target.cce():
+                        sch = tbe.auto_schedule(res.get('op_res'))
 
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_fusion_op)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_fusion_op)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_shape_util)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_shape_util)
-
+ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_conv2d_bp_input_milan_dynamic_case_1)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
