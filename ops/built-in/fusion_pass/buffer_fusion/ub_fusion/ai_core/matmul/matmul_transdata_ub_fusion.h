@@ -59,8 +59,6 @@ class MatmulTransdataFusionPass : public BufferFusionPassBase {
   ge::NodePtr transdata_ptr_1 = nullptr;
   ge::NodePtr matmul_node_ptr = nullptr;
   ge::NodePtr out_transdata_ptr = nullptr;
-
-  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 };
 }  // namespace fe
 

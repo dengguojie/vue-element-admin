@@ -68,29 +68,6 @@ namespace fe {
                     mapping[i] = matmulNodes;
                   }
                 }
-
-                vector<ge::NodePtr> fusion_nodes;
-                InputSplitInfo input_split_info;
-                vector<int64_t> axis = {0};
-                int64_t idx = 0;
-                vector<int64_t> overlap = {-1};
-                input_split_info.Initialize();
-                input_split_info.SetAxis(axis);
-                input_split_info.SetIndex(idx);
-                input_split_info.SetHeadOverLap(overlap);
-                input_split_info.SetTailOverLap(overlap);
-                OutputSplitInfo output_split_info;
-                output_split_info.Initialize();
-                output_split_info.SetAxis(axis);
-                output_split_info.SetIndex(idx);
-                AxisSplitMap split_map;
-                split_map.Initialize();
-                split_map.AddInputSplitInfo(input_split_info);
-                split_map.AddOutputSplitInfo(output_split_info);
-                vector<AxisSplitMap> split_map_vec = {split_map};
-                SetSplitMapMainNode(split_map_vec, matmulNodes, "MatMul");
-                buffer_fusion_pass_base_ptr->GetFusionNodes(mapping, fusion_nodes);
-                buffer_fusion_pass_base_ptr->SetSplitInfo(mapping, fusion_nodes);
               }
               return SUCCESS;
           }
