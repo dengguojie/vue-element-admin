@@ -55,6 +55,17 @@ constexpr uint64_t kFormatHWCIndexH = 0;
 constexpr uint64_t kFormatHWCIndexW = 1;
 constexpr uint64_t kFormatHWCIndexC = 2;
 
+const size_t INPUT_NUM0 = 0;
+const size_t INPUT_NUM1 = 1;
+const size_t INPUT_NUM2 = 2;
+const size_t INPUT_NUM3 = 3;
+const size_t INPUT_NUM4 = 4;
+const size_t INPUT_NUM5 = 5;
+const size_t INPUT_NUM6 = 6;
+const size_t INPUT_NUM7 = 7;
+const size_t INPUT_NUM8 = 8;
+const size_t INPUT_NUM9 = 9;
+const size_t INPUT_NUM32 = 32;
 /*
  * str cat util function
  * param[in] params need concat to string

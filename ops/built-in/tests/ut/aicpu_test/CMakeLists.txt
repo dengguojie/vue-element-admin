@@ -166,6 +166,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/greater.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/greater_equal.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/grid_sampler_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/grid_sampler_3d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/grid_sampler_3d_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
@@ -379,6 +380,7 @@ set(_cpu_kernels_ut_files
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/greater/src/greater_utest.cpp
   testcase/greater_equal/src/greater_equal_utest.cpp
+  testcase/grid_sampler_2d/src/grid_sampler_2d_utest.cpp
   testcase/grid_sampler_3d/src/grid_sampler_3d_utest.cpp
   testcase/grid_sampler_3d_grad/src/grid_sampler_3d_grad_utest.cpp
   testcase/identity/src/identity_utest.cpp
