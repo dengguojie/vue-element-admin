@@ -196,5 +196,57 @@
                 "value": "none"
             }
         ]
+    },
+    {
+        "case_name": "Test_BinaryCrossEntropy_dynamicrank_001",
+        "calc_expect_func_file":"test_BinaryCrossEntropy_golden.py:calc_expect_func",
+        "op": "BinaryCrossEntropy",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "ori_format": "ND",
+                "ori_shape":[16, 16],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "ori_format": "ND",
+                "ori_shape":[16, 16],
+                "data_distribute": "uniform",
+                "name": "y"
+            },
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [-2],
+                "typical_shape": [16, 16],
+                "ori_format": "ND",
+                "ori_shape":[16, 16],
+                "data_distribute": "uniform",
+                "name": "weight"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [1, 1],
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "reduction",
+                "type": "string",
+                "value": "mean"
+            }
+        ]
     }
 ]

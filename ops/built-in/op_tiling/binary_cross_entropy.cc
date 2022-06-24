@@ -20,7 +20,6 @@
 namespace optiling {
 struct BroadcastCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
-  std::vector<int32_t> reduce_axis;
   ge::DataType dtype;
   bool reduction_is_none;
 };
@@ -43,9 +42,7 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const ge::Operator& op
     bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
     return ret;
   }
-  PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
-  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
                   return false);
@@ -54,30 +51,27 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const ge::Operator& op
   OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
                   return false);
 
-  const auto& input_shape = input_desc->MutableShape();
+  ge::GeShape input_shape = input_desc->MutableShape();
+  ge::DataType type = input_desc->GetDataType();
+  int32_t input_size = static_cast<int32_t>(input_shape.GetDimNum());
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  std::vector<int32_t> reduce_axis = parsed_info.reduce_axis;
-  int32_t max_value = static_cast<int32_t>(input_shape.GetDimNum());
-  int32_t min_value = -1 * max_value;
-  for (size_t i = 0; i < reduce_axis.size(); i++) {
-    bool is_illegal_case = reduce_axis[i] >= max_value || reduce_axis[i] < min_value;
-    if (is_illegal_case) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
-      return false;
-    }
-    if (reduce_axis[i] < 0) {
-      reduce_axis[i] = max_value + reduce_axis[i];
-    }
+  std::vector<int32_t> reduce_axis{};
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
+  for (int32_t i = 0; i < input_size; i++) {
+    reduce_axis.insert(reduce_axis.end(), i);
   }
+
+  vector<vector<int64_t>> input_shapes = {input_shape.GetDims()};
+  vector<vector<int32_t>> input_axes = {reduce_axis};
+  OpInfo reduce_info(input_shapes, type, input_axes);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, reduce_info);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
-  // reduce_mean_cof is not required when handling pure dma_copy case
-  if (input_shape.GetDim(0) == 1 && reduce_axis[0] == 0) {
-    return ret;
-  }
 
   if (parsed_info.dtype == DT_FLOAT || parsed_info.dtype == DT_FLOAT16) {
     float reduce_mean_cof = 1.0;
-    for (uint32_t i = 0; i < input_shape.GetDimNum(); i++) {
+    for (int32_t i = 0; i < input_size; i++) {
       if (IsInAxis(reduce_axis, i)) {
         OP_TILING_CHECK(input_shape.GetDim(i) == 0,
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."), return false);
@@ -93,6 +87,7 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const ge::Operator& op
     }
     OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
   }
+
   PROFILING_TILING_END();
 
   return ret;
@@ -113,9 +108,6 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
     parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
     OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_axis", parsed_info.reduce_axis),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get _ori_axis error"),
-                    return false);
     std::string dtype;
     parsed_info.dtype = ge::DT_MAX;
     if (GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {

@@ -15,6 +15,8 @@
 """
 binary_cross_entropy
 """
+import math
+from impl.util.util_common import is_unknown_rank_input
 from impl.util import util_select_op_base
 from impl.util import util_common
 from impl.util.platform_adapter import tbe
@@ -234,7 +236,7 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
         for i in shape:
             reduce_elts *= i
         if isinstance(reduce_elts, float):
-            cof = reduce_elts ** (-1)
+            cof = reduce_elts if math.isclose(reduce_elts, 0.0) else reduce_elts ** (-1)
             cof = tvm.const(cof, dtype=calc_dtype)
         else:
             cof = tbe.var("cof", dtype=calc_dtype)
@@ -324,10 +326,13 @@ def binary_cross_entropy(x, y, weight, output,
 
     tbe_context.get_context().add_compile_info("reduction", reduction)
 
-    axis = []
-    for i, _ in enumerate(predict_shape):
-        axis.append(i)
-    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
+    if is_unknown_rank_input(x):
+        input_axis = {"shape": [-1], "rel_pos_to_reduce": "axis"}
+    else:
+        axis = []
+        for i, _ in enumerate(predict_shape):
+            axis.append(i)
+        input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules, tensors = [], []
     if reduction != "none" and weight is not None:

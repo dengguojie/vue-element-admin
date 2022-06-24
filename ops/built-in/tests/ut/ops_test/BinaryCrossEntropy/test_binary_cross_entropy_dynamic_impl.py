@@ -80,6 +80,15 @@ case4 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
          "case_name": "BinaryCrossEntroy_4",
          "expect": "success",
          "support_expect": True}
+case5 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},#x
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    "mean"
+                    ],
+         "case_name": "BinaryCrossEntroy_5",
+         "expect": "success",
+         "support_expect": True}
 
 def test_op_select_format(test_arg):
     from impl.dynamic.binary_cross_entropy import op_select_format
@@ -105,6 +114,7 @@ def test_op_select_format(test_arg):
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 ut_case.add_case(["Ascend910A", "Ascend310"], case4)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
