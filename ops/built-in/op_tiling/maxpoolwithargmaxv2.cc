@@ -249,39 +249,27 @@ static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) 
   param.last_core_ele = total_ele - (param.act_core_num - 1) * param.one_core_ele;
 }
 
-static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape,
-                           const CompileInfoParam& compile_info_param) {
-  int32_t ub_ele = compile_info_param.ub_ele;
-  int32_t core_num = compile_info_param.core_num;
-  int32_t ksize_h = compile_info_param.ksize_h;
-  int32_t ksize_w = compile_info_param.ksize_w;
-  int32_t strides_h = compile_info_param.strides_h;
-  int32_t strides_w = compile_info_param.strides_w;
-  int32_t ceil_mode = compile_info_param.ceil_mode;
-  int32_t pad_top = compile_info_param.pad_top;
-  int32_t pad_left = compile_info_param.pad_left;
-
-  // calc output height and width, pad infos
-  param.pad_t = pad_top;
-  param.pad_l = pad_left;
-  int32_t exact_h = param.input_h + TILING_FACTOR_2 * param.pad_t - (ksize_h - 1) - 1 +
-                    ((ceil_mode == 1) ? (strides_h - 1) : 0);
-  param.output_h = DivRtn(exact_h, strides_h) + 1;
+static void CalPadOut(TilingParam& param, const CompileInfoParam& info_param) {
+  param.pad_t = info_param.pad_top;
+  param.pad_l = info_param.pad_left;
+  int32_t exact_h = param.input_h + TILING_FACTOR_2 * param.pad_t - (info_param.ksize_h - 1) - 1 +
+                    ((info_param.ceil_mode == 1) ? (info_param.strides_h - 1) : 0);
+  param.output_h = DivRtn(exact_h, info_param.strides_h) + 1;
   if (param.pad_t > 0) {
-    if ((param.output_h - 1) * strides_h >= param.input_h + param.pad_t) {
+    if ((param.output_h - 1) * info_param.strides_h >= param.input_h + param.pad_t) {
       param.output_h = param.output_h - 1;
     }
   }
-  int32_t exact_w = param.input_w + TILING_FACTOR_2 * param.pad_l - (ksize_w - 1) - 1 +
-                    ((ceil_mode == 1) ? (strides_w - 1) : 0);
-  param.output_w = DivRtn(exact_w, strides_w) + 1;
+  int32_t exact_w = param.input_w + TILING_FACTOR_2 * param.pad_l - (info_param.ksize_w - 1) - 1 +
+                    ((info_param.ceil_mode == 1) ? (info_param.strides_w - 1) : 0);
+  param.output_w = DivRtn(exact_w, info_param.strides_w) + 1;
   if (param.pad_l > 0) {
-    if ((param.output_w - 1) * strides_w >= (param.input_w + param.pad_l)) {
+    if ((param.output_w - 1) * info_param.strides_w >= (param.input_w + param.pad_l)) {
       param.output_w = param.output_w - 1;
     }
   }
-  param.pad_h = (param.output_h - 1) * strides_h + ksize_h;
-  param.pad_w = (param.output_w - 1) * strides_w + ksize_w;
+  param.pad_h = (param.output_h - 1) * info_param.strides_h + info_param.ksize_h;
+  param.pad_w = (param.output_w - 1) * info_param.strides_w + info_param.ksize_w;
   if ((param.pad_h - param.input_h - param.pad_t) >= 0) {
     param.pad_b = param.pad_h - param.input_h - param.pad_t;
   } else {
@@ -292,30 +280,18 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   } else {
     param.pad_r = 0;
   }
-  // calc core_num, core_ele, loop_num and loop_left
-  if ((ksize_h == 1) && (ksize_w == 1) && (strides_h == 1) && (strides_w == 1)) {
-    param.tiling_mode = 0;
-    param.n_c1 = input_shape[0] * input_shape[1];
-    int32_t max_ele = ub_ele / input_shape[4];
-    int32_t total_ele = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
-    CalCoreNum(param, total_ele, core_num);
-    param.one_core_loop_num = param.one_core_ele / max_ele;
-    param.one_core_loop_left = param.one_core_ele % max_ele;
-    param.last_core_loop_num = param.last_core_ele / max_ele;
-    param.last_core_loop_left = param.last_core_ele % max_ele;
-  } else if (check_resnet50(input_shape, ksize_h, ksize_w, strides_h, strides_w, pad_top, pad_left, ceil_mode)) {
-    param.tiling_mode = TILING_MODE_6;
-    param.n_c1 = input_shape[INPUT_INDEX_ZERO] * input_shape[INPUT_INDEX_ONE];
-    CalCoreNum(param, param.n_c1, core_num);
-  } else {
+}
+
+static void NormalTilingMode(TilingParam& param, const CompileInfoParam& info_param,
+                             const vector<int64_t>& input_shape, int32_t ub_ele, int32_t core_num) {
     int32_t one_sixth_ub_ele = ub_ele / TILING_DIVIDE_6;
     param.n_c1 = input_shape[0] * input_shape[1];
     int32_t require_memory_1 = GetRequireMemory(param, TILING_MODE_1,
                                                 param.pad_h * param.pad_w * input_shape[INPUT_INDEX_FOUR],
-                                                ksize_h, ksize_w);
+                                                info_param.ksize_h, info_param.ksize_w);
     int32_t require_memory_2 = GetRequireMemory(param, TILING_MODE_2,
-                                                ksize_h * param.pad_w * input_shape[INPUT_INDEX_FOUR],
-                                                ksize_h, ksize_w);
+                                                info_param.ksize_h * param.pad_w * input_shape[INPUT_INDEX_FOUR],
+                                                info_param.ksize_h, info_param.ksize_w);
     if (require_memory_1 <= (one_sixth_ub_ele - GATHER_LEN * C_ZERO)) {
       param.tiling_mode = TILING_MODE_1;
       CalCoreNum(param, param.n_c1, core_num);
@@ -329,8 +305,9 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
     } else if (require_memory_2 <= (one_sixth_ub_ele - GATHER_LEN * C_ZERO)) {
       param.tiling_mode = TILING_MODE_4;
-      param.h_factor = GetFactor(param, TILING_MODE_2, (one_sixth_ub_ele - GATHER_LEN * C_ZERO), input_shape[INPUT_INDEX_FOUR],
-                                 ksize_h, ksize_w, strides_h, strides_w);
+      param.h_factor = GetFactor(param, TILING_MODE_2, (one_sixth_ub_ele - GATHER_LEN * C_ZERO),
+                                 input_shape[INPUT_INDEX_FOUR],
+                                 info_param.ksize_h, info_param.ksize_w, info_param.strides_h, info_param.strides_w);
       CalCoreNum(param, param.n_c1, core_num);
       param.one_core_loop_num = param.output_h / param.h_factor;
       param.one_core_loop_left = param.output_h % param.h_factor;
@@ -339,7 +316,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     }  else if (require_memory_2 <= one_sixth_ub_ele) {
       param.tiling_mode = TILING_MODE_2;
       param.h_factor = GetFactor(param, TILING_MODE_2, one_sixth_ub_ele, input_shape[INPUT_INDEX_FOUR],
-                                 ksize_h, ksize_w, strides_h, strides_w);
+                                 info_param.ksize_h, info_param.ksize_w, info_param.strides_h, info_param.strides_w);
       CalCoreNum(param, param.n_c1, core_num);
       param.one_core_loop_num = param.output_h / param.h_factor;
       param.one_core_loop_left = param.output_h % param.h_factor;
@@ -348,14 +325,16 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     } else {
       param.tiling_mode = TILING_MODE_3;
       param.w_factor = GetFactor(param, TILING_MODE_3, one_sixth_ub_ele, input_shape[INPUT_INDEX_FOUR],
-                                 ksize_h, ksize_w, strides_h, strides_w);
+                                 info_param.ksize_h, info_param.ksize_w, info_param.strides_h, info_param.strides_w);
       param.one_core_loop_num = param.output_w / param.w_factor;
       param.one_core_loop_left = param.output_w % param.w_factor;
       param.last_core_loop_num = param.one_core_loop_num;
       param.last_core_loop_left = param.one_core_loop_left;
       CalCoreNum(param, param.n_c1, core_num);
     }
-  }
+}
+
+static void CalAlignParam(TilingParam& param) {
   if (param.w_factor % ALLIGN_NUM != 0) {
     param.align_w_factor = (param.w_factor / ALLIGN_NUM + 1) * ALLIGN_NUM;
   } else {
@@ -380,6 +359,42 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.align_output_hw = (param.align_output_hw / ALLIGN_NUM + 1) * ALLIGN_NUM;
   }
   param.align_output_hw = (param.align_output_hw / ALLIGN_NUM + 1) * ALLIGN_NUM;
+}
+
+static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape,
+                           const CompileInfoParam& compile_info_param) {
+  int32_t ub_ele = compile_info_param.ub_ele;
+  int32_t core_num = compile_info_param.core_num;
+  int32_t ksize_h = compile_info_param.ksize_h;
+  int32_t ksize_w = compile_info_param.ksize_w;
+  int32_t strides_h = compile_info_param.strides_h;
+  int32_t strides_w = compile_info_param.strides_w;
+  int32_t ceil_mode = compile_info_param.ceil_mode;
+  int32_t pad_top = compile_info_param.pad_top;
+  int32_t pad_left = compile_info_param.pad_left;
+
+  // calc output height and width, pad infos
+  CalPadOut(param, compile_info_param);
+
+  // calc core_num, core_ele, loop_num and loop_left
+  if ((ksize_h == 1) && (ksize_w == 1) && (strides_h == 1) && (strides_w == 1)) {
+    param.tiling_mode = 0;
+    param.n_c1 = input_shape[0] * input_shape[1];
+    int32_t max_ele = ub_ele / input_shape[4];
+    int32_t total_ele = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
+    CalCoreNum(param, total_ele, core_num);
+    param.one_core_loop_num = param.one_core_ele / max_ele;
+    param.one_core_loop_left = param.one_core_ele % max_ele;
+    param.last_core_loop_num = param.last_core_ele / max_ele;
+    param.last_core_loop_left = param.last_core_ele % max_ele;
+  } else if (check_resnet50(input_shape, ksize_h, ksize_w, strides_h, strides_w, pad_top, pad_left, ceil_mode)) {
+    param.tiling_mode = TILING_MODE_6;
+    param.n_c1 = input_shape[INPUT_INDEX_ZERO] * input_shape[INPUT_INDEX_ONE];
+    CalCoreNum(param, param.n_c1, core_num);
+  } else {
+    NormalTilingMode(param, compile_info_param, input_shape, ub_ele, core_num);
+  }
+  CalAlignParam(param);
 }
 
 static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, int32_t& value) {
@@ -459,8 +474,8 @@ bool MaxPoolWithArgmaxV2Tiling(const string& op_type, const TeOpParas& op_paras,
 
   // check ksize, strides and input shape
   TilingParam param;
-  param.input_h = input_shape[2];
-  param.input_w = input_shape[3];
+  param.input_h = input_shape[INPUT_INDEX_TWO];
+  param.input_w = input_shape[INPUT_INDEX_THREE];
   if (compile_info_param.global == 1) {
     compile_info_param.ksize_h = param.input_h;
     compile_info_param.ksize_w = param.input_w;

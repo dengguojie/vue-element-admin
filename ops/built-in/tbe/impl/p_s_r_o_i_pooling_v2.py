@@ -607,7 +607,6 @@ class PSROIPoolingV2Class(object):
                 INT16, (DIGIT_128,), name="bin_area_int16", scope=tbe_platform.scope_ubuf)
             self.tik_instance.vector_dup(DIGIT_128, bin_area_int16,
                                           bin_area_16_scalar, REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)
-            # s162f16:vconv
             self.tik_instance.vconv(DIGIT_128, '', bin_area_fp_ub,
                                     bin_area_int16, REPEAT_1, STRIDE_ONE,
                                     STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
