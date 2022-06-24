@@ -60,7 +60,7 @@ static void BatchMatMulV2TilingRuntime2Benchmark(benchmark::State &state, const 
   gert::StorageShape x1_shape = {{32, 2048, 512}, {32, 32, 128, 16, 16}};
   gert::StorageShape x2_shape = {{512, 512}, {32, 32, 16, 16}};
   std::vector<gert::StorageShape> output_shapes(1, {{32, 2048, 512}, {32, 32, 128, 16, 16}});
-  std::vector<gert::StorageShape *> output_shapes_ref(1);
+  std::vector<void*> output_shapes_ref(1);
   for (size_t i = 0; i < output_shapes.size(); ++i) {
     output_shapes_ref[i] = &output_shapes[i];
   }
