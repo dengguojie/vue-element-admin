@@ -338,17 +338,19 @@ void Tiling::GetTilingId(const BatchmatmulParas &params)
   const BatchmatmulCompileParas &compile_params = *(params.compile_params);
   const BatchmatmulRunParas &run_params = *(params.run_params);
   int32_t tilingIDLongLong = compile_params.split_k_flag ? 1 : 0;
-  tilingIDLongLong = tilingIDLongLong * kDecimal + db_al1;
-  tilingIDLongLong = tilingIDLongLong * kDecimal + db_bl1;
-  tilingIDLongLong = tilingIDLongLong * kDecimal + db_l0c;
+  // db_flag includes db_al1, db_bl1 and db_l0c flags, its value from 1 to 8 represent 8 different combinations
+  int32_t db_flag = ((db_al1 - 1) << 2) + ((db_bl1 - 1) << 1) + db_l0c;
+  tilingIDLongLong = tilingIDLongLong * kDecimal + db_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + abkl1_attach_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + al1_attach_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + bl1_attach_flag;
+  tilingIDLongLong = tilingIDLongLong * kDecimal + min_kl1_cmp_kl0;
   if (compile_params.nd_flag) {
     tilingIDLongLong = tilingIDLongLong * kDecimal + aub_multi_flag;
     tilingIDLongLong = tilingIDLongLong * kDecimal + bub_multi_flag;
   }
-  tilingIDLongLong = tilingIDLongLong * kDecimal + min_kl1_cmp_kl0 + ((run_params.non_factor_k ? 1 : 0) << 1);
+  tilingIDLongLong = tilingIDLongLong * kDecimal + run_params.non_factor_k;
+  tilingIDLongLong = tilingIDLongLong * kDecimal + run_params.non_factor_bmn;
   this->tiling_id = std::to_string(tilingIDLongLong);
 }
 
@@ -688,6 +690,26 @@ void GetSplitKdim(const string &op_type, BatchmatmulParas &params, CoreStatus &c
   OP_LOGD(op_type.c_str(), "multi-core slicing factor k_dim:%d", coreStatus.k_dim);
 }
 
+void SetNonfactorFlag(BatchmatmulRunParas &run_params, const CoreStatus &coreStatus,
+                      bool all_full_load_flag, const int32_t kDimArray[]) {
+  // non-factor split is only used for multi-core split, not considered when the number of core_dim is 1
+  run_params.m_mapped = coreStatus.m_dim == 1 ? run_params.m_32 : run_params.m_mapped;
+  run_params.n_mapped = coreStatus.n_dim == 1 ? run_params.n_32 : run_params.n_mapped;
+  run_params.batch_mapped = coreStatus.batch_dim == 1 ? run_params.batch_32 : run_params.batch_mapped;
+  if (all_full_load_flag) {
+    run_params.k_mapped = coreStatus.k_dim == 1 ? run_params.k_32 : run_params.k_mapped;
+  } else {
+    run_params.k_mapped =
+        (coreStatus.k_dim == 1 || coreStatus.k_dim == kDimArray[kIdxTwo] || coreStatus.k_dim == kDimArray[kIdxThree])
+            ? run_params.k_32
+            : run_params.k_mapped;
+  }
+  run_params.non_factor_k = run_params.k_mapped == run_params.k_32 ? false : true;
+  run_params.non_factor_bmn = (run_params.batch_mapped == run_params.batch_32 &&
+                               run_params.n_mapped == run_params.n_32 &&
+                               run_params.m_mapped == run_params.m_32) ? false : true;
+}
+
 int32_t GetBlockDim(const string &op_type, BatchmatmulParas &params, CoreStatus &coreStatus,
                     BlockDimCalculator &blockDimCalculator)
 {
@@ -717,8 +739,7 @@ int32_t GetBlockDim(const string &op_type, BatchmatmulParas &params, CoreStatus 
     coreStatus.n_dim = run_params.n_32;
     coreStatus.m_dim = run_params.m_32;
     coreStatus.k_dim = kDimArray[0];
-    run_params.k_mapped = coreStatus.k_dim == 1 ? run_params.k_32 : run_params.k_mapped;
-    run_params.non_factor_k = run_params.k_mapped == run_params.k_32 ? false : true;
+    SetNonfactorFlag(run_params, coreStatus, true, kDimArray);
     coreStatus.batch = 1;
     coreStatus.m = 1;
     coreStatus.k = run_params.k_mapped / kDimArray[0];
@@ -765,13 +786,7 @@ int32_t GetBlockDim(const string &op_type, BatchmatmulParas &params, CoreStatus 
   coreStatus.n_dim = blockDimCalculator.n_dim_factor;
   coreStatus.m_dim = blockDimCalculator.m_dim_factor;
   coreStatus.k_dim = blockDimCalculator.k_dim_factor;
-  run_params.m_mapped = coreStatus.m_dim == 1 ? run_params.m_32 : run_params.m_mapped;
-  run_params.n_mapped = coreStatus.n_dim == 1 ? run_params.n_32 : run_params.n_mapped;
-  run_params.k_mapped =
-      (coreStatus.k_dim == 1 || coreStatus.k_dim == kDimArray[kIdxTwo] || coreStatus.k_dim == kDimArray[kIdxThree])
-          ? run_params.k_32
-          : run_params.k_mapped;
-  run_params.non_factor_k = run_params.k_mapped == run_params.k_32 ? false : true;
+  SetNonfactorFlag(run_params, coreStatus, false, kDimArray);
   coreStatus.m = run_params.m_mapped / blockDimCalculator.m_dim_factor;
   coreStatus.n = run_params.n_mapped / blockDimCalculator.n_dim_factor;
   coreStatus.k = run_params.k_mapped / blockDimCalculator.k_dim_factor;

@@ -60,6 +60,7 @@ struct BatchmatmulRunParas {
   bool is_batch_matmul_mode = false;  // (BatchMatMulV2 or BatchMatMul) and (dynamic_mode == "dynamic_mknb")
   bool used_aligned_pattern = false;
   bool non_factor_k = false;
+  bool non_factor_bmn = false;
   int32_t m_32 = 1;
   int32_t k_32 = 1;
   int32_t n_32 = 1;

@@ -83,6 +83,7 @@ def gen_batch_matmul_dynamic_none_range(
         "expect": "success"
     }
 
+
 def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, dst_dtype,
                              format, trans_a, trans_b, bias_flag, batchb_flag, case_name, error_mode=None):
     """
