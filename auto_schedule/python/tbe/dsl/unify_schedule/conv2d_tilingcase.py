@@ -70,10 +70,10 @@ BINARY_BASE_TILING = {
     "AUB_channel_wise_flag": None, "BUB_channel_wise_flag": None, "CUB_channel_wise_flag": None,
     "tbe_compile_para": 0,
     "manual_pingpong_buffer": {"AUB_pbuffer": utils.DB_OFF, "BUB_pbuffer": utils.DB_OFF,
-                               "AL1_pbuffer": utils.DB_ON, "BL1_pbuffer": utils.DB_ON,
-                               "AL0_pbuffer": utils.DB_ON, "BL0_pbuffer": utils.DB_ON,
-                               "CL0_pbuffer": utils.DB_ON,
-                               "CUB_pbuffer": utils.DB_OFF, "UBG_pbuffer": utils.DB_OFF},
+                               "AL1_pbuffer": utils.DB_OFF, "BL1_pbuffer": utils.DB_OFF,
+                               "AL0_pbuffer": utils.DB_OFF, "BL0_pbuffer": utils.DB_OFF,
+                               "CL0_pbuffer": utils.DB_OFF,
+                               "CUB_pbuffer": utils.DB_ON, "UBG_pbuffer": utils.DB_OFF},
     "attach_at_flag": {"bl0_attach_flag": -1, "al1_attach_flag": -1, "bl1_attach_flag": -1}
 }
 

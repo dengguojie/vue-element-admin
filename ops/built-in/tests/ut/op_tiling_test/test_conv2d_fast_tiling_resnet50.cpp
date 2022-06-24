@@ -297,8 +297,8 @@ void get_resnet_tiling_case_00(Conv2dParams& inputParams) {
     inputParams.stride_w = 1;
     inputParams.groups = 1;
     inputParams.biasFlag = true;
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_01(Conv2dParams& inputParams) {
@@ -325,8 +325,8 @@ void get_resnet_tiling_case_01(Conv2dParams& inputParams) {
     inputParams.stride_w = 1;
     inputParams.groups = 1;
     inputParams.biasFlag = true;
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_02(Conv2dParams& inputParams) {
@@ -355,8 +355,8 @@ void get_resnet_tiling_case_02(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_03(Conv2dParams& inputParams) {
@@ -385,8 +385,8 @@ void get_resnet_tiling_case_03(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_04(Conv2dParams& inputParams) {
@@ -415,8 +415,8 @@ void get_resnet_tiling_case_04(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 3;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 2;
 }
 
 void get_resnet_tiling_case_05(Conv2dParams& inputParams) {
@@ -445,8 +445,8 @@ void get_resnet_tiling_case_05(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_06(Conv2dParams& inputParams) {
@@ -475,8 +475,8 @@ void get_resnet_tiling_case_06(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_07(Conv2dParams& inputParams) {
@@ -505,8 +505,8 @@ void get_resnet_tiling_case_07(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_08(Conv2dParams& inputParams) {
@@ -535,8 +535,8 @@ void get_resnet_tiling_case_08(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_09(Conv2dParams& inputParams) {
@@ -565,8 +565,8 @@ void get_resnet_tiling_case_09(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_10(Conv2dParams& inputParams) {
@@ -595,8 +595,8 @@ void get_resnet_tiling_case_10(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_11(Conv2dParams& inputParams) {
@@ -625,8 +625,8 @@ void get_resnet_tiling_case_11(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_12(Conv2dParams& inputParams) {
@@ -655,8 +655,8 @@ void get_resnet_tiling_case_12(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_13(Conv2dParams& inputParams) {
@@ -685,8 +685,8 @@ void get_resnet_tiling_case_13(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_14(Conv2dParams& inputParams) {
@@ -715,8 +715,8 @@ void get_resnet_tiling_case_14(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_15(Conv2dParams& inputParams) {
@@ -745,8 +745,8 @@ void get_resnet_tiling_case_15(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_16(Conv2dParams& inputParams) {
@@ -775,8 +775,8 @@ void get_resnet_tiling_case_16(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_17(Conv2dParams& inputParams) {
@@ -805,8 +805,8 @@ void get_resnet_tiling_case_17(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_18(Conv2dParams& inputParams) {
@@ -835,8 +835,8 @@ void get_resnet_tiling_case_18(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_19(Conv2dParams& inputParams) {
@@ -865,8 +865,8 @@ void get_resnet_tiling_case_19(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_20(Conv2dParams& inputParams) {
@@ -895,8 +895,8 @@ void get_resnet_tiling_case_20(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_21(Conv2dParams& inputParams) {
@@ -925,8 +925,8 @@ void get_resnet_tiling_case_21(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_22(Conv2dParams& inputParams) {
@@ -955,8 +955,8 @@ void get_resnet_tiling_case_22(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_23(Conv2dParams& inputParams) {
@@ -985,8 +985,8 @@ void get_resnet_tiling_case_23(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_24(Conv2dParams& inputParams) {
@@ -1015,8 +1015,8 @@ void get_resnet_tiling_case_24(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_25(Conv2dParams& inputParams) {
@@ -1045,8 +1045,8 @@ void get_resnet_tiling_case_25(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_26(Conv2dParams& inputParams) {
@@ -1075,8 +1075,8 @@ void get_resnet_tiling_case_26(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_27(Conv2dParams& inputParams) {
@@ -1105,8 +1105,8 @@ void get_resnet_tiling_case_27(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_28(Conv2dParams& inputParams) {
@@ -1135,8 +1135,8 @@ void get_resnet_tiling_case_28(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 3;
 }
 
 void get_resnet_tiling_case_29(Conv2dParams& inputParams) {
@@ -1165,8 +1165,8 @@ void get_resnet_tiling_case_29(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_30(Conv2dParams& inputParams) {
@@ -1195,8 +1195,8 @@ void get_resnet_tiling_case_30(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_31(Conv2dParams& inputParams) {
@@ -1225,8 +1225,8 @@ void get_resnet_tiling_case_31(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_32(Conv2dParams& inputParams) {
@@ -1255,8 +1255,8 @@ void get_resnet_tiling_case_32(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_33(Conv2dParams& inputParams) {
@@ -1285,8 +1285,8 @@ void get_resnet_tiling_case_33(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_34(Conv2dParams& inputParams) {
@@ -1315,8 +1315,8 @@ void get_resnet_tiling_case_34(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_35(Conv2dParams& inputParams) {
     // feature map
@@ -1344,8 +1344,8 @@ void get_resnet_tiling_case_35(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_36(Conv2dParams& inputParams) {
     // feature map
@@ -1373,8 +1373,8 @@ void get_resnet_tiling_case_36(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_37(Conv2dParams& inputParams) {
@@ -1403,8 +1403,8 @@ void get_resnet_tiling_case_37(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_38(Conv2dParams& inputParams) {
     // feature map
@@ -1432,8 +1432,8 @@ void get_resnet_tiling_case_38(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_39(Conv2dParams& inputParams) {
     // feature map
@@ -1461,8 +1461,8 @@ void get_resnet_tiling_case_39(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_40(Conv2dParams& inputParams) {
@@ -1491,8 +1491,8 @@ void get_resnet_tiling_case_40(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_41(Conv2dParams& inputParams) {
@@ -1521,8 +1521,8 @@ void get_resnet_tiling_case_41(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_42(Conv2dParams& inputParams) {
@@ -1551,8 +1551,8 @@ void get_resnet_tiling_case_42(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_43(Conv2dParams& inputParams) {
@@ -1581,8 +1581,8 @@ void get_resnet_tiling_case_43(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_44(Conv2dParams& inputParams) {
@@ -1611,8 +1611,8 @@ void get_resnet_tiling_case_44(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_45(Conv2dParams& inputParams) {
     // feature map
@@ -1640,8 +1640,8 @@ void get_resnet_tiling_case_45(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_46(Conv2dParams& inputParams) {
     // feature map
@@ -1669,8 +1669,8 @@ void get_resnet_tiling_case_46(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_47(Conv2dParams& inputParams) {
@@ -1699,8 +1699,8 @@ void get_resnet_tiling_case_47(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 void get_resnet_tiling_case_48(Conv2dParams& inputParams) {
     // feature map
@@ -1728,8 +1728,8 @@ void get_resnet_tiling_case_48(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 void get_resnet_tiling_case_49(Conv2dParams& inputParams) {
@@ -1758,8 +1758,8 @@ void get_resnet_tiling_case_49(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = true;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_00) {
@@ -4193,8 +4193,8 @@ void get_resnet_tiling_case_ssd_001(Conv2dParams& inputParams) {
     inputParams.groups = 1;
     inputParams.biasFlag = false;
 
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 TEST_F(Conv2DFastTilingResNetTest910B, test_tiling_case_ssd_001) {
@@ -4287,9 +4287,8 @@ void get_resnet_tiling_case_restnet_001(Conv2dParams& inputParams) {
     inputParams.stride_w = 1;
     inputParams.groups = 1;
     inputParams.biasFlag = false;
-
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 1;
+    inputParams.preFusionUbUtilize = 0;
+    inputParams.postFusionUbUtilize = 0;
 }
 
 TEST_F(Conv2DFastTilingResNetTest910A, test_tiling_case_RESNET_001) {

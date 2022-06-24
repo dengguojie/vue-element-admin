@@ -31,7 +31,6 @@
     }                                                                                                            \
   }
 
-
 #define CHECK_FAST_TILING_DATA_RANGE(data, min, max, name, ...)                                                  \
 {                                                                                                                \
     bool isValueInRange = (data >= min && data <= max);                                                          \
@@ -59,12 +58,6 @@ enum class FastTilingValue : uint32_t {
 const uint32_t CUBE_UNIT_32 = 32;
 const uint32_t CUBE_UNIT_16 = 16;
 const uint32_t FULL_LOAD = UINT32_MAX;
-const uint32_t FOUR = 4;
-const uint32_t THREE = 3;
-const uint32_t TWO = 2;
-const uint32_t SHAPE_INDEX_2 = 2;
-const uint32_t SHAPE_INDEX_3 = 3;
-const uint32_t SPLIT_THRESHOLD = 4;
 const uint32_t FM_REUSE = 1;
 const uint32_t WEIGHT_REUSE = 2;
 const float HALF = 0.5;
@@ -77,6 +70,11 @@ const int64_t MAX_PADDING_SIZE = 255;
 const int64_t MAX_DILATION_SIZE = 255;
 const int64_t MAX_FILTER_SIZE = 255;
 const int64_t MAX_STRIDE_SIZE = 63;
+const uint32_t SHAPE_INDEX_2 = 2;
+const uint32_t SHAPE_INDEX_3 = 3;
+const uint32_t CONST_2 = 2;
+const uint32_t CONST_16 = 16;
+const uint32_t CONST_256 = 256;
 
 struct TilingRangeL1
 {
@@ -86,9 +84,10 @@ struct TilingRangeL1
   std::vector<uint32_t> batch = {0};
   std::vector<uint32_t> nBL1 = {0};
   std::vector<uint32_t> kBL1 = {0};
-  uint32_t pbuffer = static_cast<uint32_t>(PBuffer::PBUFFER_DB);
-  std::vector<uint32_t> pbAL1 = {pbuffer};
-  std::vector<uint32_t> pbBL1 = {pbuffer};
+  uint32_t pbufferOn = static_cast<uint32_t>(PBuffer::PBUFFER_DB);
+  uint32_t pbufferOff = static_cast<uint32_t>(PBuffer::PBUFFER_OFF);
+  std::vector<uint32_t> pbAL1 = {pbufferOff};
+  std::vector<uint32_t> pbBL1 = {pbufferOff};
 };
 
 struct BlockDimRange
@@ -281,10 +280,11 @@ struct TilingRangeL0
     std::vector<uint32_t> nL0 = {0};
     std::vector<uint32_t> groupL0 = {0};
     std::vector<uint32_t> batchL0 = {0};
-    uint32_t pbuffer = static_cast<uint32_t>(PBuffer::PBUFFER_DB);
-    std::vector<uint32_t> pbAL0 = {pbuffer};
-    std::vector<uint32_t> pbBL0 = {pbuffer};
-    std::vector<uint32_t> pbCL0 = {pbuffer};
+    uint32_t pbufferOn = static_cast<uint32_t>(PBuffer::PBUFFER_DB);
+    uint32_t pbufferOff = static_cast<uint32_t>(PBuffer::PBUFFER_OFF);
+    std::vector<uint32_t> pbAL0 = {pbufferOff};
+    std::vector<uint32_t> pbBL0 = {pbufferOff};
+    std::vector<uint32_t> pbCL0 = {pbufferOff};
 };
 
 struct L0Data
@@ -304,10 +304,11 @@ struct TilingRangeUB
     std::vector<uint32_t> mAub = {0};
     std::vector<uint32_t> ncFactor = {0};
     std::vector<uint32_t> mcFactor = {0};
-    uint32_t pbuffer = static_cast<uint32_t>(PBuffer::PBUFFER_OFF);
-    std::vector<uint32_t> pbAUB = {pbuffer};
-    std::vector<uint32_t> pbCUB = {pbuffer};
-    std::vector<uint32_t> pbUBG = {pbuffer};
+    uint32_t pbufferOff = static_cast<uint32_t>(PBuffer::PBUFFER_OFF);
+    uint32_t pbufferOn = static_cast<uint32_t>(PBuffer::PBUFFER_DB);
+    std::vector<uint32_t> pbAUB = {pbufferOff};
+    std::vector<uint32_t> pbCUB = {pbufferOn};
+    std::vector<uint32_t> pbUBG = {pbufferOff};
 };
 
 struct UBData
@@ -349,10 +350,11 @@ private:
     bool GetL1Tiling(Tiling &tiling);
     bool GetL1WithoutFilter(Tiling &tiling);
     void AssignmentL1(Tiling &tiling);
-    void AddL1Data(const float nBL1number, const float mAL1number, const float kAL1number);
     // get L0 dim range
     void WeightFullLoad();
     void GetL0TilingRange(const Tiling& tiling);
+    void GetL0ATilingRange(const Tiling& tiling);
+    void GetL0BTilingRange(const Tiling& tiling);
     void GetRangeL0BWeightSplit(const Tiling& tiling, vector<uint32_t>& nVectorL0,
                                 vector<uint32_t>& kBVectorL0, const uint32_t nMaxAvail,
                                 const uint32_t kBMaxAvail);
@@ -402,6 +404,14 @@ private:
     uint32_t reduceKAxisAL1_KhDilKwDilCi0_;
     uint32_t reduceKAxisBL1_KhKwCi0_;
     uint32_t isSplitWAxis_;
+    uint32_t pbAL1Value = 1;
+    uint32_t pbBL1Value = 1;
+    uint32_t pbAL0Value = 1;
+    uint32_t pbBL0Value = 1;
+    uint32_t pbCL0Value = 1;
+    uint32_t pbAUBValue = 1;
+    uint32_t pbCUBValue = 1;
+    uint32_t pbUBGValue = 1;
     // conv2d case status
     bool isMultiGroupL0cFlag = false;
     bool isLoad2dFlag = false;

@@ -244,9 +244,9 @@ TEST_F(Conv2DFastTilingTest, test_update_l0_data)
     fastTilingPtr->tilingRangeL0_.mL0 = {2};
     fastTilingPtr->tilingRangeL0_.nL0 = {3};
     // index default is 0 and get Ci0 is 16.
-    uint32_t l0ACurrent = 1 * 16 * inputParams.kh * inputParams.kw * 2 * 16 * 2;
-    uint32_t l0BCurrent = 1 * 16 * inputParams.kh * inputParams.kw * 3 * 16 * 2;
-    uint32_t l0CCurrent = 2 * 3 * 16 * 16 * 2;
+    uint32_t l0ACurrent = 1 * 16 * 2 * 16 * 2;
+    uint32_t l0BCurrent = 1 * 16  * 3 * 16 * 2;
+    uint32_t l0CCurrent = 2 * 3 * 16 * 16 * 4;
     fastTilingPtr->UpdateL0Data();
     ASSERT_EQ(fastTilingPtr->l0Data_.l0ACurrent, l0ACurrent);
     ASSERT_EQ(fastTilingPtr->l0Data_.l0BCurrent, l0BCurrent);
@@ -484,7 +484,7 @@ TEST_F(Conv2DFastTilingTest, test_get_ub_tiling_01)
     fake_tiling.nC = 8;
     fake_tiling.mC = 1;
 
-    fastTilingPtr->opInfo_.postFusionUbUtilize = hardwareInfo.ubSize / 2 / 256;
+    fastTilingPtr->opInfo_.postFusionUbUtilize = hardwareInfo.ubSize / 2 / 256 / 2 - 1;
     bool ret = fastTilingPtr->GetUBTiling(fake_tiling);
     ASSERT_EQ(ret, true);
 }
