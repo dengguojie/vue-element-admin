@@ -93,7 +93,10 @@ void DynamicAUGRUGradAlignFusionPass::GetNodeInfo(ge::NodePtr dynamicAUGRUGradNo
   inputDim = inputTensorDescX.GetShape().GetDim(INDEX_2);
   nzInputDim = (inputDim + fzDim - 1) / fzDim;
   inputHType = inputTensorDescH.GetDataType();
-  hasSeqLength = dynamicAUGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr;
+  if (dynamicAUGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr &&
+      dynamicAUGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length")->GetShape().GetDims().size() != 0) {
+    hasSeqLength = true;
+  }
   return;
 }
 

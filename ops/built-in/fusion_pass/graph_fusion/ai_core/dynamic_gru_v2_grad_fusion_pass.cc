@@ -68,7 +68,10 @@ void DynamicGRUV2GradFusionPass::GetNodeInfo(ge::NodePtr dynamicGRUGradNode) {
   input_dim = inputTensorDescX.GetShape().GetDim(INDEX_2);
   nzInputDim = (input_dim + fzDim - 1) / fzDim;
   inputHType = inputTensorDescH.GetDataType();
-  hasSeqLength = dynamicGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr;
+  if (dynamicGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr &&
+      dynamicGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length")->GetShape().GetDims().size() != 0) {
+    hasSeqLength = true;
+  }
   return;
 }
 
