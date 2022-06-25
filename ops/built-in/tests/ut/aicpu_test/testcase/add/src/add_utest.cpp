@@ -168,6 +168,45 @@ TEST_F(TEST_ADD_UT, INT16_SCALAR_ADD_VECTOR_SUCC) {
   EXPECT_EQ(compare, true);
 }
 
+
+TEST_F(TEST_ADD_UT, FLOAT_SCALAR_ADD_COMPLEX_SUCC) {
+  vector<DataType> data_types = {DT_COMPLEX64, DT_COMPLEX64, DT_COMPLEX64};
+  vector<vector<int64_t>> shapes = {{1}, {2}, {2}};
+
+  std::complex<float> input1[1] = {{1.2, 3.2}};
+  std::complex<float> input2[2] = {{2.6, 3}, {3.5, 5.2}};
+  std::complex<float> output[2] = {0};
+  vector<void *> datas = {(void *)input1,
+                          (void *)input2,
+                          (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  std::complex<float> output_exp[2] = {{3.8, 6.2}, {4.7, 8.4}};
+  bool compare = CompareResult(output, output_exp, 2);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_ADD_UT, DOUBLE_SCALAR_ADD_COMPLEX_SUCC) {
+  vector<DataType> data_types = {DT_COMPLEX128, DT_COMPLEX128, DT_COMPLEX128};
+  vector<vector<int64_t>> shapes = {{1}, {2}, {2}};
+
+  std::complex<double> input1[1] = {{3.2, 1.2}};
+  std::complex<double> input2[2] = {{4.6, 5.8}, {2.5, 4.2}};
+  std::complex<double> output[2] = {0};
+  vector<void *> datas = {(void *)input1,
+                          (void *)input2,
+                          (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  std::complex<double> output_exp[2] = {{7.8, 7.0}, {5.7, 5.4}};
+  bool compare = CompareResult(output, output_exp, 2);
+  EXPECT_EQ(compare, true);
+}
+
 TEST_F(TEST_ADD_UT, INT32_VECTOR_ADD_SCALAR_SUCC) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
   vector<vector<int64_t>> shapes = {{2}, {1}, {2}};

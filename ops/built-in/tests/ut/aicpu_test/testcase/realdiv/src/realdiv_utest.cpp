@@ -79,6 +79,10 @@ ADD_CASE(uint8_t, DT_UINT8)
 
 ADD_CASE(uint16_t, DT_UINT16)
 
+ADD_CASE(std::complex<float>, DT_COMPLEX64)
+
+ADD_CASE(std::complex<double>, DT_COMPLEX128)
+
 vector<vector<int64_t>> shapes_realdiv_dim7 = {{2, 1, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 1, 1}};
 vector<int64_t> data_num_realdiv_dim7 = {2, 1, 2};
 REALDIV_CASE_WITH_SHAPE(int16_realdiv_vector_dim_7, int16_t, DT_INT16, shapes_realdiv_dim7, data_num_realdiv_dim7)

@@ -86,6 +86,10 @@ uint32_t RealDivKernel::ComputeDiffType(const Tensor *x, const Tensor *y, const 
       return ComputeRealdiv<int32_t>(x, y, z, ctx);
     case DT_INT64:
       return ComputeRealdiv<int64_t>(x, y, z, ctx);
+    case DT_COMPLEX64:
+      return ComputeRealdiv<std::complex<float>>(x, y, z, ctx);
+    case DT_COMPLEX128:
+      return ComputeRealdiv<std::complex<double>>(x, y, z, ctx);
     default:
       KERNEL_LOG_ERROR("RealDiv invalid input type[%s]",
                        DTypeStr(data_type).c_str());

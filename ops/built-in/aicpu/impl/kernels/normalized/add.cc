@@ -60,6 +60,10 @@ uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
       return AddCompute<uint32_t>(ctx);
     case DT_UINT64:
       return AddCompute<uint64_t>(ctx);
+    case DT_COMPLEX64:
+      return AddCompute<std::complex<float>>(ctx);
+    case DT_COMPLEX128:
+      return AddCompute<std::complex<double>>(ctx);
     default:
       KERNEL_LOG_ERROR("[%s] Data type of input is not support, input data type is [%s].",
                        ctx.GetOpType().c_str(), DTypeStr(data_type).c_str());

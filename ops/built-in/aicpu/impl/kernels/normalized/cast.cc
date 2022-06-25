@@ -125,6 +125,7 @@ void CastCpuKernel::SetMap() {
   calls_[DT_FLOAT][DT_UINT32] = CastTask<float, uint32_t>;
   calls_[DT_FLOAT][DT_UINT64] = CastTask<float, uint64_t>;
   calls_[DT_FLOAT][DT_BOOL] = CastTask<float, bool>;
+  calls_[DT_FLOAT][DT_COMPLEX64] = CastTask<float, std::complex<float>>;
   calls_[DT_DOUBLE][DT_INT8] = CastTask<double, int8_t>;
   calls_[DT_DOUBLE][DT_INT16] = CastTask<double, int16_t>;
   calls_[DT_DOUBLE][DT_INT32] = CastTask<double, int32_t>;
@@ -137,6 +138,7 @@ void CastCpuKernel::SetMap() {
   calls_[DT_DOUBLE][DT_UINT32] = CastTask<double, uint32_t>;
   calls_[DT_DOUBLE][DT_UINT64] = CastTask<double, uint64_t>;
   calls_[DT_DOUBLE][DT_BOOL] = CastTask<double, bool>;
+  calls_[DT_DOUBLE][DT_COMPLEX128] = CastTask<double, std::complex<double>>;
   calls_[DT_UINT8][DT_INT8] = CastTask<uint8_t, int8_t>;
   calls_[DT_UINT8][DT_INT16] = CastTask<uint8_t, int16_t>;
   calls_[DT_UINT8][DT_INT32] = CastTask<uint8_t, int32_t>;
