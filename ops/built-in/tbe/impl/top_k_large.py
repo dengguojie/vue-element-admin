@@ -113,12 +113,23 @@ class SegmentSort(Base):
             self.merge_sort.get_pro_num_info(self.index_num)
         self.align_cols = max(self.cols + self.pro_repeat_num, self.ub_pro_num_max)
 
-        self.temp_proposal_1 = self.tik_instance.Tensor(self.dtype, (self.rows, self.align_cols, self.pro_data_num),
-                                                        name="temp_proposal_1", scope=self.tik.scope_gm,
-                                                        is_workspace=True)
-        self.temp_proposal_2 = self.tik_instance.Tensor(self.dtype, (self.rows, self.align_cols, self.pro_data_num),
-                                                        name="temp_proposal_2", scope=self.tik.scope_gm,
-                                                        is_workspace=True)
+        k_num_align = self.method.get_align_num(self.k_num, self.pro_repeat_num)
+        if k_num_align <= self.ub_sort_num:
+            parts = self.method.ceil_div(self.align_cols, self.ub_pro_num_max)
+            new_cols = min(parts * k_num_align, self.ub_pro_num_max)
+            self.temp_proposal_1 = self.tik_instance.Tensor(self.dtype, (self.rows, new_cols, self.pro_data_num),
+                                                            name="temp_proposal_1", scope=self.tik.scope_gm,
+                                                            is_workspace=True)
+            self.temp_proposal_2 = self.tik_instance.Tensor(self.dtype, (self.rows, new_cols, self.pro_data_num),
+                                                            name="temp_proposal_2", scope=self.tik.scope_gm,
+                                                            is_workspace=True)
+        else:
+            self.temp_proposal_1 = self.tik_instance.Tensor(self.dtype, (self.rows, self.align_cols, self.pro_data_num),
+                                                            name="temp_proposal_1", scope=self.tik.scope_gm,
+                                                            is_workspace=True)
+            self.temp_proposal_2 = self.tik_instance.Tensor(self.dtype, (self.rows, self.align_cols, self.pro_data_num),
+                                                            name="temp_proposal_2", scope=self.tik.scope_gm,
+                                                            is_workspace=True)
 
     def mode_compute(self):
         loop_num, ai_core_num = self._get_aicore_num()

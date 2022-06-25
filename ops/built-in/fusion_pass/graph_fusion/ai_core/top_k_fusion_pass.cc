@@ -660,7 +660,8 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
       // 2048 indicates the length of index in assist matrix.
       constexpr int64_t kAssistLen{2048};
       assist_dim_info.push_back(kAssistLen);
-      if (platform_info.str_info.short_soc_version == "Ascend910B") {
+      if (platform_info.str_info.short_soc_version == "Ascend910B" ||
+          platform_info.str_info.short_soc_version == "Ascend310B") {
         unique_ptr<int32_t[]> inputAssit(new (nothrow) int32_t[kAssistLen]());
         FUSION_PASS_CHECK(inputAssit.get() == nullptr,
                           VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "InputAssit is NULL"),
