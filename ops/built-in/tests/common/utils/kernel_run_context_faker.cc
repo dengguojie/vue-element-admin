@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <utils/op_desc_utils.h>
+#include <utils/graph_utils.h>
 #include "kernel_run_context_facker.h"
 #include "compute_graph.h"
 #include "lowering/bg_kernel_context_extend.h"
@@ -42,7 +44,7 @@ KernelRunContextFaker &KernelRunContextFaker::IrInstanceNum(std::vector<uint32_t
   ir_instance_num_ = std::move(instance_num);
   return *this;
 }
-ge::NodePtr KernelRunContextFaker::FakeNode() const {
+ge::NodePtr KernelRunContextFaker::FakeNode() {
   auto op_desc = std::make_shared<ge::OpDesc>("node", "node");
   size_t input_index = 0;
   for (size_t ir_index = 0; ir_index < ir_instance_num_.size(); ++ir_index) {
@@ -74,10 +76,16 @@ ge::NodePtr KernelRunContextFaker::FakeNode() const {
     op_desc->AppendIrAttrName(attr.first);
     op_desc->SetAttr(attr.first, attr.second);
   }
-  auto graph = std::make_shared<ge::ComputeGraph>("tmp");
-  return graph->AddNode(op_desc);
+  graph_ = std::make_shared<ge::ComputeGraph>("tmp");
+  auto fake_node = graph_->AddNode(op_desc);
+  for (size_t i = 0UL; i < op_desc->GetAllInputsSize(); ++i) {
+    auto op_data = ge::OpDescBuilder(std::to_string(i), "Data").AddInput("x").AddOutput("y").Build();
+    auto data_node = graph_->AddNode(op_data);
+    ge::GraphUtils::AddEdge(data_node->GetOutDataAnchor(0), fake_node->GetInDataAnchor(i));
+  }
+  return fake_node;
 }
-KernelRunContextHolder KernelRunContextFaker::Build() const {
+KernelRunContextHolder KernelRunContextFaker::Build() {
   KernelRunContextHolder holder;
   holder.kernel_input_num = kernel_input_num_;
   holder.kernel_output_num = kernel_output_num_;
@@ -158,7 +166,7 @@ InferShapeContextFaker &InferShapeContextFaker::OutputShapes(std::vector<void *>
   base_faker_.Outputs(std::move(output_shapes));
   return *this;
 }
-KernelRunContextHolder InferShapeContextFaker::Build() const {
+KernelRunContextHolder InferShapeContextFaker::Build() {
   return base_faker_.Build();
 }
 TilingContextFaker &TilingContextFaker::NodeIoNum(size_t input_num, size_t output_num) {
@@ -208,7 +216,7 @@ TilingContextFaker &TilingContextFaker::ConstInput(std::vector<std::pair<size_t,
   base_faker_.Inputs(std::move(inputs));
   return *this;
 }
-KernelRunContextHolder TilingContextFaker::Build() const {
+KernelRunContextHolder TilingContextFaker::Build() {
   return base_faker_.Build();
 }
 void TilingContextFaker::UpdateInputs() {

@@ -61,10 +61,10 @@ class KernelRunContextFaker {
   KernelRunContextFaker &Inputs(std::vector<void *> inputs);
   KernelRunContextFaker &Outputs(std::vector<void *> outputs);
 
-  KernelRunContextHolder Build() const;
+  KernelRunContextHolder Build();
 
  private:
-  ge::NodePtr FakeNode() const;
+  ge::NodePtr FakeNode();
 
  private:
   size_t kernel_input_num_;
@@ -77,6 +77,7 @@ class KernelRunContextFaker {
   std::vector<void *> inputs_;
   std::vector<void *> outputs_;
   std::vector<std::pair<std::string, ge::AnyValue>> attrs_;
+  ge::ComputeGraphPtr graph_;
 };
 
 class InferShapeContextFaker {
@@ -108,7 +109,7 @@ class InferShapeContextFaker {
   InferShapeContextFaker &InputShapes(std::vector<void *> input_shapes);
   InferShapeContextFaker &OutputShapes(std::vector<void *> output_shapes);
 
-  KernelRunContextHolder Build() const;
+  KernelRunContextHolder Build();
 
  private:
   enum InputsAppend { kInputsInferShapeFunc, kInputsAppendEnd };
@@ -148,7 +149,7 @@ class TilingContextFaker {
   TilingContextFaker &Workspace(ContinuousVector *workspace);
   TilingContextFaker &ConstInput(std::vector<std::pair<size_t, std::unique_ptr<uint8_t[]>>>& const_tensors);
 
-  KernelRunContextHolder Build() const;
+  KernelRunContextHolder Build();
 
  private:
   void UpdateInputs();
