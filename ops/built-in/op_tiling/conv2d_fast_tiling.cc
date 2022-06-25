@@ -925,6 +925,15 @@ void FastTiling::AssignmentL0(Tiling &tiling)
     if (tiling.kBL1 == 0) {
         tiling.nBL1 = 0;
     }
+
+    // if fmap and BL0 both full_load, choose BL0 FULL_LOAD due to limit of schedule
+    if (tiling.kB == FULL_LOAD && tiling.nB == FULL_LOAD &&
+        tiling.kAL1 == FULL_LOAD && tiling.mAL1 == FULL_LOAD) {
+        tiling.mAL1Value = (shapeInfo_.oShape5D.at(SHAPE_INDEX_2) *
+            shapeInfo_.oShape5D.at(SHAPE_INDEX_3) + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
+        tiling.kAL1ci = shapeInfo_.iShape5D.at(1);
+        tiling.kAL1 = tiling.kAL1ci * reduceKAxisAL1_KhDilKwDilCi0_;
+    }
 }
 
 void FastTiling::AddkL0()

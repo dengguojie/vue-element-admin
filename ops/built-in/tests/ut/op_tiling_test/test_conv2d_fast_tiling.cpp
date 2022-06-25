@@ -441,6 +441,26 @@ TEST_F(Conv2DFastTilingTest, test_get_l0_tiling_weight_full_load)
     ASSERT_EQ(ret, true);
 }
 
+TEST_F(Conv2DFastTilingTest, test_assign_l0_tiling_both_FULL_LOAD)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+
+    Tiling fake_tiling;
+    fake_tiling.batchAL1 = 4;
+    fake_tiling.groupAL1 = 4;
+    fake_tiling.kAL1 = FULL_LOAD;
+    fake_tiling.mAL1Value = FULL_LOAD;
+    fake_tiling.nBL1 = 0;
+    fake_tiling.kBL1 = 0;
+    fastTilingPtr->hardware_.l0aSize *= 2;
+    fastTilingPtr->AssignmentL0(fake_tiling);
+    ASSERT_EQ(fake_tiling.kB, FULL_LOAD);
+    ASSERT_EQ(fake_tiling.nB, FULL_LOAD);
+    ASSERT_EQ(fake_tiling.kAL1, 32 * 3 * 3);
+    ASSERT_EQ(fake_tiling.mAL1Value, 57);
+}
+
 TEST_F(Conv2DFastTilingTest, test_update_ub_data)
 {
     unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
