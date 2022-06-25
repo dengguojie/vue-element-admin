@@ -238,6 +238,8 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass.cc
   graph_fusion/ai_core/layer_norm_fusion_pass.cc
   graph_fusion/ai_core/layernorm_training_fusion_pass.cc
+  graph_fusion/ai_core/layernorm_inference_fusion_pass.cc
+  graph_fusion/ai_core/layernorm_pass_libs.cc
   graph_fusion/ai_core/layer_norm_onnx_fusion_pass.cc
   graph_fusion/ai_core/layer_norm_onnx_mul_fusion_pass.cc
   graph_fusion/ai_core/layernormgrad_fusion_pass.cc

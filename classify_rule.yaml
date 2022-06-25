@@ -1129,6 +1129,10 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/ragged_bin_count_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_training_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_inference_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_inference_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_pass_libs.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/layernorm_pass_libs.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layernormgrad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_part_fusion_pass.cc
@@ -1811,6 +1815,7 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_grad_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_training_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_inference_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/matrix_diag_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/nll_loss_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/onehot_infershape_test.cpp

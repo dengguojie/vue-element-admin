@@ -26,17 +26,13 @@
 
 namespace fe {
 class LayerNormTrainingFusionPass : public PatternFusionBasePass {
- protected:
+  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
- private:
-  Status CheckNullPtr(const std::vector<ge::NodePtr>& pattern_nodes);
+  private:
   Status CheckLNGNodes(const ge::NodePtr& add_n_node, const ge::NodePtr& mul_node,
                        const ge::NodePtr& mul_node_1, const uint32_t input_size);
-  Status GetReduceOpAttr(std::vector<int64_t>& axes, bool& keep_dims, const ge::NodePtr& node);
-  Status CheckReduceOpAttr(const std::vector<int64_t>& axes_0, const bool keep_dims_1,
-                           const ge::NodePtr& mean_node_1, const ge::NodePtr& mean_node_2);
   Status GetInput24PeerInNodes(const ge::NodePtr& grad_rsqrt_node, const ge::NodePtr& rsqrt_node,
                                ge::NodePtr& mul_node_5, ge::NodePtr& add_n_node_0, ge::NodePtr& mul_node_8);
   Status GetInput13PeerInNodes(const ge::NodePtr& add_n_node_0, const ge::NodePtr& grad_sub_node,
@@ -45,14 +41,9 @@ class LayerNormTrainingFusionPass : public PatternFusionBasePass {
                               ge::NodePtr& sum_node_2, ge::NodePtr& mul_node_1);
   Status AddTargetNode(FusionTurbo& turbo_instance, const ge::NodePtr& mean_node_1, const ge::NodePtr& sum_node_2,
                        ge::NodePtr& layer_norm_node, ge::NodePtr& layer_norm_grad_node);
-  Status SetLayerNormAttr(const ge::NodePtr& node, const std::vector<int64_t>& axes_vec, const ge::NodePtr& add_1);
-  void GetInputRelations(Relations& input_relations,
-                         const std::vector<std::pair<ge::NodePtr, ge::NodePtr>>& pairs);
-  void GetOutputRelations(Relations& output_relations, const std::vector<ge::NodePtr>& nodes);
   Status UpdateAddN(FusionTurbo& turbo_instance, const ge::NodePtr& layer_norm_grad_node,
                     const ge::NodePtr& add_n_node_1, const uint32_t input_size);
-
-  const std::string FUSED_OP_TYPE = "LayerNorm";
+  const std::string FUSED_OP_TYPE = "LayerNormGrad";
 };
 }  // namespace fe
 
