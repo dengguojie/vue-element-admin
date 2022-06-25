@@ -330,14 +330,14 @@ def _get_ydiff_line(tik_instance, y_diff, y_diff_ub, n_index, start_c1, c1_num,
 
     c1_gap = ((h_num - 1) * w_num * 16 * 4) // 32
     if c1_gap <= 65535:
-        tik_instance.data_move(y_diff_ub[0],
-                               y_diff[n_index, start_c1, line_index, 0, 0], 0,
-                               c1_num, w_num * 2, 0, c1_gap)
+        tik_instance.tensor_mov(y_diff_ub[0],
+                                y_diff[n_index, start_c1, line_index, 0, 0], '',
+                                c1_num, w_num * 2, 0, c1_gap)
     else:
         with tik_instance.for_range(0, c1_num) as i:
-            tik_instance.data_move(
+            tik_instance.tensor_mov(
                 y_diff_ub[0], y_diff[n_index, start_c1 + i, line_index, 0, 0],
-                0, 1, w_num * 2, 0, 0)
+                '', 1, w_num * 2, 0, 0)
 
 
 def _mov_data_ddr(tik_instance, x_diff, x_diff_ub,
@@ -384,19 +384,14 @@ def _mov_data_ddr_onepoint(tik_instance, x_diff, x_diff_ub, image_index,
     else:
         c1_gap = max((((h_num * w_num) - 1) * 16 * 4) // 32, 0)
 
-        w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.data_move(x_diff[image_index, start_c1, h_index, w_index, 0],
-                                   x_diff_ub[0, 0, 0], 0, c1_num, 2, c1_gap, 6)
+            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index, w_index, 0],
+                                    x_diff_ub[0, 0, 0], '', c1_num, 2, c1_gap, 6)
 
-        elif w_gap <= 65535:
-            with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 1, 2, 0, 0)
+                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                        x_diff_ub[i, 0, 0], '', 1, 2, 0, 0)
 
 
 def _mov_data_ddr_oneline(tik_instance, x_diff, x_diff_ub, image_index,
@@ -420,19 +415,14 @@ def _mov_data_ddr_oneline(tik_instance, x_diff, x_diff_ub, image_index,
     else:
         c1_gap = max((((h_num * w_num) - 2) * 16 * 4) // 32, 0)
 
-        w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.data_move(x_diff[image_index, start_c1, h_index, w_index, 0],
-                                   x_diff_ub[0, 0, 0], 0, c1_num, 4, c1_gap, 4)
+            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index, w_index, 0],
+                                    x_diff_ub[0, 0, 0], '', c1_num, 4, c1_gap, 4)
 
-        elif w_gap <= 65535:
-            with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 1, 4, 0, 0)
+                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                        x_diff_ub[i, 0, 0], '', 1, 4, 0, 0)
 
 
 def _mov_data_ddr_onerow(tik_instance, x_diff, x_diff_ub, image_index,
@@ -462,23 +452,18 @@ def _mov_data_ddr_onerow(tik_instance, x_diff, x_diff_ub, image_index,
     else:
         c1_gap = max((((h_num * w_num) - 1) * 16 * 4) // 32, 0)
 
-        w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.data_move(x_diff[image_index, start_c1, h_index, w_index, 0],
-                                   x_diff_ub[0, 0, 0], 0, c1_num, 2, c1_gap, 6)
-            tik_instance.data_move(x_diff[image_index, start_c1, h_index + 1, w_index, 0],
-                                   x_diff_ub[0, 2, 0], 0, c1_num, 2, c1_gap, 6)
+            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index, w_index, 0],
+                                    x_diff_ub[0, 0, 0], '', c1_num, 2, c1_gap, 6)
+            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index + 1, w_index, 0],
+                                    x_diff_ub[0, 2, 0], '', c1_num, 2, c1_gap, 6)
 
-        elif w_gap <= 65535:
-            with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 1, 2, 0, 0)
-                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index + 1, w_index, 0],
-                                       x_diff_ub[i, 2, 0], 0, 1, 2, 0, 0)
+                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                        x_diff_ub[i, 0, 0], '', 1, 2, 0, 0)
+                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index + 1, w_index, 0],
+                                        x_diff_ub[i, 2, 0], '', 1, 2, 0, 0)
 
 
 def _mov_data_ddr_all(tik_instance, x_diff,
@@ -510,29 +495,22 @@ def _mov_data_ddr_all(tik_instance, x_diff,
     else:
         c1_gap = max((((h_num * w_num) - 2) * 16 * 4) // 32, 0)
 
-        w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.data_move(x_diff[image_index, start_c1,
-                                   h_index, w_index, 0],
-                                   x_diff_ub[0, 0, 0], 0, c1_num, 4, c1_gap, 4)
-            tik_instance.data_move(x_diff[image_index, start_c1,
-                                   h_index + 1, w_index, 0],
-                                   x_diff_ub[0, 2, 0], 0, c1_num, 4, c1_gap, 4)
+            tik_instance.tensor_mov(x_diff[image_index, start_c1,
+                                    h_index, w_index, 0],
+                                    x_diff_ub[0, 0, 0], '', c1_num, 4, c1_gap, 4)
+            tik_instance.tensor_mov(x_diff[image_index, start_c1,
+                                    h_index + 1, w_index, 0],
+                                    x_diff_ub[0, 2, 0], '', c1_num, 4, c1_gap, 4)
 
-        elif w_gap <= 65535:
-            with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i,
-                                       h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0,
-                                       2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.data_move(x_diff[image_index, start_c1 + i,
-                                       h_index, w_index, 0],
-                                       x_diff_ub[i, 0, 0], 0, 1, 4, 0, 0)
-                tik_instance.data_move(x_diff[image_index, start_c1 + i,
-                                       h_index + 1, w_index, 0],
-                                       x_diff_ub[i, 2, 0], 0, 1, 4, 0, 0)
+                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i,
+                                        h_index, w_index, 0],
+                                        x_diff_ub[i, 0, 0], '', 1, 4, 0, 0)
+                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i,
+                                        h_index + 1, w_index, 0],
+                                        x_diff_ub[i, 2, 0], '', 1, 4, 0, 0)
 
 
 def _calc_max_c1_num(pool_w, c1_shape):
