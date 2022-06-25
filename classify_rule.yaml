@@ -194,33 +194,12 @@ auto_schedule:
       - auto_schedule/python/tbe/common/utils/errormgr/error_manager_vector.py
       - auto_schedule/python/tbe/common/utils/errormgr/__init__.py
       - auto_schedule/python/tbe/dsl/api.py
-      - auto_schedule/python/tbe/dsl/base/classifier/broadcast_elewise_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/elewise_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/__init__.py
-      - auto_schedule/python/tbe/dsl/base/classifier/known_reduce_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/mixed_reduce_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/norm_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/pure_elewise_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/tuple_reduce_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
-      - auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/softmax_norm_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier_5hd.py
-      - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper_5hd.py
-      - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/transdata_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/constants.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transdata/__init__.py
-      - auto_schedule/python/tbe/dsl/base/classifier/util.py
-      - auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py
       - auto_schedule/python/tbe/dsl/base/context.py
       - auto_schedule/python/tbe/dsl/base/expr_compare.py
       - auto_schedule/python/tbe/dsl/base/__init__.py
       - auto_schedule/python/tbe/dsl/base/operation.py
-      - auto_schedule/python/tbe/dsl/base/shape_classifier.py
       - auto_schedule/python/tbe/dsl/base/var.py
       - auto_schedule/python/tbe/dsl/compute/cast.py
       - auto_schedule/python/tbe/dsl/compute/__init__.py
@@ -337,27 +316,46 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/
       - auto_schedule/python/tbe/common/utils/varshape/__init__.py
       - auto_schedule/python/tbe/common/utils/varshape/variable_shape.py
-      - auto_schedule/python/tbe/common/utils/varshape/vector/
+      - auto_schedule/python/tbe/common/utils/varshape/vector/__init__.py
       - auto_schedule/python/tbe/dsl/base/var_api.py
       - auto_schedule/python/tbe/dsl/base/d_format_util.py
-      - auto_schedule/python/tbe/dsl/base/padding/__init__.py
-      - auto_schedule/python/tbe/dsl/base/padding/graph.py
-      - auto_schedule/python/tbe/dsl/base/padding/padding.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulator.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/__init__.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/binary_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/bitwise_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/broadcast_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/cast_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/cmpsel_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/multiple_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/nn_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/reduce_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/single_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/simulators/tensor_scalar_sml.py
-      - auto_schedule/python/tbe/dsl/base/padding/smath.py
-      - auto_schedule/python/tbe/dsl/base/padding/util.py
-      - auto_schedule/python/tbe/dsl/base/padding/value.py
+      - auto_schedule/python/tbe/dsl/padding/
+      - auto_schedule/python/tbe/dsl/classifier/__init__.py
+      - auto_schedule/python/tbe/dsl/classifier/broadcast_elewise_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/concat_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/elewise_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/gather_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/norm_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/pure_elewise_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/__init__.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/known_reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/mixed_reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/reduce_classifier_5hd.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/reduce_helper.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/reduce_helper_5hd.py
+      - auto_schedule/python/tbe/dsl/classifier/reduce/unknown_reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/shape_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/slice_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/split_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/transdata/__init__.py
+      - auto_schedule/python/tbe/dsl/classifier/transdata/constants.py
+      - auto_schedule/python/tbe/dsl/classifier/transdata/general_transdata_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/transdata/transdata_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/transpose_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/tuple_reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/classifier/util.py
+      - auto_schedule/python/tbe/dsl/varshape/__init__.py
+      - auto_schedule/python/tbe/dsl/varshape/concat_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/elewise_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/gather_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/norm_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/reduce_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/slice_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/split_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/transdata_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/transpose_variable_shape.py
+      - auto_schedule/python/tbe/dsl/varshape/tuple_reduce_variable_shape.py
     unrelease:
     llt:
       ut_check: true
@@ -4106,8 +4104,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/static_schedule/pooling3d_max_grad_grad_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_grad_schedule_nd.py
       - auto_schedule/python/tbe/dsl/static_schedule/read_select_schedule.py
-      - auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin_md.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_util.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin.py

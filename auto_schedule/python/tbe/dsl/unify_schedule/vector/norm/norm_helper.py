@@ -23,9 +23,9 @@ from typing import Dict
 from typing import List
 from typing import Union
 
-from tbe.dsl.base.padding.padding import Action
-from tbe.dsl.base.padding.padding import ActionType
-from tbe.dsl.base.padding.padding import ActionValueType
+from tbe.dsl.padding.padding import Action
+from tbe.dsl.padding.padding import ActionType
+from tbe.dsl.padding.padding import ActionValueType
 from tbe.tvm.expr import ConstExpr
 from tbe.tvm.tensor import Tensor
 

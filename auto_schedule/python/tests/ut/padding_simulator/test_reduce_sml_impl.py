@@ -4,18 +4,18 @@ from sre_constants import ANY
 
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
-from tbe.dsl.base.padding import util
-from tbe.dsl.base.padding.simulators.reduce_sml import (ReduceMaxSimulator,
-                                                        ReduceMinSimulator,
-                                                        ReduceProdSimulator,
-                                                        ReduceSumSimulator)
-from tbe.dsl.base.padding.value import PaddingValueType
+from tbe.dsl.padding import util
+from tbe.dsl.padding.simulators.reduce_sml import ReduceMaxSimulator
+from tbe.dsl.padding.simulators.reduce_sml import ReduceMinSimulator
+from tbe.dsl.padding.simulators.reduce_sml import ReduceProdSimulator
+from tbe.dsl.padding.simulators.reduce_sml import ReduceSumSimulator
+from tbe.dsl.padding.value import PaddingValueType
 
 warnings.filterwarnings("ignore")
-ut_case = OpUT("padding", "padding.test_tensor_scalar_impl")
+ut_case = OpUT("padding", "padding.test_reduce_sml_impl")
 
 
-######## Reduce sum UT ########
+# Reduce sum
 @add_cust_test_func(ut_case)
 def test_sum_adjust_exact_0_with_pad(_):
     pvalue0 = util.new_pvalue_x(0, "int32")
@@ -100,7 +100,7 @@ def test_sum_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Reduce prod UT ########
+# Reduce prod
 @add_cust_test_func(ut_case)
 def test_prod_adjust_exact_1_with_pad(_):
     pvalue0 = util.new_pvalue_x(1, "int32")
@@ -199,7 +199,7 @@ def test_prod_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Reduce max UT ########
+# Reduce max
 @add_cust_test_func(ut_case)
 def test_max_adjust_exact_min_with_pad(_):
     pvalue0 = util.new_pvalue_min("int32")
@@ -249,7 +249,7 @@ def test_max_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Reduce min UT ########
+# Reduce min
 @add_cust_test_func(ut_case)
 def test_min_adjust_exact_max_with_pad(_):
     pvalue0 = util.new_pvalue_max("int32")

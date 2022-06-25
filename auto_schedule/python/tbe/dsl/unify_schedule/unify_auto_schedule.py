@@ -96,19 +96,19 @@ def _prolong_compute_context(func):
 
 
 def _support_fusion(compute_):
-        if compute_ is None:
-            return False
-
-        support_fusion_reg = compute_.if_support_fusion()
-        if isinstance(support_fusion_reg, bool):
-            return support_fusion_reg
-
-        if isinstance(support_fusion_reg, Callable):
-            supported = support_fusion_reg()
-            if isinstance(supported, bool):
-                return supported
-
+    if compute_ is None:
         return False
+
+    support_fusion_reg = compute_.if_support_fusion()
+    if isinstance(support_fusion_reg, bool):
+        return support_fusion_reg
+
+    if isinstance(support_fusion_reg, Callable):
+        supported = support_fusion_reg()
+        if isinstance(supported, bool):
+            return supported
+
+    return False
 
 
 @_prolong_compute_context

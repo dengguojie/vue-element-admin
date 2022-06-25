@@ -7,8 +7,9 @@ from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
 from sch_test_frame.ut.helper import padding_helper
 from tbe import tvm
-from tbe.dsl.base import operation, var_api
-from tbe.dsl.base.padding import padding
+from tbe.dsl.base import operation
+from tbe.dsl.base import var_api
+from tbe.dsl.padding import padding
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("padding", "padding.test_padding_impl")
@@ -486,45 +487,45 @@ def test_calc_padding_reduce_prod_without_pad_axis(_):
         return len(actions) == 0
 
 
-# @add_cust_test_func(ut_case)
-# def test_calc_padding_div(_):
-#     with operation.dynamic(), padding_helper.soc_context("Ascend910A"):
-#         fp16 = "float16"
+@add_cust_test_func(ut_case)
+def test_calc_padding_div(_):
+    with operation.dynamic(), padding_helper.soc_context("Ascend910A"):
+        fp16 = "float16"
 
-#         x0_n, x0_c1, x0_h, x0_w, x0_c0 = padding_helper.const_x((2, 1, 128, 16, 16), _5HD_FORMAT)
-#         x0_c = padding_helper.const_c(1)
-#         var_api.set_attr(x0_c1, "original", x0_c)
-#         var_api.set_attr(x0_c0, "original", x0_c)
-#         shape0 = (x0_n, x0_c1, x0_h, x0_w, x0_c0)
+        x0_n, x0_c1, x0_h, x0_w, x0_c0 = padding_helper.const_x((2, 1, 128, 16, 16), _5HD_FORMAT)
+        x0_c = padding_helper.const_c(1)
+        var_api.set_attr(x0_c1, "original", x0_c)
+        var_api.set_attr(x0_c0, "original", x0_c)
+        shape0 = (x0_n, x0_c1, x0_h, x0_w, x0_c0)
 
-#         x1_n, x1_c1, x1_h, x1_w, x1_c0 = padding_helper.const_x((2, 1, 128, 1, 16), _5HD_FORMAT)
-#         x1_c = padding_helper.const_c(16)
-#         var_api.set_attr(x1_c1, "original", x1_c)
-#         var_api.set_attr(x1_c0, "original", x1_c)
-#         shape1 = (x1_n, x1_c1, x1_h, x1_w, x1_c0)
+        x1_n, x1_c1, x1_h, x1_w, x1_c0 = padding_helper.const_x((2, 1, 128, 1, 16), _5HD_FORMAT)
+        x1_c = padding_helper.const_c(16)
+        var_api.set_attr(x1_c1, "original", x1_c)
+        var_api.set_attr(x1_c0, "original", x1_c)
+        shape1 = (x1_n, x1_c1, x1_h, x1_w, x1_c0)
 
-#         max_ = var_api.max
-#         shape_max = (max_(x0_n, x1_n), max_(x0_c1, x1_c1), max_(x0_h, x1_h), 
-#                      max_(x0_w, x1_w), max_(x0_c0, x1_c0))
+        max_ = var_api.max
+        shape_max = (max_(x0_n, x1_n), max_(x0_c1, x1_c1), max_(x0_h, x1_h), 
+                     max_(x0_w, x1_w), max_(x0_c0, x1_c0))
 
-#         ph_0 = tvm.placeholder(shape0, dtype=fp16, name="ph_1")
-#         ph_1 = tvm.placeholder(shape1, dtype=fp16, name="ph_2")
-#         brc_0 = tbe.dsl.broadcast(ph_0, shape_max)
-#         brc_1 = tbe.dsl.broadcast(ph_1, shape_max)
-#         res = tbe.dsl.vdiv(brc_0, brc_1)
+        ph_0 = tvm.placeholder(shape0, dtype=fp16, name="ph_1")
+        ph_1 = tvm.placeholder(shape1, dtype=fp16, name="ph_2")
+        brc_0 = tbe.dsl.broadcast(ph_0, shape_max)
+        brc_1 = tbe.dsl.broadcast(ph_1, shape_max)
+        res = tbe.dsl.vdiv(brc_0, brc_1)
 
-#         actions = padding.calc_padding(res)
+        actions = padding.calc_padding(res)
 
-#         tensors = [x.get_tensor() for x in actions]
-#         values = [_simplify(x.get_value()) for x in actions]
-#         targets = [x.get_target_tensors() for x in actions]
-#         expect_tensors = [ph_0]
-#         expect_values = [Callable]
-#         expect_targets = [[]]
-#         assert_tensor = tensors == expect_tensors
-#         assert_value = values == expect_values
-#         assert_target = targets == expect_targets
-#         return all((assert_tensor, assert_value, assert_target))
+        tensors = [x.get_tensor() for x in actions]
+        values = [_simplify(x.get_value()) for x in actions]
+        targets = [x.get_target_tensors() for x in actions]
+        expect_tensors = [ph_0]
+        expect_values = [Callable]
+        expect_targets = [[]]
+        assert_tensor = tensors == expect_tensors
+        assert_value = values == expect_values
+        assert_target = targets == expect_targets
+        return all((assert_tensor, assert_value, assert_target))
 
 
 @add_cust_test_func(ut_case)

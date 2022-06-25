@@ -7,7 +7,7 @@ from sch_test_frame.ut import OpUT
 from sch_test_frame.ut.helper import padding_helper
 from tbe import tvm
 from tbe.dsl.base import operation
-from tbe.dsl.base.padding.graph import Graph
+from tbe.dsl.padding.graph import Graph
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("padding", "padding.test_graph_impl")

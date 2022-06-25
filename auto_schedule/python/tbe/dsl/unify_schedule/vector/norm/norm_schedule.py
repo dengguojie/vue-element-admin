@@ -21,7 +21,7 @@ from tbe import tvm
 from tbe.dsl.base.operation import add_build_arg
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
-from tbe.dsl.base.padding.padding import ActionValueType
+from tbe.dsl.padding.padding import ActionValueType
 
 from .norm_helper import SubGraphsAndActionsMapping
 from .norm_tilingcase import BLOCK_SIZE_BYTE

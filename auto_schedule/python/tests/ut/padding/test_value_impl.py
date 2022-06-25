@@ -5,8 +5,10 @@ import numpy as np
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
 from tbe import tvm
-from tbe.dsl.base.padding.value import (PaddingValue, PaddingValueType,
-                                        SettingValue, SettingValueType)
+from tbe.dsl.padding.value import PaddingValue
+from tbe.dsl.padding.value import PaddingValueType
+from tbe.dsl.padding.value import SettingValue
+from tbe.dsl.padding.value import SettingValueType
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("padding", "padding.test_value_impl")

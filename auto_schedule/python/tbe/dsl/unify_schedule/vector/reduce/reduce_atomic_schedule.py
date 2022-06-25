@@ -30,8 +30,8 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import var_inner
-from tbe.dsl.base.padding.padding import Action
-from tbe.dsl.base.padding.padding import ActionType
+from tbe.dsl.padding.padding import Action
+from tbe.dsl.padding.padding import ActionType
 
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import INSN_MAPPING

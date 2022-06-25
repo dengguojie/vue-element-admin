@@ -5,18 +5,18 @@ from sre_constants import ANY
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
 from tbe import tvm
-from tbe.dsl.base.padding import util
-from tbe.dsl.base.padding.simulators.tensor_scalar_sml import (AddsSimulator,
-                                                               MaxsSimulator,
-                                                               MinsSimulator,
-                                                               MulsSimulator)
-from tbe.dsl.base.padding.value import PaddingValueType
+from tbe.dsl.padding import util
+from tbe.dsl.padding.simulators.tensor_scalar_sml import AddsSimulator
+from tbe.dsl.padding.simulators.tensor_scalar_sml import MaxsSimulator
+from tbe.dsl.padding.simulators.tensor_scalar_sml import MinsSimulator
+from tbe.dsl.padding.simulators.tensor_scalar_sml import MulsSimulator
+from tbe.dsl.padding.value import PaddingValueType
 
 warnings.filterwarnings("ignore")
-ut_case = OpUT("padding", "padding.test_tensor_scalar_impl")
+ut_case = OpUT("padding", "padding.test_tensor_scalar_sml_impl")
 
 
-######## Adds UT ########
+# Adds
 @add_cust_test_func(ut_case)
 def test_adds_adjust_exact_const_none(_):
     pvalue0 = util.new_pvalue_x(-100, "int32")
@@ -113,7 +113,7 @@ def test_adds_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Muls UT ########
+# Muls
 @add_cust_test_func(ut_case)
 def test_muls_adjust_exact_const_none(_):
     pvalue0 = util.new_pvalue_x(-100, "int32")
@@ -218,7 +218,7 @@ def test_muls_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Maxs UT ########
+# Maxs
 @add_cust_test_func(ut_case)
 def test_maxs_calc_exact_const(_):
     pvalue0 = util.new_pvalue_x(3, "int32")
@@ -259,7 +259,7 @@ def test_maxs_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Maxs UT ########
+# Maxs
 @add_cust_test_func(ut_case)
 def test_mins_calc_exact_const(_):
     pvalue0 = util.new_pvalue_x(3, "int32")

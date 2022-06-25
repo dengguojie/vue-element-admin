@@ -5,7 +5,6 @@ import copy
 from sch_test_frame.ut import OpUT
 import tbe
 from tbe import tvm
-from tbe.dsl.base.classifier import classify_elewise
 from tbe.common import buildcfg
 from tbe.common.utils import shape_util
 from tbe.common.register import register_operator

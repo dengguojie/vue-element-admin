@@ -4,20 +4,20 @@ import warnings
 import numpy as np
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
-from tbe.dsl.base.padding import util
-from tbe.dsl.base.padding.simulators.single_sml import (AbsSimulator,
-                                                        ExpSimulator,
-                                                        LogSimulator,
-                                                        RecSimulator,
-                                                        RsqrtSimulator,
-                                                        SqrtSimulator)
-from tbe.dsl.base.padding.value import PaddingValueType
+from tbe.dsl.padding import util
+from tbe.dsl.padding.simulators.single_sml import AbsSimulator
+from tbe.dsl.padding.simulators.single_sml import ExpSimulator
+from tbe.dsl.padding.simulators.single_sml import LogSimulator
+from tbe.dsl.padding.simulators.single_sml import RecSimulator
+from tbe.dsl.padding.simulators.single_sml import RsqrtSimulator
+from tbe.dsl.padding.simulators.single_sml import SqrtSimulator
+from tbe.dsl.padding.value import PaddingValueType
 
 warnings.filterwarnings("ignore")
-ut_case = OpUT("padding", "padding.test_padding_impl")
+ut_case = OpUT("padding", "padding.test_single_sml_impl")
 
 
-######## Abs UT ########
+# Abs
 @add_cust_test_func(ut_case)
 def test_abs_calc_exact(_):
     pvalue0 = util.new_pvalue_x(-100, "int32")
@@ -39,7 +39,7 @@ def test_abs_calc_any(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Exp UT ########
+# Exp
 @add_cust_test_func(ut_case)
 def test_exp_adjust_exact_none(_):
     pvalue0 = util.new_pvalue_x(11, "float16")
@@ -82,7 +82,7 @@ def test_exp_calc_tensor(_):
     return pvalue.type == PaddingValueType.TENSOR
 
 
-######## Log UT ########
+# Log
 @add_cust_test_func(ut_case)
 def test_log_adjust_exact_none(_):
     pvalue0 = util.new_pvalue_x(11.08, "float16")
@@ -125,7 +125,7 @@ def test_log_calc_tensor(_):
     return pvalue.type == PaddingValueType.TENSOR
 
 
-######## Rec UT ########
+# Rec
 @add_cust_test_func(ut_case)
 def test_rec_adjust_exact_none(_):
     pvalue0 = util.new_pvalue_x(11.08, "float16")
@@ -168,7 +168,7 @@ def test_rec_calc_tensor(_):
     return pvalue.type == PaddingValueType.TENSOR
 
 
-######## Sqrt UT ########
+# Sqrt
 @add_cust_test_func(ut_case)
 def test_sqrt_adjust_exact_none(_):
     pvalue0 = util.new_pvalue_x(11.08, "float16")
@@ -211,7 +211,7 @@ def test_sqrt_calc_tensor(_):
     return pvalue.type == PaddingValueType.TENSOR
 
 
-######## Rsqrt UT ########
+# Rsqrt
 @add_cust_test_func(ut_case)
 def test_rsqrt_adjust_exact_none(_):
     pvalue0 = util.new_pvalue_x(11.08, "float16")

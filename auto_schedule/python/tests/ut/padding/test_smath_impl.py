@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
-from tbe.dsl.base.padding import smath
+from tbe.dsl.padding import smath
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("padding", "padding.test_smath_impl")

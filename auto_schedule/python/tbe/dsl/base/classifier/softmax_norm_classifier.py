@@ -21,7 +21,7 @@ from enum import Enum, auto
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.common.platform.platform_info import get_soc_spec
-from . import util
+from tbe.dsl.classifier import util
 
 ONE = "one"
 COMMON = "common"

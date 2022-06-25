@@ -2,7 +2,7 @@
 import warnings
 from sch_test_frame.ut import OpUT
 import tbe
-from tbe.dsl.base.classifier import classify_norm
+from tbe.dsl.classifier import norm_classifier
 from tbe.dsl.base.operation import get_compile_info
 
 warnings.filterwarnings("ignore")
@@ -22,7 +22,7 @@ def test_norm_classify_0(_):
             "broadcast_axes_type": {1: "same_reduce", 2: "same_reduce", 3: "opposite_reduce", 4: "opposite_reduce"},
             "compile_broadcast_axes": {1: "unknown", 2: "unknown", 3: "unknown", 4: "unknown"}
         }
-        ins = classify_norm(inputs, extra_params)
+        ins = norm_classifier.classify(inputs, extra_params)
 
         expect_ins = [
             [
@@ -72,7 +72,7 @@ def test_norm_classify_1(_):
             "broadcast_axes_type": {1: "opposite_reduce", 2: "opposite_reduce",},
             "compile_broadcast_axes": {1: "unknown", 2: "unknown",}
         }
-        ins = classify_norm(inputs, extra_params)
+        ins = norm_classifier.classify(inputs, extra_params)
 
         expect_ins = [
             [
@@ -120,7 +120,7 @@ def test_norm_classify_2(_):
         extra_params = {
             "reduce_axes_type": "single",
         }
-        ins = classify_norm(inputs, extra_params)
+        ins = norm_classifier.classify(inputs, extra_params)
 
         expect_ins = [
             [

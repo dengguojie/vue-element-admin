@@ -31,8 +31,8 @@ from tbe.tvm.tensor import Tensor
 from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
-from tbe.dsl.base.padding.padding import Action
-from tbe.dsl.base.padding.padding import ActionType
+from tbe.dsl.padding.padding import Action
+from tbe.dsl.padding.padding import ActionType
 
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import INSN_MAPPING

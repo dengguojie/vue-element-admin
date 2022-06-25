@@ -1,7 +1,7 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
 import warnings
-from tbe.dsl.base.classifier import classify_split
+from tbe.dsl.classifier import split_classifier
 from tbe.common.context import op_context
 from tbe.dsl.base.operation import get_compile_info
 
@@ -16,7 +16,7 @@ def test_ins_no_num_split(_):
         input_s = [input_0, 1]
         extra_params = {"split_num": 2}
         try:
-            ins = classify_split(input_s, extra_params)
+            ins = split_classifier.classify(input_s, extra_params)
         except RuntimeError as e:
             error_message = {'errCode': 'E90001', 'detailed_cause':
             'inputs of classify must include the dict extra_params with the key num_split when mode is split'}
@@ -31,7 +31,7 @@ def test_ins_too_much(_):
         input_s = [input_0]
         extra_params = {"num_split": 2}
         try:
-            ins = classify_split(input_s, extra_params)
+            ins = split_classifier.classify(input_s, extra_params)
         except RuntimeError as e:
             error_message = {'errCode': 'E90001', 'detailed_cause': 'input numbers error'}
             return error_message == e.args[0]
@@ -46,7 +46,7 @@ def test_unknown_rank_input_too_much(_):
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
         try:
-            ins = classify_split(input_s, extra_params)
+            ins = split_classifier.classify(input_s, extra_params)
         except RuntimeError as e:
             error_message = {
                 'errCode': 'E90001',
@@ -63,7 +63,7 @@ def test_zero_axis_split(_):
         axis = 0
         input_s = [input_0, axis]
         extra_params = {"avg_split": True, "num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [1, -1], 'range': [(1, 1), (1, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [1, -1], 'range': [(1, 1), (1, None)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]]]
     return ins == except_ins
 
@@ -75,7 +75,7 @@ def test_one_axis_all_dynamic_split(_):
         axis = 1
         input_s = [input_0, axis]
         extra_params = {"avg_split": True, "num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]]]
     return ins == except_ins
 
@@ -87,7 +87,7 @@ def test_one_axis_part_const_split(_):
         axis = 1
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [-1, 1000], 'range': [(1, None), (1000, 1000)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, 1000], 'range': [(1, None), (1000, 1000)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]]]
     return ins == except_ins
 
@@ -99,7 +99,7 @@ def test_zero_shape_splt(_):
         axis = 2
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': (0, 0), 'range': [(0, 0), (0, 0)], 'mode': 'split_empty', 'split_factor': 1}, 0, [-1, -1]]]
     return ins == except_ins
 
@@ -110,7 +110,7 @@ def test_zero_range_splt(_):
         axis = 2
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [-1, -1], 'range': [(1, None), (0, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, -1], 'range': [(1, None), (0, None)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]], [{'shape': (0, 0), 'range': [(0, 0), (0, 0)], 'mode': 'split_empty', 'split_factor': 1}, 0, [-1, -1]]]
     return ins == except_ins
 
@@ -121,7 +121,7 @@ def test_unknow_rank(_):
         axis = 2
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [-1, -1], 'range': [(0, None), (0, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, -1], 'range': [(0, None), (0, None)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]], [{'shape': (0, 0), 'range': [(0, 0), (0, 0)], 'mode': 'split_empty', 'split_factor': 1}, 0, [-1, -1]]]
     return ins == except_ins
 
@@ -133,7 +133,7 @@ def test_one_axis_all_dynamic_split_neg_axis(_):
         axis = -2
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         compile_info = get_compile_info()
         except_compile_info = {'_ori_axis': -2}
         except_ins = [[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]]]
@@ -147,7 +147,7 @@ def test_single_output_split(_):
         axis = 1
         input_s = [input_0, axis]
         extra_params = {"avg_split": True, "num_split": 1}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [1, -1], 'range': [(1, 1), (1, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1]]]
     return ins == except_ins
 
@@ -159,7 +159,7 @@ def test_unknow_axis(_):
         axis = {"shape": (1, ), "dtype": "float32", "range": [(1, 1)]}
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         compile_info = get_compile_info()
         except_compile_info = {'_ori_axis': 1}
         except_ins = [[{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, -1], 'range': [(1, None), (1, None)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]]]
@@ -173,7 +173,7 @@ def test_know_axis(_):
         axis = {"shape": (1, ), "dtype": "float32", "range": [(1, 1)], "value": (1, )}
         input_s = [input_0, axis]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [-1, 1000], 'range': [(1, None), (1000, 1000)], 'mode': 'split', 'split_factor': 1}, 1, [-1, -1]], [{'shape': [-1, 1000], 'range': [(1, None), (1000, 1000)], 'mode': 'split_general', 'split_factor': 128}, 1, [-1, -1]]]
     return ins == except_ins
 
@@ -186,7 +186,7 @@ def test_const_split_size(_):
         split_size = {"shape": (2, ), "dtype": "float32", "range": [(1, 1)], "value": (2, 8)}
         input_s = [input_0, axis, split_size]
         extra_params = {"num_split": 2}
-        ins = classify_split(input_s, extra_params)
+        ins = split_classifier.classify(input_s, extra_params)
         except_ins = [[{'shape': [100, 1000], 'range': [(100, 100), (1000, 1000)], 'mode': 'split', 'split_factor': 1}, 1, [200, 800]], [{'shape': [100, 1000], 'range': [(100, 100), (1000, 1000)], 'mode': 'split_general', 'split_factor': 128}, 1, [200, 800]]]
     return ins == except_ins
 

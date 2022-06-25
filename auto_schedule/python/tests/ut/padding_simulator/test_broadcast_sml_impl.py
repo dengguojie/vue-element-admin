@@ -6,13 +6,14 @@ from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
 from sch_test_frame.ut.helper import padding_helper
 from tbe import tvm
-from tbe.dsl.base import operation, var_api
-from tbe.dsl.base.padding import util
-from tbe.dsl.base.padding.graph import Graph
-from tbe.dsl.base.padding.value import PaddingValueType
+from tbe.dsl.base import operation
+from tbe.dsl.base import var_api
+from tbe.dsl.padding import util
+from tbe.dsl.padding.graph import Graph
+from tbe.dsl.padding.value import PaddingValueType
 
 warnings.filterwarnings("ignore")
-ut_case = OpUT("padding", "padding.test_padding_impl")
+ut_case = OpUT("padding", "padding.test_broadcast_sml_impl")
 
 _5HD_FORMAT = ("N", "C1", "H", "W", "C0")
 
@@ -187,9 +188,75 @@ def test_tensor_brc_adjust(_):
         return len(svalues) == 1
 
 
+@add_cust_test_func(ut_case)
+def test_one_shape_brc_adjust(_):
+    with operation.dynamic(), padding_helper.soc_context("Ascend910A"):
+        fp16 = "float16"
+
+        shape0 = (1,)
+
+        x1_n, x1_c1, x1_h, x1_w, x1_c0 = padding_helper.const_x((4, 3, 6, 8, 16), _5HD_FORMAT)
+        x1_c = padding_helper.const_c(42)
+        var_api.set_attr(x1_c1, "original", x1_c)
+        var_api.set_attr(x1_c0, "original", x1_c)
+        shape1 = (x1_c0,)
+
+        ph_0 = tvm.placeholder(shape0, dtype=fp16, name="ph_1")
+        brc_0 = tbe.dsl.broadcast(ph_0, shape1)
+
+        graph = Graph([brc_0])
+        node0 = graph.get_nodes()[0]
+        node0.set_pvalue(util.new_pvalue_tensor(fp16))
+        node = graph.get_nodes()[1]
+        node._simulator.adjust_calc()
+
+        src_target_tensors = node0.get_pvalue().target
+        dst_pvalue = node0.get_pvalue()
+
+        assert_target = src_target_tensors == [brc_0]
+        assert_pvalue = dst_pvalue.type = PaddingValueType.TENSOR
+
+        return all((assert_target, assert_pvalue))
+
+
+@add_cust_test_func(ut_case)
+def test_one_rank_brc_adjust(_):
+    with operation.dynamic(), padding_helper.soc_context("Ascend910A"):
+        fp16 = "float16"
+
+        x0_n, x0_c1, x0_h, x0_w, x0_c0 = padding_helper.var_x(["x0_n", "x0_c1", "x0_h", "x0_w", "x0_c0"], _5HD_FORMAT)
+        x0_c = padding_helper.var_c("x0_h")
+        var_api.set_attr(x0_c1, "original", x0_c)
+        var_api.set_attr(x0_c0, "original", x0_c)
+        shape0 = (x0_h,)
+
+        x1_n, x1_c1, x1_h, x1_w, x1_c0 = padding_helper.const_x((4, 3, 6, 8, 16), _5HD_FORMAT)
+        x1_c = padding_helper.const_c(42)
+        var_api.set_attr(x1_c1, "original", x1_c)
+        var_api.set_attr(x1_c0, "original", x1_c)
+        shape1 = (x1_h,)
+
+        ph_0 = tvm.placeholder(shape0, dtype=fp16, name="ph_1")
+        brc_0 = tbe.dsl.broadcast(ph_0, shape1)
+
+        graph = Graph([brc_0])
+        node0 = graph.get_nodes()[0]
+        node0.set_pvalue(util.new_pvalue_tensor(fp16))
+        node = graph.get_nodes()[1]
+        node._simulator.adjust_calc()
+
+        src_target_tensors = node0.get_pvalue().target
+        dst_pvalue = node0.get_pvalue()
+
+        assert_target = src_target_tensors == [brc_0]
+        assert_pvalue = dst_pvalue.type = PaddingValueType.TENSOR
+
+        return all((assert_target, assert_pvalue))
+
+
 if __name__ == "__main__":
     for k, v in ut_case._case_info_map.items():
-        # if not k == "test_tensor_brc_adjust_calc_with_pad_and_exist_pad_brc_and_src_not_exist_pad":
+        # if not k == "test_one_rank_brc_adjust":
         #     continue
 
         try:

@@ -45,7 +45,7 @@ from .compute import pooling3d_max_grad_grad as pooling3d_max_grad_grad_compute
 from .compute import conv_compute
 from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
-from .base import shape_classifier
+from .classifier import shape_classifier
 from .base import operation
 
 

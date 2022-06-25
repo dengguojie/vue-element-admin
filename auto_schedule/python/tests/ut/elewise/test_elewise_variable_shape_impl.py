@@ -1,7 +1,7 @@
 # # -*- coding:utf-8 -*-
 import warnings
 
-from tbe.common.utils.varshape.vector import elewise_variable_shape as vs
+from tbe.dsl.varshape import elewise_variable_shape as vs
 from tbe.dsl.base import operation
 from tbe.dsl.base import var
 

@@ -17,13 +17,17 @@
 """
 D-Format util
 """
-from tbe.dsl.base import var_api
+from typing import Union
 
-AXIS_TYPE = "axis_type"
-ORIGINAL = "original"
+from tbe.dsl.base import var_api
+from tbe.tvm.expr import Expr
+
+_AXIS_TYPE = "axis_type"
+_ORIGINAL = "original"
 
 
 def get_format(shape, ignore_none=True):
+    # type: (Union[list, tuple], bool) -> list
     shape_format = []
     for axis in shape:
         axis_type = get_axis_type(axis)
@@ -39,28 +43,33 @@ def get_format(shape, ignore_none=True):
 
 
 def is_5hd_format(shape, ignore_none=True):
-    # type: (list, bool) -> bool
+    # type: (Union[list, tuple], bool) -> bool
     shape_format = get_format(shape, ignore_none=ignore_none)
     return shape_format == ["N", "C1", "H", "W", "C0"]
 
 
 def set_axis_type(var_, axis_type):
-    var_api.set_attr(var_, AXIS_TYPE, axis_type)
+    # type: (Expr, str) -> None
+    var_api.set_attr(var_, _AXIS_TYPE, axis_type)
 
 
 def get_axis_type(var_):
-    return var_api.get_attr(var_, AXIS_TYPE)
+    # type: (Expr) -> str
+    return var_api.get_attr(var_, _AXIS_TYPE)
 
 
 def set_original(var_, original):
-    var_api.set_attr(var_, ORIGINAL, original)
+    # type: (Expr, Expr) -> None
+    var_api.set_attr(var_, _ORIGINAL, original)
 
 
 def get_original(var_):
-    return var_api.get_attr(var_, ORIGINAL)
+    # type: (Expr) -> Expr
+    return var_api.get_attr(var_, _ORIGINAL)
 
 
 def eq_axis_type(axis_type1, axis_type2):
+    # type: (Union[str, list, tuple], Union[str, list, tuple]) -> bool
     if axis_type1 == axis_type2:
         return True
 
@@ -75,30 +84,28 @@ def eq_axis_type(axis_type1, axis_type2):
 
 
 def in_axis_type(axis, axis_types):
+    # type: (Expr, Union[list, tuple]) -> bool
     axis_type = get_axis_type(axis)
-    for x in axis_types:
-        if eq_axis_type(axis_type, x):
-            return True
-    return False
+    return any(eq_axis_type(axis_type, x) for x in axis_types)
 
 
 def get_axis(shape, axis_type):
-    for x in shape:
-        if eq_axis_type(get_axis_type(x), axis_type):
-            return x
-    return None
+    # type: (Union[list, tuple], str) -> Expr
+    is_target_axis = lambda x: eq_axis_type(get_axis_type(x), axis_type)
+    return next((x for x in shape if is_target_axis(x)), None)
 
 
 def get_c0(shape):
+    # type: (Union[list, tuple]) -> Expr
     return get_axis(shape, "C0")
 
 
 def get_c1(shape):
+    # type: (Union[list, tuple]) -> Expr
     return get_axis(shape, "C1")
 
 
 def get_c(shape):
-    for x in shape:
-        if in_axis_type(x, ["C1", "C0"]):
-            return get_original(x)
-    return None
+    # type: (Union[list, tuple]) -> Expr
+    is_padding_axis = lambda x: in_axis_type(x, ["C1", "C0"])
+    return next((get_original(x) for x in shape if is_padding_axis(x)), None)

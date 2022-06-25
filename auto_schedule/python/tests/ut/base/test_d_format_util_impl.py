@@ -11,7 +11,7 @@ from sch_test_frame.ut import OpUT
 warnings.filterwarnings("ignore")
 ut_case = OpUT("d_format_util", "d_format_util.test_d_format_util_impl")
 
-######## get_format ########
+# get_format
 @add_cust_test_func(ut_case)
 def test_get_format(_):
     n = var_api.var("n", annotation={"axis_type": "N"})
@@ -60,7 +60,7 @@ def test_get_format_default(_):
     return ret == ["N", "C1", "H", "W", "C0"]
 
 
-######## is_5hd_format ########
+# is_5hd_format
 @add_cust_test_func(ut_case)
 def test_is_5hd_format_ignore_none_true(_):
     n = var_api.var("n", annotation={"axis_type": "N"})
@@ -133,7 +133,7 @@ def test_is_5hd_format_default_false(_):
     return ret is False
 
 
-######## get_axis_type ########
+# get_axis_type
 @add_cust_test_func(ut_case)
 def test_set_axis_type(_):
     n = var_api.var("n")
@@ -152,7 +152,7 @@ def test_get_axis_type(_):
     return ret == "N"
 
 
-######## get_original ########
+# get_original
 @add_cust_test_func(ut_case)
 def test_set_original(_):
     c = var_api.var("C")
@@ -173,7 +173,7 @@ def test_get_original(_):
     return str(ret) == "C"
 
 
-######## eq_axis_type ########
+# eq_axis_type
 @add_cust_test_func(ut_case)
 def test_eq_axis_type_none_true(_):
     axis_type1, axis_type2 = None, None
@@ -210,7 +210,7 @@ def test_eq_axis_type_str_list_false(_):
     return d_format_util.eq_axis_type(axis_type1, axis_type2) is False
 
 
-######## in_axis_type ########
+# in_axis_type
 @add_cust_test_func(ut_case)
 def test_in_axis_type_true(_):
     c1 = var_api.var("c1", annotation={"axis_type": ["C1"]})
@@ -223,7 +223,7 @@ def test_in_axis_type_false(_):
     return d_format_util.in_axis_type(c1, ["C1", "C0"]) is False
 
 
-######## get_axis ########
+# get_axis
 @add_cust_test_func(ut_case)
 def test_get_axis_exist(_):
     n = var_api.var("n", annotation={"axis_type": "N"})
@@ -246,7 +246,7 @@ def test_get_axis_none(_):
     return d_format_util.get_axis(shape, "C") is None
 
 
-######## get_c0 ########
+# get_c0
 @add_cust_test_func(ut_case)
 def test_get_c0(_):
     n = var_api.var("n", annotation={"axis_type": "N"})
@@ -258,7 +258,7 @@ def test_get_c0(_):
     return d_format_util.get_c0(shape) == c0
 
 
-######## get_c1 ########
+# get_c1
 @add_cust_test_func(ut_case)
 def test_get_c1(_):
     n = var_api.var("n", annotation={"axis_type": "N"})
@@ -270,7 +270,7 @@ def test_get_c1(_):
     return d_format_util.get_c1(shape) == c1
 
 
-######## get_c ########
+# get_c
 @add_cust_test_func(ut_case)
 def test_get_c(_):
     n = var_api.var("n", annotation={"axis_type": "N"})

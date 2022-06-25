@@ -30,20 +30,25 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
-from tbe.dsl.base import operation
-from tbe.tvm.tensor import PlaceholderOp
-from tbe.tvm.tensor import Tensor
 from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
-from tbe.common.platform import ASCEND_310P
 from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import HI3796CV300CS
 from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
-from tbe.common.platform import ASCEND_910B
 from tbe.common.platform import SHORT_SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.dsl.base import operation
+from tbe.dsl.padding.padding import Action
+from tbe.dsl.padding.padding import ActionType
+from tbe.dsl.padding.padding import calc_padding
+from tbe.tvm.tensor import PlaceholderOp
+from tbe.tvm.tensor import Tensor
+
+from .....common.utils.errormgr import get_error_message
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import FAKE_NODE_TAG
 from ...constants import ReduceSchType
@@ -53,10 +58,6 @@ from ...util import get_reduce_all_axes
 from ...util import get_reduce_axes
 from ...util import is_placeholder
 from ...util import shape_to_list
-from .....common.utils.errormgr import get_error_message
-from .....dsl.base.padding.padding import calc_padding
-from .....dsl.base.padding.padding import Action
-from .....dsl.base.padding.padding import ActionType
 
 ASCEND_SHISI = "smallhisi"
 BLOCK = 16
@@ -465,7 +466,7 @@ class ComputeGraphInfo:
             for _tensor_i in _tensor.op.input_tensors:
                 if _tensor_i not in dependent_map:
                     continue
-                dependent_map[_tensor_i].remove(_tensor)
+                dependent_map.get(_tensor_i).remove(_tensor)
                 if not dependent_map[_tensor_i]:
                     dependent_map.pop(_tensor_i)
 

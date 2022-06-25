@@ -1,22 +1,25 @@
 # # -*- coding:utf-8 -*-
 import warnings
 
+import numpy as np
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
-from tbe.dsl.base.padding import util
-from tbe.dsl.base.padding.simulators.binary_sml import (AddSimulator,
-                                                        DivSimulator,
-                                                        MaxSimulator,
-                                                        MinSimulator,
-                                                        MulSimulator,
-                                                        SubSimulator)
-from tbe.dsl.base.padding.value import PaddingValueType
+from tbe.dsl.padding import util
+from tbe.dsl.padding.simulators.binary_sml import AddReluSimulator
+from tbe.dsl.padding.simulators.binary_sml import AddSimulator
+from tbe.dsl.padding.simulators.binary_sml import DivSimulator
+from tbe.dsl.padding.simulators.binary_sml import MaxSimulator
+from tbe.dsl.padding.simulators.binary_sml import MinSimulator
+from tbe.dsl.padding.simulators.binary_sml import MulSimulator
+from tbe.dsl.padding.simulators.binary_sml import SubReluSimulator
+from tbe.dsl.padding.simulators.binary_sml import SubSimulator
+from tbe.dsl.padding.value import PaddingValueType
 
 warnings.filterwarnings("ignore")
-ut_case = OpUT("padding", "padding.test_padding_impl")
+ut_case = OpUT("padding", "padding.test_binary_sml_impl")
 
 
-######## Add UT ########
+# Add
 @add_cust_test_func(ut_case)
 def test_add_adjust_exact_exact(_):
     pvalue0 = util.new_pvalue_x(2147483640, "int32")
@@ -152,7 +155,7 @@ def test_sub_adjust_exact_exact(_):
     return i_x == (None, 0)
 
 
-######## Sub UT ########
+# Sub
 @add_cust_test_func(ut_case)
 def test_sub_adjust_exact_tensor(_):
     pvalue0 = util.new_pvalue_x(2147483640, "int32")
@@ -270,7 +273,7 @@ def test_sub_calc_any_exact(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Mul UT ########
+# Mul
 @add_cust_test_func(ut_case)
 def test_mul_adjust_exact_exact(_):
     pvalue0 = util.new_pvalue_x(214748365, "int32")
@@ -433,7 +436,7 @@ def test_mul_calc_any_exact_1(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Div UT ########
+# Div
 @add_cust_test_func(ut_case)
 def test_div_adjust_exact_exact(_):
     pvalue0 = util.new_pvalue_x(2147483647, "int32")
@@ -587,7 +590,7 @@ def test_div_calc_any_exact(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Max UT ########
+# Max
 @add_cust_test_func(ut_case)
 def test_max_calc_exact_exact(_):
     pvalue0 = util.new_pvalue_x(2147483640, "int32")
@@ -696,7 +699,7 @@ def test_max_calc_any_exact_x(_):
     return pvalue.type == PaddingValueType.ANY
 
 
-######## Min UT ########
+# Min
 @add_cust_test_func(ut_case)
 def test_min_calc_exact_exact(_):
     pvalue0 = util.new_pvalue_x(2147483640, "int32")
@@ -805,9 +808,51 @@ def test_min_calc_any_exact_x(_):
     return pvalue.type == PaddingValueType.ANY
 
 
+# AddRelu
+@add_cust_test_func(ut_case)
+def test_addrelu_calc_exact_exact(_):
+    pvalue0 = util.new_pvalue_x(10, "float32")
+    pvalue1 = util.new_pvalue_x(-5, "float32")
+
+    pvalue = AddReluSimulator._do_calc(pvalue0, pvalue1)
+
+    return pvalue.value == np.float32(5)
+
+
+@add_cust_test_func(ut_case)
+def test_addrelu_type(_):
+    return AddReluSimulator.get_type() == "elewise_binary_addrelu"
+
+
+# SubRelu
+@add_cust_test_func(ut_case)
+def test_subrelu_calc_exact_exact(_):
+    pvalue0 = util.new_pvalue_x(10, "float32")
+    pvalue1 = util.new_pvalue_x(-5, "float32")
+
+    pvalue = SubReluSimulator._do_calc(pvalue0, pvalue1)
+
+    return pvalue.value == np.float32(15)
+
+
+@add_cust_test_func(ut_case)
+def test_subrelu_type(_):
+    return SubReluSimulator.get_type() == "elewise_binary_subrelu"
+
+
 if __name__ == "__main__":
     for k, v in ut_case._case_info_map.items():
-        ret = v.test_func(None)
+        # if not k == "test_cmp_any_any_alone_node":
+        #     continue
+
+        try:
+            ret = v.test_func(None)
+        except Exception:
+            import traceback
+            print(f"\033[93mException: {k}\033[0m")
+            print(traceback.format_exc())
+            continue
+
         if ret:
             print(f"\033[92mPASS: {k}\033[0m")
         else:

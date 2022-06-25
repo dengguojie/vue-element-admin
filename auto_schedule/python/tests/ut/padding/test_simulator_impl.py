@@ -4,9 +4,11 @@ import warnings
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
 from tbe import tvm
-from tbe.dsl.base.padding import simulator
-from tbe.dsl.base.padding.graph import Graph, Node
-from tbe.dsl.base.padding.simulator import Simulator, SimulatorManager
+from tbe.dsl.padding import simulator
+from tbe.dsl.padding.graph import Graph
+from tbe.dsl.padding.graph import Node
+from tbe.dsl.padding.simulator import Simulator
+from tbe.dsl.padding.simulator import SimulatorManager
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("padding", "padding.test_simulator_impl")

@@ -20,9 +20,9 @@ performance transdata
 from tbe import tvm
 from tbe.common.utils.shape_util import shape_to_list
 from tbe.dsl.base import operation
-from tbe.dsl.base.classifier.transdata.constants import BLOCK, DTYPE_BYTE, DO_TRANSPOSE_PAD
-from tbe.dsl.base.classifier.transdata.constants import BORROW_N_B8B16_BACKWARD, BORROW_N_B8B16_FORWARD
-from tbe.dsl.base.classifier.transdata.constants import BORROW_H_B8B16_BACKWARD, BORROW_H_B8B16_FORWARD
+from tbe.dsl.classifier.transdata.constants import BLOCK, DTYPE_BYTE, DO_TRANSPOSE_PAD
+from tbe.dsl.classifier.transdata.constants import BORROW_N_B8B16_BACKWARD, BORROW_N_B8B16_FORWARD
+from tbe.dsl.classifier.transdata.constants import BORROW_H_B8B16_BACKWARD, BORROW_H_B8B16_FORWARD
 from .transdata_compute import TransdataComputation
 from .transdata_op import PadOp, TransposeOp, PadSReshapeOp, SReshapeOp
 from .transdata_op import FReshapeOp, SetValueOp, DataMoveOp, DePadOp, PlaceholderOp

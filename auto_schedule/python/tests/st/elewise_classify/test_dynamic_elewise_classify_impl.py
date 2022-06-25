@@ -4,7 +4,7 @@ import warnings
 import tbe
 import copy
 from tbe.common import buildcfg
-from tbe.dsl.base.classifier import classify_elewise
+from tbe.dsl.classifier import elewise_classifier
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("elewise_classify",
@@ -23,7 +23,7 @@ def test_elewise_prebuild_classify(_):
                 {"dtype": "float32", "shape": (-1, -1), "org_shape": (-1, -1), "range": [
                     (1, None), (1, None)], },
             ]
-            ins = classify_elewise(inputs, False)
+            ins = elewise_classifier.classify(inputs, False)
 
             expect_ins = [
                 [
@@ -56,7 +56,7 @@ def test_elewise_not_fuse_classify_ori_c_infer(_):
                  "ori_format": "NHWC"},
             ]
             extra_params = {"ignore_fractal_format": False}
-            ins = classify_elewise(inputs, False, extra_params)
+            ins = elewise_classifier.classify(inputs, False, extra_params)
 
             expect_ins = [
                 [

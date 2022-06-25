@@ -18,14 +18,4 @@
 vector variable shape
 """
 
-from . import concat_variable_shape
-from . import elewise_variable_shape
-from . import gather_variable_shape
-from . import norm_variable_shape
-from . import reduce_variable_shape
-from . import slice_variable_shape
-from . import split_variable_shape
-from . import transdata_variable_shape
-from . import transpose_variable_shape
-from . import tuple_reduce_variable_shape
 from . import softmax_norm_variable_shape

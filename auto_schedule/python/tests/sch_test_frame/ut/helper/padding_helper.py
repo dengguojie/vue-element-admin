@@ -5,8 +5,8 @@ import numpy as np
 import tbe.common.platform as platform
 from tbe import tvm
 from tbe.dsl.base import var_api
-from tbe.dsl.base.padding import util as p_util
-from tbe.dsl.base.padding.padding import Action
+from tbe.dsl.padding import util as p_util
+from tbe.dsl.padding.padding import Action
 from tbe.tvm.tensor import Tensor
 
 
@@ -78,11 +78,22 @@ def const_c(v):
     return var_api.const(v, "int32", {"axis_type": "C"})
 
 
+def var_c(name):
+    return var_api.var(name, "int32", {"axis_type": "C"})
+
+
 def const_x(values, axis_types):
     const_values = []
     for v, axis_type in zip(values, axis_types):
         const_values.append(var_api.const(v, "int32", {"axis_type": axis_type}))
     return const_values
+
+
+def var_x(names, axis_types):
+    var_values = []
+    for name, axis_type in zip(names, axis_types):
+        var_values.append(var_api.var(name, "int32", {"axis_type": axis_type}))
+    return var_values
 
 
 def soc_context(soc_version):

@@ -32,8 +32,8 @@ from tbe.common.platform import ASCEND_910B
 from tbe.common.platform.platform_info import get_soc_spec
 
 from tbe.dsl.base import d_format_util
-from tbe.dsl.base.padding import padding
-from tbe.dsl.base.padding.padding import ActionValueType, ActionType
+from tbe.dsl.padding import padding
+from tbe.dsl.padding.padding import ActionValueType, ActionType
 from ... import util
 from ...constants import CompileInfo
 from ...constants import DTYPE_BYTE_MAPPING

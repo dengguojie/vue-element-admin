@@ -172,13 +172,13 @@
         "vsel",
         "vcmpsel"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/broadcast_elewise_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/broadcast_elewise_classifier.py":[
         "vsub",
         "broadcast_classify",
         "broadcast_schedule",
         "broadcast_tilingcase"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/elewise_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/elewise_classifier.py":[
         "elewise_classify"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/broadcast/broadcast_tilingcase.py":[
@@ -260,14 +260,14 @@
         "reduce_sum",
         "reduce_max"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/reduce/reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/gather_classifier.py":[
         "gather"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/reduce/unknown_reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"
     ],
@@ -282,11 +282,11 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/softmax_cross_entropy_with_logits_schedule.py":[
         "softmax_cross_entropy_with_logits"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/known_reduce_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/reduce/known_reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/mixed_reduce_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/reduce/mixed_reduce_classifier.py":[
         "reduce_classify"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce/reduce_atomic_schedule.py":[
@@ -310,7 +310,7 @@
     "auto_schedule/python/tbe/dsl/static_schedule/reduce_5hdc_schedule.py":[
         "reduce_sum"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/norm_classifier.py": [
+    "auto_schedule/python/tbe/dsl/classifier/norm_classifier.py": [
         "norm",
         "norm_classify"
     ],
@@ -329,7 +329,7 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/gather/gather_schedule_zero.py":[
         "gather"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py": [
+    "auto_schedule/python/tbe/dsl/classifier/slice_classifier.py": [
         "slice_classify"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_tilingcase.py":[
@@ -344,7 +344,7 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/transpose/transpose_schedule.py":[
         "transpose"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py": [
+    "auto_schedule/python/tbe/dsl/classifier/transpose_classifier.py": [
         "transpose"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/concat/concat_tilingcase.py":[
@@ -353,10 +353,10 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/concat/concat_schedule.py":[
         "concat"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py": [
+    "auto_schedule/python/tbe/dsl/classifier/concat_classifier.py": [
         "concat"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/tuple_reduce_classifier.py": [
+    "auto_schedule/python/tbe/dsl/classifier/tuple_reduce_classifier.py": [
         "tuple_reduce",
         "tuple_reduce_classify"
     ],
@@ -378,7 +378,7 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/split/split_schedule.py":[
         "split"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py": [
+    "auto_schedule/python/tbe/dsl/classifier/split_classifier.py": [
         "split"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py":[
@@ -512,7 +512,7 @@
     "auto_schedule/python/tbe/dsl/compute/general_transdata.py":[
         "transdata"
     ],
-    "auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/transdata/general_transdata_classifier.py":[
         "transdata"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_x_backprop_v2_schedule.py":[
@@ -566,34 +566,34 @@
     "auto_schedule/python/tbe/common/utils/varshape/variable_shape.py":[
         "shape_util/test_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/concat_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/concat_variable_shape.py":[
         "concat/test_concat_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/elewise_variable_shape.py":[
+    "- auto_schedule/python/tbe/dsl/varshape/elewise_variable_shape.py":[
         "elewise/test_elewise_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/gather_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/gather_variable_shape.py":[
         "gather/test_gather_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/norm_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/norm_variable_shape.py":[
         "norm/test_norm_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/reduce_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/reduce_variable_shape.py":[
         "reduce/test_reduce_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/slice_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/slice_variable_shape.py":[
         "slice/test_slice_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/split_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/split_variable_shape.py":[
         "split/test_split_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/transdata_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/transdata_variable_shape.py":[
         "transdata/test_transdata_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/transpose_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/transpose_variable_shape.py":[
         "transpose/test_transpose_variable_shape_impl.py"
     ],
-    "auto_schedule/python/tbe/common/utils/varshape/vector/tuple_reduce_variable_shape.py":[
+    "auto_schedule/python/tbe/dsl/varshape/tuple_reduce_variable_shape.py":[
         "tuple_reduce/test_tuple_reduce_variable_shape_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/base/var_api.py":[
@@ -605,46 +605,58 @@
     "auto_schedule/python/tbe/dsl/base/d_format_util.py":[
         "base/test_d_format_util_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/graph.py":[
+    "auto_schedule/python/tbe/dsl/padding/graph.py":[
         "padding/test_graph_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/padding.py":[
+    "auto_schedule/python/tbe/dsl/padding/padding.py":[
         "padding/test_padding_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulator.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulator.py":[
         "padding/test_simulator_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/smath.py":[
+    "auto_schedule/python/tbe/dsl/padding/smath.py":[
         "padding/test_smath_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/util.py":[
+    "auto_schedule/python/tbe/dsl/padding/util.py":[
         "padding/test_util_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/value.py":[
+    "auto_schedule/python/tbe/dsl/padding/value.py":[
         "padding/test_value_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/binary_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/binary_sml.py":[
         "padding_simulator/test_binary_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/bitwise_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/bitwise_sml.py":[
         "padding_simulator/test_bitwise_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/broadcast_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/broadcast_sml.py":[
         "padding_simulator/test_broadcast_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/cast_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/cast_sml.py":[
         "padding_simulator/test_cast_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/nn_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/nn_sml.py":[
         "padding_simulator/test_nn_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/reduce_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/reduce_sml.py":[
         "padding_simulator/test_reduce_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/single_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/single_sml.py":[
         "padding_simulator/test_single_sml_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/base/padding/simulators/tensor_scalar_sml.py":[
+    "auto_schedule/python/tbe/dsl/padding/simulators/tensor_scalar_sml.py":[
         "padding_simulator/test_tensor_scalar_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/padding/simulators/cmpsel/cmp_sml.py":[
+        "padding_simulator/test_cmp_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/padding/simulators/cmpsel/cmpsel_sml.py":[
+        "padding_simulator/test_cmpsel_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/padding/simulators/cmpsel/sel_sml.py":[
+        "padding_simulator/test_sel_sml_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/padding/simulators/cmpsel/scmp.py":[
+        "padding_simulator/test_scmp_impl.py"
     ]
 }

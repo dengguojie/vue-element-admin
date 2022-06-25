@@ -29,10 +29,10 @@ from tbe.dsl.base import operation
 from tbe.dsl.base import d_format_util
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
-from tbe.dsl.base.padding import padding
-from tbe.dsl.base.padding.padding import Action
-from tbe.dsl.base.padding.padding import ActionType
-from tbe.dsl.base.padding.padding import ActionValueType
+from tbe.dsl.padding import padding
+from tbe.dsl.padding.padding import Action
+from tbe.dsl.padding.padding import ActionType
+from tbe.dsl.padding.padding import ActionValueType
 
 from ... import util
 from ...constants import CompileInfo

@@ -3,15 +3,18 @@ import warnings
 
 import numpy as np
 import tbe
-from tbe.dsl.base.padding.value import SettingValue, SettingValueType
 from sch_test_frame.common.register import add_cust_test_func
 from sch_test_frame.ut import OpUT
 from sch_test_frame.ut.helper import padding_helper
 from tbe import tvm
-from tbe.dsl.base import operation, var_api
-from tbe.dsl.base.padding import util
-from tbe.dsl.base.padding.graph import Graph, Node
-from tbe.dsl.base.padding.value import PaddingValueType
+from tbe.dsl.base import operation
+from tbe.dsl.base import var_api
+from tbe.dsl.padding import util
+from tbe.dsl.padding.graph import Graph
+from tbe.dsl.padding.graph import Node
+from tbe.dsl.padding.value import PaddingValueType
+from tbe.dsl.padding.value import SettingValue
+from tbe.dsl.padding.value import SettingValueType
 from tbe.tvm.expr import ConstExpr
 
 warnings.filterwarnings("ignore")

@@ -40,7 +40,7 @@ from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import get_op_context
 from tbe.dsl.base.operation import register_build_pointcut
-from tbe.dsl.base.padding import padding
+from tbe.dsl.padding import padding
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
