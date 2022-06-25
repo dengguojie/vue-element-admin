@@ -19,12 +19,15 @@
 
 using namespace ge;
 
-namespace optiling {
-const int64_t OFFSET_NUMS = 3;
-const int64_t BATCHSIZE_MAX = 256;
-const int64_t INT_BYTES = 4;
+namespace {
+constexpr int64_t OFFSET_NUMS = 3;
+constexpr int64_t BATCHSIZE_MAX = 256;
+constexpr int64_t INT_BYTES = 4;
 constexpr size_t INDEX_OFFSET = 2;
+const std::string OP_NAME = "DynSeqOuter";
+}  // namespace
 
+namespace optiling {
 ge::graphStatus TilingForDynSeqOuter(gert::TilingContext *context) {
   auto compile_info = reinterpret_cast<const DynSeqOuterCompileInfo *>(context->GetCompileInfo());
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
@@ -41,12 +44,11 @@ ge::graphStatus TilingForDynSeqOuter(gert::TilingContext *context) {
 
   params->batch_size = seq_len1_shape_val.GetDim(0);
   params->feature_dim = x1_shape_val.GetDim(1);
-  OP_LOGD("op [DynSeqOuterTilingData] : batch_size=%d.", params->batch_size);
-  OP_LOGD("op [DynSeqOuterTilingData] : feature_dim=%d.", params->feature_dim);
-  OP_TILING_CHECK(
-    params->batch_size > BATCHSIZE_MAX,
-    VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "batch_size is over 256."),
-    return ge::GRAPH_FAILED);
+  OP_LOGD(OP_NAME.c_str(), "op [DynSeqOuterTilingData] : batch_size=%d.", params->batch_size);
+  OP_LOGD(OP_NAME.c_str(), "op [DynSeqOuterTilingData] : feature_dim=%d.", params->feature_dim);
+  OP_TILING_CHECK(params->batch_size > BATCHSIZE_MAX,
+                  VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "batch_size is over 256."),
+                  return ge::GRAPH_FAILED);
 
   AddWorkspace(context, INT_BYTES * BATCHSIZE_MAX * OFFSET_NUMS);
   context->SetBlockDim(compile_info->core_num);
@@ -57,20 +59,14 @@ ge::graphStatus TilingForDynSeqOuter(gert::TilingContext *context) {
 ge::graphStatus TilingPrepareForDynSeqOuter(gert::TilingParseContext *context) {
   auto compile_info = MutableCompileInfo<DynSeqOuterCompileInfo>(context);
   std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
-  OP_TILING_CHECK(
-    compile_info == nullptr || parsed_object_cinfo == nullptr,
-    VECTOR_INNER_ERR_REPORT_TILIING("DynSeqOuter", "compile_info or json_str nullptr!"),
-    return ge::GRAPH_FAILED);
-  const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
-  OP_TILING_CHECK(
-    vars.empty(),
-    VECTOR_INNER_ERR_REPORT_TILIING("DynSeqOuter", "get vars failed."),
-    return ge::GRAPH_FAILED);
+  OP_TILING_CHECK(compile_info == nullptr || parsed_object_cinfo == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(OP_NAME, "compile_info or json_str nullptr!"),
+                  return ge::GRAPH_FAILED);
+  const nlohmann::json &vars = (*parsed_object_cinfo)["vars"];
+  OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(OP_NAME, "get vars failed."), return ge::GRAPH_FAILED);
   optiling::GetCompileValue(vars, "core_num", compile_info->core_num);
   return ge::GRAPH_SUCCESS;
 }
 
-IMPL_OP(DynSeqOuter)
-    .Tiling(TilingForDynSeqOuter)
-    .TilingParse<DynSeqOuterCompileInfo>(TilingPrepareForDynSeqOuter);
+IMPL_OP(DynSeqOuter).Tiling(TilingForDynSeqOuter).TilingParse<DynSeqOuterCompileInfo>(TilingPrepareForDynSeqOuter);
 }  // namespace optiling

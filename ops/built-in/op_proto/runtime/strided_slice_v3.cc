@@ -15,8 +15,7 @@
  */
 #include <numeric>
 #include <cmath>
-#include "op_log.h"
-#include "register/op_impl_registry.h"
+#include "runtime_util.h"
 
 namespace {
 const std::string OP_NAME = "StridedSliceV3";
@@ -146,6 +145,7 @@ ge::graphStatus StridedSliceV3InferShape(gert::InferShapeContext* context) {
     }
     out_shape->SetDim(axis_value, cur_out_size);
   }
+  OP_LOGD(OP_NAME.c_str(), "out_shape: %s", ge::Shape2String(*out_shape).c_str());
   return ge::GRAPH_SUCCESS;
 }
 

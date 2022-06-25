@@ -2589,7 +2589,6 @@ unkown:
       - ops/built-in/op_tiling/reflection_pad_v3.h
       - ops/built-in/op_tiling/layer_norm_beta_gamma_backprop.cc
       - ops/built-in/op_tiling/avg_pool_1d.cc
-      - ops/built-in/op_tiling/dyn_seq_outer.cc
       - ops/built-in/op_tiling/extract_image_patches.cc
       - ops/built-in/op_tiling/ger.cc
       - ops/built-in/op_tiling/batch_multi_class_non_max_suppression.cc
@@ -4290,6 +4289,7 @@ pytorch:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_v2_fusion_pass.h
       - ops/built-in/tbe/impl/dynamic/lerp.py
       - ops/built-in/tbe/impl/dynamic/hard_shrink.py
+      - ops/built-in/op_tiling/dyn_seq_outer.cc
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

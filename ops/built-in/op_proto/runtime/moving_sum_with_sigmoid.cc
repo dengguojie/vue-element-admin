@@ -47,6 +47,7 @@ ge::graphStatus InferShapeForMovingSumWithSigmoid(gert::InferShapeContext *conte
   out_shape->SetDimNum(OFFSET_NUM_DIMS);
   out_shape->SetDim(INDEX_BEAM_NUM, beam_sum);
   out_shape->SetDim(INDEX_FRAME_NUM, frame_sum);
+  OP_LOGD(context->GetNodeName(), "out_shape: %s", ge::Shape2String(*out_shape).c_str());
   return ge::GRAPH_SUCCESS;
 }
 

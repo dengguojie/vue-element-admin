@@ -18,14 +18,16 @@
 #include "op_tiling_util.h"
 
 using namespace ge;
-
-namespace optiling {
+namespace {
 constexpr int64_t OFFSET_NUMS = 3;
 constexpr int64_t BATCHSIZE_MAX = 256;
 constexpr int64_t INT_BYTES = 4;
 constexpr size_t INDEX_OFFSET = 2;
-constexpr size_t TWICE = 2;
+constexpr size_t OFFSET_NUM_DIMS = 2;
+const std::string OP_NAME = "MovingSumWithSigmoid";
+}  // namespace
 
+namespace optiling {
 ge::graphStatus TilingForMovingSumWithSigmoid(gert::TilingContext* context) {
   auto offset_shape = context->GetInputShape(INDEX_OFFSET);
   OPS_CHECK_NULL_WITH_CONTEXT(context, offset_shape);
@@ -37,8 +39,8 @@ ge::graphStatus TilingForMovingSumWithSigmoid(gert::TilingContext* context) {
   auto param = context->GetTilingData<MovingSumWithSigmoidTilingData>();
   OPS_CHECK_NULL_WITH_CONTEXT(context, param);
 
-  param->batch_size = offset_storage_shape.GetDim(0) / TWICE;
-  OP_LOGD("op [MovingSumWithSigmoidTilingData] : batch_size=%d.", param->batch_size);
+  param->batch_size = offset_storage_shape.GetDim(0) / OFFSET_NUM_DIMS;
+  OP_LOGD(OP_NAME.c_str(), "op [MovingSumWithSigmoidTilingData] : batch_size=%d.", param->batch_size);
   OP_TILING_CHECK(param->batch_size > BATCHSIZE_MAX,
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "batch_size is over 256."),
                   return ge::GRAPH_FAILED);

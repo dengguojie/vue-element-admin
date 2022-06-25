@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H_
-#define AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H_
+#ifndef AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H
+#define AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H
 #include <cstdint>
 #include <vector>
 #include "register/op_compile_info_base.h"
@@ -29,4 +29,4 @@ struct MovingSumWithSigmoidCompileInfo {
   int32_t core_num = 1;
 };
 }  // namespace optiling
-#endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H_
+#endif  // AIR_CXX_RUNTIME_V2_OP_IMPL_MOVING_SUM_WITH_SIGMOID_RUNTIME2_H

@@ -20,8 +20,6 @@
 
 #include "op_log.h"
 #include "runtime_util.h"
-#include "register/op_impl_registry.h"
-#include "error_util.h"
 
 using namespace ge;
 namespace ops {
@@ -51,6 +49,7 @@ ge::graphStatus DynSeqOuterInferShapeFunc(gert::InferShapeContext *context) {
   }
 
   output_shape->SetDim(0, bst);
+  OP_LOGD(context->GetNodeName(), "output_shape: %s", ge::Shape2String(*output_shape).c_str());
   return ge::GRAPH_SUCCESS;
 }
 
