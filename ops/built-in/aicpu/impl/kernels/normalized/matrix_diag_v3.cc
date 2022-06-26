@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved. 
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 5;
 const int64_t kConstTwo = 2;
-const char *MATRIX_DIAG_V3 = "MatrixDiagV3";
+const char *const MATRIX_DIAG_V3 = "MatrixDiagV3";
 
 #define MATRIXDIAGV3_COMPUTE_CASE(DTYPE, TYPE, CTX)             \
   case (DTYPE): {                                               \
@@ -97,21 +97,21 @@ uint32_t MatrixDiagV3CpuKernel::Compute(CpuKernelContext &ctx)
       KERNEL_LOG_ERROR("MatrixDiagV3 kernel data type [%s] not support.", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-  return KERNEL_STATUS_OK;
+  return static_cast<uint32_t>(KERNEL_STATUS_OK);
 }
 
 std::pair<int, int> MatrixDiagV3CpuKernel::ComputeDiagLenAndContentOffset(
     int diag_index, int max_diag_len, int num_rows, int num_cols,
-    bool left_align_superdiagonal, bool left_align_subdiagonal) {
+    bool left_align_superdiagonal, bool left_aligns_subdiagonal) const {
   const bool left_align = (diag_index >= 0 && left_align_superdiagonal) ||
-                          (diag_index <= 0 && left_align_subdiagonal);
+                          (diag_index <= 0 && left_aligns_subdiagonal);
   const int diag_len = std::min(num_rows + std::min(0, diag_index),
                                 num_cols - std::max(0, diag_index));
   const int content_offset = (left_align) ? 0 : (max_diag_len - diag_len);
   return { diag_len, content_offset };
 }
 
-uint32_t MatrixDiagV3CpuKernel::GetDiagIndex(CpuKernelContext &ctx,
+uint32_t MatrixDiagV3CpuKernel::GetDiagIndex(const CpuKernelContext &ctx,
                                              int32_t &lower_diag_index,
                                              int32_t &upper_diag_index,
                                              int32_t &num_rows,
@@ -143,7 +143,7 @@ uint32_t MatrixDiagV3CpuKernel::GetDiagIndex(CpuKernelContext &ctx,
 
   // num_cols
   int64_t num_cols_num = num_cols_tensor->NumElements();
-  KERNEL_CHECK_FALSE((num_cols_num == 1), KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_FALSE((num_cols_num == 1), static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID),
       "num_cols must have only one element, received [%d] elements. ", num_cols_num);
   auto *num_cols_data = reinterpret_cast<int32_t *>(num_cols_tensor->GetData());
   num_cols = num_cols_data[0];
@@ -153,7 +153,7 @@ uint32_t MatrixDiagV3CpuKernel::GetDiagIndex(CpuKernelContext &ctx,
 uint32_t MatrixDiagV3CpuKernel::AdjustRowsAndCols(int32_t &num_rows,
                                                   int32_t &num_cols,
                                                   int32_t min_num_rows,
-                                                  int32_t min_num_cols) {
+                                                  int32_t min_num_cols) const {
   if (num_rows == -1 && num_cols == -1) {
     num_rows = std::max(min_num_rows, min_num_cols);
     num_cols = num_rows;
@@ -182,7 +182,7 @@ uint32_t MatrixDiagV3CpuKernel::DoCompute(CpuKernelContext &ctx) {
   int32_t num_cols = -1;
   
   KERNEL_CHECK_FALSE((GetDiagIndex(ctx, lower_diag_index, upper_diag_index, num_rows, num_cols) == KERNEL_STATUS_OK),
-      KERNEL_STATUS_PARAM_INVALID, "GetDiagIndex failed.");
+      static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID), "GetDiagIndex failed.");
 
   // padding_value
   int64_t padding_value_num = padding_value_tensor->NumElements();
@@ -192,23 +192,23 @@ uint32_t MatrixDiagV3CpuKernel::DoCompute(CpuKernelContext &ctx) {
   T padding_value = padding_value_data[0];
 
   const int32_t diag_rank = diagonal_shape->GetDims();
-  const int64_t num_diags = upper_diag_index - lower_diag_index + 1;
+  const int64_t num_diags = (upper_diag_index - lower_diag_index) + 1;
   const int64_t max_diag_len = diagonal_shape->GetDimSize(diag_rank - 1);
   const int32_t min_num_rows = max_diag_len - std::min(upper_diag_index, 0);
   const int32_t min_num_cols = max_diag_len + std::max(lower_diag_index, 0);
   if (num_rows != -1 && num_rows < min_num_rows) {
     KERNEL_LOG_ERROR("The number of rows is too small.");
-    return KERNEL_STATUS_PARAM_INVALID;
+    return static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
   }
   if (num_cols != -1 && num_cols < min_num_cols) {
     KERNEL_LOG_ERROR("The number of columns is too small.");
-    return KERNEL_STATUS_PARAM_INVALID;
+    return static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID);
   }
 
   // If both num_rows and num_cols are unknown, assume that output is square.
   // Otherwise, use smallest possible values.
   KERNEL_CHECK_FALSE((AdjustRowsAndCols(num_rows, num_cols, min_num_rows, min_num_cols) == KERNEL_STATUS_OK),
-      KERNEL_STATUS_PARAM_INVALID, "AdjustRowsAndCols failed.");
+      static_cast<uint32_t>(KERNEL_STATUS_PARAM_INVALID), "AdjustRowsAndCols failed.");
 
   auto *diagonal_data = reinterpret_cast<T *>(diagonal_tensor->GetData());
   auto *output_data = reinterpret_cast<T *>(output_tensor->GetData());
@@ -221,14 +221,14 @@ uint32_t MatrixDiagV3CpuKernel::DoCompute(CpuKernelContext &ctx) {
   for (uint64_t batch = 0; batch < num_batches ; ++batch) {
     for (int64_t i = 0; i < num_rows; ++i) {
       for (int64_t j = 0; j < num_cols; ++j) {
-        const int diag_index = j - i;
+        const int diag_index = static_cast<int>(j - i);
         const int diag_index_in_input = upper_diag_index - diag_index;
         int diag_len, content_offset;
         std::tie(diag_len, content_offset) = ComputeDiagLenAndContentOffset(
-            diag_index, max_diag_len, num_rows, num_cols,
+            diag_index, static_cast<int>(max_diag_len), num_rows, num_cols,
             left_align_superdiagonal, left_align_subdiagonal);
         const int index_in_the_diagonal =
-          j - std::max<int64_t>(diag_index, 0) + content_offset;
+          (j - std::max<int64_t>(diag_index, 0)) + content_offset;
         if (lower_diag_index <= diag_index &&
             diag_index <= upper_diag_index) {
           output_data[elem] = diagonal_data[diag_batch_base_index +

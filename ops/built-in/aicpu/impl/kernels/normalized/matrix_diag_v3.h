@@ -28,14 +28,14 @@ private:
   uint32_t CheckParam(CpuKernelContext &ctx);
   std::pair<int, int> ComputeDiagLenAndContentOffset(
   int diag_index, int max_diag_len, int num_rows, int num_cols,
-  bool left_align_superdiagonal, bool left_align_subdiagonal);
+  bool left_align_superdiagonal, bool left_align_subdiagonal) const ;
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
   uint32_t AdjustRowsAndCols(int32_t &num_rows,
                             int32_t &num_cols,
                             int32_t min_num_rows,
-                            int32_t min_num_cols);
-  uint32_t GetDiagIndex(CpuKernelContext &ctx,
+                            int32_t min_num_cols) const ;
+  uint32_t GetDiagIndex(const CpuKernelContext &ctx,
                        int32_t &lower_diag_index,
                        int32_t &upper_diag_index,
                        int32_t &num_rows,
