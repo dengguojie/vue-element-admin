@@ -626,6 +626,7 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
     ge::ConstGeTensorDescPtr filterDesc = opDesc->GetInputDescPtr(1);
     ge::ConstGeTensorDescPtr biasDesc = opDesc->GetInputDescPtr(2);
     ge::ConstGeTensorDescPtr outputDesc = opDesc->GetOutputDescPtr(0);
+    inputFormat = inputDesc->GetFormat();
 
     if (inputDesc->GetFormat() == ge::Format::FORMAT_NC1HWC0) {
         OP_LOGE_IF(inputDesc->GetShape().GetDimNum() != kNC1HWC0DimSize, false, opType,
@@ -643,7 +644,7 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
             "output shape must be 4D when input format NCHW");
     }
 
-    OP_LOGE_IF(filterDesc->GetFormat() != ge::Format::FORMAT_FRACTAL_Z, false, opType,
+    OP_LOGE_IF(GetPrimaryFormat(filterDesc->GetFormat()) != ge::Format::FORMAT_FRACTAL_Z, false, opType,
         "filter only support FRACZ format!");
     OP_LOGE_IF(filterDesc->GetShape().GetDimNum() != kFRACZDimSize || \
         filterDesc->GetOriginShape().GetDimNum() != kNCHWDimSize, false, opType,
@@ -776,7 +777,7 @@ bool Conv2dBinaryTiling::ParserConv2DParas(gert::TilingContext* context,
     OP_LOGE_IF(CUBE_MAD_TYPE.find(convParas.aType) == CUBE_MAD_TYPE.end(), false, context->GetNodeType(),
         "input datatype only supports FP16/INT8/INT4/BFP16/FP32!");
     convParas.madType = CUBE_MAD_TYPE[convParas.aType];
-    convParas.biasType = CUBE_MAD_TYPE[convParas.aType];
+    convParas.biasType = CUBE_BIAS_TYPE[convParas.aType];
 
     GELOGD("[%s] ParserConv2DParas success, input shape is [%d, %d, %d, %d], filter shape is [%d, %d, %d, %d], \
         output shape is [%d, %d, %d, %d], pads is [%d, %d, %d, %d], strides is [%d, %d], dilations is [%d, %d], \
@@ -1069,6 +1070,10 @@ bool Conv2dBinaryTiling::UpdateRunInfo(utils::OpRunInfo& runInfo)
         convParas.stride_h*convParas.stride_w == 1 && convParas.kh*convParas.kw == 1 &&
         convParas.bType == ge::DataType::DT_FLOAT16;
     attachMap.fmapLoadtol0aMode = load2dFlag ? 1 : 0;
+    // no support classify for 5HD
+    if (inputFormat == ge::Format::FORMAT_NC1HWC0) {
+        attachMap.fmapLoadtol0aMode = 0;
+    }
 
     uint64_t tilingId = GetConv2DTilingId(attachMap);
 

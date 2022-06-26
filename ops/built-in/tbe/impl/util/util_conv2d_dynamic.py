@@ -385,7 +385,8 @@ class Conv2dParaProcess(CubeParaProcess):
             self.strides == [-1, -1, -1, -1],
             self.strides == (-1, -1, -1, -1),
             self.inputs.get("range") == [[1, None], [1, -1], [1, None], [1, None]]
-            and self.inputs.get("format") == "NCHW"
+            and self.inputs.get("format") == "NCHW",
+            [1, None] in self.inputs.get("range") or (1, None) in self.inputs.get("range")
         ]
         for cond in condition_list:
             if cond:

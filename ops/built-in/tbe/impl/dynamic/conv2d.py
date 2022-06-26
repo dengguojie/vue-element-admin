@@ -238,6 +238,13 @@ def set_default_para():
     return default_para
 
 
+def check_input_no_range(inputs):
+    if inputs.op.tag == "NCHW_trans_5HD":
+        return
+    for input_range in inputs.op.attrs['range']:
+        if list(input_range) == [1, -1]:
+            raise RuntimeError("No support fusion for no shape range!")
+
 @register_op_compute("Conv2D", op_mode="dynamic", support_fusion=True)
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (tvm.tensor.Tensor, NONETYPE),
                              (tvm.tensor.Tensor, NONETYPE), dict, (tuple, list, NONETYPE), (tuple, list, NONETYPE),
@@ -247,6 +254,7 @@ def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pad
                           dsl_flag=True, options=None):
     fusion_util.check_fusion_input([inputs])
     fusion_util.check_fusion_input([weights])
+    check_input_no_range(inputs)
 
     # set fusion build config
     build_cfg = {

@@ -2434,7 +2434,7 @@ class Conv2dSchedule:
                 bl1_attach_flag = binary_attach_flag.get("bl1_attach_flag")
                 reuse_al1_flag = self._binary.cal_reuse_al1(binary_attach_flag)
                 if bl1_attach_flag == AttachMode.ATTACH_PASS:
-                    bl1_nparts_tmp = 1
+                    bl1_nparts_tmp = 1 if not reuse_al1_flag else al1_nparts[0]
             else:
                 outer_factor = max(al1_nparts[0], bl1_nparts[0])
                 inner_factor = min(al1_nparts[0], bl1_nparts[0])

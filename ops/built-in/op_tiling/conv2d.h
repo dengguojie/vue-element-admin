@@ -176,6 +176,15 @@ std::map<ge::DataType, ge::DataType> CUBE_MAD_TYPE = {
     {ge::DataType::DT_FLOAT, ge::DataType::DT_FLOAT}
 };
 
+std::map<ge::DataType, ge::DataType> CUBE_BIAS_TYPE = {
+    {ge::DataType::DT_INT4, ge::DataType::DT_INT32},
+    {ge::DataType::DT_INT8, ge::DataType::DT_INT32},
+    {ge::DataType::DT_UINT8, ge::DataType::DT_INT32},
+    {ge::DataType::DT_FLOAT16, ge::DataType::DT_FLOAT16},
+    {ge::DataType::DT_BF16, ge::DataType::DT_FLOAT},
+    {ge::DataType::DT_FLOAT, ge::DataType::DT_FLOAT}
+};
+
 struct Conv2DShapesInfo {
     int32_t batch = -1;
     int32_t hi = -1;
@@ -290,6 +299,7 @@ private:
 
     std::string opType;
     std::string nodeName;
+    ge::Format inputFormat;
 };
 } // namespace optiling
 
