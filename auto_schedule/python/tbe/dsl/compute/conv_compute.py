@@ -1885,7 +1885,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             res_c = tvm.compute(res.shape,
                                 lambda batch, cout1, howo, cout0:
                                 res(batch, cout1, howo, cout0),
-                                name=get_name_with_suffix_num('invalid_conv2d_rmpad'))
+                                name=get_name_with_suffix_num('invalid_conv2d_rmpad'),
+                                attrs={"width_out": ConvParam.w_out, "conv_shape": conv_shape})
         else:
             res_c = tvm.compute(conv_shape,
                                 lambda batch, cout1, howo, cout0:
