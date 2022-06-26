@@ -281,7 +281,7 @@ TEST_F(pad_conv2d_fusion_test, one_padv3_one_conv2d) {
   data.update_output_desc_y(data_tensor_desc);
 
   // padding_const
-  std::vector<int32_t> paddings = {0,0,3,3,3,3,0,0};
+  std::vector<int32_t> paddings = {0,3,3,0,0,3,3,0};
   vector<int64_t> paddings_dims = {1, 8};
   TensorDesc padding_const_tensor_desc(ge::Shape(paddings_dims), FORMAT_NHWC, DT_INT32);
   Tensor padding_const_tensor(padding_const_tensor_desc);
@@ -392,7 +392,7 @@ ge::Graph graph("one_padv3_constant_value_one_conv2d");
   data.update_output_desc_y(data_tensor_desc);
 
   // padding_const
-  std::vector<int32_t> paddings = {0,0,3,3,3,3,0,0};
+  std::vector<int32_t> paddings = {0,3,3,0,0,3,3,0};
   vector<int64_t> paddings_dims = {1, 8};
   TensorDesc padding_const_tensor_desc(ge::Shape(paddings_dims), FORMAT_NHWC, DT_INT32);
   Tensor padding_const_tensor(padding_const_tensor_desc);
@@ -403,16 +403,16 @@ ge::Graph graph("one_padv3_constant_value_one_conv2d");
   padding_const_tensor.SetData((uint8_t*)padding_const_tensor_value, 8 * sizeof(uint32_t));
   auto paddings_const = op::Const("paddings").set_attr_value(padding_const_tensor);
 
-  //constant_values
-  auto constant_value = op::Data("constant_value");
-  ge::Shape constant_value_shape({1,});
+  ge::Shape constant_value_shape({1,1});
   ge::TensorDesc constant_value_desc(data_shape, FORMAT_NHWC, DT_FLOAT);
-  constant_value_desc.SetOriginFormat(FORMAT_NHWC);
-  constant_value.update_input_desc_x(constant_value_desc);
-  constant_value.update_output_desc_y(constant_value_desc);
+  Tensor constant_value_tensor(constant_value_desc);
+  float* constant_value_tensor_value = new float[1];
+  *constant_value_tensor_value = 1;
+  constant_value_tensor.SetData((uint8_t*)constant_value_tensor_value, 1 * sizeof(float));
+  auto constant_const = op::Const("constant_value").set_attr_value(constant_value_tensor);
 
   // pad
-  auto pad = op::PadV3("Padv3").set_input_x(data).set_input_paddings(paddings_const).set_input_constant_values(constant_value);
+  auto pad = op::PadV3("Padv3").set_input_x(data).set_input_paddings(paddings_const).set_input_constant_values(constant_const);
   pad.update_input_desc_x(data_tensor_desc);
   pad.update_input_desc_paddings(padding_const_tensor_desc);
   ge::Shape pad_output_shape({1, 230, 230, 3});
@@ -468,7 +468,7 @@ ge::Graph graph("one_padv3_constant_value_one_conv2d");
   fe::FusionPassTestUtils::RunGraphFusionPass("PadConv2dFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   // check after fusion
-  EXPECT_EQ(compute_graph_ptr->GetAllNodesSize(), 4);
+  EXPECT_EQ(compute_graph_ptr->GetAllNodesSize(), 6);
 
   bool has_pad_node = false;
   vector<int64_t> pads;
@@ -480,10 +480,7 @@ ge::Graph graph("one_padv3_constant_value_one_conv2d");
       (void)ge::AttrUtils::GetListInt(node->GetOpDesc(), "pads", pads);
     }
   }
-  EXPECT_EQ(has_pad_node, false);
-  for (auto pad : pads) {
-    EXPECT_EQ(pad, 3);
-  }
+  EXPECT_EQ(has_pad_node, true);
 }
 
 TEST_F(pad_conv2d_fusion_test, one_padv3_one_conv2d_one_slice) {
@@ -516,7 +513,7 @@ TEST_F(pad_conv2d_fusion_test, one_padv3_one_conv2d_one_slice) {
   data.update_output_desc_y(data_tensor_desc);
 
   // padding_const
-  std::vector<int32_t> paddings = {0,0,3,3,3,3,0,0};
+  std::vector<int32_t> paddings = {0,3,3,0,0,3,3,0};
   vector<int64_t> paddings_dims = {1, 8};
   TensorDesc padding_const_tensor_desc(ge::Shape(paddings_dims), FORMAT_NHWC, DT_INT32);
   Tensor padding_const_tensor(padding_const_tensor_desc);

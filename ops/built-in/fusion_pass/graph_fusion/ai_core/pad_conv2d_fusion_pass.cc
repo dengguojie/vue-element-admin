@@ -71,15 +71,86 @@ vector<FusionPattern*> PadConv2dFusionPass::DefinePatterns() {
   return patterns;
 }
 
-bool CheckPadv3ConstantValue(const ge::NodePtr& padd_node) {
+bool GetFloatConstValueFromTensor(const ge::Operator& op, const ge::Tensor& const_tensor, const ge::DataType& dtype,
+                                  std::vector<float>& const_data)
+{
+    size_t size = 0;
+    if (dtype == ge::DT_FLOAT) {
+        const float* const_data_ptr = reinterpret_cast<const float*>(const_tensor.GetData());
+        size = const_tensor.GetSize() / sizeof(float);
+        for (size_t i = 0; i < size; ++i) {
+             const_data.push_back(((float)(*(const_data_ptr + i))));
+            OP_LOGD(TbeGetName(op), "const type is float idx:value = %d:%d", i, (float)(*(const_data_ptr + i)));
+        }
+    } else {
+        OP_LOGW(TbeGetName(op), "do not support get int value for this type %d", dtype);
+        return false;
+    }
+    return true;
+}
+
+bool GetFloatConstValue(const ge::NodePtr& fused_node, const string& const_name,
+                        std::vector<float>& const_value)
+{
+    ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
+    OP_LOGD(TbeGetName(op), "begin to get const value for input name(%s)", const_name.c_str());
+    ge::Tensor const_tensor;
+    if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name.c_str(), const_tensor)) {
+        OP_LOGW(TbeGetName(op), "get const tensor of name(%s) from op failed", const_name.c_str());
+        return false;
+    }
+    ge::DataType dtype = op.GetInputDescByName(const_name.c_str()).GetDataType();
+    if (!GetFloatConstValueFromTensor(op, const_tensor, dtype, const_value)) {
+        OP_LOGW(TbeGetName(op), "get const Value of name(%s) from tensor failed", const_name.c_str());
+        return false;
+    }
+    OP_LOGD(TbeGetName(op), "end to get const value for input name(%s)", const_name.c_str());
+    return true;
+}
+
+bool CheckPadv3ConstantValue(const ge::NodePtr& padd_node)
+{
     if (padd_node->GetType() == PADDV3) {
-        std::vector<int64_t> constant_value;
-            if (GetIntConstValue(padd_node, "constant_values", constant_value) &&
-                !constant_value.empty() && constant_value[0] != 0) {
-                return true;
-            }
+        std::vector<float> constant_value;
+        if (GetFloatConstValue(padd_node, "constant_values", constant_value) &&
+            !constant_value.empty() && constant_value[0] != 0) {
+            return true;
+        }
     }
     return false;
+}
+
+bool CheckPadv3PadMode(const ge::NodePtr& padd_node)
+{
+    string pad_mode = "";
+    string expect_mode = "constant";
+    if (ge::AttrUtils::GetStr(padd_node->GetOpDesc(), "mode", pad_mode) &&
+       (pad_mode != expect_mode)) {
+        return true;
+    }
+  return false;
+}
+
+bool GetPaddingValue(const ge::NodePtr& padd_node, const vector<int64_t>& pad_value, 
+                     vector<vector<int64_t>>& paddings)
+{
+    if (padd_node->GetType() == PADDV3) {
+        int64_t rank = pad_value.size() / 2;
+        for (int i = 0; i < rank; i++) {
+            vector<int64_t> one_value;
+            one_value.push_back(pad_value[i]);
+            one_value.push_back(pad_value[i + rank]);
+            paddings.push_back(one_value);
+        }
+    } else {
+        for (size_t i = 1; i < pad_value.size(); i += 2) {
+            vector<int64_t> one_value;
+            one_value.push_back(pad_value[i - 1]);
+            one_value.push_back(pad_value[i]);
+            paddings.push_back(one_value);
+        }
+    }
+    return true;
 }
 
 Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
@@ -121,18 +192,18 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   FUSION_PASS_CHECK(CheckPadv3ConstantValue(padd_node),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "constant values not 0, can not fusion."),
                     return NOT_CHANGED);
+  FUSION_PASS_CHECK(CheckPadv3PadMode(padd_node),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "pad mode is not constant."),
+                    return NOT_CHANGED);
 
   std::vector<int64_t> pad_value;
   FUSION_PASS_CHECK(!GetIntConstValue(padd_node, "paddings", pad_value),
                     OP_LOGW(padd_node->GetName().c_str(), "Get const value of paddings failed"),
                     return FAILED);
   vector<vector<int64_t>> paddings;
-  for (size_t i = 1; i < pad_value.size(); i += 2) {
-    vector<int64_t> one_value;
-    one_value.push_back(pad_value[i - 1]);
-    one_value.push_back(pad_value[i]);
-    paddings.push_back(one_value);
-  }
+  FUSION_PASS_CHECK(!GetPaddingValue(padd_node, pad_value, paddings),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "can not get paddings"),
+                    return FAILED);
 
   vector<int64_t> conv_pads;
   (void)ge::AttrUtils::GetListInt(conv2d_node->GetOpDesc(), PADS, conv_pads);
