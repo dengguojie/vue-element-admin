@@ -147,5 +147,23 @@ def test_conv2d_innerbatch_dy(test_arg):
 ut_case.add_cust_test_func(test_func=test_conv2d_innerbatch_dy)
 print("adding Conv2D dyanmic pad -1 end")
 
+def conv2d_1d(test_arg):
+    from tbe.common.context import op_context
+    from impl.dynamic.conv2d import conv2d
+    inputs = {"ori_shape": (1, 1, -1, 2048), "shape": (1, 128, 1, -1, 16), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16", "range": ((1, 1), (128, 128), (1, 1), (1, 88), (16, 16)), 
+             "ori_range": ((1, 1), (1, 1), (1, 88), (2048, 2048))}
+    weight = {"shape": (384, 8, 16, 16), "ori_shape": (1, 3, 128, 2048), "format": "FRACTAL_Z", "ori_format": "HWCN", "dtype": "float16"}
+    bias_tensor = None
+    offset_w_tensor = None
+    strides = [1, 1, 1, 1]
+    dilations = [1, 1, 1, 1]
+    pads = [0, 0, 1, 1]
+    outputs = {'shape':(1, 8, 1, -1, 16), 'ori_shape':(1, 1, -1, 128), "format": "NC1HWC0",  'ori_format': 'NHWC', 'dtype': 'float16'}
+    with op_context.OpContext("dynamic"):
+        conv2d(inputs, weight, bias_tensor, None, outputs, strides, pads, dilations, 1, data_format="NHWC", kernel_name="conv2d")
+
+ut_case.add_cust_test_func(test_func=conv2d_1d)
+print("adding Conv2D conv2d_1d end")
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

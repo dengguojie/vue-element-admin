@@ -3905,7 +3905,10 @@ class CceConvOp:
                             additional_rows = 1
                         else:
                             additional_rows = 2
-                    al1_m = modify_m_for_load3d(al1_m, fmap_w, w_out, additional_rows)
+                    if self._conv1d_split_w_flag:
+                        al1_m = (al1_m - 1)*ConvParam.stride_w + ConvParam.filter_w_dilation
+                    else:
+                        al1_m = modify_m_for_load3d(al1_m, fmap_w, w_out, additional_rows)
                 al1_bound = al1_m * tiling["AL1_shape"][0] * fmap_c0
             else:
                 if strideh_opti_flag:
