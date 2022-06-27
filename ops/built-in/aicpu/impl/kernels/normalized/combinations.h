@@ -29,7 +29,7 @@ class CombinationsCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  uint32_t CombinationsParamCheck(CpuKernelContext &ctx);
+  uint32_t CombinationsParamCheck(const CpuKernelContext &ctx);
 
   template <typename T>
   uint32_t DoCompute(const CpuKernelContext &ctx);

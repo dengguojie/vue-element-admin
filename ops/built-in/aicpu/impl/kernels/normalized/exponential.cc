@@ -19,12 +19,11 @@
 #include "cpu_kernel_utils.h"
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
-#include "cmath"
 
 namespace {
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
-const char *kExponential = "Exponential";
+const char *const kExponential = "Exponential";
 
 #define EXPONENTIAL_COMPUTE_CASE(DTYPE, TYPE, CTX)              \
   case (DTYPE): {                                               \

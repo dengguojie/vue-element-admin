@@ -23,7 +23,7 @@
 namespace {
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
-const char* const kGeometric = "Geometric";
+const char *const kGeometric = "Geometric";
 const double PATTRDEFAULT = 0.5;
 }  // namespace
 

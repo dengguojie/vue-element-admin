@@ -24,8 +24,8 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-const uint32_t ATTRRDEFAULT = 2;
-const char *kCombinations = "Combinations";
+const int64_t ATTRRDEFAULT = 2;
+const char *const kCombinations = "Combinations";
 
 #define COMBINATIONS_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                              \
@@ -70,7 +70,7 @@ uint32_t CombinationsCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t CombinationsCpuKernel::CombinationsParamCheck(CpuKernelContext &ctx) {
+uint32_t CombinationsCpuKernel::CombinationsParamCheck(const CpuKernelContext &ctx) {
   Tensor *input = ctx.Input(0);
   Tensor *output = ctx.Output(0);
   DataType input_type = input->GetDataType();
@@ -83,7 +83,7 @@ uint32_t CombinationsCpuKernel::CombinationsParamCheck(CpuKernelContext &ctx) {
   KERNEL_LOG_DEBUG(
       "CombinationsCpuKernel[%s], input: size[%llu]; output: size[%llu].",
       ctx.GetOpType().c_str(), input->GetDataSize(), output->GetDataSize());
-  int32_t input_num = ctx.Input(0)->NumElements();
+  int64_t input_num = ctx.Input(0)->NumElements();
   AttrValue *r_ = ctx.GetAttr("r");
   auto r = (r_ == nullptr) ? ATTRRDEFAULT : (r_->GetInt());
   KERNEL_CHECK_FALSE(
@@ -115,7 +115,7 @@ uint32_t CombinationsCpuKernel::DoCompute(const CpuKernelContext &ctx) {
                    with_replacement);
   auto output = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t input_num = ctx.Input(0)->NumElements();
-  std::vector<int> t(r, 0);
+  std::vector<int64_t> t(r, 0);
   T *combination = new T[r];
   // The combination is used to temporarily store the addresses of the elements
   // in the input so that the combined address can be stored in the output after

@@ -30,8 +30,8 @@ class PoissonCpuKernel : public CpuKernel {
 
  private:
   template <typename T>
-  uint32_t PoissonCompute(CpuKernelContext &ctx);
-  uint32_t PoissonParamCheck(CpuKernelContext &ctx);
+  uint32_t PoissonCompute(const CpuKernelContext &ctx);
+  uint32_t PoissonParamCheck(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif

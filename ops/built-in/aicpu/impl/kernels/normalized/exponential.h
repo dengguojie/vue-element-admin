@@ -31,7 +31,7 @@ class ExponentialCpuKernel : public CpuKernel {
  private:
   template <typename T>
   uint32_t ExponentialCompute(const CpuKernelContext &ctx);
-  int32_t seed_ = 0;
+  int64_t seed_ = 0;
   float lambda_ = 1.0;
 };
 }  // namespace aicpu

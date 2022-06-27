@@ -22,9 +22,9 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
-const uint32_t REMAINDER = 10000;
+const int32_t REMAINDER = 10000;
 const double RANDOMDIVISOR = 10000.0;
-const char *kMultinomialAliasDraw = "MultinomialAliasDraw";
+const char *const kMultinomialAliasDraw = "MultinomialAliasDraw";
 
 #define MULTINOMIAL_ALIAS_DRAW_COMPUTE_CASE(DTYPE, TYPE, CTX)          \
   case (DTYPE): {                                                      \
@@ -59,7 +59,7 @@ uint32_t MultinomialAliasDrawCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawParamCheck(
-    CpuKernelContext &ctx) {
+    const CpuKernelContext &ctx) {
   // the non null of input, output has been verified in NormalCheck
   Tensor *q = ctx.Input(0);
   Tensor *j = ctx.Input(1);
@@ -96,14 +96,14 @@ uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawParamCheck(
 template <typename T>
 uint32_t MultinomialAliasDrawCpuKernel::MultinomialAliasDrawCompute(
     const CpuKernelContext &ctx) {
-  int data_num = ctx.Input(0)->NumElements();
+  int64_t data_num = ctx.Input(0)->NumElements();
   auto q_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto j_x = reinterpret_cast<int64_t *>(ctx.Input(1)->GetData());
   int num_samples = ctx.GetAttr("num_samples")->GetInt();
   AttrValue *attr_seed_ = ctx.GetAttr("seed");
-  int attr_seed = (attr_seed_ == nullptr) ? 0 : (attr_seed_->GetInt());
+  int64_t attr_seed = (attr_seed_ == nullptr) ? 0 : (attr_seed_->GetInt());
   auto out_y = reinterpret_cast<int64_t *>(ctx.Output(0)->GetData());
-  srand(attr_seed);
+  srand(static_cast<uint64_t>(attr_seed));
   for (int i = 0; i < num_samples; i++) {
     int t = rand() % data_num;
     double r = (rand() % REMAINDER) / RANDOMDIVISOR;

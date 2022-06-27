@@ -31,7 +31,7 @@ class MultinomialAliasDrawCpuKernel : public CpuKernel {
   template <typename T>
   uint32_t MultinomialAliasDrawCompute(const CpuKernelContext &ctx);
 
-  uint32_t MultinomialAliasDrawParamCheck(CpuKernelContext &ctx);
+  uint32_t MultinomialAliasDrawParamCheck(const CpuKernelContext &ctx);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_RANDOM_UNIFORM_H_

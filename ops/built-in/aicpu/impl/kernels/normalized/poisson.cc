@@ -25,7 +25,7 @@
 namespace {
 const uint32_t kInputNum = 1;
 const uint32_t kOutputNum = 1;
-const char *kPoisson = "Poisson";
+const char *const kPoisson = "Poisson";
 
 #define Poisson_COMPUTE_CASE(DTYPE, TYPE, CTX)                \
   case (DTYPE): {                                             \
@@ -40,7 +40,7 @@ const char *kPoisson = "Poisson";
 
 namespace aicpu {
 template <typename T>
-uint32_t PoissonCpuKernel::PoissonCompute(CpuKernelContext &ctx) {
+uint32_t PoissonCpuKernel::PoissonCompute(const CpuKernelContext &ctx) {
   auto input_x = ctx.Input(0);
   auto x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
@@ -49,7 +49,7 @@ uint32_t PoissonCpuKernel::PoissonCompute(CpuKernelContext &ctx) {
   if (attr_seed != nullptr) {
     final_seed = attr_seed->GetInt();
   }
-  srand(final_seed);
+  srand(static_cast<uint64_t>(final_seed));
 
   for (uint32_t j = 0; j < input_x->NumElements(); j++) {
     T k = (T)0;
@@ -83,7 +83,7 @@ uint32_t PoissonCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t PoissonCpuKernel::PoissonParamCheck(CpuKernelContext &ctx) {
+uint32_t PoissonCpuKernel::PoissonParamCheck(const CpuKernelContext &ctx) {
   DataType x_type = ctx.Input(0)->GetDataType();
   KERNEL_CHECK_FALSE((x_type == DT_FLOAT || x_type == DT_FLOAT16),
                      KERNEL_STATUS_PARAM_INVALID,
