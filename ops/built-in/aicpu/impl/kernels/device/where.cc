@@ -84,7 +84,7 @@ static uint32_t DoCompute(typename TTypes<T>::ConstTensor flat_input,
   int64_t data_size = flat_input.size();
   auto input_data = flat_input.data();
   for (Eigen::DenseIndex n = 0; n < data_size; ++n) {
-    if (input_data[n]) {
+    if (input_data[n] != T(0)) {
       CalIndexRowMajor(output, dim_strides, true_nums, n);
       ++true_nums;
     }
@@ -155,9 +155,14 @@ uint32_t WhereCpuKernel::Compute(CpuKernelContext &ctx) {
     WHERE_COMPUTE_CASE(DT_UINT16, uint16_t)
     WHERE_COMPUTE_CASE(DT_UINT32, uint32_t)
     WHERE_COMPUTE_CASE(DT_UINT64, uint64_t)
+    WHERE_COMPUTE_CASE(DT_QINT8, int8_t)
+    WHERE_COMPUTE_CASE(DT_QUINT8, uint8_t)
+    WHERE_COMPUTE_CASE(DT_QINT32, int32_t)
     WHERE_COMPUTE_CASE(DT_FLOAT16, Eigen::half)
     WHERE_COMPUTE_CASE(DT_FLOAT, float)
     WHERE_COMPUTE_CASE(DT_DOUBLE, double)
+    WHERE_COMPUTE_CASE(DT_COMPLEX64, std::complex<float>)
+    WHERE_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>)
     default:
       KERNEL_LOG_ERROR("Where kernel data type [%u] not support.", data_type);
       return KERNEL_STATUS_INNER_ERROR;
