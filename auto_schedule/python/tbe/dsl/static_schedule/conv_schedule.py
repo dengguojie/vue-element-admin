@@ -4556,9 +4556,11 @@ class CceConvOp:
             if not self._cache_tiling_flag:
                 ub_storage_bound_size = tiling["CUB_matrix"][0]*tiling["CUB_matrix"][1]*\
                                          tiling["CUB_matrix"][2]*tiling["CUB_matrix"][3]
+                if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
+                    ub_storage_bound_size *= 2
                 for lop in self._op_graph.body_ops:
                     if ("convolution" in lop["op"] or "mad" in lop["op"]) and \
-                        ("convolution_C" not in lop["op"] or "convolution_C_UB" not in lop["op"]):
+                        ("convolution_C" not in lop["op"] and "convolution_C_UB" not in lop["op"]):
                         continue
                     if "fmap_l1" in lop["op"]:
                         continue
@@ -4570,9 +4572,10 @@ class CceConvOp:
                     # elewise_single_relu is cloud, mini and es
                     if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
                         continue
-                    if "mean_matrix" in tensor_map and self._v200_width_out_1_flag:
-                        ub_storage_bound_size *= 2
                     sch[lop["dst_buffer"]].set_buffer_size(math.ceil(ub_storage_bound_size))
+                for lop in self._op_graph.input_ops:
+                    if "cache_buffer" in lop and "UB" in lop["cache_buffer"].name and not self._pre_relu_fused_flag:
+                        sch[lop["cache_buffer"]].set_buffer_size(math.ceil(ub_storage_bound_size))
             else:
                 sch[bl1].set_buffer_size(_get_bl1_bound())
                 sch.sequential_malloc(cce.scope_ubuf)

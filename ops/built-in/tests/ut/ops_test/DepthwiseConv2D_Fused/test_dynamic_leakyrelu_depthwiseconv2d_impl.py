@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-
 ut_case = OpUT("DepthwiseConv2D", "impl.dynamic.depthwise_conv2d", "depthwise_conv2d")
 
 def test_leakyrelu_depthwise_fusion_testcase(test_arg):
@@ -51,8 +50,8 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
     dynamic_depthwise_testcase.append([[8, 32, 11, -1], (5, 5, 32, 32), (0, 0, 2, 2), (2, 2, 2, 2), (1, 1, 1, 1), None, [(8, 8), (32, 32), (11, 11), (5, 119)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
-    dynamic_depthwise_testcase.append([[168, 168, -1, -1], (3, 3, 168, 168), (0, 0, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), None, [(168, 168), (168, 168), (3, None), (1, None)],
-                                    "leakyrelu_depthwise", None, "NCHW", "float16"])
+    # dynamic_depthwise_testcase.append([[168, 168, -1, -1], (3, 3, 168, 168), (0, 0, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), None, [(168, 168), (168, 168), (3, None), (1, None)],
+    #                                 "leakyrelu_depthwise", None, "NCHW", "float16"])
     dynamic_depthwise_testcase.append([[-1, 512, 28, 24], (3, 3, 512, 512), (0, 0, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), None, [(9, 109), (512, 512), (28, 28), (24, 24)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
     # with bias
@@ -162,7 +161,8 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
             "ori_shape": w_shape,
             "ori_format": "HWCN",
             "dtype": dtype,
-            "range": weight_range
+            "range": weight_range,
+            "format": "FRACTAL_Z"
         }
 
         bias = {

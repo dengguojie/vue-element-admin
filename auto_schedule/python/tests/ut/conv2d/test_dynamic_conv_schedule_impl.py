@@ -100,5 +100,6 @@ ut_case.add_cust_test_func("Ascend910A",test_func=test_bias_not_support_preload_
 print("adding test_bias_not_support_preload_710")
 ut_case.add_cust_test_func("Ascend310P3",test_func=test_bias_not_support_preload_710)
 
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310P3"])
