@@ -242,7 +242,9 @@ def check_input_no_range(inputs):
     if inputs.op.tag == "NCHW_trans_5HD":
         return
     for input_range in inputs.op.attrs['range']:
-        if list(input_range) == [1, -1]:
+        # input_range type : tvm.container.Array
+        new_range = [x.value for x in input_range]
+        if new_range == [1, -1]:
             raise RuntimeError("No support fusion for no shape range!")
 
 @register_op_compute("Conv2D", op_mode="dynamic", support_fusion=True)
