@@ -46,7 +46,8 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     input_dtype = input_x.dtype
     # fp32 in else case is slower than if case
-    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Ascend310", "Ascend910") or input_dtype == "float32":
+    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Ascend310", "Ascend910") or \
+        input_dtype == "float32":
         # input_x<6 and input_x>0
         # `min(input,6)`
         min_positive_6 = tbe.vmins(input_x, 6)

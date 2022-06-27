@@ -2436,6 +2436,8 @@ vector_D:
       - ops/built-in/op_tiling/runtime/layer_norm_x_backprop_v2.cc
       - ops/built-in/op_tiling/runtime/layer_norm_x_backprop_v2.h
       - ops/built-in/op_proto/runtime/layer_norm_x_backprop_v2.cc
+      - ops/built-in/tbe/impl/relu6_grad.py
+      - ops/built-in/tbe/impl/max_pool_grad_grad.py
     unrelease:
       - ops/built-in/tests/ut/ops_test/MaxPoolV3Grad/test_max_pool_v3_grad_impl.py
       - ops/built-in/tests/ut/ops_test/FusedMulApplyKerasMomentum/test_dynamic_FusedMulApplyKerasMomentum_impl.py
@@ -2560,6 +2562,7 @@ ops_pub:
       - ops/built-in/op_proto/nn_training_ops.cc
       - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/util.h
+      - ops/built-in/tbe/impl/constant_util.py
     unrelease:
 
 
@@ -2727,7 +2730,6 @@ unkown:
       - ops/built-in/tbe/impl/fused_minimum_or_maximum_grad.py
       - ops/built-in/tbe/impl/fused_mul_add_n.py
       - ops/built-in/tbe/impl/erfinv.py
-      - ops/built-in/tbe/impl/relu6_grad.py
       - ops/built-in/tbe/impl/roi_align_grad.py
       - ops/built-in/tbe/impl/ascend_anti_quant.py
       - ops/built-in/tbe/impl/transpose.py
@@ -3117,7 +3119,6 @@ unkown:
       - ops/built-in/tbe/impl/axpy_with_softmax_and_drop_out_do_mask.py
       - ops/built-in/tbe/impl/square_sum_all.py
       - ops/built-in/tbe/impl/dynamic_rnn_v3.py
-      - ops/built-in/tbe/impl/max_pool_grad_grad.py
       - ops/built-in/tbe/impl/n_p_u_alloc_float_status.py
       - ops/built-in/tbe/impl/max_pool3d_grad.py
       - ops/built-in/tbe/impl/basic_lstm_cell_c_state_grad.py
@@ -3136,7 +3137,6 @@ unkown:
       - ops/built-in/tbe/impl/cross.py
       - ops/built-in/tbe/impl/hard_sigmoid.py
       - ops/built-in/tbe/impl/apply_add_sign_d.py
-      - ops/built-in/tbe/impl/constant_util.py
       - ops/built-in/tbe/impl/apply_adam_with_amsgrad_d.py
       - ops/built-in/tbe/impl/relu6.py
       - ops/built-in/tbe/impl/acts_ulq_input_grad.py

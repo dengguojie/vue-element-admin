@@ -73,9 +73,9 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
                      const std::vector<std::string>& inputScalarList) {
   // check shape of Tensor
   auto var_dims = op.GetInputDescByName(inputTensorList[0].c_str()).GetShape().GetDims();
-  if (var_dims.size() > 8 || var_dims.size() < 0) {
-    OP_LOGE(TbeGetName(op).c_str(), "var only support 0 ~ 8 dims!");
-    return GRAPH_FAILED;
+  if (var_dims.size() > 8) {
+    OP_LOGE(TbeGetName(op).c_str(), "Var only support less than 8 dims!");
+    return false;
   }
   if (IsUnknown(var_dims)) {
     OP_LOGW(TbeGetName(op).c_str(), "this is dynamic shape, will exit ApplyVerifyFunc");
@@ -1570,7 +1570,7 @@ bool CheckSgdDimension(const Operator& op) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter SGD op_proto inferfunction!");
   // input tensor dim check
   auto var_dims = op.GetInputDescByName("parameters").GetShape().GetDims();
-  if (var_dims.size() > 8 || var_dims.size() <= 0) {
+  if (var_dims.size() > 8 || var_dims.size() == 0) {
     std::string err_msg = GetShapeSizeErrMsg(0, ConcatString(var_dims.size()), ConcatString("1 ~ 8 dims!"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return false;

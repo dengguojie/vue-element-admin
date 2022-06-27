@@ -23,6 +23,7 @@ from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort as MergeSortV1
 from impl.merge_sort_v2 import BaseConstant
 from impl.merge_sort_v2 import MergeSort as MergeSortV2
+from impl import constant_util as constant
 
 
 def _prod(values):
@@ -78,22 +79,25 @@ class Base:
         """
         emit vmuls
         """
-        MASK_FP16 = 128
-        MAX_REPEAT_TIMES = 255
-        repeat = cnt // MASK_FP16
-        repeat_remain = cnt % MASK_FP16
-        times = (repeat + MAX_REPEAT_TIMES - 1) // MAX_REPEAT_TIMES
+        repeat = cnt // constant.MASK128
+        repeat_remain = cnt % constant.MASK128
+        times = (repeat + constant.MAX_REPEAT_TIMES - 1) // constant.MAX_REPEAT_TIMES
         if repeat > 0:
             with self.tik_instance.for_range(0, times, name="vmuls_i0") as i:
                 src0_scalar = self.tik_instance.Scalar(dtype="int64", name="src0_scalar",
-                                                       init_value=repeat - i * MAX_REPEAT_TIMES)
-                src1_scalar = self.tik_instance.Scalar(dtype="int64", name="src1_scalar", init_value=MAX_REPEAT_TIMES)
+                                                       init_value=repeat - i * constant.MAX_REPEAT_TIMES)
+                src1_scalar = self.tik_instance.Scalar(dtype="int64",
+                                                       name="src1_scalar",
+                                                       init_value=constant.MAX_REPEAT_TIMES)
                 times_len = self.tik_instance.Scalar(dtype="int64", name="times_len")
                 self.tik_instance.scalar_min(times_len, src0_scalar, src1_scalar)
-                self.tik_instance.vmuls(MASK_FP16, dst[i * MASK_FP16 * MAX_REPEAT_TIMES],
-                                        src[i * MASK_FP16 * MAX_REPEAT_TIMES], -1, times_len, 1, 1, 8, 8)
+                self.tik_instance.vmuls(constant.MASK128,
+                                        dst[i * constant.MASK128 * constant.MAX_REPEAT_TIMES],
+                                        src[i * constant.MASK128 * constant.MAX_REPEAT_TIMES],
+                                        -1, times_len, 1, 1, 8, 8)
         if repeat_remain > 0:
-            self.tik_instance.vmuls(repeat_remain, dst[repeat * MASK_FP16], src[repeat * MASK_FP16], -1, 1, 1, 1, 8, 8)
+            self.tik_instance.vmuls(repeat_remain, dst[repeat * constant.MASK128],
+                                    src[repeat * constant.MASK128], -1, 1, 1, 1, 8, 8)
 
 
 class SegmentSort(Base):

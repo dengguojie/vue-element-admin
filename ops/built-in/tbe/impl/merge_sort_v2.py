@@ -17,6 +17,7 @@ merge_sort
 """
 from impl.util.platform_adapter import PlatformApi
 from impl.util.platform_adapter import error_manager_vector
+from impl import constant_util as constant
 
 
 def check_soc_version_support(soc_version, soc_version_all):
@@ -63,18 +64,19 @@ def emit_vmuls(tik_inst, dst, src, cnt, dtype):
         mask = 64
     else:
         mask = 128
-    MAX_REPEAT_TIMES = 255
     repeat = cnt // mask
     repeat_remain = cnt % mask
-    times = (repeat + MAX_REPEAT_TIMES - 1) // MAX_REPEAT_TIMES
+    times = (repeat + constant.MAX_REPEAT_TIMES - 1) // constant.MAX_REPEAT_TIMES
     if repeat > 0:
         with tik_inst.for_range(0, times, name="vmuls_i0") as i:
             src0_scalar = tik_inst.Scalar(dtype="int64", name="src0_scalar",
-                                          init_value=repeat - i * MAX_REPEAT_TIMES)
-            src1_scalar = tik_inst.Scalar(dtype="int64", name="src1_scalar", init_value=MAX_REPEAT_TIMES)
+                                          init_value=repeat - i * constant.MAX_REPEAT_TIMES)
+            src1_scalar = tik_inst.Scalar(dtype="int64", name="src1_scalar",
+                                          init_value=constant.MAX_REPEAT_TIMES)
             times_len = tik_inst.Scalar(dtype="int64", name="times_len")
             tik_inst.scalar_min(times_len, src0_scalar, src1_scalar)
-            tik_inst.vmuls(mask, dst[i * mask * MAX_REPEAT_TIMES], src[i * mask * MAX_REPEAT_TIMES],
+            tik_inst.vmuls(mask, dst[i * mask * constant.MAX_REPEAT_TIMES],
+                           src[i * mask * constant.MAX_REPEAT_TIMES],
                            -1, times_len, 1, 1, 8, 8)
     if repeat_remain > 0:
         tik_inst.vmuls(repeat_remain, dst[repeat * mask], src[repeat * mask], -1, 1, 1, 1, 8, 8)
