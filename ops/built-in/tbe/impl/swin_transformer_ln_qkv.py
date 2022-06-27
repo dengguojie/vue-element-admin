@@ -170,11 +170,12 @@ class TilingArgs:
 
         self.m_1_num_loop_l1, self.n_1_num_loop_l1, self.k_1_num_mul = \
             self.get_split_dim(self.m_1_num_unit)
+        batch_m_num_each_core = self.batch_m1_num_each_core * self.m_0
         for m_1_num_loop_l1 in range(self.m_1_num_unit,
                                      (self.each_core_m1_unit + 1) * self.m_1_num_unit,
                                      self.m_1_num_unit):
             m_num = m_1_num_loop_l1 * self.m_0
-            if self.judge_div(m_num):
+            if self.judge_div(m_num) and batch_m_num_each_core % m_num == 0:
                 m_1_num_loop_l1, n_1_num_loop_l1, k_1_num_mul = self.get_split_dim(m_1_num_loop_l1)
                 if m_1_num_loop_l1 > n_1_num_loop_l1:
                     break
