@@ -54,7 +54,7 @@ def gen_dynamic_cdist_case(shape_grad, range_grad, shape_x1, range_x1, shape_x2,
     }
 
 ut_case.add_case(
-    "all",
+    "Ascend910A",
     gen_dynamic_cdist_case(
     (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
     (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
@@ -67,7 +67,7 @@ ut_case.add_case(
     "success", "dynamic"))
 
 ut_case.add_case(
-    "all",
+    "Ascend910A",
     gen_dynamic_cdist_case(
     (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
     (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
@@ -80,7 +80,7 @@ ut_case.add_case(
     "success", "dynamic"))
 
 ut_case.add_case(
-    "all",
+    "Ascend910A",
     gen_dynamic_cdist_case(
     (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
     (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
@@ -92,5 +92,18 @@ ut_case.add_case(
     (5, 8), 0.0, "dynamic_cdist_grad_fp16_ND",
     "success", "dynamic"))
 
+ut_case.add_case(
+    "Ascend910A",
+    gen_dynamic_cdist_case(
+    (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
+    (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
+    (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
+    (-1, 4, 8), [(1, None), (4, 4), (8, 8)],
+    (-1, 8), [(1, None), (8, 8)],
+    "float32", "ND",
+    (5, 4, 8), (5, 4, 8), (5, 4, 8), (5, 4, 8),
+    (5, 8), 0.5, "dynamic_cdist_grad_fp32_ND",
+    "success", "dynamic"))
+
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run(["Ascend910A"])

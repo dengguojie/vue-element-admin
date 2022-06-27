@@ -34,7 +34,7 @@ def tensor_pow(data, p):
     """
     tensor_pow
     """
-    log_value = tbe.vlog(data, priority_flag=0)
+    log_value = tbe.vlog(data)
     return tbe.vexp(tbe.vmuls(log_value, p))
 
 
