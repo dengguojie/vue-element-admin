@@ -2461,7 +2461,7 @@ REG_OP(MaskedFillRange)
 * @par Inputs:
 * Six inputs, including:
 * @li topk_pq_distance: A sorted Tensor, Will be updated after calculation.
-* Must be one of the following types: float32, float16. 
+* Must be one of the following types: float32, float16.
 * @li topk_pq_index: A Tensor of type int32, index corresponding to topk_pq_distance.
 * @li topk_pq_ivf: A Tensor of type int32 , the bucket number corresponding to topk_pq_distance.
 * @li pq_distance: A Tensor of type float32 or float16,
