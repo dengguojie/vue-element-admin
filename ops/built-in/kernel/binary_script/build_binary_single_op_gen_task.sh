@@ -19,6 +19,7 @@ COMMON_BINARY_CONCIG_NAME="binary_config.csv"
 IMPL_FILE_NAME="tbe/impl_mode/all_ops_impl_mode.ini"
 
 source get_threadnum_with_op.sh
+source trans_soc_by_bash.sh
 
 main() {
   echo "[INFO]excute file: $0"
@@ -126,12 +127,14 @@ main() {
   # step 6: do opc compile all kernel
   impl_list_array=(${impl_list//,/ })
 
+  # 获取opc 入参的SOC version
+  opc_soc_version=$(trans_soc ${soc_version})
+
   # 根据配置文件 确认某个算子kernel编译时拆分个数
   # get_thread_num ${op_type}
 
   # 所有算子的kernel  onebyone 进行编译
   get_thread_num_with_json_config ${binary_config_full_path}
-
   thread_num=$?
   echo "[INFO]op:${op_type} thread_num = ${thread_num}"
   opc_json_list=()
@@ -149,7 +152,7 @@ main() {
     for(( i=0;i<${thread_num};i=i+1)); do
     {
       new_file="${binary_config_new_full_path}_${i}"
-      cmd="opc ${op_python_full_path} --main_func=${op_func} --input_param=${new_file} --soc_version=${soc_version} --output=${binary_compile_full_path} --impl_mode=${impl_mode}"
+      cmd="opc ${op_python_full_path} --main_func=${op_func} --input_param=${new_file} --soc_version=${opc_soc_version} --output=${binary_compile_full_path} --impl_mode=${impl_mode}"
       echo "[INFO]op:${op_type} do opc cmdis is ${cmd}"
       echo ${cmd} >> ${opc_task_cmd_file}
       cmd="${python_arg} gen_output_json.py ${new_file} ${binary_compile_full_path} ${binary_compile_json_full_path}"
