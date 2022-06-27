@@ -23,6 +23,7 @@
 #include "vector_tiling_profiling.h"
 
 namespace {
+const int32_t AXIS_DEFAULT_VALUE = -1;
 constexpr int32_t DEPTH_SIZE = 1;
 // Calcuted acording to the min size of radio of ub and tensor
 constexpr int32_t RADIO_UB_SIZE_MIN = 19792;
@@ -348,9 +349,9 @@ bool OneHotTiling(const std::string& op_type, const ge::Operator& op_paras, cons
   OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_info.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse op_info failed."), return false);
   int32_t core_num = static_cast<int32_t>(op_info[0]);
-  int32_t axis = 0;
-  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, AXIS_INFO, axis),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "GetCompileParams, get axis error"),
+  int32_t axis = -1;
+  OP_TILING_CHECK(!ops::GetAttrValue(op_paras, AXIS_INFO, axis, AXIS_DEFAULT_VALUE),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get axis error"),
                   return false);
 
   OneHotTilingParams tiling_params;

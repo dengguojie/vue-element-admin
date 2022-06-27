@@ -642,3 +642,26 @@ TEST_F(OneHotTiling, one_hot_tiling_test_mode_9) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 0 9 32 65536 1 65536 2097152 0 1 1 ");
 }
+
+TEST_F(OneHotTiling, one_hot_tiling_default_axis_case) {
+  std::string op_name = "OneHot";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+
+  std::vector<int64_t> input0{3, 3, 32, 32, 16};
+  std::vector<int64_t> input1{1};
+  std::vector<int32_t> depth{32};
+  std::vector<int32_t> off_value{1};
+  std::vector<int64_t> output{3, 3, 32, 32, 16, 32};
+
+  auto opParas = op::OneHot("OneHot");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input0, ge::DT_INT32, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, depth, input1, ge::DT_INT32, ge::FORMAT_ND, depth);
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, off_value, input1, ge::DT_INT32, ge::FORMAT_ND, off_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_INT32, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 4608 2 32 147456 147456 1 4718592 4608 0 0 ");
+}
