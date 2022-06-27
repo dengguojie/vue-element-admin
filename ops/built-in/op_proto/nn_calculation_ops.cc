@@ -760,7 +760,7 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
   }
   if (!fm_range.empty()) {
     for (size_t i = 0; i < fm_range.size(); i++) {
-      OP_LOGD(op_name.GetString(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
+      OP_LOGD(op_name.GetString(), "fmap Range[%zu] is (%ld, %ld)", i, fm_range[i].first, fm_range[i].second);
     }
 
     std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
@@ -3222,7 +3222,7 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const G
     if (y_range[i].first == y_range[i].second) {
       out_shape.SetDim(i, y_range[i].first);
     }
-    OP_LOGD(op_info.op_name.GetString(), "dedx range[%u] is [%lld, %lld]", i, y_range[i].first, y_range[i].second);
+    OP_LOGD(op_info.op_name.GetString(), "dedx range[%zu] is [%ld, %ld]", i, y_range[i].first, y_range[i].second);
   }
   ResetConv2dbpOutShape(op_info.op_name, input_shape, out_shape, y_format_pos);
   y_desc->SetShape(out_shape);
@@ -6594,7 +6594,7 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   if (GRAPH_SUCCESS != op.GetAttr("groups", groups)) {
     OP_LOGI(op_name, "Since the value of the attribute groups is not explicitly set, the default value of 1 is used.");
   } else {
-    OP_LOGD(op_name, "The value of the attribute groups is %lld.", groups);
+    OP_LOGD(op_name, "The value of the attribute groups is %ld.", groups);
   }
 
   bool invalid_channel = (!unknownRank) && (ic != -1) && (ic != kn);

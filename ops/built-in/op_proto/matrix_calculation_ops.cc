@@ -1974,7 +1974,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   int64_t hidden_size = 0;
   bool input_size_flag = AttrUtils::GetInt(op_desc, "input_size", input_size);
   bool hidden_size_flag = AttrUtils::GetInt(op_desc, "hidden_size", hidden_size);
-  OP_LOGD(opName.GetString(), "input_size[%lld], hidden_size[%lld]", input_size, hidden_size);
+  OP_LOGD(opName.GetString(), "input_size[%ld], hidden_size[%ld]", input_size, hidden_size);
   if (input_size_flag && hidden_size_flag) {
     shape_x2.SetDim(1, shape_x1.GetDim(1));
     int64_t align_dim = (input_size + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE +

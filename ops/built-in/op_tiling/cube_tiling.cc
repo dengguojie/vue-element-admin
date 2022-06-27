@@ -224,7 +224,8 @@ namespace {
   string cube_tiling_nhw(const std::string &op_type, const std::vector<int64_t> &cur_shape, const std::string &x_format,
                          const nlohmann::json &compile_info, string tiling_id) {
     if (!compile_info.contains(kCompileRepoSeeds) || !compile_info.contains(kCompileRepoRange)) {
-      CUBE_INNER_ERR_REPORT(op_type.c_str(), "compile_info does not contain the key value of the repo_seeds or repo_range");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(),
+                            "compile_info does not contain the key value of the repo_seeds or repo_range");
       return tiling_id;
     }
 
