@@ -4432,14 +4432,14 @@ static bool GetAttrsMaxPool3DGradGrad(ge::Operator& op, Format refer, int32_t& s
   if (GRAPH_SUCCESS != op.GetAttr("strides", strideList)) {
     std::string err_msg = GetInputInvalidErrMsg("strides");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return false;
   }
 
   std::vector<int32_t> ksizeList;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
     std::string err_msg = GetInputInvalidErrMsg("ksize");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return false;
   }
 
   if (ksizeList.size() == 1) {
@@ -6837,13 +6837,13 @@ static bool GetAttrsMaxPool3DGrad(ge::Operator& op, Format refer, int32_t& strd,
   if (GRAPH_SUCCESS != op.GetAttr("strides", strideList)) {
     std::string err_msg = GetInputInvalidErrMsg("strides");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return false;
   }
   std::vector<int32_t> ksizeList;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
     std::string err_msg = GetInputInvalidErrMsg("ksize");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return false;
   }
 
   if (refer == FORMAT_NCDHW) {
@@ -6874,7 +6874,7 @@ static bool GetAttrsMaxPool3DGrad(ge::Operator& op, Format refer, int32_t& strd,
     err_map["input_value"] = refer;
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+    return false;
   }
   return true;
 }

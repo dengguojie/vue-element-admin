@@ -756,7 +756,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
   }
 
   if ((axis < -static_cast<int64_t>(dim_num)) || (axis >= static_cast<int64_t>(dim_num))) {
-    string range_msg = ConcatString(-dim_num, dim_num);
+    string range_msg = ConcatString(-static_cast<int64_t>(dim_num), dim_num);
     std::string err_msg = GetParamOutRangeErrMsg("axis", range_msg, std::to_string(axis));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -926,7 +926,8 @@ static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, 
 
   size_t dim_num = output_desc->GetOriginShape().GetDimNum();
   if ((axis < -static_cast<int64_t>(dim_num)) || (axis >= static_cast<int64_t>(dim_num))) {
-    OP_LOGE(TbeGetName(op).c_str(), "Axis[%ld] value out of range[%ld, %ld).", axis, -dim_num, dim_num);
+    OP_LOGE(TbeGetName(op).c_str(), "Axis[%ld] value out of range[%ld, %ld).", 
+            axis, -static_cast<int64_t>(dim_num), dim_num);
     return GRAPH_FAILED;
   }
 
@@ -1267,7 +1268,7 @@ bool PackInferShapeCommonStatic(Operator& op, int64_t pack_num, int64_t axis) {
     string correct_value = ConcatString("in range [", -dim_num - 1, ", ", dim_num, "]");
     std::string err_msg = GetAttrValueErrMsg("axis", ConcatString(axis), correct_value);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
-    return GRAPH_FAILED;
+    return false;
   }
 
   if (axis < 0) {

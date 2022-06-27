@@ -272,3 +272,16 @@ TEST_F(pack_infer_test, pack_infer_test_7) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(pack_infer_test, pack_infer_test_8) {
+  const int N = 1;
+  ge::op::Pack op;
+  op.SetAttr("N", N);
+  op.SetAttr("axis", 10);
+  auto tensor_desc = create_desc({3, 2, 2, 5});
+  op.create_dynamic_input_x(N);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
