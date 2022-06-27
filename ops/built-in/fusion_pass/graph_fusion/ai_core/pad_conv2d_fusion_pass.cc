@@ -90,15 +90,9 @@ bool GetFloatConstValueFromTensor(const ge::Operator& op, const ge::Tensor& cons
 }
 
 bool GetFloatConstValue(const ge::NodePtr& fused_node, const string& const_name,
-                        std::vector<float>& const_value)
+                        std::vector<float>& const_value, Tensor& const_tensor)
 {
     ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
-    OP_LOGD(TbeGetName(op), "begin to get const value for input name(%s)", const_name.c_str());
-    ge::Tensor const_tensor;
-    if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name.c_str(), const_tensor)) {
-        OP_LOGW(TbeGetName(op), "get const tensor of name(%s) from op failed", const_name.c_str());
-        return false;
-    }
     ge::DataType dtype = op.GetInputDescByName(const_name.c_str()).GetDataType();
     if (!GetFloatConstValueFromTensor(op, const_tensor, dtype, const_value)) {
         OP_LOGW(TbeGetName(op), "get const Value of name(%s) from tensor failed", const_name.c_str());
@@ -108,27 +102,47 @@ bool GetFloatConstValue(const ge::NodePtr& fused_node, const string& const_name,
     return true;
 }
 
+bool CheckInputTensorValid(const ge::NodePtr& fused_node, const string& const_name, Tensor& const_tensor)
+{
+    ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
+    OP_LOGD(TbeGetName(op), "begin to get const value for input name(%s)", const_name.c_str());
+    if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name.c_str(), const_tensor)) {
+        OP_LOGW(TbeGetName(op), "get const tensor of name(%s) from op failed", const_name.c_str());
+        return false;
+    }
+    return true; 
+}
+
 bool CheckPadv3ConstantValue(const ge::NodePtr& padd_node)
 {
     if (padd_node->GetType() == PADDV3) {
         std::vector<float> constant_value;
-        if (GetFloatConstValue(padd_node, "constant_values", constant_value) &&
-            !constant_value.empty() && constant_value[0] != 0) {
+        ge::Tensor const_tensor;
+        bool tensor_valid_flag = CheckInputTensorValid(padd_node, "constant_values", const_tensor);
+        if (!tensor_valid_flag) {
             return true;
         }
+        if (GetFloatConstValue(padd_node, "constant_values", constant_value, const_tensor) &&
+            !constant_value.empty() && constant_value[0] == 0) {
+            return true;
+        }
+        return false;
     }
-    return false;
+    return true;
 }
 
 bool CheckPadv3PadMode(const ge::NodePtr& padd_node)
 {
-    string pad_mode = "";
-    string expect_mode = "constant";
-    if (ge::AttrUtils::GetStr(padd_node->GetOpDesc(), "mode", pad_mode) &&
-       (pad_mode != expect_mode)) {
-        return true;
+    if (padd_node->GetType() == PADDV3) {
+        string pad_mode = "";
+        string expect_mode = "constant";
+        if (ge::AttrUtils::GetStr(padd_node->GetOpDesc(), "mode", pad_mode) &&
+           (pad_mode == expect_mode)) {
+            return true;
+        }
+        return false;
     }
-  return false;
+    return true;
 }
 
 bool GetPaddingValue(const ge::NodePtr& padd_node, const vector<int64_t>& pad_value, 
@@ -189,10 +203,10 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   FUSION_PASS_CHECK(dw_count > 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "Padnode have multiple dw outputs, can not fusion."),
                     return NOT_CHANGED);
 
-  FUSION_PASS_CHECK(CheckPadv3ConstantValue(padd_node),
+  FUSION_PASS_CHECK(!CheckPadv3ConstantValue(padd_node),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "constant values not 0, can not fusion."),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckPadv3PadMode(padd_node),
+  FUSION_PASS_CHECK(!CheckPadv3PadMode(padd_node),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "pad mode is not constant."),
                     return NOT_CHANGED);
 
