@@ -57,12 +57,12 @@ if(NOT BUILD_OPEN_PROJECT)
     set(OPERATOR_SAMPLE ${INSTALL_PATH}/toolkit/tools)
     cann_install(
       TARGET      OperatorDemoProjects
-      FILES       ${CMAKE_CURRENT_BINARY_DIR}/${OPERATOR_SAMPLE_NAME}
+      DIRECTORY       ${CMAKE_CURRENT_BINARY_DIR}/${OPERATOR_SAMPLE_NAME}
       DESTINATION ${OPERATOR_SAMPLE}
     )
   else()
     install(
-      FILES       ${CMAKE_CURRENT_BINARY_DIR}/${OPERATOR_SAMPLE_NAME}
+      DIRECTORY       ${CMAKE_CURRENT_BINARY_DIR}/${OPERATOR_SAMPLE_NAME}
       DESTINATION lib/tensor_utils OPTIONAL
     )
   endif()
