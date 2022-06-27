@@ -305,12 +305,19 @@ def axpy_with_softmax_and_drop_out_do_mask_w_large(x1, x2, mask, y1, y2, alpha, 
     (tensor_input_x1, tensor_input_x2, tensor_mask, tensor_output_y1, tensor_output_y2) = \
         create_gm_tensor(tik_instance, tensor_shape, tensor_dtype, tensor_mask_dtype)
     aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-    block_count = tensor_shape[0] * tensor_shape[1] / aicore_num
+    block_count = tensor_shape[0] * tensor_shape[1] // aicore_num
+    block_count_tail = tensor_shape[0] * tensor_shape[1] % aicore_num
     h_len, w_len = tensor_shape[2], tensor_shape[3]
     aicore_process_num = h_len * w_len * 16 * 16
 
+    block_count_truth = tik_instance.Scalar("int32", name='block_count_truth')
+
     with tik_instance.for_range(0, aicore_num, block_num=aicore_num) as blockid:
-        with tik_instance.for_range(0, block_count) as i:
+        with tik_instance.if_scope(blockid != aicore_num - 1):
+            block_count_truth.set_as(block_count)
+        with tik_instance.else_scope():
+            block_count_truth.set_as(block_count + block_count_tail)
+        with tik_instance.for_range(0, block_count_truth) as i:
             with tik_instance.for_range(0, h_len // 2) as j:
                 (ub_1, ub_2, ub_cast, ub_3, ub_4, ub_reducemax, work_tensor_ub, ub_reduceadd_high_preci, \
                  ub_reduceadd, ub_reduceadd_fp16, ub_dup, ub_broadcast, ub_mask, ub_mask_fp16) = \

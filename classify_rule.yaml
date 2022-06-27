@@ -3116,7 +3116,6 @@ unkown:
       - ops/built-in/tbe/impl/acos_grad.py
       - ops/built-in/tbe/impl/adam_apply_one_with_decay_assign.py
       - ops/built-in/tbe/impl/axpy_with_softmax_and_dropoutdomask.py
-      - ops/built-in/tbe/impl/axpy_with_softmax_and_drop_out_do_mask.py
       - ops/built-in/tbe/impl/square_sum_all.py
       - ops/built-in/tbe/impl/dynamic_rnn_v3.py
       - ops/built-in/tbe/impl/max_pool_grad_grad.py
@@ -4295,6 +4294,7 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/lerp.py
       - ops/built-in/tbe/impl/dynamic/hard_shrink.py
       - ops/built-in/op_tiling/dyn_seq_outer.cc
+      - ops/built-in/tbe/impl/axpy_with_softmax_and_drop_out_do_mask.py
       - ops/built-in/tbe/impl/swin_attention_ffn.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp

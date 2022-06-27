@@ -47,7 +47,19 @@ case4 = {"params": [{"shape": (96,12,16,16,16,16), "dtype": "float16", "format":
          "format_expect": [],
          "support_expect": True}
 
+case5 = {"params": [{"shape": (32,12,32,32,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32,12,512,512),"ori_format": "FRACTAL_NZ"},
+                    {"shape": (32,12,32,32,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32,12,512,512),"ori_format": "FRACTAL_NZ"},
+                    {"shape": (32,12,32,32,16,16), "dtype": "uint8", "format": "ND", "ori_shape": (32,12,512,512),"ori_format": "ND"},
+                    {"shape": (32,12,32,32,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32,12,512,512),"ori_format": "FRACTAL_NZ"},
+                    {"shape": (32,12,32,32,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32,12,512,512),"ori_format": "FRACTAL_NZ"},
+                    0.125, 0.5, [-1]],
+         "case_name": "AxpyWithSoftmaxAndDropOutDoMask_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A",], case1)
 ut_case.add_case(["Ascend910A",], case2)
 ut_case.add_case(["Ascend910A",], case3)
 ut_case.add_case(["Ascend910A",], case4)
+ut_case.add_case(["Ascend910A",], case5)
