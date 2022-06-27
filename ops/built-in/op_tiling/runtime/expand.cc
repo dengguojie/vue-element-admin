@@ -89,9 +89,9 @@ ge::graphStatus ExpandTiling(gert::TilingContext* context) {
 
 ge::graphStatus TilingPrepareForExpand(gert::TilingParseContext* context) {
   OP_LOGD(OP_NAME.c_str(), "TilingPrepareForExpand running.");
-  auto compile_info = MutableCompileInfo<ExpandCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<ExpandCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   compile_info->dsl_compile_info = ParseAutoTiling("Expand", *parsed_object_cinfo);
   OP_TILING_CHECK(compile_info->dsl_compile_info == nullptr,

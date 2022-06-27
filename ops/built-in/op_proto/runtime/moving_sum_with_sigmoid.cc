@@ -53,5 +53,5 @@ ge::graphStatus InferShapeForMovingSumWithSigmoid(gert::InferShapeContext *conte
 
 IMPL_OP(MovingSumWithSigmoid)
     .InferShape(InferShapeForMovingSumWithSigmoid)
-    .InputsDataDependency({2});
+    .InputsDataDependency({INPUT_INDEX_OFFSET});
 }  // namespace ops

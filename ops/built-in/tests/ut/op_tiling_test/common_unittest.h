@@ -463,3 +463,13 @@ static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   gert::TilingData* tiling_data = reinterpret_cast<gert::TilingData*>(param.get()); \
   ASSERT_NE(tiling_data, nullptr);                                                  \
   EXPECT_EQ(trans_func(tiling_data->GetData(), tiling_data->GetDataSize()), expect_str)
+
+struct Runtime2TestParam {
+  std::vector<std::string> attrs;
+  std::vector<bool> input_const;
+  std::vector<uint32_t> irnum;
+};
+
+ge::graphStatus TilingParseTest(const std::string optype, std::string json_str, void *compile_info);
+ge::graphStatus TilingTest(ge::Operator& op, const Runtime2TestParam& param, void *info_base,
+                           size_t tiling_len, std::unique_ptr<uint8_t[]>& tiling_data);

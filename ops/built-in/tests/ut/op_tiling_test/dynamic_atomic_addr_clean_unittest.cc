@@ -111,7 +111,50 @@ TEST_F(DynamicAtomicAddrCleanUT, DynamicAtomicAddrClean_tiling_1) {
   auto tiling_func = gert::OpImplRegistry::GetInstance().GetOpImpl("DynamicAtomicAddrClean")->tiling;
   ASSERT_NE(tiling_func, nullptr);
 
-  tiling_func(holder.GetContext<gert::TilingContext>());
+  ASSERT_EQ(tiling_func(holder.GetContext<gert::TilingContext>()), ge::GRAPH_FAILED);
+  // todo check tiling result
+}
+
+TEST_F(DynamicAtomicAddrCleanUT, DynamicAtomicAddrClean_tiling_2) {
+  size_t clean_size = 4 * 56 * 56 * 16 * 2; // float16
+
+  // compile info
+  optiling::DynamicAtomicAddrCleanCompileInfo compile_info;
+  compile_info.core_num = 2;
+  compile_info.ub_size = 126976;
+  compile_info.workspace_num = 1;
+  compile_info._workspace_index_list = {0};
+
+  auto workspace_sizes_holder = gert::ContinuousVector::Create<size_t>(8);
+  auto workspace_sizes = reinterpret_cast<gert::ContinuousVector *>(workspace_sizes_holder.get());
+  workspace_sizes->SetSize(8);
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[0] = 1*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[1] = 2*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[2] = 3*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[3] = 4*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[4] = 5*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[5] = 6*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[6] = 7*1024;
+  reinterpret_cast<size_t *>(workspace_sizes->MutableData())[7] = 8*1024;
+  // tiling data
+  auto param = gert::TilingData::CreateCap(2048);
+  auto self_workspace_sizes = gert::ContinuousVector::Create<gert::TensorAddress>(8);
+
+
+  auto holder = gert::KernelRunContextFaker()
+                    // 输入信息：一个workspace size，一个需要清空的shape；后面跟着CompileInfo，TilingFunc
+                    .KernelIONum(2 + 2, 5)
+                    .IrInputNum(2)
+                    .NodeIoNum(2, 0)  // 一个workspace size，一个需要清空的shape；
+                    .Inputs({workspace_sizes_holder.get(), (void*)clean_size, &compile_info, nullptr})
+                    .Outputs({nullptr, nullptr, nullptr, param.get(), self_workspace_sizes.get()})
+                    .Build();
+
+  ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("DynamicAtomicAddrClean"), nullptr);
+  auto tiling_func = gert::OpImplRegistry::GetInstance().GetOpImpl("DynamicAtomicAddrClean")->tiling;
+  ASSERT_NE(tiling_func, nullptr);
+
+  ASSERT_EQ(tiling_func(holder.GetContext<gert::TilingContext>()), ge::GRAPH_SUCCESS);
   // todo check tiling result
 }
 

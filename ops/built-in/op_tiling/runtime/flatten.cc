@@ -67,16 +67,16 @@ ge::graphStatus TilingForFlatten(gert::TilingContext* context) {
 }
 
 ge::graphStatus TilingPrepareForFlatten(gert::TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<FlattenCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<FlattenCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
                   return ge::GRAPH_FAILED);
-  GetCompileValue(vars, "ub_size", compile_info->ub_size);
-  GetCompileValue(vars, "core_num", compile_info->core_num);
-  GetCompileValue(vars, "block_size", compile_info->block_size);
+  ReadCompileItem(vars, "ub_size", compile_info->ub_size);
+  ReadCompileItem(vars, "core_num", compile_info->core_num);
+  ReadCompileItem(vars, "block_size", compile_info->block_size);
   return ge::GRAPH_SUCCESS;
 }
 

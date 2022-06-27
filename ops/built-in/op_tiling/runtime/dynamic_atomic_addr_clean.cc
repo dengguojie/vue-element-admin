@@ -49,6 +49,33 @@ static void InitTilingParams(DynamicAtomicAddrCleanTilingData *params, size_t to
   memset_s(params, len, 0, len);
 }
 
+void PrintTilingParams(const char* nodename, const DynamicAtomicAddrCleanTilingData *params) {
+  OP_LOGD(nodename, "params.select_key_input_scalar=%d", params->select_key_input_scalar);
+  OP_LOGD(nodename, "params.need_core_num_input_scalar=%d", params->need_core_num_input_scalar);
+  OP_LOGD(nodename, "params.ele_num_full_mask_full_repeat_time_input_scalar=%d",
+          params->ele_num_full_mask_full_repeat_time_input_scalar);
+  OP_LOGD(nodename, "params.burst_len_full_mask_full_repeat_time_input_scalar=%d",
+          params->burst_len_full_mask_full_repeat_time_input_scalar);
+  OP_LOGD(nodename, "params.ele_num_front_core_input_scalar=%d", params->ele_num_front_core_input_scalar);
+  OP_LOGD(nodename, "params.init_times_full_mask_full_repeat_time_front_core_input_scalar=%d",
+          params->front_core_input_scalar.init_times_full_mask_full_repeat_time);
+  OP_LOGD(nodename, "params.ele_num_front_part_front_core_input_scalar=%d",
+          params->front_core_input_scalar.ele_num_front_part);
+  OP_LOGD(nodename, "params.burst_len_last_part_front_core_input_scalar=%d",
+          params->front_core_input_scalar.burst_len_last_part);
+  OP_LOGD(nodename, "params.repeat_time_last_part_front_core_input_scalar=%d",
+          params->front_core_input_scalar.repeat_time_last_part);
+  OP_LOGD(nodename, "params.ele_num_last_core_input_scalar=%d", params->ele_num_last_core_input_scalar);
+  OP_LOGD(nodename, "params.init_times_full_mask_full_repeat_time_last_core_input_scalar=%d",
+          params->last_core_input_scalar.init_times_full_mask_full_repeat_time);
+  OP_LOGD(nodename, "params.ele_num_front_part_last_core_input_scalar=%d",
+          params->last_core_input_scalar.ele_num_front_part);
+  OP_LOGD(nodename, "params.burst_len_last_part_last_core_input_scalar=%d",
+          params->last_core_input_scalar.burst_len_last_part);
+  OP_LOGD(nodename, "params.repeat_time_last_part_last_core_input_scalar=%d",
+          params->last_core_input_scalar.repeat_time_last_part);
+}
+
 ge::graphStatus WriteAtomicTilingData(gert::TilingContext *context, DynamicAtomicAddrCleanTilingData *params,
                                       int64_t tensor_size, uint32_t core_num) {
   OP_TILING_CHECK(
@@ -95,6 +122,7 @@ ge::graphStatus WriteAtomicTilingData(gert::TilingContext *context, DynamicAtomi
         params->last_core_input_scalar);
   }
   context->SetBlockDim(params->need_core_num_input_scalar);
+  PrintTilingParams(context->GetNodeName(), params);
 
   return ge::GRAPH_SUCCESS;
 }
@@ -133,6 +161,12 @@ ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext* context) {
     OPS_CHECK_NULL_WITH_CONTEXT(context, ws_sizes);
     auto ws_size_data = reinterpret_cast<const uint64_t *>(ws_sizes->GetData());
     for (size_t i = 0U; i < workspace_idx.size(); ++i, ++params) {
+      OP_TILING_CHECK(
+        (static_cast<size_t>(workspace_idx[i]) >= ws_sizes->GetSize()),
+        VECTOR_INNER_ERR_REPORT_TILIING(
+            context->GetNodeName(), "workspace_idx[%zu] %ld error! must be less than workspace size %zu!",
+            i, workspace_idx[i], ws_sizes->GetSize()),
+        return ge::GRAPH_FAILED);
       auto tensor_size = ws_size_data[workspace_idx[i]];
       if (WriteAtomicTilingData(context, params, tensor_size, core_num) != ge::GRAPH_SUCCESS) {
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "op: write atomic tiling data failed!");
@@ -145,17 +179,17 @@ ge::graphStatus TilingForDynamicAtomicAddrClean(gert::TilingContext* context) {
 }
 
 ge::graphStatus TilingPrepareForDynamicAtomicAddrClean(gert::TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<DynamicAtomicAddrCleanCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<DynamicAtomicAddrCleanCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
                   return ge::GRAPH_FAILED);
-  GetCompileValue(*parsed_object_cinfo, "_workspace_index_list", compile_info->_workspace_index_list);
-  GetCompileValue(vars, "ub_size", compile_info->ub_size);
-  GetCompileValue(vars, "core_num", compile_info->core_num);
-  GetCompileValue(vars, "workspace_num", compile_info->workspace_num);
+  ReadCompileItem(*parsed_object_cinfo, "_workspace_index_list", compile_info->_workspace_index_list);
+  ReadCompileItem(vars, "ub_size", compile_info->ub_size);
+  ReadCompileItem(vars, "core_num", compile_info->core_num);
+  ReadCompileItem(vars, "workspace_num", compile_info->workspace_num);
   return ge::GRAPH_SUCCESS;
 }
 

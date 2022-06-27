@@ -279,26 +279,26 @@ ge::graphStatus TilingForMaxPoolV3(gert::TilingContext* context) {
 }
 
 ge::graphStatus TilingPrepareForMaxPoolV3(gert::TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<MaxPoolV3CompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<MaxPoolV3CompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
                   return ge::GRAPH_FAILED);
-  GetCompileValue(vars, "ub_ele", compile_info->ub_ele);
-  GetCompileValue(vars, "core_num", compile_info->core_num);
-  GetCompileValue(vars, "ksize_h", compile_info->ksize_h);
-  GetCompileValue(vars, "ksize_w", compile_info->ksize_w);
-  GetCompileValue(vars, "strides_h", compile_info->strides_h);
-  GetCompileValue(vars, "strides_w", compile_info->strides_w);
-  GetCompileValue(vars, "padding", compile_info->padding);
-  GetCompileValue(vars, "ceil_mode", compile_info->ceil_mode);
-  GetCompileValue(vars, "pad_top", compile_info->pad_top);
-  GetCompileValue(vars, "pad_bottom", compile_info->pad_bottom);
-  GetCompileValue(vars, "pad_left", compile_info->pad_left);
-  GetCompileValue(vars, "pad_right", compile_info->pad_right);
-  GetCompileValue(vars, "global", compile_info->global);
+  ReadCompileItem(vars, "ub_ele", compile_info->ub_ele);
+  ReadCompileItem(vars, "core_num", compile_info->core_num);
+  ReadCompileItem(vars, "ksize_h", compile_info->ksize_h);
+  ReadCompileItem(vars, "ksize_w", compile_info->ksize_w);
+  ReadCompileItem(vars, "strides_h", compile_info->strides_h);
+  ReadCompileItem(vars, "strides_w", compile_info->strides_w);
+  ReadCompileItem(vars, "padding", compile_info->padding);
+  ReadCompileItem(vars, "ceil_mode", compile_info->ceil_mode);
+  ReadCompileItem(vars, "pad_top", compile_info->pad_top);
+  ReadCompileItem(vars, "pad_bottom", compile_info->pad_bottom);
+  ReadCompileItem(vars, "pad_left", compile_info->pad_left);
+  ReadCompileItem(vars, "pad_right", compile_info->pad_right);
+  ReadCompileItem(vars, "global", compile_info->global);
   return ge::GRAPH_SUCCESS;
 }
 

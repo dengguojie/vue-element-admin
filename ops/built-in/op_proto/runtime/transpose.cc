@@ -88,5 +88,5 @@ ge::graphStatus TransposeInferShape(gert::InferShapeContext* context) {
   return ge::GRAPH_SUCCESS;
 }
 
-IMPL_OP(Transpose).InferShape(TransposeInferShape).InputsDataDependency({1});
+IMPL_OP(Transpose).InferShape(TransposeInferShape).InputsDataDependency({TRANSPOSE_IDX_IN_PERM});
 }  // namespace ops

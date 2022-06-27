@@ -853,24 +853,24 @@ ge::graphStatus TilingForTransData(TilingContext* context) {
 }
 
 ge::graphStatus TilingPrepareForTransdata(TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<TransDataCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<TransDataCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get vars in parsed_object_cinfo."),
                   return ge::GRAPH_FAILED);
-  OP_TILING_CHECK(!GetCompileValue(vars, "ub_size", compile_info->ub_size),
+  OP_TILING_CHECK(!ReadCompileItem(vars, "ub_size", compile_info->ub_size),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get ub_size in compile_info"),
                   return ge::GRAPH_FAILED);
-  OP_TILING_CHECK(!GetCompileValue(vars, "block_dim", compile_info->block_dim),
+  OP_TILING_CHECK(!ReadCompileItem(vars, "block_dim", compile_info->block_dim),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get block_dim in compile_info"),
                   return ge::GRAPH_FAILED);
-  OP_TILING_CHECK(!GetCompileValue(vars, "group", compile_info->group),
+  OP_TILING_CHECK(!ReadCompileItem(vars, "group", compile_info->group),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get group in compile_info"),
                   return ge::GRAPH_FAILED);
-  OP_TILING_CHECK(!GetCompileValue(vars, "vnc_fp32_flag", compile_info->vnc_fp32_flag), compile_info->vnc_fp32_flag = 0,
+  OP_TILING_CHECK(!ReadCompileItem(vars, "vnc_fp32_flag", compile_info->vnc_fp32_flag), compile_info->vnc_fp32_flag = 0,
                   OP_LOGI(context->GetNodeName(), "Can not find vnc_fp32_flag in json, use default value 0"));
   bool check_ret = CheckCompileInfo(context, compile_info);
   OP_TILING_CHECK(!check_ret, VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "CheckCompileInfo failed"),

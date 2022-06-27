@@ -1063,40 +1063,40 @@ ge::graphStatus GatherTiling(gert::TilingContext* context) {
 
 ge::graphStatus TilingPrepareForGatherV2(gert::TilingParseContext* context) {
   OP_LOGD(context->GetNodeName(), "TilingPrepareForGatherV2 running.");
-  auto compile_info = MutableCompileInfo<GatherV2CompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<GatherV2CompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
-  if (GetCompileValue(*parsed_object_cinfo, "is_tik", compile_info->is_tik)) {
+  if (ReadCompileItem(*parsed_object_cinfo, "is_tik", compile_info->is_tik)) {
     const nlohmann::json& all_vars = (*parsed_object_cinfo)["vars"];
     OP_TILING_CHECK(
-        !GetCompileValue(all_vars, "core_num", compile_info->core_num),
+        !ReadCompileItem(all_vars, "core_num", compile_info->core_num),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get core_num error"),
         return ge::GRAPH_FAILED);
     OP_TILING_CHECK(compile_info->core_num < 1,
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "GatherParseFunc, core_num should be greater than 0"),
         return false);
     OP_TILING_CHECK(
-        !GetCompileValue(all_vars, "ub_size", compile_info->ub_size),
+        !ReadCompileItem(all_vars, "ub_size", compile_info->ub_size),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get ub_size error"),
         return ge::GRAPH_FAILED);
     OP_TILING_CHECK(
-        !GetCompileValue(all_vars, "l1_size", compile_info->l1_size),
+        !ReadCompileItem(all_vars, "l1_size", compile_info->l1_size),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get l1_size error"),
         return ge::GRAPH_FAILED);
     OP_TILING_CHECK(
-        !GetCompileValue(all_vars, "params_dsize", compile_info->params_dsize),
+        !ReadCompileItem(all_vars, "params_dsize", compile_info->params_dsize),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get params_dsize error"),
         return ge::GRAPH_FAILED);
     OP_TILING_CHECK(
-        !GetCompileValue(all_vars, "indices_dsize", compile_info->indices_dsize),
+        !ReadCompileItem(all_vars, "indices_dsize", compile_info->indices_dsize),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get indices_dsize error"),
         return ge::GRAPH_FAILED);
-    OP_TILING_CHECK(!GetCompileValue(all_vars, "impl_mode", compile_info->impl_mode, 0),
+    OP_TILING_CHECK(!ReadCompileItem(all_vars, "impl_mode", compile_info->impl_mode, 0),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "GatherParseFunc, get impl_mode error"),
         return false);
     OP_TILING_CHECK(
-        !GetCompileValue(*parsed_object_cinfo, "is_gather_v2", compile_info->is_gather_v2),
+        !ReadCompileItem(*parsed_object_cinfo, "is_gather_v2", compile_info->is_gather_v2),
         VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForGatherV2, get is_gather_v2 error"),
         return ge::GRAPH_FAILED);
   } else {

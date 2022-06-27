@@ -93,19 +93,20 @@ KernelRunContextHolder KernelRunContextFaker::Build() {
   holder.context_holder = std::unique_ptr<uint8_t[]>(new uint8_t[size]);
   memset(holder.context_holder.get(), 0xff, size);
   holder.value_holder.resize(kernel_input_num_ + kernel_output_num_);
-  size_t extend_info_size;
 
-  holder.compute_node_extend_holder = bg::CreateComputeNodeInfo(FakeNode(), holder.buffer_pool, extend_info_size);
-  auto compute_node_info = reinterpret_cast<ComputeNodeInfo *>(holder.compute_node_extend_holder.get());
-  compute_node_info->SetNodeName(
-      holder.buffer_pool.GetBufById(reinterpret_cast<size_t>(compute_node_info->GetNodeName())));
-  compute_node_info->SetNodeType(
-      holder.buffer_pool.GetBufById(reinterpret_cast<size_t>(compute_node_info->GetNodeType())));
+  holder.compute_node_extend_holder = bg::CreateComputeNodeInfo(FakeNode(), holder.buffer_pool);
+  if (holder.compute_node_extend_holder) {
+    auto compute_node_info = reinterpret_cast<ComputeNodeInfo *>(holder.compute_node_extend_holder.get());
+    compute_node_info->SetNodeName(
+        holder.buffer_pool.GetBufById(reinterpret_cast<size_t>(compute_node_info->GetNodeName())));
+    compute_node_info->SetNodeType(
+        holder.buffer_pool.GetBufById(reinterpret_cast<size_t>(compute_node_info->GetNodeType())));
+  }
 
   holder.context = reinterpret_cast<KernelRunContext *>(holder.context_holder.get());
   holder.context->input_size = kernel_input_num_;
   holder.context->output_size = kernel_output_num_;
-  holder.context->compute_node_info = holder.compute_node_extend_holder.get();
+  holder.context->compute_node_info = holder.compute_node_extend_holder ? holder.compute_node_extend_holder.get() : nullptr;
   holder.context->output_start = &(holder.context->values[holder.context->input_size]);
 
   for (size_t i = 0; i < kernel_input_num_ + kernel_output_num_; ++i) {

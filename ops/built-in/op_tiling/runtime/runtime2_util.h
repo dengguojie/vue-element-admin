@@ -35,7 +35,7 @@
 
 namespace optiling {
 template <typename T>
-T* MutableCompileInfo(gert::TilingParseContext* context) {
+inline T* GetCompileInfoPtr(gert::TilingParseContext* context) {
   return context->GetCompiledInfo<T>();
 }
 
@@ -107,7 +107,41 @@ bool AddReduceMeanCof(const gert::Shape& input_shape, const ge::DataType input_d
  * @param [in] context: gert::TilingContext
  * @return bool: std::unique_ptr<nlohmann::json>;
  */
-std::unique_ptr<nlohmann::json> GetJsonObj(gert::TilingParseContext* context);
+inline std::unique_ptr<nlohmann::json> GetCompileInfoJson(gert::TilingParseContext* context) {
+  auto json_str = context->GetCompiledJson();
+  OPS_CHECK_NULL_WITH_CONTEXT_RET(context, json_str, nullptr);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo(new nlohmann::json(nlohmann::json::parse(json_str)));
+  return parsed_object_cinfo;
+}
+
+/*
+ * @brief: read one compile item from json object
+ * @param [in] all_vars: json object
+ * @param [in] name: item name to read
+ * @param [out] value: item value to load
+ * @return bool: success or failed
+ */
+template <typename T>
+bool ReadCompileItem(const nlohmann::json& all_vars, const std::string& name, T& value) {
+  if (all_vars.empty()) {
+    return false;
+  }
+
+  if (all_vars.count(name) == 0) {
+    return false;
+  }
+
+  value = all_vars[name].get<T>();
+  return true;
+}
+
+template <typename T1, typename T2>
+bool ReadCompileItem(const nlohmann::json& all_vars, const std::string& name, T1& value, const T2 default_value) {
+  if (!ReadCompileItem(all_vars, name, value)) {
+    value = static_cast<T1>(default_value);
+  }
+  return true;
+}
 
 /*
  * @brief: add workspace size to context

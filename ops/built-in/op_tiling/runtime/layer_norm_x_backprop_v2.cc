@@ -27,19 +27,19 @@ static bool LayerNormXBackpropV2ParseFunc(const std::string& node_name, const nl
   OP_TILING_CHECK(compile_value->dsl_compile_info == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(node_name, "CreateAutoTilingHandler return nullptr"), return false);
   if (compile_info.count("reduce_mean_cof") > 0) {
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof", compile_value->reduce_mean_cof),
+    OP_TILING_CHECK(!ReadCompileItem(compile_info, "reduce_mean_cof", compile_value->reduce_mean_cof),
                     VECTOR_INNER_ERR_REPORT_TILIING(node_name, "LayerNormParseFunc, get reduce_mean_cof error"),
                     return false);
   }
   // add for unknown axis mode
-  (void)GetCompileValue(compile_info, "unknown_mode", compile_value->unknown_mode, false);
+  (void)ReadCompileItem(compile_info, "unknown_mode", compile_value->unknown_mode, false);
   return true;
 }
 
 ge::graphStatus TilingPrepareForLayerNormXBackpropV2(gert::TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<LayerNormXBackpropV2CompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<LayerNormXBackpropV2CompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
 
   OP_TILING_CHECK(!LayerNormXBackpropV2ParseFunc(context->GetNodeName(), *parsed_object_cinfo, compile_info),

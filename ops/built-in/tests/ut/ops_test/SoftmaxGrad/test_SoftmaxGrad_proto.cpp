@@ -43,4 +43,8 @@ TEST_F(SoftmaxGradTest, softmax_grad_tsest_1) {
     CommonInferShapeOperator(softmax_grad_op, {"axes"}, {expected_output_shape});
     auto output_desc1 = softmax_grad_op.GetOutputDesc(0);
     EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
+  Runtime2TestParam param{{"axes"}};
+  EXPECT_EQ(InferShapeTest(softmax_grad_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = softmax_grad_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }

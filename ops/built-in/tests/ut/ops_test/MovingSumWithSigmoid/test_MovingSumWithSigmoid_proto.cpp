@@ -45,6 +45,8 @@ TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_0) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
   CommonInferShapeOperatorFail(op, {"ksize"});
+  Runtime2TestParam param{{"ksize"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_range) {
@@ -100,4 +102,7 @@ TEST_F(MovingSumWithSigmoidProtoTest, MovingSumWithSigmoidProtoTest_2) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   std::vector<bool> input_const = {false, false, true};
   CommonInferShapeOperatorWithConst(op, input_const, {}, {{7,3}});
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }

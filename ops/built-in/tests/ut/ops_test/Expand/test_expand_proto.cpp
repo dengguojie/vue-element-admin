@@ -72,6 +72,11 @@ TEST_F(expand, expand_infershape_const_1) {
     std::vector<vector<int64_t>> expect_shapes_vector = {{1, 1, 2, 4}};
 
     CommonInferShapeOperatorWithConst(expand_op, input_const, {}, expect_shapes_vector);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  EXPECT_EQ(InferShapeTest(expand_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = expand_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expect_shapes_vector[0]);
 }
 
 TEST_F(expand, expand_infershape_const_2) {
@@ -106,6 +111,11 @@ TEST_F(expand, expand_infershape_const_2) {
     std::vector<vector<int64_t>> expect_shapes_vector = {{1, 1, 2, 4}};
 
     CommonInferShapeOperatorWithConst(expand_op, input_const, {}, expect_shapes_vector);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  EXPECT_EQ(InferShapeTest(expand_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = expand_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expect_shapes_vector[0]);
 }
 
 TEST_F(expand, expand_infershape_x1D_expand2D) {

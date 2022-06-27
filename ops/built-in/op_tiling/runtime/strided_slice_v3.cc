@@ -181,14 +181,14 @@ static void AppendTilingData(const SliceParameters& params, gert::TilingData* ti
 }
 
 ge::graphStatus TilingPrepareForStridedSliceV3(gert::TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<StridedSliceV3CompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<StridedSliceV3CompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(OP_NAME, "get vars failed."), return ge::GRAPH_FAILED);
-  GetCompileValue(vars, "block_dim", compile_info->block_dim);
-  GetCompileValue(vars, "ub_size", compile_info->ub_size);
+  ReadCompileItem(vars, "block_dim", compile_info->block_dim);
+  ReadCompileItem(vars, "ub_size", compile_info->ub_size);
   return ge::GRAPH_SUCCESS;
 }
 

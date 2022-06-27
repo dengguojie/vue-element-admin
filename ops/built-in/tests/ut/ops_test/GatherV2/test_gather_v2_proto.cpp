@@ -66,6 +66,10 @@ TEST_F(gather_v2, gather_v2_infershape_runtime_test_1) {
   test_op.InferShapeAndType();
   vector<bool> input_const = {false,false, true};
   CommonInferShapeOperatorWithConst(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  Runtime2TestParam param;
+  param.attrs = {"batch_dims"};
+  param.input_const = {false,false, true};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -95,6 +99,10 @@ TEST_F(gather_v2, gather_v2_infershape_runtime_test_2) {
   test_op.InferShapeAndType();
   vector<bool> input_const = {false,false, true};
   CommonInferShapeOperatorWithConst(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  Runtime2TestParam param;
+  param.attrs = {"batch_dims"};
+  param.input_const = {false,false, true};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -124,6 +132,10 @@ TEST_F(gather_v2, gather_v2_infershape_runtime_test_3) {
   test_op.InferShapeAndType();
   vector<bool> input_const = {false,false, true};
   CommonInferShapeOperatorWithConst(test_op, input_const, {"batch_dims"}, {expected_output_shape});
+  Runtime2TestParam param;
+  param.attrs = {"batch_dims"};
+  param.input_const = {false,false, true};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -410,6 +422,10 @@ TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_2) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  Runtime2TestParam param;
+  param.attrs = {"batch_dims"};
+  param.input_const = {false,false, true};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_3) {
@@ -460,6 +476,10 @@ TEST_F(gather_v2, gather_v2_infershape_with_batch_dims_4) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  Runtime2TestParam param;
+  param.attrs = {"batch_dims"};
+  param.input_const = {false,false, true};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(gather_v2, GatherV2_data_slice_infer1) {

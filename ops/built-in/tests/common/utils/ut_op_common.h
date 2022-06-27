@@ -36,6 +36,12 @@
 using namespace std;
 using namespace ge;
 
+struct Runtime2TestParam {
+  std::vector<std::string> attrs;
+  std::vector<bool> input_const;
+  std::vector<uint32_t> irnum;
+};
+
 static const std::map<std::string, ge::AnyValue::ValueType> kAttrTypesMap = {
   {"VT_INT", ge::AnyValue::ValueType::VT_INT},
   {"VT_BOOL", ge::AnyValue::ValueType::VT_BOOL},
@@ -236,3 +242,7 @@ void CommonInferShapeOperatorWithIrNum(ge::Operator& op, vector<uint32_t> irnum,
                                        vector<string> attrs, vector<vector<int64_t>> expect_shapes);
 void CommonInferShapeOperatorWithIrNumFail(ge::Operator& op, vector<uint32_t> irnum,
                                            vector<string> attrs);
+
+ge::graphStatus InferShapeTest(ge::Operator& op, const Runtime2TestParam& param);
+
+ge::graphStatus InferShapeTest(ge::Operator& op);

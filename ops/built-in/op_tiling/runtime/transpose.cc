@@ -7017,18 +7017,18 @@ static bool CheckCompileInfo(TilingParseContext* context, TransposeCompilerInfo*
 }
 
 ge::graphStatus TilingPrepareForTranspose(TilingParseContext* context) {
-  auto ci = MutableCompileInfo<TransposeCompilerInfo>(context);
+  auto ci = GetCompileInfoPtr<TransposeCompilerInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, ci);
-  std::unique_ptr<nlohmann::json> parsedInfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsedInfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsedInfo);
   const nlohmann::json& vars = (*parsedInfo)["vars"];
   OP_TILING_CHECK(vars.empty(),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get vars in parsedInfo."),
                   return ge::GRAPH_FAILED);
-  OP_TILING_CHECK(!GetCompileValue(vars, "core_num", ci->coreNum),
+  OP_TILING_CHECK(!ReadCompileItem(vars, "core_num", ci->coreNum),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get core_num in ci"),
                   return ge::GRAPH_FAILED);
-  OP_TILING_CHECK(!GetCompileValue(vars, "ub_size", ci->ubSize),
+  OP_TILING_CHECK(!ReadCompileItem(vars, "ub_size", ci->ubSize),
                   VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "Failed to get ub_sizein ci"),
                   return ge::GRAPH_FAILED);
   bool check_ret = CheckCompileInfo(context, ci);

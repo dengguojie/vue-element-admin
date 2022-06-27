@@ -29,6 +29,7 @@
 #include "register/op_tiling_registry.h"
 #include "test_common.h"
 #include "common/utils/ut_op_util.h"
+#include "common_unittest.h"
 
 using namespace std;
 using namespace ge;
@@ -146,4 +147,175 @@ void CommonTilingOperator(ge::Operator& op, std::string& compile_info, void *inf
   gert::TilingData *tiling_data = reinterpret_cast<gert::TilingData *>(param.get());
   ASSERT_NE(tiling_data, nullptr);
   EXPECT_EQ(int64_to_string(tiling_data->GetData(), tiling_data->GetDataSize()), expect_tiling_data);
+}
+
+ge::graphStatus TilingParseTest(const std::string optype, std::string json_str, void *compile_info) {
+  if (gert::OpImplRegistry::GetInstance().GetOpImpl(optype) == nullptr) return ge::GRAPH_FAILED;
+  auto tiling_prepare_func = gert::OpImplRegistry::GetInstance().GetOpImpl(optype)->tiling_parse;
+  if (tiling_prepare_func == nullptr) return ge::GRAPH_FAILED;
+  char *js_buf = new char[1 + json_str.length()];
+  if (js_buf == nullptr) return ge::GRAPH_FAILED;
+  strcpy(js_buf, json_str.c_str());
+  auto holder = gert::KernelRunContextFaker()
+                    .KernelIONum(1, 1)
+                    .Inputs({js_buf})
+                    .Outputs({compile_info})
+                    .Build();
+  ge::graphStatus res = tiling_prepare_func(holder.GetContext<gert::KernelContext>());
+  delete[] js_buf;
+  return res;
+}
+
+ge::graphStatus TilingTest(ge::Operator& op, const Runtime2TestParam& param, void *info_base,
+                           size_t tiling_len, std::unique_ptr<uint8_t[]>& tiling_data) {
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (operator_info == nullptr) return ge::GRAPH_FAILED;
+  std::string optype = op.GetOpType();
+  size_t input_size = op.GetInputsSize();
+  std::vector<std::string> attrs = param.attrs;
+  std::vector<bool> input_const = param.input_const;
+  std::vector<uint32_t> irnum = param.irnum;
+  if (irnum.size() > 0) {
+    if (input_const.size() == 0) input_const.assign(irnum.size(), false);
+  } else if (input_const.size() > 0) {
+    if (irnum.size() == 0) irnum.assign(input_const.size(), 1);
+  } else {
+    input_const.assign(input_size, false);
+    irnum.assign(input_size, 1);
+  }
+  size_t output_size = op.GetOutputsSize();
+
+  // tiling data
+  tiling_data = gert::TilingData::CreateCap(tiling_len);
+  auto faker = gert::TilingContextFaker()
+                    .NodeIoNum(input_size, output_size)
+                    .TilingData(tiling_data.get())
+                    .CompileInfo(info_base)
+                    .IrInstanceNum(irnum);
+
+  vector<uint8_t*> const_tensors;
+  std::vector<gert::StorageShape> input_shapes(input_size);
+  std::vector<void *> input_shapes_ref(input_size);
+  if (input_size > 0) {
+    auto operator_info = OpDescUtils::GetOpDescFromOperator(op);
+    if (operator_info == nullptr) return GRAPH_FAILED;
+    size_t count = 0;
+    for (size_t i = 0; i < input_const.size(); ++i) {
+      if (input_const[i]) {
+        uint8_t* input_tensor_holder = GetConstTensor(op, i);
+        if (input_tensor_holder == nullptr) return GRAPH_FAILED;
+        input_shapes_ref[count] = input_tensor_holder;
+        const_tensors.push_back(input_tensor_holder);
+        count++;
+      } else for (int idx = 0; idx < irnum[i]; idx++) {
+        auto input_desc = operator_info->MutableInputDesc(i + idx);
+        if (input_desc == nullptr) continue;
+        ge::Format input_format = input_desc->GetFormat();
+        ge::Format origin_format = input_desc->GetOriginFormat();
+        ge::DataType dtype = input_desc->GetDataType();
+        faker = faker.NodeInputTd(count, dtype, origin_format, input_format);
+        for (int64_t dim : input_desc->GetOriginShape().GetDims()) {
+          input_shapes[count].MutableOriginShape().AppendDim(dim);
+        }
+        for (int64_t dim : input_desc->MutableShape().GetDims()) {
+          input_shapes[count].MutableStorageShape().AppendDim(dim);
+        }
+        input_shapes_ref[count] = &input_shapes[count];
+        count++;
+      }
+    }
+    faker = faker.InputShapes(input_shapes_ref);
+  }
+
+  std::vector<gert::StorageShape> output_shapes(output_size);
+  std::vector<void *> output_shapes_ref(output_size);
+  if (output_size > 0) {
+    for (size_t i = 0; i < output_size; ++i) {
+      auto output_desc = operator_info->MutableOutputDesc(i);
+      if (output_desc == nullptr) return ge::GRAPH_FAILED;
+      // get and check input format and shape
+      ge::Format input_format = output_desc->GetFormat();
+      ge::Format origin_format = output_desc->GetOriginFormat();
+      ge::DataType dtype = output_desc->GetDataType();
+      faker = faker.NodeOutputTd(i, dtype, origin_format, input_format);
+      for (int64_t dim : output_desc->GetOriginShape().GetDims()) {
+        output_shapes[i].MutableOriginShape().AppendDim(dim);
+      }
+      for (int64_t dim : output_desc->MutableShape().GetDims()) {
+        output_shapes[i].MutableStorageShape().AppendDim(dim);
+      }
+      output_shapes_ref[i] = &output_shapes[i];
+    }
+    faker = faker.OutputShapes(output_shapes_ref);
+  }
+
+  auto op_attrs_map = op.GetAllAttrNamesAndTypes();
+  std::vector<std::pair<std::string, ge::AnyValue>> keys_to_value;
+  std::pair<std::string, ge::AnyValue> p;
+  if (attrs.size() > 0) {
+    for (auto item : attrs) {
+      p.first = item;
+      auto attr_it = op_attrs_map.find(item);
+      if (attr_it != op_attrs_map.end()) {
+        auto type_it = kAttrTypesMap.find(attr_it->second);
+        if (type_it != kAttrTypesMap.end()) {
+          switch (type_it->second) {
+            case ge::AnyValue::ValueType::VT_BOOL: {
+              bool value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<bool>(value);
+            }
+            break;
+            case ge::AnyValue::ValueType::VT_INT: {
+              int64_t value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<int64_t>(value);
+            }
+            break;
+            case ge::AnyValue::ValueType::VT_FLOAT: {
+              float32_t value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<float32_t>(value);
+            }
+            break;
+            case ge::AnyValue::ValueType::VT_STRING: {
+              std::string value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<std::string>(value);
+            }
+            break;
+            case ge::AnyValue::ValueType::VT_LIST_INT: {
+              std::vector<int64_t> value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<std::vector<int64_t>>(value);
+            }
+            break;
+            case ge::AnyValue::ValueType::VT_LIST_BOOL: {
+              std::vector<bool> value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<std::vector<bool>>(value);
+            }
+            break;
+            case ge::AnyValue::ValueType::VT_LIST_LIST_INT: {
+              std::vector<std::vector<int64_t>> value;
+              if(op.GetAttr(item, value) != GRAPH_SUCCESS) return GRAPH_FAILED;
+              p.second = ge::AnyValue::CreateFrom<std::vector<std::vector<int64_t>>>(value);
+            }
+            break;
+          }
+        }
+      }
+      keys_to_value.push_back(p);
+    }
+    faker = faker.NodeAttrs(keys_to_value);
+  }
+
+  auto holder = faker.Build();
+
+  if (gert::OpImplRegistry::GetInstance().GetOpImpl(optype) == nullptr) return ge::GRAPH_FAILED;
+  auto tiling_func = gert::OpImplRegistry::GetInstance().GetOpImpl(optype)->tiling;
+  if (tiling_func == nullptr) return ge::GRAPH_FAILED;
+  gert::TilingContext *context = holder.GetContext<gert::TilingContext>();
+  if (context == nullptr) return ge::GRAPH_FAILED;
+  return tiling_func(context);
 }

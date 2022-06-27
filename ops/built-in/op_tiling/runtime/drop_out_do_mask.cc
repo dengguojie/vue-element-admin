@@ -61,15 +61,15 @@ ge::graphStatus DropOutDoMaskTiling(gert::TilingContext* context) {
 
 ge::graphStatus TilingPrepareForDropOutDoMask(gert::TilingParseContext* context) {
   OP_LOGD(context->GetNodeName(), "TilingPrepareForDropOutDoMask running.");
-  auto compile_info = MutableCompileInfo<DropOutDoMaskCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<DropOutDoMaskCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& all_vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(all_vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
                   return ge::GRAPH_FAILED);
   OP_TILING_CHECK(
-      !GetCompileValue(all_vars, "core_num", compile_info->core_num),
+      !ReadCompileItem(all_vars, "core_num", compile_info->core_num),
       VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "TilingPrepareForDropOutDoMask, get core_num error"),
       return ge::GRAPH_FAILED);
 

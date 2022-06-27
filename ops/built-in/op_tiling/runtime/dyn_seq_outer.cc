@@ -57,14 +57,14 @@ ge::graphStatus TilingForDynSeqOuter(gert::TilingContext *context) {
 }
 
 ge::graphStatus TilingPrepareForDynSeqOuter(gert::TilingParseContext *context) {
-  auto compile_info = MutableCompileInfo<DynSeqOuterCompileInfo>(context);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  auto compile_info = GetCompileInfoPtr<DynSeqOuterCompileInfo>(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OP_TILING_CHECK(compile_info == nullptr || parsed_object_cinfo == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(OP_NAME, "compile_info or json_str nullptr!"),
                   return ge::GRAPH_FAILED);
   const nlohmann::json &vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(OP_NAME, "get vars failed."), return ge::GRAPH_FAILED);
-  optiling::GetCompileValue(vars, "core_num", compile_info->core_num);
+  optiling::ReadCompileItem(vars, "core_num", compile_info->core_num);
   return ge::GRAPH_SUCCESS;
 }
 

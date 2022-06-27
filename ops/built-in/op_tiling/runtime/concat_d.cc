@@ -329,19 +329,19 @@ ge::graphStatus ConcatDTiling(gert::TilingContext *context) {
 }
 
 ge::graphStatus ConcatDParse(gert::TilingParseContext *context) {
-  auto compile_info = MutableCompileInfo<ConcatDCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<ConcatDCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
-  if (GetCompileValue(*parsed_object_cinfo, "is_tik", compile_info->is_tik)) {
+  if (ReadCompileItem(*parsed_object_cinfo, "is_tik", compile_info->is_tik)) {
     const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
-    OP_TILING_CHECK(!GetCompileValue(vars, "block_dim", compile_info->core_num),
+    OP_TILING_CHECK(!ReadCompileItem(vars, "block_dim", compile_info->core_num),
                     VECTOR_INNER_ERR_REPORT_TILIING("ConcatD", "ConcatParseFunc, get block_dim error"),
                     return ge::GRAPH_FAILED);
-    OP_TILING_CHECK(!GetCompileValue(vars, "concat_dim", compile_info->ori_axis),
+    OP_TILING_CHECK(!ReadCompileItem(vars, "concat_dim", compile_info->ori_axis),
                     VECTOR_INNER_ERR_REPORT_TILIING("ConcatD", "ConcatParseFunc, get concat_dim error"),
                     return ge::GRAPH_FAILED);
-    OP_TILING_CHECK(!GetCompileValue(vars, "input_size", compile_info->input_size),
+    OP_TILING_CHECK(!ReadCompileItem(vars, "input_size", compile_info->input_size),
                     VECTOR_INNER_ERR_REPORT_TILIING("ConcatD", "ConcatParseFunc, get input_size error"),
                     return ge::GRAPH_FAILED);
   } else {
@@ -349,7 +349,7 @@ ge::graphStatus ConcatDParse(gert::TilingParseContext *context) {
     OP_TILING_CHECK(compile_info->dsl_compile_info == nullptr,
                     VECTOR_INNER_ERR_REPORT_TILIING("ConcatD", "CreateAutoTilingHandler return nullptr"),
                     return ge::GRAPH_FAILED);
-    OP_TILING_CHECK(!GetCompileValue(*parsed_object_cinfo, "concat_dim", compile_info->ori_axis),
+    OP_TILING_CHECK(!ReadCompileItem(*parsed_object_cinfo, "concat_dim", compile_info->ori_axis),
                     VECTOR_INNER_ERR_REPORT_TILIING("ConcatD", "ConcatParseFunc, get concat_dim error"),
                     return ge::GRAPH_FAILED);
     compile_info->is_tik = false;

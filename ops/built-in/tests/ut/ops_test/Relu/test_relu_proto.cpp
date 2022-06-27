@@ -65,4 +65,7 @@ TEST_F(relu, relu_infer_shape_fp16) {
   CommonInferShapeOperator(op, {}, {expected_output_shape});
   auto output_desc1 = op.GetOutputDesc(0);
   EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }

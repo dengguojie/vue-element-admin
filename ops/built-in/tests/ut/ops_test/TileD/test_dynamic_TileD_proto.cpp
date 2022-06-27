@@ -195,6 +195,10 @@ TEST_F(tile_d, tile_d_infershape_rt2_1) {
   op.SetAttr("multiples", {1, 2, 3, 4, 5});
   std::vector<int64_t> expected_output_shape = {1, 2, 3, 8, 15};
   CommonInferShapeOperator(op, {"multiples"}, {expected_output_shape});
+  Runtime2TestParam param{{"multiples"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(tile_d, tile_d_infershape_rt2_2) {
@@ -204,6 +208,10 @@ TEST_F(tile_d, tile_d_infershape_rt2_2) {
   op.SetAttr("multiples", {3, 4});
   std::vector<int64_t> expected_output_shape = {6, 12};
   CommonInferShapeOperator(op, {"multiples"}, {expected_output_shape});
+  Runtime2TestParam param{{"multiples"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(tile_d, tile_d_infershape_rt2_failed_1) {
@@ -212,6 +220,8 @@ TEST_F(tile_d, tile_d_infershape_rt2_failed_1) {
       "x", create_desc_shape_range({2, 3}, ge::DT_INT32, ge::FORMAT_ND, {2, 3}, ge::FORMAT_ND, {{2, 2}, {3, 3}}));
   op.SetAttr("multiples", {1});
   CommonInferShapeOperatorFail(op, {"multiples"});
+  Runtime2TestParam param{{"multiples"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(tile_d, tile_d_infershape_rt2_failed_2) {
@@ -220,6 +230,8 @@ TEST_F(tile_d, tile_d_infershape_rt2_failed_2) {
       "x", create_desc_shape_range({2, 3}, ge::DT_INT32, ge::FORMAT_ND, {2, 3}, ge::FORMAT_ND, {{2, 2}, {3, 3}}));
   op.SetAttr("multiples", {1, 2, 3, 4, 5, 6, 7, 8, 9});
   CommonInferShapeOperatorFail(op, {"multiples"});
+  Runtime2TestParam param{{"multiples"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(tile_d, tile_d_infershape_rt2_failed_3) {
@@ -228,4 +240,6 @@ TEST_F(tile_d, tile_d_infershape_rt2_failed_3) {
       "x", create_desc_shape_range({-1, 3}, ge::DT_INT32, ge::FORMAT_ND, {-1, 3}, ge::FORMAT_ND, {{2, 2}, {3, 3}}));
   op.SetAttr("multiples", {1, 2, 3, 4, 5});
   CommonInferShapeOperatorFail(op, {"multiples"});
+  Runtime2TestParam param{{"multiples"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }

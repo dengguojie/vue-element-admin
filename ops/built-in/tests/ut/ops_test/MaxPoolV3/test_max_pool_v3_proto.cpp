@@ -59,6 +59,12 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_diff_test) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  output_y1_desc = op.GetOutputDescByName("y");
+  EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_global_true) {
@@ -78,6 +84,12 @@ TEST_F(MaxPoolV3Test, max_pool_v3_global_true) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
+  EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {expect_output_shape});
 }
@@ -99,6 +111,12 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_ceilmode_true) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  output_y1_desc = op.GetOutputDescByName("y");
+  EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_failed) {
@@ -116,6 +134,11 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_failed) {
   op.SetAttr("ceil_mode", true);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_same) {
@@ -136,6 +159,12 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_same) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expect_output_shape);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {expect_output_shape});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutksize) {
@@ -153,6 +182,10 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutksize) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutstrides) {
   ge::op::MaxPoolV3 op;
@@ -169,6 +202,10 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutstrides) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutdataformat) {
   ge::op::MaxPoolV3 op;
@@ -185,6 +222,10 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_withoutdataformat) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_dynamicdim) {
@@ -205,6 +246,10 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_dynamicdim) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_y1_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expect_output_shape);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {});
 }
 TEST_F(MaxPoolV3Test, max_pool_v3_infershape_stridesfailed) {
@@ -223,6 +268,10 @@ TEST_F(MaxPoolV3Test, max_pool_v3_infershape_stridesfailed) {
   std::vector<int64_t> expect_output_shape = {-1, 4, 28, 28, 16};
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_001) {
@@ -237,6 +286,10 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_001) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_002) {
@@ -252,6 +305,11 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_002) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  std::vector<int64_t> outdims;
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_003) {
@@ -268,6 +326,10 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_003) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_004) {
@@ -284,6 +346,10 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_004) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_005) {
@@ -301,6 +367,10 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_005) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {});
 }
 
@@ -320,6 +390,10 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_006) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {});
 }
 
@@ -339,6 +413,10 @@ TEST_F(MaxPoolV3Test, InfershapeMaxPoolV3_007) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
   CommonInferShapeOperator(op, {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"}, {});
 }
 
@@ -349,8 +427,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_001) {
   op.UpdateInputDesc("x", tensor_desc);
   op.SetAttr("ksize", true);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_002) {
@@ -361,8 +443,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_002) {
   std::vector<int64_t> ksize = {1, 2};
   op.SetAttr("ksize", ksize);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_003) {
@@ -374,8 +460,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_003) {
   op.SetAttr("ksize", ksize);
   op.SetAttr("strides", true);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_004) {
@@ -388,8 +478,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_004) {
   op.SetAttr("ksize", ksize);
   op.SetAttr("strides", strides);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_005) {
@@ -403,8 +497,13 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_005) {
   op.SetAttr("strides", strides);
   op.SetAttr("padding_mode", strides);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_006) {
@@ -418,8 +517,13 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_006) {
   op.SetAttr("strides", strides);
   op.SetAttr("padding_mode", "error");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_007) {
@@ -434,8 +538,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_007) {
   op.SetAttr("padding_mode", "CALCULATED");
   op.SetAttr("pads", true);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_008) {
@@ -451,8 +559,8 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_008) {
   op.SetAttr("padding_mode", "CALCULATED");
   op.SetAttr("pads", pads);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_009) {
@@ -469,8 +577,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_009) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", pads);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_010) {
@@ -488,8 +600,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_010) {
   op.SetAttr("data_format", "NCHW");
   op.SetAttr("ceil_mode", pads);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_011) {
@@ -506,8 +622,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_011) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", "ND");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_012) {
@@ -524,8 +644,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_012) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", "NCHW");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_013) {
@@ -542,8 +666,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_013) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", "NCHW");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_014) {
@@ -560,8 +688,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_014) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", "NHWC");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_015) {
@@ -578,8 +710,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_015) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", "NHWC");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_016) {
@@ -596,8 +732,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_016) {
   op.SetAttr("pads", pads);
   op.SetAttr("data_format", "NHWC");
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_017) {
@@ -615,8 +755,12 @@ TEST_F(MaxPoolV3Test, VerifyMaxPoolV3_017) {
   op.SetAttr("data_format", "NHWC");
   op.SetAttr("ceil_mode", true);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, InferDataSlice1) {
@@ -634,8 +778,12 @@ TEST_F(MaxPoolV3Test, InferDataSlice1) {
   op.SetAttr("data_format", "NHWC");
   op.SetAttr("ceil_mode", true);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  auto status = op_desc->InferDataSlice();
-  EXPECT_NE(status, ge::GRAPH_SUCCESS);
+  auto ret = op_desc->InferDataSlice();
+  EXPECT_NE(ret, ge::GRAPH_SUCCESS);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(MaxPoolV3Test, InferDataSlice2) {
@@ -656,10 +804,14 @@ TEST_F(MaxPoolV3Test, InferDataSlice2) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   std::vector<std::vector<int64_t>> y_data_slice = {{0, 2}, {}, {}, {}};
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
-  auto status = op_desc->InferDataSlice();
-  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op_desc->InferDataSlice();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto x_desc = op_desc->MutableInputDesc("x");
   std::vector<std::vector<int64_t>> x_data_slice;
   ge::AttrUtils::GetListListInt(x_desc, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
   EXPECT_EQ(x_data_slice, y_data_slice);
+
+  Runtime2TestParam param;
+  param.attrs = {"ksize", "strides", "padding_mode", "pads", "data_format", "global_pooling", "ceil_mode"};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }

@@ -76,14 +76,14 @@ ge::graphStatus TileDTiling(gert::TilingContext *context) {
 }
 
 ge::graphStatus TileDParse(gert::TilingParseContext *context) {
-  auto compile_info = MutableCompileInfo<TileDCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<TileDCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   compile_info->dsl_compile_info = ParseAutoTiling("TileD", *parsed_object_cinfo);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info->dsl_compile_info);
   // get tiling info
-  OP_TILING_CHECK(!GetCompileValue(*parsed_object_cinfo, "tiling_info", compile_info->tiling_info),
+  OP_TILING_CHECK(!ReadCompileItem(*parsed_object_cinfo, "tiling_info", compile_info->tiling_info),
                   VECTOR_INNER_ERR_REPORT_TILIING("TileD", "ParseJsonCompileInfo, get tiling_info error"),
                   return ge::GRAPH_FAILED);
   return ge::GRAPH_SUCCESS;

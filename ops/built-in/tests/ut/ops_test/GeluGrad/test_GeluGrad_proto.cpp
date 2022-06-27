@@ -65,4 +65,8 @@ TEST_F(gelugrad, gelugrad_infershape_test){
   CommonInferShapeOperator(op, {}, {expected_output_shape});
   auto output_desc1 = op.GetOutputDesc(0);
   EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
+  Runtime2TestParam param;
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }

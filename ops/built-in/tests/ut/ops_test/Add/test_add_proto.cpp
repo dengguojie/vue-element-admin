@@ -518,6 +518,9 @@ TEST_F(add, add_infer_shape_001) {
       {1, 1}, {100, 256}, {100, 256}, {64, 64}
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(add, add_infer_shape_002) {
@@ -550,4 +553,7 @@ TEST_F(add, add_infer_shape_002) {
       {1, 1}, {100, 256}, {100, 256}, {64, 64}
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

@@ -90,6 +90,9 @@ TEST_F(trans_data, trans_data_infer_rt2) {
   op.UpdateOutputDesc("dst", tensor_desc_out);
   std::vector<int64_t> expected_output_shape = {16, 16, 16, 16};
   CommonInferShapeOperator(op, {}, {expected_output_shape});
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(trans_data, data_slice_infer_nd_5hd_1) {

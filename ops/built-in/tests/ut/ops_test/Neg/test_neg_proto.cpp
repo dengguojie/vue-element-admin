@@ -30,6 +30,9 @@ TEST_F(Neg, Neg_infershape_test_0) {
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
   CommonInferShapeOperator(op, {}, {expected_output_shape});
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(Neg, Neg_infershape_test_1) {
@@ -46,6 +49,9 @@ TEST_F(Neg, Neg_infershape_test_1) {
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
   CommonInferShapeOperator(op, {}, {expected_output_shape});
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(Neg, Neg_infershape_test_2) {
@@ -62,6 +68,9 @@ TEST_F(Neg, Neg_infershape_test_2) {
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
   CommonInferShapeOperator(op, {}, {expected_output_shape});
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(Neg, Neg_infershape_test_3) {
@@ -78,4 +87,7 @@ TEST_F(Neg, Neg_infershape_test_3) {
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
   CommonInferShapeOperator(op, {}, {expected_output_shape});
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }

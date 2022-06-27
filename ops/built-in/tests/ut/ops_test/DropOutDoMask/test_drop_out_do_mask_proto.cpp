@@ -53,4 +53,7 @@ TEST_F(drop_out_do_mask, drop_out_do_mask_1) {
   CommonInferShapeOperator(op, {}, {expected_output_shape});
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
+  EXPECT_EQ(InferShapeTest(op), ge::GRAPH_SUCCESS);
+  output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

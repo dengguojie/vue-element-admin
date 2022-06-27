@@ -143,4 +143,10 @@ TEST_F(DynSeqOuterProtoTest, DynSeqOuterProtoTest_2) {
     std::vector<vector<int64_t>> expect_shapes_vector = {{8, 512}};
 
     CommonInferShapeOperatorWithConst(op, input_const, {}, expect_shapes_vector);
+
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto outputy_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(outputy_desc.GetShape().GetDims(), expect_shapes_vector[0]);
 }

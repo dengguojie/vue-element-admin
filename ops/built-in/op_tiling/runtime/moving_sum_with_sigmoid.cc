@@ -52,14 +52,14 @@ ge::graphStatus TilingForMovingSumWithSigmoid(gert::TilingContext* context) {
 }
 
 ge::graphStatus TilingPrepareForMovingSumWithSigmoid(gert::TilingParseContext* context) {
-  auto compile_info = MutableCompileInfo<MovingSumWithSigmoidCompileInfo>(context);
+  auto compile_info = GetCompileInfoPtr<MovingSumWithSigmoidCompileInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
   const nlohmann::json& vars = (*parsed_object_cinfo)["vars"];
   OP_TILING_CHECK(vars.empty(), VECTOR_INNER_ERR_REPORT_TILIING(context->GetNodeName(), "get vars failed."),
                   return ge::GRAPH_FAILED);
-  GetCompileValue(vars, "core_num", compile_info->core_num);
+  ReadCompileItem(vars, "core_num", compile_info->core_num);
   return ge::GRAPH_SUCCESS;
 }
 

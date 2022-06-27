@@ -17,22 +17,21 @@
 
 using namespace ge;
 namespace ops {
-IMPL_OP(Cast)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(Tanh)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(ZerosLike)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(Gelu)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(Relu)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(Neg)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(LogSoftmaxV2)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(DropOutDoMask)
-    .InferShape(InferShapeForOneInOneOut);
-IMPL_OP(SoftmaxV2)
-    .InferShape(InferShapeForOneInOneOut);
+IMPL_OP(Cast).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(Tanh).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(ZerosLike).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(Gelu).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(Relu).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(Neg).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(LogSoftmaxV2).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(DropOutDoMask).InferShape(InferShapeForOneInOneOut);
+
+IMPL_OP(SoftmaxV2).InferShape(InferShapeForOneInOneOut);
 }  // namespace ops

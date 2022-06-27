@@ -134,45 +134,31 @@ ge::graphStatus InferShapeForThreeInOneOut(gert::InferShapeContext *context) {
   return InferShapeForMultiInput(context, INPUT_NUM_THREE);
 }
 
-IMPL_OP(Add)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(Add).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(Mul)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(Mul).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(RealDiv)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(RealDiv).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(ClipByValue)
-    .InferShape(InferShapeForThreeInOneOut);
+IMPL_OP(ClipByValue).InferShape(InferShapeForThreeInOneOut);
 
-IMPL_OP(SoftmaxGrad)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(SoftmaxGrad).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(Sub)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(Sub).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(MaskedFill)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(MaskedFill).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(ReluGrad)
-    .InferShape(InferShapeForTwoInOneOut);
+IMPL_OP(ReluGrad).InferShape(InferShapeForTwoInOneOut);
 
-IMPL_OP(Equal)
-    .InferShape(InferShapeForCompare);
+IMPL_OP(Equal).InferShape(InferShapeForCompare);
 
-IMPL_OP(NotEqual)
-    .InferShape(InferShapeForCompare);
+IMPL_OP(NotEqual).InferShape(InferShapeForCompare);
 
-IMPL_OP(Greater)
-    .InferShape(InferShapeForCompare);
+IMPL_OP(Greater).InferShape(InferShapeForCompare);
 
-IMPL_OP(GreaterEqual)
-    .InferShape(InferShapeForCompare);
+IMPL_OP(GreaterEqual).InferShape(InferShapeForCompare);
 
-IMPL_OP(Less)
-    .InferShape(InferShapeForCompare);
+IMPL_OP(Less).InferShape(InferShapeForCompare);
 
-IMPL_OP(LessEqual)
-    .InferShape(InferShapeForCompare);
+IMPL_OP(LessEqual).InferShape(InferShapeForCompare);
 }  // namespace ops

@@ -32,5 +32,9 @@ TEST_F(layer_norm_x_backprop_v2, layer_norm_x_backprop_v2_infershape_diff_test_1
   std::vector<int64_t> expected_output_shape = {16, 512, 512};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   CommonInferShapeOperator(op, {}, {expected_output_shape, expected_output_shape});
+  Runtime2TestParam param;
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 

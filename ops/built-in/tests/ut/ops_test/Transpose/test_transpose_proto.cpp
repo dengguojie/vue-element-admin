@@ -59,6 +59,11 @@ TEST_F(Transpose, Transpose_const_infer_int32) {
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetDataType(), input_x_dtype);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(Transpose, Transpose_const_infer_int64) {
@@ -87,6 +92,11 @@ TEST_F(Transpose, Transpose_const_infer_int64) {
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetDataType(), input_x_dtype);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(Transpose, Transpose_const_infer_uint64) {
@@ -107,6 +117,8 @@ TEST_F(Transpose, Transpose_const_infer_uint64) {
   // cmp the result with runtime op
   vector<bool> input_const = {false, true};
   CommonInferShapeOperatorWithConstFail(test_op, input_const, {});
+  Runtime2TestParam param{{}, {false, true}, {}};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(Transpose, Transpose_const_infer_int64_invalid_dim) {
@@ -127,6 +139,8 @@ TEST_F(Transpose, Transpose_const_infer_int64_invalid_dim) {
   // cmp the result with runtime op
   vector<bool> input_const = {false, true};
   CommonInferShapeOperatorWithConstFail(test_op, input_const, {});
+  Runtime2TestParam param{{}, {false, true}, {}};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(Transpose, Transpose_const_infer_int32_invalid_dim) {
@@ -147,4 +161,6 @@ TEST_F(Transpose, Transpose_const_infer_int32_invalid_dim) {
   // cmp the result with runtime op
   vector<bool> input_const = {false, true};
   CommonInferShapeOperatorWithConstFail(test_op, input_const, {});
+  Runtime2TestParam param{{}, {false, true}, {}};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_FAILED);
 }

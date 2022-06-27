@@ -22,7 +22,7 @@ const struct ops::AttrBase LAYERNORM_BEGIN_NORM_AXIS(0, "begin_norm_axis");
 
 static bool LayerNormParseFunc(const std::string& node_name, const nlohmann::json& compile_info,
                                LayerNormOpInfo* compile_value) {
-  OP_TILING_CHECK(!GetCompileValue(compile_info, "is_support_vexp_pattern", compile_value->is_support_vexp_pattern),
+  OP_TILING_CHECK(!ReadCompileItem(compile_info, "is_support_vexp_pattern", compile_value->is_support_vexp_pattern),
                   VECTOR_INNER_ERR_REPORT_TILIING(node_name, "LayerNormParseFunc, get is_support_vexp_pattern error"),
                   return false);
   if (compile_value->is_support_vexp_pattern) {
@@ -31,16 +31,16 @@ static bool LayerNormParseFunc(const std::string& node_name, const nlohmann::jso
     OP_TILING_CHECK(compile_value->dsl_compile_info == nullptr,
                     VECTOR_INNER_ERR_REPORT_TILIING(node_name, "CreateAutoTilingHandler return nullptr"), return false);
     if (compile_info.count("reduce_mean_cof_dtype") > 0) {
-      OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", compile_value->reduce_mean_cof_dtype),
+      OP_TILING_CHECK(!ReadCompileItem(compile_info, "reduce_mean_cof_dtype", compile_value->reduce_mean_cof_dtype),
                       VECTOR_INNER_ERR_REPORT_TILIING(node_name, "LayerNormParseFunc, get reduce_mean_cof_dtype error"),
                       return false);
       // change str to Ge DataType
       compile_value->reduce_mean_cof_ge_dtype = GetGeTypeFromStr(compile_value->reduce_mean_cof_dtype);
     }
     // add for unknown axis mode
-    (void)GetCompileValue(compile_info, "unknown_mode", compile_value->is_unknown_mode, false);
+    (void)ReadCompileItem(compile_info, "unknown_mode", compile_value->is_unknown_mode, false);
     if (!compile_value->is_unknown_mode) {
-      OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_reduce_axis", compile_value->ori_reduce_axis),
+      OP_TILING_CHECK(!ReadCompileItem(compile_info, "_ori_reduce_axis", compile_value->ori_reduce_axis),
                       VECTOR_INNER_ERR_REPORT_TILIING(node_name, "LayerNormParseFunc, get _ori_reduce_axis error"),
                       return false);
     }
@@ -55,10 +55,10 @@ static bool LayerNormParseFunc(const std::string& node_name, const nlohmann::jso
 
 ge::graphStatus TilingPrepareForLayerNorm(gert::TilingParseContext* context) {
   OP_LOGD(context->GetNodeName(), "begin to do TilingPrepareForLayerNorm.");
-  LayerNormOpInfo* compile_info = MutableCompileInfo<LayerNormOpInfo>(context);
+  LayerNormOpInfo* compile_info = GetCompileInfoPtr<LayerNormOpInfo>(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, compile_info);
 
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetJsonObj(context);
+  std::unique_ptr<nlohmann::json> parsed_object_cinfo = GetCompileInfoJson(context);
   OPS_CHECK_NULL_WITH_CONTEXT(context, parsed_object_cinfo);
 
   OP_TILING_CHECK(!LayerNormParseFunc(context->GetNodeName(), *parsed_object_cinfo, compile_info),

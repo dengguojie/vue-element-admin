@@ -45,6 +45,7 @@ TEST_F(ReluGrad, relugrad_tsest_1) {
     std::vector<int64_t> expected_output_shape = {16, 16};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
     CommonInferShapeOperator(ReluGrad_op, {}, {expected_output_shape});
+    EXPECT_EQ(InferShapeTest(ReluGrad_op), ge::GRAPH_SUCCESS);
     auto output_desc1 = ReluGrad_op.GetOutputDesc(0);
     EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
 }

@@ -21,13 +21,6 @@
 #include "runtime2_util.h"
 
 namespace optiling {
-std::unique_ptr<nlohmann::json> GetJsonObj(gert::TilingParseContext* context) {
-  auto json_str = context->GetCompiledJson();
-  OPS_CHECK_NULL_WITH_CONTEXT_RET(context, json_str, nullptr);
-  std::unique_ptr<nlohmann::json> parsed_object_cinfo(new nlohmann::json(nlohmann::json::parse(json_str)));
-  return parsed_object_cinfo;
-}
-
 bool AddWorkspace(gert::TilingContext* context, const size_t workspace) {
   size_t* workspace_size = context->GetWorkspaceSizes(1);
   OPS_CHECK_NULL_WITH_CONTEXT_RET(context, workspace_size, false);

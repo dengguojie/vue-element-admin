@@ -67,6 +67,12 @@ TEST_F(ReduceSum, ReduceSum_const_infer_1) {
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetDataType(), input_x_dtype);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  param.attrs = {"keep_dims"};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ReduceSum, ReduceSum_const_infer_2) {
@@ -102,6 +108,10 @@ TEST_F(ReduceSum, ReduceSum_const_infer_2) {
   auto output_desc = test_op.GetOutputDesc(0);
   EXPECT_EQ(output_desc.GetDataType(), input_x_dtype);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  param.attrs = {"keep_dims"};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true) {
@@ -137,6 +147,12 @@ TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_shape_range, expected_shape_range);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  param.attrs = {"keep_dims"};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true_int64) {
@@ -172,6 +188,12 @@ TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_true_int64) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_shape_range, expected_shape_range);
+  Runtime2TestParam param;
+  param.input_const = input_const;
+  param.attrs = {"keep_dims"};
+  EXPECT_EQ(InferShapeTest(test_op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = test_op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ReduceSum, ReduceSum_const_infer_unkown_x_false) {

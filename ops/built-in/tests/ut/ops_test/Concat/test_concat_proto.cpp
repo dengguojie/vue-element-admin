@@ -62,6 +62,10 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16) {
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
   EXPECT_EQ(output_shape_range, expected_shape_range);
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_fp16_n1) {
@@ -77,6 +81,10 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16_n1) {
   op.SetAttr("concat_dim", -1);
   std::vector<int64_t> expected_output_shape = {2, 100, 4};
   CommonInferShapeOperatorWithIrNum(op, {1}, {"concat_dim", "N"}, {expected_output_shape});
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {1}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_fp16_shape) {
@@ -107,6 +115,10 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16_shape) {
   std::vector<int64_t> expected_output_shape = {2, 100, 59};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   CommonInferShapeOperatorWithIrNum(op, {3}, {"concat_dim", "N"}, {expected_output_shape});
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_fp16_errorshape) {
@@ -133,6 +145,8 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16_errorshape) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
   CommonInferShapeOperatorWithIrNumFail(op, {3}, {"concat_dim", "N"});
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_fp16_errordim) {
@@ -159,6 +173,8 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16_errordim) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
   CommonInferShapeOperatorWithIrNumFail(op, {3}, {"concat_dim", "N"});
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_fp16_errorshapdim) {
@@ -185,6 +201,8 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16_errorshapdim) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
   CommonInferShapeOperatorWithIrNumFail(op, {3}, {"concat_dim", "N"});
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_FAILED);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_fp16_scalar) {
@@ -207,6 +225,10 @@ TEST_F(ConcatD, concat_d_infer_shape_fp16_scalar) {
   std::vector<int64_t> expected_output_shape = {3};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   CommonInferShapeOperatorWithIrNum(op, {3}, {"concat_dim", "N"}, {expected_output_shape});
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_fp16) {
@@ -231,6 +253,10 @@ TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_fp16) {
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
   EXPECT_EQ(output_shape_range, expected_shape_range);
+  Runtime2TestParam param{{"concat_dim", "N"}, {}, {3}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_output_shape);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_fp1612) {
@@ -345,7 +371,6 @@ TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_mix_fp16_fail) {
   op.SetAttr("N", 3);
   op.SetAttr("concat_dim", -1);
   auto ret = op.InferShapeAndType();
-  EXPECT_NE(ret, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(ConcatD, concat_d_infer_shape_dynamic_fp16) {

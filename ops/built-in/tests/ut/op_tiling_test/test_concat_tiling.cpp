@@ -72,6 +72,16 @@ TEST_F(ConcatTiling, Concatd_tiling1) {
   ATTACH_OPERATOR_TO_HOLDER_IRNUM(holder, opParas, irnum, attrs, tiling_len, info);
   HOLDER_DO_TILING(holder, "ConcatD", ge::GRAPH_SUCCESS);
   TILING_DATA_VERIFY_BYTYPE(holder, int32_t, "1 1 1 32 0 0 ");
+  ge::graphStatus result = TilingParseTest("ConcatD", compileInfo, &info);
+  EXPECT_EQ(result, ge::GRAPH_SUCCESS);
+  Runtime2TestParam rtparam;
+  rtparam.irnum = {3};
+  std::unique_ptr<uint8_t[]> tilingdata;
+  result = TilingTest(opParas, rtparam, &info, tiling_len, tilingdata);
+  EXPECT_EQ(result, ge::GRAPH_SUCCESS);
+  gert::TilingData* raw_tiling_data = reinterpret_cast<gert::TilingData*>(tilingdata.get());
+  ASSERT_NE(raw_tiling_data, nullptr);
+  EXPECT_EQ(to_string<int32_t>(raw_tiling_data->GetData(), raw_tiling_data->GetDataSize()), "1 1 1 32 0 0 ");
 }
 
 TEST_F(ConcatTiling, Concatd_tiling2) {

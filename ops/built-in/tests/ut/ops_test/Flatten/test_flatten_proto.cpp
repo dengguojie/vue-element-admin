@@ -58,6 +58,10 @@ TEST_F(flatten, flatten_infershape_1) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
   CommonInferShapeOperator(op, {"axis"}, {expected_shape});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_shape);
 }
 
 TEST_F(flatten, flatten_infershape_2) {
@@ -88,6 +92,8 @@ TEST_F(flatten, flatten_infershape_2) {
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
   CommonInferShapeOperator(op, {"axis"}, {});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(flatten, flatten_infershape_3) {
@@ -166,6 +172,10 @@ TEST_F(flatten, flatten_infershape_5) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
   CommonInferShapeOperator(op, {"axis"}, {expected_shape});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_shape);
 }
 
 TEST_F(flatten, flatten_infershape_static_shape) {
@@ -193,6 +203,10 @@ TEST_F(flatten, flatten_infershape_static_shape) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
   CommonInferShapeOperator(op, {"axis"}, {expected_shape});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
+  auto output0_desc = op.GetOutputDesc(0);
+  EXPECT_EQ(output0_desc.GetShape().GetDims(), expected_shape);
 }
 
 TEST_F(flatten, flatten_infershape_y_range) {
@@ -224,6 +238,8 @@ TEST_F(flatten, flatten_infershape_y_range) {
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
   CommonInferShapeOperator(op, {"axis"}, {});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(flatten, flatten_infershape_default_axis) {
@@ -254,6 +270,8 @@ TEST_F(flatten, flatten_infershape_default_axis) {
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
   CommonInferShapeOperator(op, {"axis"}, {});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(flatten, flatten_infershape_fail_axis_out_range) {
@@ -319,6 +337,8 @@ TEST_F(flatten, flatten_infershape_x_range_empty) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
   CommonInferShapeOperator(op, {"axis"}, {});
+  Runtime2TestParam param{{"axis"}};
+  EXPECT_EQ(InferShapeTest(op, param), ge::GRAPH_SUCCESS);
 }
 
 TEST_F(flatten, flatten_infershape_x_1d) {
