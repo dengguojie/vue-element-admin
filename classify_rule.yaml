@@ -4296,6 +4296,8 @@ pytorch:
       - ops/built-in/op_tiling/dyn_seq_outer.cc
       - ops/built-in/tbe/impl/axpy_with_softmax_and_drop_out_do_mask.py
       - ops/built-in/tbe/impl/swin_attention_ffn.py
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/swin_attention_ffn_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/swin_attention_ffn_fusion_pass.h
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
