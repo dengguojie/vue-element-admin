@@ -2901,4 +2901,44 @@ IMPLEMT_INFERFUNC(OptionalGetValue, OptionalGetValueInferShape) {
 
 INFER_FUNC_REG(OptionalGetValue, OptionalGetValueInferShape);
 // ----------------------------OptionalGetValue END----------------------------
+
+// ----------------------------FlowFunc--------------------------------
+IMPLEMT_INFERFUNC(FlowFunc, FlowFuncInfer) {
+  std::vector<ge::DataType> output_types;
+  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Op get attr [output_types] failed.");
+    return GRAPH_FAILED;
+  }
+
+  bool is_shape_def = true;
+  std::vector<std::vector<int64_t>> output_shapes;
+  if ((op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) || output_shapes.empty()) {
+    OP_LOGI(TbeGetName(op).c_str(), "Op get attr [output_shapes] failed.");
+    is_shape_def = false;
+  }
+
+  if (is_shape_def && (output_types.size() != output_shapes.size())) {
+    OP_LOGE(TbeGetName(op).c_str(), "The output_types and output_shapes should be the same length.");
+    return GRAPH_FAILED;
+  }
+
+  for (int32_t i = 0; i < static_cast<int32_t>(output_shapes.size()); i++) {
+    TensorDesc y_desc = op.GetDynamicOutputDesc("y", i);
+    y_desc.SetDataType(output_types[i]);
+    if (is_shape_def) {
+      y_desc.SetShape(Shape(output_shapes[i]));
+    } else {
+      y_desc.SetShape(Shape(ge::UNKNOWN_RANK));
+    }
+
+    if (op.UpdateDynamicOutputDesc("y", i, y_desc) != GRAPH_SUCCESS) {
+      OP_LOGE(TbeGetName(op).c_str(), "Update y [%d] failed.", i);
+      return GRAPH_FAILED;
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(FlowFunc, FlowFuncInfer);
+// ----------------------------FlowFunc END----------------------------
 }  // namespace ge
