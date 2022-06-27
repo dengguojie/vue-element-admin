@@ -71,7 +71,8 @@ class OpUTTestRunner:  # pylint: disable=too-few-public-methods
             run_cfg = {"simulator_mode": self.simulator_mode,
                        "simulator_lib_path": self.simulator_lib_path,
                        "simulator_dump_path": self.simulator_dump_path,
-                       "data_dump_path": self.data_dumnp_dir}
+                       "data_dump_path": self.data_dumnp_dir,
+                       "enable_simulator": False}
         else:
             run_cfg = {
                        "simulator_dump_path": self.simulator_dump_path,

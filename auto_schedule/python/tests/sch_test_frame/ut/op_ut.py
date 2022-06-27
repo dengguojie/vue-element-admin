@@ -849,7 +849,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 tiling_data = tiling_info.get("tiling_data")
                 tiling_key = tiling_info.get("tiling_key")
                 workspaces = tiling_info.get("workspaces")
-                op_kernel.stub_func_name = op_kernel.stub_func_name + '_' + str(tiling_key)
+                if not op_kernel.stub_func_name.endswith('kernel0'):
+                    op_kernel.stub_func_name = op_kernel.stub_func_name + '_' + str(tiling_key)
                 op_kernel.workspace = workspaces
                 output_data_list = runner.run(op_kernel, inputs=input_data_list,
                                               tiling=tiling_data, block_dim=block_dim)
@@ -967,7 +968,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if compile_stage_status.status != op_status.SUCCESS:
             return ut_report.OpUTCaseReport(case_trace)
 
-        if run_cfg.get("simulator_mode"):
+        if not run_cfg.get('enable_simulator', True):
             return ut_report.OpUTCaseReport(case_trace)
 
         run_stage_status = self._run_model_run_stage(run_soc_version, case_info, run_cfg)
