@@ -435,8 +435,10 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
     if output_w != out_w:
         error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
                                                           'width in ori_output must be %d' % out_w, 'ho', output_w)
+
+    is_support_cloud_or_dc = tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Ascend910", "Ascend310P")
     # cloud,dc out_size_h = 1 or out_size_w = 1, img2col does not act normally
-    if tbe_platform.get_soc_spec(tbe_platform.SHORT_SOC_VERSION) in ("Ascend910", "Ascend310P") and (out_h != 1 or out_w != 1):
+    if is_support_cloud_or_dc and (out_h != 1 or out_w != 1):
         if fmap_w + pad_l + pad_r - kernel_w < stride_w:
             error_manager_vector.raise_err_specific_reson(
                 'max_pool_grad_grad',

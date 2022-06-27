@@ -209,7 +209,7 @@ def bn_training_update_grad_compute(grads,
     epsilon: float
         A small float number added to the variance of x. Defaults to `0.0001`.
     kernel_name: str
-        kernel name, default value is "bn_training_update_grad"
+        kernel name, default value is "bn_training_update_grad".
     reduce_axis: list
         reduce axis of input shape
 

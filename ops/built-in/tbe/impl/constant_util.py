@@ -139,3 +139,6 @@ C0_SIZE = 16
 
 # Minimum positive number greater than 0
 EPSLON = 1e-12
+
+# max repeat times for vector instruction
+MAX_REPEAT_TIMES = 255

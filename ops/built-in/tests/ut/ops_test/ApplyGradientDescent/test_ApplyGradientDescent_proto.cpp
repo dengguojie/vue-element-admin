@@ -34,3 +34,16 @@ TEST_F(ApplyGradientDescent,
   EXPECT_EQ(var_desc.GetShape().GetDims(), expected_var_output_shape);
 
 }
+
+TEST_F(ApplyGradientDescent,
+       apply_gradient_descent_verify_var_dims_large_8) {
+  ge::op::ApplyGradientDescent op;
+  op.UpdateInputDesc("var", create_desc({1, 1, 1, 1, 1, 1, 1, 1, 16}, ge::DT_FLOAT));
+  op.UpdateInputDesc("alpha", create_desc({1, }, ge::DT_FLOAT));
+  op.UpdateInputDesc("delta", create_desc({1, 1, 1, 1, 1, 1, 1, 1, 16}, ge::DT_FLOAT));
+
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+
+}

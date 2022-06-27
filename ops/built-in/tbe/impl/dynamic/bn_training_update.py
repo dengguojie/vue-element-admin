@@ -302,7 +302,7 @@ def bn_training_update(x,
     epsilon: float
         A small float number added to the variance of x.
     kernel_name: str
-        kernel name, default value is "bn_training_update"
+        kernel name, default value is "bn_training_update".
 
     Returns
     -------
