@@ -255,6 +255,9 @@ struct UbStatus {
   bool cub_reuse_bub_flag = false;
   bool a_bank_conflict = false;
   bool b_bank_conflict = false;
+  // cub_aub/bub_ratio represents the tensor number of cub devided by the tensor number of aub/bub
+  // For example, when k dimension is split, there exists one tensor in cub and two tensors in aub. The cub_aub_ratio
+  // is 0.5 in this scenario.
   float cub_aub_ratio = 1.0f;
   float cub_bub_ratio = 1.0f;
 };

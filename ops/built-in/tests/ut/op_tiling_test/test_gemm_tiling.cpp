@@ -898,6 +898,52 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_split_k) {
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "11776 32 32 736 1 2 1 1 4 2 4 1 1 4 8 8 2 1 23 23 1 8 184 23 8 8 8 4 1 1 1 46 144 144 18432 9216 ");
 }
 
+TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_ub_reused) {
+  using namespace optiling;
+  std::string op_name = "MatMul";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo =
+      R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":true},
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
+      "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mkn",
+      "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
+  ge::Graph graph("op_tiling_nd_nonrange_ub_reused");
+
+  auto x1_shape = vector<int64_t>({8192, 512});
+  ge::TensorDesc desc_x1(ge::Shape(x1_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x1.SetOriginShape(ge::Shape(x1_shape));
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(desc_x1);
+  x1.update_output_desc_y(desc_x1);
+
+  auto x2_shape = vector<int64_t>({1024, 512});
+  ge::TensorDesc desc_x2(ge::Shape(x2_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x2.SetOriginShape(ge::Shape(x2_shape));
+  auto x2 = op::Data("x2");
+  x2.update_input_desc_x(desc_x2);
+  x2.update_output_desc_y(desc_x2);
+
+  auto matmul = op::MatMul(op_name)
+      .set_input_x1(x1)
+      .set_input_x2(x2);
+
+  auto y_shape = vector<int64_t>({8192, 1024});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  matmul.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x1, x2};
+  std::vector<Operator> outputs{matmul};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetTilingKey(), 200010000);
+}
+
 TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {
   using namespace optiling;
   std::string op_name = "MatMul";

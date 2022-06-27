@@ -86,16 +86,16 @@ static const int32_t kL1FactorLimit = 128;
 
 struct AUbStatusCondition {
   /* This struct is used to storage the tiling condition of AUb.
-  condition_m2_k2 : all data in m_dim and k_dim are loaded to Ub
-  condition_ml1_kl1 : all data of m_dim and k_dim in L1 buffer are loaded to Ub
-  condition_ml1_kl0: all data of m_dim in L1 buffer and the equivalent data of kl0 in L1 buffer are loaded to Ub.
-  condition_ml1_k0: all data of m_dim in L1 buffer and partial data of kl0 in L1 buffer are loaded to Ub.
-  condition_ml0_kl1 : all data of k_dim in L1 buffer and the equivalent data of ml0 in L1 buffer are loaded to Ub.
-  condition_m0_kl1 : all data of k_dim in L1 buffer and the partial data of ml0 in L1 buffer are loaded to Ub.
-  condition_ml0_kl0 : the equivalent data of kl0 and ml0 in L1 buffer are loaded to Ub.
-  condition_ml0_k0 : the equivalent data of ml0 in m_dim and one block of data in k_dim are loaded to Ub.
-  condition_m0_kl0 : the equivalent data of kl0 in m_dim and one block of data in m_dim are loaded to Ub.
-  condition_m0_k0 : one block of data in m_dim and one block of data in k_dim are loaded to Ub.
+  condition_m2_k2 : all data in m_ori and k_ori are loaded to Ub
+  condition_ml1_kl1 : all data of m_al1 and k_al1 are loaded to Ub
+  condition_ml1_kl0: all data of m_al1 and the data of k_l0 are loaded to Ub.
+  condition_ml1_k0: all data of m_al1 and partial data of k_l0 data are loaded to Ub.
+  condition_ml0_kl1 : all data of k_al1 and the data of ml0 are loaded to Ub.
+  condition_m0_kl1 : all data of k_al1 and the partial data of ml0 are loaded to Ub.
+  condition_ml0_kl0 : the data of k_l0 and ml0 are loaded to Ub.
+  condition_ml0_k0 : the data of ml0 in m dimension and one block of data in k dimension are loaded to Ub.
+  condition_m0_kl0 : the data of k_l0 in m dimension and one block of data in m dimension are loaded to Ub.
+  condition_m0_k0 : one block of data in m dimension and one block of data in k dimension are loaded to Ub.
   */
   bool condition_m2_k2 = false;
   bool condition_ml1_kl1 = false;
@@ -111,16 +111,16 @@ struct AUbStatusCondition {
 
 struct BUbStatusCondition {
   /* This struct is used to storage the tiling condition of BUb.
-  condition_k2_n2 : all data in k_dim and n_dim are loaded to Ub
-  condition_kl1_nl1 : all data of k_dim and n_dim in L1 buffer are loaded to Ub
-  condition_kl0_nl1: all data of n_dim in L1 buffer and the equivalent data of kl0 in L1 buffer are loaded to Ub.
-  condition_k0_nl1: all data of n_dim in L1 buffer and partial data of kl0 in L1 buffer are loaded to Ub.
-  condition_kl1_nl0 : all data of k_dim in L1 buffer and the equivalent data of nl0 in L1 buffer are loaded to Ub.
-  condition_kl1_n0 : all data of k_dim in L1 buffer and the partial data of nl0 in L1 buffer are loaded to Ub.
-  condition_kl0_nl0 : the equivalent data of kl0 and nl0 in L1 buffer are loaded to Ub.
-  condition_k0_nl0 : the equivalent data of nl0 in m_dim and one block of data in k_dim are loaded to Ub.
-  condition_kl0_n0 : the equivalent data of kl0 in m_dim and one block of data in n_dim are loaded to Ub.
-  condition_k0_n0 : one block of data in n_dim and one block of data in k_dim are loaded to Ub.
+  condition_k2_n2 : all data in k_ori and n_ori are loaded to Ub
+  condition_kl1_nl1 : all data of k_al1 and n_bl1 are loaded to Ub
+  condition_kl0_nl1: all data of n_bl1 and the data of kl0 are loaded to Ub.
+  condition_k0_nl1: all data of n_bl1 and partial data of kl0 are loaded to Ub.
+  condition_kl1_nl0 : all data of k_bl1 and the data of nl0 are loaded to Ub.
+  condition_kl1_n0 : all data of k_bl1 and the partial data of nl0 are loaded to Ub.
+  condition_kl0_nl0 : the data of kl0 and nl0 are loaded to Ub.
+  condition_k0_nl0 : the data of nl0 and one block of data in k dimension are loaded to Ub.
+  condition_kl0_n0 : the data of kl0 in k dimension and one block of data in n dimension are loaded to Ub.
+  condition_k0_n0 : one block of data in n dimension and one block of data in k dimension are loaded to Ub.
   */
   bool condition_k2_n2 = false;
   bool condition_kl1_nl1 = false;
@@ -1695,34 +1695,52 @@ void GetABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bu
   }
 }
 
-void GetABUbStorageSize(const UbStatus& ubStatus, int32_t storage_array[2][2]) {
+void GetABUbStorageSize(const BatchmatmulCompileParas& params, const UbStatus& ubStatus, int32_t storage_array[2][2]) {
+  /*
+  There are two ways of ub tensors reusing:
+  1. Not split K scene: Aub/Bub_aligned(tensor1:gm-->ub) reused by Cub(tensor1:l0c-->ub); Aub_nd_to_nz/Bub_nd_to_nz
+  reused by Cub_nz_to_nd
+  2. Split K scene: Aub/Bub_aligned(tensor1:gm-->ub) reused by Cub(tensor1:l0c-->ub); Aub_nd_to_nz/Bub_nd_to_nz(tensor2)
+  occupies an independent ub space. In this scene, the ub storage size of ub_nd_to_nz is considered as
+  ub_cannot_reused_size.
+  */
   // After Reused, the storage size is the actual tensor storage size used.
   // storage_array[0] contains aub_storage_size and aub_bank_storage_size;
   // storage_array[1] contains bub_storage_size and bub_bank_storage_size;
+  int32_t aub_reused_tensors_size = static_cast<int32_t>(ubStatus.cub_aub_ratio * ubStatus.aub_size);
+  int32_t aub_cannot_reused_size = static_cast<int32_t>((1.0 - ubStatus.cub_aub_ratio) * ubStatus.aub_size);
   storage_array[0][0] = ubStatus.cub_reuse_aub_flag
-                            ? max(ubStatus.aub_size, ubStatus.min_dma_size) + ubStatus.cub_aub_ratio * ubStatus.aub_size
+                            ? max(aub_reused_tensors_size, ubStatus.min_dma_size) + aub_cannot_reused_size
                             : ubStatus.aub_size;
+  int32_t bub_reused_tensors_size = static_cast<int32_t>(ubStatus.cub_bub_ratio * ubStatus.bub_size);
+  int32_t bub_cannot_reused_size = static_cast<int32_t>((1.0 - ubStatus.cub_bub_ratio) * ubStatus.bub_size);
   storage_array[1][0] = ubStatus.cub_reuse_bub_flag
-                            ? max(ubStatus.bub_size, ubStatus.min_dma_size) + ubStatus.cub_bub_ratio * ubStatus.bub_size
+                            ? max(bub_reused_tensors_size, ubStatus.min_dma_size) + bub_cannot_reused_size
                             : ubStatus.bub_size;
+  int32_t aub_reused_tensors_bank_size = params.split_k_flag ? aub_reused_tensors_size : ubStatus.aub_bank_size;
+  int32_t aub_cannot_reused_bank_size = params.split_k_flag ? (ubStatus.aub_bank_size - aub_reused_tensors_size) : 0;
   storage_array[0][1] = ubStatus.cub_reuse_aub_flag
-                            ? max(ubStatus.aub_bank_size, ubStatus.min_dma_size) +
-                                  (ubStatus.aub_bank_size - ubStatus.cub_aub_ratio * ubStatus.aub_size)
+                            ? max(aub_reused_tensors_bank_size, ubStatus.min_dma_size) + aub_cannot_reused_bank_size
                             : ubStatus.aub_bank_size;
+  int32_t bub_reused_tensors_bank_size = params.split_k_flag ? bub_reused_tensors_size : ubStatus.bub_bank_size;
+  int32_t bub_cannot_reused_bank_size = params.split_k_flag ? (ubStatus.bub_bank_size - bub_reused_tensors_size) : 0;
   storage_array[1][1] = ubStatus.cub_reuse_bub_flag
-                            ? max(ubStatus.bub_bank_size, ubStatus.min_dma_size) +
-                                  (ubStatus.bub_bank_size - ubStatus.cub_bub_ratio * ubStatus.bub_size)
+                            ? max(bub_reused_tensors_bank_size, ubStatus.min_dma_size) + bub_cannot_reused_bank_size
                             : ubStatus.bub_bank_size;
 }
 
 int GetAllUbReusedAlignMode(const UbStatus& ubStatus, const int& aub_bank_storage_size,
                             const int& bub_bank_storage_size) {
   int align_mode = kNumZero;
-  int32_t max_bank_storage_size = max(max(ubStatus.aub_bank_size, ubStatus.min_dma_size), ubStatus.bub_bank_size);
+  int32_t max_bank_storage_size =
+      max(max(static_cast<int32_t>(ubStatus.cub_aub_ratio * ubStatus.aub_bank_size), ubStatus.min_dma_size),
+          static_cast<int32_t>(ubStatus.cub_aub_ratio * ubStatus.bub_bank_size));
   // When K_dim is split, the nd_to_nz tensor cannot be reused.
   max_bank_storage_size = max_bank_storage_size +
-                          (ubStatus.aub_bank_size - ubStatus.cub_aub_ratio * ubStatus.aub_size) +
-                          (ubStatus.bub_bank_size - ubStatus.cub_bub_ratio * ubStatus.bub_size);
+                          static_cast<int32_t>((1.0 - ubStatus.cub_aub_ratio) *
+                                               (ubStatus.aub_bank_size - ubStatus.cub_aub_ratio * ubStatus.aub_size)) +
+                          static_cast<int32_t>((1.0 - ubStatus.cub_bub_ratio) *
+                                               (ubStatus.bub_bank_size - ubStatus.cub_bub_ratio * ubStatus.bub_size));
   if (max_bank_storage_size <= ubStatus.ub_rest_size) {
     align_mode = kNumThree;
   } else if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
@@ -1737,12 +1755,12 @@ int GetAllUbReusedAlignMode(const UbStatus& ubStatus, const int& aub_bank_storag
   return align_mode;
 }
 
-int GetAlignMode(const UbStatus& ubStatus) {
+int GetAlignMode(const BatchmatmulCompileParas& params, const UbStatus& ubStatus) {
   int align_mode = kNumZero;
   // storage_array[0] contains aub_storage_size and aub_bank_storage_size;
   // storage_array[1] contains bub_storage_size and bub_bank_storage_size;
   int32_t storage_array[2][2] = {0};
-  GetABUbStorageSize(ubStatus, storage_array);
+  GetABUbStorageSize(params, ubStatus, storage_array);
   // Parse the storage info from storage array.
   int32_t aub_storage_size = storage_array[0][0];
   int32_t bub_storage_size = storage_array[1][0];
@@ -1774,7 +1792,7 @@ int GetAlignMode(const UbStatus& ubStatus) {
 void CheckBankConflict(const BatchmatmulCompileParas& params, UbStatus& ubStatus) {
   GetABUbSize(ubStatus.k_aub, ubStatus.m_aub, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   // There‘s 4 align_mode here, 0->neither align, 1->AUB align and BUB not, 2->AUB not and BUB align, 3-> all aligned
-  int align_mode = GetAlignMode(ubStatus);
+  int align_mode = GetAlignMode(params, ubStatus);
   if (align_mode == kNumZero) {
     ubStatus.a_align_value = 1;
     ubStatus.b_align_value = 1;
@@ -2013,9 +2031,14 @@ void GetUbFactors(const string &op_type, const BatchmatmulCompileParas &params, 
 
   if (params.nd_flag) {
     ubStatus.safe_ub_rest_size = kUbFp16Size - ubStatus.min_dma_size;
-    // Only valid when fused_double_operand_num is smaller than aub_double_num and bub_double_num
+    // UB fusion in cache tiling mode is not considered.
     ubStatus.cub_aub_ratio = (params.fused_double_operand_num + 1) / (params.aub_double_num + 1);
     ubStatus.cub_bub_ratio = (params.fused_double_operand_num + 1) / (params.bub_double_num + 1);
+    OP_TILING_CHECK(
+        (ubStatus.cub_aub_ratio > 1.0f) || (ubStatus.cub_bub_ratio > 1.0f),
+        OP_LOGW(op_type.c_str(),
+                "Only valid when fused_double_operand_num is not larger than aub_double_num or bub_double_num"),
+        return );
     GetUbFactorsInND(op_type, coreStatus, params, singleCoreStatus);
   } else {
     // Get CUB factors for NZ in Mode
