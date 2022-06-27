@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,31 +29,31 @@ protected:
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
 
 private:
-  ge::NodePtr batch_matmul_node1 = nullptr;
-  ge::NodePtr batch_matmul_node2 = nullptr;
-  ge::NodePtr batch_matmul_node3 = nullptr;
-  ge::NodePtr batch_matmul_node4 = nullptr;
+  ge::NodePtr batchMatmulNode1 = nullptr;
+  ge::NodePtr batchMatmulNode2 = nullptr;
+  ge::NodePtr batchMatmulNode3 = nullptr;
+  ge::NodePtr batchMatmulNode4 = nullptr;
 
-  ge::NodePtr confusion_transpose_node = nullptr;
-  ge::NodePtr confusion_transpose_node1 = nullptr;
-  ge::NodePtr confusion_transpose_node2 = nullptr;
-  ge::NodePtr softmax_grad_ext_node = nullptr;
-  ge::NodePtr drop_out_do_mask_v3_node = nullptr;
-  std::shared_ptr<ge::OpDesc> bsb_desc = nullptr;
+  ge::NodePtr confusionTransposeNode = nullptr;
+  ge::NodePtr confusionTransposeNode1 = nullptr;
+  ge::NodePtr confusionTransposeNode2 = nullptr;
+  ge::NodePtr softmaxGradExtNode = nullptr;
+  ge::NodePtr dropOutDoMaskV3Node = nullptr;
+  std::shared_ptr<ge::OpDesc> bsbDesc = nullptr;
   bool CheckNodeShapeSupported();
-  bool CheckSpcBatchMatMulShapeSupported(const ge::NodePtr bmm_node);
-  bool CheckBatchMatMulShapeSupported(const ge::NodePtr bmm_node);
+  bool CheckSpcBatchMatMulShapeSupported(const ge::NodePtr bmmNode);
+  bool CheckBatchMatMulShapeSupported(const ge::NodePtr bmmNode);
   bool CheckSoftmaxGradShapeSupported();
 
-  Status AddInputDescForBsb(std::shared_ptr<ge::OpDesc> bsb_desc);
-  Status AddOutputDescForBsb(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status AddInputDescForBsb(std::shared_ptr<ge::OpDesc> bsbDesc);
+  Status AddOutputDescForBsb(std::shared_ptr<ge::OpDesc> bsbDesc);
   Status DeleteOldNode(ge::ComputeGraph &graph);
-  Status AddControlEdgesForBsbNode(ge::NodePtr bsb_node);
-  Status AddEdgesForBsbNode(ge::NodePtr bsb_node);
-  Status SetAttrsForBsb(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status AddControlEdgesForBsbNode(ge::NodePtr bsbNode);
+  Status AddEdgesForBsbNode(ge::NodePtr bsbNode);
+  Status SetAttrsForBsb(std::shared_ptr<ge::OpDesc> bsbDesc);
   Status CreateAttentionDesc();
-  Status GetFusionNode(Mapping &mapping, ge::NodePtr input_confusion_transpose);
-  Status AddOutputEdgeForNode(ge::NodePtr ori_node, ge::NodePtr new_node, int unlinkIndex, int new_node_index) const;
+  Status GetFusionNode(Mapping &mapping, ge::NodePtr inputConfusionTranspose);
+  Status AddOutputEdgeForNode(ge::NodePtr oriNode, ge::NodePtr newNode, int unlinkIndex, int newNodeIndex) const;
 };
 }  // namespace fe
 

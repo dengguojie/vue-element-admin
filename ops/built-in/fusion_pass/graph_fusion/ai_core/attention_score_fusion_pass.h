@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,17 +31,17 @@ protected:
   bool IsTargetPlateform(const std::string plateform);
 
 private:
-  ge::NodePtr batch_matmul_node1 = nullptr;
-  ge::NodePtr batch_matmul_node2 = nullptr;
-  ge::NodePtr batch_matmul_node3 = nullptr;
-  ge::NodePtr softmax_node = nullptr;
-  ge::NodePtr confusion_transpose_node = nullptr;
-  ge::NodePtr fused_mul_add_node = nullptr;
+  ge::NodePtr batchMatmulNode1 = nullptr;
+  ge::NodePtr batchMatmulNode2 = nullptr;
+  ge::NodePtr batchMatmulNode3 = nullptr;
+  ge::NodePtr softmaxNode = nullptr;
+  ge::NodePtr confusionTransposeNode = nullptr;
+  ge::NodePtr fusedMulAddNode = nullptr;
   bool traning = true;
-  Status SetAttrForBsbDesc(std::shared_ptr<ge::OpDesc> bsb_desc);
+  Status SetAttrForBsbDesc(std::shared_ptr<ge::OpDesc> bsbDesc);
   Status DeleteFusionNode(ge::ComputeGraph &graph);
-  Status AddControlEdgesForBsbNode(ge::NodePtr bsb_node);
-  Status AddOutputEdgeForNode(ge::NodePtr ori_node, ge::NodePtr new_node, int unlinkIndex, int new_node_index) const;
+  Status AddControlEdgesForBsbNode(ge::NodePtr bsbNode);
+  Status AddOutputEdgeForNode(ge::NodePtr oriNode, ge::NodePtr newNode, int unlinkIndex, int newNodeIndex) const;
 };
 }  // namespace fe
 
