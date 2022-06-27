@@ -32,7 +32,7 @@ class ThresholdV2DAttrInfo:
     """
     define ThresholdV2D attr info
     """
-    ATTR_THRESHOLD = OpAttr(0, "threshold ", "Float")
+    ATTR_THRESHOLD = OpAttr(0, "threshold", "Float")
     ATTR_VALUE = OpAttr(1, "value", "Float")
 
 

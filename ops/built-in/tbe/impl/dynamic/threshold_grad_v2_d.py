@@ -38,7 +38,7 @@ class Constant:
     # define a string name of "float32"
     FLOAT_32 = "float32"
     # define ThresholdGradV2D attr info
-    ATTR_THRESHOLD = OpAttr(0, "threshold ", "Float")
+    ATTR_THRESHOLD = OpAttr(0, "threshold", "Float")
 
 
 # 'pylint: disable=too-many-locals,unused-argument
