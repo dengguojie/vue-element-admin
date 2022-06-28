@@ -1497,7 +1497,7 @@ class VarManage:
                                        cache_tiling_mgr.k_expr)
         self.sch.set_var_value(get_optional_te_var('k'), cache_tiling_mgr.k_expr)
         if not cache_tiling_mgr.non_factor_bmn_flag:
-            if self.batch_var is not None:
+            if self.batch_var is not None and cache_tiling_mgr.batch_expr is not None:
                 self.sch.set_var_value(self.batch_var, cache_tiling_mgr.batch_expr)
             self.sch.set_var_value(self.m_var, cache_tiling_mgr.m_expr)
             self.sch.set_var_value(self.n_var, cache_tiling_mgr.n_expr)
