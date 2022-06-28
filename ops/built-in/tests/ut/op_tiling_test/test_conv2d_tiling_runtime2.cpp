@@ -406,3 +406,124 @@ static Conv2DTilingTestParam general_cases_params[] = {
 };
 
 INSTANTIATE_TEST_CASE_P(Conv2D, Conv2DTilingRuntime2, testing::ValuesIn(general_cases_params));
+
+TEST_F(Conv2DTilingRuntime2, paddingSAME) {
+    // get functions
+    ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("Conv2D"), nullptr);
+    auto tilingFunc = gert::OpImplRegistry::GetInstance().GetOpImpl("Conv2D")->tiling;
+    auto tilingParseFunc = gert::OpImplRegistry::GetInstance().GetOpImpl("Conv2D")->tiling_parse;
+
+    // test compile info parse
+    std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "_vars": {"88": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )"\
+        R"("_custom_vars": {"88": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )"\
+        R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 3, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )"\
+        R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )"\
+        R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )"\
+        R"("ddr_read_rate": 67, "ddr_write_rate": 64, "l2_rate": 128, "l2_read_rate": 128, "l2_write_rate": 64, "l1_to_l0_a_rate": 512, )"\
+        R"("l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128, "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64, )"\
+        R"("ub_to_ddr_rate": 64, "ub_to_l1_rate": 128, "cube_bandwidth": 0, "vector_bandwidth": 0}})";
+    optiling::Conv2DTilingParseInfo opInfo;
+    auto kernelHolder = gert::KernelRunContextFaker()
+        .KernelIONum(1, 1)
+        .Inputs({const_cast<char*>(compileInfo.c_str())})
+        .Outputs({&opInfo})
+        .Build();
+    ASSERT_EQ(tilingParseFunc(kernelHolder.GetContext<gert::KernelContext>()), ge::GRAPH_SUCCESS);
+
+    // test op tiling
+    gert::StorageShape xShape = {{1, 32, 16, 16}, {1, 2, 16, 16, 16}};
+    gert::StorageShape filterShape = {{64, 32, 3, 3}, {16, 4, 16, 16}};
+    gert::StorageShape yShape = {{1, 64, 16, 16}, {1, 4, 16, 16, 16}};
+    std::vector<std::pair<std::string, ge::AnyValue>> attrsPairs = {
+        std::make_pair("strides", ge::AnyValue::CreateFrom<std::vector<int64_t>>({1, 1, 1, 1})),
+        std::make_pair("pads", ge::AnyValue::CreateFrom<std::vector<int64_t>>({-1, -1, -1, -1})),
+        std::make_pair("dilations", ge::AnyValue::CreateFrom<std::vector<int64_t>>({1, 1, 1, 1})),
+        std::make_pair("groups", ge::AnyValue::CreateFrom<int64_t>(1)),
+        std::make_pair("data_format", ge::AnyValue::CreateFrom<std::string>("NCHW")),
+        std::make_pair("offset_x", ge::AnyValue::CreateFrom<int64_t>(0)),
+        std::make_pair("padding", ge::AnyValue::CreateFrom<std::string>("SAME"))
+        };
+    auto tilingData = gert::TilingData::CreateCap(2048);
+    auto holder = gert::TilingContextFaker()
+        .NodeIoNum(2, 1)
+        .IrInstanceNum({1, 1})
+        .InputShapes({&xShape, &filterShape})
+        .OutputShapes({&yShape})
+        .NodeAttrs(attrsPairs)
+        .NodeInputTd(0, ge::DT_FLOAT16, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NC1HWC0)
+        .NodeInputTd(1, ge::DT_FLOAT16, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_FRACTAL_Z)
+        .NodeOutputTd(0, ge::DT_FLOAT16, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NC1HWC0)
+        .CompileInfo(&opInfo)
+        .TilingData(tilingData.get())
+        .Build();
+    gert::TilingContext* tilingContext = holder.GetContext<gert::TilingContext>();
+    ASSERT_EQ(tilingFunc(tilingContext), ge::GRAPH_SUCCESS);
+
+    uint64_t* tilingKey = tilingContext->GetOutputPointer<uint64_t>(0);
+    uint32_t* blockDim = tilingContext->GetOutputPointer<uint32_t>(1);
+    std::string outputTilingData = TilingData2Str(tilingContext->GetRawTilingData());
+    ASSERT_EQ(*tilingKey, 72);
+    ASSERT_EQ(*blockDim, 2);
+    ASSERT_EQ(outputTilingData, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 1 2 1 16 6 0 1 3 18 6 1 ");
+}
+
+TEST_F(Conv2DTilingRuntime2, autoPadSAME_LOWER) {
+    // get functions
+    ASSERT_NE(gert::OpImplRegistry::GetInstance().GetOpImpl("Conv2D"), nullptr);
+    auto tilingFunc = gert::OpImplRegistry::GetInstance().GetOpImpl("Conv2D")->tiling;
+    auto tilingParseFunc = gert::OpImplRegistry::GetInstance().GetOpImpl("Conv2D")->tiling_parse;
+
+    // test compile info parse
+    std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "_vars": {"88": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )"\
+        R"("_custom_vars": {"88": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )"\
+        R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 3, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )"\
+        R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )"\
+        R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )"\
+        R"("ddr_read_rate": 67, "ddr_write_rate": 64, "l2_rate": 128, "l2_read_rate": 128, "l2_write_rate": 64, "l1_to_l0_a_rate": 512, )"\
+        R"("l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128, "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64, )"\
+        R"("ub_to_ddr_rate": 64, "ub_to_l1_rate": 128, "cube_bandwidth": 0, "vector_bandwidth": 0}})";
+    optiling::Conv2DTilingParseInfo opInfo;
+    auto kernelHolder = gert::KernelRunContextFaker()
+        .KernelIONum(1, 1)
+        .Inputs({const_cast<char*>(compileInfo.c_str())})
+        .Outputs({&opInfo})
+        .Build();
+    ASSERT_EQ(tilingParseFunc(kernelHolder.GetContext<gert::KernelContext>()), ge::GRAPH_SUCCESS);
+
+    // test op tiling
+    gert::StorageShape xShape = {{1, 32, 16, 16}, {1, 2, 16, 16, 16}};
+    gert::StorageShape filterShape = {{64, 32, 3, 3}, {16, 4, 16, 16}};
+    gert::StorageShape yShape = {{1, 64, 16, 16}, {1, 4, 16, 16, 16}};
+    std::vector<std::pair<std::string, ge::AnyValue>> attrsPairs = {
+        std::make_pair("strides", ge::AnyValue::CreateFrom<std::vector<int64_t>>({1, 1, 1, 1})),
+        std::make_pair("pads", ge::AnyValue::CreateFrom<std::vector<int64_t>>({-1, -1, -1, -1})),
+        std::make_pair("dilations", ge::AnyValue::CreateFrom<std::vector<int64_t>>({1, 1, 1, 1})),
+        std::make_pair("groups", ge::AnyValue::CreateFrom<int64_t>(1)),
+        std::make_pair("data_format", ge::AnyValue::CreateFrom<std::string>("NCHW")),
+        std::make_pair("offset_x", ge::AnyValue::CreateFrom<int64_t>(0)),
+        std::make_pair("padding", ge::AnyValue::CreateFrom<std::string>("EXPLICIT")),
+        std::make_pair("auto_pad", ge::AnyValue::CreateFrom<std::string>("SAME_LOWER"))
+        };
+    auto tilingData = gert::TilingData::CreateCap(2048);
+    auto holder = gert::TilingContextFaker()
+        .NodeIoNum(2, 1)
+        .IrInstanceNum({1, 1})
+        .InputShapes({&xShape, &filterShape})
+        .OutputShapes({&yShape})
+        .NodeAttrs(attrsPairs)
+        .NodeInputTd(0, ge::DT_FLOAT16, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NC1HWC0)
+        .NodeInputTd(1, ge::DT_FLOAT16, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_FRACTAL_Z)
+        .NodeOutputTd(0, ge::DT_FLOAT16, ge::Format::FORMAT_NCHW, ge::Format::FORMAT_NC1HWC0)
+        .CompileInfo(&opInfo)
+        .TilingData(tilingData.get())
+        .Build();
+    gert::TilingContext* tilingContext = holder.GetContext<gert::TilingContext>();
+    ASSERT_EQ(tilingFunc(tilingContext), ge::GRAPH_SUCCESS);
+
+    uint64_t* tilingKey = tilingContext->GetOutputPointer<uint64_t>(0);
+    uint32_t* blockDim = tilingContext->GetOutputPointer<uint32_t>(1);
+    std::string outputTilingData = TilingData2Str(tilingContext->GetRawTilingData());
+    ASSERT_EQ(*tilingKey, 72);
+    ASSERT_EQ(*blockDim, 2);
+    ASSERT_EQ(outputTilingData, "1 32 16 16 64 3 3 1 1 1 1 16 16 1 1 1 1 0 0 1 2 1 1 288 1 2 1 16 6 0 1 3 18 6 1 ");
+}
