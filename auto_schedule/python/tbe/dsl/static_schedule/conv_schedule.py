@@ -1098,13 +1098,15 @@ class CceConvOp:
 
                 triggered_condition_list = [
                     (fusion_type == 68186112)
-                    and is_support_v200(), # conv + dequant + tanh
+                    and is_support_v200(),  # conv + dequant + tanh
                     (fusion_type == 68448256)
-                    and is_support_v200(), # conv + dequant + tanh + add
+                    and is_support_v200(),  # conv + dequant + tanh + add
                     (fusion_type == 33832960)
-                    and is_support_v200(), # conv + accumulate_nv2 + relu
+                    and is_support_v200(),  # conv + accumulate_nv2 + relu
                     (fusion_type == 134496256)
-                    and is_support_v200() # conv + dequant + accumulate_nv2 + relu + quant
+                    and is_support_v200(),  # conv + dequant + accumulate_nv2 + relu + quant
+                    (fusion_type == 68710400)
+                    and is_support_v200()  # conv + dequant + tanh + mul + add
                 ]
                 for case in triggered_condition_list:
                     if case:
