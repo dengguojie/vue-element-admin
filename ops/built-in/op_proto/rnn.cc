@@ -1369,7 +1369,7 @@ bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
   int64_t hidden_size;
   if (op.GetAttr("hidden_size", hidden_size) == ge::GRAPH_FAILED) {
     OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr hidden_size failed.");
-    return GRAPH_FAILED;
+    return false;
   }
   OP_LOGI("RnnGenMaskV2", "the attr hidden_size is %d", hidden_size);
   ge::Shape length_shape = tensordesc_input.GetShape();

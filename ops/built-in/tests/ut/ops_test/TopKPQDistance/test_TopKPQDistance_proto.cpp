@@ -83,3 +83,29 @@ TEST_F(TopKPQDistanceProtoTest, TopKPQDistance_infer_shape_suc2) {
   auto outputDesc1 = op.GetOutputDescByName("topk_distance");
   EXPECT_EQ(outputDesc1.GetShape().GetDims(), expectedOutputShape);
 }
+
+TEST_F(TopKPQDistanceProtoTest, TopKPQDistance_infer_shape_failed) {
+  ge::op::TopKPQDistance op;
+  op.SetAttr("group_size", 2);
+  op.SetAttr("k", 6);
+
+  op.create_dynamic_input_actual_count(1);
+  op.create_dynamic_input_pq_distance(1);
+  op.create_dynamic_input_pq_index(1);
+  op.create_dynamic_input_pq_ivf(1);
+  op.create_dynamic_input_grouped_extreme_distance(1);
+
+  ge::TensorDesc tensor_desc0 = create_desc({1}, ge::DT_INT32);
+  op.UpdateDynamicInputDesc("actual_count", 0, tensor_desc0);
+
+  ge::TensorDesc tensor_desc1 = create_desc({12}, ge::DT_INT32);
+  op.UpdateDynamicInputDesc("pq_distance", 0, tensor_desc1);
+  op.UpdateDynamicInputDesc("pq_index", 0, tensor_desc1);
+  op.UpdateDynamicInputDesc("pq_ivf", 0, tensor_desc1);
+
+  ge::TensorDesc tensor_desc2 = create_desc({}, ge::DT_INT32);
+  op.UpdateDynamicInputDesc("grouped_extreme_distance", 0, tensor_desc2);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

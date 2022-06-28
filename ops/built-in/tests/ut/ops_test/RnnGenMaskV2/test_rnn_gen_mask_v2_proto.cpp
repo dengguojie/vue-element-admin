@@ -68,3 +68,22 @@ TEST_F(RnnGenMaskV2Test, rnn_gen_mask_tsest_2) {
     // infer
     auto ret = rnn_gen_mask_op.InferShapeAndType();
 }
+
+TEST_F(RnnGenMaskV2Test, rnn_gen_mask_tsest_3) {
+    ge::op::RnnGenMaskV2 rnn_gen_mask_op;
+    auto seq_length = create_desc_shape_range({},
+                                            ge::DT_FLOAT16, ge::FORMAT_ND,
+                                            {32},
+                                            ge::FORMAT_ND, {{32, 32}});
+    auto x = create_desc_shape_range({-1, 32, -1},
+                                    ge::DT_FLOAT16, ge::FORMAT_ND,
+                                    {2, 32, 64},
+                                    ge::FORMAT_ND, {{2, 2},{32,32},{64,64}});
+
+    rnn_gen_mask_op.UpdateInputDesc("seq_length", seq_length);
+    rnn_gen_mask_op.UpdateInputDesc("x", x);
+
+    // infer
+    auto ret = rnn_gen_mask_op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

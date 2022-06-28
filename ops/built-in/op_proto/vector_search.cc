@@ -204,7 +204,7 @@ IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
         op.GetDynamicInputDesc("grouped_extreme_distance", i).GetShape().GetDims();
     OP_LOGI(TbeGetName(op).c_str(), "extremeDistanceDims shape:[%s]", DebugString(extremeDistanceDims).c_str());
 
-    if (extremeDistanceDims.size() <= 0) {
+    if (extremeDistanceDims.size() == 0) {
       std::string err_msg = OtherErrMsg("extremeDistanceDims is empty");
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
