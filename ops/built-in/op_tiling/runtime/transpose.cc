@@ -6082,6 +6082,7 @@ bool TransposeCalcTilingData(const string& opType, const TransposeCompilerInfo& 
       } \
       td->SetDataSize(vecSize * sizeof(int64_t)); \
       context->SetBlockDim(compilerInfo.coreNum); \
+      context->SetTilingKey(vec[0]); \
       AddWorkspace(context, T_WORKSPACE_SIZE); \
   } while(0); \
   return ge::GRAPH_SUCCESS;
