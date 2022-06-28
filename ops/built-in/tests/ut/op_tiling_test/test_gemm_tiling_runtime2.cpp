@@ -170,7 +170,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"20000000":[]},
         "_attr_vars":{"20000000":[]}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 16, 512}, {512, 16}, {1, 16, 16}, false, 0, 0, 1, 20000000,
-    "32 1 1 1 32 1 1 1 1 1 1 1 1 1 1 32 1 1 1 1 1 32 32 1 "
+    "32 1 1 1 32 1 1 1 1 1 1 1 1 1 1 32 1 1 1 1 1 32 32 1 1 1 1 "
   },
   {
     "GEMM_op_tiling_obj_batchmatmul_formula02", "BatchMatMul", R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
@@ -183,7 +183,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"20001000":[]},
         "_attr_vars":{"20001000":[]}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 240, 768}, {768, 6000}, {1, 240, 6000}, false, 0, 0, 15, 20001000,
-    "48 15 375 1 48 1 1 1 15 1 1 3 5 5 5 12 1 4 4 1 1 48 48 1 "
+    "48 15 375 1 48 1 1 1 15 1 1 3 5 5 5 12 1 4 4 1 1 48 48 1 1 1 1 "
   },
   {
     "GEMM_op_tiling_obj_batchmatmul_formula03", "BatchMatMul", R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
@@ -196,7 +196,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"80221000":[]},
         "_attr_vars":{"80221000":[]}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 16, 2048}, {2048, 1008}, {1, 16, 1008}, false, 0, 0, 7, 80221000,
-    "128 1 63 1 128 1 1 1 7 1 1 1 1 9 1 4 1 8 8 4 4 32 32 1 "
+    "128 1 63 1 128 1 1 1 7 1 1 1 1 9 1 4 1 8 8 4 4 32 32 1 1 1 1 "
   },
   {
     "GEMM_op_tiling_obj_batchmatmul_formula04", "BatchMatMul", R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
@@ -209,7 +209,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"70220000":[]},
         "_attr_vars":{"70220000":[]}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 4096, 3136}, {3136, 1024}, {1, 4096, 1024}, false, 0, 0, 32, 70220000,
-    "196 256 64 1 196 2 1 1 4 8 1 1 1 16 16 4 1 1 1 49 49 4 4 1 "
+    "196 256 64 1 196 2 1 1 4 8 1 1 1 16 16 4 1 1 1 49 49 4 4 1 1 1 1 "
   },
   {
     "GEMM_op_tiling_obj_batchmatmul_formula05", "BatchMatMul", R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
@@ -222,7 +222,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"62211000":[]},
         "_attr_vars":{"62211000":[]}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 16000, 1024}, {1024, 512}, {1, 16000, 512}, false, 0, 0, 25, 62211000,
-    "64 1000 32 1 64 5 2 1 1 25 1 1 1 16 8 4 1 4 16 4 1 16 64 4 "
+    "64 1000 32 1 64 5 2 1 1 25 1 1 1 16 8 4 1 4 16 4 1 16 64 4 1 1 1 "
   },
   {
     "GEMM_op_tiling_obj_batchmatmul_formula06", "BatchMatMul", R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
@@ -235,7 +235,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"20000000":[]},
         "_attr_vars":{"20000000":[]}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 128, 128}, {128, 64}, {1, 128, 64}, false, 0, 0, 32, 20000000,
-    "8 8 4 1 8 1 1 1 4 8 1 1 1 1 1 8 1 1 1 1 1 8 8 1 "
+    "8 8 4 1 8 1 1 1 4 8 1 1 1 1 1 8 1 1 1 1 1 8 8 1 1 1 1 "
   },
   {
     "GEMM_op_tiling_arr", "MatMul", R"([{"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ",
@@ -263,7 +263,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mknb",
         "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {4352, 16, 64}, {4352, 64, 32}, {4352, 16, 32}, false, 0, 0, 32, 800001300,
-    "64 1 2 4352 4 1 1 32 1 1 1 1 1 2 1 4 1 1 1 1 1 4 4 1 1 2 4 4 1 1 1 1 80 1 10240 16384 "
+    "64 1 2 4352 4 1 1 32 1 1 1 1 1 2 1 4 1 1 1 1 1 4 4 1 17 1 8 1 2 4 4 1 1 1 1 80 1 10240 16384 "
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_02", "BatchMatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":true},
@@ -271,7 +271,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mknb",
         "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {4352, 64, 16}, {4352, 32, 64}, {4352, 16, 32}, false, 0, 0, 32, 800001300,
-    "64 1 2 4352 4 1 1 32 1 1 1 1 1 2 1 4 1 1 1 1 1 4 4 1 1 2 4 4 1 1 1 1 1 80 8192 20480 "
+    "64 1 2 4352 4 1 1 32 1 1 1 1 1 2 1 4 1 1 1 1 1 4 4 1 17 1 8 1 2 4 4 1 1 1 1 1 80 8192 20480 "
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_03", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":true},
@@ -279,7 +279,7 @@ static GEMMTilingTestParam general_cases_params[] = {
         "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mknb",
         "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {8192, 512}, {512, 512}, {8192, 512}, false, 0, 0, 32, 622010000,
-    "512 512 32 1 32 8 1 1 4 8 1 1 1 4 8 8 2 2 4 2 1 16 32 2 4 1 16 32 8 2 1 1 272 528 17408 8448 "
+    "512 512 32 1 32 8 1 1 4 8 1 1 1 4 8 8 2 2 4 2 1 16 32 2 1 1 1 4 1 16 32 8 2 1 1 272 528 17408 8448 "
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_04", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":false},
@@ -287,7 +287,7 @@ static GEMMTilingTestParam general_cases_params[] = {
       "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, true, false, {40960, 512}, {40960, 1024}, {512, 1024}, false, 0, 0, 32, 802210000,
-    "40960 32 64 1 2560 1 1 1 8 4 1 1 1 2 8 8 4 2 2 160 160 16 16 1 8 8 8 4 1 1 2 4 144 144 18432 9216 "
+    "40960 32 64 1 2560 1 1 1 8 4 1 1 1 2 8 8 4 2 2 160 160 16 16 1 1 1 1 8 8 8 4 1 1 2 4 144 144 18432 9216 "
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_05", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":false},
@@ -295,7 +295,7 @@ static GEMMTilingTestParam general_cases_params[] = {
       "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {11776, 2048}, {2048, 512}, {11776, 512}, false, 0, 0, 32, 522010100,
-    "2048 736 32 1 128 4 1 1 4 8 1 1 1 1 23 2 8 2 64 32 1 4 128 32 23 8 4 2 1 1 1 64 80 144 29440 4608 "
+    "2048 736 32 1 128 4 1 1 4 8 1 1 1 1 23 2 8 2 64 32 1 4 128 32 1 1 1 23 8 4 2 1 1 1 64 80 144 29440 4608 "
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_split_k", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":false},
@@ -303,7 +303,7 @@ static GEMMTilingTestParam general_cases_params[] = {
       "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mkn",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {11776, 512}, {11776, 512}, {512, 512}, false, 0, 0, 32, 1622000100,
-    "11776 32 32 736 2 1 1 4 2 4 1 1 4 8 8 2 1 23 23 1 8 184 23 8 8 8 4 1 1 1 46 144 144 18432 9216 "
+    "11776 32 32 736 2 1 1 4 2 4 1 1 4 8 8 2 1 23 23 1 8 184 23 1 1 1 8 8 8 4 1 1 1 46 144 144 18432 9216 "
   },
   {
     "GEMM_op_tiling_nd_nonrange_pattern_bmn_non_factor", "MatMul", R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":false},
@@ -311,7 +311,7 @@ static GEMMTilingTestParam general_cases_params[] = {
       "block_dim":{"CORE_NUM":32},"correct_range_flag":null,"dynamic_mode":"dynamic_mkn",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {2, 6640, 112}, {2, 112, 128}, {2, 6640, 128}, false, 0, 0, 32, 101010201,
-    "112 415 8 7 2 1 2 4 4 1 2 1 1 32 1 2 7 7 1 1 7 7 1 8 2 7 7 1 8 1 1 1 1 14336 3584 "
+    "112 415 8 7 2 1 2 4 4 1 2 1 1 32 1 2 7 7 1 1 7 7 1 1 1 1 8 2 7 7 1 8 1 1 1 1 14336 3584 "
   },
   {
     "GEMM_op_tiling_fractal_z", "MatMul", R"([{"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn",
@@ -321,7 +321,7 @@ static GEMMTilingTestParam general_cases_params[] = {
       "block_dim": {"1120000": 6},
       "attrs":{"transpose_a": false, "transpose_b": true}}])",
     ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, false, false, {1, 256}, {96, 256}, {1, 96}, true, 17, 50, 6, 20000000,
-    "16 1 6 16 1 1 1 6 1 1 1 1 1 1 16 1 1 1 1 1 16 16 1 "
+    "16 1 6 16 1 1 1 6 1 1 1 1 1 1 16 1 1 1 1 1 16 16 1 1 1 1 "
   },
 };
 

@@ -940,6 +940,9 @@ void SetRunInfoForCacheTiling(const optiling::BatchmatmulCompileParas &compile_p
   tiling_data->Append(runinfoparas.kal1_16);
   tiling_data->Append(runinfoparas.kbl1_16);
   tiling_data->Append(runinfoparas.kl1_times);
+  tiling_data->Append(runinfoparas.batch_l1_factor);
+  tiling_data->Append(runinfoparas.batch_ub_l0_time);
+  tiling_data->Append(runinfoparas.batch_cub);
   if (compile_params.nd_flag) {
     tiling_data->Append(runinfoparas.m_aub);
     tiling_data->Append(runinfoparas.n_bub);
