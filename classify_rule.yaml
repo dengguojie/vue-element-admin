@@ -3160,7 +3160,6 @@ unkown:
       - ops/built-in/tbe/impl/apply_adagradv2_d.py
       - ops/built-in/tbe/impl/fractal_z_3d_2_dhwcn.py
       - ops/built-in/tbe/impl/top_k.py
-      - ops/built-in/tbe/impl/drop_out_with_muls_and_softmax_grad.py
       - ops/built-in/tbe/impl/dot.py
       - ops/built-in/tbe/impl/invert.py
       - ops/built-in/tbe/impl/add_row_ranges.py
@@ -4298,6 +4297,7 @@ pytorch:
       - ops/built-in/tbe/impl/swin_attention_ffn.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/swin_attention_ffn_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/swin_attention_ffn_fusion_pass.h
+      - ops/built-in/tbe/impl/drop_out_with_muls_and_softmax_grad.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

@@ -17,6 +17,7 @@
 """
 drop_out_with_muls_and_softmax_grad
 """
+import math
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
@@ -179,16 +180,20 @@ def cal_prarms_list(y_grad, input_keep_prob):
     tik_inst = tik.Tik(tik.Dprofile(), disable_debug=False)
     aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-    batch_per_core = grad_shape[DIM_N] * grad_shape[DIM_C] // aicore_num
-    ele_per_core = batch_per_core * grad_shape[DIM_W1] * grad_shape[DIM_H1] * grad_shape[DIM_H2] * grad_shape[DIM_W2]
+    batch_per_core = math.ceil(grad_shape[DIM_N] * grad_shape[DIM_C] / aicore_num)
+    core_num = math.ceil(grad_shape[DIM_N] * grad_shape[DIM_C] / batch_per_core)
+    batch_last_core = grad_shape[DIM_N] * grad_shape[DIM_C] - (core_num - 1) * batch_per_core
+
     ele_per_batch = grad_shape[DIM_W1] * grad_shape[DIM_H1] * grad_shape[DIM_H2] * grad_shape[DIM_W2]
+    ele_per_core = batch_per_core * ele_per_batch
+
     w_dim = grad_shape[DIM_W1] * grad_shape[DIM_W2]
     size_per_ub = ub_size // UB_NUMBER_BYTE_SIZE
     line = size_per_ub // BLOCK // BLOCK // grad_shape[DIM_W1]
     ranges = grad_shape[DIM_H1] // line
     shape = (grad_shape[DIM_W1], line * BLOCK, grad_shape[DIM_W2])
     params_list = [w_dim, line, grad_shape, tik_inst, input_keep_prob]
-    core_attr_list = [aicore_num, batch_per_core, ele_per_core, ele_per_batch, ranges, shape]
+    core_attr_list = [core_num, batch_per_core, batch_last_core, ele_per_core, ele_per_batch, ranges, shape]
     return params_list, core_attr_list
 
 
@@ -204,7 +209,7 @@ def drop_out_with_muls_and_softmax_grad(y_grad, mask, softmax_output, x_grad, in
     softmax_output_dtype = softmax_output.get("dtype").lower()
     params_lis, core_attr_lis = cal_prarms_list(y_grad, input_keep_prob)
     w_dim, line, grad_shape, tik_inst, _ = params_lis
-    aicore_num, batch_per_core, ele_per_core, ele_per_batch, batch_range, shape = core_attr_lis
+    aicore_num, batch_per_core, batch_last_core, ele_per_core, ele_per_batch, batch_range, shape = core_attr_lis
     grad_gm = tik_inst.Tensor(grad_dtype, grad_shape, name="grad_gm", scope=tbe_platform.scope_gm)
     mask_gm = tik_inst.Tensor(mask_dtype, grad_shape, name="mask_gm", scope=tbe_platform.scope_gm)
     softmax_gm = tik_inst.Tensor(softmax_output_dtype, grad_shape, name="softmax_gm", scope=tbe_platform.scope_gm)
@@ -222,14 +227,21 @@ def drop_out_with_muls_and_softmax_grad(y_grad, mask, softmax_output, x_grad, in
         ub_broadcast = tik_inst.Tensor("int16", (line * BLOCK, BLOCK), scope=tbe_platform.scope_ubuf,
                                        name="ub_broadcast")
         offset = tik_inst.Scalar("int32", name="offset")
-        with tik_inst.for_range(0, batch_per_core) as index:
+        batch_core = tik_inst.Scalar("int32")
+
+        with tik_inst.if_scope(core_index < aicore_num - 1):
+            batch_core.set_as(batch_per_core)
+        with tik_inst.else_scope():
+            batch_core.set_as(batch_last_core)
+
+        with tik_inst.for_range(0, batch_core) as index:
             with tik_inst.for_range(0, batch_range) as i:
                 offset.set_as(core_index * ele_per_core + index * ele_per_batch + i * line * BLOCK * BLOCK)
                 move_list = [grad_ub, grad_gm, softmax_ub, softmax_gm, mask_ub, mask_gm, output_ub]
                 data_move_with_dropout(offset, params_lis, move_list)
                 conv_and_mul(params_lis, output_ub_fp32, output_ub, softmax_ub_fp32, softmax_ub)
                 reduce_sum_and_broadcast(params_lis, output_ub_fp32, ub_reduce_add, ub_reduceadd_fp16,
-                                                        ub_broadcast, ub_dup)
+                                         ub_broadcast, ub_dup)
                 sub_with_mul_and_move_data_out(offset, params_lis, ub_broadcast, output_ub, softmax_ub, alpha, y_gm)
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[grad_gm, mask_gm, softmax_gm], outputs=[y_gm,])
     return tik_inst
