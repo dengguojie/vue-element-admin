@@ -64,7 +64,7 @@ vector<FusionPattern*> MatMulReshapeBiasAddFusionPass::DefinePatterns() {
   string passName = "MatmulReshapeBiasAddFusion";
   FusionPattern* pattern = new (std::nothrow) FusionPattern(passName);
   FUSION_PASS_CHECK((pattern == nullptr),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(),"pattern is nullptr,Create pattern not success!"),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern is nullptr,Create pattern not success!"),
                     return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   pattern->AddOpDesc(PATTERN_MATMUL, {TF_MATMUL, TF_MATMULV2})
@@ -80,7 +80,7 @@ vector<FusionPattern*> MatMulReshapeBiasAddFusionPass::DefinePatterns() {
 }
 
 void MatMulReshapeBiasAddFusionPass::UpdataFusionOutputFormat(const ge::NodePtr node_biasadd,
-                                                              const ge::NodePtr node_reshape) const{
+                                                              const ge::NodePtr node_reshape) const {
   auto node_biasadd_output_desc = node_biasadd->GetOpDesc()->MutableOutputDesc(0);
   auto node_reshape_output_desc = node_reshape->GetOpDesc()->MutableOutputDesc(0);
   auto node_biasadd_output_format = node_biasadd_output_desc->GetFormat();
@@ -172,8 +172,8 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
                             node_biasadd_inputs.size()),
                     return NOT_CHANGED);
   ge::NodePtr node_bias = nullptr;
-  for (auto &input_node : node_biasadd_inputs){
-    if (input_node->GetName() != node_reshape->GetName()){
+  for (auto &input_node : node_biasadd_inputs) {
+    if (input_node->GetName() != node_reshape->GetName()) {
       node_bias = input_node;
       break;
     }

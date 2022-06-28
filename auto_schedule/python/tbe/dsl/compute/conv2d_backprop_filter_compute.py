@@ -848,7 +848,6 @@ class Conv2dBackpropFilter:
                 6. load3d_special_case and w > 63
             """
             is_dma_scene = ((not self.var_map)
-                            and (not self.cube_vector_split)
                             and (self.fmap.op.tag != "NHWC_trans_5HD")
                             and self.dilation == [1, 1, 1, 1]
                             and (not self.flag_load3d_w_split_case))

@@ -2895,9 +2895,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         n_0 = tbe_platform.CUBE_MKN.get(b_l1.dtype).get("mac")[1] if b_l1.dtype == "float32" else tbe_platform.C0_SIZE
         c_0 = c_ddr.shape[-1].value if not tensor_attr.get("5HD_TRANS_NHWC") else 1
         # dx_c1_extend is c / n0. for c_gm, c1 is c / c0.
-        c_factor_split_group = max(cin1_g * n_0 // c_0, 1)
+        c_factor_split_group = _ceil(cin1_g * n_0, c_0)
         if l0c_multi_group_flag: # cin1_g % 2 is not 0, l0c need to calculate cl0_tiling_g * cin1_g at c1 dim
-            c_factor_split_group = cl0_tiling_g * cin1_g * n_0 // c_0
+            c_factor_split_group = _ceil(cl0_tiling_g * cin1_g * n_0, c_0)
         sch_agent[c_ddr].split_group(c_ddr.op.axis[c_index], c_factor_split_group)
 
     sch_agent = ScheduleAgent(sch)

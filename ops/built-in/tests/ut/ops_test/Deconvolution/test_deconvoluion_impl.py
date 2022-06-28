@@ -193,7 +193,7 @@ def _get_deconv_node(case):
         filter_shape,
         dedx_shape,
     ) = case[0:4]
-    groups = 1
+    groups = 1 if len(case) < 10 else case[9]
     if case_dtype == "int8":
         dedx_dtype = "int32"
     else:
@@ -240,6 +240,7 @@ def _get_deconv_node(case):
         [1, 1] + list(case[5]),
         case[4],
         [1, 1] + list(case[6]),
+        groups=groups,
         data_format="NCHW",
     )
     return dedx, tensor_list
@@ -275,7 +276,7 @@ def test_deconvolution_fusion(case):
 
         with cce():
             # deconv
-            out, tensor_list = _get_deconv_node(case[1:9])
+            out, tensor_list = _get_deconv_node(case[1:])
             channel_in = case[4][1]
             if fusion_para[0] == "relu":
                 out = leaky_relu_compute(out, None)
@@ -550,7 +551,6 @@ def test_fixpipe_eltwise(test_arg):
                 fixpie_op = FixpipeConv2dBackpropInput("conv2d_backprop_input", out, eltwise_plh, None, None, None, None, None, None, None, None, y, [], [], "ADD")
                 res = fixpie_op.fixpipe_compute()
                 sch = auto_schedule(res)
-
 
 def test_fixpipe_dequant(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):

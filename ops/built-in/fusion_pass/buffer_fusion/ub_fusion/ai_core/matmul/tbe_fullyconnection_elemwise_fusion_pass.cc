@@ -185,7 +185,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
         return;
       }
       auto input0desc = GetCurrNodeInputDesc(fcNode, 0);
-      FUSION_PASS_CHECK(input0desc == nullptr, OP_LOGW(fcNode, "inputDesc0 is null"), return );
+      FUSION_PASS_CHECK(input0desc == nullptr, OP_LOGW(fcNode, "inputDesc0 is null"), return);
       if (axis == kNumTwo) {
         n_axis = 1;
       } else if (input0desc->GetFormat() == ge::FORMAT_FRACTAL_NZ) {

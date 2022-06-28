@@ -1754,7 +1754,7 @@ class Conv2dDxOptiSchedule:
         if TENSOR_MAP.get("b_l0b").dtype == "float32":
             block_n = block_k
         block_c0 = c_gm.shape[-1].value if not self.dx_para.get_para_map("5HD_TRANS_NHWC") else tbe_platform.C0_SIZE
-        c_factor_split_group = max(dx_c1_extend * block_n // block_c0, 1)
+        c_factor_split_group = int_ceil_div(dx_c1_extend * block_n, block_c0)
         l0c_c_axis_factor = l0c_factor[0]
         if l0c_multi_group_flag:
             c_factor_split_group = l0c_factor[0]

@@ -400,6 +400,7 @@ def test_fixpipe_cases(test_args):
             test_conv2d_bp_filter_fixpipe_0()
             test_conv2d_bp_filter_fixpipe_1()
             test_conv2d_bp_filter_fixpipe_2()
+            test_milan_dma_copy_case()
 ut_case.add_cust_test_func(test_func=test_fixpipe_cases)
 
 def test_reverse(test_args):

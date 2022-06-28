@@ -93,7 +93,7 @@ vector<BufferFusionPattern *> MatmulTransdataFusionPass::DefinePatterns() {
 void MatmulTransdataFusionPass::IsOutTransdataCorrect(const ge::Node::Vistor<ge::NodePtr> &out_node_matmuls) {
   for (auto &out_node_matmul_ptr : out_node_matmuls) {
     FUSION_PASS_CHECK(out_node_matmul_ptr == nullptr, OP_LOGW(out_node_matmul_ptr, "Get out node of matmul failed"),
-                      return );
+                      return);
     if (out_node_matmul_ptr->GetType() == kOpTypeTransdata) {
       out_transdata_ptr = out_node_matmul_ptr;
     }
