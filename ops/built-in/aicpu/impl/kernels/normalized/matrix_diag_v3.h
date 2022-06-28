@@ -25,12 +25,12 @@ public:
   virtual uint32_t Compute(CpuKernelContext &ctx) override;
 
 private:
-  uint32_t CheckParam(CpuKernelContext &ctx);
+  uint32_t CheckParam(const CpuKernelContext &ctx);
   std::pair<int, int> ComputeDiagLenAndContentOffset(
   int diag_index, int max_diag_len, int num_rows, int num_cols,
-  bool left_align_superdiagonal, bool left_align_subdiagonal) const ;
+  bool left_aligns_superdiagonal, bool left_aligns_subdiagonal) const ;
   template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  uint32_t DoCompute(const CpuKernelContext &ctx);
   uint32_t AdjustRowsAndCols(int32_t &num_rows,
                             int32_t &num_cols,
                             int32_t min_num_rows,
@@ -39,7 +39,7 @@ private:
                        int32_t &lower_diag_index,
                        int32_t &upper_diag_index,
                        int32_t &num_rows,
-                       int32_t &num_cols);
+                       int32_t &num_cols) const ;
   bool left_align_superdiagonal = true;
   bool left_align_subdiagonal = true;
 };

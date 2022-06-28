@@ -44,7 +44,7 @@ const char *const MATRIX_DIAG_V3 = "MatrixDiagV3";
 }
 
 namespace aicpu {
-uint32_t MatrixDiagV3CpuKernel::CheckParam(CpuKernelContext &ctx) {
+uint32_t MatrixDiagV3CpuKernel::CheckParam(const CpuKernelContext &ctx) {
   std::string align = "RIGHT_LEFT";
   AttrValue *attr_align = ctx.GetAttr("align");
   if (attr_align != NULL) {
@@ -102,8 +102,8 @@ uint32_t MatrixDiagV3CpuKernel::Compute(CpuKernelContext &ctx)
 
 std::pair<int, int> MatrixDiagV3CpuKernel::ComputeDiagLenAndContentOffset(
     int diag_index, int max_diag_len, int num_rows, int num_cols,
-    bool left_align_superdiagonal, bool left_aligns_subdiagonal) const {
-  const bool left_align = (diag_index >= 0 && left_align_superdiagonal) ||
+    bool left_aligns_superdiagonal, bool left_aligns_subdiagonal) const {
+  const bool left_align = (diag_index >= 0 && left_aligns_superdiagonal) ||
                           (diag_index <= 0 && left_aligns_subdiagonal);
   const int diag_len = std::min(num_rows + std::min(0, diag_index),
                                 num_cols - std::max(0, diag_index));
@@ -115,7 +115,7 @@ uint32_t MatrixDiagV3CpuKernel::GetDiagIndex(const CpuKernelContext &ctx,
                                              int32_t &lower_diag_index,
                                              int32_t &upper_diag_index,
                                              int32_t &num_rows,
-                                             int32_t &num_cols) {
+                                             int32_t &num_cols) const {
   Tensor *num_rows_tensor = ctx.Input(2);
   Tensor *num_cols_tensor = ctx.Input(3);
   Tensor *k_tensor = ctx.Input(1);
@@ -171,7 +171,7 @@ uint32_t MatrixDiagV3CpuKernel::AdjustRowsAndCols(int32_t &num_rows,
 }
 
 template <typename T>
-uint32_t MatrixDiagV3CpuKernel::DoCompute(CpuKernelContext &ctx) {
+uint32_t MatrixDiagV3CpuKernel::DoCompute(const CpuKernelContext &ctx) {
   Tensor *diagonal_tensor = ctx.Input(0);
   Tensor *padding_value_tensor = ctx.Input(4);
   Tensor *output_tensor = ctx.Output(0);
