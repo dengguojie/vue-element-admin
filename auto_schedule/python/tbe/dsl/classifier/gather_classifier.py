@@ -18,27 +18,35 @@
 classifier of shape in gather
 """
 from itertools import chain
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 from tbe.dsl.base import operation
-from . import util
 
+from . import shape_classifier
+from . import util
 
 UNKNOWN = "unknown"
 
 
-def classify_gather(ins: list):
+@shape_classifier.register_classifier(shape_classifier.GATHER)
+def classify_gather(ins: list, extra_params: Optional[Dict[str, Any]]):
     """
     GatherClassifier
     :param ins:
+    :param extra_params:
     :return:
     """
     return GatherClassifier(ins).classify()
 
 
-def classify_gather_nd(ins: list):
+@shape_classifier.register_classifier(shape_classifier.GATHER_ND)
+def classify_gather_nd(ins: list, extra_params: Optional[Dict[str, Any]]):
     """
     GatherNdClassifier
     :param ins:
+    :param extra_params:
     :return:
     """
     return GatherNdClassifier(ins).classify()

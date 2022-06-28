@@ -1,10 +1,11 @@
 # # -*- coding:utf-8 -*-
-from sch_test_frame.ut import OpUT
-import warnings
-import tbe
 import copy
+import warnings
+
+import tbe
+from sch_test_frame.ut import OpUT
 from tbe.common import buildcfg
-from tbe.dsl.classifier import elewise_classifier
+from tbe.dsl.classifier import pure_elewise_classifier
 
 warnings.filterwarnings("ignore")
 ut_case = OpUT("elewise_classify",
@@ -23,7 +24,7 @@ def test_elewise_prebuild_classify(_):
                 {"dtype": "float32", "shape": (-1, -1), "org_shape": (-1, -1), "range": [
                     (1, None), (1, None)], },
             ]
-            ins = elewise_classifier.classify(inputs, False)
+            ins = pure_elewise_classifier.classify(inputs, None)
 
             expect_ins = [
                 [
@@ -56,7 +57,7 @@ def test_elewise_not_fuse_classify_ori_c_infer(_):
                  "ori_format": "NHWC"},
             ]
             extra_params = {"ignore_fractal_format": False}
-            ins = elewise_classifier.classify(inputs, False, extra_params)
+            ins = pure_elewise_classifier.classify(inputs, extra_params)
 
             expect_ins = [
                 [

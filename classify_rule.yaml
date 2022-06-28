@@ -323,7 +323,6 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/classifier/__init__.py
       - auto_schedule/python/tbe/dsl/classifier/broadcast_elewise_classifier.py
       - auto_schedule/python/tbe/dsl/classifier/concat_classifier.py
-      - auto_schedule/python/tbe/dsl/classifier/elewise_classifier.py
       - auto_schedule/python/tbe/dsl/classifier/gather_classifier.py
       - auto_schedule/python/tbe/dsl/classifier/norm_classifier.py
       - auto_schedule/python/tbe/dsl/classifier/pure_elewise_classifier.py

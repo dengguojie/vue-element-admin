@@ -17,14 +17,16 @@
 """
 classifier of shape in pure elewise
 """
+from functools import reduce as shape_product
 from typing import Any
 from typing import Dict
 from typing import Optional
 
-from functools import reduce as shape_product
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base import expr_compare
 from tbe.dsl.base import operation
 
+from . import shape_classifier
 from . import util
 
 COMMON = "common"
@@ -57,6 +59,30 @@ C0_MAPPING = {
     "bool": 32,
     "uint1": 256,
 }
+
+
+@shape_classifier.register_classifier(shape_classifier.ELEWISE)
+def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
+    """
+    classify
+    :param ins:
+    :param extra_params:
+    :return:
+    """
+    expr_compare.is_true(extra_params is None or "disable_optimization" not in extra_params,
+                         {"errCode": "E90001",
+                          "detailed_cause": "inputs of classify not support the dict extra_params with "
+                                            "the key disable_optimization when mode is ELEWISE"
+                         })
+
+    operation.get_context().add("_classify_inputs_num", len(ins))
+    classifer = PureElewiseClassifier(ins, extra_params)
+    from tbe.common.buildcfg import get_current_build_config
+    operation.get_context().add("_support_broadcast", False)
+    if get_current_build_config("enable_op_prebuild"):
+        return [classifer.classify()[0]]
+
+    return classifer.classify()
 
 
 def element_multiply(inputs):

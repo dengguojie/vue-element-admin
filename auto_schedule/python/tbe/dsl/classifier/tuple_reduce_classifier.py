@@ -17,20 +17,23 @@
 """
 classifier of shape in tuple reduce
 """
-# Standard Packages
-from typing import Dict
-from typing import List
-from typing import Tuple
-from typing import AnyStr
-from functools import reduce
-from itertools import groupby
 import copy
 from enum import Enum
 from enum import auto
+from functools import reduce
+from itertools import groupby
+# Standard Packages
+from typing import AnyStr
+from typing import Dict
+from typing import List
+from typing import Tuple
+
 # Ascend Packages
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_context
+
+from . import shape_classifier
 from . import util
 
 # Constants
@@ -111,6 +114,7 @@ def _check_bundle_eliminate(bundle) -> int:
     return EliminateMode.FALSE
 
 
+@shape_classifier.register_classifier(shape_classifier.TUPLE_REDUCE)
 def classify(ins: List, extra_params: Dict) -> List[List]:
     """
     classify

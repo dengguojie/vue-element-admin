@@ -20,9 +20,11 @@ classifier of shape in transpose
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 
+from . import shape_classifier
 from . import util
 
 
+@shape_classifier.register_classifier(shape_classifier.TRANSPOSE)
 def classify(ins: list, extra_params: dict):
     """
     classify

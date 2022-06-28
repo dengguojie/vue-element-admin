@@ -23,12 +23,15 @@ from typing import List
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
+
+from . import shape_classifier
 from . import util
 
 INPUT_NUMBER_LIMIT = 63
 UNKNOWN_RANK = -2
 
 
+@shape_classifier.register_classifier(shape_classifier.CONCAT)
 def classify(ins: list, extra_params: dict):
     """
     classify

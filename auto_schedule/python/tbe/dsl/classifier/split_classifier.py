@@ -23,8 +23,9 @@ from typing import List
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
-from . import util
 
+from . import shape_classifier
+from . import util
 
 INPUT_NUMBER_LIMIT = 63
 UNKNOWN_RANK = -2
@@ -35,6 +36,7 @@ SPLIT_GENERAL = "split_general"
 SPLIT_EMPTY = "split_empty"
 
 
+@shape_classifier.register_classifier(shape_classifier.SPLIT)
 def classify(ins: list, extra_params: dict):
     """
     classify

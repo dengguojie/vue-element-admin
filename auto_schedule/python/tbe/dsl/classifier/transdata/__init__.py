@@ -17,4 +17,6 @@
 """
 transdata classifier
 """
+
 from . import general_transdata_classifier
+from . import transdata_classifier

@@ -17,3 +17,5 @@
 """
 shape classifier
 """
+
+from . import reduce_classifier

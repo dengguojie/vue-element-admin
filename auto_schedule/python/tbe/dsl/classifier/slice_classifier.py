@@ -18,8 +18,11 @@
 classifier of shape in slice
 """
 from itertools import chain
+
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
+
+from . import shape_classifier
 
 MAX_DIM_LEN = 8
 INPUT_LEN = 3
@@ -35,6 +38,7 @@ END_MODE_MAP = {
 }
 
 
+@shape_classifier.register_classifier(shape_classifier.SLICE)
 def classify_slice(ins: list, extra_params: dict):
     """
     Slice classifier

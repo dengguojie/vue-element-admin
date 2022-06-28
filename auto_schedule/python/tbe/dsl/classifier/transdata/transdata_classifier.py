@@ -22,23 +22,40 @@ import operator
 from abc import ABC
 from abc import abstractmethod
 from functools import reduce
+from typing import Any
+from typing import Dict
+from typing import Optional
 
-from tbe.dsl.base import operation
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base import operation
 
-from .constants import BLOCK, B32, B64, REINTERPRET_DTYPE
-from .constants import UNKNOWN_DIM, DTYPE_BYTE
-from .constants import GENERAL_FORWARD, GENERAL_BACKWARD
-from .constants import BORROW_N_B8B16_FORWARD, BORROW_N_B8B16_BACKWARD
-from .constants import BORROW_H_B8B16_FORWARD, BORROW_H_B8B16_BACKWARD
-from .constants import DO_NOTHING, DO_PAD, DO_TRANSPOSE_PAD
-from .constants import PAD_32, PAD_16, PAD_8, RESERVED_SPACE
+from .. import shape_classifier
+from .constants import B32
+from .constants import B64
+from .constants import BLOCK
+from .constants import BORROW_H_B8B16_BACKWARD
+from .constants import BORROW_H_B8B16_FORWARD
+from .constants import BORROW_N_B8B16_BACKWARD
+from .constants import BORROW_N_B8B16_FORWARD
+from .constants import DO_NOTHING
+from .constants import DO_PAD
+from .constants import DO_TRANSPOSE_PAD
+from .constants import DTYPE_BYTE
+from .constants import GENERAL_BACKWARD
+from .constants import GENERAL_FORWARD
+from .constants import PAD_8
+from .constants import PAD_16
+from .constants import PAD_32
+from .constants import REINTERPRET_DTYPE
+from .constants import RESERVED_SPACE
+from .constants import UNKNOWN_DIM
 
 _classifies = {}
 
 
-def classify(ins: list):
+@shape_classifier.register_classifier(shape_classifier.TRANSDATA)
+def classify(ins: list, extra_params: Optional[Dict[str, Any]]):
     from tbe.common.buildcfg import get_current_build_config
     if get_current_build_config("enable_op_prebuild"):
         return [ins]

@@ -26,6 +26,7 @@ from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import expr_compare
 from tbe.dsl.base.operation import add_compile_info_inner
 
+from .. import shape_classifier
 from .known_reduce_classifier import KnownReduceClassifier
 from .mixed_reduce_classifier import MixedReduceClassifier
 from .reduce_classifier_5hd import ReduceClassifier5HD
@@ -73,6 +74,7 @@ def _need_process(ins):
     return _known_axis, _has_neg_two
 
 
+@shape_classifier.register_classifier(shape_classifier.REDUCE)
 def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify

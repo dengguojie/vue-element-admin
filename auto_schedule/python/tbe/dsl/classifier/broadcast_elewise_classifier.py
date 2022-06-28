@@ -17,18 +17,19 @@
 """
 classifier of shape in broadcast elewise
 """
+import copy
+from enum import Enum
+from enum import auto
+from functools import reduce
 from typing import Any
 from typing import Dict
 from typing import Optional
-import copy
-from functools import reduce
-from enum import Enum
-from enum import auto
 
+from tbe import dsl
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
-from tbe import dsl
 
+from . import shape_classifier
 from . import util
 
 COMMON = "common"
@@ -61,6 +62,27 @@ PAD_C0_MAPPING = {
     "bool": 32,
     "uint1": 256,
 }
+
+
+@shape_classifier.register_classifier(shape_classifier.BROADCAST)
+def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
+    """
+    classify
+    :param ins:
+    :param extra_params:
+    :return:
+    """
+    operation.get_context().add("_classify_inputs_num", len(ins))
+    classifer = BroadcastElewiseClassifier(ins, extra_params)
+    classifer.check_update_unknown_rank()
+    classifer.check_update_empty_shape()
+
+    from tbe.common.buildcfg import get_current_build_config
+    operation.get_context().add("_support_broadcast", True)
+    if get_current_build_config("enable_op_prebuild"):
+        return [ins]
+
+    return classifer.classify()
 
 
 def is_5hd_input(inputs):

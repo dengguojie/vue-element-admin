@@ -26,6 +26,7 @@ from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_context
 
+from . import shape_classifier
 from . import util
 
 CONST = "const"
@@ -784,6 +785,7 @@ class InputInfo:
     disable_fuse_axes: list = dataclasses.field(default_factory=list)
 
 
+@shape_classifier.register_classifier(shape_classifier.NORM)
 def classify(ins: list, extra_params: dict):
     """
     classify

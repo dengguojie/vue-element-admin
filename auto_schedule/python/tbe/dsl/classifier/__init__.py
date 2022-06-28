@@ -17,3 +17,15 @@
 """
 shape classifier
 """
+
+from . import broadcast_elewise_classifier
+from . import concat_classifier
+from . import gather_classifier
+from . import norm_classifier
+from . import pure_elewise_classifier
+from . import reduce
+from . import slice_classifier
+from . import split_classifier
+from . import transdata
+from . import transpose_classifier
+from . import tuple_reduce_classifier

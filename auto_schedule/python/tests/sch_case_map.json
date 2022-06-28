@@ -172,13 +172,16 @@
         "vsel",
         "vcmpsel"
     ],
+    "auto_schedule/python/tbe/dsl/classifier/shape_classifier.py":[
+        "classifier"
+    ],
     "auto_schedule/python/tbe/dsl/classifier/broadcast_elewise_classifier.py":[
         "vsub",
         "broadcast_classify",
         "broadcast_schedule",
         "broadcast_tilingcase"
     ],
-    "auto_schedule/python/tbe/dsl/classifier/elewise_classifier.py":[
+    "auto_schedule/python/tbe/dsl/classifier/pure_elewise_classifier.py":[
         "elewise_classify"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/broadcast/broadcast_tilingcase.py":[
