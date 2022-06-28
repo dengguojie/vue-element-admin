@@ -164,9 +164,9 @@ with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effe
         ut_case.add_cust_test_func(test_func=test_dynamic_batchmamtul_920_mock)
 
 def test_dynamic_batchmamtul_norange_split_k(test_args):
-    input_x1 = {"ori_shape": (-1, -1), "shape": (-1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
-    input_x2 = {"ori_shape": (-1, -1), "shape": (-1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
-    output_z = {"ori_shape": (-1, -1), "shape": (-1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float32', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    input_x1 = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    input_x2 = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    output_z = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float32', "format": "FRACTAL_NZ", "ori_format" : "ND"}
     from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
     from te.tvm.target import cce
     with tbe.common.context.op_context.OpContext("dynamic"):

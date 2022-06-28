@@ -576,6 +576,7 @@ class GemmSchedule:
         self._bl0_process()
         self._do_l1_ub_process()
         self._bind_multi_core(True)
+        self.cache_tiling_mgr.multi_batch_process(self.container, self.status_controller, self.sch_agent)
         self._do_emit_insn()
         self._do_buffer_reuse()
         self.sch_agent.apply()
@@ -583,7 +584,7 @@ class GemmSchedule:
         self._solve_bank_conflict()
         self._solve_split_k_dirty_data()
         a_run_once, b_run_once = self._allocate_axis(self.status_controller.over_head_flag)
-        self.cache_tiling_mgr.cache_tiling_full_load(self.container, self.status_controller)
+        self.cache_tiling_mgr.cache_tiling_full_load(self.container, self.status_controller, self.sch_agent)
         self._double_buffer(a_run_once, b_run_once)
         self._handle_tbe_compile_para()
         self._reorder_axis(self.status_controller.over_head_flag, a_run_once, b_run_once)
@@ -1918,7 +1919,8 @@ class GemmSchedule:
                 self.cache_tiling_mgr.config_cache_tiling(
                     self.cce_simplification_obj, self.compute_param, self.container)
                 self.cache_tiling = self.cache_tiling_mgr.cache_tiling
-                tiling = self.tiling_work.config_tiling(tiling, self.cache_tiling, self.compute_param)
+                tiling = self.tiling_work.config_tiling(tiling, self.cache_tiling, self.compute_param,
+                                                        self.status_controller)
         else:
             tiling = self._get_tiling_after_cmp(info_dict, new_fused_num)
         tiling = self._no_solution_tiling(tiling)
@@ -2055,46 +2057,38 @@ class GemmSchedule:
             a_l0a = self.container.tensor_map.get("a_l0a")
             b_l0b = self.container.tensor_map.get("b_l0b")
         if tiling.get("BL0_matrix") != []:
-            (
-                self.tiling_work.bl0_tiling_kb,
-                self.tiling_work.bl0_tiling_nb,
-                self.tiling_work.bl0_tiling_n0,
-                self.tiling_work.bl0_tiling_k0,
-                self.tiling_work.bl0_tiling_batch,
-                _
-            ) = tiling.get("BL0_matrix")
+            (self.tiling_work.bl0_tiling_kb,
+             self.tiling_work.bl0_tiling_nb,
+             self.tiling_work.bl0_tiling_n0,
+             self.tiling_work.bl0_tiling_k0,
+             self.tiling_work.bl0_tiling_batch,
+             _) = tiling.get("BL0_matrix")
         else:
             b_l0b_shape = [get_value(i) for i in b_l0b.shape]
             b_l0b_shape = self._get_dynamic_l0b_shape(b_l0b_shape)
-            (
-                self.tiling_work.bl0_tiling_kb,
-                self.tiling_work.bl0_tiling_nb,
-                self.tiling_work.bl0_tiling_n0,
-                self.tiling_work.bl0_tiling_k0
-            ) = b_l0b_shape[-4:]
+            (self.tiling_work.bl0_tiling_kb,
+             self.tiling_work.bl0_tiling_nb,
+             self.tiling_work.bl0_tiling_n0,
+             self.tiling_work.bl0_tiling_k0) = b_l0b_shape[-4:]
             # full load only loads 1 batch
             self.tiling_work.bl0_tiling_batch = 1
             self.tiling_work.bl0_tiling_nb = self.tiling_work.tiling.get("CL0_matrix")[0]
             self.tiling_work.bl0_tiling_kb = self.tiling_work.tiling.get("AL0_matrix")[1]
         self.tiling_work.bl0_tiling_k0 = self.block_reduce
 
-        (
-            self.tiling_work.al0_tiling_ma,
-            self.tiling_work.al0_tiling_ka,
-            self.tiling_work.al0_tiling_m0,
-            self.tiling_work.al0_tiling_k0,
-            self.tiling_work.al0_tiling_batch,
-            _
-        ) = self.tiling_work.tiling.get("AL0_matrix")
+        (self.tiling_work.al0_tiling_ma,
+         self.tiling_work.al0_tiling_ka,
+         self.tiling_work.al0_tiling_m0,
+         self.tiling_work.al0_tiling_k0,
+         self.tiling_work.al0_tiling_batch,
+         _) = self.tiling_work.tiling.get("AL0_matrix")
         self.tiling_work.al0_tiling_k0 = self.block_reduce
-        (
-            self.tiling_work.cl0_tiling_nc,
-            self.tiling_work.cl0_tiling_mc,
-            self.tiling_work.cl0_tiling_m0,
-            self.tiling_work.cl0_tiling_n0,
-            self.tiling_work.cl0_tiling_batch,
-            _
-        ) = self.tiling_work.tiling.get("CL0_matrix")
+        (self.tiling_work.cl0_tiling_nc,
+         self.tiling_work.cl0_tiling_mc,
+         self.tiling_work.cl0_tiling_m0,
+         self.tiling_work.cl0_tiling_n0,
+         self.tiling_work.cl0_tiling_batch,
+         _) = self.tiling_work.tiling.get("CL0_matrix")
         c_l0c = self.container.tensor_map.get("c_l0c")
         self._get_l0c_reduce_dims()
 
@@ -2106,8 +2100,8 @@ class GemmSchedule:
         self.tiling_work.cl0_tiling_n0 = tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][2]
 
         # special handle
-        if self.is_dynamic:
-            # dynamic shape does not support multi batch
+        if self.is_dynamic and not self.cache_tiling:
+            # normal dynamic shape does not support multi batch
             self.tiling_work.al0_tiling_batch = 1
             self.tiling_work.bl0_tiling_batch = 1
             self.tiling_work.cl0_tiling_batch = 1
@@ -2153,8 +2147,8 @@ class GemmSchedule:
                 al1_tiling_batch = self.dynamic_batch if self.is_dynamic else al1_tiling_batch
 
         self.tiling_work.al1_tiling_batch = al1_tiling_batch
-        if self.is_dynamic:
-            # dynamic shape does not support multi batch
+        if self.is_dynamic and not self.cache_tiling:
+            # normal dynamic shape does not support multi batch
             self.tiling_work.al1_tiling_batch = 1
         self.tiling_work.al1_tiling_k = al1_tiling_k
         self.tiling_work.al1_tiling_m = al1_tiling_m
@@ -2183,8 +2177,8 @@ class GemmSchedule:
             bl1_tiling_k = (bl1_tiling_k + tiling.get("block_dim")[3] - 1) // tiling.get("block_dim")[3]
 
         self.tiling_work.bl1_tiling_batch = bl1_tiling_batch
-        if self.is_dynamic:
-            # dynamic shape does not support multi batch
+        if self.is_dynamic and not self.cache_tiling:
+            # normal dynamic shape does not support multi batch
             self.tiling_work.bl1_tiling_batch = 1
         self.tiling_work.bl1_tiling_k = bl1_tiling_k
         self.tiling_work.bl1_tiling_n = bl1_tiling_n
@@ -2193,8 +2187,8 @@ class GemmSchedule:
         if self.format_info.get("a") == "ND" or self.status_controller.ops_data_flow_mode == "int82fp32":
             (self.tiling_work.aub_tiling_k, self.tiling_work.aub_tiling_m,
              self.tiling_work.aub_tiling_batch) = self.tiling_work.tiling.get("AUB_shape")[:3]
-            if not self.tiling_work.aub_tiling_batch or self.is_dynamic:
-                # dynamic shape does not support multi batch
+            if not self.cache_tiling and (not self.tiling_work.aub_tiling_batch or self.is_dynamic):
+                # normal dynamic shape does not support multi batch
                 self.tiling_work.aub_tiling_batch = 1
         else:
             self.tiling_work.aub_tiling_m, self.tiling_work.aub_tiling_k, self.tiling_work.aub_tiling_batch = 0, 0, 0
@@ -2202,8 +2196,8 @@ class GemmSchedule:
         if self.format_info.get("b") == "ND" or self.status_controller.ops_data_flow_mode == "int82fp32":
             (self.tiling_work.bub_tiling_k, self.tiling_work.bub_tiling_n,
              self.tiling_work.bub_tiling_batch) = self.tiling_work.tiling.get("BUB_shape")[:3]
-            if not self.tiling_work.bub_tiling_batch or self.is_dynamic:
-                # dynamic shape does not support multi batch
+            if not self.cache_tiling and (not self.tiling_work.bub_tiling_batch or self.is_dynamic):
+                # normal dynamic shape does not support multi batch
                 self.tiling_work.bub_tiling_batch = 1
         else:
             self.tiling_work.bub_tiling_k, self.tiling_work.bub_tiling_n, self.tiling_work.bub_tiling_batch = 0, 0, 0
@@ -2217,8 +2211,7 @@ class GemmSchedule:
                 dynamic_m = int_ceil_div(self.dynamic_m, self.tiling_work.tiling.get("block_dim")[2])
                 cub_shape = [dynamic_n, dynamic_m, self.block_in, self.block_out]
             if self.status_controller.have_batch:
-                dynamic_batch = int_ceil_div(self.dynamic_batch,
-                                                             self.tiling_work.tiling.get("block_dim")[0])
+                dynamic_batch = int_ceil_div(self.dynamic_batch, self.tiling_work.tiling.get("block_dim")[0])
                 cub_shape.insert(0, dynamic_batch)
         return cub_shape
 
@@ -2226,6 +2219,7 @@ class GemmSchedule:
         debug(self.DEBUG_PARAM, "-------debug info in cub_process-------")
         cub_tiling = self.tiling_work.tiling.get("CUB_matrix")
         cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, cub_tiling_batch, _ = cub_tiling
+        self.tiling_work.cub_tiling_batch = cub_tiling_batch
         if self.res.dtype == "int8":
             cub_tiling_nc_factor = int_ceil_div(cub_tiling_nc_factor, 2)
         if self.format_info.get("out") == "ND":
@@ -3447,10 +3441,11 @@ class GemmSchedule:
                   "cache_tiling": self.cache_tiling}
         # disable aub_bub_preload when l0c_preload enabled for accuracy error
         if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2:
-            if (self.container.tensor_map.get("a_ub") is not None and
-                (not self.is_dynamic or self.cache_tiling) and
+            aub_preload_condition = (self.container.tensor_map.get("a_ub") is not None and
+                (not self.is_dynamic or (self.cache_tiling and self.cache_tiling.get("aub_preload_flag"))) and
                 self.buffer_checker.check_aub_preload(tiling, params) and
-                (not self.cache_tiling_mgr.flag_l0c_preload)):
+                (not self.cache_tiling_mgr.flag_l0c_preload))
+            if aub_preload_condition:
                 self.sch[self.container.tensor_map.get("a_ub")].preload()
                 if (self.container.tensor_map.get("a_ub_aligned") is not None and
                     self.container.tensor_map.get("a_ub_general") is not None):
@@ -3459,10 +3454,11 @@ class GemmSchedule:
             for tensor in self.container.tensors_in_aub:
                 self.sch[tensor].double_buffer()
         if tiling.get("manual_pingpong_buffer").get("BUB_pbuffer") == 2:
-            if (self.container.tensor_map.get("b_ub") is not None and
-                (not self.is_dynamic or self.cache_tiling) and
+            bub_preload_condition = (self.container.tensor_map.get("b_ub") is not None and
+                (not self.is_dynamic or (self.cache_tiling and self.cache_tiling.get("bub_preload_flag"))) and
                 self.buffer_checker.check_bub_preload(tiling, params) and
-                (not self.cache_tiling_mgr.flag_l0c_preload)):
+                (not self.cache_tiling_mgr.flag_l0c_preload))
+            if bub_preload_condition:
                 self.sch[self.container.tensor_map.get("b_ub")].preload()
                 if (self.container.tensor_map.get("b_ub_aligned") is not None and
                     self.container.tensor_map.get("b_ub_general") is not None):
@@ -4361,7 +4357,7 @@ class GemmSchedule:
             out_insn_dict["map_policy"] = "2d"
         offset_res = 1 if self.status_controller.split_k_axis_by_tiling else 0
         if self.cache_tiling:
-            res_axis = -2 if self.format_info.get("out") == "ND" else -4
+            res_axis = self.cache_tiling_mgr.get_res_tensor_emit_axis(self.format_info, self.status_controller)
             self.sch_agent[real_res].emit_insn(self.sch[real_res].leaf_iter_vars[res_axis], emit_insn_cmd,
                                                out_insn_dict)
         else:
@@ -4643,15 +4639,7 @@ class GemmSchedule:
             self.sch[self.container.tensor_map.get("a_l1")].set_buffer_size(self._get_al1_bound())
             self.sch[self.container.tensor_map.get("b_l1")].set_buffer_size(self._get_bl1_bound())
 
-            if self.cache_tiling:
-                cub_bound = self.cache_tiling.get("cub_n1") * self.cache_tiling.get(
-                    "m_l0") * self.block_in * self.block_out
-                cl0_bound = cub_bound * self.cache_tiling.get("n_ub_l0_time")
-                self.sch[self.container.tensor_map.get("c_l0c")].set_buffer_size(cl0_bound)
-                self.sch[self.container.tensor_map.get("c_ub_fract")].set_buffer_size(cub_bound)
-                if self.format_info.get("out") == "ND":
-                    self.sch[self.container.tensor_map.get("cast_to_fp16")].set_buffer_size(cub_bound)
-                    self.sch[self.container.tensor_map.get("nz_to_nd")].set_buffer_size(cub_bound)
+            self.cache_tiling_mgr.set_l0c_cub_buffer_size(self.container, self.format_info, self.tiling_work)
 
             # mem_unique
             self.sch[self.container.tensor_map.get("a_l1")].mem_unique()
@@ -4739,7 +4727,7 @@ class GemmSchedule:
         if self.cache_tiling:
             aub_bound = self.cache_tiling.get("aub_align_bound")
             aub_fract_bound = self.cache_tiling.get("k_aub") * self.cache_tiling.get("m_aub") * \
-                self.block_in * self.block_reduce
+                self.block_in * self.block_reduce * self.tiling_work.aub_tiling_batch
         return aub_bound, aub_fract_bound
 
     def _get_bub_bound(self):
@@ -4764,7 +4752,7 @@ class GemmSchedule:
         if self.cache_tiling:
             bub_bound = self.cache_tiling.get("bub_align_bound")
             bub_fract_bound = self.cache_tiling.get("k_bub") * self.cache_tiling.get("n_bub") * \
-                self.block_out * self.block_reduce
+                self.block_out * self.block_reduce * self.tiling_work.bub_tiling_batch
         return bub_bound, bub_fract_bound
 
     def _get_al1_bound(self):
@@ -4779,7 +4767,7 @@ class GemmSchedule:
             k_bound = self._get_max_k_bound()
             m_bound = self._get_max_m_bound()
 
-        al1_bound = m_bound * k_bound
+        al1_bound = m_bound * k_bound * self.tiling_work.al1_tiling_batch
         return al1_bound
 
     def _get_bl1_bound(self):
@@ -4793,7 +4781,7 @@ class GemmSchedule:
         else:
             k_bound = self._get_max_k_bound()
             n_bound = self._get_max_n_bound()
-        bl1_bound = n_bound * k_bound
+        bl1_bound = n_bound * k_bound * self.tiling_work.bl1_tiling_batch
         return bl1_bound
 
     def _set_continuous_axis(self):
@@ -4802,16 +4790,22 @@ class GemmSchedule:
         if self.cache_tiling and self.format_info.get("a") != "FRACTAL_NZ":
             a_l0a = self.container.tensor_map.get("a_l0a")
             axis_list = [self.sch[a_l0a].leaf_iter_vars[-3], self.sch[a_l0a].leaf_iter_vars[-4]]
+            if self.status_controller.have_batch_a:
+                axis_list.append(self.sch[a_l0a].leaf_iter_vars[-5])
             self._combine_cce_pragma(a_l0a, axis_list)
         if self.cache_tiling:
             b_l0b = self.container.tensor_map.get("b_l0b")
             axis_list = [self.sch[b_l0b].leaf_iter_vars[-3], self.sch[b_l0b].leaf_iter_vars[-4]]
+            if self.status_controller.have_batch_b:
+                axis_list.append(self.sch[b_l0b].leaf_iter_vars[-5])
             self._combine_cce_pragma(b_l0b, axis_list)
         if self.format_info.get("out") == "ND" and self.is_dynamic:
             real_res = self.res
             if self.status_controller.split_k_axis_by_tiling:
                 real_res = self.container.tensor_map.get("c_gm")
             axis_list = [self.sch[real_res].leaf_iter_vars[-2], self.sch[real_res].leaf_iter_vars[-1]]
+            if self.cache_tiling and self.status_controller.have_batch:
+                axis_list.append(self.sch[real_res].leaf_iter_vars[-3])
             self._combine_cce_pragma(real_res, axis_list)
 
     def _auto_tiling(self, aub_num, bub_num, cub_num):

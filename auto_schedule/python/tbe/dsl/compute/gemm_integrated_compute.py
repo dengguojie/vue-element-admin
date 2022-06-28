@@ -82,6 +82,7 @@ class GEMMComputeParam:
     format_a = "Fractal_NZ"
     format_b = "Fractal_NZ"
     format_out = "Fractal_NZ"
+    batch_var_name = None
     m_var_name = None
     k_var_name = None
     n_var_name = None
@@ -1572,6 +1573,7 @@ class GEMMCompute(FormatCompute):
         GEMMComputeParam.format_a = self.format_a
         GEMMComputeParam.format_b = self.format_b
         GEMMComputeParam.format_out = self.format_out
+        GEMMComputeParam.batch_var_name = "batch"
         GEMMComputeParam.m_var_name = self._get_var_name(self.format_a, "m", self.cache_tiling_flag)
         GEMMComputeParam.k_var_name = self._get_var_name(self.format_a, "k", self.cache_tiling_flag)
         GEMMComputeParam.n_var_name = self._get_var_name(self.format_b, "n", self.cache_tiling_flag)

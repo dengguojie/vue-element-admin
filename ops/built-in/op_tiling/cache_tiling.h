@@ -145,6 +145,8 @@ struct L0Status {
   int32_t m_l0 = 1;
   int32_t n_l0 = 1;
   int32_t k_l0 = 1;
+  int32_t batch_l0 = 1;
+  int32_t l0c_multi_batch = 0;
   int32_t db_l0a = 1;
   int32_t db_l0b = 1;
   int32_t db_l0c = 1;
@@ -223,11 +225,14 @@ struct UbStatus {
   int32_t k_aub = 1;
   int32_t m_aub = 1;
   int32_t db_aub = 1;
+  int32_t batch_aub = 1;
   int32_t k_bub = 1;
   int32_t n_bub = 1;
   int32_t db_bub = 1;
+  int32_t batch_bub = 1;
   int32_t n_cub = 1;
   int32_t db_cub = 1;
+  int32_t batch_cub = 1;
   int32_t max_dma_size = 0;
   int32_t min_dma_size = 0;
   int32_t min_load_size = 0;
@@ -296,6 +301,10 @@ public:
   int32_t db_bub = 1;
   int32_t k_org_dim = 1;
   int32_t db_l0c = 1;
+  int32_t batch_l0 = 1;
+  int32_t batch_aub = 1;
+  int32_t batch_bub = 1;
+  int32_t batch_cub = 1;
   int32_t aub_multi_flag = 0;
   int32_t bub_multi_flag = 0;
   int32_t a_align_value = 1;
@@ -306,6 +315,7 @@ public:
   int32_t al1_attach_flag = 0;
   int32_t bl1_attach_flag = 0;
   int32_t abkl1_attach_flag = 0;
+  int32_t l0c_multi_batch = 0;
   bool al1_full_load = false;
   bool bl1_full_load = false;
   Tiling() = default;

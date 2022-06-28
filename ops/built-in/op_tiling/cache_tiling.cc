@@ -25,6 +25,7 @@ using namespace std;
 namespace optiling {
 static const int32_t kL1Size = (1024 * 1024);
 static const int32_t kL0cSize = (256 * 1024);
+static const int32_t kL0abSize = (64 * 1024);
 static const int32_t kUbSize = (256 * 1024);
 static const int32_t kAttachLabelLength = 9;
 static const int32_t kBlockSize = 16;
@@ -247,6 +248,9 @@ void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, c
   db_l0c = l0Status.db_l0c;
   al1_full_load = l1Status.al1_full_load;
   bl1_full_load = l1Status.bl1_full_load;
+  batch_l0 = l0Status.batch_l0;
+  batch_cub = ubStatus.batch_cub;
+  l0c_multi_batch = l0Status.l0c_multi_batch;
   if (params.compile_params->nd_flag) {
     k_aub = ubStatus.k_aub;
     m_aub = ubStatus.m_aub;
@@ -254,6 +258,8 @@ void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, c
     k_bub = ubStatus.k_bub;
     n_bub = ubStatus.n_bub;
     db_bub = ubStatus.db_bub;
+    batch_aub = ubStatus.batch_aub;
+    batch_bub = ubStatus.batch_bub;
     aub_multi_flag = ubStatus.aub_multi_flag;
     bub_multi_flag = ubStatus.bub_multi_flag;
     a_align_value = ubStatus.a_align_value;
@@ -345,9 +351,9 @@ void Tiling::GetTilingId(const BatchmatmulParas &params)
   tilingIDLongLong = tilingIDLongLong * kDecimal + al1_attach_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + bl1_attach_flag;
   tilingIDLongLong = tilingIDLongLong * kDecimal + min_kl1_cmp_kl0;
+  tilingIDLongLong = tilingIDLongLong * kDecimal + l0c_multi_batch;
   if (compile_params.nd_flag) {
-    tilingIDLongLong = tilingIDLongLong * kDecimal + aub_multi_flag;
-    tilingIDLongLong = tilingIDLongLong * kDecimal + bub_multi_flag;
+    tilingIDLongLong = tilingIDLongLong * kDecimal + aub_multi_flag + ((bub_multi_flag ? 1 : 0) << 1);
   }
   tilingIDLongLong = tilingIDLongLong * kDecimal + run_params.non_factor_k;
   tilingIDLongLong = tilingIDLongLong * kDecimal + run_params.non_factor_bmn;
@@ -833,7 +839,8 @@ void GetFinalMkn(L0Status &l0Status, const CoreStatus &coreStatus, const int32_t
     l0Status.n_l0 = majorDimFactor;
   }
   l0Status.k_l0 = k0;
-  float tmpL0cUse = l0Status.m_l0 * l0Status.n_l0 * l0Status.db_l0c * kBlockSize * kBlockSize * 4 * 1.0 / kL0cSize;
+  float tmpL0cUse =
+    l0Status.m_l0 * l0Status.n_l0 * l0Status.db_l0c * kBlockSize * kBlockSize * kFp32Bytes * 1.0 / kL0cSize;
   int32_t tmpMte1Loop = ((l0Status.n_l0 != 1) ? l0Status.k_l0 : 1) + ((l0Status.k_l0 != 1) ? l0Status.m_l0 : 1);
   int32_t tmpMul = l0Status.m_l0 * l0Status.k_l0 * l0Status.n_l0;
   int32_t tmpLoadSize = GetLoadSize(coreStatus, l0Status);
@@ -931,8 +938,30 @@ void GetL0FactorsCand(L0Factors &resFactors, const CoreStatus &coreStatus, L0Sta
   SetResFactors(resFactors, l0Status);
 }
 
+void GetL0BatchFactor(const CoreStatus &coreStatus, L0Status &l0Status, const BatchmatmulRunParas &params) {
+  // when L0A L0B L0C full load, L0 support multi batch
+  bool no_factor_split = (params.batch_mapped != params.batch_32 || params.m_mapped != params.m_32 ||
+                          params.n_mapped != params.n_32 || params.k_mapped != params.k_32);
+  bool l0_not_full_load_flag = (no_factor_split || l0Status.m_l0 < coreStatus.m ||
+                                l0Status.n_l0 < coreStatus.n || l0Status.k_l0 < coreStatus.k);
+  if (coreStatus.batch == 1 || l0_not_full_load_flag) {
+    return;
+  }
+  int32_t l0a_use_size = l0Status.m_l0 * l0Status.k_l0 * kBlockSize * kBlockSize * l0Status.db_l0a * kFp16Bytes;
+  int32_t l0b_use_size = l0Status.n_l0 * l0Status.k_l0 * kBlockSize * kBlockSize * l0Status.db_l0b * kFp16Bytes;
+  int32_t l0c_use_size = l0Status.m_l0 * l0Status.n_l0 * kBlockSize * kBlockSize * l0Status.db_l0c * kFp32Bytes;
+  int32_t max_l0c_batch = kL0cSize / l0c_use_size;
+  int32_t max_l0a_batch = kL0abSize / l0a_use_size;
+  int32_t max_l0b_batch = kL0abSize / l0b_use_size;
+  l0Status.batch_l0 = min(min(min(max_l0a_batch, max_l0b_batch), max_l0c_batch), coreStatus.batch);
+  GetNearestFactor(coreStatus.batch, l0Status.batch_l0);
+  if (l0Status.batch_l0 > 1) {
+    l0Status.l0c_multi_batch = 1;
+  }
+}
+
 void GetL0Factors(const string &op_type, const CoreStatus &coreStatus, const int32_t &blockValue,
-                  L0Status &l0Status)
+                  L0Status &l0Status, const BatchmatmulRunParas &params)
 {
   // get m_l0, n_l0, k_l0 factor when singlecore m, n, k is know
   // m_l0, n_l0, k_l0 is a factor of single core m, n, k
@@ -978,9 +1007,12 @@ void GetL0Factors(const string &op_type, const CoreStatus &coreStatus, const int
     l0Status.n_l0 = n0L0cDbOn;
   }
   l0Status.db_cub = kDbOn;
-  OP_LOGD(op_type.c_str(), "tiling m_l0:%d, n_l0:%d, k_l0:%d", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
-  OP_LOGD(op_type.c_str(), "tiling db_l0a:%d, db_l0b:%d, db_l0c:%d", l0Status.db_l0a, l0Status.db_l0b,
-          l0Status.db_l0c);
+  GetL0BatchFactor(coreStatus, l0Status, params);
+  OP_LOGD(op_type.c_str(),
+          "tiling m_l0:%d, n_l0:%d, k_l0:%d, batch_l0:%d",
+          l0Status.m_l0, l0Status.n_l0, l0Status.k_l0, l0Status.batch_l0);
+  OP_LOGD(op_type.c_str(), "tiling db_l0a:%d, db_l0b:%d, db_l0c:%d",
+          l0Status.db_l0a, l0Status.db_l0b, l0Status.db_l0c);
   OP_LOGD(op_type.c_str(), "tiling db_cub:%d", l0Status.db_cub);
 }
 
@@ -1330,8 +1362,7 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const C
   int32_t res_l1_factors[kL1FactorsLen] = {tmpFactors[kIdxZero], tmpFactors[kIdxThree], tmpFactors[kIdxOne],
                                            tmpFactors[kIdxFour], tmpFactors[kIdxTwo], tmpFactors[kIdxFive]};
   l1Status.SetStatus(res_l1_factors);
-  OP_LOGD(op_type.c_str(), "tiling kal1_16:%d, kbl1_16:%d, k_l0:%d", l1Status.kal1_16, l1Status.kbl1_16,
-          l0Status.k_l0);
+  OP_LOGD(op_type.c_str(), "tiling kal1_16:%d, kbl1_16:%d", l1Status.kal1_16, l1Status.kbl1_16);
   OP_LOGD(op_type.c_str(), "tiling m_al1:%d, n_bl1:%d", l1Status.m_al1, l1Status.n_bl1);
   OP_LOGD(op_type.c_str(), "tiling db_al1:%d, db_bl1:%d", l1Status.db_al1, l1Status.db_bl1);
 }
@@ -1817,6 +1848,109 @@ void CheckBankConflict(const BatchmatmulCompileParas& params, UbStatus& ubStatus
   }
 }
 
+int32_t GetAvgUbBatch(UbStatus &ubStatus, bool aub_full_load_flag, bool bub_full_load_flag, bool cub_full_load_flag) {
+  int32_t batch_ub_use_size = 0;
+  int32_t batch_ub_rest_size = kUbFp16Size;
+  if (aub_full_load_flag) {
+    batch_ub_use_size += ubStatus.aub_size;
+  } else {
+    batch_ub_rest_size -= ubStatus.aub_size;
+  }
+  if (bub_full_load_flag) {
+    batch_ub_use_size += ubStatus.bub_size;
+  } else {
+    batch_ub_rest_size -= ubStatus.bub_size;
+  }
+  if (cub_full_load_flag) {
+    batch_ub_use_size += ubStatus.cub_size;
+  } else {
+    batch_ub_rest_size -= ubStatus.cub_size;
+  }
+  return batch_ub_rest_size / batch_ub_use_size;
+}
+
+void GetUbBatchHelper(L0Status &l0Status, UbStatus &ubStatus, const int32_t (&batch_aub_arr)[kCandidateLen],
+                      const int32_t (&batch_bub_arr)[kCandidateLen], const int32_t (&batch_cub_arr)[kCandidateLen]) {
+  // choose the best ub batch tiling from candidates
+  int32_t min_outer_loop = l0Status.batch_l0 * l0Status.batch_l0 * l0Status.batch_l0;
+  for (auto const &batch_aub: batch_aub_arr) {
+    for (auto const &batch_bub: batch_bub_arr) {
+      for (auto const &batch_cub: batch_cub_arr) {
+        bool condition_buffer_size =
+          batch_aub * ubStatus.aub_size + batch_bub * ubStatus.bub_size + batch_cub * ubStatus.cub_size <= kUbFp16Size;
+        int32_t tmp_outer_loop =
+          (l0Status.batch_l0 / batch_aub) * (l0Status.batch_l0 / batch_bub) * (l0Status.batch_l0 / batch_cub);
+        bool condition_outer_loop = tmp_outer_loop < min_outer_loop;
+        if (condition_buffer_size && condition_outer_loop) {
+          ubStatus.batch_aub = batch_aub;
+          ubStatus.batch_bub = batch_bub;
+          ubStatus.batch_cub = batch_cub;
+          min_outer_loop = tmp_outer_loop;
+        }
+      }
+    }
+  }
+  // update aub_size, bub_size, aub_align_bound, bub_align_bound
+  ubStatus.aub_size *= ubStatus.batch_aub;
+  ubStatus.aub_align_bound *= ubStatus.batch_aub;
+  ubStatus.bub_size *= ubStatus.batch_bub;
+  ubStatus.bub_align_bound *= ubStatus.batch_bub;
+  // update l0c_multi_batch
+  if (ubStatus.batch_aub < l0Status.batch_l0) {
+    l0Status.l0c_multi_batch += 4;  // batch_aub_axis_flag * 4
+  }
+  if (ubStatus.batch_bub < l0Status.batch_l0) {
+    l0Status.l0c_multi_batch += 2;  // batch_bub_axis_flag * 2
+  }
+  if (ubStatus.batch_cub < l0Status.batch_l0) {
+    l0Status.l0c_multi_batch += 1;  // batch_cub_axis_flag * 1
+  }
+}
+
+void GetUbBatchFactor(const BatchmatmulParas &params, const CoreStatus &coreStatus,
+                      const L1Status &l1Status, L0Status &l0Status, UbStatus &ubStatus)
+{
+  if (coreStatus.batch == 1 || l0Status.l0c_multi_batch == 0) {
+    return;
+  }
+  const BatchmatmulCompileParas &compile_params = *(params.compile_params);
+  const BatchmatmulRunParas &run_params = *(params.run_params);
+  // when BUB full load, BUB support multi batch
+  bool bub_full_load_flag = (compile_params.nd_flag && run_params.b_have_batch &&
+                             ubStatus.n_bub == coreStatus.n && ubStatus.k_bub == coreStatus.k);
+  // when AUB full load, AUB support multi batch
+  bool aub_full_load_flag = compile_params.nd_flag && ubStatus.m_aub == coreStatus.m && ubStatus.k_aub == coreStatus.k;
+  // when CUB full load, CUB support multi batch
+  bool cub_full_load_flag = ubStatus.n_cub == coreStatus.n && l0Status.m_l0 == coreStatus.m;
+  if (!aub_full_load_flag && !bub_full_load_flag && !cub_full_load_flag) {
+    return;
+  }
+  // 1. calculate max batch_aub, batch_bub, batch_cub
+  int32_t max_batch_aub =
+    min((kUbFp16Size - ubStatus.bub_size - ubStatus.cub_size) / ubStatus.aub_size, l0Status.batch_l0);
+  int32_t max_batch_bub =
+    min((kUbFp16Size - ubStatus.aub_size - ubStatus.cub_size) / ubStatus.bub_size, l0Status.batch_l0);
+  int32_t max_batch_cub =
+    min((kUbFp16Size - ubStatus.aub_size - ubStatus.bub_size) / ubStatus.cub_size, l0Status.batch_l0);
+  // 2. calculate average batch
+  int32_t batch_ub_avg = GetAvgUbBatch(ubStatus, aub_full_load_flag, bub_full_load_flag, cub_full_load_flag);
+  // 3. calculate candidates of batch_aub, batch_bub, batch_cub
+  int32_t batch_aub_arr[kCandidateLen] = {1, 1};
+  int32_t batch_bub_arr[kCandidateLen] = {1, 1};
+  int32_t batch_cub_arr[kCandidateLen] = {1, 1};
+  if (aub_full_load_flag) {
+    GetTwoFactors(batch_aub_arr, batch_ub_avg, l0Status.batch_l0, max_batch_aub);
+  }
+  if (bub_full_load_flag) {
+    GetTwoFactors(batch_bub_arr, batch_ub_avg, l0Status.batch_l0, max_batch_bub);
+  }
+  if (cub_full_load_flag) {
+    GetTwoFactors(batch_cub_arr, batch_ub_avg, l0Status.batch_l0, max_batch_cub);
+  }
+  // 4. choose the best candidate
+  GetUbBatchHelper(l0Status, ubStatus, batch_aub_arr, batch_bub_arr, batch_cub_arr);
+}
+
 void GetCUbFactors(const L0Status& l0Status, const BatchmatmulCompileParas& params, UbStatus& ubStatus) {
   // Initialize n_cub status.
   ubStatus.n_cub = l0Status.n_l0;
@@ -1876,6 +2010,10 @@ void UpdateUbStatus(const UbStatus &src_ub, UbStatus &dst_ub) {
   dst_ub.b_align_value = src_ub.b_align_value;
   dst_ub.aub_align_bound = src_ub.aub_align_bound;
   dst_ub.bub_align_bound = src_ub.bub_align_bound;
+
+  dst_ub.aub_size = src_ub.aub_size;
+  dst_ub.bub_size = src_ub.bub_size;
+  dst_ub.cub_size = src_ub.cub_size;
 }
 
 int32_t GetUbMTE2Cost(const BatchmatmulCompileParas& params, const SingleCoreStatus& singleCoreStatus) {
@@ -2003,14 +2141,15 @@ void UpdateL1FullLoadFlag(const string &op_type, const BatchmatmulRunParas &para
   }
 }
 
-void GetUbFactors(const string &op_type, const BatchmatmulCompileParas &params, const CoreStatus &coreStatus,
+void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const CoreStatus &coreStatus,
                   SingleCoreStatus &singleCoreStatus)
 {
-  const L0Status& l0Status = singleCoreStatus.l0Status;
+  const BatchmatmulCompileParas &compile_params = *(params.compile_params);
+  L0Status& l0Status = singleCoreStatus.l0Status;
   const L1Status& l1Status = singleCoreStatus.l1Status;
   UbStatus& ubStatus = singleCoreStatus.ubStatus;
   // Set reused condition based on L1 attach situation
-  if (params.split_k_flag) {
+  if (compile_params.split_k_flag) {
     // data in cub is in fp32 so the size used is double.
     ubStatus.cub_dtype_multi = kNumTwo;
   }
@@ -2021,30 +2160,34 @@ void GetUbFactors(const string &op_type, const BatchmatmulCompileParas &params, 
   ubStatus.db_cub = kDbOn;
 
   ubStatus.n_cub = l0Status.n_l0;
-  ubStatus.min_dma_size = l0Status.m_l0 * kBlockSize * kBlockSize * (1 + params.fused_double_operand_num) *
+  ubStatus.min_dma_size = l0Status.m_l0 * kBlockSize * kBlockSize * (1 + compile_params.fused_double_operand_num) *
                           ubStatus.db_cub * ubStatus.cub_dtype_multi;
   ubStatus.max_dma_size = l0Status.n_l0 * ubStatus.min_dma_size;
-  if (params.bias_flag) {
+  if (compile_params.bias_flag) {
     ubStatus.min_dma_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
     ubStatus.max_dma_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
   }
 
-  if (params.nd_flag) {
+  if (compile_params.nd_flag) {
     ubStatus.safe_ub_rest_size = kUbFp16Size - ubStatus.min_dma_size;
     // UB fusion in cache tiling mode is not considered.
-    ubStatus.cub_aub_ratio = (params.fused_double_operand_num + 1) / (params.aub_double_num + 1);
-    ubStatus.cub_bub_ratio = (params.fused_double_operand_num + 1) / (params.bub_double_num + 1);
+    ubStatus.cub_aub_ratio = (compile_params.fused_double_operand_num + 1) / (compile_params.aub_double_num + 1);
+    ubStatus.cub_bub_ratio = (compile_params.fused_double_operand_num + 1) / (compile_params.bub_double_num + 1);
     OP_TILING_CHECK(
         (ubStatus.cub_aub_ratio > 1.0f) || (ubStatus.cub_bub_ratio > 1.0f),
         OP_LOGW(op_type.c_str(),
                 "Only valid when fused_double_operand_num is not larger than aub_double_num or bub_double_num"),
         return );
-    GetUbFactorsInND(op_type, coreStatus, params, singleCoreStatus);
+    GetUbFactorsInND(op_type, coreStatus, compile_params, singleCoreStatus);
   } else {
     // Get CUB factors for NZ in Mode
-    GetCUbFactors(l0Status, params, ubStatus);
+    GetCUbFactors(l0Status, compile_params, ubStatus);
   }
-  OP_LOGD(op_type.c_str(), "tiling n_cub:%d, db_cub:%d", l0Status.n_l0, l0Status.db_cub);
+  OP_LOGD(op_type.c_str(), "tiling n_cub:%d, n_bub:%d, k_bub:%d, k_aub:%d, m_aub:%d",
+          ubStatus.n_cub, ubStatus.n_bub, ubStatus.k_bub, ubStatus.k_aub, ubStatus.m_aub);
+  GetUbBatchFactor(params, coreStatus, l1Status, l0Status, ubStatus);
+  OP_LOGD(op_type.c_str(), "tiling batch_cub:%d, batch_aub:%d, batch_bub:%d",
+          ubStatus.batch_cub, ubStatus.batch_aub, ubStatus.batch_bub);
 }
 
 
@@ -2065,10 +2208,10 @@ void GenTiling(const string &op_type, const BatchmatmulCompileParas &compile_par
   BlockDimCalculator blockDimCalculator;
   NonFactorMap(op_type, params, blockDimCalculator);
   int32_t blockValue = GetBlockDim(op_type, params, coreStatus, blockDimCalculator);
-  GetL0Factors(op_type, coreStatus, blockValue, singleCoreStatus.l0Status);
+  GetL0Factors(op_type, coreStatus, blockValue, singleCoreStatus.l0Status, run_params);
   GetL1Factors(op_type, params, coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status);
   UpdateL1FullLoadFlag(op_type, run_params, coreStatus, singleCoreStatus);
-  GetUbFactors(op_type, compile_params, coreStatus, singleCoreStatus);
+  GetUbFactors(op_type, params, coreStatus, singleCoreStatus);
 
   tiling.SetParams(coreStatus, singleCoreStatus.l0Status, singleCoreStatus.l1Status, singleCoreStatus.ubStatus, params);
   tiling.SetAttachFlag();

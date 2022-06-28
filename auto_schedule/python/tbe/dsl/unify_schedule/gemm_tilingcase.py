@@ -688,23 +688,24 @@ class MatmulTiling(CubeTilingOp):
         -------
         list: all selections of flags
         """
-        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-        bl1_attach_flag, min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag, non_factor_k_flag, non_factor_mn_flag) = (
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, aub_multi_flag,
+         bub_multi_flag, non_factor_k_flag, non_factor_mn_flag, l0c_multi_batch) = (
             [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [0, 1],
             [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM],
-            [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM], [0, 1], [0, 1])
+            [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM], [0, 1], [0, 1],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8])
         if nd_flag:
             attach_choices = list(
                 product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
-                        aub_multi_flag, bub_multi_flag, non_factor_k_flag, non_factor_mn_flag))
+                        l0c_multi_batch, aub_multi_flag, bub_multi_flag, non_factor_k_flag, non_factor_mn_flag))
         else:
             attach_choices = list(
                 product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
-                        non_factor_k_flag, non_factor_mn_flag))
+                        l0c_multi_batch, non_factor_k_flag, non_factor_mn_flag))
         return attach_choices
 
     @staticmethod
@@ -742,7 +743,8 @@ class MatmulTiling(CubeTilingOp):
         -------
         bool: True, the template is valid
         """
-        _, _, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, *_, non_factor_k_flag, non_factor_bmn_flag = choice
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
+         l0c_multi_batch, *_, non_factor_k_flag, non_factor_bmn_flag) = choice
 
         # al1 full load
         invalid_choice = (al1_attach_flag == utils.ATTACH_FULL_LOAD) and (
@@ -769,6 +771,13 @@ class MatmulTiling(CubeTilingOp):
 
         # m/n and k cannot both be non-factors
         invalid_choice = invalid_choice or (non_factor_k_flag and non_factor_bmn_flag)
+
+        # only batch_matmul L0C, L1A, L1B full load and double buffer on templates support multi_batch
+        invalid_choice = invalid_choice or (l0c_multi_batch > 0 and
+            (not GEMMComputeParam.batch_a or not GEMMComputeParam.batch_b or
+            al1_pb != utils.DB_ON or bl1_pb != utils.DB_ON or l0c_pb != utils.DB_ON or
+            abkl1_attach != utils.ATTACH_FULL_LOAD or al1_attach_flag != utils.ATTACH_FULL_LOAD or
+            bl1_attach_flag != utils.ATTACH_FULL_LOAD or min_kl1_cmp_kl0 != 0))
 
         return invalid_choice
 
@@ -860,11 +869,10 @@ class MatmulTiling(CubeTilingOp):
                 'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
                 'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
                 'CUB_pbuffer': utils.DB_ON, 'UBG_pbuffer': utils.DB_OFF},
-                'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS,
-                'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
-                'bl0_attach_flag': utils.ATTACH_LESS,
-                'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
-                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1},
+                'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS, 'cl0_attach_flag': utils.ATTACH_LARGE,
+                'al0_attach_flag': utils.ATTACH_LESS, 'bl0_attach_flag': utils.ATTACH_LESS, 'al1_attach_flag': -1,
+                'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS, 'abkl1_attach_flag': -1,
+                'aub_multi_flag': -1, 'bub_multi_flag': -1, 'l0c_multi_batch': -1},
                 "non_factor_bmn_flag": -1, 'non_factor_k_flag': -1
             }
 
@@ -885,10 +893,15 @@ class MatmulTiling(CubeTilingOp):
             cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
             cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
             cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
+            cache_tiling.get('attach_at_flag')['l0c_multi_batch'] = choice[7]
             if nd_flag:
-                cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[7]
-                cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
+                cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[8]
+                cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[9]
                 cache_tiling["schedule_pattern"] = "Aligned"
+                # combine aub_multi_flag and bub_multi_flag
+                choice = list(choice)
+                choice[8] = choice[9] * 2 + choice[8]
+                choice = choice[:9] + choice[10:]
             cache_tiling['non_factor_k_flag'] = choice[-2]
             cache_tiling['non_factor_bmn_flag'] = choice[-1]
             if split_k_flag:

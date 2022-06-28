@@ -85,7 +85,6 @@ const char ALIGNED_FLAG = '2';
 namespace optiling {
 struct OpRunInfoParas {
   BatchmatmulRunParas params;
-  int32_t batch_single_core = 1;
   int32_t m_single_core = 1;
   int32_t n_single_core = 1;
   int32_t batch_dim = 1;
@@ -116,10 +115,17 @@ struct OpRunInfoParas {
   int32_t multi_m_ub_l1 = 1;
   int32_t multi_k_aub_l1 = 1;
   int32_t multi_k_bub_l1 = 1;
+  int32_t multi_batch_aub_l1 = 1;
+  int32_t multi_batch_bub_l1 = 1;
   int32_t a_align_value = 1;
   int32_t b_align_value = 1;
   int32_t aub_align_bound = 0;
   int32_t bub_align_bound = 0;
+  int32_t batch_ub_l0_time = 1;
+  int32_t batch_l1_factor = 1;
+  int32_t batch_aub = 1;
+  int32_t batch_bub = 1;
+  int32_t batch_cub = 1;
 };
 
 // parse function
@@ -356,6 +362,27 @@ string CheckTilingInCostModel(const string &op_type, const map<string, vector<in
   return tiling_id;
 }
 
+void FillRunInfoParasND(const BatchmatmulCompileParas &params, const Tiling &tiling, OpRunInfoParas &runinfoparas) {
+  if (params.nd_flag) {
+    runinfoparas.k_aub = tiling.k_aub;
+    runinfoparas.m_aub = tiling.m_aub;
+    runinfoparas.batch_aub = tiling.batch_aub;
+    runinfoparas.batch_bub = tiling.batch_bub;
+    runinfoparas.multi_m_ub_l1 = runinfoparas.m_al1 * runinfoparas.m_l0 / tiling.m_aub;
+    runinfoparas.multi_k_aub_l1 = runinfoparas.k_al1 / (tiling.k_aub * kBlockSize);
+    runinfoparas.multi_batch_aub_l1 = tiling.batch_l0 / runinfoparas.batch_aub;
+    runinfoparas.a_align_value = tiling.a_align_value;
+    runinfoparas.aub_align_bound = tiling.aub_align_bound;
+    runinfoparas.k_bub = tiling.k_bub;
+    runinfoparas.n_bub = tiling.n_bub;
+    runinfoparas.multi_n_ub_l1 = runinfoparas.n_bl1 * runinfoparas.n_l0 / tiling.n_bub;
+    runinfoparas.multi_k_bub_l1 = runinfoparas.k_bl1 / (tiling.k_bub * kBlockSize);
+    runinfoparas.multi_batch_bub_l1 = tiling.batch_l0 / runinfoparas.batch_bub;
+    runinfoparas.b_align_value = tiling.b_align_value;
+    runinfoparas.bub_align_bound = tiling.bub_align_bound;
+  }
+}
+
 void FillRunInfoParas(const BatchmatmulCompileParas &params, const Tiling &tiling, OpRunInfoParas &runinfoparas) {
   runinfoparas.batch_dim = tiling.batch_dim;
   runinfoparas.n_dim = tiling.n_dim;
@@ -369,30 +396,21 @@ void FillRunInfoParas(const BatchmatmulCompileParas &params, const Tiling &tilin
     runinfoparas.m_al1 = tiling.m_al1;
   } else {
     runinfoparas.k_al1 = runinfoparas.params.k_32 / runinfoparas.k_dim * kBlockSize;
-    runinfoparas.m_al1 = ceil(static_cast<double>(runinfoparas.params.m_32 / runinfoparas.m_dim) / runinfoparas.m_l0);
+    runinfoparas.m_al1 = ceil(static_cast<double>(runinfoparas.params.m_32) / runinfoparas.m_dim / runinfoparas.m_l0);
   }
   if (!tiling.bl1_full_load) {
     runinfoparas.k_bl1 = tiling.kbl1_16 * kBlockSize;
     runinfoparas.n_bl1 = tiling.n_bl1;
   } else {
     runinfoparas.k_bl1 = runinfoparas.params.k_32 / runinfoparas.k_dim * kBlockSize;
-    runinfoparas.n_bl1 = ceil(static_cast<double>(runinfoparas.params.n_32 / runinfoparas.n_dim) / runinfoparas.n_l0);
+    runinfoparas.n_bl1 = ceil(static_cast<double>(runinfoparas.params.n_32) / runinfoparas.n_dim / runinfoparas.n_l0);
   }
   runinfoparas.cub_n1 = tiling.n_cub;
-  if (params.nd_flag) {
-    runinfoparas.k_aub = tiling.k_aub;
-    runinfoparas.m_aub = tiling.m_aub;
-    runinfoparas.multi_m_ub_l1 = runinfoparas.m_al1 * runinfoparas.m_l0 / tiling.m_aub;
-    runinfoparas.multi_k_aub_l1 = runinfoparas.k_al1 / (tiling.k_aub * kBlockSize);
-    runinfoparas.a_align_value = tiling.a_align_value;
-    runinfoparas.aub_align_bound = tiling.aub_align_bound;
-    runinfoparas.k_bub = tiling.k_bub;
-    runinfoparas.n_bub = tiling.n_bub;
-    runinfoparas.multi_n_ub_l1 = runinfoparas.n_bl1 * runinfoparas.n_l0 / tiling.n_bub;
-    runinfoparas.multi_k_bub_l1 = runinfoparas.k_bl1 / (tiling.k_bub * kBlockSize);
-    runinfoparas.b_align_value = tiling.b_align_value;
-    runinfoparas.bub_align_bound = tiling.bub_align_bound;
-  }
+  runinfoparas.batch_ub_l0_time = tiling.batch_l0 / tiling.batch_cub;
+  runinfoparas.batch_l1_factor = ceil(static_cast<double>(runinfoparas.params.batch_32) / runinfoparas.batch_dim /
+                                      tiling.batch_l0);
+  runinfoparas.batch_cub = tiling.batch_cub;
+  FillRunInfoParasND(params, tiling, runinfoparas);
   runinfoparas.kal1_16 = runinfoparas.k_al1 / kBlockSize;
   runinfoparas.kbl1_16 = runinfoparas.k_bl1 / kBlockSize;
   runinfoparas.kal0_factor = runinfoparas.kal1_16 / runinfoparas.k_l0;
@@ -403,12 +421,33 @@ void FillRunInfoParas(const BatchmatmulCompileParas &params, const Tiling &tilin
                            ? (runinfoparas.kal1_16 / runinfoparas.kbl1_16)
                            : (runinfoparas.kbl1_16 / runinfoparas.kal1_16);
   runinfoparas.n_ub_l0_time = runinfoparas.n_l0 / runinfoparas.cub_n1;
-  runinfoparas.batch_single_core = ceil(static_cast<double>(runinfoparas.params.batch_32) / runinfoparas.batch_dim);
   runinfoparas.m_single_core = ceil(static_cast<double>(runinfoparas.params.m_32) /
                                     (runinfoparas.m_dim * runinfoparas.m_al1 * runinfoparas.m_l0));
   runinfoparas.n_single_core =
       ceil(static_cast<double>(runinfoparas.params.n_32) /
            (runinfoparas.n_dim * runinfoparas.n_bl1 * runinfoparas.n_ub_l0_time * runinfoparas.cub_n1));
+}
+
+void SetRunInfoForCacheTilingFormatND(const BatchmatmulCompileParas &params, const OpRunInfoParas &runinfoparas,
+                                      utils::OpRunInfo &run_info) {
+  if (params.nd_flag) {
+    run_info.AddTilingData(runinfoparas.m_aub);
+    run_info.AddTilingData(runinfoparas.n_bub);
+    run_info.AddTilingData(runinfoparas.k_aub);
+    run_info.AddTilingData(runinfoparas.k_bub);
+    run_info.AddTilingData(runinfoparas.batch_aub);
+    run_info.AddTilingData(runinfoparas.batch_bub);
+    run_info.AddTilingData(runinfoparas.multi_n_ub_l1);
+    run_info.AddTilingData(runinfoparas.multi_m_ub_l1);
+    run_info.AddTilingData(runinfoparas.multi_k_aub_l1);
+    run_info.AddTilingData(runinfoparas.multi_k_bub_l1);
+    run_info.AddTilingData(runinfoparas.multi_batch_aub_l1);
+    run_info.AddTilingData(runinfoparas.multi_batch_bub_l1);
+    run_info.AddTilingData(runinfoparas.a_align_value);
+    run_info.AddTilingData(runinfoparas.b_align_value);
+    run_info.AddTilingData(runinfoparas.aub_align_bound);
+    run_info.AddTilingData(runinfoparas.bub_align_bound);
+  }
 }
 
 void SetRunInfoForCacheTiling(const BatchmatmulCompileParas &params, const OpRunInfoParas &runinfoparas,
@@ -425,7 +464,6 @@ void SetRunInfoForCacheTiling(const BatchmatmulCompileParas &params, const OpRun
     run_info.AddTilingData(runinfoparas.params.batch_32);
   }
   run_info.AddTilingData(runinfoparas.params.k_32);
-  run_info.AddTilingData(runinfoparas.batch_single_core);
   run_info.AddTilingData(runinfoparas.m_single_core);
   run_info.AddTilingData(runinfoparas.n_single_core);
   run_info.AddTilingData(runinfoparas.batch_dim);
@@ -445,20 +483,10 @@ void SetRunInfoForCacheTiling(const BatchmatmulCompileParas &params, const OpRun
   run_info.AddTilingData(runinfoparas.kal1_16);
   run_info.AddTilingData(runinfoparas.kbl1_16);
   run_info.AddTilingData(runinfoparas.kl1_times);
-  if (params.nd_flag) {
-    run_info.AddTilingData(runinfoparas.m_aub);
-    run_info.AddTilingData(runinfoparas.n_bub);
-    run_info.AddTilingData(runinfoparas.k_aub);
-    run_info.AddTilingData(runinfoparas.k_bub);
-    run_info.AddTilingData(runinfoparas.multi_n_ub_l1);
-    run_info.AddTilingData(runinfoparas.multi_m_ub_l1);
-    run_info.AddTilingData(runinfoparas.multi_k_aub_l1);
-    run_info.AddTilingData(runinfoparas.multi_k_bub_l1);
-    run_info.AddTilingData(runinfoparas.a_align_value);
-    run_info.AddTilingData(runinfoparas.b_align_value);
-    run_info.AddTilingData(runinfoparas.aub_align_bound);
-    run_info.AddTilingData(runinfoparas.bub_align_bound);
-  }
+  run_info.AddTilingData(runinfoparas.batch_l1_factor);
+  run_info.AddTilingData(runinfoparas.batch_ub_l0_time);
+  run_info.AddTilingData(runinfoparas.batch_cub);
+  SetRunInfoForCacheTilingFormatND(params, runinfoparas, run_info);
 }
 
 void SetRunInfo(const BatchmatmulCompileParas &compile_params, string &tiling_id,
@@ -893,7 +921,6 @@ void SetRunInfoForCacheTiling(const optiling::BatchmatmulCompileParas &compile_p
   }
 
   tiling_data->Append(runinfoparas.params.k_32);
-  tiling_data->Append(runinfoparas.batch_single_core);
   tiling_data->Append(runinfoparas.m_single_core);
   tiling_data->Append(runinfoparas.n_single_core);
   tiling_data->Append(runinfoparas.batch_dim);
