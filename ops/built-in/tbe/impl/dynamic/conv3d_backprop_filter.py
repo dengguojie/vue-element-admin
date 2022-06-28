@@ -342,25 +342,6 @@ def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_forma
     return ret
 
 
-def _check_pads_value(fmap_shape, pads):
-    _check_dimensions(pads, "pads", _PADDING_SHAPE_DIM)
-
-    if -1 not in fmap_shape[1:4]:
-        for value in pads:
-            if value < 0:
-                error_manager_cube.raise_err_specific_user(
-                    "conv3d_backprop_filter",
-                    "Each value of pads has to be greater than 0 "
-                    "when D/H/W demision is not dynamic.")
-    else:
-        for value in pads:
-            if value < -1:
-                error_manager_cube.raise_err_specific_user(
-                    "conv3d_backprop_filter",
-                    "Each value of pads must be -1 "
-                    "when D/H/W demision is dynamic.")
-
-
 def _get_pads_attr(strides, pads, dilations, fmap_shape, w_ndhwc):
     def _convert_shape_to_list(shape):
         for i, var in enumerate(shape):
@@ -813,8 +794,6 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
     fmap_range = shape_dict.get("x_range")
     dilations = shape_dict.get("dilations_ndhwc")
     strides = shape_dict.get("strides_ndhwc")
-
-    _check_pads_value(x_ndhwc, pads)
 
     # Do range Correction
     dedy_range, fmap_range = _range_correction(fmap_range, dedw_ndhwc, pads, strides,
