@@ -29,7 +29,6 @@ cdim_dynamic_ut_testcases = [
 ]
 
 
-
 cache_tiling_ut_testcases = [
     # case 0
     ["Ascend910A",

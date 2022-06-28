@@ -690,7 +690,7 @@ def calc_conv2d(outs, option=None):
             cnt = kernel_id + 1
         # <<< end: get kernel id
     for tgt in tgt_list:
-        tiling_op = Conv2dTiling(tiling_dict.copy(), ConvParam.dynamic_para, res_out)
+        tiling_op = Conv2dTiling(tiling_dict.copy(), ConvParam.dynamic_para, res_out, tgt)
         seletor = TilingSelection(tiling_op, cnt)
         tiling_cases += seletor.calc_tiling(tgt, var_names)
         cnt = next(seletor.seed_cnt)
@@ -732,7 +732,7 @@ def calc_conv2d(outs, option=None):
 
 
 class Conv2dTiling(CubeTilingOp):
-    def __init__(self, tiling_info, dynamic_para, res):
+    def __init__(self, tiling_info, dynamic_para, res, tgt=None):
         super().__init__(tiling_info, None, dynamic_para.get("var_map"))
         self.a_info = tiling_info['a_shape']
         self.a_5hd_info = tiling_info['placeholder_fmap_5hd_shape']
@@ -751,6 +751,7 @@ class Conv2dTiling(CubeTilingOp):
             self._quant_fusion_muti_groups_in_cl0 = True
         self._tiling_type = TILING_REPO_MODE
         self.cache_tiling_flag = tiling_info.get("cache_tiling_flag")
+        self.max_m = self._get_max_m(tgt)
 
     def get_cache_tiling(self):
         """
@@ -799,6 +800,16 @@ class Conv2dTiling(CubeTilingOp):
                 (len(tiling["tiling"]["AL1_shape"]) > 2 and tiling["tiling"]["AL1_shape"][2] > 1):
                 log.info("dynamic not support innerbatch")
                 continue
+            m_dim = tiling["tiling"]["block_dim"][2]
+            if self.max_m is not None and m_dim > 1:
+                _, mc, m0, *_ = tiling["tiling"].get("CL0_matrix")
+                if tiling["tiling"].get("AL1_shape"):
+                    multi_m_al1 = tiling["tiling"]["AL1_shape"][1]
+                    max_m_al1 = multi_m_al1*mc*m0
+                else:
+                    max_m_al1 = mc*m0
+                if utils.align(self.max_m, m0) < max_m_al1*m_dim:
+                    continue
             t_h, t_w = self.get_output_h(tiling["A_shape"][2]), \
                 self.get_output_w(tiling["A_shape"][3])
             if t_h == tiling["C_shape"][2] and t_w == tiling["C_shape"][3]:
@@ -1190,3 +1201,29 @@ class Conv2dTiling(CubeTilingOp):
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left
         return [pad_left, pad_right, pad_up, pad_down]
+
+    def _get_max_m(self, tgt):
+        """
+        get max M base on input_range
+        """
+        if tgt is None or ConvParam.binary_mode or ("fmap_h" not in tgt.keys() and "fmap_w" not in tgt.keys()):
+            return None
+
+        if "fmap_h" in tgt.keys():
+            hin_max = tgt.get("fmap_h")[-1]
+            hin_max = None if hin_max == -1 else hin_max
+            ho_max = self.get_output_h(hin_max)
+        else:
+            ho_max = self.tiling_info.get("c_shape")[2]
+
+        if "fmap_w" in tgt.keys():
+            win_max = tgt.get("fmap_w")[-1]
+            win_max = None if win_max == -1 else win_max
+            wo_max = self.get_output_w(win_max)
+        else:
+            wo_max = self.tiling_info.get("c_shape")[3]
+
+        if ho_max is None or wo_max is None:
+            return None
+        else:
+            return ho_max*wo_max
