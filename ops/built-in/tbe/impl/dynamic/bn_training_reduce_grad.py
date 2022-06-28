@@ -255,7 +255,7 @@ def bn_training_reduce_grad_compute(grads,
     kernel_name: str
         kernel name, default value is "bn_training_reduce_grad".
     reduce_shape: list
-        reduce shape of input shape
+        reduce shape of input shape.
 
     Returns
     -------
