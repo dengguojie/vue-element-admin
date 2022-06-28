@@ -25,11 +25,8 @@ POOLING_STRIDE = 2
 POOLING_WINDOW = 3
 POOLING_2_2_WINDOW = 2
 
-def maxpool_tensor_buffertile(sch, fmap_row_major, al1, al0, cl0, cub, res,
-                              m_dim, stride_h, kernel_h, out_width,
-                              fusion_mode, pooling_tiling_param, pooling_padding, conv_param,
-                              singlecore_out2al1_loopm_axis, al12al0_loopm_axis, cl0_mo,
-                              ):
+
+def maxpool_tensor_buffertile(sch, tensors, axes, params):
     """
     Buffertile for maxpool fusion.
     """
@@ -207,8 +204,7 @@ def maxpool_tensor_buffertile(sch, fmap_row_major, al1, al0, cl0, cub, res,
             fcol_before_offset_bound_first \
             -= pooling_padding[0] * out_width
         extend_fmap_col_before_first = \
-            int(out_width * ((pooling_al1_factor - 1)
-                          * POOLING_STRIDE + POOLING_2_2_WINDOW))
+            int(out_width * ((pooling_al1_factor - 1) * POOLING_STRIDE + POOLING_2_2_WINDOW))
         if out_width % 16 != 0:
             extend_fmap_col_before_first += (align_16_nums * out_width)
             fcol_before_offset_bound_first -= align_16_nums * out_width
@@ -248,11 +244,18 @@ def maxpool_tensor_buffertile(sch, fmap_row_major, al1, al0, cl0, cub, res,
             (None, None),
         )
 
+    fmap_row_major, al1, al0, cl0, cub, res = tensors
+    singlecore_out2al1_loopm_axis, al12al0_loopm_axis, cl0_mo = axes
+    conv_param, m_dim, fusion_mode, pooling_tiling_param, pooling_padding = params
+
+    stride_h = conv_param.stride_h
+    kernel_h = conv_param.filter_h
+    out_width = conv_param.w_out
     align_16_nums = ceil_div(16, out_width)
-    block_tile = pooling_tiling_param["block_tile"]
-    pooling_al1_factor = pooling_tiling_param["pooling_al1_factor"]
-    pooling_al1_nparts = pooling_tiling_param["pooling_al1_nparts"]
-    pooling_mc_cub = pooling_tiling_param["pooling_mc_cub"]
+    block_tile = pooling_tiling_param.get("block_tile")
+    pooling_al1_factor = pooling_tiling_param.get("pooling_al1_factor")
+    pooling_al1_nparts = pooling_tiling_param.get("pooling_al1_nparts")
+    pooling_mc_cub = pooling_tiling_param.get("pooling_mc_cub")
 
     if fusion_mode == "3*3":
         cub_buffer_tile()

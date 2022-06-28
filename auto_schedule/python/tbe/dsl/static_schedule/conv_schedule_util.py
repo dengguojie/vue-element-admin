@@ -17,8 +17,8 @@
 """
 Tool functions of conv2d schedule.
 """
+from collections import deque
 import tbe
-from tbe import tvm
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 
 
@@ -132,3 +132,26 @@ def delete_op(del_op, body_ops, sch, dtype=None):
                 sch[j["dst_buffer"]].compute_inline()
                 del body_ops[i]
                 break
+
+
+def search_op(res, op_tag):
+    """
+    Search certain op according to op_tag.
+    """
+    tensor_queue = deque()
+    tensor_queue.append(res)
+    while tensor_queue:
+        src_tensor = tensor_queue.popleft()
+        tag = src_tensor.op.tag
+
+        if tag in ("convolution_c_col", "convolution_c_col_bias"):
+            break
+
+        if op_tag == tag:
+            return src_tensor
+
+        if src_tensor.op.input_tensors:
+            append_list = list(i for i in src_tensor.op.input_tensors)
+            append_list.reverse()
+            tensor_queue.extend(append_list)
+    return None

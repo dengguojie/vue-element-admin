@@ -92,10 +92,12 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
       .AddOpDesc(kPatternFixpipe, {OP_PATTERN_FIXPIPE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternMaxpool, {kOpTypeMaxPool, OP_PATTERN_POOL2D}, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({kPatternAipp, kPatternConv})
       .SetOutputs(kPatternAipp, {kPatternConv})
       .SetOutputs(kPatternConv, {kPatternFixpipe}, TBE_OUTPUT_BRANCH_SINGLE, true)
-      .SetOutputs(kPatternFixpipe, {kPatternMaxpool});
+      .SetOutputs(kPatternFixpipe, {kPatternMaxpool})
+      .SetOutputs(kPatternMaxpool, {kPatternQuant});
   patterns.push_back(pattern2);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
 

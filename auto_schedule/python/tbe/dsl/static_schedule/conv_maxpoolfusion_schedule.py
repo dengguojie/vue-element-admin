@@ -21,6 +21,7 @@ from tbe import tvm
 from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.static_schedule.conv_schedule_util import ceil_div
+from tbe.dsl.static_schedule.conv_schedule_util import search_op
 from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule_util import maxpool_tensor_buffertile
 from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule_util import POOLING_STRIDE, POOLING_WINDOW
 from te.platform import cce_params
@@ -31,7 +32,7 @@ class MaxpoolFusion:
     Class of conv2d + maxpool fusion.
     """
     def __init__(self, res, maxpool_param):
-        self.flag = "pooling2d_max" in res.op.tag
+        self.flag = self.config_maxpool_fusion_flag(res)
         self.pooling_tensor_map = maxpool_param.tensor_map
         self.window_size = self.pooling_tensor_map.get(
             "window_size") if self.flag else 0
@@ -42,12 +43,24 @@ class MaxpoolFusion:
         self.fusion_mode = "{}*{}".format(
             self.window_size, self.window_size) if self.flag else None
         self.pooling_tiling_param = {}
+        self.maxpool_quant_flag = self.flag and res.op.tag == "quant"
 
         if self.flag and self.window_size not in (2, 3):
             err_man.raise_err_specific(
                 "conv2d",
                 "only support 2*2 or 3*3 window size when conv2d maxpool fusion."
             )
+
+    @staticmethod
+    def config_maxpool_fusion_flag(res):
+        """
+        Check whether it is conv + maxpool fusion.
+        """
+        if "pooling2d_max" in res.op.tag:
+            return True
+        if search_op(res, "pooling2d_max_max_pool_res") is not None:
+            return True
+        return False
 
     def config_window_stride(self):
         """
@@ -64,6 +77,10 @@ class MaxpoolFusion:
         pooling_coeff = 0
         if self.flag:
             pooling_coeff += 2
+        if self.maxpool_quant_flag:
+            # AscendQuant op ub space calculation, 1 for fp16 reform_by_vadds or reform_by_vmuls,
+            # and 0.5 for int8 cast_i8_ub.
+            pooling_coeff += 1.5
 
         return pooling_coeff
 
@@ -84,10 +101,11 @@ class MaxpoolFusion:
 
             if not tiling["AL1_shape"]:  # AL1 full load
                 tiling["AL1_shape"] = [
-                ((kernel_h - 1) * dilate_h + 1) * ((kernel_w - 1) * dilate_w + 1) * block_k0,
-                self.pooling_out_height,
-                1,
-                1]
+                    ((kernel_h - 1) * dilate_h + 1) * ((kernel_w - 1) * dilate_w + 1) * block_k0,
+                    self.pooling_out_height,
+                    1,
+                    1
+                    ]
 
             batch_dim, n_dim, m_dim, group_dim = tiling["block_dim"]
             _, multi_m_al1, _, _ = tiling["AL1_shape"]
@@ -152,6 +170,9 @@ class MaxpoolFusion:
         return cl0_ma_factor
 
     def align_al1_pooling(self, sch, al1):
+        """
+        Buffer align al1 when pooling fusion.
+        """
         if self.flag:
             sch[al1].buffer_align(
                 (1, 1),
@@ -159,6 +180,63 @@ class MaxpoolFusion:
                 (1, 1),
                 (al1.shape[3], al1.shape[3]),
                 (1, 1)
+                )
+
+    def special_process(self, sch, res, cub, conv_param, tensor_param, tiling_param,
+                        emit_insn_dict, attach_axis_dict):
+        """
+        Special process for conv + maxpool fusion.
+        """
+        if self.flag:
+            out_width = conv_param.w_out
+
+            fmap_row_major = tensor_param.get("fmap_row_major")
+            al1 = tensor_param.get("al1")
+            al0 = tensor_param.get("al0")
+            bl0 = tensor_param.get("bl0")
+            cl0 = tensor_param.get("cl0")
+
+            pingpong_buffer = tiling_param.get("manual_pingpong_buffer")
+            _, _, m_dim, _ = tiling_param.get("block_dim")
+            blocks = tiling_param.get("blocks")
+
+            bindcore_axis = emit_insn_dict.get("bindcore_axis")
+
+            cub_at_res_axis = attach_axis_dict.get("cub_at_res_axis")
+            singlecore_out2al1_loopm_axis = attach_axis_dict.get("singlecore_out2al1_loopm_axis")
+            al12al0_loopm_axis = attach_axis_dict.get("al12al0_loopm_axis")
+            batchbindonly_pragma_axis = attach_axis_dict.get("batchbindonly_pragma_axis")
+            res_m_dim_axis = attach_axis_dict.get("res_m_dim_axis")
+            cl0_mo = attach_axis_dict.get("cl0_mo")
+
+            self.set_build_cfg()
+
+            self.process_maxpool_bl0(
+                sch,
+                tensors=(bl0, res),
+                axes=(batchbindonly_pragma_axis, res_m_dim_axis, al12al0_loopm_axis,
+                      singlecore_out2al1_loopm_axis, cl0_mo),
+                params=(blocks)
+                )
+
+            self.process_maxpool_ub_tensors(
+                sch,
+                tensors=(res),
+                axes=(cub_at_res_axis, bindcore_axis, singlecore_out2al1_loopm_axis, al12al0_loopm_axis),
+                params=(out_width, m_dim, pingpong_buffer)
+                )
+
+            self.process_maxpool_res(
+                sch,
+                res,
+                cub_at_res_axis
+                )
+
+            maxpool_tensor_buffertile(
+                sch,
+                (fmap_row_major, al1, al0, cl0, cub, res),
+                (singlecore_out2al1_loopm_axis, al12al0_loopm_axis, cl0_mo),
+                (conv_param, m_dim, self.fusion_mode, self.pooling_tiling_param, self.pooling_padding)
                 )
 
     def set_build_cfg(self):
@@ -176,26 +254,25 @@ class MaxpoolFusion:
         if self.flag:
             for lop in body_ops:
                 if lop["op"] in (
-                    "pooling2d_max_input_5d_data",
-                    "pooling2d_max_row_temp_max",
-                    "pooling2d_max_row_max",
-                    "pooling2d_max_col_temp_max",
-                    "pooling2d_max_col_max",
-                    "pooling2d_max_trans_vn_node",
-                    "pooling2d_max_trans_line_data",
-                    "pooling2d_max_ub_reshape"
+                        "pooling2d_max_input_5d_data",
+                        "pooling2d_max_row_temp_max",
+                        "pooling2d_max_row_max",
+                        "pooling2d_max_col_temp_max",
+                        "pooling2d_max_col_max",
+                        "pooling2d_max_trans_vn_node",
+                        "pooling2d_max_trans_line_data",
+                        "pooling2d_max_ub_reshape"
                     ):
                     sch[lop["dst_buffer"]].set_scope(cce_params.scope_ubuf)
 
-    def process_maxpool_bl0(self, sch, bl0, res, blocks,
-                            batchbindonly_pragma_axis,
-                            res_m_dim_axis,
-                            al12al0_loopm_axis,
-                            singlecore_out2al1_loopm_axis,
-                            cl0_mo):
+    def process_maxpool_bl0(self, sch, tensors, axes, params):
         """
         Allocate_at for bl0.
         """
+        bl0, res = tensors
+        batchbindonly_pragma_axis, res_m_dim_axis, al12al0_loopm_axis, singlecore_out2al1_loopm_axis, cl0_mo = axes
+        blocks = params
+
         if self.flag:
             if blocks != 1:
                 sch[bl0].allocate_at(sch[res],
@@ -215,9 +292,7 @@ class MaxpoolFusion:
                                      ])
             sch[bl0].pragma(bl0.op.axis[0], "filter_reshape", 1)
 
-    def process_maxpool_ub_tensors(self, sch, res,
-                                   cub_slice_axis, bindcore_axis, singlecore_out2al1_loopm_axis, al12al0_loopm_axis,
-                                   out_width, m_dim, pingpong_buffer):
+    def process_maxpool_ub_tensors(self, sch, tensors, axes, params):
         """
         Special process for ub tensors in maxpool fusion compute.
         """
@@ -256,6 +331,10 @@ class MaxpoolFusion:
             sch[pad_vn].emit_insn(pad_vn.op.axis[0], 'phony_insn')
 
         if self.flag:
+            res = tensors
+            cub_slice_axis, bindcore_axis, singlecore_out2al1_loopm_axis, al12al0_loopm_axis = axes
+            out_width, m_dim, pingpong_buffer = params
+
             input_5d_data = self.pooling_tensor_map["input_5d_data"]
             trans_line_data = self.pooling_tensor_map["trans_line_data"]
             trans_vn_node = self.pooling_tensor_map["trans_vn_node"]
@@ -272,6 +351,7 @@ class MaxpoolFusion:
 
             if self.fusion_mode == "3*3":
                 sch[input_5d_data].reused_by(trans_line_data)
+                sch[input_5d_data].mem_unique()
                 sch[trans_vn_node].reused_by(ub_reshape)
 
                 sch[trans_line_data].compute_at(sch[res], cub_slice_axis)
@@ -283,7 +363,6 @@ class MaxpoolFusion:
                 if pingpong_buffer["CUB_pbuffer"] == 2:
                     sch[trans_vn_node].double_buffer()
 
-                # singlecore_out2al1_loopm_axis 即为 m_outer_outer_outer_inner
                 offset_bound = (block_tile * ceil_div(pooling_al1_nparts, m_dim) * pooling_al1_factor \
                        + singlecore_out2al1_loopm_axis * pooling_al1_factor + al12al0_loopm_axis + 1) * POOLING_STRIDE \
                        - self.pooling_padding[0]
@@ -350,19 +429,14 @@ class MaxpoolFusion:
 
             self.pooling_tiling_param.update({"block_tile": block_tile})
 
-    def maxpool_buffertile(self, sch, fmap_row_major, al1, al0, cl0, cub, res,
-                           m_dim, stride_h, kernel_h, out_width, conv_param,
-                           singlecore_out2al1_loopm_axis, al12al0_loopm_axis, cl0_mo):
+    def process_maxpool_res(self, sch, res, cub_at_res_axis):
         """
-        Buffertile for maxpool fusion.
+        Process maxpool_res when conv2d + maxpool + quant fusion enabled.
         """
-        if self.flag:
-            maxpool_tensor_buffertile(
-                sch, fmap_row_major, al1, al0, cl0, cub, res,
-                m_dim, stride_h, kernel_h, out_width,
-                self.fusion_mode, self.pooling_tiling_param, self.pooling_padding, conv_param,
-                singlecore_out2al1_loopm_axis, al12al0_loopm_axis, cl0_mo,
-                )
+        if self.maxpool_quant_flag:
+            res_pool = self.pooling_tensor_map.get("max_pool_res")
+            sch[res_pool].compute_at(sch[res], cub_at_res_axis)
+            sch[res_pool].compute_inline()
 
     def maxpool_al1_preload(self, sch, pingpong_buffer, al1):
         """
