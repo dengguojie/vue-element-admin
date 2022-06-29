@@ -81,10 +81,14 @@ def cdist_compute(input_x1, input_x2, output_y, axis, p, kernel_name="cdist"):
         diff = tbe.vsub(x1_data, x2_data)
         diff = tbe.vabs(diff)
 
-        if math.isclose(p, float("inf")):
-            res = tbe.reduce_max(diff, axis=axis["value"], priority_flag=True)
+        if math.isclose(p, -1): # Note: here -1 means inf!
+            res = tbe.reduce_max(diff, axis=axis["value"])
         elif math.isclose(p, 1):
             res = tbe.reduce_sum(diff, axis=axis["value"])
+        elif math.isclose(p, 2):
+            pow_x = tbe.vmul(diff, diff)
+            sum_pow = tbe.reduce_sum(pow_x, axis=axis["value"])
+            res = tbe.vsqrt(sum_pow, impl_mode="high_precision")
         else:
             p_scalar = tvm.const(p, dtype='float32')
             p_r_scalar = tvm.const(1 / p, dtype='float32')
@@ -153,7 +157,7 @@ def cdist(input_x1, input_x2, output_y, p=2.0, kernel_name="cdist"):
                                % (x1_shape[pos], x2_shape[pos], pos))
         pos -= 1
 
-    if p < 0:
+    if p < 0 and p != -1:
         raise RuntimeError("Cdist only supports non-negative p values.")
 
     input_x1["rel_pos_to_reduce"] = "before"
