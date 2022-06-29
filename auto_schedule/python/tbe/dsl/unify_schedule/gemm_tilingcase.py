@@ -770,7 +770,7 @@ class MatmulTiling(CubeTilingOp):
                                              or bl1_attach_flag != utils.ATTACH_LESS))
 
         # m/n and k cannot both be non-factors
-        invalid_choice = invalid_choice or (non_factor_k_flag and non_factor_bmn_flag)
+        invalid_choice = invalid_choice or not non_factor_bmn_flag
 
         # only batch_matmul L0C, L1A, L1B full load and double buffer on templates support multi_batch
         invalid_choice = invalid_choice or (l0c_multi_batch > 0 and
@@ -907,7 +907,6 @@ class MatmulTiling(CubeTilingOp):
             if split_k_flag:
                 cache_tiling["block_dim"] = [UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM]
             cache_tiling_all[self._get_tiling_id(choice)] = [[], cache_tiling, []]
-
         return cache_tiling_all
 
     def get_tiling_range(self, tiling_in, shape_info):

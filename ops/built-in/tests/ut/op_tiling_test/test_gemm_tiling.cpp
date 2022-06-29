@@ -149,14 +149,14 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula01) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
-"repo_seeds": {}, "repo_range": {}, "attrs":{"transpose_a": false, "transpose_b": false}, "block_dim": {"11200000": 32}, "correct_range_flag":null,
-"_vars":{"11200000":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
+"repo_seeds": {}, "repo_range": {}, "attrs":{"transpose_a": false, "transpose_b": false}, "block_dim": {"11200001": 32}, "correct_range_flag":null,
+"_vars":{"11200001":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
 "n_dim", "m_dim", "m_al1", "n_bl1", "cub_n1", "m_l0", "k_l0", "n_ub_l0_time", "kal0_factor", "kbl0_factor",
 "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]},
-"_custom_vars":{"11200000":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
+"_custom_vars":{"11200001":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
 "n_dim", "m_dim", "m_al1", "n_bl1", "cub_n1", "m_l0", "k_l0", "n_ub_l0_time", "kal0_factor", "kbl0_factor",
-"kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"11200000":[]},
-"_attr_vars":{"11200000":[]}})";
+"kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"11200001":[]},
+"_attr_vars":{"11200001":[]}})";
 
   ge::Graph graph("batchmatmul_op_tiling_test_1");
 
@@ -191,7 +191,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula01) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
-  EXPECT_EQ(runInfo.GetTilingKey(), 20000000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 20000001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 1 1 1 32 1 1 1 1 1 1 1 1 1 1 32 1 1 1 1 1 32 32 1 1 1 1 ");
 }
 
@@ -245,7 +245,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula02) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 15);
-  EXPECT_EQ(runInfo.GetTilingKey(), 20001000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 20001001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48 15 375 1 48 1 1 1 15 1 1 3 5 5 5 12 1 4 4 1 1 48 48 1 1 1 1 ");
 }
 
@@ -299,7 +299,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula03) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 7);
-  EXPECT_EQ(runInfo.GetTilingKey(), 80221000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 80221001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 1 63 1 128 1 1 1 7 1 1 1 1 9 1 4 1 8 8 4 4 32 32 1 1 1 1 ");
 }
 
@@ -311,14 +311,14 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula04) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
-"repo_seeds": {}, "repo_range": {}, "attrs":{"transpose_a": false, "transpose_b": false}, "block_dim": {"22102200": 32}, "correct_range_flag":null,
-"_vars":{"22102200":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
+"repo_seeds": {}, "repo_range": {}, "attrs":{"transpose_a": false, "transpose_b": false}, "block_dim": {"22102201": 32}, "correct_range_flag":null,
+"_vars":{"22102201":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
 "n_dim", "m_dim", "m_al1", "n_bl1", "cub_n1", "m_l0", "k_l0", "n_ub_l0_time", "kal0_factor", "kbl0_factor",
 "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]},
-"_custom_vars":{"22102200":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
+"_custom_vars":{"22102201":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
 "n_dim", "m_dim", "m_al1", "n_bl1", "cub_n1", "m_l0", "k_l0", "n_ub_l0_time", "kal0_factor", "kbl0_factor",
-"kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"22102200":[]},
-"_attr_vars":{"22102200":[]}})";
+"kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"22102201":[]},
+"_attr_vars":{"22102201":[]}})";
 
   ge::Graph graph("batchmatmul_op_tiling_test_4");
 
@@ -353,7 +353,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula04) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(runInfo.GetTilingKey(), 70220000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 70220001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "196 256 64 1 196 2 1 1 4 8 1 1 1 16 16 4 1 1 1 49 49 4 4 1 1 1 1 ");
 }
 
@@ -407,7 +407,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula05) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 25);
-  EXPECT_EQ(runInfo.GetTilingKey(), 62211000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 62211001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "64 1000 32 1 64 5 2 1 1 25 1 1 1 16 8 4 1 4 16 4 1 16 64 4 1 1 1 ");
 }
 
@@ -419,14 +419,14 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula06) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb",
-"repo_seeds": {}, "repo_range": {}, "attrs":{"transpose_a": false, "transpose_b": false}, "block_dim": {"11200000": 32}, "correct_range_flag":null,
-"_vars":{"11200000":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
+"repo_seeds": {}, "repo_range": {}, "attrs":{"transpose_a": false, "transpose_b": false}, "block_dim": {"11200001": 32}, "correct_range_flag":null,
+"_vars":{"11200001":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
 "n_dim", "m_dim", "m_al1", "n_bl1", "cub_n1", "m_l0", "k_l0", "n_ub_l0_time", "kal0_factor", "kbl0_factor",
 "kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]},
-"_custom_vars":{"11200000":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
+"_custom_vars":{"11200001":["m", "k", "n", "batch_single_core", "m_single_core", "n_single_core", "batch_dim",
 "n_dim", "m_dim", "m_al1", "n_bl1", "cub_n1", "m_l0", "k_l0", "n_ub_l0_time", "kal0_factor", "kbl0_factor",
-"kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"11200000":[]},
-"_attr_vars":{"11200000":[]}})";
+"kal1_factor", "kbl1_factor", "kal1_16", "kbl1_16", "kl1_times", "batch"]}, "_normal_vars":{"11200001":[]},
+"_attr_vars":{"11200001":[]}})";
 
   ge::Graph graph("batchmatmul_op_tiling_test_6");
 
@@ -459,7 +459,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula06) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(runInfo.GetTilingKey(), 20000000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 20000001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 8 4 1 8 1 1 1 4 8 1 1 1 1 1 8 1 1 1 1 1 8 8 1 1 1 1 ");
 }
 
@@ -649,7 +649,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 800001300);
+  EXPECT_EQ(runInfo.GetTilingKey(), 800001301);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "64 1 2 4352 4 1 1 32 1 1 1 1 1 2 1 4 1 1 1 1 1 4 4 1 17 1 8 1 2 4 4 8 8 1 1 1 1 1 1 80 1 10240 16384 ");
 }
 
@@ -698,7 +698,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_02) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 800001300);
+  EXPECT_EQ(runInfo.GetTilingKey(), 800001301);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "64 1 2 4352 4 1 1 32 1 1 1 1 1 2 1 4 1 1 1 1 1 4 4 1 17 1 8 1 2 4 4 8 8 1 1 1 1 1 1 1 80 8192 20480 ");
 }
 
@@ -747,7 +747,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_03) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 622010000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 622010001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "512 512 32 1 32 8 1 1 4 8 1 1 1 4 8 8 2 2 4 2 1 16 32 2 1 1 1 4 1 16 32 1 1 8 2 1 1 1 1 272 528 17408 8448 ");
 }
 
@@ -796,7 +796,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_04) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 802210000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 802210001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "40960 32 64 1 2560 1 1 1 8 4 1 1 1 2 8 8 4 2 2 160 160 16 16 1 1 1 1 8 8 8 4 1 1 1 1 2 4 1 1 144 144 18432 9216 ");
 }
 
@@ -845,7 +845,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_05) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 522010100);
+  EXPECT_EQ(runInfo.GetTilingKey(), 522010101);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2048 736 32 1 128 4 1 1 4 8 1 1 1 1 23 2 8 2 64 32 1 4 128 32 1 1 1 23 8 4 2 1 1 1 1 1 64 1 1 80 144 29440 4608 ");
 }
 
@@ -894,7 +894,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_split_k) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 1622000100);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1622000101);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "11776 32 32 736 2 1 1 4 2 4 1 1 4 8 8 2 1 23 23 1 8 184 23 1 1 1 8 8 8 4 1 1 1 1 1 46 1 1 144 144 18432 9216 ");
 }
 
@@ -941,7 +941,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_ub_reused) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(runInfo.GetTilingKey(), 200010000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 200010001);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {
@@ -952,10 +952,10 @@ TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {
 
   const std::string compileInfo =
       R"([{"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn",
-      "repo_seeds": {}, "repo_range": {}, "cost_range": {}, "block_dim": {"11200000": 6},
+      "repo_seeds": {}, "repo_range": {}, "cost_range": {}, "block_dim": {"11200001": 6},
       "attrs":{"transpose_a": false, "transpose_b": true}},{"_pattern": "Matmul", "format_a": "FRACTAL_NZ",
       "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {},
-      "block_dim": {"11200000": 6},
+      "block_dim": {"11200001": 6},
       "attrs":{"transpose_a": false, "transpose_b": true}}])";
 
   ge::Graph graph("matmul_op_tiling_test_7");
@@ -994,6 +994,6 @@ TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 6);
-  EXPECT_EQ(runInfo.GetTilingKey(), 20000000);
+  EXPECT_EQ(runInfo.GetTilingKey(), 20000001);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 1 6 16 1 1 1 6 1 1 1 1 1 1 16 1 1 1 1 1 16 16 1 1 1 1 ");
 }

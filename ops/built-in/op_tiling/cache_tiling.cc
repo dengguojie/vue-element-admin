@@ -356,7 +356,8 @@ void Tiling::GetTilingId(const BatchmatmulParas &params)
     tilingIDLongLong = tilingIDLongLong * kDecimal + aub_multi_flag + ((bub_multi_flag ? 1 : 0) << 1);
   }
   tilingIDLongLong = tilingIDLongLong * kDecimal + run_params.non_factor_k;
-  tilingIDLongLong = tilingIDLongLong * kDecimal + run_params.non_factor_bmn;
+  // non_factor_bmn equals 1 in default
+  tilingIDLongLong = tilingIDLongLong * kDecimal + 1;
   this->tiling_id = std::to_string(tilingIDLongLong);
 }
 

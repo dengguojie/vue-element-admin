@@ -126,7 +126,6 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     else:
         bias = None
 
-
     if error_mode == "x1_orishape":
         x1["ori_shape"] = [-1, -1]
     elif error_mode == "x2_orishape":
