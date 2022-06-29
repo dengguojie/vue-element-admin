@@ -20,3 +20,4 @@ from . import relu6
 from . import relu6grad
 from . import relu6_d
 from . import pooling
+from . import prelu

@@ -3,9 +3,6 @@
 """
 golden data generation function for prelu
 """
-from re import M
-from tkinter import W
-from turtle import shape
 import numpy as np
 
 # Third-Party Packages
