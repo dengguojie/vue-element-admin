@@ -1531,6 +1531,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
     ComputeUbTensorSize(commParas, x_ub_size, ids_ub_size);
     if (e_size == 1) {
       x_ub_size = x_ub_size / BYTE_FULL_MASK * BYTE_FULL_MASK;
+      ids_ub_size = x_ub_size;
     }
     OP_LOGD(op_type, " : ub_tensor_size=%d,%d", ids_ub_size, x_ub_size);
     int32_t ub_tensor_ele_num = x_ub_size / input_ele_byte;
