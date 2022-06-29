@@ -74,7 +74,7 @@ case5 = {"params": [
     "support_expect": True}
 
 # 'pylint: disable=unused-argument
-def test_import_lib(test_arg):
+def test_import_libs(test_arg):
     import sys
     import importlib
     importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
@@ -85,6 +85,6 @@ ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
-ut_case.add_cust_test_func(test_func=test_import_lib)
+ut_case.add_cust_test_func(test_func=test_import_libs)
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
