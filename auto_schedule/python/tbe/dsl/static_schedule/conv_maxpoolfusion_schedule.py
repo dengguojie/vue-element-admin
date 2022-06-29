@@ -77,10 +77,6 @@ class MaxpoolFusion:
         pooling_coeff = 0
         if self.flag:
             pooling_coeff += 2
-        if self.maxpool_quant_flag:
-            # AscendQuant op ub space calculation, 1 for fp16 reform_by_vadds or reform_by_vmuls,
-            # and 0.5 for int8 cast_i8_ub.
-            pooling_coeff += 1.5
 
         return pooling_coeff
 
