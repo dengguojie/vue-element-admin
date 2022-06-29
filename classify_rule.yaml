@@ -730,8 +730,6 @@ cube-tiling:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_depthwise_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_depthwise_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/split_conv2d_concat_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/bnupdate_reluv2_bnreduce_fusion_pass.cc

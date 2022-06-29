@@ -6004,6 +6004,72 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   return true;
 }
 
+static bool SetDfmConv2dOutShapeRange(const AscendString& op_name,
+                                      const vector<int32_t>& attr_params,
+                                      vector<int64_t>& y_shape,
+                                      ge::TensorDesc& x_tensor,
+                                      ge::TensorDesc& y_tensor) {
+  auto x_shape = x_tensor.GetShape().GetDims();
+  auto x_format = x_tensor.GetFormat();
+
+  size_t idx = 0;
+  int32_t strh = attr_params[idx++];
+  int32_t strw = attr_params[idx++];
+  int32_t dilh = attr_params[idx++];
+  int32_t dilw = attr_params[idx++];
+  int32_t padh = attr_params[idx++];
+  int32_t padw = attr_params[idx++];
+  int32_t kn = attr_params[idx++];
+  int32_t kh = attr_params[idx++];
+  int32_t kw = attr_params[idx++];
+
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = kHDimNHWCIdx;
+    idx_w = kWDimNHWCIdx;
+    idx_c = kCDimNHWCIdx;
+  } else if (x_format == FORMAT_NCHW) {
+    idx_c = kCDimNCHWIdx;
+    idx_h = kHDimNCHWIdx;
+    idx_w = kWDimNCHWIdx;
+  }
+
+  std::string pad_str = "VALID";
+  OP_LOGD(op_name.GetString(), "dynamic shape set range");
+  std::vector<std::pair<int64_t, int64_t>> fm_range;
+  x_tensor.GetShapeRange(fm_range);
+  if (x_shape[idx_h] == -1) {
+    y_shape[idx_h] = -1;
+  }
+  if (x_shape[idx_w] == -1) {
+    y_shape[idx_w] = -1;
+  }
+  if (!fm_range.empty()) {
+    for (size_t i = 0; i < fm_range.size(); i++) {
+      OP_LOGD(op_name.GetString(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
+    }
+
+    std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
+    out_range[idx_c] = std::make_pair((int64_t)kn, (int64_t)kn);
+    out_range[idx_h] = std::make_pair(y_shape[idx_h], y_shape[idx_h]);
+    out_range[idx_w] = std::make_pair(y_shape[idx_w], y_shape[idx_w]);
+    if (x_shape[idx_h] == -1) {
+      GetConv2dOutShapeRange(pad_str, idx_h, strh, dilh, padh, kh, fm_range, out_range);
+    }
+    if (x_shape[idx_w] == -1) {
+      GetConv2dOutShapeRange(pad_str, idx_w, strw, dilw, padw, kw, fm_range, out_range);
+    }
+    y_tensor.SetShapeRange(out_range);
+    for (size_t i = 0; i < out_range.size(); i++) {
+      OP_LOGD(op_name.GetString(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
+    }
+  }
+  return true;
+}
+
+
 /*!
   * @brief Infer output shape and dtype, dtype is same to first input tensor
   *        Output format is set by ge parser process already
@@ -6021,7 +6087,9 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
 
   auto x_shape = x_tensor.GetShape().GetDims();
   auto w_shape = w_tensor.GetShape().GetDims();
-  if (x_shape.size() != 4 || w_shape.size() != 4) {
+
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  if ((!unknown_rank && x_shape.size() != 4) || w_shape.size() != 4) {
     return GRAPH_FAILED;
   }
   auto x_format = x_tensor.GetFormat();
@@ -6040,15 +6108,19 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
 
   // set fm
   if (x_format == FORMAT_NCHW) {
-    in = x_shape[0];
-    ic = x_shape[1];
-    ih = x_shape[2];
-    iw = x_shape[3];
+    if (!unknown_rank) {
+      in = x_shape[0];
+      ic = x_shape[1];
+      ih = x_shape[2];
+      iw = x_shape[3];
+    }
   } else if (x_format == FORMAT_NHWC) {
-    in = x_shape[0];
-    ic = x_shape[3];
-    ih = x_shape[1];
-    iw = x_shape[2];
+    if (!unknown_rank) {
+      in = x_shape[0];
+      ic = x_shape[3];
+      ih = x_shape[1];
+      iw = x_shape[2];
+    }
   } else {
     OP_LOGE(op_name.GetString(), "input x format should be NCHW or NHWC. actual is: %s",
             TypeUtils::FormatToSerialString(x_format).c_str());
@@ -6120,6 +6192,11 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
     op.SetAttr(attr_data_format, data_format_NHWC);
   }
 
+  bool is_dynamic = false;
+  if (IsUnKnownShape(x_shape) && !unknown_rank) {
+    is_dynamic = true;
+  }
+
   // set strides, dilations, pad
   int32_t strh = 0;
   int32_t strw = 0;
@@ -6137,6 +6214,13 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
   int64_t iw_pad = (iw + padl + padr - dilw * (kw - 1) - 1);
   int64_t oh = ih_pad / strh + 1;
   int64_t ow = iw_pad / strw + 1;
+
+  if (unknown_rank) {
+    oh = -1;
+    ow = -1;
+    in = -1;
+  }
+
   if ((ih > 0) && (kh > 0) && (iw > 0) && (kw > 0)) {
     if ((ih_pad < 0) || (iw_pad < 0)) {
       OP_LOGE(op_name.GetString(), "image size after padding should be greater than or equal to filter size.");
@@ -6150,7 +6234,7 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
 
   int64_t groups = 1;
   op.GetAttr("groups", groups);
-  if (ic != kc * groups) {
+  if (!unknown_rank && (ic != kc * groups)) {
     OP_LOGE(op_name.GetString(),
             "x channel should be equal to filter channel*groups. "
             "x format is: %s, filter format is: %s, "
@@ -6171,7 +6255,7 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  if (kn % groups != 0) {
+  if (!unknown_rank && (kn % groups != 0)) {
     OP_LOGE(op_name.GetString(), "out_channels should be divisible by groups.");
     map<string, string> err_map;
     err_map["op_name"] = op_name.GetString();
@@ -6226,7 +6310,7 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  if (exp_shape != offset_shape) {
+  if (!is_dynamic && !unknown_rank && exp_shape != offset_shape) {
     OP_LOGE(op_name.GetString(), "input offsets shape should be [%d,%d,%d,%d].",
       (int)exp_shape[0], (int)exp_shape[1], (int)exp_shape[2], (int)exp_shape[3]);
     map<string, string> err_map;
@@ -6265,6 +6349,18 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
+
+  if (is_dynamic) {
+    OP_LOGD(op_name.GetString(), "start accurate build.");
+    vector<int32_t> attr_params = {strh, strw, dilh, dilw,
+                                   padt + padb, padl + padr,
+                                   kn, kh, kw};
+    if (!SetDfmConv2dOutShapeRange(op_name, attr_params, y_shape, x_tensor, y_tensor)) {
+      return GRAPH_FAILED;
+    }
+  }
+
+
   y_tensor.SetShape(Shape(y_shape));
   auto x_dtype = x_tensor.GetDataType();
   if (x_dtype == ge::DT_INT8) {

@@ -570,3 +570,42 @@ TEST_F(DeformableConv2DProtoTest, deformableconv2dBaseOffsetTest1) {
     auto status = conv2d.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+// dynamic input H,W = -1
+TEST_F(DeformableConv2DProtoTest, deformableconv2dDynamicTest1) {
+    // input:nhwc, filter:hwcn, offsets:nhwc, output:nchw
+    std::cout << "deformableconv2dDynamicTest1" << std::endl;
+    ge::op::DeformableConv2D conv2d;
+    std::vector<std::pair<int64_t, int64_t>> range_x = {{1, 64}, {4, 4}, {17, 60}, {10, 128}};
+    conv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, -1, -1, 16},ge::FORMAT_NHWC, range_x));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,1,64,64}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4,1,64,64},ge::FORMAT_NCHW));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic input H = -1
+TEST_F(DeformableConv2DProtoTest, deformableconv2dDynamicTest2) {
+    // input:nhwc, filter:hwcn, offsets:nhwc, output:nchw
+    std::cout << "deformableconv2dDynamicTest2" << std::endl;
+    ge::op::DeformableConv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, -1, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, -1, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateInputDesc("offsets", create_desc_with_ori({4, 64, 64, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 3},ge::FORMAT_NHWC));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,1,64,64}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4,1,64,64},ge::FORMAT_NCHW));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

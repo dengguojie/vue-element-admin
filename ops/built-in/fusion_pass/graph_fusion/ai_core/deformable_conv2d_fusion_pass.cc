@@ -163,15 +163,22 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
     return false;
   }
-  if (PatternFusionUtil::IsUnknownShape(out_shape[out_pos_h]) ||
-      PatternFusionUtil::IsUnknownShape(out_shape[out_pos_w]) ||
-      PatternFusionUtil::IsUnknownShape(ksize[0]) ||
+  if (PatternFusionUtil::IsUnknownShape(ksize[0]) ||
       PatternFusionUtil::IsUnknownShape(ksize[1])) {
-    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape.");
+    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "filter cannot be applied for unknown shape.");
     return false;
   }
-  y_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
-  y_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
+  if (PatternFusionUtil::IsUnknownShape(out_shape[out_pos_h])) {
+    y_shape[pos_h] = -1;
+  } else {
+    y_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
+  }
+  if (PatternFusionUtil::IsUnknownShape(out_shape[out_pos_w])) {
+    y_shape[pos_w] = -1;
+  } else {
+    y_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
+  }
+
   x_tensor.SetShape(ge::GeShape(y_shape));
   x_tensor.SetOriginShape(ge::GeShape(y_shape));
   Status add_res = offset_desc->AddOutputDesc("y", x_tensor);
@@ -240,8 +247,17 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
   if (out_pos_h == std::string::npos || out_pos_w == std::string::npos) {
     return false;
   }
-  x_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
-  x_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
+
+  if (PatternFusionUtil::IsUnknownShape(out_shape[out_pos_h])) {
+    x_shape[pos_h] = -1;
+  } else {
+    x_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
+  }
+  if (PatternFusionUtil::IsUnknownShape(out_shape[out_pos_w])) {
+    x_shape[pos_w] = -1;
+  } else {
+    x_shape[pos_w] = out_shape[out_pos_w] * ksize[1];
+  }
   x_tensor.SetShape(ge::GeShape(x_shape));
   x_tensor.SetOriginShape(ge::GeShape(x_shape));
   std::vector<std::string> conv_in_name = {"x", "filter", "bias", "offset_w"};
