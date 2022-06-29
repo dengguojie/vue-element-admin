@@ -85,6 +85,6 @@ def dsl_cpu_test_fp16():
 if __name__ == "__main__":
     test_conv2d_fuzzbuild_generalization()
     test_conv2d_fuzzbuild_generalization_01()
-    dsl_cpu_test_int8()
-    dsl_cpu_test_fp16()
+    #dsl_cpu_test_int8()
+    #dsl_cpu_test_fp16()
     exit(0)

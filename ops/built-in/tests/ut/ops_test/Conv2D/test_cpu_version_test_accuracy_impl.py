@@ -135,4 +135,4 @@ def test_conv2d_cpu_version_accuracy(test_arg):
         dsl_cpu_test_fp16(case, index)
 
 print("adding Conv2D cpu version test accuracy case")
-ut_case.add_cust_test_func(test_func=test_conv2d_cpu_version_accuracy)
+# ut_case.add_cust_test_func(test_func=test_conv2d_cpu_version_accuracy)

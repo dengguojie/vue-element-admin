@@ -98,7 +98,7 @@ def gen_conv2d_range(inputs, weights, strides, pads, dilations):
 
     kh_dilate = dilh*(kh - 1) + 1
     kw_dilate = dilw*(kw - 1) + 1
-    grade_n = [0, 1, 3, 7, 15, 31, ((1 << 31) - 1)]
+    grade_n = [0, 1, 3, 7, 15, ((1 << 31) - 1)]
     grade_h = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
     grade_w = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
     grade_map = {idx_n : grade_n, idx_h : grade_h, idx_w : grade_w}
