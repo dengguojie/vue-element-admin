@@ -66,7 +66,8 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
     if km_shape != kn_shape:
         error_manager_vector.raise_err_inputs_shape_not_equal("gemm", "km_shape", "kn_shape",
                                                                  km_shape, kn_shape, kn_shape)
-    if list(bias_shape) != [m_shape, n_shape]:
+    bias_shape = [bias_shape[1], bias_shape[0]] if bias.get("ori_format") == "FRACTAL_NZ" else bias_shape
+    if list(bias_shape)[:2] != [m_shape, n_shape]:
         error_manager_vector.raise_err_input_value_invalid("gemm", "c shape", str([m_shape, n_shape]), str(bias_shape))
 
 
