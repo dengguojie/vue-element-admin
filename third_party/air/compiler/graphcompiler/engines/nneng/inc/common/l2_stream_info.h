@@ -30,15 +30,16 @@ class StreamL2Info {
   StreamL2Info(const StreamL2Info &) = delete;
   StreamL2Info &operator=(const StreamL2Info &) = delete;
   static StreamL2Info& Instance();
-  Status GetStreamL2Info(const rtStream_t &stream_id, std::string node_name, TaskL2Info_t *&l2_data,
-                         std::string batch_label);
-  Status SetStreamL2Info(const rtStream_t &stream_id, TaskL2InfoFEMap_t &l2_alloc_res, std::string batch_label);
+
+  Status GetStreamL2Info(const rtStream_t &stream_id, const std::string &node_name, TaskL2Info *&l2_data,
+                         const std::string &batch_label);
+  Status SetStreamL2Info(const rtStream_t &stream_id, TaskL2InfoMap &l2_alloc_res, const std::string &batch_label);
 
  private:
   StreamL2Info();
   ~StreamL2Info();
   mutable std::mutex stream_l2_mutex_;
-  std::map<std::string, TaskL2InfoFEMap_t> stream_l2_map_;
+  std::map<std::string, TaskL2InfoMap> stream_l2_map_;
 };
 }  // namespace fe
 

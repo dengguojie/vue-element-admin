@@ -22,30 +22,25 @@
 #include "runtime/kernel.h"
 
 namespace fe {
-typedef struct tagL2Data {
+struct L2Data {
   uint32_t l2Index;
   uint64_t l2Addr;
   uint64_t l2PageNum;
-} L2Data_t;
+};
 
-typedef std::map<uint64_t, L2Data_t> L2DataMap_t;    // the key is ddr addr
-typedef std::pair<uint64_t, L2Data_t> L2DataPair_t;  // the key is ddr addr
+using L2DataMap = std::map<uint64_t, L2Data>;   // the key is ddr addr
+using L2DataPair = std::pair<uint64_t, L2Data>;  // the key is ddr addr
 
-typedef struct TagTaskL2Info {
+struct TaskL2Info {
   std::string nodeName;
   rtL2Ctrl_t l2ctrl;
 
-  L2DataMap_t input;
-  L2DataMap_t output;
+  L2DataMap input;
+  L2DataMap output;
   uint32_t isUsed;
-} TaskL2Info_t;
+};
 
-using TaskL2InfoMap_t = std::map<uint32_t, TaskL2Info_t>;    // the key is nodeId
-using TaskL2InfoPair_t = std::pair<uint32_t, TaskL2Info_t>;  // the key is nodeId
-
-using TaskL2InfoFEMap_t = std::map<std::string, TaskL2Info_t>;    // the key is nodeName
-using TaskL2InfoFEPair_t = std::pair<std::string, TaskL2Info_t>;  // the key is nodeName
-
+using TaskL2InfoMap = std::map<std::string, TaskL2Info>;    // the key is nodeName
+using TaskL2InfoPair = std::pair<std::string, TaskL2Info>;  // the key is nodeName
 }  // namespace fe
-
 #endif  // FUSION_ENGINE_INC_COMMON_L2FUSION_STRUCT_H_

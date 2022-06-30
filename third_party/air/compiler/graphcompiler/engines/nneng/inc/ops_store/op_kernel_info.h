@@ -1,5 +1,5 @@
 /**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 #include <utility>
 #include <vector>
 #include "graph_optimizer/graph_optimize_register_error_codes.h"
+#include "common/aicore_util_constants.h"
 #include "common/aicore_util_types.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "graph/op_desc.h"
-#include "graph/types.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/type_utils.h"
 
@@ -34,7 +34,8 @@ using AttrTypePair = std::pair<std::string, ge::GeAttrValue::ValueType>;
 const std::string kReshapeTypeForbidden = "FORBIDDEN";
 const std::string kReshapeTypeDefault = "DEFAULT";
 
-
+class InputOrOutputInfo;
+using InputOrOutputInfoPtr = std::shared_ptr<InputOrOutputInfo>;
 class InputOrOutputInfo {
   /* Set OpsKernelInfoConstructor as a friend class of InputOrOutputInfo to
    * conveniently set the private attributes of InputOrOutputInfo.
@@ -106,6 +107,8 @@ class InputOrOutputInfo {
   std::vector<ge::DataType> supported_unknown_shape_dtypes_;
 };
 
+class AttrInfo;
+using AttrInfoPtr = std::shared_ptr<AttrInfo>;
 class AttrInfo {
   /* Set OpsKernelInfoConstructor as a friend class of AttrInfo to
    * conveniently set the private attributes of AttrInfo.
@@ -168,9 +171,6 @@ struct OpStoreInfo {
 
 class OpKernelInfo;
 using OpKernelInfoPtr = std::shared_ptr<OpKernelInfo>;
-using InputOrOutputInfoPtr = std::shared_ptr<InputOrOutputInfo>;
-using AttrInfoPtr = std::shared_ptr<AttrInfo>;
-
 class OpKernelInfo {
   /* We separate the definition and initialization in two classes because
    * there exists more than one method to initialize op kernel.
@@ -220,12 +220,13 @@ class OpKernelInfo {
   void SetImplType(const OpImplType impl_type);
   bool GetSupportDynamicShape() const;
   void SetSupportDynamicShape(const bool is_support_dynamic_shape);
-  bool GetSupportDynamicRank() const;
+  std::string GetSupportDynamicRank() const;
   bool GetNeedCheckSupportFlag() const;
   bool GetFlagDynamicCompileStatic() const;
   std::string GetRangeLimitValue() const;
   SlicePattern GetOpSlicePattern() const;
-  CoreType GetCoreType() const;
+  std::string GetCoreType() const;
+  const std::vector<std::string>& GetReferTensorNameVec() const;
 
  private:
   bool init_flag_;
@@ -245,11 +246,12 @@ class OpKernelInfo {
   bool output_mem_continues_ = false;
   std::string op_imp_path_;
   bool is_support_dynamic_shape_ = false;
-  bool is_support_dynamic_rank_ = false;
+  std::string dynamic_rank_support_ = kStrFalse;
   SlicePattern slice_pattern_;
   bool dynamic_compile_static_ = false;
-  CoreType core_type_ = CoreType::VECTOR_CORE;
+  std::string core_type_ = "AiCore";
   std::string is_limited_range_;
+  std::vector<std::string> refer_tensor_name_vec_;
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_OPS_STORE_OP_KERNEL_INFO_H_

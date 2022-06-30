@@ -22,6 +22,9 @@
 namespace fe {
 
 /* args list for error message */
+const std::string PARAMETER0          = "parameter0";
+const std::string PARAMETER1          = "parameter1";
+const std::string PARAMETER2          = "parameter2";
 const std::string EM_VALUE          = "value";
 const std::string EM_OPTION         = "option";
 const std::string EM_AICORE_NUM     = "ai_core_num";
@@ -54,41 +57,11 @@ const std::string EM_INPUT_PARAM_EMPTY = "E10004";
 
 const std::string EM_INNER_ERROR = "E29999";
 
-/* Failed to precompile op[%s, optype[%s]], when processing the graph_id[%s],
+/* Failed to precompile op[%s, optype[%s]].
  * please check the precompiling error message.
  * opname,optype,graph_id
  * */
-const std::string EM_PRECOMPLIE_FAILED = "E20001";
-
-/* Failed to precompile op[%s, optype[%s]], when processing the graph_id[%s]
- * in thread[%s] task[%s], please check the precompiling error message.
- * opname,optype,graph_id,thread_id,task_id
- * */
-const std::string EM_PRECOMPLIE_TASK_FAILED = "E20002";
-
-/* Failed to compile op[%s, optype[%s]], when processing the graph_id[%s],
- * please check the compiling error message.
- * opname,optype,graph_id
- * */
-const std::string EM_COMPLIE_FAILED = "E20003";
-
-/* Failed to compile op[%s, optype[%s]], when processing the graph_id[%s] in thread[%s] task[%s],
- * please check the compiling error message.
- * opname,optype,graph_id,thread_id,task_id
- * */
-const std::string EM_COMPLIE_TASK_FAILED = "E20004";
-
-/* Failed to generate task, when generating the task of op[%s,
- * optype[%s]] of graph_id[%s], please check the error message.
- * opname,optype,graph_id
- * */
-const std::string EM_GENERATE_TASK_FAILED = "E20005";
-
-/*
- * Fail to calculate tensor size of op[%s, %s].
- * opname,optype,errmsg
- * */
-const std::string EM_CAL_TENSOR_SIZE_FAILED = "E20006";
+const std::string EM_COMPLIE_FAILED = "E20001";
 
 /*
  * Run graph fusion pass failed, pass name:[%s], pass type:[%s].
@@ -96,37 +69,15 @@ const std::string EM_CAL_TENSOR_SIZE_FAILED = "E20006";
  * */
 const std::string EM_RUN_PASS_FAILED = "E20007";
 
-/* Run pass failed, pass name:[%s], errmsg[%s]
- * pass_name,errmsg
- * */
-const std::string EM_RUN_GRAPH_FUSION_PASS_FAILED = "E20008";
-
-/* Failed to do topological sorting after graph fusion,graph is cyclic, graph name:%s, pass name:%s.
- * graph_name,pass_name
- * */
-const std::string EM_GRAPH_CYCLE_ATER_FUSION = "E20009";
-
-/* The value[%s] of the input option[%s] is not supported，please check again.
- * value,option
+/* Value [%s] for the [%s] argument is invalid. Reason %s.
+ * parameter0,parameter1,parameter2
  * */
 const std::string EM_INPUT_OPTION_INVALID = "E20101";
-
-/* The value[%s] of the input option[ge.engine_type] is not supported，
- * only AiCore and VectorCore are supported.
- * engine_type
- * */
-const std::string EM_ENGINE_TYPE_INVALID = "E20102";
 
 /* The value[%s] of the input option[ge.aicore_num] is out of range (0, %s].
  * value,ai_core_num
  * */
 const std::string EM_AICORENUM_OUT_OF_RANGE = "E20103";
-
-
-/* Path[%s]'s realpath is empty, errmsg[%s]
- * path,errmsg
- * */
-const std::string EM_GET_REALPATH_FAILED = "W21000";
 
 /* Open file[%s] failed. %s
  * file,errmsg
@@ -137,11 +88,6 @@ const std::string EM_OPEN_FILE_FAILED = "E21001";
  * file,errmsg
  * */
 const std::string EM_READ_FILE_FAILED = "E21002";
-
-/* Node[%s] file path is empty, errmsg[%s]
- * op_name,errmsg
- * */
-const std::string EM_GET_FILEPATH_FAILED = "E21003";
 
 const std::string EM_FAILED_TO_TOPO_SORTING = "E2100C";
 

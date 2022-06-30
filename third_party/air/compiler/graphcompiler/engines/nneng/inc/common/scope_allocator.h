@@ -17,29 +17,35 @@
 #ifndef FUSION_ENGINE_INC_COMMON_SCOPE_ALLOCATOR_H_
 #define FUSION_ENGINE_INC_COMMON_SCOPE_ALLOCATOR_H_
 
+#include <atomic>
 #include "graph/op_desc.h"
 
 namespace fe {
 class ScopeAllocator {
  public:
-  ScopeAllocator();
-  virtual ~ScopeAllocator();
+  static ScopeAllocator& Instance();
+
   ScopeAllocator(const ScopeAllocator& in) = delete;
   ScopeAllocator& operator = (const ScopeAllocator& in) = delete;
 
- public:
-  void Init();
-  int64_t GetCurrentScopeId();
-  int64_t AllocateScopeId(void);
-  bool HasScopeAttr(ge::ConstOpDescPtr opdef) const;
-  bool GetScopeAttr(ge::ConstOpDescPtr opdef, int64_t &scope_id_param) const;
-  bool SetScopeAttr(ge::OpDescPtr opdef, int64_t scope_id_param) const;
-  bool HasL1ScopeAttr(const ge::OpDescPtr &op_desc) const;
-  bool GetL1ScopeAttr(const ge::OpDescPtr &op_desc, int64_t &scope_id_param) const;
-  bool SetL1ScopeAttr(ge::OpDescPtr &op_desc, const int64_t &scope_id_param) const;
-  bool ResetScopeId(int64_t scope_id_param);
+  int64_t AllocateScopeId();
+  int64_t GetCurrentScopeId() const;
+  int64_t AllocateNegScopeId();
+  int64_t GetCurrentNegScopeId() const;
+
+  static bool HasScopeAttr(ge::ConstOpDescPtr op_desc);
+  static bool GetScopeAttr(ge::ConstOpDescPtr op_desc, int64_t &scope_id);
+  static bool SetScopeAttr(const ge::OpDescPtr op_desc, const int64_t &scope_id);
+  static bool HasL1ScopeAttr(ge::ConstOpDescPtr op_desc);
+  static bool GetL1ScopeAttr(ge::ConstOpDescPtr op_desc, int64_t &scope_id);
+  static bool SetL1ScopeAttr(const ge::OpDescPtr op_desc, const int64_t &scope_id);
+
  private:
-    int64_t scope_id;
+  ScopeAllocator();
+  virtual ~ScopeAllocator();
+
+  std::atomic<int64_t> scope_id_;
+  std::atomic<int64_t> neg_scope_id_;
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_SCOPE_ALLOCATOR_H_

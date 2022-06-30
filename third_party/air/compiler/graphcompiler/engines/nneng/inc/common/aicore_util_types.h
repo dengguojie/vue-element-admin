@@ -106,7 +106,7 @@ enum AICoreMode {
   FFTS_MODE_RESERVED
 };
 
-enum OpImplType {
+enum OpImplType : int64_t {
   EN_IMPL_CUSTOM_CONSTANT_CCE = 0,   // custom constant op
   EN_IMPL_CUSTOM_TIK,                // custom tik op
   EN_IMPL_CUSTOM_TBE,                // custom tbe op
@@ -119,7 +119,10 @@ enum OpImplType {
   EN_IMPL_VECTOR_CORE_HW_TBE,        // Huawei built-in tbe op
   EN_IMPL_VECTOR_CORE_CUSTOM_TBE,    // custom tbe op
   EN_IMPL_NON_PERSISTENT_CUSTOM_TBE, // custom tbe op
-  EN_RESERVED                        // reserved value
+  EN_IMPL_HW_DSA,                    // Huawei built-in DSA op
+  EN_RESERVED,                       // reserved value
+  // sub type used for CUSTOM: sub_type = main_type | (priority << 32)
+  EN_SUBTYPE_RESERVED = 0xFFFFFFFFFF // reserved value
 };
 
 enum AOEOption {
@@ -139,20 +142,22 @@ struct FEOpsStoreInfo {
   bool need_compile;
   FEOpsStoreInfo() : priority(0), fe_ops_store_name(), op_impl_type(EN_RESERVED), cfg_file_path(), op_impl_file_path(),
                      need_pre_compile(false), need_compile(false) {}
-  FEOpsStoreInfo(int32_t priority_value, std::string ops_store_name_value,  OpImplType op_impl_type_value,
-                 std::string cfg_file_path_value, std::string op_impl_file_path_value,
+  FEOpsStoreInfo(int32_t priority_value, const std::string &ops_store_name_value, OpImplType op_impl_type_value,
+                 const std::string &cfg_file_path_value, const std::string &op_impl_file_path_value,
                  bool need_pre_compile_value, bool need_compile_value)
                  : priority(priority_value), fe_ops_store_name(ops_store_name_value), op_impl_type(op_impl_type_value),
                    cfg_file_path(cfg_file_path_value), op_impl_file_path(op_impl_file_path_value),
                    need_pre_compile(need_pre_compile_value), need_compile(need_compile_value) {}
-  FEOpsStoreInfo(int32_t priority_value, std::string ops_store_name_value,  OpImplType op_impl_type_value,
-                 std::string cfg_file_path_value, std::string op_impl_file_path_value)
+  FEOpsStoreInfo(int32_t priority_value, const std::string &ops_store_name_value, OpImplType op_impl_type_value,
+                 const std::string &cfg_file_path_value, const std::string &op_impl_file_path_value)
                  : priority(priority_value), fe_ops_store_name(ops_store_name_value), op_impl_type(op_impl_type_value),
                    cfg_file_path(cfg_file_path_value), op_impl_file_path(op_impl_file_path_value),
                    need_pre_compile(false), need_compile(false) {}
 };
 
-enum class ISAArchVersion { EN_ISA_ARCH_V100 = 0, EN_ISA_ARCH_V200, EN_ISA_ARCH_V210, EN_ISA_ARCH_V300 };
+enum class ISAArchVersion { EN_ISA_ARCH_V100 = 0, EN_ISA_ARCH_V200, EN_ISA_ARCH_V220, EN_ISA_ARCH_V300 };
+
+enum class CubeVecState { CUBE_VEC_UNKNOWN = 0, CUBE_VEC_DECOUPLE, CUBE_VEC_MIX };
 
 // Don't change the order, only add new mode in the end.
 enum class AppendArgsMode { NO_ARGS = 0, L2_BUFFER_ARGS = 1, L2_CACHE_ARGS = 999};
@@ -172,15 +177,6 @@ enum OpPattern {
   OP_PATTERN_BROADCAST,
   OP_PATTERN_REDUCE
 };
-
-enum class CoreType {
-  AICORE = 0,
-  VECTOR_CORE = 1,
-  MIX = 2,
-  DYNAMIC = 3,
-  CORE_TYPE_BOTTOM = 4
-};
-extern const std::map<std::string, CoreType> kCoreTypeMap;
 
 enum OpParamType { REQUIRED = 0, OPTIONAL, DYNAMIC, RESERVED };
 
@@ -211,7 +207,20 @@ using CmoAttr = struct CMO_ATTR {
   int32_t       object_index;
 };
 
-using CmoExtraAttr = map<std::string, std::vector<CmoAttr>>;
+using CmoExtraAttr = std::map<std::string, std::vector<CmoAttr>>;
+
+inline bool IsTbe(const OpImplType& impl_type)
+{
+  OpImplType main_type = static_cast<OpImplType>(impl_type & 0xFFFFFFFF);
+  return main_type == EN_IMPL_HW_TBE || main_type == EN_IMPL_VECTOR_CORE_HW_TBE|| main_type == EN_IMPL_CUSTOM_TBE ||
+         main_type == EN_IMPL_VECTOR_CORE_CUSTOM_TBE  || main_type == EN_IMPL_NON_PERSISTENT_CUSTOM_TBE ;
+}
+
+template <typename Ret, typename T>
+Ret GetMainImplType(T a)
+{
+  return static_cast<Ret>(a & 0xFFFFFFFF);
+}
 
 inline bool IsWeight(const ge::OpDescPtr &op_desc_ptr) {
   return kWeightTypes.count(op_desc_ptr->GetType());
@@ -220,5 +229,13 @@ inline bool IsWeight(const ge::OpDescPtr &op_desc_ptr) {
 inline bool IsConst(const ge::OpDescPtr &op_desc_ptr) {
   return kConstTypes.count(op_desc_ptr->GetType());
 }
+
+const std::map<OpPattern, std::string> PATTERN_TO_STRING_MAP = {
+  std::make_pair(OP_PATTERN_OP_KERNEL, "opKernel"),
+  std::make_pair(OP_PATTERN_OP_CUSTOMIZE, "opCustomize"),
+  std::make_pair(OP_PATTERN_FORMAT_AGNOSTIC, "formatAgnostic"),
+  std::make_pair(OP_PATTERN_BROADCAST, "broadcast"),
+  std::make_pair(OP_PATTERN_REDUCE, "reduce")
+};
 }
 #endif  // FUSION_ENGINE_INC_COMMON_AICORE_UTIL_TYPES_H_

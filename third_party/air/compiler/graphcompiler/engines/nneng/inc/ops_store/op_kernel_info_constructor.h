@@ -1,5 +1,5 @@
 /**
- * Copyright 2019-2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,10 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 #include "graph_optimizer/graph_optimize_register_error_codes.h"
 #include "ops_store/op_kernel_info.h"
 
 namespace fe {
-using InputOrOutputInfoPtr = std::shared_ptr<InputOrOutputInfo>;
-using AttrInfoPtr = std::shared_ptr<AttrInfo>;
-
 struct OpContent {
   // optype
   std::string op_type_;
@@ -71,14 +67,14 @@ class OpKernelInfoConstructor {
                                uint32_t &dtype_of_first_input, OpKernelInfoPtr op_kernel_info);
 
   Status InitDtype(const std::map<string, string> &map_info, InputOrOutputInfoPtr input_or_output_info,
-                   uint32_t &dtype_of_first_input);
+                   uint32_t &dtype_and_format_size_of_first_input);
 
   Status GetStrFormMap(const std::map<std::string, std::string> &map_info, std::string key, std::string &value);
 
   /* Convert listed attribute value from a long string to a 2D-Vector */
   template <typename T>
   Status ConvertListAttrValue(const OpContent &op_content, std::string attr_name,
-                              std::vector<std::vector<T>> &list_attr_vec, AttrInfoPtr attr_info);
+                              std::vector<std::vector<T>> &list_attr_vec, AttrInfoPtr attr_info) const;
 
   template <typename T>
   Status InitAttrTemplate(const OpContent &op_content, std::string attr, AttrInfoPtr attr_info) const;
@@ -104,6 +100,8 @@ class OpKernelInfoConstructor {
                             uint32_t &dtype_and_format_size_of_first_input, const OpPattern &op_pattern);
 
   Status InitSlicePattern(const OpContent &op_content, OpKernelInfoPtr op_kernel_info) const;
+
+  void ParserReferTensorNameVec(OpKernelInfoPtr op_kernel_info) const;
 };
 
 }  // namespace fe

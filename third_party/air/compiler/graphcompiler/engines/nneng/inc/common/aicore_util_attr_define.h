@@ -35,35 +35,19 @@ const std::string kThreadModeInArgsFirstField = "_thread_mode_in_args_first_fiel
 
 const std::string kContextId = "_context_id";
 
-const std::string kSuccList = "_succ_list";
-
-const std::string kSuccListList = "_succ_list_list";
-
-const std::string kHcclOutDegree0Num = "_hccl_list_out_degree_0_num";
-
-const std::string kDefaultContextId = "_default_context_id";
-
 const std::string kPrefetchEnableBm = "_prefetch_enable_bm";
-
-const std::string kWriteBackBm = "_write_back_bm";
 
 const std::string kInvalidateBm = "_invalidate_bm";
 
-const std::string kAutoInlabelCtxId = "_in_label_ctx_id";
+const std::string kWriteBackBm = "_write_back_bm";
 
 const std::string kAutoCtxIdList = "_context_id_list";
-
-const std::string kAutoAtStartCtxIdList = "_at_start_ctx_id_list";
-
-const std::string kAutoOutlabelCtxId = "_out_label_ctx_id";
-
-const std::string kAutoAtEndCtxIdList = "_at_end_ctx_id_list";
-
-const std::string kAutoAtEndPreCnt = "_at_end_pre_cnt";
 
 const std::string SCOPE_ID_ATTR = "fusion_scope";
 
 const std::string L1_SCOPE_ID_ATTR = "_l1_fusion_scope";
+
+const std::string FAILED_L1_SCOPE_ID_ATTR = "_failed_l1_fusion_scope";
 
 const std::string FE_IMPLY_TYPE = "_fe_imply_type";
 
@@ -81,9 +65,11 @@ const std::string ATTR_NAME_IS_UNKNOWN_GRAPH = "_fe_is_unknown_graph";
 
 const std::string ATTR_NAME_IS_UNKNOWN_SHAPE_OP = "_fe_is_unknown_shape_op";
 
+const std::string ATTR_NAME_OWNER_GRAPH_IS_UNKNOWN = "OwnerGraphIsUnknown";
+
 const std::string ATTR_NAME_TBE_KERNEL_SIZE = "_tbeKernelSize";
 
-const std::string  ATTR_NAME_FFTS_PLUS_MIX_L2 = "_ffts_plus_mix_l2";
+const std::string  ATTR_NAME_ALIAS_ENGINE_NAME = "_alias_engine_name";
 /* This is not same with the attr engine type.
  * It reveals the op is cube operator or vector operator(implementation related).
  * Firstly, it will be set by op information library and secondly
@@ -107,6 +93,8 @@ const std::string FUSION_OP_SLICE_INFO = "_fusion_op_slice_info";
 
 const std::string NEED_RE_PRECOMPILE = "need_re_precompile";
 
+const std::string CORE_TYPE_VALUE = "core_type_value";
+
 // set the attr by L2 Fusion
 const std::string ATTR_NAME_LX_FUSION_PASS = "lx_fusion_pass";
 
@@ -120,43 +108,19 @@ const std::string kThreadMode = "_thread_mode";
 
 const std::string kTypeFFTSPlus = "_ffts_plus";
 
-const std::string kFFTSPlusCoreName = "ffts_plus";
-
-const std::string kDnnVmAICpu = "DNN_VM_AICPU";
-
-const std::string kDnnVmAICpuAscend = "DNN_VM_AICPU_ASCEND";
-
-const std::string kDnnVmGeLocal = "DNN_VM_GE_LOCAL";
-
-const std::string kDnnHccl = "DNN_HCCL";
-
-const std::string kDnnVmRts = "DNN_VM_RTS";
-
 const std::string kNoMemReuse = "_no_mem_reuse";
 
 const std::string kNoStreamSplit = "_no_stream_split";
 
-const std::string kHcclSubTasks = "hccl_sub_tasks";
-
-const std::string kCtxIdList = "ctx_id_list";
-
-const std::string kAdjacencyList = "adjacency_list";
-
 const std::string kAttrEngineType = "_engine_type";
-
-const std::string kAttrCompositeEngineName = "_composite_engine_name";
-
-const std::string kAttrCompositeKernelLibName = "_composite_engine_kernel_lib_name";
-
-const std::string kCachePersistSize = "_cache_persist_size";
-
-const std::string kCachePersist = "_cache_persist";
-
-const std::string kCachePersistScopeIds = "_cache_persist_scope_ids";
 
 const std::string kLxNoReuseMemFlag = "no_reuse_mem_flag";
 
 const std::string kKBHit = "KBHit";   // knowledge bank
+
+const std::string kReusedParam = "_param_reused";
+
+const std::string kRelationReusedParam = "_param_reused_relation";
 
 const std::string kCmoPrefetch = "Prefetch";
 
@@ -167,5 +131,23 @@ const std::string kCmoBarrier = "Barrier";
 const std::string kCmoWriteback = "Writeback";
 
 const std::string kOpExtattrNameCmo = "cmo_";
+
+const std::string kAttrExtraParams = "_extra_params";
+
+const std::string kOpShapeOrRangeUnsupport = "_shape_or_range_not_support";
+
+const std::string kGlobalworkspaceBytes = "globalworkspace_spec_workspace_bytes";
+
+const std::string kFusionOpBuildOptions = "fusion_op_build_options";
+
+const std::string ATTR_NAME_CONCAT_C_OPTIMIZE = "concat_c_optimize";
+
+const std::string kGlobalworkspaceSize = "_globalworkspace_size";
+
+const std::string kGlobalworkspaceType = "_globalworkspace_type";
+
+const std::string kAtomicCleanAloneMode = "0";
+
+const std::string kAtomicCleanPolicy = "atomic_clean_policy";
 } // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_AICORE_UTIL_ATTR_DEFINE_H_

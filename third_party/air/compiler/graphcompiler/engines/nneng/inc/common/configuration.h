@@ -26,6 +26,22 @@
 #include "common/aicore_util_types.h"
 
 namespace fe {
+enum class OpStoreKey {
+  KEY = 0,
+  PRIORITY = 1,
+  PATH = 2
+};
+
+const int kOpBuiltinBinaryKey = 0;
+const int kOpCustomBinaryKey = 1;
+const int kOmBuiltinBinaryKey = 2;
+const int kOmCustomBinaryKey = 3;
+const int kOpCustomImplKey = 4;
+
+struct OpCustomizeDtype {
+  std::vector<ge::DataType> input_dtypes;
+  std::vector<ge::DataType> output_dtypes;
+};
 /** @brief Configuration.
 * Used to manage all the configuration data within the fusion engine module. */
 class Configuration {
@@ -76,6 +92,14 @@ class Configuration {
    *  get compress weight
    */
   bool GetEnableCompressWeight() const;
+  /*
+   *  get compress sparse_matrix
+   */
+  bool GetEnableSparseMatrixWeight() const;
+
+  void SetEnableSparseMatrixWeight(bool enable_sparse_matrix_weight);
+
+  std::map<int32_t, float> GetCompressRatio() const;
 
   /*
    * get is_auto_mix_precision switch, default value is false
@@ -89,7 +113,7 @@ class Configuration {
    */
   bool EnableL1Fusion() const;
 
-  bool EnableL2Fusion();
+  bool EnableL2Fusion() const;
 
   bool IsDCorMDCSoc() const;
 
@@ -101,14 +125,14 @@ class Configuration {
 
   bool IsLhisiSoc() const;
 
-  bool GetDuplicationSwitch();
+  bool GetDuplicationSwitch() const;
 
   bool IsEnableNetworkAnalysis() const;
   /*
    * to get switch switch of dump original nodes to fusion node
    * @return true/false
    */
-  bool GetDumpOriginalNodesEnable();
+  bool GetDumpOriginalNodesEnable() const;
   /*
    * to get switch switch of mix_l2
    * @return true/false
@@ -145,13 +169,17 @@ class Configuration {
    * to get BufferFusionMode option out of the current configuration object
    * @return BufferFusionMode
    */
-  BufferFusionMode GetBufferFusionMode();
+  BufferFusionMode GetBufferFusionMode() const;
 
   bool IsEnableReuseMem() const;
+
+  std::string GetBuiltInPathInOpp() const;
 
   std::string GetBuiltInFusionConfigFilePath() const;
 
   std::string GetCustomFusionConfigFilePath();
+
+  void SetCustomFusionConfigFilePath(const std::string &custom_fusion_config_file);
 
   /**
    * Get the fusionpassmgr.graphpasspath from configuration file
@@ -187,11 +215,11 @@ class Configuration {
   void InitSmallChannel(const std::string &enable_small_channel);
 
 
-  std::vector<int64_t> GetQualifiedScopeId();
+  std::vector<int64_t> GetQualifiedScopeId() const;
   std::string GetGeContextOptionValue(const std::string &key) const;
 
-  std::string GetBuildStep();
-  std::string GetBuildMode();
+  std::string GetBuildStep() const;
+  std::string GetBuildMode() const;
   std::string GetFeLibPath() const;
   int32_t GetDataVisitDistThreshold() const;
 
@@ -204,10 +232,20 @@ class Configuration {
 
   bool CheckSupportCMO() const;
 
+  void CheckAndSetCustomizeDtype(const bool &is_type, const std::string &op_type,
+                                 const OpCustomizeDtype &custom_dtype_vec);
+
+  bool GetCustomizeDtypeByOpType(const std::string &op_type, OpCustomizeDtype &custom_dtype) const;
+
+  bool GetCustomizeDtypeByOpName(const std::string &op_name, OpCustomizeDtype &custom_dtype) const;
+
+  void SetBinaryCfg2Options(std::map<std::string, std::string> &options);
+
  private:
   explicit Configuration(std::string engine_name);
   ~Configuration();
   static const std::string CONFIG_FILE_RELATIVE_PATH;
+  static const std::string kConfigOppCustomFile;
   static const std::string CONFIG_OPS_RELATIVE_PATH;
   bool is_init_;
   std::string soc_version_;
@@ -222,6 +260,7 @@ class Configuration {
   std::vector<FEOpsStoreInfo> ops_store_info_vector_;
   bool enable_small_channel_;
   bool enable_compress_weight_;
+  bool enable_sparse_matrix_weight_;
   bool allow_all_scope_id_;
   bool enable_network_analysis_ = false;
   ISAArchVersion isa_arch_ver_;
@@ -234,9 +273,17 @@ class Configuration {
   mutable std::mutex ops_store_info_vector_mutex_;
   int32_t data_visit_dist_threshold_;
   int32_t mem_reuse_dist_threshold_;
+  int64_t custom_priority_;
   std::string use_cmo_;
   std::map<std::string, std::string> op_select_impl_mode_map_;
   std::string modify_mixlist_path_;
+  std::map<int32_t, float> compress_ratio_;
+  std::map<string, OpCustomizeDtype> op_name_cust_dtypes_;
+  std::map<string, OpCustomizeDtype> op_type_cust_dtypes_;
+  std::map<std::string, std::string> op_binary_path_map_;
+  const static std::vector<std::tuple<string, int64_t, string>> fe_op_store_vec_;
+  const static std::map<std::string, std::string> fe_path_map_;
+  const static std::map<std::string, std::string> fe_path_old_map_;
   /**
    * Initialize the parameters from options
    * @param options patameters map
@@ -266,6 +313,19 @@ class Configuration {
    * control whether the is_enable_check_graph_cycle is open
    */
   void InitEnableNetworkAnalysis();
+
+  bool IsPathExist(const std::string &path);
+  bool ResolveOpImplPath(std::string &sub_path);
+  void ResolveBinaryPath(std::string &sub_path, bool isOm, int binaryKey);
+  void ResolveCustomPath(std::vector<std::string> &custom_path);
+  void LoadConfigOldMap();
+  void LoadConfigNewMap();
+    /**
+   * Read the content of configuration file(CONFIG_OPP_CUSTOM_PATH)
+   * Save the data into content_map
+   * @return Whether the config file has been loaded successfully.
+   */
+    Status LoadCustomConfigFile();
 
   /**
    * Read the content of configuration file(FE_CONFIG_FILE_PATH)
@@ -359,6 +419,8 @@ class Configuration {
 
   void InitMemReuseDistThreshold();
 
+  void InitCompressRatio();
+
   void InitUseCmo();
 
   std::vector<std::string> ParseConfig(const std::string &key, char pattern);
@@ -373,6 +435,29 @@ class Configuration {
                                        const std::string &op_type_list_str);
 
   Status GetOpPrecisonModeStrFromConfigFile(const std::string &file_path);
+
+  bool CheckValidAndTrans(string &dtype_str, ge::DataType &ge_dtype) const;
+
+  bool CheckFilePath(const string &customize_dtype_file, string &real_file_path) const;
+
+  bool ParseCustomDtypeContent(const std::map<std::string, std::string> &options);
+
+  bool ParseFileContent(const string &custom_file_path);
+
+  bool FeedOpCustomizeDtype(const std::string &op_type, const bool &is_type,
+                            const std::vector<std::string> &input_dtype,
+                            const std::vector<std::string> &output_dtype);
+
+  void SplitOpTypeFromStr(const std::string &str_line, std::string &op_type) const;
+
+  bool ParseDTypeFromLine(const std::string &line_str, const bool &is_type);
+
+  void SplitDtypeFromStr(const std::string &input_str, std::vector<std::string> &input_dtype) const;
+
+  bool SplitInoutDtype(const std::string &line_str, std::vector<std::string> &input_dtype,
+                       std::vector<std::string> &output_dtype) const;
+
+  bool SplitNameOrType(const std::string &line_str, std::string &name_or_type) const;
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_CONFIGURATION_H_

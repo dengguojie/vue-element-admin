@@ -19,13 +19,14 @@
 
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <securec.h>
 #include <cstdint>
 #include <string>
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 #include "toolchain/slog.h"
 #include "common/util/error_manager/error_manager.h"
 #include "common/fe_error_code.h"
-#include "securec.h"
+
 /** Assigned FE name in log */
 const std::string FE_MODULE_NAME = "FE";
 

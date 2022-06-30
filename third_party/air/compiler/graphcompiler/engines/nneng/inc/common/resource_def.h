@@ -45,13 +45,13 @@ enum class FuncParamType {
  * @ingroup fe
  * @brief set function point state
  */
-bool setFuncState(FuncParamType type, bool isOpen);
+bool SetFunctionState(FuncParamType type, bool isOpen);
 
 /**
  * @ingroup cce
  * @brief cce get function point state
  */
-bool getFuncState(FuncParamType type);
+bool GetFunctionState(FuncParamType type);
 
 }  // namespace fe
 #endif  // RESOURCE_DEF_H__

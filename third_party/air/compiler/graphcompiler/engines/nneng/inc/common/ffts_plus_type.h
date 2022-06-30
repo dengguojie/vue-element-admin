@@ -14,22 +14,12 @@
  * limitations under the License.
  */
 
-#include "common/sgt_slice_type.h"
-
 #ifndef AIR_COMPILER_GRAPHCOMPILER_ENGINES_NNENG_INC_COMMON_FFTS_PLUS_TYPE_H
 #define AIR_COMPILER_GRAPHCOMPILER_ENGINES_NNENG_INC_COMMON_FFTS_PLUS_TYPE_H
-#include <cstdint>
+
+#include "common/sgt_slice_type.h"
 
 namespace fe {
-
-const uint32_t kManualMode = 0;
-const uint32_t kAutoMode = 1;
-
-const uint32_t kDefaultWindowSize = 4;
-const uint32_t kMaxPersistNum = 8;
-const size_t kMaxCacheOperationSize = 64;
-extern const std::unordered_set<std::string> CONTROL_OP_V2_TYPE;
-
 inline bool OpIsAutoThread(ffts::ThreadSliceMapPtr slice_info_ptr)
 {
   if ((slice_info_ptr != nullptr) && (slice_info_ptr->thread_mode == 1)
@@ -37,14 +27,6 @@ inline bool OpIsAutoThread(ffts::ThreadSliceMapPtr slice_info_ptr)
     return true;
   }
   return false;
-}
-
-void inline SetBitOne(const uint32_t pos, uint32_t &bm) {
-  bm |= (0x1 << pos);
-}
-
-void inline SetBitOne(const uint32_t pos, uint64_t &bm) {
-  bm |= (0x1 << pos);
 }
 
 struct TickCacheMap {
@@ -59,8 +41,5 @@ enum class CACHE_OPERATION {
   WRITE_BACK = 2,
   CACHE_OPERATION_BOTTOM = 3
 };
-
-
 }
-
 #endif // AIR_COMPILER_GRAPHCOMPILER_ENGINES_NNENG_INC_COMMON_FFTS_PLUS_TYPE_H

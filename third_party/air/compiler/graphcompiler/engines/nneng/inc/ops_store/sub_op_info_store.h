@@ -71,8 +71,8 @@ class SubOpInfoStore {
 
   Status UpdateOpInfoStore(const std::map<std::string, uint8_t> &update_map);
 
-  void UpdateStrToOpContent(OpContent &op_content, const std::string key1,
-                            const std::string key2, const std::string &value);
+  void UpdateStrToOpContent(OpContent &op_content, const std::string key1, const std::string key2,
+                            const std::string &value) const;
 
  private:
   bool init_flag_;
@@ -86,10 +86,6 @@ class SubOpInfoStore {
    * information to this sub store;
    */
   Status LoadOpInfo(const std::string &real_path);
-
-
 };
-
 }  // namespace fe
-
 #endif  // FUSION_ENGINE_INC_OPS_STORE_SUB_OP_INFO_STORE_H_

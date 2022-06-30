@@ -64,6 +64,8 @@ const std::unordered_set<std::string> ForbiddenClosedPass = {
         "V100NotRequantFusionPass",
         "V200NotRequantFusionPass",
         "DepthwiseInsertTransDataFusionPass",
+        "DeformableOffsetsFusionPass",
+        "EinsumPass",
 
         // UB Fusion
         "TbeCommonRules2FusionPass",
@@ -87,9 +89,9 @@ const std::unordered_set<std::string> ForbiddenClosedPass = {
         "FusedBatchnormFusionPass",
         "ApplyAddOutputPass",
         "TileConstToAttrFusion",
-	"TransposedUpdateFusionPass",
-	"AReduceMeanFusionPass",
-	"AReduceSumFusionPass",
+        "TransposedUpdateFusionPass",
+        "AReduceMeanFusionPass",
+        "AReduceSumFusionPass",
         "BatchNormBnInferFusionPass",
         "BatchNormGradInfGradFusion",
         "FusedBatchNormBertFusionPass",
@@ -104,7 +106,18 @@ const std::unordered_set<std::string> ForbiddenClosedPass = {
         "sedBatchNormGradFusionPass",
         "Globalavgpoolpass",
         "DreluFusionPass",
-        "SoftmaxGradExtFusion"
+        "SoftmaxGradExtFusion",
+        "AvgPool3DFusionPass",
+        "DynamicRNNGradAlignFusionPass",
+        "DynamicRNNGradDAlignFusionPass",
+        "DynamicRNNGradDFusionPass",
+        "DynamicRNNGradAFusionPass",
+        "DynamicRNNInsertTransposePass",
+        "DynamicRNNSeqFusionPass",
+        "DynamicRNNFusionPass",
+        "ZConcatDFusionPass",
+        "ZSplitVDFusionPass",
+        "clip_by_norm_nodivsquaresum"
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_FUSION_PASS_UTIL_H_

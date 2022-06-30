@@ -27,6 +27,7 @@ namespace fe {
 /* engine name of AI core and vector core */
 const std::string AI_CORE_NAME = "AIcoreEngine";
 const std::string VECTOR_CORE_NAME = "VectorEngine";
+const std::string kDsaCoreName = "DSAEngine";
 
 const std::string L1_OPTIMIZE = "l1_optimize";
 const std::string L2_OPTIMIZE = "l2_optimize";
@@ -64,16 +65,13 @@ const std::string SHAPE_GENERALIZED = "shape_generalized";
 
 const int64_t IS_UNKNOWN_SHAPE_VALUE = 1;
 
-// mode == 1 indicates we need reserve 8 Bytes for the args beginning
-const int64_t IS_MIX_FIRST_FIELD_MODE = 1;
-
 const int64_t SHAPE_UNKNOWN_DIM = -1;
 
 const int64_t SHAPE_UNKNOWN_DIM_NUM = -2;
 
 const uint32_t INVALID_DTYPE_AND_FORMAT_SIZE = 0xffffffff;
 
-const size_t kMaxPretchNum = 4;
+constexpr uint32_t kInvalidTaskRatio = 0xFFFFFFFFU;
 
 const size_t kMinThreadNum = 2;
 
@@ -81,46 +79,23 @@ const int32_t kAnchorMaxIdxNum = 64;
 
 const size_t kMaxOpNmaLen = 512;
 
-const std::string kCoreTypeAIC = "AIC";
+constexpr char const *kCoreTypeAIC = "AIC";
 
-const std::string kCoreTypeAIV = "AIV";
+constexpr char const *kCoreTypeAIV = "AIV";
 
-const std::string kCoreTypeMixAIC = "MIX_AIC";
+constexpr char const *kCoreTypeMixAIC = "MIX_AIC";
 
-const std::string kCoreTypeMixAIV = "MIX_AIV";
+constexpr char const *kCoreTypeMixAIV = "MIX_AIV";
 
-const std::string kMixL2CtxDef = "mix_l2_ctx_def";
+const std::string kTbeMixCubePrefix = "_mix_aic";
 
-const std::string kCoreTypeHcomReduce = "HcomReduce";
-const std::string kCoreTypeHcomAllReduce = "HcomAllReduce";
-const std::string kCoreTypeHcomAllGather = "HcomAllGather";
-const std::string kCoreTypeHcomBroadCast = "HcomBroadcast";
-const std::string kCoreTypeHcomReduceScatter = "HcomReduceScatter";
-const std::string kCoreTypeHcomSend = "HcomSend";
-const std::string kCoreTypeHcomReceive = "HcomReceive";
-const std::string kCoreTypeHcomRemoteRead = "HcomRemoteRead";
-const std::string kCoreTypeHcomRemoteRefRead = "HcomRemoteRefRead";
-const std::string kCoreTypeHcomRemoteWrite = "HcomRemoteWrite";
-const std::string kCoreTypeHcomRemoteScatterWrite= "HcomRemoteScatterWrite";
-const std::string kCoreTypeHcomAllToAllV = "HcomAllToAllV";
-const std::string kCoreTypeHcomGatherAllToAllV = "HcomGatherAllToAllV";
-const std::unordered_set<std::string> kHCCLOpType = {kCoreTypeHcomReduce, kCoreTypeHcomAllReduce, kCoreTypeHcomAllGather,
-                                                     kCoreTypeHcomBroadCast, kCoreTypeHcomReduceScatter, kCoreTypeHcomSend,
-                                                     kCoreTypeHcomReceive, kCoreTypeHcomRemoteRead, kCoreTypeHcomRemoteRefRead,
-                                                     kCoreTypeHcomRemoteWrite, kCoreTypeHcomRemoteScatterWrite, kCoreTypeHcomAllToAllV,
-                                                     kCoreTypeHcomGatherAllToAllV};
+const std::string kTbeMixVectorPrefix = "_mix_aiv";
+
+const std::string kKernelNamesPrefix = "_kernel_names_prefix";
 
 const std::string kKernelName = "_kernelname";
 
 const std::string kThreadKernelName = "_thread_kernelname";
-
-const std::string kTypePhonyConcat = "PhonyConcat";
-
-const std::string kAtomicAddrClean = "AtomicAddrClean";
-
-const uint32_t kMaxIdx = 64;
-
-const uint32_t kGetFirstAvailableLabel = 1000;
 
 const std::string kFFTSPlusMode = "ffts-plus";
 
@@ -128,39 +103,90 @@ const std::string kFFTSMode = "ffts";
 
 const std::string kAICoreMode = "ffts_mode";
 
-const std::string kSocInfo = "SoCInfo";
+const std::string kCubeVecMix = "cube_vector_mix";
+const std::string kCubeVecDecouple = "cube_vector_decouple";
 
-const std::string SOC_VERSION_ASCEND310 = "Ascend310";
-const std::string SOC_VERSION_ASCEND610 = "Ascend610";
-const std::string SOC_VERSION_ASCEND615 = "Ascend615";
-const std::string SOC_VERSION_ASCEND710 = "Ascend710";
-const std::string SOC_VERSION_ASCEND710P = "Ascend710Pro";
-const std::string SOC_VERSION_ASCEND910 = "Ascend910";
-const std::string SOC_VERSION_ASCEND910A = "Ascend910A";
-const std::string SOC_VERSION_ASCEND910B = "Ascend910B";
-const std::string SOC_VERSION_ASCEND910PROA = "Ascend910ProA";
-const std::string SOC_VERSION_ASCEND910PROB = "Ascend910ProB";
-const std::string SOC_VERSION_ASCEND920A = "Ascend920A";
-const std::string SOC_VERSION_ASCEND320 = "Ascend320";
-const std::string SOC_VERSION_ASCEND910PREMIUMA = "Ascend910PremiumA";
-const std::string SOC_VERSION_HI3796CV300ES = "Hi3796CV300ES";
-const std::string SOC_VERSION_HI3796CV300CS = "Hi3796CV300CS";
-const std::string SOC_VERSION_SD3403 = "SD3403";
+const std::string kCfgSocInfo = "SoCInfo";
+const std::string kCfgAiCoreCnt = "ai_core_cnt";
+const std::string kCfgVectorCoreCnt = "vector_core_cnt";
+
+const std::string kBinFileSuffix = "binFileSuffix";
+const std::string kBinFileName = "binFileName";
+const std::string kModelBinFileSuffix = ".om";
+
+constexpr const char* SOC_VERSION_ASCEND310 = "Ascend310";
+constexpr const char* SOC_VERSION_ASCEND610 = "Ascend610";
+constexpr const char* SOC_VERSION_ASCEND615 = "Ascend615";
+constexpr const char* SOC_VERSION_ASCEND310P3 = "Ascend310P3";
+constexpr const char* SOC_VERSION_ASCEND310P1 = "Ascend310P1";
+constexpr const char* SOC_VERSION_ASCEND710VIR01 = "Ascend710Vir01";
+constexpr const char* SOC_VERSION_ASCEND710VIR02 = "Ascend710Vir02";
+constexpr const char* SOC_VERSION_ASCEND710VIR04 = "Ascend710Vir04";
+constexpr const char* SOC_VERSION_ASCEND710VIR08 = "Ascend710Vir08";
+constexpr const char* SOC_VERSION_ASCEND910 = "Ascend910";
+constexpr const char* SOC_VERSION_ASCEND910A = "Ascend910A";
+constexpr const char* SOC_VERSION_ASCEND910B = "Ascend910B";
+constexpr const char* SOC_VERSION_ASCEND910B1 = "Ascend910B1";
+constexpr const char* SOC_VERSION_ASCEND910B2 = "Ascend910B2";
+constexpr const char* SOC_VERSION_ASCEND910B3 = "Ascend910B3";
+constexpr const char* SOC_VERSION_ASCEND910B4 = "Ascend910B4";
+constexpr const char* SOC_VERSION_ASCEND910C1 = "Ascend910C1";
+constexpr const char* SOC_VERSION_ASCEND910C2 = "Ascend910C2";
+constexpr const char* SOC_VERSION_ASCEND910C3 = "Ascend910C3";
+constexpr const char* SOC_VERSION_ASCEND910C4 = "Ascend910C4";
+constexpr const char* SOC_VERSION_ASCEND910PROA = "Ascend910ProA";
+constexpr const char* SOC_VERSION_ASCEND910PROB = "Ascend910ProB";
+constexpr const char* SOC_VERSION_ASCEND310B1 = "Ascend310B1";
+constexpr const char* SOC_VERSION_ASCEND031 = "Ascend031";
+constexpr const char* SOC_VERSION_ASCEND910PREMIUMA = "Ascend910PremiumA";
+constexpr const char* SOC_VERSION_HI3796CV300ES = "Hi3796CV300ES";
+constexpr const char* SOC_VERSION_HI3796CV300CS = "Hi3796CV300CS";
+constexpr const char* SOC_VERSION_SD3403 = "SD3403";
+
+constexpr const char* kInvalidPattern = "Opaque";
 
 const std::string kStrTrue = "true";
 const std::string kStrFalse = "false";
+const std::string kFixPipeOpt = "{\"fixpipe_fusion\":true}";
 
 const std::vector<std::string> SOC_VERSION_CLOUD_LIST = {
         SOC_VERSION_ASCEND910A, SOC_VERSION_ASCEND910B, SOC_VERSION_ASCEND910PROA,
         SOC_VERSION_ASCEND910PROB, SOC_VERSION_ASCEND910PREMIUMA
 };
+const std::unordered_set<std::string> kDsaSupportedSoc = {SOC_VERSION_ASCEND910B1,
+                                                          SOC_VERSION_ASCEND910B2,
+                                                          SOC_VERSION_ASCEND910B3,
+                                                          SOC_VERSION_ASCEND910B4,
+                                                          SOC_VERSION_ASCEND910C1,
+                                                          SOC_VERSION_ASCEND910C2,
+                                                          SOC_VERSION_ASCEND910C3,
+                                                          SOC_VERSION_ASCEND910C4};
 
-const std::vector<std::string> SOC_VERSION_DC_LIST = {SOC_VERSION_ASCEND710, SOC_VERSION_ASCEND710P};
+const std::unordered_set<std::string> kSupportedL2Fusion = {SOC_VERSION_ASCEND310,
+                                                            SOC_VERSION_ASCEND310P3,
+                                                            SOC_VERSION_ASCEND310P1,
+                                                            SOC_VERSION_ASCEND610,
+                                                            SOC_VERSION_ASCEND910,
+                                                            SOC_VERSION_ASCEND910A,
+                                                            SOC_VERSION_ASCEND910B,
+                                                            SOC_VERSION_ASCEND910PROA,
+                                                            SOC_VERSION_ASCEND910PROB,
+                                                            SOC_VERSION_ASCEND910PREMIUMA,
+                                                            SOC_VERSION_ASCEND310B1};
+
+const std::vector<std::string> SOC_VERSION_DC_LIST = {SOC_VERSION_ASCEND310P3,
+                                                      SOC_VERSION_ASCEND310P1};
+
+const std::unordered_set<std::string> kSgtCoreTypeSupportList = {SOC_VERSION_ASCEND910B1, SOC_VERSION_ASCEND910B2,
+                                                                 SOC_VERSION_ASCEND910B3, SOC_VERSION_ASCEND910B4,
+                                                                 SOC_VERSION_ASCEND910C1, SOC_VERSION_ASCEND910C2,
+                                                                 SOC_VERSION_ASCEND910C3, SOC_VERSION_ASCEND910C4,
+                                                                 SOC_VERSION_ASCEND310B1};
 
 const std::vector<std::string> SOC_VERSION_MDC_LIST = {SOC_VERSION_ASCEND610, SOC_VERSION_ASCEND615};
 
 const std::vector<std::string> SOC_VERSION_MDCOrDC_LIST = {SOC_VERSION_ASCEND610, SOC_VERSION_ASCEND615,
-                                                                  SOC_VERSION_ASCEND710, SOC_VERSION_ASCEND710P};
+                                                           SOC_VERSION_ASCEND310P3, SOC_VERSION_ASCEND310P1};
 
 const std::vector<std::string> SOC_VERSION_LHISI_LIST = {SOC_VERSION_HI3796CV300ES, SOC_VERSION_HI3796CV300CS,
                                                                 SOC_VERSION_SD3403};
@@ -197,8 +223,6 @@ const std::map<std::string, std::string> LICENSE_PASSNAME_MAP {
   {"6", "MulAddNL2LossFusionPass"},
   {"7", "AutomaticUbFusion"},
   {"9", "TransposeReshapeFusionPass"},
-  {"15", "TbeBnupdateEltwiseEltwiseFusionPass"},
-  {"16", "TbeBnupdateEltwiseFusionPass"},
   {"17", "TbeConv2DBackpropElemwiseFusionPass"},
   {"18", "TbeConvBnreduceFusionPass"},
   {"19", "BatchMatmulFusionPass"},
