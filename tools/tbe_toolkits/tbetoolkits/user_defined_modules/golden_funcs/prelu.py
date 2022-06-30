@@ -105,7 +105,7 @@ def broadcast_inputs_shape(x, weight, format_):
 def _prelu(context: "tbetoolkits.UniversalTestcaseStructure"):
     input_x, weight = context.input_arrays
     x_format = context.stc_input_formats[0]
-    weight_format = context.stc_input_formats[1]
+    weight_format = context.stc_input_formats[1] if len(context.stc_input_formats) > 1 else x_format
     shape_x, shape_weight = broadcast_inputs_shape(input_x, weight, x_format)
     input_x = input_x.reshape(shape_x)
     weight = weight.reshape(shape_weight)
